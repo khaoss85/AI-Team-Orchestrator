@@ -1,0 +1,130 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+import logging
+
+from models import (
+    AgentCreate,
+    AgentUpdate,
+    Agent,
+    TaskCreate,
+    Task
+)
+from database import (
+    create_agent,
+    list_agents,
+    update_agent_status,
+    create_task,
+    update_task_status
+)
+from ai_agents.manager import AgentManager
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/agents", tags=["agents"])
+
+@router.post("/{workspace_id}", response_model=Agent, status_code=status.HTTP_201_CREATED)
+async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
+    """Create a new agent in a workspace"""
+    try:
+        # Ensure the agent's workspace_id matches the path parameter
+        if agent.workspace_id != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Agent workspace_id does not match URL workspace_id"
+            )
+            
+        agent_data = await create_agent(
+            workspace_id=str(agent.workspace_id),
+            name=agent.name,
+            role=agent.role,
+            seniority=agent.seniority.value,
+            description=agent.description
+        )
+        
+        return Agent.model_validate(agent_data)
+    except Exception as e:
+        logger.error(f"Error creating agent: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create agent: {str(e)}"
+        )
+
+@router.get("/{workspace_id}", response_model=List[Agent])
+async def get_workspace_agents(workspace_id: UUID):
+    """Get all agents in a workspace"""
+    try:
+        agents_data = await list_agents(str(workspace_id))
+        return [Agent.model_validate(agent) for agent in agents_data]
+    except Exception as e:
+        logger.error(f"Error getting agents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get agents: {str(e)}"
+        )
+
+@router.post("/{workspace_id}/verify", status_code=status.HTTP_200_OK)
+async def verify_agents(workspace_id: UUID):
+    """Verify all agents in a workspace have required capabilities"""
+    try:
+        manager = AgentManager(workspace_id)
+        await manager.initialize()
+        results = await manager.verify_all_agents()
+        
+        return {
+            "workspace_id": workspace_id,
+            "results": results,
+            "status": "success" if all(results.values()) else "partial"
+        }
+    except Exception as e:
+        logger.error(f"Error verifying agents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to verify agents: {str(e)}"
+        )
+
+@router.post("/{workspace_id}/tasks", response_model=Task, status_code=status.HTTP_201_CREATED)
+async def create_new_task(workspace_id: UUID, task: TaskCreate):
+    """Create a new task for an agent"""
+    try:
+        # Ensure the task's workspace_id matches the path parameter
+        if task.workspace_id != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task workspace_id does not match URL workspace_id"
+            )
+            
+        task_data = await create_task(
+            workspace_id=str(task.workspace_id),
+            agent_id=str(task.agent_id),
+            name=task.name,
+            description=task.description,
+            status=task.status.value
+        )
+        
+        return Task.model_validate(task_data)
+    except Exception as e:
+        logger.error(f"Error creating task: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create task: {str(e)}"
+        )
+
+@router.post("/{workspace_id}/execute/{task_id}", status_code=status.HTTP_200_OK)
+async def execute_task(workspace_id: UUID, task_id: UUID):
+    """Execute a specific task"""
+    try:
+        manager = AgentManager(workspace_id)
+        await manager.initialize()
+        result = await manager.execute_task(task_id)
+        
+        return {
+            "workspace_id": workspace_id,
+            "task_id": task_id,
+            "result": result
+        }
+    except Exception as e:
+        logger.error(f"Error executing task: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute task: {str(e)}"
+        )
