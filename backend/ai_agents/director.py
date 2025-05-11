@@ -1,12 +1,15 @@
 import logging
 import os
-from typing import List, Dict, Any, Optional, Union # Assicurati che Union sia importato
+from typing import List, Dict, Any, Optional, Union
 from uuid import UUID
 import json
+import re # Importa il modulo re per la pulizia del JSON
 
+# Importazione dal pacchetto installato
 from agents import Agent as OpenAIAgent
 from agents import Runner, ModelSettings, function_tool
 
+# Import assoluti dalla root del backend
 from models import (
     DirectorConfig,
     DirectorTeamProposal,
@@ -28,9 +31,7 @@ class DirectorAgent:
     """Director Agent that plans and manages the team of AI agents"""
 
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            logger.info("OPENAI_API_KEY environment variable is not set (DirectorAgent __init__), but tools are static.")
+        logger.info("DirectorAgent initialized. Note: OPENAI_API_KEY is used by the Runner/Agent, not directly by static tools.")
 
     @staticmethod
     @function_tool
@@ -72,33 +73,41 @@ class DirectorAgent:
         director_agent_instructions = f"""
 You are an expert project director AI specializing in planning and assembling teams of AI agents for complex SaaS projects.
 Your primary goal is to analyze the given project requirements, design an optimal team of AI agents, define their roles, seniority, system prompts, and necessary handoffs, while adhering to budget constraints.
+
 Project Goal: {config.goal}
 Budget Constraints: {json.dumps(config.budget_constraint)}
 User ID (for context, if needed): {config.user_id}
 Workspace ID (for context): {config.workspace_id}
+
 Your tasks are:
 1.  **Analyze Project Requirements**: Understand the project goal and constraints. Identify the core skills and expertise areas needed.
     (You can use the 'analyze_project_requirements_llm' tool if you need to delegate parts of this or if the tool provides a structured way to perform this sub-task).
 2.  **Design Team Structure**: Based on the analysis, define the composition of the AI agent team. For each proposed agent, specify:
-    * `name`: A descriptive name for the agent (e.g., "Backend API Developer Agent").
-    * `role`: A clear role (e.g., "API Development", "Database Management", "Content Generation").
-    * `seniority`: Choose from 'junior', 'senior', 'expert'. Justify your choice based on task complexity and budget.
+    * `name`: A descriptive name for the agent.
+    * `role`: A clear role.
+    * `seniority`: Choose from 'junior', 'senior', 'expert'.
     * `description`: A brief description of the agent's responsibilities.
-    * `system_prompt`: A concise and effective system prompt that will guide the agent's behavior and tasks. This is critical.
-    * `llm_config` (optional): Suggest a base model (e.g., "gpt-4-turbo", "gpt-3.5-turbo") and temperature if relevant.
-    * `tools` (optional): Suggest a list of tools this agent might need from a predefined set if applicable (e.g., ["web_search", "code_interpreter"]).
-3.  **Define Handoffs**: Identify critical points where tasks or information must be passed between agents. For each handoff, specify:
-    * `source_agent_name`: The name of the agent initiating the handoff. (You will assign temporary IDs/names and these will be mapped to real IDs later)
-    * `target_agent_name`: The name of the agent receiving the handoff.
-    * `description`: What is being handed off and why.
-4.  **Estimate Costs**: Provide a rough cost estimation for the proposed team, considering agent seniority and potential operational duration. Explain how the budget constraints were met. (You can use the 'estimate_costs' tool).
-5.  **Provide Rationale**: Briefly explain the overall strategy behind your team proposal and why it's optimal for the project.
-**Output Format**:
-You MUST structure your final proposal as a single JSON object that can be parsed into a `DirectorTeamProposal`.
-The `agents` list should contain `AgentCreate` objects.
-The `handoffs` list should contain `HandoffCreate` objects (use names for now, they will be mapped to IDs).
-The `estimated_cost` should be a dictionary with "total" and "breakdown".
-Example of an AgentCreate structure to guide you:
+    * `system_prompt`: A concise and effective system prompt.
+    * `llm_config` (optional): Suggest model and temperature.
+    * `tools` (optional): Suggest a list of tools.
+3.  **Define Handoffs**: Identify critical handoffs. For each, specify:
+    * `source_agent_name`: Name of the source agent.
+    * `target_agent_name`: Name of the target agent.
+    * `description`: Handoff description.
+4.  **Estimate Costs**: Provide cost estimation. Explain budget adherence.
+    (You can use the 'estimate_costs' tool).
+5.  **Provide Rationale**: Briefly explain the overall strategy.
+
+**Output Format Strictness**:
+Your *entire response* MUST be *only* a single, valid JSON object.
+This JSON object must conform to the structure of a `DirectorTeamProposal`.
+The `agents` list within the JSON must contain objects matching the `AgentCreate` structure.
+The `handoffs` list must contain objects matching the `HandoffCreate` structure (use placeholder valid UUIDs like "00000000-0000-0000-0000-000000000001" if actual IDs are not yet known for agents you are proposing).
+The `estimated_cost` must be a dictionary with "total" and "breakdown".
+
+Do NOT include any introductory text, explanatory sentences, Markdown formatting (like ### or ```json), or any characters whatsoever before the opening curly brace of the JSON object. Your response must begin with the literal character '{{' and end with the literal character '}}'.
+
+Example of an AgentCreate structure to embed in your JSON (ensure correct escaping if directly in f-string, or build separately):
 {{
     "workspace_id": "{config.workspace_id}",
     "name": "Example Agent",
@@ -107,16 +116,24 @@ Example of an AgentCreate structure to guide you:
     "description": "This agent does X, Y, Z.",
     "system_prompt": "You are an AI agent that...",
     "llm_config": {{"model": "gpt-4", "temperature": 0.5}},
-    "tools": ["tool_name_1", "tool_name_2"]
+    "tools": ["tool_name_1"]
 }}
-Example of a HandoffCreate structure (use agent names you define):
+
+Example of a HandoffCreate structure to embed in your JSON:
 {{
-    "source_agent_id": "NameOfSourceAgent",
-    "target_agent_id": "NameOfTargetAgent",
+    "source_agent_id": "00000000-0000-0000-0000-000000000001",
+    "target_agent_id": "00000000-0000-0000-0000-000000000002",
     "description": "Handoff of X from Source to Target for Y reason."
 }}
-Begin by analyzing the requirements. Then design the team and handoffs. Then estimate costs. Finally, provide the overall rationale and the complete JSON proposal.
+
+Produce the JSON output now.
 """
+        # Nota: Per le parti "Example of an AgentCreate/HandoffCreate" nel prompt:
+        # Le doppie parentesi graffe { { e } } sono per far sì che l'f-string produca parentesi graffe letterali { e }.
+        # La parte "{config.workspace_id}" è un'espressione f-string che verrà interpolata.
+        # La parte {{"model": "gpt-4", "temperature": 0.5}} dovrebbe diventare {"model": "gpt-4", "temperature": 0.5}
+        # È cruciale che questa formattazione sia corretta per evitare SyntaxError.
+
         available_tools_for_director_llm = [
             DirectorAgent.analyze_project_requirements_llm,
             DirectorAgent.estimate_costs,
@@ -132,16 +149,34 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
         )
         try:
             initial_prompt_to_llm = (
-                "Please generate the AI agent team proposal for the project detailed in your instructions. "
-                "Ensure the output is a single, valid JSON object."
+                "Generate the AI agent team proposal as a single, valid JSON object, adhering strictly to the format specified in your instructions."
             )
             run_result = await Runner.run(
                 director_llm_agent,
                 initial_prompt_to_llm
             )
             final_output_json_str = run_result.final_output
-            logger.info(f"Director LLM Agent Raw Output: {final_output_json_str}")
-            proposal_data = json.loads(final_output_json_str)
+            logger.info(f"Director LLM Agent Raw Output String (length {len(final_output_json_str)}): '{final_output_json_str[:500]}...'")
+
+
+            # Tentativo di pulizia più robusto
+            json_to_parse = final_output_json_str
+            match_markdown_block = re.search(r"```json\s*([\s\S]*?)\s*```", final_output_json_str, re.DOTALL)
+            if match_markdown_block:
+                json_to_parse = match_markdown_block.group(1).strip()
+                logger.info(f"Extracted JSON from markdown block: '{json_to_parse[:500]}...'")
+            else:
+                # Se non è in un blocco ```json, cerca il primo '{' e l'ultimo '}'
+                first_brace = final_output_json_str.find('{')
+                last_brace = final_output_json_str.rfind('}')
+                if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                    json_to_parse = final_output_json_str[first_brace : last_brace+1]
+                    logger.info(f"Extracted JSON by finding first and last braces: '{json_to_parse[:500]}...'")
+                else:
+                    logger.warning("Could not identify a clear JSON structure in LLM output. Attempting to parse as is.")
+            
+            proposal_data = json.loads(json_to_parse)
+            logger.info(f"Successfully parsed JSON from LLM output.")
 
             proposed_agents_data = proposal_data.get("agents", [])
             agents_create_list: List[AgentCreate] = []
@@ -173,7 +208,7 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
             logger.info(f"Successfully created team proposal for workspace {config.workspace_id}")
             return final_proposal
         except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON from LLM output: {e}\nLLM Output was: {final_output_json_str}")
+            logger.error(f"Error decoding JSON from LLM output: {e}. LLM Output was: '{final_output_json_str}'")
             raise ValueError(f"LLM output was not valid JSON: {e}")
         except Exception as e:
             logger.error(f"Error creating team proposal via LLM Director: {e}")
@@ -200,7 +235,6 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
                 total_cost += agent_cost
                 cost_breakdown[f"{role} ({seniority_str})"] = agent_cost
             
-            logger.info(f"Estimated costs: Total={total_cost}, Breakdown={cost_breakdown}")
             result = {
                 "total_estimated_cost": total_cost,
                 "currency": "EUR",
@@ -211,13 +245,7 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
             return json.dumps(result)
         except Exception as e:
             logger.error(f"Error in estimate_costs: {e}")
-            error_result = {
-                "error": str(e),
-                "total_estimated_cost": 0,
-                "currency": "EUR",
-                "breakdown_by_agent": {},
-                "estimated_duration_days": duration_days
-            }
+            error_result = { "error": str(e), "total_estimated_cost": 0, "currency": "EUR", "breakdown_by_agent": {}, "estimated_duration_days": duration_days }
             return json.dumps(error_result)
 
     @staticmethod
@@ -226,50 +254,38 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
         required_skills_json: str,
         expertise_areas_json: str,
         budget_total: float,
-        max_agents: Optional[int] # Rimosso il valore di default = 5
+        max_agents: Optional[int] 
     ) -> str:
         try:
             required_skills = json.loads(required_skills_json)
             expertise_areas = json.loads(expertise_areas_json)
             
-            # Applica il valore di default per max_agents se non fornito
-            if max_agents is None:
-                max_agents = 5
+            max_agents_resolved = max_agents if max_agents is not None else 5
             
-            logger.info(f"Director Tool: Designing team structure. Skills: {required_skills}, Budget: {budget_total}, Max Agents: {max_agents}")
+            logger.info(f"Director Tool: Designing team structure. Skills: {required_skills}, Budget: {budget_total}, Max Agents: {max_agents_resolved}")
 
             team_specification: List[Dict[str, Any]] = []
             if "project_management" in required_skills or "coordination" in expertise_areas:
                 team_specification.append({
-                    "name": "ProjectCoordinatorAgent",
-                    "role": "Project Coordination & Management",
-                    "seniority": AgentSeniority.SENIOR.value,
+                    "name": "ProjectCoordinatorAgent", "role": "Project Coordination & Management", "seniority": AgentSeniority.SENIOR.value,
                     "description": "Oversees the project, coordinates agent activities, manages timelines, and ensures goal alignment.",
                     "system_prompt": "You are an AI Project Coordinator. Your goal is to ensure the efficient execution of the project by managing tasks, coordinating between specialist AI agents, tracking progress, and reporting status. You proactively identify bottlenecks and facilitate communication."
                 })
                 required_skills = [s for s in required_skills if s != "project_management"]
 
-            avg_cost_per_agent_seniority = {
-                AgentSeniority.JUNIOR.value: 500,
-                AgentSeniority.SENIOR.value: 1000,
-                AgentSeniority.EXPERT.value: 1800,
-            }
+            avg_cost_per_agent_seniority = { AgentSeniority.JUNIOR.value: 500, AgentSeniority.SENIOR.value: 1000, AgentSeniority.EXPERT.value: 1800 }
             current_budget_allocated = sum(avg_cost_per_agent_seniority.get(spec["seniority"], avg_cost_per_agent_seniority[AgentSeniority.JUNIOR.value]) for spec in team_specification)
 
             for skill in required_skills:
-                if len(team_specification) >= max_agents:
-                    logger.warning(f"Reached max_agents ({max_agents}) before covering all skills.")
+                if len(team_specification) >= max_agents_resolved:
+                    logger.warning(f"Reached max_agents ({max_agents_resolved}) before covering all skills.")
                     break
                 remaining_budget = budget_total - current_budget_allocated
                 chosen_seniority_value = AgentSeniority.JUNIOR.value
-
                 if remaining_budget > avg_cost_per_agent_seniority[AgentSeniority.EXPERT.value]:
-                    if skill in ["ai_modeling", "cybersecurity", "complex_data_analysis"]:
-                        chosen_seniority_value = AgentSeniority.EXPERT.value
-                    elif remaining_budget > avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value] * 1.5:
-                        chosen_seniority_value = AgentSeniority.SENIOR.value
-                elif remaining_budget > avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value]:
-                    chosen_seniority_value = AgentSeniority.SENIOR.value
+                    if skill in ["ai_modeling", "cybersecurity", "complex_data_analysis"]: chosen_seniority_value = AgentSeniority.EXPERT.value
+                    elif remaining_budget > avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value] * 1.5: chosen_seniority_value = AgentSeniority.SENIOR.value
+                elif remaining_budget > avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value]: chosen_seniority_value = AgentSeniority.SENIOR.value
                 
                 if avg_cost_per_agent_seniority[chosen_seniority_value] > remaining_budget and team_specification:
                     logger.warning(f"Not enough budget for an agent for skill '{skill}' with chosen seniority {chosen_seniority_value}.")
@@ -278,14 +294,11 @@ Begin by analyzing the requirements. Then design the team and handoffs. Then est
                 agent_name = f"{skill.replace('_', ' ').title().replace(' ', '')}SpecialistAgent"
                 agent_role = f"{skill.replace('_', ' ').title()} Specialization"
                 agent_description = f"Handles all tasks related to {skill.replace('_', ' ')}, utilizing specialized knowledge and tools."
-                agent_system_prompt = f"You are an AI specialist in {skill.replace('_', ' ')}. Your tasks involve detailed work in this area. Collaborate with other agents as needed and report your progress to the Project Coordinator."
+                agent_system_prompt = f"You are an AI specialist in {skill.replace('_', ' ')}. Your tasks involve detailed work in this area. Collaborate with other agents as needed and report your progress to the Project Coordinator." # Simplified
                 
                 team_specification.append({
-                    "name": agent_name,
-                    "role": agent_role,
-                    "seniority": chosen_seniority_value,
-                    "description": agent_description,
-                    "system_prompt": agent_system_prompt
+                    "name": agent_name, "role": agent_role, "seniority": chosen_seniority_value,
+                    "description": agent_description, "system_prompt": agent_system_prompt
                 })
                 current_budget_allocated += avg_cost_per_agent_seniority[chosen_seniority_value]
             

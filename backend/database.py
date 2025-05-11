@@ -2,8 +2,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import logging
-from typing import Optional
-
+from typing import Optional, Dict, Any
 
 # Load environment variables
 load_dotenv()
@@ -43,15 +42,22 @@ supabase: Client = create_client(supabase_url, supabase_key)
 
 # Database operations
 
-async def create_workspace(name: str, description: str, user_id: str):
+async def create_workspace(name: str, description: str, user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
     """Create a new workspace"""
     try:
-        result = supabase.table("workspaces").insert({
+        data = {
             "name": name,
             "description": description,
             "user_id": user_id,
             "status": "created"
-        }).execute()
+        }        
+        # Aggiungi goal e budget se presenti
+        if goal:
+            data["goal"] = goal            
+        if budget:
+            data["budget"] = budget
+            
+        result = supabase.table("workspaces").insert(data).execute()
         return result.data[0] if result.data else None
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
@@ -199,4 +205,13 @@ async def get_agent(agent_id: str):
         return result.data[0] if result.data else None
     except Exception as e:
         logger.error(f"Error retrieving agent: {e}")
+        raise
+        
+async def delete_workspace(workspace_id: str):
+    """Delete a workspace and all its associated data"""
+    try:
+        result = supabase.table("workspaces").delete().eq("id", workspace_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error deleting workspace: {e}")
         raise

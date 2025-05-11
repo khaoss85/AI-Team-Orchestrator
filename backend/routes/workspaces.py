@@ -13,7 +13,8 @@ from models import (
 from database import (
     create_workspace,
     get_workspace,
-    list_workspaces
+    list_workspaces,
+    delete_workspace
 )
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,9 @@ async def create_new_workspace(workspace: WorkspaceCreate):
         created_workspace = await create_workspace(
             name=workspace.name,
             description=workspace.description,
-            user_id=str(workspace.user_id)
+            user_id=str(workspace.user_id),
+            goal=workspace.goal,
+            budget=workspace.budget
         )
         return created_workspace
     except Exception as e:
@@ -49,3 +52,32 @@ async def get_workspace_by_id(workspace_id: UUID):
 async def get_user_workspaces(user_id: UUID):
     workspaces = await list_workspaces(str(user_id))
     return workspaces
+
+@router.delete("/{workspace_id}", status_code=status.HTTP_200_OK)
+async def delete_workspace_by_id(workspace_id: UUID):
+    """Delete a workspace and all its associated data"""
+    try:
+        # Verifica se il workspace esiste
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found"
+            )
+            
+        # Elimina il workspace
+        await delete_workspace(str(workspace_id))
+        
+        return {
+            "success": True,
+            "message": f"Workspace {workspace_id} deleted successfully",
+            "workspace_id": str(workspace_id)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting workspace: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete workspace: {str(e)}"
+        )

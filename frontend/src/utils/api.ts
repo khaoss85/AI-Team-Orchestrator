@@ -58,6 +58,21 @@ export const api = {
       }
     },
     
+  delete: async (id: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    return handleApiError(error);
+  }
+},
+    
     create: async (data: WorkspaceCreateData): Promise<Workspace> => {
       try {
         const response = await fetch(`${API_BASE_URL}/workspaces`, {

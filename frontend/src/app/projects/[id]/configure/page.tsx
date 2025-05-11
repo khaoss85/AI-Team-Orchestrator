@@ -11,10 +11,10 @@ type Props = {
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
-export default function ConfigureProjectPage({ params: paramsPromise, searchParams }: Props) {
-  // Usa React.use() per "sbloccare" la Promise dei parametri
-  const params = use(paramsPromise);
-  const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
+export default function ConfigureProjectPage({ params }) {
+  // Usa React.use() per unwrappare l'oggetto params
+  const resolvedParams = React.use(params);
+  const id = resolvedParams.id;
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
 import { Workspace, Agent, Task } from '@/types';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useRouter } from 'next/navigation';
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -11,6 +13,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -151,6 +156,27 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+    
+const handleDeleteProject = async () => {
+  if (!workspace) return;
+  
+  try {
+    setIsDeleting(true);
+    const success = await api.workspaces.delete(workspace.id);
+    
+    if (success) {
+      router.push('/projects');
+    } else {
+      setError('Impossibile eliminare il progetto. Riprova più tardi.');
+      setIsDeleteModalOpen(false);
+    }
+  } catch (err) {
+    console.error('Failed to delete project:', err);
+    setError(err instanceof Error ? err.message : 'Si è verificato un errore durante l\'eliminazione del progetto');
+  } finally {
+    setIsDeleting(false);
+  }
+};
   
   const getHealthColor = (health: string) => {
     switch(health) {
@@ -255,6 +281,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <button className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition">
                   Visualizza Logs
                 </button>
+                <button 
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="w-full py-2 px-4 bg-red-50 border border-red-300 text-red-700 text-sm rounded-md hover:bg-red-100 transition"
+                >
+                  Elimina Progetto
+                </button>
               </div>
             </div>
           </div>
@@ -325,6 +357,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
               </div>
             </div>
           </div>
+                  {workspace && (
+  <ConfirmModal
+    isOpen={isDeleteModalOpen}
+    title="Elimina progetto"
+    message={`Sei sicuro di voler eliminare il progetto "${workspace.name}"? Questa azione eliminerà anche tutti gli agenti e i dati associati. Questa azione non può essere annullata.`}
+    confirmText={isDeleting ? "Eliminazione..." : "Elimina"}
+    cancelText="Annulla"
+    onConfirm={handleDeleteProject}
+    onCancel={() => setIsDeleteModalOpen(false)}
+  />
+)}
         </>
       )}
     </div>
