@@ -41,8 +41,8 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         setAgents(agentsData);
         
         // In a real implementation, we would fetch tasks too
-        const tasksData = await api.tasks.list(id);
-        setTasks(tasksData);
+        //const tasksData = await api.tasks.list(id);
+        //setTasks(tasksData);
         
         setError(null);
       } catch (err) {

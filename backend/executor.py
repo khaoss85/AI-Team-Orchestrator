@@ -506,7 +506,7 @@ class TaskExecutor:
             # Assumiamo che `manager.execute_task` ritorni un dizionario con l'output e potenzialmente i token usati
             # Se `execute_task` si aspetta solo l'UUID, cambia la chiamata in:
             # result_from_agent = await manager.execute_task(UUID(task_id))
-            result_from_agent: Dict[str, Any] = await manager.execute_task(task_pydantic_obj)
+            result_from_agent: Dict[str, Any] = await manager.execute_task(task_pydantic_obj.id)
             # ------------------------------------
 
             execution_time = time.time() - start_time_tracking # Tempo impiegato dall'agente

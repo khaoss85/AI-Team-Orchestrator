@@ -4,6 +4,7 @@ import re
 from typing import List, Dict, Any, Optional, Union
 from uuid import UUID
 import json
+from enum import Enum
 
 from agents import Agent as OpenAIAgent
 from agents import Runner, ModelSettings, function_tool
