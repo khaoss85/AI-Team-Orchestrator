@@ -48,58 +48,44 @@ export default function AgentEditModal({
     }
   }, [agent, isOpen]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    
+
     if (name === 'model' || name === 'temperature') {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         llm_config: {
-          ...formData.llm_config,
+          ...prev.llm_config,
           [name]: name === 'temperature' ? parseFloat(value) : value
         }
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleSystemPromptChange = (value: string) => {
-    setFormData({
-      ...formData,
-      system_prompt: value
-    });
-  };
+  const handleSystemPromptChange = (value: string) =>
+    setFormData(prev => ({ ...prev, system_prompt: value }));
 
-  const handleToolsChange = (value: string) => {
-    setToolsJson(value);
-  };
+  const handleToolsChange = (value: string) => setToolsJson(value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agent) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      // Parse tools JSON
-      let parsedTools = [];
+    try {
+      let parsedTools: any[] = [];
+
       if (toolsJson.trim()) {
-        try {
-          parsedTools = JSON.parse(toolsJson);
-          if (!Array.isArray(parsedTools)) {
-            throw new Error('Tools must be an array');
-          }
-        } catch (e) {
-          throw new Error('Invalid JSON format for tools');
-        }
+        parsedTools = JSON.parse(toolsJson);
+        if (!Array.isArray(parsedTools)) throw new Error('Tools must be an array');
       }
 
-      // Prepare update data
       const updates: Partial<Agent> = {
         name: formData.name,
         role: formData.role,
@@ -112,18 +98,15 @@ export default function AgentEditModal({
 
       await onSave(agent.id, updates);
       onClose();
-    } catch (err) {
-      console.error('Failed to update agent:', err);
-      setError(err instanceof Error ? err.message : 'Si è verificato un errore durante l\'aggiornamento');
+    } catch (err: unknown) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Impossibile salvare');
     } finally {
       setLoading(false);
     }
   };
 
-  // Early return with explicit JSX fragment
-  if (!isOpen || !agent) {
-    return <></>;
-  }
+  if (!isOpen || !agent) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -134,18 +117,19 @@ export default function AgentEditModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md">
-              {error}
-            </div>
+            <div className="bg-red-50 text-red-700 p-4 rounded-md">{error}</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* nome */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Nome *
               </label>
               <input
-                type="text"
                 id="name"
                 name="name"
                 value={formData.name}
@@ -154,13 +138,15 @@ export default function AgentEditModal({
                 required
               />
             </div>
-
+            {/* ruolo */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Ruolo *
               </label>
               <input
-                type="text"
                 id="role"
                 name="role"
                 value={formData.role}
@@ -169,9 +155,12 @@ export default function AgentEditModal({
                 required
               />
             </div>
-
+            {/* seniority */}
             <div>
-              <label htmlFor="seniority" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="seniority"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Seniority *
               </label>
               <select
@@ -187,9 +176,12 @@ export default function AgentEditModal({
                 <option value="expert">Expert</option>
               </select>
             </div>
-
+            {/* modello */}
             <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="model"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Modello LLM
               </label>
               <select
@@ -204,9 +196,12 @@ export default function AgentEditModal({
                 <option value="gpt-4.1">GPT-4.1</option>
               </select>
             </div>
-
+            {/* temperature */}
             <div className="md:col-span-2">
-              <label htmlFor="temperature" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="temperature"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Temperature: {formData.llm_config.temperature}
               </label>
               <input
@@ -227,22 +222,30 @@ export default function AgentEditModal({
             </div>
           </div>
 
+          {/* descrizione */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Descrizione
             </label>
             <textarea
               id="description"
               name="description"
+              rows={3}
               value={formData.description}
               onChange={handleChange}
-              rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
+          {/* system prompt */}
           <div>
-            <label htmlFor="system_prompt" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="system_prompt"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               System Prompt *
             </label>
             <CodeEditor
@@ -253,8 +256,12 @@ export default function AgentEditModal({
             />
           </div>
 
+          {/* tools */}
           <div>
-            <label htmlFor="tools" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="tools"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Tools (JSON)
             </label>
             <CodeEditor
@@ -264,10 +271,13 @@ export default function AgentEditModal({
               height="150px"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Esempio: [{"name": "web_search", "type": "function", "description": "Search the web"}]
+              Esempio: [
+              {`{"name": "web_search", "type": "function", "description": "Search the web"}`}
+              ]
             </p>
           </div>
 
+          {/* actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t">
             <button
               type="button"
