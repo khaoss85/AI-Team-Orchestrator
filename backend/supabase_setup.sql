@@ -127,3 +127,20 @@ BEFORE UPDATE ON custom_tools
 FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
 CREATE INDEX IF NOT EXISTS idx_custom_tools_workspace_id ON custom_tools(workspace_id);
+
+-- Tabella per salvare le proposte di team
+CREATE TABLE IF NOT EXISTS team_proposals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    proposal_data JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', -- pending, approved, rejected
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER update_team_proposals_updated_at
+BEFORE UPDATE ON team_proposals
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE INDEX IF NOT EXISTS idx_team_proposals_workspace_id ON team_proposals(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_team_proposals_status ON team_proposals(status);

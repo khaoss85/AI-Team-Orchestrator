@@ -213,6 +213,7 @@ class DirectorConfig(BaseModel):
     goal: str
     budget_constraint: Dict[str, Any]
     user_id: UUID
+    user_feedback: Optional[str] = None
 
 class DirectorTeamProposal(BaseModel):
     workspace_id: UUID
@@ -220,3 +221,14 @@ class DirectorTeamProposal(BaseModel):
     handoffs: List[HandoffCreate]
     estimated_cost: Dict[str, Any]
     rationale: str
+    user_feedback: Optional[str] = None
+    
+class TeamProposalData(BaseModel):
+    id: Optional[UUID] = None
+    workspace_id: UUID
+    proposal_data: DirectorTeamProposal
+    status: str = "pending"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)

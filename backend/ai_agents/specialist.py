@@ -39,9 +39,9 @@ class SpecialistAgent:
             
         # Mapping of seniority to model
         self.seniority_model_map = {
-            "junior": "gpt-3.5-turbo",
-            "senior": "gpt-4",
-            "expert": "gpt-4-turbo"
+            "junior": "gpt-4-turbo",
+            "senior": "gpt-4.1-mini",
+            "expert": "gpt-4.1"
         }
         
         # Initialize tools based on agent configuration
@@ -75,7 +75,13 @@ class SpecialistAgent:
         # Determine model based on seniority
         model = self.agent_data.llm_config.get("model") if self.agent_data.llm_config else None
         if not model:
-            model = self.seniority_model_map.get(self.agent_data.seniority, "gpt-4")
+            # Aggiornare questa mappatura per usare i nuovi modelli GPT-4.1
+            self.seniority_model_map = {
+                "junior": "gpt-4.1-nano",    # Il più economico per attività semplici
+                "senior": "gpt-4.1-mini",    # Buon compromesso costo/prestazioni
+                "expert": "gpt-4.1"          # Il migliore per attività complesse
+            }
+            model = self.seniority_model_map.get(self.agent_data.seniority, "gpt-4.1-mini")
             
         # Get other model settings
         temperature = self.agent_data.llm_config.get("temperature", 0.7) if self.agent_data.llm_config else 0.7

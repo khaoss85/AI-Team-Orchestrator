@@ -78,12 +78,12 @@ class AgentFactory:
             Model name
         """
         seniority_model_map = {
-            AgentSeniority.JUNIOR: "gpt-3.5-turbo",
-            AgentSeniority.SENIOR: "gpt-4",
-            AgentSeniority.EXPERT: "gpt-4-turbo"
+            AgentSeniority.JUNIOR: "gpt-4-turbo",
+            AgentSeniority.SENIOR: "gpt-4.1-mini",
+            AgentSeniority.EXPERT: "gpt-4.1"
         }
         
-        return seniority_model_map.get(seniority, "gpt-4")
+        return seniority_model_map.get(seniority, "gpt-4.1")
     
     @staticmethod
     def generate_system_prompt(agent_data: AgentModel) -> str:

@@ -5,23 +5,25 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace, DirectorTeamProposal, AgentSeniority } from '@/types';
 
-// Aggiorna il tipo Props per riflettere che 'params' è una Promise
 type Props = {
   params: Promise<{ id: string }>; // Indica che params è una Promise che risolverà in un oggetto { id: string }
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
-export default function ConfigureProjectPage({ params }) {
-  // Usa React.use() per unwrappare l'oggetto params
-  const resolvedParams = React.use(params);
-  const id = resolvedParams.id;
+export default function ConfigureProjectPage({ params: paramsPromise, searchParams }: Props) {
+  // Usa React.use() per "sbloccare" la Promise dei parametri
+  const params = use(paramsPromise);
+  const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [proposalLoading, setProposalLoading] = useState(false);
+  const [proposalId, setProposalId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [proposal, setProposal] = useState<DirectorTeamProposal | null>(null);
+  const [userFeedback, setUserFeedback] = useState<string>('');
+  const [showFeedbackInput, setShowFeedbackInput] = useState<boolean>(false);
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
 
@@ -68,11 +70,18 @@ export default function ConfigureProjectPage({ params }) {
         workspace_id: workspace.id, // workspace.id dovrebbe essere corretto qui
         goal: workspace.goal || 'Completare il progetto con successo',
         budget_constraint: workspace.budget || { max_amount: 1000, currency: 'EUR' },
-        user_id: workspace.user_id
+        user_id: workspace.user_id,
+        user_feedback: userFeedback || undefined // Includi il feedback se presente
       };
 
       const data = await api.director.createProposal(directorConfig);
       setProposal(data);
+      // Salva l'ID della proposta se presente
+       if (data.id) {
+        setProposalId(data.id);
+        }
+      setUserFeedback('');
+      setShowFeedbackInput(false);
     } catch (err) {
       console.error('Failed to create team proposal:', err);
       setError('Impossibile generare la proposta di team. Riprova più tardi.');
@@ -130,13 +139,13 @@ export default function ConfigureProjectPage({ params }) {
   };
 
   const handleApproveProposal = async () => {
-    if (!workspace || !proposal) return;
+    if (!workspace || !proposalId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      await api.director.approveProposal(workspace.id, 'proposal-id');
+      await api.director.approveProposal(workspace.id, proposalId);
 
       if (workspace) {
          router.push(`/projects/${workspace.id}`);
@@ -265,32 +274,42 @@ export default function ConfigureProjectPage({ params }) {
         </div>
       )}
 
-      {proposal && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-2">Proposta Team</h2>
-          <p className="text-gray-600 mb-4">{proposal.rationale}</p>
+{proposal && (
+  <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <h2 className="text-lg font-semibold mb-2">Proposta Team</h2>
+    <p className="text-gray-600 mb-4">{proposal.rationale}</p>
 
-          <div className="mb-6">
-            <h3 className="text-md font-medium mb-2">Costo Stimato</h3>
-            <div className="bg-gray-50 p-4 rounded-md">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-600">Costo Totale:</span>
-                <span className="font-semibold">{proposal.estimated_cost.total} EUR</span>
-              </div>
+    <div className="mb-6">
+      <h3 className="text-md font-medium mb-2">Costo Stimato</h3>
+      <div className="bg-gray-50 p-4 rounded-md">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-gray-600">Costo Totale:</span>
+          <span className="font-semibold">
+            {proposal.estimated_cost.total || proposal.estimated_cost.total_estimated_cost || 0} EUR
+          </span>
+        </div>
 
-              <div className="text-sm text-gray-600">
-                <div className="mt-2 mb-1">Dettaglio costi:</div>
-                <ul className="space-y-1">
-                  {Object.entries(proposal.estimated_cost.breakdown).map(([role, cost]) => (
-                    <li key={role} className="flex justify-between">
-                      <span>{role}:</span>
-                      <span>{cost} EUR</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+        {/* Supporta entrambi i formati di breakdown */}
+        {((proposal.estimated_cost.breakdown_by_agent && Object.keys(proposal.estimated_cost.breakdown_by_agent).length > 0) ||
+          (proposal.estimated_cost.breakdown && Object.keys(proposal.estimated_cost.breakdown).length > 0)) && (
+          <div className="text-sm text-gray-600">
+            <div className="mt-2 mb-1">Dettaglio costi:</div>
+            <ul className="space-y-1">
+              {Object.entries(
+                proposal.estimated_cost.breakdown_by_agent || 
+                proposal.estimated_cost.breakdown || 
+                {}
+              ).map(([role, cost]) => (
+                <li key={role} className="flex justify-between">
+                  <span>{role}:</span>
+                  <span>{cost} EUR</span>
+                </li>
+              ))}
+            </ul>
           </div>
+        )}
+      </div>
+    </div>
 
           <h3 className="text-md font-medium mb-3">Agenti Proposti</h3>
           <div className="space-y-4 mb-6">
@@ -310,29 +329,96 @@ export default function ConfigureProjectPage({ params }) {
             ))}
           </div>
 
-          <div className="flex justify-end space-x-3">
+<div className="flex justify-end space-x-3">
+  {proposal && (
+    <>
+      {showFeedbackInput ? (
+        <div className="w-full mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Feedback per migliorare la prossima proposta
+          </label>
+          <textarea
+            value={userFeedback}
+            onChange={(e) => setUserFeedback(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            rows={3}
+            placeholder="Es. 'Vorrei un team più piccolo', 'Serve un esperto in SEO', 'Ridurre i costi' ecc."
+          />
+          <div className="flex justify-end mt-2">
             <button
-              onClick={() => setProposal(null)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
-              disabled={loading}
+              onClick={() => setShowFeedbackInput(false)}
+              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition mr-2"
             >
-              Rigenera Proposta
+              Annulla
             </button>
             <button
-              onClick={handleApproveProposal}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
-              disabled={loading}
+              onClick={handleCreateProposal}
+              className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
+              disabled={proposalLoading}
             >
-              {loading ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                  Creazione Team...
-                </>
-              ) : (
-                'Approva e Crea Team'
-              )}
+              {proposalLoading ? "Generazione..." : "Genera con feedback"}
             </button>
           </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowFeedbackInput(true)}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
+          disabled={loading}
+        >
+          Rigenera con feedback
+        </button>
+      )}
+      <button
+        onClick={() => {
+          setUserFeedback('');
+          setShowFeedbackInput(false);
+          handleCreateProposal();
+        }}
+        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
+        disabled={loading || proposalLoading}
+      >
+        Rigenera proposta
+      </button>
+    </>
+  )}
+    {proposal && proposal.user_feedback && (
+  <div className="bg-blue-50 p-4 rounded-md mb-4">
+    <h3 className="text-md font-medium mb-1">Feedback considerato</h3>
+    <p className="text-gray-600 text-sm">{proposal.user_feedback}</p>
+  </div>
+)}
+  {!proposal && (
+    <button
+      onClick={handleCreateProposal}
+      className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+      disabled={proposalLoading}
+    >
+      {proposalLoading ? (
+        <>
+          <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
+          Generazione proposta...
+        </>
+      ) : (
+        'Genera Proposta Team'
+      )}
+    </button>
+  )}
+  <button
+    onClick={handleApproveProposal}
+    className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+    disabled={loading || !proposal}
+  >
+    {loading ? (
+      <>
+        <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
+        Creazione Team...
+      </>
+    ) : (
+      'Approva e Crea Team'
+    )}
+  </button>
+</div>
         </div>
       )}
     </div>

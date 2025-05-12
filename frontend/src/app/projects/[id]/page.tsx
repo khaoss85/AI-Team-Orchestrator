@@ -1,13 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
 import { Workspace, Agent, Task } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRouter } from 'next/navigation';
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+
+type Props = {
+  params: Promise<{ id: string }>; // Indica che params è una Promise che risolverà in un oggetto { id: string }
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
+
+export default function ProjectDetailPage({ params: paramsPromise, searchParams }: Props) {
+  // Usa React.use() per "sbloccare" la Promise dei parametri
+  const params = use(paramsPromise);
+  const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
+
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -23,11 +33,11 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         setLoading(true);
         
         // Fetch workspace details
-        const workspaceData = await api.workspaces.get(params.id);
+        const workspaceData = await api.workspaces.get(id);
         setWorkspace(workspaceData);
         
         // Fetch agents
-        const agentsData = await api.agents.list(params.id);
+        const agentsData = await api.agents.list(id);
         setAgents(agentsData);
         
         // In a real implementation, we would fetch tasks too

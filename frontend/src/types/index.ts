@@ -112,17 +112,25 @@ export interface DirectorConfig {
     currency: string;
   };
   user_id: string;
+  user_feedback?: string;
 }
 
 export interface DirectorTeamProposal {
+  id?: string; 
   workspace_id: string;
   agents: AgentCreateData[];
   handoffs: HandoffCreateData[];
   estimated_cost: {
-    total: number;
-    breakdown: Record<string, number>;
+    total?: number;
+    total_estimated_cost?: number;
+    breakdown?: Record<string, number>;
+    breakdown_by_agent?: Record<string, number>;
+    currency?: string;
+    estimated_duration_days?: number;
+    notes?: string;
   };
   rationale: string;
+  user_feedback?: string;
 }
 
 // Tipi per tool personalizzati

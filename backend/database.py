@@ -34,14 +34,9 @@ except Exception as e:
     logger.error(f"Error creating Supabase client: {e}")
     raise
 
-if not supabase_url or not supabase_key:
-    logger.error("Supabase credentials not found in environment variables")
-    raise ValueError("Supabase credentials not found")
-
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # Database operations
-
 async def create_workspace(name: str, description: str, user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
     """Create a new workspace"""
     try:
@@ -214,4 +209,36 @@ async def delete_workspace(workspace_id: str):
         return result.data[0] if result.data else None
     except Exception as e:
         logger.error(f"Error deleting workspace: {e}")
+        raise
+async def save_team_proposal(workspace_id: str, proposal_data: Dict[str, Any]):
+    """Save a team proposal to the database"""
+    try:
+        result = supabase.table("team_proposals").insert({
+            "workspace_id": workspace_id,
+            "proposal_data": proposal_data,
+            "status": "pending"
+        }).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error saving team proposal: {e}")
+        raise
+
+async def get_team_proposal(proposal_id: str):
+    """Get a team proposal by id"""
+    try:
+        result = supabase.table("team_proposals").select("*").eq("id", proposal_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error retrieving team proposal: {e}")
+        raise
+
+async def approve_team_proposal(proposal_id: str):
+    """Mark a team proposal as approved"""
+    try:
+        result = supabase.table("team_proposals").update({
+            "status": "approved"
+        }).eq("id", proposal_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error approving team proposal: {e}")
         raise
