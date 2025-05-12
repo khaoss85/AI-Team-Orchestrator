@@ -125,6 +125,18 @@ class Agent(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+# Modello per la proposta di Handoff (usa nomi di agenti)
+class HandoffProposalCreate(BaseModel):
+    # Usa Field per specificare gli alias per la deserializzazione da JSON
+    # e per la serializzazione a JSON se model_dump(by_alias=True) è usato.
+    source_agent_name: str = Field(..., alias="from")
+    target_agent_names: Union[str, List[str]] = Field(..., alias="to")
+    description: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True) # Permette di popolare usando sia il nome del campo che l'alias
+
+
+# Modello per la creazione di Handoff nel DB (usa UUID)
 class HandoffCreate(BaseModel):
     source_agent_id: UUID
     target_agent_id: UUID
@@ -218,7 +230,7 @@ class DirectorConfig(BaseModel):
 class DirectorTeamProposal(BaseModel):
     workspace_id: UUID
     agents: List[AgentCreate]
-    handoffs: List[HandoffCreate]
+    handoffs: List[HandoffProposalCreate] 
     estimated_cost: Dict[str, Any]
     rationale: str
     user_feedback: Optional[str] = None
@@ -226,7 +238,7 @@ class DirectorTeamProposal(BaseModel):
 class TeamProposalData(BaseModel):
     id: Optional[UUID] = None
     workspace_id: UUID
-    proposal_data: DirectorTeamProposal
+    proposal_data: DirectorTeamProposal 
     status: str = "pending"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -237,11 +249,11 @@ class DirectorTeamProposalResponse(BaseModel):
     id: UUID
     workspace_id: UUID
     agents: List[AgentCreate]
-    handoffs: List[HandoffCreate]
+    handoffs: List[HandoffProposalCreate] 
     estimated_cost: Dict[str, Any]
     rationale: str
     user_feedback: Optional[str] = None
     created_at: Optional[datetime] = None
     status: str = "pending"
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

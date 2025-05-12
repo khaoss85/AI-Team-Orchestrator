@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS agents (
     health JSONB DEFAULT '{"status": "unknown", "last_update": null}'::JSONB,
     model_config JSONB,
     tools JSONB,
+    can_create_tools BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
