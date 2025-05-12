@@ -6,7 +6,8 @@ import {
   Task,
   TaskCreateData,
   DirectorConfig,
-  DirectorTeamProposal
+  DirectorTeamProposal,
+  Handoff,
 } from '@/types';
 
 // Determina l'URL base dell'API in base all'ambiente
@@ -88,6 +89,32 @@ export const api = {
         return await response.json();
       } catch (error) {
         return handleApiError(error);
+      }
+    },
+  },
+      
+  // NUOVA SEZIONE PER GLI HANDOFF
+  handoffs: {
+    list: async (workspaceId: string): Promise<Handoff[]> => {
+      try {
+        // Assicurati che il path corrisponda all'endpoint definito nel backend
+        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/handoffs`); 
+        if (!response.ok) {
+          // Prova a leggere il corpo dell'errore per un messaggio più dettagliato
+          let errorDetail = `API error: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData && errorData.detail) {
+              errorDetail = errorData.detail;
+            }
+          } catch (e) {
+            // Non fa niente se il corpo dell'errore non è JSON
+          }
+          throw new Error(errorDetail);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error); // handleApiError dovrebbe rilanciare l'errore
       }
     },
   },

@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Agent, AgentSeniority } from '@/types';
+import { Agent, AgentSeniority, Handoff } from '@/types'; // Assicurati che Handoff sia importato
 import CodeEditor from './CodeEditor';
 
 interface AgentEditModalProps {
   isOpen: boolean;
   agent: Agent | null;
+  allAgents: Agent[]; // Lista di tutti gli agenti nel workspace per risolvere i nomi
+  allHandoffs: Handoff[]; // Lista di tutti gli handoff nel workspace
   onClose: () => void;
   onSave: (agentId: string, updates: Partial<Agent>) => Promise<void>;
 }
@@ -14,6 +16,8 @@ interface AgentEditModalProps {
 export default function AgentEditModal({
   isOpen,
   agent,
+  allAgents,   // Nuova prop
+  allHandoffs, // Nuova prop
   onClose,
   onSave
 }: AgentEditModalProps) {
@@ -32,6 +36,7 @@ export default function AgentEditModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toolsJson, setToolsJson] = useState('');
+  const [agentHandoffs, setAgentHandoffs] = useState<Handoff[]>([]); // State per gli handoff specifici dell'agente
 
   useEffect(() => {
     if (agent && isOpen) {
@@ -45,8 +50,19 @@ export default function AgentEditModal({
         tools: agent.tools || []
       });
       setToolsJson(JSON.stringify(agent.tools || [], null, 2));
+
+      // Filtra e imposta gli handoff per l'agente corrente
+      if (allHandoffs) {
+        setAgentHandoffs(allHandoffs.filter(h => h.source_agent_id === agent.id || h.target_agent_id === agent.id));
+      } else {
+        setAgentHandoffs([]);
+      }
+
+    } else {
+      // Resetta quando il modale è chiuso o non c'è un agente
+      setAgentHandoffs([]);
     }
-  }, [agent, isOpen]);
+  }, [agent, isOpen, allHandoffs]); // Aggiungi allHandoffs alle dipendenze
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -100,7 +116,7 @@ export default function AgentEditModal({
       onClose();
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : 'Impossibile salvare');
+      setError(err instanceof Error ? err.message : 'Impossibile salvare le modifiche dell\'agente.');
     } finally {
       setLoading(false);
     }
@@ -112,7 +128,7 @@ export default function AgentEditModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">Modifica Agente</h2>
+          <h2 className="text-xl font-semibold">Modifica Agente: {agent.name}</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -120,186 +136,93 @@ export default function AgentEditModal({
             <div className="bg-red-50 text-red-700 p-4 rounded-md">{error}</div>
           )}
 
+          {/* ... (campi esistenti: nome, ruolo, seniority, modello, temperature, descrizione, system prompt, tools) ... */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* nome */}
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Nome *
-              </label>
-              <input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+              <input id="name" name="name" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
             </div>
-            {/* ruolo */}
             <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Ruolo *
-              </label>
-              <input
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              />
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Ruolo *</label>
+              <input id="role" name="role" value={formData.role} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
             </div>
-            {/* seniority */}
             <div>
-              <label
-                htmlFor="seniority"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Seniority *
-              </label>
-              <select
-                id="seniority"
-                name="seniority"
-                value={formData.seniority}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                required
-              >
+              <label htmlFor="seniority" className="block text-sm font-medium text-gray-700 mb-1">Seniority *</label>
+              <select id="seniority" name="seniority" value={formData.seniority} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
                 <option value="junior">Junior</option>
                 <option value="senior">Senior</option>
                 <option value="expert">Expert</option>
               </select>
             </div>
-            {/* modello */}
             <div>
-              <label
-                htmlFor="model"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Modello LLM
-              </label>
-              <select
-                id="model"
-                name="model"
-                value={formData.llm_config.model}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">Modello LLM</label>
+              <select id="model" name="model" value={formData.llm_config.model} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
                 <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
                 <option value="gpt-4.1">GPT-4.1</option>
               </select>
             </div>
-            {/* temperature */}
             <div className="md:col-span-2">
-              <label
-                htmlFor="temperature"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Temperature: {formData.llm_config.temperature}
-              </label>
-              <input
-                type="range"
-                id="temperature"
-                name="temperature"
-                min="0"
-                max="1"
-                step="0.1"
-                value={formData.llm_config.temperature}
-                onChange={handleChange}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Conservativo (0)</span>
-                <span>Creativo (1)</span>
-              </div>
+              <label htmlFor="temperature" className="block text-sm font-medium text-gray-700 mb-1">Temperature: {formData.llm_config.temperature}</label>
+              <input type="range" id="temperature" name="temperature" min="0" max="1" step="0.1" value={formData.llm_config.temperature} onChange={handleChange} className="w-full"/>
+              <div className="flex justify-between text-xs text-gray-500 mt-1"><span>Conservativo (0)</span><span>Creativo (1)</span></div>
             </div>
           </div>
-
-          {/* descrizione */}
           <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Descrizione
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={3}
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+            <textarea id="description" name="description" rows={3} value={formData.description} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
+          </div>
+          <div>
+            <label htmlFor="system_prompt" className="block text-sm font-medium text-gray-700 mb-1">System Prompt *</label>
+            <CodeEditor value={formData.system_prompt} onChange={handleSystemPromptChange} language="text" height="200px" />
+          </div>
+          <div>
+            <label htmlFor="tools" className="block text-sm font-medium text-gray-700 mb-1">Tools (JSON)</label>
+            <CodeEditor value={toolsJson} onChange={handleToolsChange} language="json" height="150px" />
+            <p className="mt-1 text-xs text-gray-500">Esempio: [{`{"name": "web_search", "type": "function", "description": "Search the web"}`}]</p>
           </div>
 
-          {/* system prompt */}
+          {/* SEZIONE HANDOFFS (SOLO VISUALIZZAZIONE) */}
           <div>
-            <label
-              htmlFor="system_prompt"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              System Prompt *
-            </label>
-            <CodeEditor
-              value={formData.system_prompt}
-              onChange={handleSystemPromptChange}
-              language="text"
-              height="200px"
-            />
-          </div>
-
-          {/* tools */}
-          <div>
-            <label
-              htmlFor="tools"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Tools (JSON)
-            </label>
-            <CodeEditor
-              value={toolsJson}
-              onChange={handleToolsChange}
-              language="json"
-              height="150px"
-            />
+            <h3 className="text-md font-medium text-gray-800 mb-2 border-t pt-4 mt-4">
+              Handoffs Associati ({agentHandoffs.length})
+            </h3>
+            {agentHandoffs.length > 0 ? (
+              <div className="space-y-3 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-md">
+                {agentHandoffs.map(h => {
+                  const isSource = h.source_agent_id === agent.id;
+                  const otherAgentId = isSource ? h.target_agent_id : h.source_agent_id;
+                  const otherAgent = allAgents.find(a => a.id === otherAgentId);
+                  return (
+                    <div key={h.id} className={`p-3 rounded-md border ${isSource ? 'border-yellow-300 bg-yellow-50' : 'border-green-300 bg-green-50'}`}>
+                      <p className="text-sm font-semibold text-gray-700">
+                        {isSource ? 'Da questo agente' : 'A questo agente'}
+                        {otherAgent ? ` ${isSource ? 'a' : 'da'} ${otherAgent.name}` : ' (Agente Sconosciuto)'}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">{h.description || "Nessuna descrizione."}</p>
+                      <p className="text-xs text-gray-400 mt-1">ID Handoff: {h.id}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">Nessun handoff associato a questo agente.</p>
+            )}
             <p className="mt-1 text-xs text-gray-500">
-              Esempio: [
-              {`{"name": "web_search", "type": "function", "description": "Search the web"}`}
-              ]
+              La modifica degli handoff non è attualmente supportata da questa interfaccia.
             </p>
           </div>
 
+
           {/* actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
-              disabled={loading}
-            >
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition" disabled={loading}>
               Annulla
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
-              disabled={loading}
-            >
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center" disabled={loading}>
               {loading ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                  Salvataggio...
-                </>
-              ) : (
-                'Salva Modifiche'
-              )}
+                <><div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>Salvataggio...</>
+              ) : ( 'Salva Modifiche' )}
             </button>
           </div>
         </form>

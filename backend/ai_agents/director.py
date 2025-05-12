@@ -44,104 +44,105 @@ class DirectorAgent:
                     constraints_dict = json.loads(constraints)
                 except json.JSONDecodeError:
                     constraints_dict = {"raw_constraints": constraints}
-            else: # Assume it's already a dict or can be stringified
+            else: 
                 constraints_dict = {"raw_constraints": str(constraints)}
 
-
             budget = 0
-            if 'max_amount' in constraints_dict: # Check top level first
+            if 'max_amount' in constraints_dict:
                 budget = constraints_dict['max_amount']
-            elif 'budget' in constraints_dict and isinstance(constraints_dict['budget'], dict): # Then nested
+            elif 'budget' in constraints_dict and isinstance(constraints_dict['budget'], dict):
                 budget = constraints_dict['budget'].get('max_amount', 0)
-            elif 'budget_constraint' in constraints_dict and isinstance(constraints_dict['budget_constraint'], dict): # From DirectorConfig
+            elif 'budget_constraint' in constraints_dict and isinstance(constraints_dict['budget_constraint'], dict): 
                 budget = constraints_dict['budget_constraint'].get('max_amount', 0)
+            
+            analyzer_agent_instructions = f"""
+            You are a highly experienced project analyst AI. Your task is to meticulously analyze project requirements to determine the necessary skills, expertise areas, and an optimal team size.
 
+            Project Goal: "{goal}"
+            Constraints (including budget if specified): {json.dumps(constraints_dict)}
+            Budget (EUR, if available): {budget if budget > 0 else 'Not specified or 0'}
+
+            Carefully consider the following when determining the 'recommended_team_size':
+            1.  **Number and Diversity of Skills**: Identify all distinct skills truly essential for the project's success. A higher number of diverse skills often requires more specialized agents.
+            2.  **Project Complexity**: Gauge the overall complexity. Is it a straightforward task, or does it involve multiple interconnected parts, significant research, or creative generation?
+            3.  **Budget Impact**:
+                * Low Budget (e.g., < 1500 EUR): Likely supports 1-2 agents, focusing on the most critical skills.
+                * Medium Budget (e.g., 1500-5000 EUR): Can support 2-4 agents, allowing for more specialization.
+                * High Budget (e.g., > 5000 EUR): Can support 3-6+ agents, enabling a comprehensive team with diverse seniorities.
+            4.  **Agent Roles**: Each agent should have a clear, distinct primary responsibility. Avoid excessive overlap. A typical project might involve roles like coordination/management, research, content creation, technical execution, analysis, etc., depending on the goal.
+            5.  **Efficiency vs. Coverage**: Balance the need for comprehensive skill coverage with team efficiency. Too many agents can increase coordination overhead.
+            6.  **Realistic Team Sizes**:
+                * Very Simple Tasks (1-2 core skills, low budget): 1-2 agents.
+                * Standard Projects (3-5 core skills, medium budget): 2-4 agents is typical.
+                * Complex Projects (5+ core skills, high budget, significant depth needed): 3-6 agents. Only recommend 7-8 for very large, multifaceted enterprise-level initiatives with substantial budgets.
+                * **Critically evaluate if the project truly needs more than 3-4 agents.** Justify clearly if recommending more.
+
+            Your output MUST be a single, valid JSON object with the following structure:
+            {{
+              "required_skills": ["Specific Skill 1", "Specific Skill 2", ...],
+              "expertise_areas": ["Broader Expertise Area 1", "Broader Expertise Area 2", ...],
+              "recommended_team_size": X,  // An integer representing the number of agents
+              "rationale": "A detailed explanation for your skill, expertise, and team size recommendations, explicitly justifying the team size based on the factors above, especially how the chosen number of agents will cover the identified skills within the given budget."
+            }}
+
+            Example for a complex task: If 'required_skills' has 6 items and budget is high, 'recommended_team_size' could be 4 or 5. If 'required_skills' has 3 items and budget is low, 'recommended_team_size' is likely 2 or 3.
+            Do not simply default to 3 agents if more or fewer are justifiable.
+            """
 
             analyzer_agent = OpenAIAgent(
-                name="ProjectAnalyzerAgent",
-                instructions=f"""
-                You are a specialized agent that analyzes project requirements to determine the skills and expertise needed.
-                
-                Project Goal: {goal}
-                Constraints: {json.dumps(constraints_dict)}
-                Budget: {budget} EUR
-                
-                Your task is to determine:
-                1. The required skills (be specific and relevant to the project domain)
-                2. Key expertise areas needed
-                3. Recommended team size (consider complexity, budget, and skills needed). Aim for a practical number, usually between 2 and 6 agents unless the project is extremely simple or complex.
-                4. A brief rationale for your recommendations
-                
-                IMPORTANT FOR TEAM SIZE:
-                - Simple projects with limited skills needed: 1-2 agents
-                - Medium complexity projects: 2-4 agents  
-                - Complex projects with many diverse skills: 3-6 agents
-                - Very complex enterprise projects: 4-8 agents
-                - Consider budget constraints (higher budget allows for more specialists or more senior specialists).
-                - Each agent should have a clear, non-overlapping responsibility.
-                - Avoid recommending a team size of 1 unless absolutely necessary for extremely simple tasks.
-                
-                Think about what skills and expertise would ACTUALLY be needed for this specific project.
-                Provide a specific number for recommended_team_size.
-                
-                Return your analysis in the following JSON format:
-                {{
-                  "required_skills": ["skill1", "skill2", "skill3"],
-                  "expertise_areas": ["area1", "area2", "area3"],
-                  "recommended_team_size": X,
-                  "rationale": "Brief explanation for these recommendations including team size justification"
-                }}
-                """,
+                name="ProjectRequirementsAnalyzerAgent",
+                instructions=analyzer_agent_instructions,
                 model="gpt-4.1", 
-                model_settings=ModelSettings(temperature=0.3)
+                model_settings=ModelSettings(temperature=0.25) 
             )
             
-            run_result = await Runner.run(analyzer_agent, "Analyze the project requirements and provide specific skills and expertise needed for this particular project. Consider the project complexity and budget when recommending team size.")
+            run_result = await Runner.run(analyzer_agent, 
+                                          "Analyze the provided project goal and constraints, then output the required skills, expertise areas, recommended team size, and rationale as a single JSON object.")
             
             analysis_output_str = run_result.final_output
             analysis_output = {}
             try:
                 analysis_output = json.loads(analysis_output_str)
             except json.JSONDecodeError:
-                logger.warning(f"Failed to parse JSON directly from LLM output. Output: {analysis_output_str}. Attempting to extract.")
-                json_match = re.search(r'({[\s\S]*})', analysis_output_str) 
+                logger.warning(f"Failed to parse JSON directly from LLM output for project analysis. Output: {analysis_output_str}. Attempting to extract.")
+                json_match = re.search(r'({[\s\S]*})', analysis_output_str, re.DOTALL) 
                 if json_match:
-                    analysis_output = json.loads(json_match.group(1))
+                    try:
+                        analysis_output = json.loads(json_match.group(1))
+                    except json.JSONDecodeError as e_json_extract:
+                        logger.error(f"Failed to parse extracted JSON: {e_json_extract}. Extracted: {json_match.group(1)}")
+                        raise ValueError("Failed to parse or extract JSON from LLM.") from e_json_extract
                 else:
                     logger.error("Could not extract JSON from LLM output for project analysis. Using fallback.")
-                    num_skills_estimated = len(goal.split()) // 3 + 1
-                    budget_factor = 1 if budget < 1000 else 1.5 if budget < 5000 else 2
-                    dynamic_team_size = min(max(2, int(num_skills_estimated * budget_factor)), 6)
-                    
-                    analysis_output = {
-                        "required_skills": ["domain_expertise", "research", "content_creation", "analytical_thinking"],
-                        "expertise_areas": ["subject_matter_expertise", "user_experience", "data_analysis"],
-                        "recommended_team_size": dynamic_team_size,
-                        "rationale": f"Based on project complexity and budget of {budget} EUR, recommending a team of {dynamic_team_size} specialists (fallback logic)."
-                    }
-            
-            team_size = analysis_output.get("recommended_team_size", 3) 
+                    raise ValueError("No JSON found in LLM output.")
+
+            team_size = analysis_output.get("recommended_team_size")
             if not isinstance(team_size, int) or team_size < 1:
-                logger.warning(f"Invalid recommended_team_size '{team_size}', defaulting to 2.")
-                team_size = 2 
-            elif team_size > 8:
+                logger.warning(f"Invalid or missing recommended_team_size ('{team_size}') from LLM, defaulting to 2 or based on skills.")
+                skills_count = len(analysis_output.get("required_skills", []))
+                team_size = max(1, min(skills_count, 3)) 
+            elif team_size > 8: 
                 logger.warning(f"Recommended_team_size {team_size} is too high, capping at 8.")
                 team_size = 8
             
             analysis_output["recommended_team_size"] = team_size
-            
+            analysis_output.setdefault("required_skills", [])
+            analysis_output.setdefault("expertise_areas", [])
+            analysis_output.setdefault("rationale", "Rationale not explicitly provided by LLM or parsing error occurred.")
+
             logger.info(f"Project analysis for goal '{goal}': {analysis_output}")
             return json.dumps(analysis_output)
             
         except Exception as e:
             logger.error(f"Error in analyze_project_requirements_llm: {e}", exc_info=True)
-            budget_val = 1000 
+            budget_val = 0
             try:
                 constraints_dict_fb = json.loads(constraints) if isinstance(constraints, str) else constraints if isinstance(constraints, dict) else {}
-                budget_val = constraints_dict_fb.get('budget_constraint', {}).get('max_amount', 1000) if 'budget_constraint' in constraints_dict_fb else constraints_dict_fb.get('budget', {}).get('max_amount', 1000)
-
+                if 'max_amount' in constraints_dict_fb: budget_val = constraints_dict_fb['max_amount']
+                elif 'budget' in constraints_dict_fb and isinstance(constraints_dict_fb['budget'], dict): budget_val = constraints_dict_fb['budget'].get('max_amount', 0)
+                elif 'budget_constraint' in constraints_dict_fb and isinstance(constraints_dict_fb['budget_constraint'], dict): budget_val = constraints_dict_fb['budget_constraint'].get('max_amount', 0)
             except:
-                pass 
+                budget_val = 1000 
 
             num_words = len(goal.split())
             if num_words < 5: base_size = 1
@@ -149,14 +150,15 @@ class DirectorAgent:
             elif num_words < 20: base_size = 3
             else: base_size = 4
             
-            team_size_fb = min(max(2, base_size + (1 if budget_val > 2000 else 0)), 6)
+            team_size_fb = min(max(2, base_size + (1 if budget_val > 2000 else 0)), 5) 
             
             analysis_data = {
                 "required_skills": ["domain_expertise", "research", "content_creation"],
                 "expertise_areas": ["subject_matter_expertise", "user_experience"],
                 "recommended_team_size": team_size_fb,
-                "rationale": f"Fallback: Estimated team of {team_size_fb} agents based on project complexity and budget of {budget_val} EUR."
+                "rationale": f"Fallback logic applied due to analysis error. Estimated team of {team_size_fb} agents based on project goal length and budget of {budget_val} EUR."
             }
+            logger.warning(f"Using fallback project analysis: {analysis_data}")
             return json.dumps(analysis_data)
 
     async def create_team_proposal(self, config: DirectorConfig) -> DirectorTeamProposal:
@@ -181,26 +183,15 @@ USER FEEDBACK (Please consider this carefully when designing the team):
 Your tasks are:
 1.  **Analyze Project Requirements**: Understand the project goal and constraints. Identify the core skills and expertise areas needed.
     You MUST use the 'analyze_project_requirements_llm' tool to get a structured analysis including recommended team size.
-2.  **Design Team Structure**: Based on the analysis, define the composition of the AI agent team. 
-    - Use the recommended team size from the analysis as a PRIMARY guide. You can adjust slightly (+/-1 agent) based on your expert judgment of skills and budget, but clearly justify any deviation in your rationale.
-    - Team size can range from 1 to 8 agents.
-    - Each agent should have a clear, non-overlapping role.
-    For each proposed agent, specify:
-    * `name`: A descriptive name for the agent (e.g., "FitnessExpertAgent", "ResearchAgent").
-    * `role`: A clear role (e.g., "Fitness Expertise", "Research & Analysis", "Content Creation").
-    * `seniority`: Choose from 'junior', 'senior', 'expert'. Justify your choice based on task complexity and budget.
-    * `description`: A brief description of the agent's responsibilities.
-    * `system_prompt`: A concise and effective system prompt that will guide the agent's behavior and tasks.
-    * `llm_config` (optional): Suggest a base model (e.g., "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano") and temperature if relevant.
-    * `tools` (IMPORTANT): If specifying tools, they MUST be dictionaries, not strings. Use this format:
-      [{"name": "web_search", "type": "function", "description": "Search the web for information"}]
-3.  **Define Handoffs**: Identify critical points where tasks or information must be passed between agents.
+2.  **Design Team Structure**: Based on the analysis from step 1 (especially the 'required_skills' and 'recommended_team_size'), define the composition of the AI agent team by calling the 'design_team_structure' tool. Pass the 'recommended_team_size' as the 'max_agents' parameter to this tool.
+    The 'design_team_structure' tool will return a list of agent specifications.
+3.  **Define Handoffs**: Based on the designed team structure from step 2, identify critical points where tasks or information must be passed between agents.
     For each handoff, specify:
-    * `from`: The name of the source agent (string).
-    * `to`: The name of the target agent (string) OR a list of target agent names (List[str]).
+    * `from`: The name of the source agent (string, must match a name from the designed team).
+    * `to`: The name of the target agent (string, must match a name from the designed team) OR a list of target agent names (List[str]).
     * `description`: A brief description of what is being handed off.
-4.  **Estimate Costs**: Provide a rough cost estimation using the 'estimate_costs' tool, passing the designed team and a reasonable duration (e.g., 30 days).
-5.  **Provide Rationale**: Explain your team strategy, including why you chose this specific team size and structure, and how it aligns with the project goal, skills, and budget.
+4.  **Estimate Costs**: Provide a rough cost estimation using the 'estimate_costs' tool, passing the team composition from step 2 and a reasonable duration (e.g., 30 days).
+5.  **Provide Rationale**: Explain your overall team strategy, including why the final team structure (number of agents, roles, seniorities) is optimal, considering the project goal, identified skills, budget, and the output from the 'design_team_structure' tool.
 
 REMEMBER: Your final output MUST be a SINGLE VALID JSON OBJECT ONLY, not a Markdown document containing JSON. Do not include any explanatory text or markdown formatting - return ONLY pure JSON.
 The JSON structure MUST be:
@@ -239,12 +230,13 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
         try:
             initial_prompt_to_llm = (
                 "Generate the AI agent team proposal for the project detailed in your instructions. "
-                "1. Call 'analyze_project_requirements_llm' first. "
-                "2. Then call 'design_team_structure' using the analysis results (especially recommended_team_size as max_agents). "
-                "3. Then call 'estimate_costs' with the designed team. "
-                "4. Finally, formulate the complete JSON proposal. "
-                "YOUR RESPONSE MUST BE A VALID JSON OBJECT ONLY, with NO markdown, explanations, or other text. "
-                "The JSON must contain the keys 'agents', 'handoffs', 'estimated_cost', and 'rationale'."
+                "Follow these steps precisely: "
+                "1. Call 'analyze_project_requirements_llm' to get skills and recommended team size. "
+                "2. Call 'design_team_structure' using the 'required_skills' JSON string from step 1, and pass the 'recommended_team_size' from step 1 as the 'max_agents' parameter. "
+                "3. Call 'estimate_costs' using the agent list JSON string returned by 'design_team_structure'. "
+                "4. Formulate the handoffs based on the agent list from 'design_team_structure'. "
+                "5. Finally, construct the complete JSON proposal including 'agents' (from design_team_structure), 'handoffs', 'estimated_cost', and your 'rationale'. "
+                "YOUR RESPONSE MUST BE A VALID JSON OBJECT ONLY, with NO markdown, explanations, or other text."
             )
             run_result = await Runner.run(
                 director_llm_agent,
@@ -262,7 +254,7 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                 if json_match_md:
                     final_output_json_str = json_match_md.group(1).strip()
                 else:
-                    json_match_braces = re.search(r'({[\s\S]*})', final_output_json_str, re.DOTALL) # Make regex DOTALL
+                    json_match_braces = re.search(r'({[\s\S]*})', final_output_json_str, re.DOTALL)
                     if json_match_braces:
                         final_output_json_str = json_match_braces.group(1).strip()
                 
@@ -277,10 +269,12 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
 
             proposal_data = parsed_json
 
+            # Ensure 'agents' key from LLM output is used, not re-created from an older list.
+            # The LLM is instructed to use the output of design_team_structure for the 'agents' list.
             proposed_agents_data = proposal_data.get("agents", [])
             agents_create_list: List[AgentCreate] = []
             for agent_spec_data in proposed_agents_data:
-                agent_spec_data["workspace_id"] = config.workspace_id
+                agent_spec_data["workspace_id"] = str(config.workspace_id) # Ensure it's a string for Pydantic
                 
                 if "tools" in agent_spec_data and isinstance(agent_spec_data["tools"], list):
                     converted_tools = []
@@ -296,6 +290,14 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                             logger.warning(f"Skipping invalid tool format: {tool_item}")
                     agent_spec_data["tools"] = converted_tools
                 
+                # Convert seniority string to AgentSeniority enum
+                if 'seniority' in agent_spec_data and isinstance(agent_spec_data['seniority'], str):
+                    try:
+                        agent_spec_data['seniority'] = AgentSeniority(agent_spec_data['seniority'].lower())
+                    except ValueError:
+                        logger.warning(f"Invalid seniority value '{agent_spec_data['seniority']}', defaulting to JUNIOR.")
+                        agent_spec_data['seniority'] = AgentSeniority.JUNIOR
+
                 agents_create_list.append(AgentCreate(**agent_spec_data))
 
             proposed_handoffs_data = proposal_data.get("handoffs", [])
@@ -305,11 +307,9 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                 target_names = handoff_spec_data.get("to")
                 
                 if source_name and target_names:
-                    # Pass data directly to HandoffProposalCreate, Pydantic will use aliases
                     handoffs_proposal_list.append(HandoffProposalCreate(**handoff_spec_data))
                 else:
                     logger.warning(f"Skipping handoff due to missing 'from' or 'to' field: {handoff_spec_data}")
-
 
             proposal_data_extra = {}
             if hasattr(config, 'user_feedback') and config.user_feedback:
@@ -358,6 +358,10 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
             for agent_spec in team_composition:
                 role = agent_spec.get("role", "Unknown Role")
                 seniority_str = agent_spec.get("seniority", AgentSeniority.JUNIOR.value)
+                # Handle case where seniority_str might be an enum member if not properly stringified before json.loads
+                if isinstance(seniority_str, Enum):
+                    seniority_str = seniority_str.value
+
                 rate = rates_per_day.get(seniority_str, rates_per_day[AgentSeniority.JUNIOR.value])
                 agent_cost = rate * duration_days
                 total_cost += agent_cost
@@ -396,22 +400,60 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
             required_skills = json.loads(required_skills_json)
             expertise_areas = json.loads(expertise_areas_json)
             
-            if not isinstance(max_agents, int) or max_agents < 1:
-                effective_max_agents = max(1, min(len(required_skills), 5))
-                logger.info(f"Max_agents was invalid ({max_agents}), defaulting to {effective_max_agents} based on skills.")
+            # === INIZIO LOGICA AGGIORNATA PER effective_max_agents ===
+            initial_recommended_max_agents = max_agents # Il valore passato, che è 'recommended_team_size'
+
+            if not isinstance(initial_recommended_max_agents, int) or initial_recommended_max_agents < 1:
+                # Se max_agents non è valido, calcola un default basato sulle skill
+                effective_max_agents = max(1, min(len(required_skills), 4)) 
+                logger.info(f"Max_agents (recommended_team_size) was invalid ({initial_recommended_max_agents}), defaulting to {effective_max_agents} based on skills count.")
             else:
-                effective_max_agents = max_agents
+                effective_max_agents = initial_recommended_max_agents
             
-            logger.info(f"Director Tool: Designing team structure. Skills: {required_skills}, Budget: {budget_total}, Max Agents for design: {effective_max_agents}")
+            logger.info(f"Initial Max Agents for design (from recommendation): {effective_max_agents}")
+
+            num_required_skills = len(required_skills)
+            # Stima un costo medio per agente (es. per un senior) per valutare il budget
+            avg_cost_per_senior_agent_month = 30 * 10 # 300 EUR
+
+            # Se ci sono più skill del max_agents raccomandato E c'è budget teorico per più agenti
+            if num_required_skills > effective_max_agents:
+                # Quanti agenti in più servirebbero per coprire le skill?
+                needed_additional_agents = num_required_skills - effective_max_agents
+                
+                # Budget stimato rimanente se usassimo il numero corrente di agenti (tutti senior per semplicità di stima)
+                estimated_current_team_cost = effective_max_agents * avg_cost_per_senior_agent_month
+                remaining_budget_if_current_max = budget_total - estimated_current_team_cost
+
+                # Quanti agenti *senior* aggiuntivi ci si potrebbe permettere?
+                affordable_additional_senior_agents = 0
+                if avg_cost_per_senior_agent_month > 0:
+                    affordable_additional_senior_agents = int(remaining_budget_if_current_max / avg_cost_per_senior_agent_month)
+
+                # Aumenta effective_max_agents se è logico e possibile, ma con moderazione
+                # Prendi il minimo tra gli agenti aggiuntivi necessari e quelli che ci si può permettere
+                increase_by = min(needed_additional_agents, affordable_additional_senior_agents)
+                
+                # Limita l'aumento (es. non più di 2 agenti aggiuntivi rispetto alla raccomandazione, o un cap assoluto)
+                increase_by = min(increase_by, 2) 
+                
+                if increase_by > 0:
+                    new_max_agents = min(effective_max_agents + increase_by, 8) # Cap assoluto di 8
+                    if new_max_agents > effective_max_agents:
+                        logger.info(f"Adjusting Max Agents for design from {effective_max_agents} to {new_max_agents} due to {num_required_skills} skills and available budget of {budget_total}.")
+                        effective_max_agents = new_max_agents
+            # === FINE LOGICA AGGIORNATA PER effective_max_agents ===
+            
+            logger.info(f"Director Tool: Designing team structure. Skills: {required_skills}, Budget: {budget_total}, Effective Max Agents for design: {effective_max_agents}")
 
             team_specification: List[Dict[str, Any]] = []
             
-            # Add Project Coordinator if team size is substantial and it's not a core skill
-            # Consider it part of the effective_max_agents if added
+            # Logica per il Project Coordinator (come prima)
+            # ... (assicurati che usi effective_max_agents) ...
             if effective_max_agents >= 3 and \
-               "project_management" not in required_skills and \
-               "project coordination" not in required_skills and \
-               "coordination" not in required_skills:
+               "project_management" not in [s.lower() for s in required_skills] and \
+               "project coordination" not in [s.lower() for s in required_skills] and \
+               "coordination" not in [s.lower() for s in required_skills]:
                 if len(team_specification) < effective_max_agents:
                     team_specification.append({
                         "name": "ProjectCoordinatorAgent",
@@ -423,43 +465,49 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                         "tools": []
                     })
                 else:
-                    logger.warning("Wanted to add ProjectCoordinatorAgent, but max_agents limit reached.")
+                    logger.warning("Wanted to add ProjectCoordinatorAgent, but effective_max_agents limit reached.")
 
 
-            avg_cost_per_agent_seniority = {
+            avg_cost_per_agent_seniority_map = {
                 AgentSeniority.JUNIOR.value: 30 * 5,
                 AgentSeniority.SENIOR.value: 30 * 10,
                 AgentSeniority.EXPERT.value: 30 * 18,
             }
-            current_budget_allocated = sum(avg_cost_per_agent_seniority.get(spec["seniority"], 0) for spec in team_specification)
+            current_budget_allocated = sum(avg_cost_per_agent_seniority_map.get(spec["seniority"], 0) for spec in team_specification)
             
-            skills_to_assign = [skill for skill in required_skills if skill not in ["project_management", "coordination"]]
+            # Escludi le skill di coordinamento se il ProjectCoordinatorAgent è già stato aggiunto
+            skills_to_assign = [
+                skill for skill in required_skills 
+                if skill.lower() not in ["project_management", "project coordination", "coordination"] or \
+                   not any(agent['name'] == "ProjectCoordinatorAgent" for agent in team_specification)
+            ]
 
 
             for skill in skills_to_assign:
                 if len(team_specification) >= effective_max_agents:
-                    logger.warning(f"Reached max_agents ({effective_max_agents}) before covering skill: {skill}.")
+                    logger.warning(f"Reached effective_max_agents ({effective_max_agents}) before covering skill: {skill}.")
                     break 
                 
                 remaining_budget = budget_total - current_budget_allocated
                 
-                chosen_seniority = AgentSeniority.JUNIOR.value
-                if remaining_budget >= avg_cost_per_agent_seniority[AgentSeniority.EXPERT.value] and skill in expertise_areas:
+                chosen_seniority = AgentSeniority.JUNIOR.value # Default
+                # Logica di scelta seniority (come prima, ma usa avg_cost_per_agent_seniority_map)
+                if remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.EXPERT.value] and skill in expertise_areas:
                     chosen_seniority = AgentSeniority.EXPERT.value
-                elif remaining_budget >= avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value]:
+                elif remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.SENIOR.value]:
                     chosen_seniority = AgentSeniority.SENIOR.value
                 
-                cost_of_chosen_agent = avg_cost_per_agent_seniority[chosen_seniority]
+                cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
 
                 if cost_of_chosen_agent > remaining_budget:
-                    if chosen_seniority == AgentSeniority.EXPERT.value and remaining_budget >= avg_cost_per_agent_seniority[AgentSeniority.SENIOR.value]:
+                    if chosen_seniority == AgentSeniority.EXPERT.value and remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.SENIOR.value]:
                         chosen_seniority = AgentSeniority.SENIOR.value
-                        cost_of_chosen_agent = avg_cost_per_agent_seniority[chosen_seniority]
-                    elif chosen_seniority != AgentSeniority.JUNIOR.value and remaining_budget >= avg_cost_per_agent_seniority[AgentSeniority.JUNIOR.value]:
+                        cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
+                    elif chosen_seniority != AgentSeniority.JUNIOR.value and remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.JUNIOR.value]:
                          chosen_seniority = AgentSeniority.JUNIOR.value
-                         cost_of_chosen_agent = avg_cost_per_agent_seniority[chosen_seniority]
+                         cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
                     else:
-                        logger.warning(f"Not enough budget for skill '{skill}' even with junior. Skipping this skill.")
+                        logger.warning(f"Not enough budget for skill '{skill}' even with junior (cost: {cost_of_chosen_agent}, remaining: {remaining_budget}). Skipping this skill.")
                         continue 
 
                 agent_name_base = skill.replace('_', ' ').title().replace(' ', '')
@@ -480,7 +528,7 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                 team_specification.append({
                     "name": agent_name,
                     "role": agent_role,
-                    "seniority": chosen_seniority,
+                    "seniority": chosen_seniority, # Già stringa .value
                     "description": agent_description,
                     "system_prompt": agent_system_prompt,
                     "llm_config": {"model": llm_model, "temperature": 0.3},
@@ -492,7 +540,7 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                 logger.warning("Could not form any team based on budget/constraints.")
                 return json.dumps([{"error": "Could not design a team within the given constraints (budget or agent limit)."}])
             
-            logger.info(f"Designed team structure with {len(team_specification)} agents.")
+            logger.info(f"Designed team structure with {len(team_specification)} agents using effective_max_agents: {effective_max_agents}.")
             return json.dumps(team_specification)
             
         except Exception as e:

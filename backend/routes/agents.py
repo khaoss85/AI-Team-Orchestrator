@@ -8,15 +8,17 @@ from models import (
     AgentUpdate,
     Agent,
     TaskCreate,
-    Task
+    Task,
+    Handoff
 )
 from database import (
     create_agent,
     update_agent,
-    list_agents,
+    list_agents as db_list_agents,
     update_agent_status,
     create_task,
-    update_task_status
+    update_task_status,
+    list_handoffs as db_list_handoffs
 )
 from ai_agents.manager import AgentManager
 
@@ -50,18 +52,33 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
             detail=f"Failed to create agent: {str(e)}"
         )
 
-@router.get("/{workspace_id}", response_model=List[Agent])
+@router.get("/{workspace_id}", response_model=List[Agent]) # Endpoint esistente
 async def get_workspace_agents(workspace_id: UUID):
     """Get all agents in a workspace"""
     try:
-        agents_data = await list_agents(str(workspace_id))
+        agents_data = await db_list_agents(str(workspace_id)) # Usa db_list_agents
         return [Agent.model_validate(agent) for agent in agents_data]
     except Exception as e:
-        logger.error(f"Error getting agents: {e}")
+        logger.error(f"Error getting agents: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get agents: {str(e)}"
         )
+
+@router.get("/{workspace_id}/handoffs", response_model=List[Handoff], tags=["agents", "handoffs"])
+async def get_workspace_handoffs(workspace_id: UUID):
+    """Get all handoffs for a workspace"""
+    try:
+        handoffs_data = await db_list_handoffs(str(workspace_id))
+        # Il modello Handoff dovrebbe gestire la validazione se i dati dal DB sono corretti
+        return handoffs_data # Pydantic convertirà automaticamente i dict in istanze di Handoff
+    except Exception as e:
+        logger.error(f"Error getting handoffs for workspace {workspace_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get handoffs: {str(e)}"
+        )
+
         
 @router.put("/{workspace_id}/{agent_id}", response_model=Agent)
 async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: AgentUpdate):

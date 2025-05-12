@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Handoff } from '@/types';
+import { Workspace, Agent, Handoff } from '@/types'; // Assicurati che Handoff sia importato
 import AgentEditModal from '@/components/AgentEditModal';
 
 type Props = {
@@ -17,7 +17,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [handoffs, setHandoffs] = useState<Handoff[]>([]);
+  const [handoffs, setHandoffs] = useState<Handoff[]>([]); // State per gli handoff
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -25,111 +25,24 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
   
   useEffect(() => {
     const fetchProjectTeam = async () => {
+      if (!id) return; // Non fare nulla se l'id non è ancora disponibile
       try {
         setLoading(true);
+        setError(null); // Resetta l'errore all'inizio del fetch
         
-        // Fetch workspace details
         const workspaceData = await api.workspaces.get(id);
         setWorkspace(workspaceData);
         
-        // Fetch agents
         const agentsData = await api.agents.list(id);
         setAgents(agentsData);
         
-        // In una vera implementazione, dovremmo anche fetchare gli handoffs
-        // const handoffsData = await api.handoffs.list(id);
-        // setHandoffs(handoffsData);
+        // Recupera gli handoff per il workspace
+        const handoffsData = await api.handoffs.list(id);
+        setHandoffs(handoffsData);
         
-        setError(null);
-      } catch (err) {
+      } catch (err: any) { // Tipizza err per accedere a message
         console.error('Failed to fetch project team:', err);
-        setError('Impossibile caricare il team del progetto. Riprova più tardi.');
-        
-        // Dati fittizi per test
-        setWorkspace({
-          id: id,
-          name: 'Progetto Marketing Digitale',
-          description: 'Campagna di marketing sui social media',
-          user_id: '123e4567-e89b-12d3-a456-426614174000',
-          status: 'active',
-          goal: 'Aumentare la visibilità del brand',
-          budget: { max_amount: 1000, currency: 'EUR' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        
-        setAgents([
-          {
-            id: '1',
-            workspace_id: id,
-            name: 'ValutazioneCriticaDiProgrammiDiAllenamentoSpecialistAgent',
-            role: 'Valutazione Critica Di Programmi Di Allenamento Specialization',
-            seniority: 'senior',
-            description: 'Gestisce tutte le attività relative alla valutazione critica di programmi di allenamento, applicando conoscenze specialistiche e strumenti dedicati.',
-            system_prompt: 'Sei uno specialista AI nella valutazione critica di programmi di allenamento. Analizza e valuta i PED più rilevanti dell\'anno per personal trainer, considerando efficacia, innovazione e adattabilità. Collabora con gli altri agenti e fornisci report dettagliati.',
-            status: 'active',
-            health: { status: 'healthy' },
-            llm_config: { model: 'gpt-4.1-mini', temperature: 0.3 },
-            tools: [
-              { name: 'web_search', type: 'function', description: 'Cerca informazioni aggiornate su programmi di allenamento e recensioni.' }
-            ],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            workspace_id: id,
-            name: 'RicercaEAnalisiDiLetteraturaScientificaInAmbitoFitnessSpecialistAgent',
-            role: 'Ricerca E Analisi Di Letteratura Scientifica In Ambito Fitness Specialization',
-            seniority: 'senior',
-            description: 'Gestisce tutte le attività di ricerca e analisi della letteratura scientifica nel fitness, garantendo l\'integrazione di evidenze aggiornate.',
-            system_prompt: 'Sei uno specialista AI nella ricerca e analisi della letteratura scientifica in ambito fitness. Identifica, valuta e sintetizza studi recenti sui PED più efficaci per personal trainer. Collabora con gli altri agenti e fornisci sintesi chiare e basate su evidenze.',
-            status: 'active',
-            health: { status: 'healthy' },
-            llm_config: { model: 'gpt-4.1-mini', temperature: 0.3 },
-            tools: [
-              { name: 'academic_search', type: 'function', description: 'Ricerca articoli scientifici e pubblicazioni accademiche.' }
-            ],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: '3',
-            workspace_id: id,
-            name: 'ConoscenzaDelleTendenzeAttualiNelSettoreDelFitnessSpecialistAgent',
-            role: 'Conoscenza Delle Tendenze Attuali Nel Settore Del Fitness Specialization',
-            seniority: 'senior',
-            description: 'Gestisce tutte le attività relative all\'analisi delle tendenze attuali nel settore fitness, individuando i PED più popolari e innovativi.',
-            system_prompt: 'Sei uno specialista AI nell\'analisi delle tendenze attuali nel settore del fitness. Raccogli e valuta i trend emergenti sui PED, considerando popolarità, innovazione e feedback dei professionisti. Collabora con gli altri agenti e fornisci insight di mercato.',
-            status: 'active',
-            health: { status: 'healthy' },
-            llm_config: { model: 'gpt-4.1-mini', temperature: 0.3 },
-            tools: [
-              { name: 'social_media_analysis', type: 'function', description: 'Analizza trend e discussioni sui social media riguardo i PED.' },
-              { name: 'market_analysis', type: 'function', description: 'Analizza dati di mercato e report di settore.' }
-            ],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-        
-        // Simula alcuni handoffs
-        setHandoffs([
-          {
-            id: '1',
-            source_agent_id: '2',
-            target_agent_id: '1',
-            description: 'Trasferimento delle sintesi delle evidenze scientifiche sui PED per supportare la valutazione critica dei programmi.',
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            source_agent_id: '3',
-            target_agent_id: '1',
-            description: 'Condivisione dei trend di mercato e delle preferenze attuali per integrare la valutazione dei PED più rilevanti.',
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        setError(err.message || 'Impossibile caricare il team del progetto. Riprova più tardi.');
       } finally {
         setLoading(false);
       }
@@ -138,10 +51,11 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     fetchProjectTeam();
   }, [id]);
   
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string) => { /* ... implementazione esistente ... */ 
     switch(status) {
       case 'active': return 'Attivo';
       case 'created': return 'Creato';
+      case 'initializing': return 'Inizializzazione';
       case 'paused': return 'In pausa';
       case 'error': return 'Errore';
       case 'terminated': return 'Terminato';
@@ -149,10 +63,11 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string) => { /* ... implementazione esistente ... */ 
     switch(status) {
       case 'active': return 'bg-green-100 text-green-800';
       case 'created': return 'bg-blue-100 text-blue-800';
+      case 'initializing': return 'bg-yellow-100 text-yellow-800';
       case 'paused': return 'bg-yellow-100 text-yellow-800';
       case 'error': return 'bg-red-100 text-red-800';
       case 'terminated': return 'bg-gray-100 text-gray-800';
@@ -160,7 +75,8 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getHealthColor = (health: string) => {
+  const getHealthColor = (health?: string) => { /* ... implementazione esistente ... */ 
+     if (!health) return 'bg-gray-100 text-gray-800';
     switch(health) {
       case 'healthy': return 'bg-green-100 text-green-800';
       case 'degraded': return 'bg-yellow-100 text-yellow-800';
@@ -169,7 +85,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getSeniorityColor = (seniority: string) => {
+  const getSeniorityColor = (seniority: string) => { /* ... implementazione esistente ... */ 
     switch(seniority) {
       case 'junior': return 'bg-blue-100 text-blue-800';
       case 'senior': return 'bg-purple-100 text-purple-800';
@@ -178,7 +94,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getSeniorityLabel = (seniority: string) => {
+  const getSeniorityLabel = (seniority: string) => { /* ... implementazione esistente ... */ 
     switch(seniority) {
       case 'junior': return 'Junior';
       case 'senior': return 'Senior';
@@ -187,7 +103,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getCostPerDay = (seniority: string) => {
+  const getCostPerDay = (seniority: string) => { /* ... implementazione esistente ... */ 
     switch(seniority) {
       case 'junior': return 5;
       case 'senior': return 10;
@@ -196,7 +112,9 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getAgentHandoffs = (agentId: string) => {
+  // Modificata per gestire il caso in cui handoffs potrebbe essere undefined
+  const getAgentHandoffs = (agentId: string): Handoff[] => {
+    if (!handoffs) return []; // Restituisci array vuoto se handoffs è undefined
     return handoffs.filter(h => h.source_agent_id === agentId || h.target_agent_id === agentId);
   };
   
@@ -206,16 +124,18 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
   };
   
   const handleSaveAgent = async (agentId: string, updates: Partial<Agent>) => {
+    if (!id) return; // Aggiunto controllo per id
     try {
-      const updatedAgent = await api.agents.update(id, agentId, updates);
+      const updatedAgent = await api.agents.update(id, agentId, updates); // Assicurati che id (workspace_id) sia passato
       setAgents(agents.map(agent => 
-        agent.id === agentId ? updatedAgent : agent
+        agent.id === agentId ? { ...agent, ...updatedAgent } : agent // Unisci per mantenere i dati non modificati
       ));
       setIsEditModalOpen(false);
       setEditingAgent(null);
     } catch (err) {
       console.error('Failed to update agent:', err);
-      throw err;
+      // Potresti voler mostrare un errore all'utente qui
+      throw err; 
     }
   };
   
@@ -262,12 +182,13 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
               
               return (
                 <div key={agent.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  {/* ... (sezione info agente esistente) ... */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-xl font-semibold">{agent.name}</h2>
                       <p className="text-gray-600 font-medium">{agent.role}</p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 items-center"> {/* items-center per allineare verticalmente i badge */}
                       <button
                         onClick={() => handleEditAgent(agent)}
                         className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition"
@@ -280,23 +201,24 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                       <span className={`text-xs px-3 py-1 rounded-full ${getStatusColor(agent.status)}`}>
                         {getStatusLabel(agent.status)}
                       </span>
-                      <span className={`text-xs px-3 py-1 rounded-full ${getHealthColor(agent.health.status)}`}>
-                        {agent.health.status}
+                      <span className={`text-xs px-3 py-1 rounded-full ${getHealthColor(agent.health?.status)}`}>
+                        {agent.health?.status || HealthStatus.UNKNOWN}
                       </span>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Descrizione</h3>
+                      {/* ... (descrizione, system prompt, llm config) ... */}
+                       <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Descrizione</h3>
                         <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
                           {agent.description || 'Nessuna descrizione disponibile'}
                         </p>
                       </div>
                       
                       <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">System Prompt</h3>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">System Prompt</h3>
                         <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
                           <pre className="whitespace-pre-wrap">
                             {agent.system_prompt || 'Nessun prompt di sistema definito'}
@@ -306,7 +228,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                       
                       {agent.llm_config && (
                         <div>
-                          <h3 className="text-sm font-medium text-gray-900 mb-2">Configurazione LLM</h3>
+                          <h3 className="text-sm font-medium text-gray-900 mb-1">Configurazione LLM</h3>
                           <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
                             <div className="grid grid-cols-2 gap-2">
                               {agent.llm_config.model && (
@@ -314,7 +236,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                                   <span className="font-medium">Modello:</span> {agent.llm_config.model}
                                 </div>
                               )}
-                              {agent.llm_config.temperature && (
+                              {typeof agent.llm_config.temperature === 'number' &&  ( // Controlla se è un numero
                                 <div>
                                   <span className="font-medium">Temperature:</span> {agent.llm_config.temperature}
                                 </div>
@@ -326,17 +248,18 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                     </div>
                     
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Strumenti Disponibili</h3>
+                      {/* ... (strumenti, costo stimato) ... */}
+                       <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Strumenti Disponibili</h3>
                         <div className="space-y-2">
                           {agent.tools && agent.tools.length > 0 ? (
                             agent.tools.map((tool, index) => (
                               <div key={index} className="bg-indigo-50 p-3 rounded-md">
                                 <div className="flex justify-between items-start mb-1">
                                   <span className="font-medium text-indigo-900">{tool.name}</span>
-                                  <span className="text-xs text-indigo-600">{tool.type}</span>
+                                  <span className="text-xs text-indigo-600">{typeof tool === 'object' && tool.type ? tool.type : 'N/D'}</span>
                                 </div>
-                                <p className="text-sm text-indigo-700">{tool.description}</p>
+                                <p className="text-sm text-indigo-700">{typeof tool === 'object' && tool.description ? tool.description : ''}</p>
                               </div>
                             ))
                           ) : (
@@ -344,37 +267,39 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                           )}
                         </div>
                       </div>
-                      
+
+                      {/* SEZIONE HANDOFF AGGIUNTA QUI */}
                       <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Handoffs</h3>
-                        <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Handoffs ({agentHandoffs.length})</h3>
+                        <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-md">
                           {agentHandoffs.length > 0 ? (
                             agentHandoffs.map((handoff) => {
                               const isSource = handoff.source_agent_id === agent.id;
-                              const targetAgent = agents.find(a => a.id === (isSource ? handoff.target_agent_id : handoff.source_agent_id));
+                              const otherAgentId = isSource ? handoff.target_agent_id : handoff.source_agent_id;
+                              const otherAgent = agents.find(a => a.id === otherAgentId);
                               
                               return (
-                                <div key={handoff.id} className="bg-yellow-50 p-3 rounded-md">
+                                <div key={handoff.id} className={`p-2 rounded-md border ${isSource ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
                                   <div className="flex items-center space-x-2 mb-1">
-                                    <span className={`text-xs px-2 py-1 rounded-full ${isSource ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
-                                      {isSource ? 'Outgoing' : 'Incoming'}
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${isSource ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
+                                      {isSource ? 'IN USCITA' : 'IN ENTRATA'}
                                     </span>
-                                    <span className="text-sm font-medium">
-                                      {isSource ? '→' : '←'} {targetAgent?.name || 'Agente sconosciuto'}
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {isSource ? '→' : '←'} {otherAgent?.name || 'Agente Sconosciuto'}
                                     </span>
                                   </div>
-                                  <p className="text-sm text-gray-600">{handoff.description}</p>
+                                  <p className="text-xs text-gray-600">{handoff.description || "Nessuna descrizione per l'handoff"}</p>
                                 </div>
                               );
                             })
                           ) : (
-                            <p className="text-sm text-gray-500 italic">Nessun handoff configurato</p>
+                            <p className="text-sm text-gray-500 italic">Nessun handoff configurato per questo agente.</p>
                           )}
                         </div>
                       </div>
                       
                       <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-2">Costo Stimato</h3>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Costo Stimato</h3>
                         <div className="bg-green-50 p-3 rounded-md">
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
@@ -396,7 +321,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
             })}
           </div>
           
-          {agents.length === 0 && (
+          {agents.length === 0 && !loading && ( // Aggiunto !loading per evitare flash
             <div className="text-center py-10 bg-white rounded-lg shadow-sm">
               <h3 className="text-lg font-medium text-gray-600 mb-2">Nessun agente nel team</h3>
               <p className="text-gray-500 mb-4">Configura il team per questo progetto</p>
@@ -414,6 +339,8 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
       <AgentEditModal
         isOpen={isEditModalOpen}
         agent={editingAgent}
+        allAgents={agents}   // <<< Passa tutti gli agenti
+        allHandoffs={handoffs} // <<< Passa tutti gli handoff
         onClose={() => {
           setIsEditModalOpen(false);
           setEditingAgent(null);
