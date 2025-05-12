@@ -33,7 +33,6 @@ const handleApiError = (error: unknown) => {
 };
 
 export const api = {
-  // Utility method exposed
   getBaseUrl,
   
   // API Monitoring
@@ -41,9 +40,7 @@ export const api = {
     getWorkspaceActivity: async (workspaceId: string, limit: number = 20): Promise<any[]> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/activity?limit=${limit}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
         return handleApiError(error);
@@ -53,9 +50,16 @@ export const api = {
     getWorkspaceBudget: async (workspaceId: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/budget`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+     getAgentBudget: async (agentId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/agent/${agentId}/budget`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
         return handleApiError(error);
@@ -65,9 +69,7 @@ export const api = {
     getWorkspaceStatus: async (workspaceId: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/status`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
         return handleApiError(error);
@@ -79,9 +81,7 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/start`, {
           method: 'POST',
         });
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
         return handleApiError(error);
@@ -91,9 +91,56 @@ export const api = {
     getGlobalActivity: async (limit: number = 50): Promise<any[]> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/global/activity?limit=${limit}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    pauseExecutor: async (): Promise<{ message: string }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/executor/pause`, {
+          method: 'POST',
+        });
         if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+          const errorData = await response.json().catch(() => ({ detail: `API error: ${response.status}` }));
+          throw new Error(errorData.detail || `API error: ${response.status}`);
         }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    resumeExecutor: async (): Promise<{ message: string }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/executor/resume`, {
+          method: 'POST',
+        });
+         if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: `API error: ${response.status}` }));
+          throw new Error(errorData.detail || `API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getExecutorStatus: async (): Promise<ExecutorStatus> => { // Assicurati che ExecutorStatus sia definito in @/types
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/executor/status`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getExecutorDetailedStats: async (): Promise<ExecutorDetailedStats> => { // Assicurati che ExecutorDetailedStats sia definito
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/executor/detailed-stats`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
         return handleApiError(error);

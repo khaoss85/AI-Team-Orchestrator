@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Task } from '@/types';
+import { Workspace, Agent, Task, ExecutorStatus, ExecutorDetailedStats } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 import MonitoringDashboard from '@/components/MonitoringDashboard';
 import { useRouter } from 'next/navigation';
@@ -41,8 +41,8 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         setAgents(agentsData);
         
         // In a real implementation, we would fetch tasks too
-        // const tasksData = await api.tasks.list(id);
-        // setTasks(tasksData);
+        const tasksData = await api.tasks.list(id);
+        setTasks(tasksData);
         
         setError(null);
       } catch (err) {
@@ -418,7 +418,12 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
           </div>
           
           {/* Monitoring Dashboard */}
-          <MonitoringDashboard workspaceId={id} />
+            {workspace && agents.length > 0 && ( // Passa agents allo MonitoringDashboard
+            <MonitoringDashboard workspaceId={id} agentsInWorkspace={agents} />
+            )}
+            {workspace && agents.length === 0 && loading && ( // Gestisci il caso in cui gli agenti non sono ancora caricati
+            <p>Caricamento dati agenti per il dashboard...</p>
+            )}
         </>
       )}
       

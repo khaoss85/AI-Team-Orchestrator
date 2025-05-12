@@ -214,3 +214,33 @@ export interface ContentIdea {
   best_posting_time: string;
   visual_elements: string[];
 }
+
+export interface ExecutorStatus {
+  is_running: boolean;
+  is_paused: boolean;
+  status_string: "running" | "paused" | "stopped";
+}
+
+export interface AgentActivityStat {
+  completed: number;
+  failed: number;
+  name?: string; // Il nome potrebbe essere aggiunto in futuro
+}
+
+export interface SessionStats {
+  tasks_completed_successfully: number;
+  tasks_failed: number;
+  agent_activity: Record<string, AgentActivityStat>; // agent_id come chiave
+}
+
+export interface ExecutorDetailedStats {
+  executor_status: string;
+  tasks_in_queue: number;
+  tasks_actively_processing: number;
+  max_concurrent_tasks: number;
+  total_execution_log_entries: number;
+  session_stats: SessionStats;
+  budget_tracker_stats: {
+    tracked_agents_count: number;
+  };
+}
