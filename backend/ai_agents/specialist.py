@@ -357,7 +357,7 @@ class SpecialistAgent:
             task_name: str,
             task_description: str,
             target_agent_role: str,
-            priority: str = "medium"
+            priority: str
         ) -> str:
             """
             Create a new task and assign it to a specific agent role.
@@ -439,7 +439,7 @@ class SpecialistAgent:
             target_role: str,
             context: str,
             data_to_transfer: str,
-            priority: str = "medium"
+            priority: str
         ) -> str:
             """
             Request a handoff to another agent with specific context and data.

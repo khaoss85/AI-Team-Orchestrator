@@ -7,9 +7,10 @@ import asyncio
 
 from agents import Agent as OpenAIAgent
 from agents import Runner, ModelSettings, function_tool
+from agents import AgentOutputSchema
 from pydantic import BaseModel
 
-from models import Task, TaskStatus, AgentModel
+from models import Task, TaskStatus, Agent as AgentModel
 from database import create_task, list_agents, list_tasks
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,14 @@ class AutoTaskGenerator:
     
     def _create_analysis_agent(self) -> OpenAIAgent:
         """Create a specialized agent for analyzing task results"""
+        
+        # Crea un'istanza di AgentOutputSchema per TaskAnalysisResult
+        # con la validazione stretta dello schema disabilitata.
+        task_analysis_output_schema = AgentOutputSchema(
+            output_type=TaskAnalysisResult,
+            strict_json_schema=False  # Imposta la validazione non stretta qui
+        )
+        
         return OpenAIAgent(
             name="TaskResultAnalyzer",
             instructions="""
@@ -60,10 +69,11 @@ class AutoTaskGenerator:
             - Determine priorities and dependencies
             
             Always provide structured output with specific recommendations.
-            """,
+            """, 
             model="gpt-4.1",
             model_settings=ModelSettings(temperature=0.2),
-            output_type=TaskAnalysisResult
+            output_type=task_analysis_output_schema # Passa l'istanza di AgentOutputSchema configurata
+            # Rimuovi 'output_schema_strict=False' da qui, perché non è un argomento valido per OpenAIAgent.__init__
         )
     
     async def analyze_task_result(
