@@ -18,7 +18,7 @@ from routes.workspaces import router as workspace_router
 from routes.director import router as director_router
 from routes.agents import router as agents_router
 from routes.tools import router as tools_router
-from routes.monitoring import router as monitoring_router
+from routes.monitoring import router as monitoring_router  # Assicurati che sia importato
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -43,12 +43,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include routers - ASSICURATI CHE monitoring_router SIA INCLUSO
 app.include_router(workspace_router)
 app.include_router(director_router)
 app.include_router(agents_router)
 app.include_router(tools_router)
-app.include_router(monitoring_router)
+app.include_router(monitoring_router)  # Questo deve essere presente
 
 # Health check endpoint
 @app.get("/health")

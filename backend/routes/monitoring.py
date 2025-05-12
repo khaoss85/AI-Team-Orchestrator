@@ -4,7 +4,7 @@ from uuid import UUID
 import logging
 
 from executor import task_executor
-from database import get_workspace, list_agents as db_list_agents
+from database import get_workspace, list_agents as db_list_agents, list_tasks
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
@@ -54,6 +54,19 @@ async def get_workspace_budget(workspace_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get workspace budget: {str(e)}"
+        )
+
+@router.get("/workspace/{workspace_id}/tasks", response_model=List[Dict[str, Any]])
+async def get_workspace_tasks(workspace_id: UUID):
+    """Get all tasks for a workspace"""
+    try:
+        tasks = await list_tasks(str(workspace_id))
+        return tasks
+    except Exception as e:
+        logger.error(f"Error getting workspace tasks: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get workspace tasks: {str(e)}"
         )
 
 @router.get("/agent/{agent_id}/budget", response_model=Dict[str, Any])

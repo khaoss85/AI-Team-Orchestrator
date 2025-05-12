@@ -164,16 +164,17 @@ class SpecialistAgent:
     
     def _initialize_tools(self) -> List[Any]:
         """Initialize the tools for this agent based on its configuration"""
-        # Base tools
+        # Base tools - create tool wrappers for OpenAI Agent
         tools = [
-            self.log_execution,
-            self.update_health_status,
-            self.report_progress,
+            # These are function tools that will be made available to the LLM
+            self._create_log_execution_tool(),
+            self._create_update_health_status_tool(),
+            self._create_report_progress_tool(),
         ]
         
         # Add tool creation if agent has permission
         if self.agent_data.can_create_tools:
-            tools.append(self.create_custom_tool)
+            tools.append(self._create_custom_tool_tool())
         
         # Add native OpenAI tools
         tools.extend([
@@ -255,7 +256,6 @@ class SpecialistAgent:
             handoffs=self.handoffs,
             input_guardrails=input_guardrails,
             output_guardrails=output_guardrails,
-            output_type=TaskExecutionOutput  # Output strutturato
         )
     
     def _create_system_prompt(self) -> str:
@@ -303,78 +303,245 @@ class SpecialistAgent:
         return base_prompt
     
     # ==============================================================================
-    # FUNCTION TOOLS
+    # INTERNAL METHODS (Not decorated, for internal use)
     # ==============================================================================
     
-    @function_tool
-    async def create_custom_tool(
-        self,
-        name: str,
-        description: str,
-        code: str,
-        test_input: Optional[str] = None
-    ) -> str:
-        """
-        Create a custom tool with validation and testing.
-        
-        Args:
-            name: The name of the tool function
-            description: A description of what the tool does
-            code: Python code implementing the tool (must be an async function)
-            test_input: Optional test input to validate the tool
-            
-        Returns:
-            Information about the created tool (JSON string)
-        """
-        from tools.registry import tool_registry
-        
-        logger.info(f"Agent {self.agent_data.id} creating custom tool: {name}")
-        
+    async def _log_execution_internal(self, step: str, details: str) -> bool:
+        """Internal method for logging execution"""
         try:
-            # Validate the tool code
-            validation_results = await self._validate_tool_code(code, test_input)
+            # Parse details string to dictionary
+            details_dict = {}
+            if isinstance(details, str):
+                try:
+                    details_dict = json.loads(details)
+                except json.JSONDecodeError:
+                    details_dict = {"raw_message": details}
+            else:
+                details_dict = {"raw_message": str(details)}
             
-            if not validation_results["valid"]:
+            # Enhanced logging with metadata
+            log_entry = {
+                "agent_id": str(self.agent_data.id),
+                "agent_name": self.agent_data.name,
+                "step": step,
+                "timestamp": None,  # Will be set by database
+                "details": details_dict,
+                "seniority": self.agent_data.seniority,
+                "workspace_id": str(self.agent_data.workspace_id)
+            }
+            
+            logger.info(f"Agent execution log: {json.dumps(log_entry)}")
+            
+            # TODO: Save to execution_logs table in database
+            # await save_execution_log(log_entry)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error in log_execution: {e}")
+            return False
+    
+    async def _update_health_status_internal(self, status: str, details: Optional[str] = None) -> bool:
+        """Internal method for updating health status"""
+        try:
+            # Parse details
+            details_dict = {}
+            if details:
+                try:
+                    details_dict = json.loads(details)
+                except json.JSONDecodeError:
+                    details_dict = {"raw_message": details}
+            
+            # Add system metrics
+            details_dict.update({
+                "model_used": self.agent.model,
+                "tools_count": len(self.tools),
+                "check_timestamp": None  # Will be set by database
+            })
+            
+            health = AgentHealth(
+                status=HealthStatus(status),
+                details=details_dict
+            )
+            
+            await update_agent_status(
+                agent_id=str(self.agent_data.id),
+                status=self.agent_data.status,
+                health=health.model_dump()
+            )
+            
+            # Log health update
+            logger.info(f"Agent {self.agent_data.id} health updated to {status}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update agent health status: {e}")
+            return False
+    
+    async def _report_progress_internal(
+        self,
+        task_id: str,
+        progress_percentage: int,
+        current_stage: str,
+        notes: Optional[str] = None
+    ) -> bool:
+        """Internal method for reporting progress"""
+        try:
+            progress_data = {
+                "task_id": task_id,
+                "agent_id": str(self.agent_data.id),
+                "progress_percentage": min(100, max(0, progress_percentage)),
+                "current_stage": current_stage,
+                "notes": notes,
+                "timestamp": None  # Will be set by database
+            }
+            
+            logger.info(f"Progress update: {json.dumps(progress_data)}")
+            
+            # TODO: Save to task_progress table
+            # await save_task_progress(progress_data)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error reporting progress: {e}")
+            return False
+    
+    # ==============================================================================
+    # TOOL CREATORS (Create function_tool wrappers)
+    # ==============================================================================
+    
+    def _create_log_execution_tool(self):
+        """Create a function tool for log execution"""
+        @function_tool
+        async def log_execution(step: str, details: str) -> bool:
+            """
+            Log the execution of a step with structured data.
+            
+            Args:
+                step: The name/description of the execution step
+                details: Details about the execution (JSON string)
+                
+            Returns:
+                Boolean indicating success
+            """
+            return await self._log_execution_internal(step, details)
+        
+        return log_execution
+    
+    def _create_update_health_status_tool(self):
+        """Create a function tool for updating health status"""
+        @function_tool
+        async def update_health_status(status: str, details: Optional[str] = None) -> bool:
+            """
+            Update the health status of the agent with enhanced monitoring.
+            
+            Args:
+                status: The health status (healthy, degraded, unhealthy)
+                details: Optional details about the health status (JSON string)
+                
+            Returns:
+                Boolean indicating success
+            """
+            return await self._update_health_status_internal(status, details)
+        
+        return update_health_status
+    
+    def _create_report_progress_tool(self):
+        """Create a function tool for reporting progress"""
+        @function_tool
+        async def report_progress(
+            task_id: str,
+            progress_percentage: int,
+            current_stage: str,
+            notes: Optional[str] = None
+        ) -> bool:
+            """
+            Report progress on a task.
+            
+            Args:
+                task_id: ID of the task being worked on
+                progress_percentage: Progress as percentage (0-100)
+                current_stage: Description of current stage
+                notes: Optional additional notes
+                
+            Returns:
+                Boolean indicating success
+            """
+            return await self._report_progress_internal(task_id, progress_percentage, current_stage, notes)
+        
+        return report_progress
+    
+    def _create_custom_tool_tool(self):
+        """Create a function tool for creating custom tools"""
+        @function_tool
+        async def create_custom_tool(
+            name: str,
+            description: str,
+            code: str,
+            test_input: Optional[str] = None
+        ) -> str:
+            """
+            Create a custom tool with validation and testing.
+            
+            Args:
+                name: The name of the tool function
+                description: A description of what the tool does
+                code: Python code implementing the tool (must be an async function)
+                test_input: Optional test input to validate the tool
+                
+            Returns:
+                Information about the created tool (JSON string)
+            """
+            from tools.registry import tool_registry
+            
+            logger.info(f"Agent {self.agent_data.id} creating custom tool: {name}")
+            
+            try:
+                # Validate the tool code
+                validation_results = await self._validate_tool_code(code, test_input)
+                
+                if not validation_results["valid"]:
+                    return json.dumps(ToolCreationOutput(
+                        success=False,
+                        tool_name=name,
+                        error_message=f"Validation failed: {validation_results['error']}",
+                        validation_results=validation_results
+                    ).model_dump())
+                
+                # Register the tool with the registry
+                tool_info = await tool_registry.register_tool(
+                    name=name,
+                    description=description,
+                    code=code,
+                    workspace_id=str(self.agent_data.workspace_id),
+                    created_by="agent"
+                )
+                
+                # Save to database
+                from database import create_custom_tool
+                tool_db_record = await create_custom_tool(
+                    name=name,
+                    description=description,
+                    code=code,
+                    workspace_id=str(self.agent_data.workspace_id),
+                    created_by="agent"
+                )
+                
+                return json.dumps(ToolCreationOutput(
+                    success=True,
+                    tool_name=name,
+                    tool_id=tool_db_record.get("id") if tool_db_record else None,
+                    validation_results=validation_results
+                ).model_dump())
+                
+            except Exception as e:
+                logger.error(f"Failed to create custom tool: {e}")
                 return json.dumps(ToolCreationOutput(
                     success=False,
                     tool_name=name,
-                    error_message=f"Validation failed: {validation_results['error']}",
-                    validation_results=validation_results
+                    error_message=str(e)
                 ).model_dump())
-            
-            # Register the tool with the registry
-            tool_info = await tool_registry.register_tool(
-                name=name,
-                description=description,
-                code=code,
-                workspace_id=str(self.agent_data.workspace_id),
-                created_by="agent"
-            )
-            
-            # Save to database
-            from database import create_custom_tool
-            tool_db_record = await create_custom_tool(
-                name=name,
-                description=description,
-                code=code,
-                workspace_id=str(self.agent_data.workspace_id),
-                created_by="agent"
-            )
-            
-            return json.dumps(ToolCreationOutput(
-                success=True,
-                tool_name=name,
-                tool_id=tool_db_record.get("id") if tool_db_record else None,
-                validation_results=validation_results
-            ).model_dump())
-            
-        except Exception as e:
-            logger.error(f"Failed to create custom tool: {e}")
-            return json.dumps(ToolCreationOutput(
-                success=False,
-                tool_name=name,
-                error_message=str(e)
-            ).model_dump())
+        
+        return create_custom_tool
     
     async def _validate_tool_code(self, code: str, test_input: Optional[str] = None) -> Dict[str, Any]:
         """Validate tool code for security and correctness"""
@@ -413,137 +580,6 @@ class SpecialistAgent:
                 "error": f"Syntax error: {str(e)}",
                 "syntax_check": False
             }
-    
-    @function_tool
-    async def log_execution(self, step: str, details: str) -> bool:
-        """
-        Log the execution of a step with structured data.
-        
-        Args:
-            step: The name/description of the execution step
-            details: Details about the execution (JSON string)
-            
-        Returns:
-            Boolean indicating success
-        """
-        try:
-            # Parse details string to dictionary
-            details_dict = {}
-            if isinstance(details, str):
-                try:
-                    details_dict = json.loads(details)
-                except json.JSONDecodeError:
-                    details_dict = {"raw_message": details}
-            else:
-                details_dict = {"raw_message": str(details)}
-            
-            # Enhanced logging with metadata
-            log_entry = {
-                "agent_id": str(self.agent_data.id),
-                "agent_name": self.agent_data.name,
-                "step": step,
-                "timestamp": None,  # Will be set by database
-                "details": details_dict,
-                "seniority": self.agent_data.seniority,
-                "workspace_id": str(self.agent_data.workspace_id)
-            }
-            
-            logger.info(f"Agent execution log: {json.dumps(log_entry)}")
-            
-            # TODO: Save to execution_logs table in database
-            # await save_execution_log(log_entry)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error in log_execution: {e}")
-            return False
-    
-    @function_tool
-    async def update_health_status(self, status: str, details: Optional[str] = None) -> bool:
-        """
-        Update the health status of the agent with enhanced monitoring.
-        
-        Args:
-            status: The health status (healthy, degraded, unhealthy)
-            details: Optional details about the health status (JSON string)
-            
-        Returns:
-            Boolean indicating success
-        """
-        try:
-            # Parse details
-            details_dict = {}
-            if details:
-                try:
-                    details_dict = json.loads(details)
-                except json.JSONDecodeError:
-                    details_dict = {"raw_message": details}
-            
-            # Add system metrics
-            details_dict.update({
-                "model_used": self.agent.model,
-                "tools_count": len(self.tools),
-                "check_timestamp": None  # Will be set by database
-            })
-            
-            health = AgentHealth(
-                status=HealthStatus(status),
-                details=details_dict
-            )
-            
-            await update_agent_status(
-                agent_id=str(self.agent_data.id),
-                status=self.agent_data.status,
-                health=health.model_dump()
-            )
-            
-            # Log health update
-            logger.info(f"Agent {self.agent_data.id} health updated to {status}")
-            
-            return True
-        except Exception as e:
-            logger.error(f"Failed to update agent health status: {e}")
-            return False
-    
-    @function_tool
-    async def report_progress(
-        self,
-        task_id: str,
-        progress_percentage: int,
-        current_stage: str,
-        notes: Optional[str] = None
-    ) -> bool:
-        """
-        Report progress on a task.
-        
-        Args:
-            task_id: ID of the task being worked on
-            progress_percentage: Progress as percentage (0-100)
-            current_stage: Description of current stage
-            notes: Optional additional notes
-            
-        Returns:
-            Boolean indicating success
-        """
-        try:
-            progress_data = {
-                "task_id": task_id,
-                "agent_id": str(self.agent_data.id),
-                "progress_percentage": min(100, max(0, progress_percentage)),
-                "current_stage": current_stage,
-                "notes": notes,
-                "timestamp": None  # Will be set by database
-            }
-            
-            logger.info(f"Progress update: {json.dumps(progress_data)}")
-            
-            # TODO: Save to task_progress table
-            # await save_task_progress(progress_data)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error reporting progress: {e}")
-            return False
     
     # ==============================================================================
     # CORE METHODS
@@ -648,8 +684,8 @@ class SpecialistAgent:
                 status=TaskStatus.IN_PROGRESS.value
             )
             
-            # Log task start
-            await self.log_execution(
+            # Log task start using internal method
+            await self._log_execution_internal(
                 "task_started",
                 json.dumps({
                     "task_id": str(task.id),
@@ -704,8 +740,8 @@ class SpecialistAgent:
                 result=task_result
             )
             
-            # Log completion
-            await self.log_execution(
+            # Log completion using internal method
+            await self._log_execution_internal(
                 "task_completed",
                 json.dumps({
                     "task_id": str(task.id),
@@ -731,8 +767,8 @@ class SpecialistAgent:
                 result=error_result
             )
             
-            # Log error
-            await self.log_execution(
+            # Log error using internal method
+            await self._log_execution_internal(
                 "task_failed",
                 json.dumps({
                     "task_id": str(task.id),
