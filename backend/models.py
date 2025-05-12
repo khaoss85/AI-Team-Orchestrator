@@ -232,3 +232,16 @@ class TeamProposalData(BaseModel):
     updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+    
+class DirectorTeamProposalResponse(BaseModel):
+    id: UUID
+    workspace_id: UUID
+    agents: List[AgentCreate]
+    handoffs: List[HandoffCreate]
+    estimated_cost: Dict[str, Any]
+    rationale: str
+    user_feedback: Optional[str] = None
+    created_at: Optional[datetime] = None
+    status: str = "pending"
+    
+    model_config = ConfigDict(from_attributes=True)

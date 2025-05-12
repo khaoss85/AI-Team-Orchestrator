@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 # Load environment variables
 load_dotenv()
@@ -33,8 +33,6 @@ try:
 except Exception as e:
     logger.error(f"Error creating Supabase client: {e}")
     raise
-
-supabase: Client = create_client(supabase_url, supabase_key)
 
 # Database operations
 async def create_workspace(name: str, description: str, user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
@@ -76,17 +74,30 @@ async def list_workspaces(user_id: str):
         logger.error(f"Error listing workspaces: {e}")
         raise
 
-async def create_agent(workspace_id: str, name: str, role: str, seniority: str, description: str):
+async def create_agent(workspace_id: str, name: str, role: str, seniority: str, description: str = None, 
+                      system_prompt: str = None, llm_config: Dict[str, Any] = None, 
+                      tools: List[Dict[str, Any]] = None):
     """Create a new agent in a workspace"""
     try:
-        result = supabase.table("agents").insert({
+        data = {
             "workspace_id": workspace_id,
             "name": name,
             "role": role,
             "seniority": seniority,
-            "description": description,
             "status": "created"
-        }).execute()
+        }
+        
+        # Aggiungi campi opzionali se presenti
+        if description:
+            data["description"] = description
+        if system_prompt:
+            data["system_prompt"] = system_prompt
+        if llm_config:
+            data["model_config"] = llm_config
+        if tools:
+            data["tools"] = tools
+            
+        result = supabase.table("agents").insert(data).execute()
         return result.data[0] if result.data else None
     except Exception as e:
         logger.error(f"Error creating agent: {e}")
@@ -210,12 +221,19 @@ async def delete_workspace(workspace_id: str):
     except Exception as e:
         logger.error(f"Error deleting workspace: {e}")
         raise
+
 async def save_team_proposal(workspace_id: str, proposal_data: Dict[str, Any]):
     """Save a team proposal to the database"""
     try:
+        # Assicurati che tutti gli UUID siano convertiti in stringhe
+        import json
+        # Converti i dati in JSON e poi li rileggi per assicurarsi che siano serializzabili
+        json_str = json.dumps(proposal_data, default=str)  # default=str converte UUID in stringhe
+        serializable_data = json.loads(json_str)
+        
         result = supabase.table("team_proposals").insert({
             "workspace_id": workspace_id,
-            "proposal_data": proposal_data,
+            "proposal_data": serializable_data,
             "status": "pending"
         }).execute()
         return result.data[0] if result.data else None

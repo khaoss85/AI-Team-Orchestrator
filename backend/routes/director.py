@@ -8,6 +8,7 @@ from database import (
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
+import json
 
 from models import (
     DirectorConfig,
@@ -18,7 +19,7 @@ from ai_agents.director import DirectorAgent
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
-@router.post("/proposal", response_model=Dict[str, Any])  # Cambiato per includere l'ID
+@router.post("/proposal", response_model=Dict[str, Any])
 async def create_team_proposal(config: DirectorConfig):
     """
     Create a team proposal for a workspace based on goals and constraints
@@ -27,14 +28,14 @@ async def create_team_proposal(config: DirectorConfig):
         director = DirectorAgent()
         proposal = await director.create_team_proposal(config)
         
-        # Salva la proposta nel database
+        # Salva la proposta nel database usando mode='json' per serializzare correttamente gli UUID
         saved_proposal = await save_team_proposal(
             workspace_id=str(proposal.workspace_id),
-            proposal_data=proposal.model_dump()
+            proposal_data=proposal.model_dump(mode='json')  # Questo risolve il problema UUID
         )
         
         # Aggiungi l'ID della proposta alla risposta
-        proposal_dict = proposal.model_dump()
+        proposal_dict = proposal.model_dump(mode='json')  # Anche qui usa mode='json'
         proposal_dict["id"] = saved_proposal["id"]
         
         return proposal_dict
@@ -75,13 +76,20 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
         created_agents = []
         for agent_create in proposal.agents:
             logger.info(f"Creating agent: {agent_create.name}")
-            created_agent = await create_agent(
-                workspace_id=str(agent_create.workspace_id),
-                name=agent_create.name,
-                role=agent_create.role,
-                seniority=agent_create.seniority.value,
-                description=agent_create.description
-            )
+            
+            # Convertire tutti i dati in formato serializzabile
+            agent_data = {
+                "workspace_id": str(agent_create.workspace_id),
+                "name": agent_create.name,
+                "role": agent_create.role,
+                "seniority": agent_create.seniority.value,
+                "description": agent_create.description,
+                "system_prompt": agent_create.system_prompt,
+                "llm_config": agent_create.llm_config,
+                "tools": agent_create.tools
+            }
+            
+            created_agent = await create_agent(**agent_data)
             created_agents.append(created_agent)
             logger.info(f"Created agent {created_agent['id']}: {created_agent['name']}")
         
@@ -94,8 +102,8 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
         return {
             "status": "success",
             "message": "Team approved and created",
-            "workspace_id": workspace_id,
-            "proposal_id": proposal_id,
+            "workspace_id": str(workspace_id),
+            "proposal_id": str(proposal_id),
             "created_agents": [agent['id'] for agent in created_agents]
         }
     except HTTPException:
