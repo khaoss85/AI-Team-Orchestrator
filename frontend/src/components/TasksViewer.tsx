@@ -21,6 +21,10 @@ export default function TasksViewer({ workspaceId }: TasksViewerProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  // Mostra solo i primi 5 task se showAll è false
+  const displayedTasks = showAll ? tasks : tasks.slice(0, 5);
 
   useEffect(() => {
     fetchTasks();
@@ -108,49 +112,90 @@ export default function TasksViewer({ workspaceId }: TasksViewerProps) {
           Nessun task trovato per questo workspace
         </p>
       ) : (
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <div key={task.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h4 className="font-medium text-gray-900">{task.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{task.description}</p>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
-                  {getStatusLabel(task.status)}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Task ID:</span>
-                  <p className="font-mono">{task.id.substring(0, 8)}...</p>
+        <>
+          {/* Contenitore con altezza fissa e scroll */}
+          <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+            {displayedTasks.map((task) => (
+              <div key={task.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-medium text-gray-900">{task.name}</h4>
+                    <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
+                    {getStatusLabel(task.status)}
+                  </span>
                 </div>
                 
-                {task.agent_id && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-500">Agente ID:</span>
-                    <p className="font-mono">{task.agent_id.substring(0, 8)}...</p>
+                    <span className="text-gray-500">Task ID:</span>
+                    <p className="font-mono">{task.id.substring(0, 8)}...</p>
+                  </div>
+                  
+                  {task.agent_id && (
+                    <div>
+                      <span className="text-gray-500">Agente ID:</span>
+                      <p className="font-mono">{task.agent_id.substring(0, 8)}...</p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <span className="text-gray-500">Creato:</span>
+                    <p>{formatTimestamp(task.created_at)}</p>
+                  </div>
+                </div>
+                
+                {task.result && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Risultato:</h5>
+                    <pre className="text-xs text-gray-600 overflow-auto max-h-32">
+                      {JSON.stringify(task.result, null, 2)}
+                    </pre>
                   </div>
                 )}
-                
-                <div>
-                  <span className="text-gray-500">Creato:</span>
-                  <p>{formatTimestamp(task.created_at)}</p>
-                </div>
               </div>
-              
-              {task.result && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                  <h5 className="text-sm font-medium text-gray-700 mb-2">Risultato:</h5>
-                  <pre className="text-xs text-gray-600 overflow-auto max-h-32">
-                    {JSON.stringify(task.result, null, 2)}
-                  </pre>
-                </div>
-              )}
+            ))}
+          </div>
+          
+          {/* Pulsanti per mostrare tutti o meno task */}
+          {!showAll && tasks.length > 5 && (
+            <div className="mt-4 text-center border-t pt-4">
+              <button
+                onClick={() => setShowAll(true)}
+                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-md text-sm hover:bg-indigo-100 transition inline-flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Mostra tutti i {tasks.length} task
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+          
+          {showAll && tasks.length > 5 && (
+            <div className="mt-4 text-center border-t pt-4">
+              <button
+                onClick={() => setShowAll(false)}
+                className="px-4 py-2 bg-gray-50 text-gray-600 rounded-md text-sm hover:bg-gray-100 transition inline-flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Mostra meno
+              </button>
+            </div>
+          )}
+          
+          {/* Indice dei task se sono molti */}
+          {tasks.length > 0 && (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-500">
+                {showAll ? `Visualizzati ${tasks.length} su ${tasks.length}` : `Visualizzati ${Math.min(5, tasks.length)} su ${tasks.length}`} task
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

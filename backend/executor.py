@@ -89,7 +89,8 @@ class BudgetTracker:
 
         for agent_id in agent_ids:
             agent_total_cost = self.get_agent_total_cost(agent_id)
-            agent_costs[agent_id] = {"total_cost": round(agent_total_cost, 6)}
+            # FIX: Salviamo direttamente il costo come numero, non come oggetto
+            agent_costs[agent_id] = round(agent_total_cost, 6)
             total_cost += agent_total_cost
 
             # Accumula i token per l'agente
@@ -97,21 +98,16 @@ class BudgetTracker:
             agent_output_tokens = 0
             if agent_id in self.usage_log:
                 for record in self.usage_log[agent_id]:
-                    # Assumiamo che i record appartengano a questo workspace
-                    # In un sistema complesso, potremmo dover filtrare per workspace_id qui se il tracker fosse globale
                     agent_input_tokens += record["input_tokens"]
                     agent_output_tokens += record["output_tokens"]
-            agent_costs[agent_id]["total_input_tokens"] = agent_input_tokens
-            agent_costs[agent_id]["total_output_tokens"] = agent_output_tokens
             total_tokens["input"] += agent_input_tokens
             total_tokens["output"] += agent_output_tokens
-
 
         return {
             "workspace_id": workspace_id,
             "total_cost": round(total_cost, 6),
-            "agent_costs": agent_costs, # Dettaglio per agente
-            "total_tokens": total_tokens, # Totale workspace
+            "agent_costs": agent_costs, # Ora contiene numeri diretti
+            "total_tokens": total_tokens,
             "currency": "USD"
         }
 
@@ -760,20 +756,22 @@ class TaskExecutor:
             """Gathers detailed operational statistics about the executor."""
             tasks_completed = 0
             tasks_failed = 0
-            # Usa un dizionario per tracciare le statistiche per agente
-            # agent_id -> {"completed": count, "failed": count, "total_cost": float, "name": str, "role": str}
             agent_activity: Dict[str, Dict[str, Any]] = {}
 
             # Processa il log di esecuzione per contare successi e fallimenti
             for log_entry in self.execution_log:
                 event = log_entry.get("event")
                 agent_id = log_entry.get("agent_id")
-                task_id = log_entry.get("task_id") # Utile per debug
+                task_id = log_entry.get("task_id")
 
-                # Ignora eventi senza agent_id per le statistiche per agente
+                # FIX: Conta TUTTI i task completati/falliti, non solo quelli senza agent_id
+                if event == "task_completed":
+                    tasks_completed += 1
+                elif event == "task_failed":
+                    tasks_failed += 1
+
+                # Continua solo se c'è un agent_id per le statistiche per agente
                 if not agent_id:
-                    if event == "task_completed": tasks_completed += 1
-                    elif event == "task_failed": tasks_failed += 1
                     continue
 
                 # Inizializza le statistiche per l'agente se non già presenti
@@ -781,59 +779,44 @@ class TaskExecutor:
                     agent_activity[agent_id] = {
                         "completed": 0,
                         "failed": 0,
-                        "total_cost": 0.0, # Verrà aggiornato dal budget tracker
-                        "name": "Unknown", # Placeholder, idealmente arricchito dopo
-                        "role": "Unknown"   # Placeholder
+                        "total_cost": 0.0,
+                        "name": "Unknown",
+                        "role": "Unknown"
                     }
 
-                # Aggiorna i conteggi
+                # Aggiorna i conteggi per agente
                 if event == "task_completed":
-                    tasks_completed += 1
                     agent_activity[agent_id]["completed"] += 1
                 elif event == "task_failed":
-                    tasks_failed += 1
                     agent_activity[agent_id]["failed"] += 1
 
             # Arricchisci le statistiche degli agenti con il costo totale dal BudgetTracker
-            # e potenzialmente nome/ruolo (anche se recuperare qui può essere lento)
             all_agent_ids_in_stats = list(agent_activity.keys())
-            # Potrebbe essere necessario un loop async qui se get_agent è async e vogliamo i nomi/ruoli aggiornati
-            # Ma per ora, usiamo solo i dati del budget tracker che sono sincroni
             for agent_id in all_agent_ids_in_stats:
                  agent_total_cost = self.budget_tracker.get_agent_total_cost(agent_id)
                  agent_activity[agent_id]["total_cost"] = round(agent_total_cost, 6)
-                 # Recuperare nome/ruolo qui richiederebbe chiamate al DB (potenzialmente async)
-                 # Sarebbe meglio se il log contenesse già queste info o avere una cache agent_id -> details
-                 # agent_db_data = await get_agent(agent_id) # Non si può fare await qui direttamente
-                 # if agent_db_data:
-                 #    agent_activity[agent_id]["name"] = agent_db_data.get("name", "N/A")
-                 #    agent_activity[agent_id]["role"] = agent_db_data.get("role", "N/A")
-
 
             # Stato attuale dell'executor
             current_status = "stopped"
             if self.running:
                 current_status = "paused" if self.paused else "running"
 
-
             return {
                 "executor_status": current_status,
                 "tasks_in_queue": self.task_queue.qsize(),
-                "queue_capacity": self.max_queue_size,
                 "tasks_actively_processing": self.active_tasks_count,
                 "max_concurrent_tasks": self.max_concurrent_tasks,
                 "total_execution_log_entries": len(self.execution_log),
-                "session_task_stats": { # Statistiche dall'inizio dell'istanza corrente
+                # FIX: Rinomina per essere coerente con il frontend
+                "session_stats": { 
                     "tasks_completed_successfully": tasks_completed,
                     "tasks_failed": tasks_failed,
+                    "agent_activity": agent_activity
                 },
-                 "agent_activity_summary": agent_activity, # Dettaglio per agente
-                 "budget_tracker_summary": {
-                     "tracked_agents_count": len(self.budget_tracker.usage_log),
-                     # Potresti aggiungere un costo totale aggregato qui se utile
-                     # "total_session_cost": sum(agent_stats["total_cost"] for agent_stats in agent_activity.values())
-                 },
-                 "auto_generation_summary": self.get_auto_generation_stats() # Include le stats specifiche di auto-gen
+                "budget_tracker_stats": {
+                    "tracked_agents_count": len(self.budget_tracker.usage_log),
+                },
+                "auto_generation_summary": self.get_auto_generation_stats()
             }
 
 

@@ -199,10 +199,15 @@ async def get_executor_runtime_status_endpoint(): # Nome funzione univoco
     }
 
 @router.get("/executor/detailed-stats", response_model=Dict[str, Any])
-async def get_executor_detailed_stats_endpoint(): # Nome funzione univoco
+async def get_executor_detailed_stats_endpoint():
     """Get detailed statistics from the task executor."""
     try:
         stats = task_executor.get_detailed_stats()
+        
+        # FIX: Mappa session_task_stats a session_stats per compatibilità frontend
+        if "session_task_stats" in stats and "session_stats" not in stats:
+            stats["session_stats"] = stats.pop("session_task_stats")
+        
         return stats
     except Exception as e:
         logger.error(f"Error getting detailed executor stats: {e}", exc_info=True)
