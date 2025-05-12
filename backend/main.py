@@ -18,6 +18,7 @@ from routes.workspaces import router as workspace_router
 from routes.director import router as director_router
 from routes.agents import router as agents_router
 from routes.tools import router as tools_router
+from routes.monitoring import router as monitoring_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -47,6 +48,7 @@ app.include_router(workspace_router)
 app.include_router(director_router)
 app.include_router(agents_router)
 app.include_router(tools_router)
+app.include_router(monitoring_router)
 
 # Health check endpoint
 @app.get("/health")
@@ -61,19 +63,28 @@ async def root():
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting application")
+    logger.info("Starting AI Team Orchestrator")
     
     # Initialize tool registry
+    logger.info("Initializing tool registry...")
     await tool_registry.initialize()
     
     # Start task executor
+    logger.info("Starting task executor...")
     await start_task_executor()
+    
+    logger.info("Application startup complete")
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.info("Shutting down application")
+    logger.info("Shutting down AI Team Orchestrator")
+    
+    # Stop task executor
+    logger.info("Stopping task executor...")
     await stop_task_executor()
+    
+    logger.info("Application shutdown complete")
 
 if __name__ == "__main__":
     import uvicorn

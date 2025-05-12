@@ -232,7 +232,37 @@ async def delete_workspace(workspace_id: str):
     except Exception as e:
         logger.error(f"Error deleting workspace: {e}")
         raise
+        
+async def update_workspace_status(workspace_id: str, status: str):
+    """Update workspace status"""
+    try:
+        result = supabase.table("workspaces").update({
+            "status": status
+        }).eq("id", workspace_id).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error updating workspace status: {e}")
+        raise
 
+async def get_active_workspaces():
+    """Get all active workspaces"""
+    try:
+        result = supabase.table("workspaces").select("id").eq("status", "active").execute()
+        return [workspace["id"] for workspace in result.data] if result.data else []
+    except Exception as e:
+        logger.error(f"Error getting active workspaces: {e}")
+        raise
+
+async def get_workspaces_with_pending_tasks():
+    """Get workspace IDs that have pending tasks"""
+    try:
+        result = supabase.table("tasks").select("workspace_id").eq("status", "pending").execute()
+        workspace_ids = list(set([task["workspace_id"] for task in result.data])) if result.data else []
+        return workspace_ids
+    except Exception as e:
+        logger.error(f"Error getting workspaces with pending tasks: {e}")
+        raise
+        
 async def save_team_proposal(workspace_id: str, proposal_data: Dict[str, Any]):
     try:
         result = supabase.table("team_proposals").insert({

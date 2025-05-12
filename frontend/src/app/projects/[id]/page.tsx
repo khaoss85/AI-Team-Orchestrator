@@ -5,18 +5,17 @@ import Link from 'next/link';
 import { api } from '@/utils/api';
 import { Workspace, Agent, Task } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
+import MonitoringDashboard from '@/components/MonitoringDashboard';
 import { useRouter } from 'next/navigation';
 
-
 type Props = {
-  params: Promise<{ id: string }>; // Indica che params è una Promise che risolverà in un oggetto { id: string }
+  params: Promise<{ id: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
 export default function ProjectDetailPage({ params: paramsPromise, searchParams }: Props) {
-  // Usa React.use() per "sbloccare" la Promise dei parametri
   const params = use(paramsPromise);
-  const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
+  const { id } = params;
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -25,6 +24,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isStartingTeam, setIsStartingTeam] = useState(false);
   const router = useRouter();
   
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         setAgents(agentsData);
         
         // In a real implementation, we would fetch tasks too
-        // const tasksData = await api.tasks.list(params.id);
+        // const tasksData = await api.tasks.list(id);
         // setTasks(tasksData);
         
         setError(null);
@@ -51,7 +51,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         
         // Per test, mostra dati fittizi
         setWorkspace({
-          id: params.id,
+          id: id,
           name: 'Progetto Marketing Digitale',
           description: 'Campagna di marketing sui social media',
           user_id: '123e4567-e89b-12d3-a456-426614174000',
@@ -65,7 +65,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         setAgents([
           {
             id: '1',
-            workspace_id: params.id,
+            workspace_id: id,
             name: 'Project Manager',
             role: 'Project Management',
             seniority: 'expert',
@@ -77,7 +77,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
           },
           {
             id: '2',
-            workspace_id: params.id,
+            workspace_id: id,
             name: 'Content Specialist',
             role: 'Content Creation',
             seniority: 'senior',
@@ -89,7 +89,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
           },
           {
             id: '3',
-            workspace_id: params.id,
+            workspace_id: id,
             name: 'Data Analyst',
             role: 'Data Analysis',
             seniority: 'senior',
@@ -104,7 +104,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         setTasks([
           {
             id: '1',
-            workspace_id: params.id,
+            workspace_id: id,
             agent_id: '1',
             name: 'Pianificazione campagna',
             description: 'Creare un piano per la campagna di marketing',
@@ -114,7 +114,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
           },
           {
             id: '2',
-            workspace_id: params.id,
+            workspace_id: id,
             agent_id: '2',
             name: 'Creazione contenuti social',
             description: 'Creare contenuti per i social media',
@@ -124,7 +124,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
           },
           {
             id: '3',
-            workspace_id: params.id,
+            workspace_id: id,
             agent_id: '3',
             name: 'Analisi dati utenti',
             description: 'Analizzare i dati degli utenti per identificare target',
@@ -139,7 +139,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
     };
     
     fetchProjectData();
-  }, [params.id]);
+  }, [id]);
   
   const getStatusLabel = (status: string) => {
     switch(status) {
@@ -166,27 +166,53 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-    
-const handleDeleteProject = async () => {
-  if (!workspace) return;
   
-  try {
-    setIsDeleting(true);
-    const success = await api.workspaces.delete(workspace.id);
+  const handleStartTeam = async () => {
+    if (!workspace) return;
     
-    if (success) {
-      router.push('/projects');
-    } else {
-      setError('Impossibile eliminare il progetto. Riprova più tardi.');
-      setIsDeleteModalOpen(false);
+    try {
+      setIsStartingTeam(true);
+      await api.monitoring.startTeam(workspace.id);
+      
+      // Update workspace status locally
+      setWorkspace(prev => prev ? { ...prev, status: 'active' } : null);
+      
+      // Show success message
+      setError(null);
+      
+      // Optionally refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Failed to start team:', err);
+      setError('Impossibile avviare il team. Riprova più tardi.');
+    } finally {
+      setIsStartingTeam(false);
     }
-  } catch (err) {
-    console.error('Failed to delete project:', err);
-    setError(err instanceof Error ? err.message : 'Si è verificato un errore durante l\'eliminazione del progetto');
-  } finally {
-    setIsDeleting(false);
-  }
-};
+  };
+    
+  const handleDeleteProject = async () => {
+    if (!workspace) return;
+    
+    try {
+      setIsDeleting(true);
+      const success = await api.workspaces.delete(workspace.id);
+      
+      if (success) {
+        router.push('/projects');
+      } else {
+        setError('Impossibile eliminare il progetto. Riprova più tardi.');
+        setIsDeleteModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+      setError(err instanceof Error ? err.message : 'Si è verificato un errore durante l\'eliminazione del progetto');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   
   const getHealthColor = (health: string) => {
     switch(health) {
@@ -282,15 +308,38 @@ const handleDeleteProject = async () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-medium mb-4">Azioni</h2>
               <div className="space-y-3">
+                {workspace.status === 'created' && (
+                  <button 
+                    onClick={handleStartTeam}
+                    disabled={isStartingTeam}
+                    className="w-full py-2 px-4 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isStartingTeam ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
+                        Avvio in corso...
+                      </>
+                    ) : (
+                      'Avvia Team'
+                    )}
+                  </button>
+                )}
+                
                 <button className="w-full py-2 px-4 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition">
                   Aggiungi Attività
                 </button>
-                <button className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition">
+                
+                <Link 
+                  href={`/projects/${workspace.id}/team`}
+                  className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition block text-center"
+                >
                   Gestisci Agenti
-                </button>
+                </Link>
+                
                 <button className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition">
                   Visualizza Logs
                 </button>
+                
                 <button 
                   onClick={() => setIsDeleteModalOpen(true)}
                   className="w-full py-2 px-4 bg-red-50 border border-red-300 text-red-700 text-sm rounded-md hover:bg-red-100 transition"
@@ -367,19 +416,21 @@ const handleDeleteProject = async () => {
               </div>
             </div>
           </div>
-                  {workspace && (
-  <ConfirmModal
-    isOpen={isDeleteModalOpen}
-    title="Elimina progetto"
-    message={`Sei sicuro di voler eliminare il progetto "${workspace.name}"? Questa azione eliminerà anche tutti gli agenti e i dati associati. Questa azione non può essere annullata.`}
-    confirmText={isDeleting ? "Eliminazione..." : "Elimina"}
-    cancelText="Annulla"
-    onConfirm={handleDeleteProject}
-    onCancel={() => setIsDeleteModalOpen(false)}
-  />
-)}
+          
+          {/* Monitoring Dashboard */}
+          <MonitoringDashboard workspaceId={id} />
         </>
       )}
+      
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Elimina progetto"
+        message={`Sei sicuro di voler eliminare il progetto "${workspace?.name}"? Questa azione eliminerà anche tutti gli agenti e i dati associati. Questa azione non può essere annullata.`}
+        confirmText={isDeleting ? "Eliminazione..." : "Elimina"}
+        cancelText="Annulla"
+        onConfirm={handleDeleteProject}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 }

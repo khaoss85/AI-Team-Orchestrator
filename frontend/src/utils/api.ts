@@ -33,6 +33,73 @@ const handleApiError = (error: unknown) => {
 };
 
 export const api = {
+  // Utility method exposed
+  getBaseUrl,
+  
+  // API Monitoring
+  monitoring: {
+    getWorkspaceActivity: async (workspaceId: string, limit: number = 20): Promise<any[]> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/activity?limit=${limit}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    getWorkspaceBudget: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/budget`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    getWorkspaceStatus: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/status`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    startTeam: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/start`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    getGlobalActivity: async (limit: number = 50): Promise<any[]> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/global/activity?limit=${limit}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    }
+  },
   // API Workspace
   workspaces: {
     list: async (userId: string): Promise<Workspace[]> => {
