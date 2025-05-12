@@ -20,7 +20,7 @@ from models import (
     Task,
     TaskStatus
 )
-from database import update_agent_status, update_task_status
+from database import update_agent_status, update_task_status, create_task, list_agents
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,21 @@ class ToolCreationOutput(BaseModel):
     tool_id: Optional[str] = None
     error_message: Optional[str] = None
     validation_results: Optional[Dict[str, Any]] = None
+
+class TaskCreationOutput(BaseModel):
+    """Output strutturato per la creazione di task"""
+    success: bool
+    task_id: Optional[str] = None
+    task_name: str
+    assigned_agent: Optional[str] = None
+    error_message: Optional[str] = None
+
+class HandoffRequest(BaseModel):
+    """Richiesta di handoff strutturata"""
+    target_agent_role: str
+    context: str
+    priority: Literal["low", "medium", "high"] = "medium"
+    expected_output: Optional[str] = None
 
 # ==============================================================================
 # GUARDRAIL
@@ -132,7 +147,7 @@ async def quality_assurance_guardrail(
 # ==============================================================================
 
 class SpecialistAgent:
-    """Advanced Specialist Agent with structured outputs and guardrails"""
+    """Advanced Specialist Agent with automated task creation and handoffs"""
     
     def __init__(self, agent_data: AgentModel):
         """
@@ -146,7 +161,7 @@ class SpecialistAgent:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")
         
-        # Mapping of seniority to model (aggiornato per GPT-4.1)
+        # Mapping of seniority to model
         self.seniority_model_map = {
             "junior": "gpt-4-turbo",      # Più economico per attività base
             "senior": "gpt-4.1-mini",     # Buon compromesso costo/prestazioni
@@ -163,10 +178,14 @@ class SpecialistAgent:
         self.agent = self._create_agent()
     
     def _initialize_tools(self) -> List[Any]:
-        """Initialize the tools for this agent based on its configuration"""
-        # Base tools - create tool wrappers for OpenAI Agent
+        """Initialize the tools for this agent including automation tools"""
+        # Base tools with new automation capabilities
         tools = [
-            # These are function tools that will be made available to the LLM
+            # Automation tools
+            self._create_auto_task_tool(),
+            self._create_request_handoff_tool(),
+            
+            # Standard tools
             self._create_log_execution_tool(),
             self._create_update_health_status_tool(),
             self._create_report_progress_tool(),
@@ -193,8 +212,8 @@ class SpecialistAgent:
             # Convert tools configuration to actual function tools
             for tool_config in self.agent_data.tools:
                 if isinstance(tool_config, dict) and 'name' in tool_config:
-                    # Qui potresti implementare la logica per creare tool dinamici
-                    # basati sulla configurazione
+                    # Here you could implement logic to create dynamic tools
+                    # based on configuration
                     pass
         
         return tools
@@ -223,7 +242,7 @@ class SpecialistAgent:
     ):
         """Callback per gestire l'escalation handoff"""
         logger.info(f"Agent {self.agent_data.id} escalating: {input_data}")
-        # Implementa logica di escalation (notifiche, logging, ecc.)
+        # Implement escalation logic
     
     def _create_agent(self) -> OpenAIAgent:
         """Create the OpenAI Agent with the appropriate configuration"""
@@ -259,7 +278,7 @@ class SpecialistAgent:
         )
     
     def _create_system_prompt(self) -> str:
-        """Create an enhanced system prompt"""
+        """Create an enhanced system prompt with automation capabilities"""
         base_prompt = self.agent_data.system_prompt if self.agent_data.system_prompt else f"""
         You are a {self.agent_data.seniority} AI agent specializing in {self.agent_data.role}.
         
@@ -278,10 +297,33 @@ class SpecialistAgent:
         5. Recommend next steps when appropriate
         """
         
+        # Add automation guidance
+        base_prompt += """
+        
+        AUTOMATION CAPABILITIES:
+        You have powerful automation tools at your disposal:
+        
+        1. create_task_for_agent: Create new tasks for other specialists
+           - Use this when you identify work that needs specific expertise
+           - Be specific about the task and target role
+           - Include priority and context
+        
+        2. request_handoff: Hand off work to another agent
+           - Use when you need to pass work to a specialist
+           - Provide clear context and data transfer
+           - Specify the target role and expected output
+        
+        IMPORTANT: When you complete a task, if you identify follow-up work:
+        - Create specific tasks for the appropriate specialists
+        - Use handoffs to transfer context and data
+        - Don't wait for manual intervention - be proactive!
+        """
+        
         # Add tool creation guidance
         if self.agent_data.can_create_tools:
             base_prompt += """
             
+            TOOL CREATION:
             You can create custom tools when needed:
             1. Assess if existing tools are sufficient
             2. Design new tools with clear interfaces
@@ -293,17 +335,198 @@ class SpecialistAgent:
         # Add handoff guidance
         base_prompt += """
         
-        When collaborating with other agents:
-        - Use handoffs for specialized expertise
+        COLLABORATION:
+        When working with other agents:
+        - Use automation tools to delegate work efficiently
         - Provide clear context and requirements
         - Escalate when tasks exceed your capabilities
-        - Maintain conversation continuity
+        - Maintain conversation continuity through proper handoffs
+        - Be proactive in identifying and creating follow-up tasks
         """
         
         return base_prompt
     
     # ==============================================================================
-    # INTERNAL METHODS (Not decorated, for internal use)
+    # AUTOMATION TOOLS
+    # ==============================================================================
+    
+    def _create_auto_task_tool(self):
+        """Create a tool for automatic task creation"""
+        @function_tool
+        async def create_task_for_agent(
+            task_name: str,
+            task_description: str,
+            target_agent_role: str,
+            priority: str = "medium"
+        ) -> str:
+            """
+            Create a new task and assign it to a specific agent role.
+            
+            Args:
+                task_name: Name of the task to create
+                task_description: Detailed description of the task
+                target_agent_role: Role of the agent who should handle this task
+                priority: Priority of the task (low, medium, high)
+            
+            Returns:
+                JSON string with creation result
+            """
+            try:
+                # Find the target agent by role
+                agents = await list_agents(str(self.agent_data.workspace_id))
+                target_agent = None
+                
+                for agent in agents:
+                    if target_agent_role.lower() in agent["role"].lower():
+                        target_agent = agent
+                        break
+                
+                if not target_agent:
+                    return json.dumps(TaskCreationOutput(
+                        success=False,
+                        task_name=task_name,
+                        error_message=f"No agent found with role matching '{target_agent_role}'"
+                    ).model_dump())
+                
+                # Create the task
+                task_data = await create_task(
+                    workspace_id=str(self.agent_data.workspace_id),
+                    agent_id=target_agent["id"],
+                    name=task_name,
+                    description=f"{task_description}\n\nPriority: {priority}\nCreated by: {self.agent_data.name}",
+                    status=TaskStatus.PENDING.value
+                )
+                
+                if task_data:
+                    # Log the task creation
+                    await self._log_execution_internal(
+                        "task_created",
+                        json.dumps({
+                            "created_task_id": task_data["id"],
+                            "task_name": task_name,
+                            "assigned_to": target_agent["name"],
+                            "priority": priority
+                        })
+                    )
+                    
+                    return json.dumps(TaskCreationOutput(
+                        success=True,
+                        task_id=task_data["id"],
+                        task_name=task_name,
+                        assigned_agent=target_agent["name"]
+                    ).model_dump())
+                else:
+                    return json.dumps(TaskCreationOutput(
+                        success=False,
+                        task_name=task_name,
+                        error_message="Failed to create task in database"
+                    ).model_dump())
+                
+            except Exception as e:
+                logger.error(f"Error creating task: {e}")
+                return json.dumps(TaskCreationOutput(
+                    success=False,
+                    task_name=task_name,
+                    error_message=str(e)
+                ).model_dump())
+        
+        return create_task_for_agent
+    
+    def _create_request_handoff_tool(self):
+        """Create a tool for requesting handoffs to other agents"""
+        @function_tool
+        async def request_handoff(
+            target_role: str,
+            context: str,
+            data_to_transfer: str,
+            priority: str = "medium"
+        ) -> str:
+            """
+            Request a handoff to another agent with specific context and data.
+            
+            Args:
+                target_role: Role of the target agent for handoff
+                context: Context and reason for the handoff
+                data_to_transfer: Information to pass to the target agent
+                priority: Priority of the handoff (low, medium, high)
+            
+            Returns:
+                JSON string with handoff result
+            """
+            try:
+                # Log the handoff request
+                await self._log_execution_internal(
+                    "handoff_requested",
+                    json.dumps({
+                        "target_role": target_role,
+                        "context": context,
+                        "priority": priority,
+                        "requesting_agent": self.agent_data.name
+                    })
+                )
+                
+                # Create a task for the target agent with handoff context
+                task_description = f"""
+                HANDOFF FROM: {self.agent_data.name} ({self.agent_data.role})
+                
+                CONTEXT: {context}
+                
+                DATA/INFORMATION TRANSFERRED:
+                {data_to_transfer}
+                
+                PRIORITY: {priority}
+                
+                Please continue the work based on the information provided above.
+                """
+                
+                # Use the auto task creation
+                agents = await list_agents(str(self.agent_data.workspace_id))
+                target_agent = None
+                
+                for agent in agents:
+                    if target_role.lower() in agent["role"].lower():
+                        target_agent = agent
+                        break
+                
+                if not target_agent:
+                    return json.dumps({
+                        "success": False,
+                        "error": f"No agent found with role matching '{target_role}'"
+                    })
+                
+                # Create the handoff task
+                task_data = await create_task(
+                    workspace_id=str(self.agent_data.workspace_id),
+                    agent_id=target_agent["id"],
+                    name=f"Handoff from {self.agent_data.name}",
+                    description=task_description,
+                    status=TaskStatus.PENDING.value
+                )
+                
+                if task_data:
+                    return json.dumps({
+                        "success": True,
+                        "task_id": task_data["id"],
+                        "target_agent": target_agent["name"],
+                        "handoff_type": "task_creation"
+                    })
+                else:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Failed to create handoff task"
+                    })
+                
+            except Exception as e:
+                logger.error(f"Error requesting handoff: {e}")
+                return json.dumps({
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        return request_handoff
+    
+    # ==============================================================================
+    # INTERNAL METHODS
     # ==============================================================================
     
     async def _log_execution_internal(self, step: str, details: str) -> bool:
@@ -406,7 +629,7 @@ class SpecialistAgent:
             return False
     
     # ==============================================================================
-    # TOOL CREATORS (Create function_tool wrappers)
+    # TOOL CREATORS
     # ==============================================================================
     
     def _create_log_execution_tool(self):
@@ -669,7 +892,7 @@ class SpecialistAgent:
     
     async def execute_task(self, task: Task) -> Dict[str, Any]:
         """
-        Execute a task assigned to this agent with structured output.
+        Execute a task with enhanced automation capabilities.
         
         Args:
             task: The task to execute
@@ -694,27 +917,39 @@ class SpecialistAgent:
                 })
             )
             
-            # Create enhanced task prompt
+            # Enhanced task prompt with automation capabilities
             task_prompt = f"""
-            Execute the following task with precision and efficiency:
+            Execute the following task with full automation capabilities:
             
             Task: {task.name}
             Description: {task.description}
             
-            Requirements:
-            1. Provide a clear summary of what was accomplished
-            2. Include detailed results with relevant data
-            3. Suggest logical next steps
-            4. Report any issues or limitations encountered
-            5. Estimate resources used
+            AUTOMATION TOOLS AVAILABLE:
+            1. create_task_for_agent: Create new tasks for specialists
+            2. request_handoff: Hand off work to other agents
+            3. log_execution: Log your progress
+            4. report_progress: Report detailed progress
             
-            Use your tools effectively and maintain high quality standards.
+            IMPORTANT INSTRUCTIONS:
+            - If this task involves multiple phases, create specific tasks for each phase
+            - If you identify work that needs specific expertise, delegate it immediately
+            - If you complete your part but need follow-up, create those tasks now
+            - Use handoffs when you need to transfer context and data to others
+            - Be proactive - don't wait for manual intervention
+            
+            After completing your work:
+            1. Analyze what needs to happen next
+            2. Create specific tasks for other specialists if needed
+            3. Use handoffs to transfer work with proper context
+            4. Provide a comprehensive summary of actions taken
+            
+            Execute the task and handle all automation proactively.
             """
             
             # Execute the task
             result = await Runner.run(self.agent, task_prompt)
             
-            # Process the structured output
+            # Process the result
             if isinstance(result.final_output, TaskExecutionOutput):
                 task_output = result.final_output
                 task_result = {
@@ -730,7 +965,12 @@ class SpecialistAgent:
                 # Fallback for unstructured output
                 task_result = {
                     "output": result.final_output,
-                    "status": "completed"
+                    "status": "completed",
+                    "automation_actions": {
+                        "tasks_created": [],
+                        "handoffs_requested": [],
+                        "next_steps_identified": []
+                    }
                 }
             
             # Update task status with structured result
@@ -811,5 +1051,6 @@ class SpecialistAgent:
             "guardrails_active": {
                 "input": len(self.agent.input_guardrails) > 0,
                 "output": len(self.agent.output_guardrails) > 0
-            }
+            },
+            "automation_enabled": True
         }
