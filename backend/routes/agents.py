@@ -12,6 +12,7 @@ from models import (
 )
 from database import (
     create_agent,
+    update_agent,
     list_agents,
     update_agent_status,
     create_task,
@@ -60,6 +61,48 @@ async def get_workspace_agents(workspace_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get agents: {str(e)}"
+        )
+        
+@router.put("/{workspace_id}/{agent_id}", response_model=Agent)
+async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: AgentUpdate):
+    """Update an agent's configuration"""
+    try:
+        # Verifica che l'agente esista e appartenga al workspace
+        agents = await list_agents(str(workspace_id))
+        agent = next((a for a in agents if a["id"] == str(agent_id)), None)
+        
+        if not agent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Agent not found"
+            )
+        
+        # Prepara i dati per l'update (solo i campi forniti)
+        update_data = {}
+        for field, value in agent_update.model_dump(exclude_unset=True).items():
+            if value is not None:
+                if field == "seniority" and hasattr(value, "value"):
+                    update_data[field] = value.value
+                else:
+                    update_data[field] = value
+        
+        # Aggiorna l'agente
+        updated_agent = await update_agent(str(agent_id), update_data)
+        
+        if not updated_agent:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update agent"
+            )
+        
+        return Agent.model_validate(updated_agent)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating agent: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update agent: {str(e)}"
         )
 
 @router.post("/{workspace_id}/verify", status_code=status.HTTP_200_OK)

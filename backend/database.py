@@ -93,7 +93,7 @@ async def create_agent(workspace_id: str, name: str, role: str, seniority: str, 
         if system_prompt:
             data["system_prompt"] = system_prompt
         if llm_config:
-            data["model_config"] = llm_config
+            data["llm_config"] = llm_config  # FIXED: Era "model_config" ora è "llm_config"
         if tools:
             data["tools"] = tools
             
@@ -110,6 +110,18 @@ async def list_agents(workspace_id: str):
         return result.data
     except Exception as e:
         logger.error(f"Error listing agents: {e}")
+        raise
+        
+async def update_agent(agent_id: str, data: Dict[str, Any]):
+    """Update an agent with new data"""
+    try:
+        # Rimuovi i campi che non possono essere aggiornati
+        update_data = {k: v for k, v in data.items() if k not in ['id', 'workspace_id', 'created_at', 'updated_at']}
+        
+        result = supabase.table("agents").update(update_data).eq("id", agent_id).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error updating agent: {e}")
         raise
 
 async def update_agent_status(agent_id: str, status: str, health: dict = None):
@@ -259,4 +271,40 @@ async def approve_team_proposal(proposal_id: str):
         return result.data[0] if result.data else None
     except Exception as e:
         logger.error(f"Error approving team proposal: {e}")
+        raise
+
+async def create_handoff(source_agent_id: str, target_agent_id: str, description: str = None):
+    """Create a new handoff between agents"""
+    try:
+        data = {
+            "source_agent_id": source_agent_id,
+            "target_agent_id": target_agent_id
+        }
+        if description:
+            data["description"] = description
+            
+        result = supabase.table("agent_handoffs").insert(data).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.error(f"Error creating handoff: {e}")
+        raise
+
+async def list_handoffs(workspace_id: str):
+    """List all handoffs for agents in a workspace"""
+    try:
+        # Join con la tabella agents per ottenere solo handoffs del workspace
+        result = supabase.table("agent_handoffs").select("""
+            *,
+            source_agent:source_agent_id(workspace_id),
+            target_agent:target_agent_id(workspace_id)
+        """).execute()
+        
+        # Filtra solo handoffs del workspace specificato
+        handoffs = [
+            handoff for handoff in result.data 
+            if handoff.get("source_agent", {}).get("workspace_id") == workspace_id
+        ]
+        return handoffs
+    except Exception as e:
+        logger.error(f"Error listing handoffs: {e}")
         raise

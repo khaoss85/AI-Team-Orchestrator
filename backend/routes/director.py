@@ -3,7 +3,8 @@ from database import (
     save_team_proposal, 
     get_team_proposal, 
     approve_team_proposal,
-    create_agent  # Aggiungi questo import
+    create_agent,
+    create_handoff
 )
 from typing import List, Dict, Any, Optional
 from uuid import UUID
@@ -74,6 +75,8 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
         
         # Create agents in the database
         created_agents = []
+        agent_name_to_id = {}  # Mappa nome -> ID per risolvere gli handoffs
+        
         for agent_create in proposal.agents:
             logger.info(f"Creating agent: {agent_create.name}")
             
@@ -91,20 +94,52 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
             
             created_agent = await create_agent(**agent_data)
             created_agents.append(created_agent)
+            agent_name_to_id[agent_create.name] = created_agent['id']
             logger.info(f"Created agent {created_agent['id']}: {created_agent['name']}")
         
-        # TODO: Create handoffs in the database
-        # Per ora loggiamo i handoffs previsti
-        logger.info(f"Handoffs to be created: {len(proposal.handoffs)}")
+        # Create handoffs in the database
+        logger.info(f"Creating {len(proposal.handoffs)} handoffs...")
+        created_handoffs = []
+        
         for handoff in proposal.handoffs:
-            logger.info(f"Handoff: {handoff.description}")
+            try:
+                # Gli handoffs nel proposal usano source_agent_name e target_agent_name
+                # dobbiamo convertirli in ID degli agenti creati
+                source_agent_id = None
+                target_agent_id = None
+                
+                # Cerca l'ID basato sul nome dell'agente
+                if hasattr(handoff, 'source_agent_name'):
+                    source_agent_id = agent_name_to_id.get(handoff.source_agent_name)
+                if hasattr(handoff, 'target_agent_name'):  
+                    target_agent_id = agent_name_to_id.get(handoff.target_agent_name)
+                
+                # Se non abbiamo nomi, prova con gli UUID (fallback)
+                if not source_agent_id and hasattr(handoff, 'source_agent_id'):
+                    source_agent_id = str(handoff.source_agent_id)
+                if not target_agent_id and hasattr(handoff, 'target_agent_id'):
+                    target_agent_id = str(handoff.target_agent_id)
+                
+                if source_agent_id and target_agent_id:
+                    created_handoff = await create_handoff(
+                        source_agent_id=source_agent_id,
+                        target_agent_id=target_agent_id,
+                        description=handoff.description
+                    )
+                    created_handoffs.append(created_handoff)
+                    logger.info(f"Created handoff from {source_agent_id} to {target_agent_id}")
+                else:
+                    logger.warning(f"Could not resolve agent IDs for handoff: {handoff.description}")
+            except Exception as e:
+                logger.error(f"Error creating handoff: {e}")
         
         return {
             "status": "success",
             "message": "Team approved and created",
             "workspace_id": str(workspace_id),
             "proposal_id": str(proposal_id),
-            "created_agents": [agent['id'] for agent in created_agents]
+            "created_agents": [agent['id'] for agent in created_agents],
+            "created_handoffs": [handoff['id'] for handoff in created_handoffs if handoff]
         }
     except HTTPException:
         raise

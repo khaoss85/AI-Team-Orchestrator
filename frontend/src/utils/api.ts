@@ -123,6 +123,24 @@ export const api = {
         return handleApiError(error);
       }
     },
+        
+    update: async (workspaceId: string, agentId: string, data: Partial<AgentCreateData>): Promise<Agent> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/${agentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
     
     verify: async (workspaceId: string): Promise<any> => {
       try {
