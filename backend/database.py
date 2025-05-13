@@ -4,6 +4,7 @@ from supabase import create_client, Client
 import logging
 from typing import Optional, Dict, Any, List
 from uuid import UUID
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
