@@ -7,6 +7,8 @@ import { Workspace, Agent, Task, ExecutorStatus, ExecutorDetailedStats } from '@
 import ConfirmModal from '@/components/ConfirmModal';
 import MonitoringDashboard from '@/components/MonitoringDashboard';
 import HumanFeedbackDashboard from '@/components/HumanFeedbackDashboard';
+import ProjectInsightsDashboard from '@/components/ProjectInsightsDashboard';
+
 import { useRouter } from 'next/navigation';
 
 type Props = {
@@ -351,77 +353,60 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
             </div>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium">Team di Agenti</h2>
-                <Link 
-                  href={`/projects/${workspace.id}/team`}
-                  className="text-indigo-600 text-sm hover:underline"
-                >
-                  Visualizza tutti
-                </Link>
-              </div>
-              
-              <div className="space-y-4">
-                {agents.slice(0, 3).map((agent) => (
-                  <div key={agent.id} className="border-b pb-4 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium">{agent.name}</h3>
-                        <p className="text-gray-600 text-sm">{agent.role}</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(agent.status)}`}>
-                          {getStatusLabel(agent.status)}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${getHealthColor(agent.health.status)}`}>
-                          {agent.health.status}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">{agent.description}</p>
-                  </div>
-                ))}
-              </div>
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-lg font-medium">Team di Agenti</h2>
+      <Link 
+        href={`/projects/${workspace.id}/team`}
+        className="text-indigo-600 text-sm hover:underline"
+      >
+        Visualizza tutti
+      </Link>
+    </div>
+    
+    <div className="space-y-4">
+      {agents.slice(0, 3).map((agent) => (
+        <div key={agent.id} className="border-b pb-4 last:border-0 last:pb-0">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="font-medium">{agent.name}</h3>
+              <p className="text-gray-600 text-sm">{agent.role}</p>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium">Attività Recenti</h2>
-                <Link 
-                  href={`/projects/${workspace.id}/tasks`}
-                  className="text-indigo-600 text-sm hover:underline"
-                >
-                  Visualizza tutte
-                </Link>
-              </div>
-              
-              <div className="space-y-4">
-                {tasks.slice(0, 3).map((task) => (
-                  <div key={task.id} className="border-b pb-4 last:border-0 last:pb-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-medium">{task.name}</h3>
-                        <p className="text-gray-600 text-sm">
-                          Agente: {agents.find(a => a.id === task.agent_id)?.name || 'Sconosciuto'}
-                        </p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
-                        {getStatusLabel(task.status)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">{task.description}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="flex space-x-2">
+              <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(agent.status)}`}>
+                {getStatusLabel(agent.status)}
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full ${getHealthColor(agent.health.status)}`}>
+                {agent.health.status}
+              </span>
             </div>
           </div>
-          
-          {/* Monitoring Dashboard */}
-            {workspace && agents.length > 0 && ( // Passa agents allo MonitoringDashboard
-            <MonitoringDashboard workspaceId={id} agentsInWorkspace={agents} />
-            )}
+          <p className="text-sm text-gray-600">{agent.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+  
+  {/* SOSTITUISCI la vecchia sezione Attività Recenti con questa: */}
+  <div className="space-y-6">
+    <ProjectInsightsDashboard workspaceId={id} />
+    
+    <div className="text-center">
+      <Link 
+        href={`/projects/${id}/tasks`}
+        className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+      >
+        📋 Visualizza Tutte le Attività
+      </Link>
+    </div>
+  </div>
+</div>
+
+{/* Monitoring Dashboard */}
+{workspace && agents.length > 0 && (
+  <MonitoringDashboard workspaceId={id} agentsInWorkspace={agents} />
+)}
             {workspace && agents.length === 0 && loading && ( // Gestisci il caso in cui gli agenti non sono ancora caricati
             <p>Caricamento dati agenti per il dashboard...</p>
             )}
