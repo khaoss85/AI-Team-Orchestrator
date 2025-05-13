@@ -8,6 +8,8 @@ import {
   DirectorConfig,
   DirectorTeamProposal,
   Handoff,
+  FeedbackRequest, 
+  FeedbackResponse
 } from '@/types';
 
 // Determina l'URL base dell'API in base all'ambiente
@@ -147,6 +149,49 @@ export const api = {
       }
     }
   },
+      
+  // Human Feedback API
+  humanFeedback: {
+    getPendingRequests: async (workspaceId?: string): Promise<FeedbackRequest[]> => {
+      try {
+        const url = workspaceId 
+          ? `${API_BASE_URL}/human-feedback/pending?workspace_id=${workspaceId}`
+          : `${API_BASE_URL}/human-feedback/pending`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    getRequest: async (requestId: string): Promise<FeedbackRequest> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/human-feedback/${requestId}`);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    respondToRequest: async (requestId: string, response: FeedbackResponse): Promise<void> => {
+      try {
+        const apiResponse = await fetch(`${API_BASE_URL}/human-feedback/${requestId}/respond`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(response),
+        });
+        if (!apiResponse.ok) throw new Error(`API error: ${apiResponse.status}`);
+        return await apiResponse.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    }
+  },
+      
   // API Workspace
   workspaces: {
     list: async (userId: string): Promise<Workspace[]> => {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '@/utils/api';
 import TasksViewer from './TasksViewer';
-import { Agent, ExecutorDetailedStats, ExecutorStatus, ActivityLog, BudgetSummary } from '@/types'; // Assicurati che i tipi siano importati correttamente
+import { Agent, ExecutorDetailedStats, ExecutorStatus, ActivityLog, BudgetSummary } from '@/types'; 
+import HumanFeedbackDashboard from './HumanFeedbackDashboard';
+
 
 // Definisci qui le interfacce se non sono globali in @/types
 // interface ActivityLog { ... } // Se non già in types/index.ts
@@ -493,6 +495,13 @@ export default function MonitoringDashboard({ workspaceId, agentsInWorkspace }: 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
          <h3 className="text-lg font-semibold text-gray-900 mb-4">Visualizzatore Task del Workspace</h3>
          <TasksViewer workspaceId={workspaceId} />
+      </div>
+            {/* Human Feedback Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Controllo Umano
+        </h3>
+        <HumanFeedbackDashboard workspaceId={workspaceId} />
       </div>
     </div>
   );

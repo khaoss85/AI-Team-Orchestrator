@@ -86,7 +86,7 @@ async def create_agent(
             "name": name,
             "role": role,
             "seniority": seniority,
-            "status": "created",
+            "status": "active",
             "can_create_tools": can_create_tools
         }
         
@@ -335,3 +335,95 @@ async def list_handoffs(workspace_id: str):
     except Exception as e:
         logger.error(f"Error listing handoffs: {e}", exc_info=True)
         raise
+        
+async def create_human_feedback_request(
+    workspace_id: str,
+    request_type: str,
+    title: str,
+    description: str,
+    proposed_actions: List[Dict],
+    context: Dict,
+    priority: str = "medium",
+    timeout_hours: int = 24
+) -> Optional[Dict]:
+    """Create a human feedback request in the database"""
+    try:
+        expires_at = datetime.now() + timedelta(hours=timeout_hours)
+        
+        data = {
+            "workspace_id": workspace_id,
+            "request_type": request_type,
+            "title": title,
+            "description": description,
+            "proposed_actions": proposed_actions,
+            "context": context,
+            "priority": priority,
+            "timeout_hours": timeout_hours,
+            "expires_at": expires_at.isoformat()
+        }
+        
+        result = supabase.table("human_feedback_requests").insert(data).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error creating human feedback request: {e}")
+        raise
+
+async def get_human_feedback_requests(
+    workspace_id: Optional[str] = None,
+    status: Optional[str] = None
+) -> List[Dict]:
+    """Get human feedback requests with optional filters"""
+    try:
+        query = supabase.table("human_feedback_requests").select("*")
+        
+        if workspace_id:
+            query = query.eq("workspace_id", workspace_id)
+        if status:
+            query = query.eq("status", status)
+            
+        query = query.order("created_at", desc=True)
+        result = query.execute()
+        return result.data
+    except Exception as e:
+        logger.error(f"Error getting human feedback requests: {e}")
+        raise
+
+async def update_human_feedback_request(
+    request_id: str,
+    status: str,
+    response: Dict
+) -> Optional[Dict]:
+    """Update a human feedback request with response"""
+    try:
+        data = {
+            "status": status,
+            "response": response,
+            "responded_at": datetime.now().isoformat()
+        }
+        
+        result = supabase.table("human_feedback_requests").update(data).eq("id", request_id).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error updating human feedback request: {e}")
+        raise
+
+async def delete_human_feedback_requests_by_workspace(workspace_id: str) -> bool:
+    """Delete all human feedback requests for a workspace"""
+    try:
+        supabase.table("human_feedback_requests").delete().eq("workspace_id", workspace_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting human feedback requests: {e}")
+        return False
+
+async def cleanup_expired_feedback_requests() -> int:
+    """Clean up expired feedback requests"""
+    try:
+        result = supabase.table("human_feedback_requests").update({
+            "status": "expired"
+        }).lt("expires_at", datetime.now().isoformat()).eq("status", "pending").execute()
+        
+        return len(result.data) if result.data else 0
+    except Exception as e:
+        logger.error(f"Error cleaning up expired requests: {e}")
+        return 0

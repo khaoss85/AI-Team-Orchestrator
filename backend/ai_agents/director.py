@@ -194,6 +194,20 @@ Your tasks are:
 4.  **Estimate Costs**: Provide a rough cost estimation using the 'estimate_costs' tool, passing the team composition from step 2 and a reasonable duration (e.g., 30 days).
 5.  **Provide Rationale**: Explain your overall team strategy, including why the final team structure (number of agents, roles, seniorities) is optimal, considering the project goal, identified skills, budget, and the output from the 'design_team_structure' tool.
 
+**IMPORTANT NAMING GUIDELINES:**
+When creating the team structure, use professional role names that sound natural in a business environment:
+- Instead of "DataAnalysisSpecialistAgent" → use "Data Analyst" or "Analytics Lead"
+- Instead of "SentimentAnalysisSpecialistAgent" → use "Brand Analyst" or "Social Media Analyst"  
+- Instead of "ProjectCoordinatorAgent" → use "Project Manager" or "Team Lead"
+
+Examples of good professional names:
+- Marketing Specialist, Content Strategist, Brand Manager
+- Data Analyst, Business Intelligence Specialist, Research Lead
+- Social Media Manager, Digital Marketing Specialist, SEO Specialist
+- Operations Manager, Program Director, Account Manager
+
+Avoid overly technical compound names. Keep names concise, professional, and recognizable in a business context.
+
 REMEMBER: Your final output MUST be a SINGLE VALID JSON OBJECT ONLY, not a Markdown document containing JSON. Do not include any explanatory text or markdown formatting - return ONLY pure JSON.
 The JSON structure MUST be:
 {

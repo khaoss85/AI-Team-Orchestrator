@@ -145,3 +145,30 @@ FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
 CREATE INDEX IF NOT EXISTS idx_team_proposals_workspace_id ON team_proposals(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_team_proposals_status ON team_proposals(status);
+
+-- Human Feedback Requests table
+CREATE TABLE IF NOT EXISTS human_feedback_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE, -- CASCADE DELETE
+    request_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    proposed_actions JSONB NOT NULL,
+    context JSONB,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    status TEXT NOT NULL DEFAULT 'pending',
+    timeout_hours INTEGER DEFAULT 24,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    response JSONB,
+    responded_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER update_human_feedback_requests_updated_at
+BEFORE UPDATE ON human_feedback_requests
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_workspace_id ON human_feedback_requests(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_status ON human_feedback_requests(status);
+CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_expires_at ON human_feedback_requests(expires_at);

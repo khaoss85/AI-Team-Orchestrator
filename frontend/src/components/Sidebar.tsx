@@ -11,7 +11,9 @@ const Sidebar = () => {
     { name: 'Dashboard', href: '/' },
     { name: 'Progetti', href: '/projects' },
     { name: 'Team di Agenti', href: '/teams' },
+    { name: 'Tool', href: '/tools' },
     { name: 'Knowledge Base', href: '/knowledge' },
+    { name: 'Feedback Umano', href: '/human-feedback' }, // NEW
     { name: 'Impostazioni', href: '/settings' },
   ];
   

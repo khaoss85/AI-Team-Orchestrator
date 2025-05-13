@@ -6,6 +6,7 @@ import { api } from '@/utils/api';
 import { Workspace, Agent, Task, ExecutorStatus, ExecutorDetailedStats } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 import MonitoringDashboard from '@/components/MonitoringDashboard';
+import HumanFeedbackDashboard from '@/components/HumanFeedbackDashboard';
 import { useRouter } from 'next/navigation';
 
 type Props = {

@@ -244,3 +244,37 @@ export interface ExecutorDetailedStats {
     tracked_agents_count: number;
   };
 }
+
+// Human Feedback Types
+export interface FeedbackRequest {
+  id: string;
+  workspace_id: string;
+  request_type: 'task_approval' | 'strategy_review' | 'intervention_required' | 'priority_decision' | 'resource_allocation';
+  title: string;
+  description: string;
+  proposed_actions: ProposedAction[];
+  context: Record<string, any>;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'approved' | 'rejected' | 'modified' | 'expired';
+  created_at: string;
+  expires_at: string;
+  response?: any;
+  responded_at?: string;
+}
+
+export interface ProposedAction {
+  type: string;
+  task_name?: string;
+  description?: string;
+  target_role?: string;
+  priority?: string;
+  impact?: string;
+}
+
+export interface FeedbackResponse {
+  approved: boolean;
+  status: 'approved' | 'rejected';
+  comment?: string;
+  modifications?: any[];
+  reason?: string;
+}

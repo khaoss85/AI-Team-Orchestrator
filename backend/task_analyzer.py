@@ -1,6 +1,10 @@
+# backend/task_analyzer.py - Fixed version with lazy imports
+
 import logging
 import json
 import re
+import time
+import random
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import UUID
 import asyncio
@@ -14,6 +18,9 @@ from models import Task, TaskStatus, Agent as AgentModel
 from database import create_task, list_agents, list_tasks
 
 logger = logging.getLogger(__name__)
+
+# Remove the import from top - we'll import it when needed
+# from human_feedback_manager import human_feedback_manager, FeedbackRequestType, FeedbackStatus
 
 class TaskAnalysisResult(BaseModel):
     """Results from analyzing a completed task"""
@@ -43,11 +50,10 @@ class AutoTaskGenerator:
     def _create_analysis_agent(self) -> OpenAIAgent:
         """Create a specialized agent for analyzing task results"""
         
-        # Crea un'istanza di AgentOutputSchema per TaskAnalysisResult
-        # con la validazione stretta dello schema disabilitata.
+        # Create AgentOutputSchema for TaskAnalysisResult
         task_analysis_output_schema = AgentOutputSchema(
             output_type=TaskAnalysisResult,
-            strict_json_schema=False  # Imposta la validazione non stretta qui
+            strict_json_schema=False
         )
         
         return OpenAIAgent(
@@ -72,8 +78,7 @@ class AutoTaskGenerator:
             """, 
             model="gpt-4.1",
             model_settings=ModelSettings(temperature=0.2),
-            output_type=task_analysis_output_schema # Passa l'istanza di AgentOutputSchema configurata
-            # Rimuovi 'output_schema_strict=False' da qui, perché non è un argomento valido per OpenAIAgent.__init__
+            output_type=task_analysis_output_schema
         )
     
     async def analyze_task_result(
@@ -318,7 +323,7 @@ class EnhancedTaskExecutor:
         workspace_id: str
     ):
         """
-        Handle task completion with automatic follow-up generation.
+        Handle task completion with automatic follow-up generation and human feedback.
         """
         try:
             # Skip auto-generation for handoff tasks to avoid loops
@@ -329,7 +334,6 @@ class EnhancedTaskExecutor:
             # Get project context if this is a planning task
             project_context = None
             if "planning" in completed_task.name.lower() or "initialization" in completed_task.name.lower():
-                # This is a planning task, extract project context
                 project_context = f"""
                 This is a project planning/initialization task.
                 The results likely contain a project plan that should be broken down into specific tasks.
@@ -345,6 +349,13 @@ class EnhancedTaskExecutor:
             )
             
             logger.info(f"Analysis result for task {completed_task.id}: {analysis_result.project_status}")
+            
+            # Check if human feedback is needed - use lazy import
+            if await self._requires_human_feedback(analysis_result, workspace_id):
+                await self._request_human_feedback_for_analysis(
+                    analysis_result, completed_task, workspace_id
+                )
+                return
             
             # Create follow-up tasks if needed
             if analysis_result.requires_follow_up:
@@ -363,6 +374,151 @@ class EnhancedTaskExecutor:
             
         except Exception as e:
             logger.error(f"Error handling task completion: {e}")
+    
+    async def _requires_human_feedback(
+        self, 
+        analysis_result: TaskAnalysisResult,
+        workspace_id: str
+    ) -> bool:
+        """Determine if human feedback is required"""
+        # Conditions that require human feedback
+        if "manual intervention" in analysis_result.project_status.lower():
+            return True
+        if "at risk" in analysis_result.project_status.lower():
+            return True
+        if analysis_result.requires_follow_up and len(analysis_result.suggested_tasks) > 3:
+            return True
+        if any(task.get("priority") == "high" for task in analysis_result.suggested_tasks):
+            return True
+        
+        return False
+    
+    async def _request_human_feedback_for_analysis(
+        self,
+        analysis_result: TaskAnalysisResult,
+        completed_task: Task,
+        workspace_id: str
+    ):
+        """Request human feedback for task analysis results - with lazy import"""
+        # Lazy import to avoid circular dependency
+        from human_feedback_manager import human_feedback_manager, FeedbackRequestType, FeedbackStatus
+        
+        proposed_actions = []
+        
+        for task_suggestion in analysis_result.suggested_tasks:
+            proposed_actions.append({
+                "type": "create_task",
+                "task_name": task_suggestion.get("name"),
+                "description": task_suggestion.get("description"),
+                "target_role": task_suggestion.get("target_role"),
+                "priority": task_suggestion.get("priority")
+            })
+        
+        for handoff in analysis_result.handoffs_needed:
+            proposed_actions.append({
+                "type": "handoff",
+                "description": handoff.get("description"),
+                "target_role": handoff.get("target_role")
+            })
+        
+        context = {
+            "completed_task_id": str(completed_task.id),
+            "completed_task_name": completed_task.name,
+            "analysis_status": analysis_result.project_status,
+            "next_phase": analysis_result.next_phase
+        }
+        
+        async def response_callback(request, response):
+            return await self._handle_feedback_response(
+                request, response, analysis_result, workspace_id
+            )
+        
+        await human_feedback_manager.request_feedback(
+            workspace_id=workspace_id,
+            request_type=FeedbackRequestType.TASK_APPROVAL,
+            title=f"Approve Follow-up Actions for {completed_task.name}",
+            description=f"""
+            Task "{completed_task.name}" has been completed with status: {analysis_result.project_status}
+            
+            The system suggests the following follow-up actions:
+            - {len(analysis_result.suggested_tasks)} new tasks
+            - {len(analysis_result.handoffs_needed)} handoffs
+            
+            Please review and approve or modify these suggestions.
+            """,
+            proposed_actions=proposed_actions,
+            context=context,
+            priority="high" if "at risk" in analysis_result.project_status.lower() else "medium",
+            timeout_hours=6,  # Shorter timeout for critical decisions
+            response_callback=response_callback
+        )
+    
+    async def _handle_feedback_response(
+        self,
+        request,  # FeedbackRequest type - avoid import
+        response: Dict[str, Any],
+        analysis_result: TaskAnalysisResult,
+        workspace_id: str
+    ):
+        """Handle human feedback response"""
+        if response.get("approved", False):
+            logger.info(f"Human approved follow-up actions for request {request.id}")
+            
+            # Apply any modifications from human feedback
+            modified_actions = response.get("modifications", [])
+            if modified_actions:
+                await self._apply_action_modifications(modified_actions, analysis_result)
+            
+            # Execute the approved actions
+            await self._execute_follow_up_with_tracking(
+                analysis_result, None, workspace_id
+            )
+        else:
+            logger.info(f"Human rejected follow-up actions for request {request.id}")
+            # Handle rejection - maybe create a different set of tasks based on feedback
+            rejection_reason = response.get("reason", "No reason provided")
+            await self._handle_action_rejection(rejection_reason, analysis_result, workspace_id)
+    
+    async def _apply_action_modifications(
+        self,
+        modifications: List[Dict[str, Any]],
+        analysis_result: TaskAnalysisResult
+    ):
+        """Apply human modifications to the suggested actions"""
+        for mod in modifications:
+            action_id = mod.get("action_id")
+            changes = mod.get("changes", {})
+            
+            if action_id < len(analysis_result.suggested_tasks):
+                task_suggestion = analysis_result.suggested_tasks[action_id]
+                task_suggestion.update(changes)
+    
+    async def _execute_follow_up_with_tracking(
+        self,
+        analysis_result: TaskAnalysisResult,
+        completed_task: Optional[Task],
+        workspace_id: str
+    ):
+        """Execute follow-up actions with tracking"""
+        created_tasks = await self.task_generator.create_follow_up_tasks(
+            analysis_result=analysis_result,
+            workspace_id=workspace_id,
+            completed_task_id=str(completed_task.id) if completed_task else ""
+        )
+        
+        if created_tasks:
+            logger.info(f"Created {len(created_tasks)} follow-up tasks for workspace {workspace_id}")
+    
+    async def _handle_action_rejection(
+        self,
+        rejection_reason: str,
+        analysis_result: TaskAnalysisResult,
+        workspace_id: str
+    ):
+        """Handle when human rejects suggested actions"""
+        logger.info(f"Handling action rejection: {rejection_reason}")
+        # Could implement alternative logic based on rejection reason
+        # For example, create a simpler set of tasks or escalate to different agents
 
 # Usage example in the main task executor
 async def integrate_auto_generation():
