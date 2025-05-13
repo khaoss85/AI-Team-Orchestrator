@@ -947,7 +947,7 @@ class SpecialistAgent:
             """
             
             # Execute the task
-            result = await Runner.run(self.agent, task_prompt)
+            result = await Runner.run(self.agent, task_prompt, max_turns=15)
             
             # Process the result
             if isinstance(result.final_output, TaskExecutionOutput):
@@ -998,7 +998,8 @@ class SpecialistAgent:
             error_result = {
                 "error": str(e),
                 "status": "failed",
-                "task_id": str(task.id)
+                "task_id": str(task.id),
+                "recoverable": True  # Indica che si può riprovare
             }
             
             await update_task_status(

@@ -172,3 +172,10 @@ FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_workspace_id ON human_feedback_requests(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_status ON human_feedback_requests(status);
 CREATE INDEX IF NOT EXISTS idx_human_feedback_requests_expires_at ON human_feedback_requests(expires_at);
+
+-- Aggiungi una colonna workspace_id alla tabella handoffs per una cancellazione più diretta
+ALTER TABLE agent_handoffs ADD COLUMN workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE;
+-- Rendi la colonna NOT NULL
+ALTER TABLE agent_handoffs ALTER COLUMN workspace_id SET NOT NULL;
+-- Aggiungi un indice per performance
+CREATE INDEX IF NOT EXISTS idx_agent_handoffs_workspace_id ON agent_handoffs(workspace_id);

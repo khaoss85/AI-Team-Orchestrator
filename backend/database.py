@@ -295,17 +295,31 @@ async def approve_team_proposal(proposal_id: str):
 
 async def create_handoff(source_agent_id: UUID, target_agent_id: UUID, description: Optional[str] = None):
     try:
+        # Get the workspace_id from the source agent
+        source_agent = await get_agent(str(source_agent_id))
+        if not source_agent:
+            raise ValueError(f"Source agent {source_agent_id} not found")
+        
+        workspace_id = source_agent["workspace_id"]
+        
+        # Verify target agent is in the same workspace (optional, but recommended)
+        target_agent = await get_agent(str(target_agent_id))
+        if target_agent and target_agent["workspace_id"] != workspace_id:
+            logger.warning(f"Creating cross-workspace handoff: source in {workspace_id}, target in {target_agent['workspace_id']}")
+        
         data_to_insert = {
             "source_agent_id": str(source_agent_id),
-            "target_agent_id": str(target_agent_id)
+            "target_agent_id": str(target_agent_id),
+            "workspace_id": workspace_id,  # Aggiungi questa linea
         }
-        if description: data_to_insert["description"] = description
+        if description: 
+            data_to_insert["description"] = description
             
-        result = supabase.table("agent_handoffs").insert(data_to_insert).execute() # Rimossa await
+        result = supabase.table("agent_handoffs").insert(data_to_insert).execute()
         return result.data[0] if result.data and len(result.data) > 0 else None
     except Exception as e:
         logger.error(f"Error creating handoff: {e}", exc_info=True)
-        if hasattr(e, 'message') and 'violates foreign key constraint' in str(e.message): # type: ignore
+        if hasattr(e, 'message') and 'violates foreign key constraint' in str(e.message):
             logger.error(f"Detail: source_id={source_agent_id}, target_id={target_agent_id}")
         raise
 
