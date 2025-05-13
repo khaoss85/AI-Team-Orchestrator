@@ -75,6 +75,11 @@ async def startup_event():
     logger.info("Starting task executor...")
     await start_task_executor()
     
+    # Initialize human feedback manager
+    logger.info("Initializing human feedback manager...")
+    from human_feedback_manager import initialize_human_feedback_manager
+    await initialize_human_feedback_manager()
+    
     logger.info("Application startup complete")
 
 # Shutdown event

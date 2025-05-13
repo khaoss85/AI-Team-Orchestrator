@@ -177,46 +177,54 @@ class SpecialistAgent:
         # Create OpenAI Agent
         self.agent = self._create_agent()
     
-    def _initialize_tools(self) -> List[Any]:
-        """Initialize the tools for this agent including automation tools"""
-        # Base tools with new automation capabilities
-        tools = [
-            # Automation tools
-            self._create_auto_task_tool(),
-            self._create_request_handoff_tool(),
-            
-            # Standard tools
-            self._create_log_execution_tool(),
-            self._create_update_health_status_tool(),
-            self._create_report_progress_tool(),
-        ]
-        
-        # Add tool creation if agent has permission
-        if self.agent_data.can_create_tools:
-            tools.append(self._create_custom_tool_tool())
-        
-        # Add native OpenAI tools
-        tools.extend([
-            WebSearchTool(),  # Tool nativo per ricerca web
-        ])
-        
-        # Add FileSearchTool if agent has vector store access
-        if hasattr(self.agent_data, 'vector_store_ids') and self.agent_data.vector_store_ids:
-            tools.append(FileSearchTool(
+def _initialize_tools(self) -> List[Any]:
+    tools = [
+        # automation di base
+        self._create_auto_task_tool(),
+        self._create_request_handoff_tool(),
+        self._create_log_execution_tool(),
+        self._create_update_health_status_tool(),
+        self._create_report_progress_tool(),
+    ]
+
+    # tool “nativi” in base a self.agent_data.tools (impostati dal Director)
+    if self.agent_data.tools:
+        for cfg in self.agent_data.tools:
+            if not isinstance(cfg, dict):
+                continue
+            t = cfg.get("type", "")
+            if t == "web_search":
+                tools.append(WebSearchTool(search_context_size="medium"))
+            elif t == "file_search":
+                tools.append(
+                    FileSearchTool(
+                        max_num_results=5,
+                        include_search_results=True,
+                        vector_store_ids=getattr(self.agent_data, "vector_store_ids", None),
+                    )
+                )
+            # eventuali custom function restano da gestire
+
+    # fallback: se l’agente ha vector_store_ids ma manca file_search
+    if getattr(self.agent_data, "vector_store_ids", None) and not any(
+        isinstance(x, FileSearchTool) for x in tools
+    ):
+        tools.append(
+            FileSearchTool(
                 max_num_results=5,
-                vector_store_ids=self.agent_data.vector_store_ids
-            ))
-        
-        # Add tools from agent configuration
-        if self.agent_data.tools:
-            # Convert tools configuration to actual function tools
-            for tool_config in self.agent_data.tools:
-                if isinstance(tool_config, dict) and 'name' in tool_config:
-                    # Here you could implement logic to create dynamic tools
-                    # based on configuration
-                    pass
-        
-        return tools
+                vector_store_ids=self.agent_data.vector_store_ids,
+            )
+        )
+
+    # strumenti Instagram per ruoli social
+    if any(k in self.agent_data.role.lower() for k in ("social media", "instagram", "content")):
+        tools.extend(self._get_instagram_function_tools())
+
+    # permesso di creare nuovi tool
+    if self.agent_data.can_create_tools:
+        tools.append(self._create_custom_tool_tool())
+
+    return tools
     
     def _initialize_handoffs(self) -> List[Handoff]:
         """Initialize handoffs for this agent"""
@@ -278,73 +286,69 @@ class SpecialistAgent:
         )
     
     def _create_system_prompt(self) -> str:
-        """Create an enhanced system prompt with automation capabilities"""
-        base_prompt = self.agent_data.system_prompt if self.agent_data.system_prompt else f"""
-        You are a {self.agent_data.seniority} AI agent specializing in {self.agent_data.role}.
-        
-        Your core responsibilities:
-        - {self.agent_data.description}
-        - Execute assigned tasks with precision and efficiency
-        - Monitor your resource usage and budget constraints
-        - Collaborate effectively with other agents
-        - Maintain high-quality standards in all outputs
-        
-        When executing tasks:
-        1. Always think step by step
-        2. Use available tools effectively
-        3. Log your progress regularly
-        4. Provide clear, actionable results
-        5. Recommend next steps when appropriate
-        """
-        
-        # Add automation guidance
-        base_prompt += """
-        
-        AUTOMATION CAPABILITIES:
-        You have powerful automation tools at your disposal:
-        
-        1. create_task_for_agent: Create new tasks for other specialists
-           - Use this when you identify work that needs specific expertise
-           - Be specific about the task and target role
-           - Include priority and context
-        
-        2. request_handoff: Hand off work to another agent
-           - Use when you need to pass work to a specialist
-           - Provide clear context and data transfer
-           - Specify the target role and expected output
-        
-        IMPORTANT: When you complete a task, if you identify follow-up work:
-        - Create specific tasks for the appropriate specialists
-        - Use handoffs to transfer context and data
-        - Don't wait for manual intervention - be proactive!
-        """
-        
-        # Add tool creation guidance
-        if self.agent_data.can_create_tools:
-            base_prompt += """
-            
-            TOOL CREATION:
-            You can create custom tools when needed:
-            1. Assess if existing tools are sufficient
-            2. Design new tools with clear interfaces
-            3. Implement with proper error handling
-            4. Test thoroughly before deployment
-            5. Document usage and limitations
-            """
-        
-        # Add handoff guidance
-        base_prompt += """
-        
-        COLLABORATION:
-        When working with other agents:
-        - Use automation tools to delegate work efficiently
-        - Provide clear context and requirements
-        - Escalate when tasks exceed your capabilities
-        - Maintain conversation continuity through proper handoffs
-        - Be proactive in identifying and creating follow-up tasks
-        """
-        
-        return base_prompt
+        """Create an enhanced system prompt with automation + tool guidance"""
+        base = self.agent_data.system_prompt or f"""
+    You are a {self.agent_data.seniority} AI agent specializing in {self.agent_data.role}.
+
+    CORE RESPONSIBILITIES
+    - {self.agent_data.description}
+    - Execute tasks with precision and efficiency
+    - Monitor resource usage and budget constraints
+    - Collaborate effectively with other agents
+    - Maintain high-quality standards in all outputs
+    """
+
+        # ── automation guidance (valido per tutti) ──────────────────────────────
+        base += """
+    AUTOMATION CAPABILITIES
+    1. create_task_for_agent – delegate work with clear context, priority, deadline
+    2. request_handoff – transfer work/data to another agent, include expected output
+    Be proactive: when you finish a task, create follow-ups or handoffs as needed.
+    """
+
+        # ── tool usage guidance (solo se tool presenti) ────────────────────────
+        if self.agent_data.tools:
+            ws = any(t.get("type") == "web_search" for t in self.agent_data.tools)
+            fs = any(t.get("type") == "file_search" for t in self.agent_data.tools)
+
+            base += "\nAVAILABLE TOOLS\n"
+            if ws:
+                base += "- WebSearch : research trends, market insights, competitor data\n"
+            if fs:
+                base += "- FileSearch : locate docs, templates, prior work in KB\n"
+
+            if any(k in self.agent_data.role.lower() for k in ("social media", "instagram")):
+                base += "- Instagram Tools : hashtags, account analysis, content ideas\n"
+
+            base += """
+        TOOL USAGE BEST PRACTICES:
+        1. Always explain why you're using a tool
+        2. Summarize key findings from tool results
+        3. Use multiple tools together for comprehensive analysis
+        4. Report progress using log_execution and report_progress
+    """
+
+        # ── extra guidance per coordinatori/manager ────────────────────────────
+        if any(k in self.agent_data.role.lower() for k in ("coordinator", "manager")):
+            base += """
+        COORDINATION RESPONSIBILITIES:
+        - Use create_task_for_agent to delegate specific work to specialists
+        - Use request_handoff to transfer complex work with context
+        - Always create clear, actionable tasks for other agents
+        - Monitor team progress and adjust plans as needed
+    """
+
+        # ── collaboration blocco comune ────────────────────────────────────────
+        base += """
+    COLLABORATION
+    - Delegate efficiently via automation tools
+    - Provide clear context & requirements
+    - Escalate when tasks exceed your scope
+    - Keep conversation continuity through proper handoffs
+    """
+
+        return base
+
     
     # ==============================================================================
     # AUTOMATION TOOLS

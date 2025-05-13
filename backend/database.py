@@ -397,7 +397,7 @@ async def get_human_feedback_requests(
             query = query.eq("status", status)
             
         query = query.order("created_at", desc=True)
-        result = query.execute()
+        result = query.execute()  # Rimuovi await se Supabase è sincrono
         return result.data
     except Exception as e:
         logger.error(f"Error getting human feedback requests: {e}")

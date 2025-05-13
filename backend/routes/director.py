@@ -119,10 +119,14 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
         
         for agent_create_data in proposal.agents:
             logger.info(f"Creating agent: {agent_create_data.name}")
+            logger.info(f"Tools configuration: {agent_create_data.tools}") 
+
+            tools_for_db = [t for t in (agent_create_data.tools or []) if isinstance(t, dict)]
             
             agent_payload_for_db = agent_create_data.model_dump()
             agent_payload_for_db["workspace_id"] = str(workspace_id) 
-            agent_payload_for_db["seniority"] = agent_create_data.seniority.value 
+            agent_payload_for_db["seniority"] = agent_create_data.seniority.value
+            agent_payload_for_db["tools"] = tools_for_db 
 
             valid_agent_keys = ["workspace_id", "name", "role", "seniority", "description", "system_prompt", "llm_config", "tools", "can_create_tools"]
             agent_data_for_creation = {k: v for k, v in agent_payload_for_db.items() if k in valid_agent_keys}

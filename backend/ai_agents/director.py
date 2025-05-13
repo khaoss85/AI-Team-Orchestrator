@@ -415,7 +415,6 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
             required_skills = json.loads(required_skills_json)
             expertise_areas = json.loads(expertise_areas_json)
             
-            # === INIZIO LOGICA AGGIORNATA PER effective_max_agents ===
             initial_recommended_max_agents = max_agents # Il valore passato, che è 'recommended_team_size'
 
             if not isinstance(initial_recommended_max_agents, int) or initial_recommended_max_agents < 1:
@@ -463,8 +462,38 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
 
             team_specification: List[Dict[str, Any]] = []
             
+            def get_native_tools_for_skill(skill: str, seniority: str) -> List[Dict[str, Any]]:
+                    tools = []
+                    skill_lower = skill.lower()
+
+                    # TUTTI gli agenti senior/expert hanno web search
+                    if seniority in ["senior", "expert"]:
+                        tools.append({
+                            "type": "web_search",
+                            "name": "web_search",
+                            "description": "Search the web for current information, trends, and research"
+                        })
+
+                    # Agenti per contenuti e strategia hanno accesso a file search
+                    if any(keyword in skill_lower for keyword in ['content', 'instagram', 'social media', 'strategy']):
+                        tools.append({
+                            "type": "file_search", 
+                            "name": "file_search",
+                            "description": "Search uploaded files, documents, and knowledge base for relevant information"
+                        })
+
+                    # Agenti coordinatori hanno tools aggiuntivi per automation
+                    if any(keyword in skill_lower for keyword in ['coordination', 'management', 'project']):
+                        # Aggiungeranno i custom tools in SpecialistAgent._initialize_tools()
+                        pass
+
+                    return tools
+            
+            
             # Logica per il Project Coordinator (come prima)
             # ... (assicurati che usi effective_max_agents) ...
+            pc_tools = get_native_tools_for_skill("coordination", AgentSeniority.SENIOR.value)
+
             if effective_max_agents >= 3 and \
                "project_management" not in [s.lower() for s in required_skills] and \
                "project coordination" not in [s.lower() for s in required_skills] and \
@@ -477,7 +506,7 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                         "description": "Oversees the project, coordinates agent activities, manages timelines, and ensures goal alignment.",
                         "system_prompt": "You are an AI Project Coordinator. Your goal is to ensure the efficient execution of the project by managing tasks, coordinating between specialist AI agents, tracking progress, and reporting status. You proactively identify bottlenecks and facilitate communication.",
                         "llm_config": {"model": "gpt-4.1-mini", "temperature": 0.3},
-                        "tools": []
+                        "tools": pc_tools
                     })
                 else:
                     logger.warning("Wanted to add ProjectCoordinatorAgent, but effective_max_agents limit reached.")
@@ -540,6 +569,8 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                 if chosen_seniority == AgentSeniority.EXPERT.value: llm_model = "gpt-4.1"
                 elif chosen_seniority == AgentSeniority.SENIOR.value: llm_model = "gpt-4.1-mini"
                 
+                native_tools = get_native_tools_for_skill(skill, chosen_seniority)
+                
                 team_specification.append({
                     "name": agent_name,
                     "role": agent_role,
@@ -547,7 +578,7 @@ DO NOT include any explanations, markdown, or other text outside this JSON struc
                     "description": agent_description,
                     "system_prompt": agent_system_prompt,
                     "llm_config": {"model": llm_model, "temperature": 0.3},
-                    "tools": [] 
+                    "tools": native_tools 
                 })
                 current_budget_allocated += cost_of_chosen_agent
             
