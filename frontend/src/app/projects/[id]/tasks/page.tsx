@@ -30,7 +30,24 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
     try {
       setLoading(true);
       
-      // Simulated API calls - replace with actual API calls
+      // Fetch real tasks from monitoring API
+      const tasksResponse = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${id}/tasks`);
+      if (!tasksResponse.ok) {
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
+      }
+      const realTasks = await tasksResponse.json();
+      setTasks(realTasks);
+      
+      // Fetch real agents
+      const agentsData = await api.agents.list(id);
+      setAgents(agentsData);
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      setError(err instanceof Error ? err.message : 'Impossibile caricare i task');
+      
+      // Fallback to mock data only if API fails
       const mockTasks: Task[] = [
         {
           id: '1',
@@ -106,51 +123,16 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
         }
       ];
 
-      const mockAgents: Agent[] = [
-        {
-          id: '1',
-          workspace_id: id,
-          name: 'Marketing Manager',
-          role: 'Marketing Strategy',
-          seniority: 'expert',
-          description: 'Gestisce la strategia marketing generale',
-          status: 'active',
-          health: { status: 'healthy' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          workspace_id: id,
-          name: 'Social Media Specialist',
-          role: 'Social Media',
-          seniority: 'senior',
-          description: 'Specialista in contenuti e strategia social media',
-          status: 'active',
-          health: { status: 'healthy' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          workspace_id: id,
-          name: 'Content Creator',
-          role: 'Creative',
-          seniority: 'senior',
-          description: 'Crea contenuti visual e copywriting',
-          status: 'active',
-          health: { status: 'healthy' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      ];
-
       setTasks(mockTasks);
-      setAgents(mockAgents);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching tasks:', err);
-      setError('Impossibile caricare i task');
+      
+      // Try to fetch agents anyway for mock data
+      try {
+        const agentsData = await api.agents.list(id);
+        setAgents(agentsData);
+      } catch (agentErr) {
+        console.error('Error fetching agents:', agentErr);
+        setError(prev => prev + ' + Errore caricamento agenti');
+      }
     } finally {
       setLoading(false);
     }
@@ -236,6 +218,23 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
     return agent ? agent.name : 'Agente Sconosciuto';
   };
 
+  // Statistics for better overview
+  const taskStats = React.useMemo(() => {
+    const stats = {
+      total: tasks.length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+      in_progress: tasks.filter(t => t.status === 'in_progress').length,
+      pending: tasks.filter(t => t.status === 'pending').length,
+      failed: tasks.filter(t => t.status === 'failed').length,
+    };
+    
+    return {
+      ...stats,
+      success_rate: stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0',
+      failure_rate: stats.total > 0 ? ((stats.failed / stats.total) * 100).toFixed(1) : '0'
+    };
+  }, [tasks]);
+
   if (loading) {
     return (
       <div className="container mx-auto">
@@ -261,6 +260,32 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
         <div className="text-right">
           <p className="text-sm text-gray-500">Totale attività</p>
           <p className="text-2xl font-bold">{tasks.length}</p>
+        </div>
+      </div>
+
+      {/* Enhanced Statistics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
+          <div className="text-2xl font-bold text-green-700">{taskStats.completed}</div>
+          <div className="text-xs text-green-600">Completati</div>
+          <div className="text-xs text-green-500 mt-1">{taskStats.success_rate}% successo</div>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
+          <div className="text-2xl font-bold text-blue-700">{taskStats.in_progress}</div>
+          <div className="text-xs text-blue-600">In Corso</div>
+        </div>
+        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-center">
+          <div className="text-2xl font-bold text-yellow-700">{taskStats.pending}</div>
+          <div className="text-xs text-yellow-600">In Attesa</div>
+        </div>
+        <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-center">
+          <div className="text-2xl font-bold text-red-700">{taskStats.failed}</div>
+          <div className="text-xs text-red-600">Falliti</div>
+          <div className="text-xs text-red-500 mt-1">{taskStats.failure_rate}% fallimenti</div>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+          <div className="text-2xl font-bold text-gray-700">{agents.length}</div>
+          <div className="text-xs text-gray-600">Agenti Attivi</div>
         </div>
       </div>
 
@@ -316,7 +341,13 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
 
       {error && (
         <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-          {error}
+          <div className="flex items-center">
+            <span className="mr-2">⚠️</span>
+            <div>
+              <strong>Errore caricamento dati:</strong> {error}
+              <div className="text-sm mt-1">Mostrando dati di esempio. Verifica la connessione al server.</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -358,6 +389,14 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
                     {task.result.summary && (
                       <p className="text-sm text-gray-700 mb-2">{task.result.summary}</p>
                     )}
+                    {task.result.output && (
+                      <div className="text-sm text-gray-700 mb-2">
+                        <strong>Output:</strong>
+                        <div className="mt-1 p-2 bg-white rounded border">
+                          {typeof task.result.output === 'string' ? task.result.output : JSON.stringify(task.result.output, null, 2)}
+                        </div>
+                      </div>
+                    )}
                     {task.result.deliverables && Array.isArray(task.result.deliverables) && (
                       <div>
                         <span className="text-sm font-medium text-gray-600">Deliverables:</span>
@@ -382,10 +421,24 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
                 )}
                 {task.status === 'failed' && (
                   <div>
-                    <p className="text-sm text-red-700">{task.result.error}</p>
+                    <p className="text-sm text-red-700 font-medium">❌ Errore:</p>
+                    <p className="text-sm text-red-600 mt-1">{task.result.error}</p>
                     {task.result.retry_needed && (
-                      <p className="text-xs text-red-600 mt-1">🔄 Richiesto nuovo tentativo</p>
+                      <p className="text-xs text-red-500 mt-2 flex items-center">
+                        <span className="mr-1">🔄</span>
+                        Richiesto nuovo tentativo
+                      </p>
                     )}
+                  </div>
+                )}
+                {task.result.execution_time_seconds && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    ⏱️ Tempo di esecuzione: {task.result.execution_time_seconds}s
+                  </div>
+                )}
+                {task.result.cost_estimated && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    💰 Costo stimato: ${task.result.cost_estimated.toFixed(6)}
                   </div>
                 )}
               </div>
@@ -396,7 +449,16 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
       
       {filteredAndSortedTasks.length === 0 && (
         <div className="text-center py-10 bg-white rounded-lg shadow-sm">
+          <div className="text-4xl mb-4">📋</div>
           <p className="text-gray-500">Nessuna attività trovata con i filtri attuali</p>
+          {filterStatus !== 'all' && (
+            <button 
+              onClick={() => setFilterStatus('all')}
+              className="mt-3 text-indigo-600 hover:underline text-sm"
+            >
+              Mostra tutte le attività
+            </button>
+          )}
         </div>
       )}
     </div>
