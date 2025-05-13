@@ -191,16 +191,24 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       {workspace && (
         <>
           {/* Header semplificato */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex-1 mr-6">
               <h1 className="text-2xl font-semibold">{workspace.name}</h1>
               <p className="text-gray-600">{workspace.description}</p>
-              <div className="mt-2 flex items-center space-x-4">
+              
+              {/* Obiettivo del progetto - più compatto */}
+              {workspace.goal && (
+                <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-md max-w-3xl">
+                  <div className="flex items-start">
+                    <span className="text-sm text-indigo-700 font-medium mr-2 flex-shrink-0">🎯 Obiettivo:</span>
+                    <p className="text-sm text-indigo-800 leading-relaxed">{workspace.goal}</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-3">
                 <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(workspace.status)}`}>
                   {getStatusLabel(workspace.status)}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {agents.length} agenti • {workspace.budget ? `${workspace.budget.max_amount} ${workspace.budget.currency}` : 'Budget non specificato'}
                 </span>
               </div>
             </div>
