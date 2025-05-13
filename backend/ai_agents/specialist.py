@@ -177,54 +177,66 @@ class SpecialistAgent:
         # Create OpenAI Agent
         self.agent = self._create_agent()
     
-def _initialize_tools(self) -> List[Any]:
-    tools = [
-        # automation di base
-        self._create_auto_task_tool(),
-        self._create_request_handoff_tool(),
-        self._create_log_execution_tool(),
-        self._create_update_health_status_tool(),
-        self._create_report_progress_tool(),
-    ]
+    def _initialize_tools(self) -> List[Any]:
+        tools = [
+            # automation di base
+            self._create_auto_task_tool(),
+            self._create_request_handoff_tool(),
+            self._create_log_execution_tool(),
+            self._create_update_health_status_tool(),
+            self._create_report_progress_tool(),
+        ]
 
-    # tool “nativi” in base a self.agent_data.tools (impostati dal Director)
-    if self.agent_data.tools:
-        for cfg in self.agent_data.tools:
-            if not isinstance(cfg, dict):
-                continue
-            t = cfg.get("type", "")
-            if t == "web_search":
-                tools.append(WebSearchTool(search_context_size="medium"))
-            elif t == "file_search":
-                tools.append(
-                    FileSearchTool(
-                        max_num_results=5,
-                        include_search_results=True,
-                        vector_store_ids=getattr(self.agent_data, "vector_store_ids", None),
+        # tool "nativi" in base a self.agent_data.tools (impostati dal Director)
+        if self.agent_data.tools:
+            for cfg in self.agent_data.tools:
+                if not isinstance(cfg, dict):
+                    continue
+                t = cfg.get("type", "")
+                if t == "web_search":
+                    tools.append(WebSearchTool(search_context_size="medium"))
+                elif t == "file_search":
+                    tools.append(
+                        FileSearchTool(
+                            max_num_results=5,
+                            include_search_results=True,
+                            vector_store_ids=getattr(self.agent_data, "vector_store_ids", None),
+                        )
                     )
+                # eventuali custom function restano da gestire
+
+        # fallback: se l'agente ha vector_store_ids ma manca file_search
+        if getattr(self.agent_data, "vector_store_ids", None) and not any(
+            isinstance(x, FileSearchTool) for x in tools
+        ):
+            tools.append(
+                FileSearchTool(
+                    max_num_results=5,
+                    vector_store_ids=self.agent_data.vector_store_ids,
                 )
-            # eventuali custom function restano da gestire
-
-    # fallback: se l’agente ha vector_store_ids ma manca file_search
-    if getattr(self.agent_data, "vector_store_ids", None) and not any(
-        isinstance(x, FileSearchTool) for x in tools
-    ):
-        tools.append(
-            FileSearchTool(
-                max_num_results=5,
-                vector_store_ids=self.agent_data.vector_store_ids,
             )
-        )
 
-    # strumenti Instagram per ruoli social
-    if any(k in self.agent_data.role.lower() for k in ("social media", "instagram", "content")):
-        tools.extend(self._get_instagram_function_tools())
+        # strumenti Instagram per ruoli social
+        if any(k in self.agent_data.role.lower() for k in ("social media", "instagram", "content")):
+            tools.extend(self._get_instagram_function_tools())
 
-    # permesso di creare nuovi tool
-    if self.agent_data.can_create_tools:
-        tools.append(self._create_custom_tool_tool())
+        # permesso di creare nuovi tool
+        if self.agent_data.can_create_tools:
+            tools.append(self._create_custom_tool_tool())
 
-    return tools
+        return tools
+    
+    def _get_instagram_function_tools(self) -> List[Any]:
+        """Get Instagram-specific function tools"""
+        # Import Instagram tools from social_media module
+        from tools.social_media import InstagramTools
+        
+        return [
+            InstagramTools.analyze_hashtags,
+            InstagramTools.analyze_account,
+            InstagramTools.generate_content_ideas,
+            InstagramTools.analyze_competitors
+        ]
     
     def _initialize_handoffs(self) -> List[Handoff]:
         """Initialize handoffs for this agent"""
@@ -348,7 +360,6 @@ def _initialize_tools(self) -> List[Any]:
     """
 
         return base
-
     
     # ==============================================================================
     # AUTOMATION TOOLS
