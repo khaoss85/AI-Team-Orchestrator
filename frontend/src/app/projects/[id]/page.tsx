@@ -3,10 +3,9 @@
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Task, ExecutorStatus, ExecutorDetailedStats } from '@/types';
+import { Workspace, Agent, Task } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 import MonitoringDashboard from '@/components/MonitoringDashboard';
-import HumanFeedbackDashboard from '@/components/HumanFeedbackDashboard';
 import ProjectInsightsDashboard from '@/components/ProjectInsightsDashboard';
 
 import { useRouter } from 'next/navigation';
@@ -43,16 +42,12 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
         const agentsData = await api.agents.list(id);
         setAgents(agentsData);
         
-        // In a real implementation, we would fetch tasks too
-        //const tasksData = await api.tasks.list(id);
-        //setTasks(tasksData);
-        
         setError(null);
       } catch (err) {
         console.error('Failed to fetch project data:', err);
         setError('Impossibile caricare i dati del progetto. Riprova più tardi.');
         
-        // Per test, mostra dati fittizi
+        // Mock data for testing
         setWorkspace({
           id: id,
           name: 'Progetto Marketing Digitale',
@@ -72,7 +67,7 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
             name: 'Project Manager',
             role: 'Project Management',
             seniority: 'expert',
-            description: 'Coordina l\'intero progetto e gestisce gli handoff',
+            description: 'Coordina l\'intero progetto',
             status: 'active',
             health: { status: 'healthy' },
             created_at: new Date().toISOString(),
@@ -103,39 +98,6 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
             updated_at: new Date().toISOString(),
           },
         ]);
-        
-        setTasks([
-          {
-            id: '1',
-            workspace_id: id,
-            agent_id: '1',
-            name: 'Pianificazione campagna',
-            description: 'Creare un piano per la campagna di marketing',
-            status: 'completed',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            workspace_id: id,
-            agent_id: '2',
-            name: 'Creazione contenuti social',
-            description: 'Creare contenuti per i social media',
-            status: 'in_progress',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: '3',
-            workspace_id: id,
-            agent_id: '3',
-            name: 'Analisi dati utenti',
-            description: 'Analizzare i dati degli utenti per identificare target',
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
       } finally {
         setLoading(false);
       }
@@ -150,9 +112,6 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       case 'created': return 'Creato';
       case 'paused': return 'In pausa';
       case 'completed': return 'Completato';
-      case 'in_progress': return 'In corso';
-      case 'pending': return 'In attesa';
-      case 'failed': return 'Fallito';
       default: return status;
     }
   };
@@ -163,9 +122,6 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       case 'created': return 'bg-blue-100 text-blue-800';
       case 'paused': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'in_progress': return 'bg-indigo-100 text-indigo-800';
-      case 'pending': return 'bg-orange-100 text-orange-800';
-      case 'failed': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -177,13 +133,9 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       setIsStartingTeam(true);
       await api.monitoring.startTeam(workspace.id);
       
-      // Update workspace status locally
       setWorkspace(prev => prev ? { ...prev, status: 'active' } : null);
-      
-      // Show success message
       setError(null);
       
-      // Optionally refresh the page to show updated data
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -217,15 +169,6 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
     }
   };
   
-  const getHealthColor = (health: string) => {
-    switch(health) {
-      case 'healthy': return 'bg-green-100 text-green-800';
-      case 'degraded': return 'bg-yellow-100 text-yellow-800';
-      case 'unhealthy': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
   if (loading && !workspace) {
     return (
       <div className="container mx-auto">
@@ -247,169 +190,100 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
       
       {workspace && (
         <>
+          {/* Header semplificato */}
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-semibold">{workspace.name}</h1>
               <p className="text-gray-600">{workspace.description}</p>
-            </div>
-            <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(workspace.status)}`}>
-              {getStatusLabel(workspace.status)}
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-4">Dettagli Progetto</h2>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Obiettivo</p>
-                  <p className="font-medium">{workspace.goal || 'Non specificato'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Budget</p>
-                  <p className="font-medium">
-                    {workspace.budget 
-                      ? `${workspace.budget.max_amount} ${workspace.budget.currency}`
-                      : 'Non specificato'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Data creazione</p>
-                  <p className="font-medium">
-                    {new Date(workspace.created_at).toLocaleDateString('it-IT')}
-                  </p>
-                </div>
+              <div className="mt-2 flex items-center space-x-4">
+                <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(workspace.status)}`}>
+                  {getStatusLabel(workspace.status)}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {agents.length} agenti • {workspace.budget ? `${workspace.budget.max_amount} ${workspace.budget.currency}` : 'Budget non specificato'}
+                </span>
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-4">Statistiche</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-indigo-50 p-3 rounded-md text-center">
-                  <p className="text-indigo-700 text-sm mb-1">Agenti</p>
-                  <p className="text-xl font-bold">{agents.length}</p>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-md text-center">
-                  <p className="text-emerald-700 text-sm mb-1">Attività</p>
-                  <p className="text-xl font-bold">{tasks.length}</p>
-                </div>
-                <div className="bg-amber-50 p-3 rounded-md text-center">
-                  <p className="text-amber-700 text-sm mb-1">Completate</p>
-                  <p className="text-xl font-bold">
-                    {tasks.filter(t => t.status === 'completed').length}
-                  </p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-md text-center">
-                  <p className="text-blue-700 text-sm mb-1">In corso</p>
-                  <p className="text-xl font-bold">
-                    {tasks.filter(t => t.status === 'in_progress').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-4">Azioni</h2>
-              <div className="space-y-3">
-                {workspace.status === 'created' && (
-                  <button 
-                    onClick={handleStartTeam}
-                    disabled={isStartingTeam}
-                    className="w-full py-2 px-4 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {isStartingTeam ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                        Avvio in corso...
-                      </>
-                    ) : (
-                      'Avvia Team'
-                    )}
-                  </button>
-                )}
-                
-                <button className="w-full py-2 px-4 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition">
-                  Aggiungi Attività
-                </button>
-                
-                <Link 
-                  href={`/projects/${workspace.id}/team`}
-                  className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition block text-center"
-                >
-                  Gestisci Agenti
-                </Link>
-                
-                <button className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 transition">
-                  Visualizza Logs
-                </button>
-                
+            {/* Actions compatte */}
+            <div className="flex space-x-3">
+              {workspace.status === 'created' && (
                 <button 
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="w-full py-2 px-4 bg-red-50 border border-red-300 text-red-700 text-sm rounded-md hover:bg-red-100 transition"
+                  onClick={handleStartTeam}
+                  disabled={isStartingTeam}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:opacity-50"
                 >
-                  Elimina Progetto
+                  {isStartingTeam ? 'Avvio...' : '🚀 Avvia Team'}
                 </button>
-              </div>
+              )}
+              
+              <Link 
+                href={`/projects/${workspace.id}/team`}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
+              >
+                👥 Gestisci Team
+              </Link>
+              
+              <button 
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2 bg-red-50 border border-red-300 text-red-700 rounded-md hover:bg-red-100 transition"
+              >
+                🗑️ Elimina
+              </button>
             </div>
           </div>
           
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-  <div className="bg-white rounded-lg shadow-sm p-6">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-lg font-medium">Team di Agenti</h2>
-      <Link 
-        href={`/projects/${workspace.id}/team`}
-        className="text-indigo-600 text-sm hover:underline"
-      >
-        Visualizza tutti
-      </Link>
-    </div>
-    
-    <div className="space-y-4">
-      {agents.slice(0, 3).map((agent) => (
-        <div key={agent.id} className="border-b pb-4 last:border-0 last:pb-0">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="font-medium">{agent.name}</h3>
-              <p className="text-gray-600 text-sm">{agent.role}</p>
-            </div>
-            <div className="flex space-x-2">
-              <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(agent.status)}`}>
-                {getStatusLabel(agent.status)}
-              </span>
-              <span className={`text-xs px-2 py-1 rounded-full ${getHealthColor(agent.health.status)}`}>
-                {agent.health.status}
-              </span>
-            </div>
+          {/* Project Insights - Dashboard compatto */}
+          <div className="mb-8">
+            <ProjectInsightsDashboard workspaceId={id} />
           </div>
-          <p className="text-sm text-gray-600">{agent.description}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-  
-  {/* SOSTITUISCI la vecchia sezione Attività Recenti con questa: */}
-  <div className="space-y-6">
-    <ProjectInsightsDashboard workspaceId={id} />
-    
-    <div className="text-center">
-      <Link 
-        href={`/projects/${id}/tasks`}
-        className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-      >
-        📋 Visualizza Tutte le Attività
-      </Link>
-    </div>
-  </div>
-</div>
+          
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Link 
+              href={`/projects/${id}/tasks`}
+              className="block p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition"
+            >
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">📋</span>
+                <div>
+                  <h3 className="font-medium">Tutte le Attività</h3>
+                  <p className="text-sm text-gray-600">Gestisci e monitora le attività</p>
+                </div>
+              </div>
+            </Link>
+            
+            <Link 
+              href={`/projects/${id}/team`}
+              className="block p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition"
+            >
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">👥</span>
+                <div>
+                  <h3 className="font-medium">Team di Agenti</h3>
+                  <p className="text-sm text-gray-600">Visualizza e modifica agenti</p>
+                </div>
+              </div>
+            </Link>
+            
+            <Link 
+              href="/tools"
+              className="block p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition"
+            >
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">🛠️</span>
+                <div>
+                  <h3 className="font-medium">Strumenti</h3>
+                  <p className="text-sm text-gray-600">Gestisci tool personalizzati</p>
+                </div>
+              </div>
+            </Link>
+          </div>
 
-{/* Monitoring Dashboard */}
-{workspace && agents.length > 0 && (
-  <MonitoringDashboard workspaceId={id} agentsInWorkspace={agents} />
-)}
-            {workspace && agents.length === 0 && loading && ( // Gestisci il caso in cui gli agenti non sono ancora caricati
-            <p>Caricamento dati agenti per il dashboard...</p>
-            )}
+          {/* Monitoring Dashboard - Solo se ci sono agenti attivi */}
+          {workspace && agents.length > 0 && (
+            <MonitoringDashboard workspaceId={id} agentsInWorkspace={agents} />
+          )}
         </>
       )}
       
