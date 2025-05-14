@@ -13,6 +13,7 @@ from agents import TResponseInputItem, RunContextWrapper
 from agents import trace, custom_span, gen_trace_id
 from agents.exceptions import MaxTurnsExceeded, AgentsException, ModelBehaviorError
 from agents.extensions import handoff_filters
+from agents.extensions.handoff_filters import HandoffInputData
 from pydantic import BaseModel, Field
 
 # Context type variable for generic typing
@@ -88,21 +89,21 @@ class ConversationSummary(BaseModel):
 class EscalationData(BaseModel):
     reason: str = Field(..., description="Why escalation is needed")
     context: str = Field(..., description="Context and work done so far")
-    priority: str = Field(default="medium", description="Priority level: low, medium, high")
+    priority: str = Field(..., description="Priority level: low, medium, high") 
     task_id: Optional[str] = Field(None, description="Current task ID")
 
 class CompletionReport(BaseModel):
     task_summary: str = Field(..., description="Summary of completed work")
     next_steps: Optional[List[str]] = Field(None, description="Recommended next steps")
     recommendations: Optional[str] = Field(None, description="Additional recommendations")
-    requires_followup: bool = Field(False, description="Whether follow-up is needed")
+    requires_followup: bool = Field(..., description="Whether follow-up is needed")
     handoff_target: Optional[str] = Field(None, description="Specific role to hand off to")
 
 class DelegationData(BaseModel):
     target_role: str = Field(..., description="Role of the target specialist")
     task_description: str = Field(..., description="Description of work to delegate")
     context: str = Field(..., description="Context and background information")
-    priority: str = Field(default="medium", description="Priority level")
+    priority: str = Field(..., description="Priority level") 
     deadline: Optional[str] = Field(None, description="Deadline if any")
     expected_output: Optional[str] = Field(None, description="What kind of output is expected")
     
@@ -293,55 +294,58 @@ class SpecialistAgent(Generic[T]):
         # Create OpenAI Agent
         self.agent = self._create_agent()
     
-    def _initialize_tools(self) -> List[Any]:
-        """Initialize tools based on agent configuration"""
-        tools = [
-            # automation di base
-            self._create_auto_task_tool(),
-            self._create_request_handoff_tool(),
-            self._create_log_execution_tool(),
-            self._create_update_health_status_tool(),
-            self._create_report_progress_tool(),
-        ]
+def _initialize_tools(self) -> List[Any]:
+    """Initialize tools based on agent configuration"""
+    tools = [
+        # automation di base
+        self._create_auto_task_tool(),
+        self._create_request_handoff_tool(),
+        self._create_log_execution_tool(),
+        self._create_update_health_status_tool(),
+        self._create_report_progress_tool(),
+    ]
 
-        # tool "nativi" in base a self.agent_data.tools (impostati dal Director)
-        if self.agent_data.tools:
-            for cfg in self.agent_data.tools:
-                if not isinstance(cfg, dict):
-                    continue
-                t = cfg.get("type", "")
-                if t == "web_search":
-                    tools.append(WebSearchTool(search_context_size="medium"))
-                elif t == "file_search":
-                    tools.append(
-                        FileSearchTool(
-                            max_num_results=5,
-                            include_search_results=True,
-                            vector_store_ids=getattr(self.agent_data, "vector_store_ids", None),
-                        )
-                    )
-                # eventuali custom function restano da gestire
+    # tool "nativi" in base a self.agent_data.tools (impostati dal Director)
+    if self.agent_data.tools:
+        for cfg in self.agent_data.tools:
+            if not isinstance(cfg, dict):
+                continue
+            t = cfg.get("type", "")
+            if t == "web_search":
+                tools.append(WebSearchTool(search_context_size="medium"))
+            elif t == "file_search":
+                # FIX: Non passare vector_store_ids se è None o vuoto
+                vector_store_ids = getattr(self.agent_data, "vector_store_ids", None)
+                tool_params = {
+                    "max_num_results": 5,
+                    "include_search_results": True,
+                }
+                # Solo aggiungere vector_store_ids se non è None e non è vuoto
+                if vector_store_ids and len(vector_store_ids) > 0:
+                    tool_params["vector_store_ids"] = vector_store_ids
+                
+                tools.append(FileSearchTool(**tool_params))
 
-        # fallback: se l'agente ha vector_store_ids ma manca file_search
-        if getattr(self.agent_data, "vector_store_ids", None) and not any(
-            isinstance(x, FileSearchTool) for x in tools
-        ):
-            tools.append(
-                FileSearchTool(
-                    max_num_results=5,
-                    vector_store_ids=self.agent_data.vector_store_ids,
-                )
+    # fallback: se l'agente ha vector_store_ids validi ma manca file_search
+    vector_store_ids = getattr(self.agent_data, "vector_store_ids", None)
+    if (vector_store_ids and len(vector_store_ids) > 0 and 
+        not any(isinstance(x, FileSearchTool) for x in tools)):
+        tools.append(
+            FileSearchTool(
+                max_num_results=5,
+                vector_store_ids=vector_store_ids,
             )
+        )
 
-        # strumenti Instagram per ruoli social
-        if any(k in self.agent_data.role.lower() for k in ("social media", "instagram", "content")):
-            tools.extend(self._get_instagram_function_tools())
+    # strumenti Instagram per ruoli social
+    if any(k in self.agent_data.role.lower() for k in ("social media", "instagram", "content")):
+        tools.extend(self._get_instagram_function_tools())
 
-        # permesso di creare nuovi tool
-        if self.agent_data.can_create_tools:
-            tools.append(self._create_custom_tool_tool())
+    # permesso di creare nuovi tool
+    if self.agent_data.can_create_tools:
+        tools.append(self._create_custom_tool_tool())
 
-        return tools
+    return tools
     
     def _get_instagram_function_tools(self) -> List[Any]:
         """Get Instagram-specific function tools"""
@@ -453,43 +457,48 @@ class SpecialistAgent(Generic[T]):
     def _initialize_handoffs(self) -> List[Handoff]:
         """Initialize handoffs for this agent based on role and seniority with input filters"""
         handoffs = []
-        
+
+        placeholder_agent = OpenAIAgent(
+            name="DynamicHandoffTarget",
+            instructions="Placeholder for dynamic handoff resolution"
+        )
+
         # Handoff per escalation (tutti tranne expert possono escalare)
         if self.agent_data.seniority != "expert":
             escalation_handoff = handoff(
-                agent=None,  # Sarà risolto dinamicamente nel callback
+                agent=placeholder_agent,
                 tool_name_override="escalate_to_senior",
                 tool_description_override="Escalate complex issues requiring higher expertise. Use when current task exceeds your capabilities.",
                 on_handoff=self._on_escalation_handoff,
                 input_type=EscalationData,
-                input_filter=self._escalation_input_filter  # Enhanced filter per escalation
+                input_filter=self._escalation_input_filter
             )
             handoffs.append(escalation_handoff)
-        
+
         # Handoff al coordinatore (tutti gli agenti tranne i coordinatori stessi)
         if not any(keyword in self.agent_data.role.lower() for keyword in ["coordinator", "manager", "director"]):
             coordinator_handoff = handoff(
-                agent=None,  # Project Manager - risolto dinamicamente
+                agent=placeholder_agent, 
                 tool_name_override="report_to_coordinator",
                 tool_description_override="Report task completion and coordinate next steps with project manager.",
                 on_handoff=self._on_coordinator_handoff,
                 input_type=CompletionReport,
-                input_filter=self._coordinator_input_filter  # Enhanced filter per coordinator
+                input_filter=self._coordinator_input_filter
             )
             handoffs.append(coordinator_handoff)
-        
+
         # Handoff specifico per coordinatori (delegazione)
         if any(keyword in self.agent_data.role.lower() for keyword in ["coordinator", "manager", "director"]):
             delegation_handoff = handoff(
-                agent=None,  # Risolto dinamicamente basato sul role richiesto
+                agent=placeholder_agent,  
                 tool_name_override="delegate_to_specialist",
                 tool_description_override="Delegate specific work to appropriate specialist agents.",
                 on_handoff=self._on_delegation_handoff,
                 input_type=DelegationData,
-                input_filter=self._delegation_input_filter  # Enhanced filter per delegation
+                input_filter=self._delegation_input_filter
             )
             handoffs.append(delegation_handoff)
-        
+
         logger.info(f"Initialized {len(handoffs)} handoffs for agent {self.agent_data.name}")
         return handoffs
     

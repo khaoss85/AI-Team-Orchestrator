@@ -50,23 +50,75 @@ class AgentManager:
             # Get workspace to verify it exists
             workspace = await get_workspace(str(self.workspace_id))
             if not workspace:
+                logger.error(f"Workspace {self.workspace_id} not found in database")
                 raise ValueError(f"Workspace {self.workspace_id} not found")
+
+            logger.info(f"Initializing agent manager for workspace {self.workspace_id}")
 
             # Get agents for this workspace
             agents = await list_agents(str(self.workspace_id))
             
-            # Initialize specialist agents
-            for agent_data in agents:
-                agent = SpecialistAgent(AgentModel.model_validate(agent_data))
-                self.agents[UUID(agent_data["id"])] = agent
+            # Check if agents is None or empty
+            if not agents:
+                logger.warning(f"No agents found for workspace {self.workspace_id}")
+                # This isn't necessarily an error - workspace might not have agents yet
+                return True
+            
+            logger.info(f"Found {len(agents)} agents for workspace {self.workspace_id}")
+
+            # Initialize specialist agents with better error handling
+            successful_agents = 0
+            for i, agent_data in enumerate(agents):
+                try:
+                    # Validate agent_data is not None
+                    if not agent_data:
+                        logger.error(f"Agent data at index {i} is None, skipping")
+                        continue
+                    
+                    # Check required fields
+                    required_fields = ['id', 'name', 'role', 'seniority']
+                    missing_fields = [field for field in required_fields if not agent_data.get(field)]
+                    if missing_fields:
+                        logger.error(f"Agent {agent_data.get('id', 'unknown')} missing required fields: {missing_fields}")
+                        continue
+                    
+                    # Log agent details before creation
+                    logger.info(f"Creating SpecialistAgent for: ID={agent_data['id']}, Name={agent_data.get('name')}, Role={agent_data.get('role')}")
+                    
+                    # Validate with Pydantic
+                    try:
+                        agent_model = AgentModel.model_validate(agent_data)
+                    except Exception as validation_error:
+                        logger.error(f"Validation failed for agent {agent_data.get('id')}: {validation_error}")
+                        logger.error(f"Agent data: {agent_data}")
+                        continue
+                    
+                    # Create SpecialistAgent
+                    agent = SpecialistAgent(agent_model)
+                    self.agents[UUID(agent_data["id"])] = agent
+                    successful_agents += 1
+                    
+                    logger.info(f"Successfully created SpecialistAgent {agent_data['id']} ({agent_data['name']})")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to create agent {agent_data.get('id', 'unknown')}: {e}")
+                    logger.error(f"Agent data that caused error: {agent_data}")
+                    # Continue with other agents instead of failing completely
+                    continue
 
             # Initialize handoffs (would need to implement this)
             # self.handoffs = await list_handoffs(str(self.workspace_id))
 
-            logger.info(f"Initialized agent manager for workspace {self.workspace_id} with {len(self.agents)} agents")
-            return True
+            logger.info(f"Successfully initialized {successful_agents}/{len(agents)} agents for workspace {self.workspace_id}")
+            
+            # Return True if we have at least one successful agent, or if no agents were found
+            return successful_agents > 0 or len(agents) == 0
+            
         except Exception as e:
-            logger.error(f"Failed to initialize agent manager: {e}")
+            logger.error(f"Failed to initialize agent manager for workspace {self.workspace_id}: {e}")
+            # Log more details about the error
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return False
 
     async def verify_all_agents(self):
