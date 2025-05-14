@@ -172,7 +172,7 @@ class InstagramTools:
     
     @staticmethod
     @function_tool
-    async def generate_content_ideas(topic: str, target_audience: str, count: int = 5) -> str:
+    async def generate_content_ideas(topic: str, target_audience: str, count: Optional[int] = None) -> str:
         """
         Generate content ideas for Instagram based on topic and target audience.
         
@@ -184,6 +184,7 @@ class InstagramTools:
         Returns:
             List of content ideas with details as JSON string
         """
+        actual_count = count if count is not None and count > 0 else 5
         try:
             logger.info(f"Generating {count} content ideas for topic: {topic}, audience: {target_audience}")
             
@@ -197,7 +198,7 @@ class InstagramTools:
             
             # Generate ideas based on topic
             ideas = []
-            for i in range(count):
+            for i in range(actual_count):
                 content_type = random.choice(content_types)
                 
                 if topic.lower() == "fitness":
