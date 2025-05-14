@@ -3,19 +3,57 @@ from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
 from collections import Counter
+from datetime import datetime, timedelta
+from pydantic import BaseModel
 
-# Assicurati che task_executor sia importato correttamente
-# Se executor.py è nella stessa directory o nel path Python:
+# Import task_executor
 from executor import task_executor
-# Altrimenti, aggiusta l'import in base alla tua struttura effettiva, es:
-# from ..executor import task_executor 
 
-from database import get_workspace, list_agents as db_list_agents, list_tasks
+# Import database functions
+from database import (
+    get_workspace, 
+    list_agents as db_list_agents, 
+    list_tasks,
+    update_task_status
+)
+
+# Import models for task status
+from models import TaskStatus
 
 logger = logging.getLogger(__name__)
-# Aggiunto "executor-control" ai tag per separare logicamente gli endpoint
+# Tag separati per organizzazione logica
 router = APIRouter(prefix="/monitoring", tags=["monitoring", "executor-control"])
 
+# Modelli Pydantic per Task Analysis
+class FailureAnalysis(BaseModel):
+    total_failures: int
+    max_turns_failures: int
+    execution_errors: int
+    failure_reasons: Dict[str, int]
+    average_failure_time: float
+
+class HandoffAnalysis(BaseModel):
+    total_handoff_tasks: int
+    handoff_success_rate: float
+    recent_handoff_pattern: List[Dict[str, str]]
+    most_common_handoff_types: Dict[str, int]
+
+class PotentialIssues(BaseModel):
+    runaway_detected: bool
+    excessive_handoffs: bool
+    high_failure_rate: bool
+    stuck_agents: List[str]
+    queue_overflow_risk: bool
+
+class TaskAnalysisResponse(BaseModel):
+    task_counts: Dict[str, int]
+    failure_analysis: FailureAnalysis
+    handoff_analysis: HandoffAnalysis
+    potential_issues: PotentialIssues
+    recommendations: List[str]
+    analysis_timestamp: str
+
+# ENDPOINT BASE - DA V1
 @router.get("/workspace/{workspace_id}/activity", response_model=List[Dict[str, Any]])
 async def get_workspace_activity(
     workspace_id: UUID,
@@ -49,12 +87,12 @@ async def get_workspace_budget(workspace_id: UUID):
             budget_limit = workspace_db.get("budget", {}).get("max_amount", 0)
             currency = workspace_db.get("budget", {}).get("currency", "EUR")
             budget_summary["budget_limit"] = budget_limit
-            budget_summary["currency"] = currency # Assicura che la valuta sia quella del workspace
+            budget_summary["currency"] = currency
             budget_summary["budget_percentage"] = (
                 (budget_summary["total_cost"] / budget_limit * 100) 
                 if budget_limit and budget_limit > 0 else 0
             )
-        else: # Fallback se il workspace non viene trovato (improbabile se l'ID è valido)
+        else:
             budget_summary["budget_limit"] = 0
             budget_summary["budget_percentage"] = 0
             budget_summary["currency"] = "N/A"
@@ -117,11 +155,7 @@ async def start_workspace_team(workspace_id: UUID):
         if task_id:
             return {"success": True, "message": "Initial task created or already present. Team processes initiated.", "initial_task_id": task_id}
         else:
-            # Questo potrebbe accadere se non ci sono agenti o il workspace non è in uno stato appropriato.
-            # La logica in trigger_initial_workspace_task dovrebbe gestire questi casi e loggare.
             logger.warning(f"Could not trigger initial task for workspace {workspace_id}. It might already have tasks or no agents configured.")
-            # Potresti voler restituire un messaggio più specifico qui, ma un 400 potrebbe essere troppo generico.
-            # Un 200 con un messaggio potrebbe essere più appropriato se l'azione non è "errata" ma semplicemente non necessaria.
             return {"success": False, "message": "Could not trigger initial task. Workspace might already have tasks or requires agent configuration."}
 
     except Exception as e:
@@ -165,10 +199,9 @@ async def get_global_activity(limit: int = Query(default=50, le=200)):
         logger.error(f"Error getting global activity: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get global activity: {str(e)}")
 
-# --- ENDPOINT PER CONTROLLO E STATISTICHE ESECUTORE ---
-
+# ENDPOINT CONTROLLO EXECUTOR - DA V1
 @router.post("/executor/pause", status_code=status.HTTP_200_OK)
-async def pause_executor_endpoint(): # Nome funzione univoco
+async def pause_executor_endpoint():
     """Pause the task executor."""
     if not task_executor.running:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task executor is not running.")
@@ -178,7 +211,7 @@ async def pause_executor_endpoint(): # Nome funzione univoco
     return {"message": "Task executor pause requested."}
 
 @router.post("/executor/resume", status_code=status.HTTP_200_OK)
-async def resume_executor_endpoint(): # Nome funzione univoco
+async def resume_executor_endpoint():
     """Resume the task executor."""
     if not task_executor.running:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task executor is not running. Cannot resume a stopped executor.")
@@ -188,7 +221,7 @@ async def resume_executor_endpoint(): # Nome funzione univoco
     return {"message": "Task executor resumed."}
 
 @router.get("/executor/status", response_model=Dict[str, Any])
-async def get_executor_runtime_status_endpoint(): # Nome funzione univoco
+async def get_executor_runtime_status_endpoint():
     """Get the current running and paused status of the task executor."""
     return {
         "is_running": task_executor.running,
@@ -215,3 +248,332 @@ async def get_executor_detailed_stats_endpoint():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get detailed executor stats: {str(e)}"
         )
+
+# ENDPOINT RUNAWAY PROTECTION - DA V1
+@router.get("/runaway-protection/status", response_model=Dict[str, Any])
+async def get_runaway_protection_status():
+    """Get runaway protection status"""
+    return task_executor.get_runaway_protection_status()
+
+@router.post("/runaway-protection/check", status_code=status.HTTP_200_OK)
+async def trigger_manual_runaway_check():
+    """Manually trigger runaway check"""
+    from executor import trigger_runaway_check
+    return await trigger_runaway_check()
+
+@router.post("/workspace/{workspace_id}/resume-auto-generation", status_code=status.HTTP_200_OK)
+async def resume_workspace_auto_generation(workspace_id: UUID):
+    """Manually resume auto-generation for a workspace"""
+    from executor import reset_workspace_auto_generation
+    return await reset_workspace_auto_generation(str(workspace_id))
+
+@router.get("/workspace/{workspace_id}/health", response_model=Dict[str, Any])
+async def get_workspace_health(workspace_id: UUID):
+    """Get detailed health status for a workspace"""
+    health_status = await task_executor.check_workspace_health(str(workspace_id))
+    return health_status
+
+# ENDPOINT TASK ANALYSIS - DA V2 (CORRETTO)
+@router.get("/workspace/{workspace_id}/task-analysis", response_model=TaskAnalysisResponse)
+async def get_task_failure_analysis(workspace_id: UUID):
+    """Get comprehensive analysis of task failures, patterns, and system health"""
+    try:
+        # Fetch data from multiple sources
+        tasks = await list_tasks(str(workspace_id))
+        agents_db = await db_list_agents(str(workspace_id))
+        
+        # Get runtime data from executor
+        recent_activity = task_executor.get_recent_activity(str(workspace_id), 100)
+        agent_ids = [str(agent["id"]) for agent in agents_db]
+        
+        # Handle empty task list
+        if not tasks:
+            return TaskAnalysisResponse(
+                task_counts={"total": 0},
+                failure_analysis=FailureAnalysis(
+                    total_failures=0,
+                    max_turns_failures=0,
+                    execution_errors=0,
+                    failure_reasons={},
+                    average_failure_time=0.0
+                ),
+                handoff_analysis=HandoffAnalysis(
+                    total_handoff_tasks=0,
+                    handoff_success_rate=0.0,
+                    recent_handoff_pattern=[],
+                    most_common_handoff_types={}
+                ),
+                potential_issues=PotentialIssues(
+                    runaway_detected=False,
+                    excessive_handoffs=False,
+                    high_failure_rate=False,
+                    stuck_agents=[],
+                    queue_overflow_risk=False
+                ),
+                recommendations=["No tasks found. Consider creating initial tasks."],
+                analysis_timestamp=datetime.now().isoformat()
+            )
+        
+        # 1. Analyze task status distribution
+        status_counts = Counter()
+        failure_reasons = Counter()
+        max_turns_failures = 0
+        execution_errors = 0
+        failure_times = []
+        
+        for task in tasks:
+            status = task.get("status", "unknown")
+            status_counts[status] += 1
+            
+            # Detailed failure analysis
+            if status == "failed" and task.get("result"):
+                result = task["result"]
+                
+                # Track failure reasons
+                if result.get("max_turns_reached"):
+                    max_turns_failures += 1
+                    failure_reasons["max_turns_exceeded"] += 1
+                else:
+                    execution_errors += 1
+                    failure_reasons["execution_error"] += 1
+                
+                # Specific failure reason from result
+                specific_reason = result.get("failure_reason", "unknown")
+                failure_reasons[specific_reason] += 1
+                
+                # Track failure timing
+                if result.get("execution_time_seconds"):
+                    failure_times.append(result["execution_time_seconds"])
+        
+        # Calculate average failure time
+        avg_failure_time = sum(failure_times) / len(failure_times) if failure_times else 0.0
+        
+        # 2. Comprehensive handoff analysis
+        handoff_tasks = [t for t in tasks if _is_handoff_task(t)]
+        completed_handoffs = [t for t in handoff_tasks if t.get("status") == "completed"]
+        handoff_success_rate = len(completed_handoffs) / len(handoff_tasks) if handoff_tasks else 0.0
+        
+        # Analyze handoff patterns from recent activity
+        handoff_events = [
+            event for event in recent_activity 
+            if event.get("event") in ["handoff_requested", "initial_task_created"]
+        ]
+        
+        # Recent handoff patterns (last 10)
+        recent_handoffs = sorted(handoff_tasks, key=lambda x: x.get("created_at", ""), reverse=True)[:10]
+        recent_handoff_pattern = [
+            {
+                "name": t.get("name", "Unknown"),
+                "created_at": t.get("created_at", ""),
+                "status": t.get("status", "unknown"),
+                "agent_id": t.get("agent_id", "")[:8] + "..." if t.get("agent_id") else "Unknown"
+            }
+            for t in recent_handoffs
+        ]
+        
+        # Most common handoff types
+        handoff_types = Counter()
+        for task in handoff_tasks:
+            task_name = task.get("name", "").lower()
+            if "continuation" in task_name:
+                handoff_types["continuation_handoff"] += 1
+            elif "escalation" in task_name:
+                handoff_types["escalation_handoff"] += 1
+            elif "delegation" in task_name:
+                handoff_types["delegation_handoff"] += 1
+            else:
+                handoff_types["other_handoff"] += 1
+        
+        # 3. Detect potential issues
+        total_tasks = len(tasks)
+        pending_tasks = status_counts.get("pending", 0)
+        failed_tasks = status_counts.get("failed", 0)
+        
+        # Runaway detection
+        runaway_detected = pending_tasks > 50
+        
+        # Excessive handoffs (more than 30% of tasks)
+        excessive_handoffs = len(handoff_tasks) > total_tasks * 0.3
+        
+        # High failure rate (more than 20%)
+        high_failure_rate = (failed_tasks / total_tasks) > 0.2 if total_tasks > 0 else False
+        
+        # Stuck agents detection
+        stuck_agents = _detect_stuck_agents(agents_db, recent_activity)
+        
+        # Queue overflow risk
+        queue_overflow_risk = (
+            task_executor.task_queue.qsize() > task_executor.max_queue_size * 0.8
+            if hasattr(task_executor, 'task_queue') else False
+        )
+        
+        # 4. Generate recommendations
+        recommendations = _generate_recommendations(
+            status_counts, len(handoff_tasks), total_tasks, 
+            max_turns_failures, stuck_agents, runaway_detected
+        )
+        
+        # 5. Build response
+        return TaskAnalysisResponse(
+            task_counts=dict(status_counts),
+            failure_analysis=FailureAnalysis(
+                total_failures=failed_tasks,
+                max_turns_failures=max_turns_failures,
+                execution_errors=execution_errors,
+                failure_reasons=dict(failure_reasons),
+                average_failure_time=round(avg_failure_time, 2)
+            ),
+            handoff_analysis=HandoffAnalysis(
+                total_handoff_tasks=len(handoff_tasks),
+                handoff_success_rate=round(handoff_success_rate, 3),
+                recent_handoff_pattern=recent_handoff_pattern,
+                most_common_handoff_types=dict(handoff_types)
+            ),
+            potential_issues=PotentialIssues(
+                runaway_detected=runaway_detected,
+                excessive_handoffs=excessive_handoffs,
+                high_failure_rate=high_failure_rate,
+                stuck_agents=stuck_agents,
+                queue_overflow_risk=queue_overflow_risk
+            ),
+            recommendations=recommendations,
+            analysis_timestamp=datetime.now().isoformat()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in task failure analysis: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze tasks: {str(e)}"
+        )
+
+# ENDPOINT EMERGENCY RESET - DA V2
+@router.post("/workspace/{workspace_id}/reset-runaway", status_code=status.HTTP_200_OK)
+async def reset_runaway_tasks(workspace_id: UUID):
+    """Emergency reset for workspaces with runaway task generation"""
+    try:
+        # Get all pending tasks
+        tasks = await list_tasks(str(workspace_id))
+        pending_tasks = [t for t in tasks if t.get("status") == "pending"]
+        
+        if len(pending_tasks) < 50:
+            return {
+                "message": f"No runaway detected. Only {len(pending_tasks)} pending tasks.",
+                "action_taken": "none"
+            }
+        
+        # Cancel excessive handoff tasks (keep only non-handoff pending tasks)
+        handoff_tasks_to_cancel = [
+            t for t in pending_tasks 
+            if _is_handoff_task(t)
+        ]
+        
+        cancelled_count = 0
+        for task in handoff_tasks_to_cancel:
+            try:
+                await update_task_status(
+                    task["id"], 
+                    TaskStatus.CANCELED.value,
+                    {"reason": "Emergency runaway reset", "cancelled_at": datetime.now().isoformat()}
+                )
+                cancelled_count += 1
+            except Exception as e:
+                logger.error(f"Failed to cancel task {task['id']}: {e}")
+        
+        logger.warning(f"Emergency reset: Cancelled {cancelled_count} handoff tasks in workspace {workspace_id}")
+        
+        return {
+            "message": f"Emergency reset completed. Cancelled {cancelled_count} handoff tasks.",
+            "remaining_pending": len(pending_tasks) - cancelled_count,
+            "action_taken": "runaway_reset"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in emergency reset: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# METODI HELPER - CORRETTI SENZA SELF
+def _is_handoff_task(task: Dict) -> bool:
+    """Determine if a task is a handoff task"""
+    task_name = task.get("name", "").lower()
+    handoff_indicators = [
+        "handoff", "continuation", "transfer", "delegate", 
+        "escalation", "coordinate", "follow-up"
+    ]
+    return any(indicator in task_name for indicator in handoff_indicators)
+
+def _detect_stuck_agents(agents: List[Dict], recent_activity: List[Dict]) -> List[str]:
+    """Detect agents that might be stuck (no activity in recent time)"""
+    stuck_agents = []
+    
+    # Get agent activity from recent logs
+    agent_activity = {}
+    cutoff_time = datetime.now() - timedelta(hours=2)
+    
+    for event in recent_activity:
+        agent_id = event.get("agent_id")
+        if agent_id:
+            event_time_str = event.get("timestamp")
+            if event_time_str:
+                try:
+                    event_time = datetime.fromisoformat(event_time_str.replace('Z', '+00:00'))
+                    if event_time > cutoff_time:
+                        agent_activity[agent_id] = max(
+                            agent_activity.get(agent_id, event_time), 
+                            event_time
+                        )
+                except ValueError:
+                    continue
+    
+    # Check for agents with no recent activity
+    for agent in agents:
+        agent_id = agent["id"]
+        agent_name = agent.get("name", "Unknown")
+        
+        if agent_id not in agent_activity and agent.get("status") == "active":
+            stuck_agents.append(f"{agent_name} ({agent_id[:8]}...)")
+    
+    return stuck_agents
+
+def _generate_recommendations(
+    status_counts: Counter, 
+    handoff_count: int, 
+    total_tasks: int,
+    max_turns_failures: int,
+    stuck_agents: List[str],
+    runaway_detected: bool
+) -> List[str]:
+    """Generate actionable recommendations based on analysis"""
+    recommendations = []
+    
+    # Runaway detection
+    if runaway_detected:
+        recommendations.append("🚨 CRITICAL: Runaway task generation detected. Consider pausing auto-generation and reviewing task creation logic.")
+    
+    # High max turns failures
+    if max_turns_failures > 5:
+        recommendations.append(f"⚠️ High max_turns failures ({max_turns_failures}). Review task complexity and agent prompts.")
+    
+    # Excessive handoffs
+    if handoff_count > total_tasks * 0.3:
+        recommendations.append("📄 High handoff ratio. Consider reducing unnecessary handoffs or improving task completion rates.")
+    
+    # Stuck agents
+    if stuck_agents:
+        recommendations.append(f"🔄 {len(stuck_agents)} agents appear inactive. Check: {', '.join(stuck_agents[:3])}")
+    
+    # High failure rate
+    failed_rate = status_counts.get("failed", 0) / total_tasks if total_tasks > 0 else 0
+    if failed_rate > 0.2:
+        recommendations.append(f"❌ High failure rate ({failed_rate:.1%}). Review error patterns and improve error handling.")
+    
+    # Pending tasks buildup
+    pending_ratio = status_counts.get("pending", 0) / total_tasks if total_tasks > 0 else 0
+    if pending_ratio > 0.5:
+        recommendations.append("⏳ Large number of pending tasks. Consider increasing processing capacity.")
+    
+    # General health check
+    if not recommendations:
+        recommendations.append("✅ System appears healthy. Continue monitoring.")
+    
+    return recommendations

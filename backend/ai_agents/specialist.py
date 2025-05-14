@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List, Dict, Any, Optional, Union, Literal
+from typing import List, Dict, Any, Optional, Union, Literal, TypeVar, Generic, Type
 from uuid import UUID
 import json
 
@@ -10,7 +10,13 @@ from agents import Runner, ModelSettings, function_tool
 from agents import Handoff, handoff, WebSearchTool, FileSearchTool
 from agents import input_guardrail, output_guardrail, GuardrailFunctionOutput
 from agents import TResponseInputItem, RunContextWrapper
+from agents import trace, custom_span, gen_trace_id
+from agents.exceptions import MaxTurnsExceeded, AgentsException, ModelBehaviorError
+from agents.extensions import handoff_filters
 from pydantic import BaseModel, Field
+
+# Context type variable for generic typing
+T = TypeVar('T')
 
 from models import (
     Agent as AgentModel,
@@ -68,6 +74,38 @@ class HandoffRequest(BaseModel):
     priority: Literal["low", "medium", "high"] = "medium"
     expected_output: Optional[str] = None
 
+class ConversationSummary(BaseModel):
+    """Structured summary for conversation optimization"""
+    key_points: List[str]
+    user_requests: List[str]
+    current_status: str
+    relevant_context: Dict[str, Any]
+
+# ==============================================================================
+# HANDOFF DATA MODELS
+# ==============================================================================
+
+class EscalationData(BaseModel):
+    reason: str = Field(..., description="Why escalation is needed")
+    context: str = Field(..., description="Context and work done so far")
+    priority: str = Field(default="medium", description="Priority level: low, medium, high")
+    task_id: Optional[str] = Field(None, description="Current task ID")
+
+class CompletionReport(BaseModel):
+    task_summary: str = Field(..., description="Summary of completed work")
+    next_steps: Optional[List[str]] = Field(None, description="Recommended next steps")
+    recommendations: Optional[str] = Field(None, description="Additional recommendations")
+    requires_followup: bool = Field(False, description="Whether follow-up is needed")
+    handoff_target: Optional[str] = Field(None, description="Specific role to hand off to")
+
+class DelegationData(BaseModel):
+    target_role: str = Field(..., description="Role of the target specialist")
+    task_description: str = Field(..., description="Description of work to delegate")
+    context: str = Field(..., description="Context and background information")
+    priority: str = Field(default="medium", description="Priority level")
+    deadline: Optional[str] = Field(None, description="Deadline if any")
+    expected_output: Optional[str] = Field(None, description="What kind of output is expected")
+    
 # ==============================================================================
 # GUARDRAIL
 # ==============================================================================
@@ -143,41 +181,120 @@ async def quality_assurance_guardrail(
         )
 
 # ==============================================================================
+# CONVERSATION HISTORY OPTIMIZATION WITH AI
+# ==============================================================================
+
+class ConversationOptimizer:
+    """Optimize conversation history using AI for better handoff performance"""
+    
+    def __init__(self):
+        self.summarizer_agent = None
+        
+    async def _get_summarizer_agent(self):
+        """Get or create the conversation summarizer agent"""
+        if self.summarizer_agent is None:
+            self.summarizer_agent = OpenAIAgent(
+                name="ConversationSummarizer",
+                instructions="""You are an expert at summarizing conversations for AI handoffs.
+                Extract key points, user requests, current status, and relevant context.
+                Focus on information needed for the next agent to continue effectively.""",
+                model="gpt-4.1-nano",  # Use fast, cheap model for summaries
+                output_type=ConversationSummary
+            )
+        return self.summarizer_agent
+        
+    async def optimize_with_ai_summary(self, conversation_history):
+        """Use AI to create optimized conversation summary"""
+        if len(conversation_history) <= 3:
+            return conversation_history
+            
+        try:
+            # Convert conversation to text
+            text_history = self._history_to_text(conversation_history)
+            
+            # Get summary
+            summarizer = await self._get_summarizer_agent()
+            result = await Runner.run(
+                summarizer,
+                f"Summarize this conversation for handoff:\n\n{text_history}",
+                max_turns=1
+            )
+            
+            summary = result.final_output
+            
+            # Create optimized history with summary
+            optimized_history = [
+                {"role": "system", "content": f"""Previous conversation summary:
+Key points: {'; '.join(summary.key_points)}
+User requests: {'; '.join(summary.user_requests)}
+Current status: {summary.current_status}
+Relevant context: {summary.relevant_context}
+"""},
+                # Keep the last 2 messages for immediate context
+                *conversation_history[-2:]
+            ]
+            
+            return optimized_history
+            
+        except Exception as e:
+            logger.warning(f"AI summarization failed, using basic optimization: {e}")
+            # Fallback to basic optimization
+            return conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+    
+    def _history_to_text(self, history):
+        """Convert conversation history to text for summarization"""
+        text_parts = []
+        for msg in history:
+            if isinstance(msg, dict):
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                text_parts.append(f"{role.upper()}: {content}")
+            else:
+                text_parts.append(str(msg))
+        return "\n".join(text_parts)
+
+# ==============================================================================
 # SPECIALIST AGENT
 # ==============================================================================
 
-class SpecialistAgent:
-    """Advanced Specialist Agent with automated task creation and handoffs"""
+class SpecialistAgent(Generic[T]):
+    """Advanced Specialist Agent with native handoffs, context management and tracing"""
     
-    def __init__(self, agent_data: AgentModel):
+    def __init__(self, agent_data: AgentModel, context_type: Optional[Type[T]] = None):
         """
         Initialize a specialist agent with its configuration.
         
         Args:
             agent_data: The agent configuration from the database
+            context_type: Optional type for context management
         """
         self.agent_data = agent_data
+        self.context_type = context_type or dict
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")
         
-        # Mapping of seniority to model
+        # Initialize conversation optimizer
+        self.conversation_optimizer = ConversationOptimizer()
+        
+        # Updated mapping with latest 4.1 models (officially released)
         self.seniority_model_map = {
-            "junior": "gpt-4-turbo",      # Più economico per attività base
-            "senior": "gpt-4.1-mini",     # Buon compromesso costo/prestazioni
-            "expert": "gpt-4.1"           # Migliore per attività complesse
+            "junior": "gpt-4.1-nano",     # Fastest and cheapest: $0.10 input, $0.40 output
+            "senior": "gpt-4.1-mini",     # Bilanciato: $0.40 input, $1.60 output  
+            "expert": "gpt-4.1"           # Migliore: $2.00 input, $8.00 output
         }
         
         # Initialize tools based on agent configuration
         self.tools = self._initialize_tools()
         
-        # Initialize handoffs
+        # Initialize handoffs BEFORE creating the agent
         self.handoffs = self._initialize_handoffs()
         
         # Create OpenAI Agent
         self.agent = self._create_agent()
     
     def _initialize_tools(self) -> List[Any]:
+        """Initialize tools based on agent configuration"""
         tools = [
             # automation di base
             self._create_auto_task_tool(),
@@ -229,40 +346,389 @@ class SpecialistAgent:
     def _get_instagram_function_tools(self) -> List[Any]:
         """Get Instagram-specific function tools"""
         # Import Instagram tools from social_media module
-        from tools.social_media import InstagramTools
+        try:
+            from tools.social_media import InstagramTools
+            return [
+                InstagramTools.analyze_hashtags,
+                InstagramTools.analyze_account,
+                InstagramTools.generate_content_ideas,
+                InstagramTools.analyze_competitors
+            ]
+        except ImportError:
+            logger.warning("Instagram tools not available")
+            return []
+    
+    # ==============================================================================
+    # HANDOFF INPUT FILTERS - CONVERSATION HISTORY OPTIMIZATION
+    # ==============================================================================
+    
+    async def _optimize_conversation_history_with_ai(self, handoff_input_data):
+        """Optimize conversation history using AI summarization for complex handoffs"""
+        # Remove tool calls first
+        filtered_data = handoff_filters.remove_all_tools(handoff_input_data)
         
-        return [
-            InstagramTools.analyze_hashtags,
-            InstagramTools.analyze_account,
-            InstagramTools.generate_content_ideas,
-            InstagramTools.analyze_competitors
-        ]
+        # For complex conversations, use AI summarization
+        if len(filtered_data.input_history) > 5:
+            optimized_history = await self.conversation_optimizer.optimize_with_ai_summary(
+                list(filtered_data.input_history)
+            )
+        else:
+            # Use basic optimization for shorter conversations
+            optimized_history = list(filtered_data.input_history)
+        
+        return HandoffInputData(
+            input_history=tuple(optimized_history),
+            pre_handoff_items=filtered_data.pre_handoff_items,
+            new_items=filtered_data.new_items,
+        )
+    
+    def _optimize_conversation_history(self, handoff_input_data):
+        """Optimize conversation history for better handoff performance"""
+        # Remove tool calls for cleaner history
+        filtered_data = handoff_filters.remove_all_tools(handoff_input_data)
+        
+        # Advanced conversation compression
+        history = list(filtered_data.input_history)
+        optimized_history = []
+        
+        # Keep first message (usually contains important context)
+        if history:
+            optimized_history.append(history[0])
+            
+        # Keep last 5 messages for recent context
+        if len(history) > 6:
+            optimized_history.extend(history[-5:])
+        else:
+            optimized_history.extend(history[1:])
+        
+        # Remove duplicate or very similar consecutive messages
+        final_history = []
+        prev_content = None
+        
+        for msg in optimized_history:
+            content = msg.get('content', '') if isinstance(msg, dict) else str(msg)
+            # Simple similarity check (can be enhanced with embeddings)
+            if prev_content is None or abs(len(content) - len(prev_content)) > 50 or content[:100] != prev_content[:100]:
+                final_history.append(msg)
+                prev_content = content
+        
+        return HandoffInputData(
+            input_history=tuple(final_history),
+            pre_handoff_items=filtered_data.pre_handoff_items,
+            new_items=filtered_data.new_items,
+        )
+    
+    def _escalation_input_filter(self, handoff_input_data):
+        """Enhanced input filter for escalation handoffs"""
+        # More aggressive cleaning for escalations, keep essential context
+        filtered_data = handoff_filters.remove_all_tools(handoff_input_data)
+        
+        # For escalations, keep the original request and the last few messages
+        history = list(filtered_data.input_history)
+        if len(history) > 4:
+            # Keep first message (original request) and last 3 messages
+            optimized_history = [history[0]] + history[-3:]
+        else:
+            optimized_history = history
+            
+        return HandoffInputData(
+            input_history=tuple(optimized_history),
+            pre_handoff_items=filtered_data.pre_handoff_items, 
+            new_items=filtered_data.new_items,
+        )
+        
+    def _delegation_input_filter(self, handoff_input_data):
+        """Enhanced input filter for delegation handoffs"""
+        # For delegation, we want to be more comprehensive but still clean
+        return self._optimize_conversation_history(handoff_input_data)
+    
+    def _coordinator_input_filter(self, handoff_input_data):
+        """Enhanced input filter for coordinator handoffs with conversation optimization"""
+        return self._optimize_conversation_history(handoff_input_data)
+    
+    # ==============================================================================
+    # HANDOFFS IMPLEMENTATION
+    # ==============================================================================
     
     def _initialize_handoffs(self) -> List[Handoff]:
-        """Initialize handoffs for this agent"""
+        """Initialize handoffs for this agent based on role and seniority with input filters"""
         handoffs = []
         
-        # Example: Create a handoff to a senior agent for escalation
-        if self.agent_data.seniority == "junior":
+        # Handoff per escalation (tutti tranne expert possono escalare)
+        if self.agent_data.seniority != "expert":
             escalation_handoff = handoff(
-                agent=None,  # Will be set dynamically
-                on_handoff=self._on_escalation_handoff,
-                input_type=BudgetMonitoringData,
+                agent=None,  # Sarà risolto dinamicamente nel callback
                 tool_name_override="escalate_to_senior",
-                tool_description_override="Escalate complex issues to a senior agent"
+                tool_description_override="Escalate complex issues requiring higher expertise. Use when current task exceeds your capabilities.",
+                on_handoff=self._on_escalation_handoff,
+                input_type=EscalationData,
+                input_filter=self._escalation_input_filter  # Enhanced filter per escalation
             )
             handoffs.append(escalation_handoff)
         
+        # Handoff al coordinatore (tutti gli agenti tranne i coordinatori stessi)
+        if not any(keyword in self.agent_data.role.lower() for keyword in ["coordinator", "manager", "director"]):
+            coordinator_handoff = handoff(
+                agent=None,  # Project Manager - risolto dinamicamente
+                tool_name_override="report_to_coordinator",
+                tool_description_override="Report task completion and coordinate next steps with project manager.",
+                on_handoff=self._on_coordinator_handoff,
+                input_type=CompletionReport,
+                input_filter=self._coordinator_input_filter  # Enhanced filter per coordinator
+            )
+            handoffs.append(coordinator_handoff)
+        
+        # Handoff specifico per coordinatori (delegazione)
+        if any(keyword in self.agent_data.role.lower() for keyword in ["coordinator", "manager", "director"]):
+            delegation_handoff = handoff(
+                agent=None,  # Risolto dinamicamente basato sul role richiesto
+                tool_name_override="delegate_to_specialist",
+                tool_description_override="Delegate specific work to appropriate specialist agents.",
+                on_handoff=self._on_delegation_handoff,
+                input_type=DelegationData,
+                input_filter=self._delegation_input_filter  # Enhanced filter per delegation
+            )
+            handoffs.append(delegation_handoff)
+        
+        logger.info(f"Initialized {len(handoffs)} handoffs for agent {self.agent_data.name}")
         return handoffs
     
     async def _on_escalation_handoff(
         self,
-        ctx: RunContextWrapper,
-        input_data: BudgetMonitoringData
+        ctx: RunContextWrapper[T],
+        input_data: EscalationData
     ):
-        """Callback per gestire l'escalation handoff"""
-        logger.info(f"Agent {self.agent_data.id} escalating: {input_data}")
-        # Implement escalation logic
+        """Callback per gestire l'escalation handoff with context support"""
+        try:
+            logger.info(f"Agent {self.agent_data.id} ({self.agent_data.name}) escalating: {input_data.reason}")
+            
+            # Trova agenti senior dello stesso role/domain
+            agents = await list_agents(str(self.agent_data.workspace_id))
+            
+            # Logica di selezione dell'agente target
+            target_agent = None
+            
+            # Prima prova: cerca expert nello stesso role
+            expert_agents = [
+                a for a in agents 
+                if a["seniority"] == "expert" and 
+                   self._is_same_domain(a["role"], self.agent_data.role) and
+                   a["id"] != str(self.agent_data.id)
+            ]
+            
+            # Seconda prova: cerca senior nello stesso role
+            if not expert_agents:
+                senior_agents = [
+                    a for a in agents 
+                    if a["seniority"] == "senior" and 
+                       self._is_same_domain(a["role"], self.agent_data.role) and
+                       a["id"] != str(self.agent_data.id)
+                ]
+                target_agent = senior_agents[0] if senior_agents else None
+            else:
+                target_agent = expert_agents[0]
+            
+            if target_agent:
+                # Log dell'escalation con dettagli
+                await self._log_execution_internal("escalation_handoff", 
+                    json.dumps({
+                        "target_agent_id": target_agent["id"],
+                        "target_agent_name": target_agent["name"],
+                        "escalation_reason": input_data.reason,
+                        "context": input_data.context,
+                        "priority": input_data.priority
+                    }))
+                
+                # Crea il target agent e mantiene il context
+                target_specialist = self._create_agent_from_data(target_agent)
+                ctx.set_agent(target_specialist)
+            else:
+                logger.warning(f"No suitable agent found for escalation from {self.agent_data.name}")
+                # Fallback: escalate to coordinator
+                coordinator = await self._find_coordinator()
+                if coordinator:
+                    coordinator_specialist = self._create_agent_from_data(coordinator)
+                    ctx.set_agent(coordinator_specialist)
+                    
+        except Exception as e:
+            logger.error(f"Error in escalation handoff: {e}")
+            raise
+
+    async def _on_coordinator_handoff(
+        self,
+        ctx: RunContextWrapper[T], 
+        input_data: CompletionReport
+    ):
+        """Callback per handoff al coordinatore with context support"""
+        try:
+            logger.info(f"Agent {self.agent_data.id} ({self.agent_data.name}) reporting to coordinator")
+            
+            # Trova il coordinatore/project manager
+            coordinator = await self._find_coordinator()
+            
+            if coordinator:
+                await self._log_execution_internal("coordinator_handoff",
+                    json.dumps({
+                        "target_agent_id": coordinator["id"],
+                        "target_agent_name": coordinator["name"],
+                        "task_summary": input_data.task_summary,
+                        "next_steps": input_data.next_steps,
+                        "requires_followup": input_data.requires_followup
+                    }))
+                
+                # Set the coordinator as the next agent with context preservation
+                coordinator_specialist = self._create_agent_from_data(coordinator)
+                ctx.set_agent(coordinator_specialist)
+            else:
+                logger.warning(f"No coordinator found for handoff from {self.agent_data.name}")
+                
+        except Exception as e:
+            logger.error(f"Error in coordinator handoff: {e}")
+            raise
+
+    async def _on_delegation_handoff(
+        self,
+        ctx: RunContextWrapper[T],
+        input_data: DelegationData
+    ):
+        """Callback per la delegazione da coordinator a specialist with context support"""
+        try:
+            logger.info(f"Coordinator {self.agent_data.name} delegating to {input_data.target_role}")
+            
+            # Trova l'agente appropriato per il role richiesto
+            agents = await list_agents(str(self.agent_data.workspace_id))
+            
+            # Cerca il miglior match per role
+            target_candidates = []
+            for agent in agents:
+                if self._matches_role(agent["role"], input_data.target_role):
+                    target_candidates.append((agent, self._calculate_agent_score(agent, input_data)))
+            
+            if target_candidates:
+                # Ordina per score e prendi il migliore
+                target_candidates.sort(key=lambda x: x[1], reverse=True)
+                target_agent = target_candidates[0][0]
+                
+                await self._log_execution_internal("delegation_handoff",
+                    json.dumps({
+                        "target_agent_id": target_agent["id"],
+                        "target_agent_name": target_agent["name"],
+                        "target_role": input_data.target_role,
+                        "task_description": input_data.task_description,
+                        "priority": input_data.priority
+                    }))
+                
+                # Create and set target agent with context preservation
+                target_specialist = self._create_agent_from_data(target_agent)
+                ctx.set_agent(target_specialist)
+            else:
+                logger.warning(f"No suitable agent found for role {input_data.target_role}")
+                
+        except Exception as e:
+            logger.error(f"Error in delegation handoff: {e}")
+            raise
+    
+    # ==============================================================================
+    # HELPER METHODS FOR HANDOFFS
+    # ==============================================================================
+    
+    def _is_same_domain(self, role1: str, role2: str) -> bool:
+        """Check if two roles are in the same domain"""
+        # Semplifica i role per il confronto
+        role1_clean = role1.lower().replace("specialist", "").replace("agent", "").strip()
+        role2_clean = role2.lower().replace("specialist", "").replace("agent", "").strip()
+        
+        # Dominio keywords
+        domains = {
+            "content": ["content", "writing", "copywriting", "editorial"],
+            "data": ["data", "analytics", "analysis", "insights"],
+            "social": ["social", "instagram", "media", "marketing"],
+            "technical": ["technical", "development", "engineering", "system"],
+            "design": ["design", "creative", "visual", "graphics"]
+        }
+        
+        for domain, keywords in domains.items():
+            if any(kw in role1_clean for kw in keywords) and any(kw in role2_clean for kw in keywords):
+                return True
+        
+        return False
+
+    def _matches_role(self, agent_role: str, target_role: str) -> bool:
+        """Check if an agent's role matches the target role"""
+        agent_role_clean = agent_role.lower().strip()
+        target_role_clean = target_role.lower().strip()
+        
+        # Exact match
+        if target_role_clean in agent_role_clean:
+            return True
+        
+        # Fuzzy matching per ruoli simili
+        synonyms = {
+            "content": ["content", "writing", "copywriting"],
+            "data": ["data", "analytics", "analysis"],
+            "social media": ["social", "instagram", "media"],
+            "technical": ["technical", "development", "tech"]
+        }
+        
+        for key, values in synonyms.items():
+            if any(v in target_role_clean for v in values) and any(v in agent_role_clean for v in values):
+                return True
+        
+        return False
+
+    def _calculate_agent_score(self, agent: Dict, delegation_data: DelegationData) -> float:
+        """Calculate a score for agent selection"""
+        score = 0.0
+        
+        # Seniority bonus
+        seniority_scores = {"expert": 3.0, "senior": 2.0, "junior": 1.0}
+        score += seniority_scores.get(agent.get("seniority"), 0)
+        
+        # Status bonus (prefer active agents)
+        if agent.get("status") == "active":
+            score += 1.0
+        
+        # Health bonus
+        health = agent.get("health", {})
+        if health.get("status") == "healthy":
+            score += 0.5
+        
+        # Role match precision bonus
+        if delegation_data.target_role.lower() in agent["role"].lower():
+            score += 2.0
+        
+        return score
+
+    async def _find_coordinator(self) -> Optional[Dict]:
+        """Find the workspace coordinator/project manager"""
+        agents = await list_agents(str(self.agent_data.workspace_id))
+        
+        # Cerca per keywords specifiche
+        coordinator_keywords = ["manager", "coordinator", "director", "lead"]
+        
+        for agent in agents:
+            if any(keyword in agent["role"].lower() for keyword in coordinator_keywords):
+                return agent
+        
+        # Se non trovi nessuno, prendi il primo expert
+        experts = [a for a in agents if a.get("seniority") == "expert"]
+        if experts:
+            return experts[0]
+        
+        return None
+
+    def _create_agent_from_data(self, agent_data: Dict) -> OpenAIAgent:
+        """Create a temporary agent instance from database data"""
+        # Converte i dati del database in un AgentModel
+        agent_model = AgentModel.model_validate(agent_data)
+        
+        # Crea una nuova istanza di SpecialistAgent
+        temp_specialist = SpecialistAgent(agent_model)
+        return temp_specialist.agent
+    
+    # ==============================================================================
+    # AGENT CREATION
+    # ==============================================================================
     
     def _create_agent(self) -> OpenAIAgent:
         """Create the OpenAI Agent with the appropriate configuration"""
@@ -281,7 +747,12 @@ class SpecialistAgent:
         input_guardrails = [budget_monitoring_guardrail]
         output_guardrails = [quality_assurance_guardrail]
         
-        # Create the agent with advanced features
+        # Determine output type based on role
+        output_type = None
+        if "coordinator" in self.agent_data.role.lower() or "manager" in self.agent_data.role.lower():
+            output_type = TaskExecutionOutput
+        
+        # Create the agent with handoffs and structured outputs
         return OpenAIAgent(
             name=self.agent_data.name,
             instructions=system_prompt,
@@ -289,77 +760,76 @@ class SpecialistAgent:
             model_settings=ModelSettings(
                 temperature=temperature,
                 top_p=self.agent_data.llm_config.get("top_p", 1.0) if self.agent_data.llm_config else 1.0,
-                max_tokens=self.agent_data.llm_config.get("max_tokens", 4000) if self.agent_data.llm_config else 4000
+                max_tokens=self.agent_data.llm_config.get("max_tokens", 32768) if self.agent_data.llm_config else 32768  # Increased for GPT-4.1
             ),
             tools=self.tools,
-            handoffs=self.handoffs,
+            handoffs=self.handoffs,  # Include handoffs
             input_guardrails=input_guardrails,
             output_guardrails=output_guardrails,
+            output_type=output_type,  # Add structured output support
         )
     
     def _create_system_prompt(self) -> str:
-        """Create an enhanced system prompt with automation + tool guidance"""
-        base = self.agent_data.system_prompt or f"""
-    You are a {self.agent_data.seniority} AI agent specializing in {self.agent_data.role}.
+        """Create an optimized system prompt focused on native handoffs"""
+        # Import per handoff prompt recommendations
+        try:
+            from agents.extensions.handoff_prompt import prompt_with_handoff_instructions, RECOMMENDED_PROMPT_PREFIX
+            handoff_prefix = RECOMMENDED_PROMPT_PREFIX
+            use_enhanced_handoff_prompt = True
+        except ImportError:
+            # Fallback se l'extension non è disponibile
+            handoff_prefix = """
+You have access to handoff tools. Use them when:
+- You need specialized expertise outside your role
+- You've completed your part and need coordination
+- You encounter issues requiring escalation
+"""
+            use_enhanced_handoff_prompt = False
+        
+        base_prompt = f"""
+{handoff_prefix}
 
-    CORE RESPONSIBILITIES
-    - {self.agent_data.description}
-    - Execute tasks with precision and efficiency
-    - Monitor resource usage and budget constraints
-    - Collaborate effectively with other agents
-    - Maintain high-quality standards in all outputs
-    """
+You are a {self.agent_data.seniority} AI specialist in {self.agent_data.role}.
 
-        # ── automation guidance (valido per tutti) ──────────────────────────────
-        base += """
-    AUTOMATION CAPABILITIES
-    1. create_task_for_agent – delegate work with clear context, priority, deadline
-    2. request_handoff – transfer work/data to another agent, include expected output
-    Be proactive: when you finish a task, create follow-ups or handoffs as needed.
-    """
+CORE RESPONSIBILITIES:
+- {self.agent_data.description or f"Expert work in {self.agent_data.role}"}
+- Execute tasks efficiently within your expertise area
+- Use handoffs for delegation, NOT task creation
+- Provide clear completion signals
 
-        # ── tool usage guidance (solo se tool presenti) ────────────────────────
-        if self.agent_data.tools:
-            ws = any(t.get("type") == "web_search" for t in self.agent_data.tools)
-            fs = any(t.get("type") == "file_search" for t in self.agent_data.tools)
+COMPLETION CRITERIA:
+- Your task is complete when you've provided actionable results
+- Signal explicit completion rather than suggesting more work
+- Use handoffs to delegate follow-up work to appropriate specialists
 
-            base += "\nAVAILABLE TOOLS\n"
-            if ws:
-                base += "- WebSearch : research trends, market insights, competitor data\n"
-            if fs:
-                base += "- FileSearch : locate docs, templates, prior work in KB\n"
+HANDOFF GUIDELINES:
+- escalate_to_senior: When you need more expertise on the same topic
+- report_to_coordinator: When you've completed your part and need project coordination
+- Always provide clear context and expected outcomes in handoffs
 
-            if any(k in self.agent_data.role.lower() for k in ("social media", "instagram")):
-                base += "- Instagram Tools : hashtags, account analysis, content ideas\n"
+IMPORTANT: 
+- Do NOT create new tasks via tools
+- Do NOT suggest creating tasks for other agents
+- Use direct handoffs for delegation
+- Focus on completing YOUR assigned work efficiently
+"""
+        
+        # Aggiungi guidance specifico per il ruolo
+        if "coordinator" in self.agent_data.role.lower() or "manager" in self.agent_data.role.lower():
+            base_prompt += """
 
-            base += """
-        TOOL USAGE BEST PRACTICES:
-        1. Always explain why you're using a tool
-        2. Summarize key findings from tool results
-        3. Use multiple tools together for comprehensive analysis
-        4. Report progress using log_execution and report_progress
-    """
-
-        # ── extra guidance per coordinatori/manager ────────────────────────────
-        if any(k in self.agent_data.role.lower() for k in ("coordinator", "manager")):
-            base += """
-        COORDINATION RESPONSIBILITIES:
-        - Use create_task_for_agent to delegate specific work to specialists
-        - Use request_handoff to transfer complex work with context
-        - Always create clear, actionable tasks for other agents
-        - Monitor team progress and adjust plans as needed
-    """
-
-        # ── collaboration blocco comune ────────────────────────────────────────
-        base += """
-    COLLABORATION
-    - Delegate efficiently via automation tools
-    - Provide clear context & requirements
-    - Escalate when tasks exceed your scope
-    - Keep conversation continuity through proper handoffs
-    """
-
-        return base
+AS A COORDINATOR/MANAGER:
+- Use handoffs to delegate specific work to specialists
+- Avoid creating excessive follow-up tasks
+- Focus on orchestration, not micro-management
+- Summarize and conclude when objectives are met
+"""
+        
+        # Apply enhanced handoff instructions if available
+        if use_enhanced_handoff_prompt:
+            base_prompt = prompt_with_handoff_instructions(base_prompt)
+        
+        return base_prompt
     
     # ==============================================================================
     # AUTOMATION TOOLS
@@ -482,17 +952,17 @@ class SpecialistAgent:
                 
                 # Create a task for the target agent with handoff context
                 task_description = f"""
-                HANDOFF FROM: {self.agent_data.name} ({self.agent_data.role})
-                
-                CONTEXT: {context}
-                
-                DATA/INFORMATION TRANSFERRED:
-                {data_to_transfer}
-                
-                PRIORITY: {priority}
-                
-                Please continue the work based on the information provided above.
-                """
+HANDOFF FROM: {self.agent_data.name} ({self.agent_data.role})
+
+CONTEXT: {context}
+
+DATA/INFORMATION TRANSFERRED:
+{data_to_transfer}
+
+PRIORITY: {priority}
+
+Please continue the work based on the information provided above.
+"""
                 
                 # Use the auto task creation
                 agents = await list_agents(str(self.agent_data.workspace_id))
@@ -729,7 +1199,15 @@ class SpecialistAgent:
             Returns:
                 Information about the created tool (JSON string)
             """
-            from tools.registry import tool_registry
+            try:
+                from tools.registry import tool_registry
+            except ImportError:
+                logger.warning("Tool registry not available")
+                return json.dumps(ToolCreationOutput(
+                    success=False,
+                    tool_name=name,
+                    error_message="Tool registry not available"
+                ).model_dump())
             
             logger.info(f"Agent {self.agent_data.id} creating custom tool: {name}")
             
@@ -755,14 +1233,17 @@ class SpecialistAgent:
                 )
                 
                 # Save to database
-                from database import create_custom_tool
-                tool_db_record = await create_custom_tool(
-                    name=name,
-                    description=description,
-                    code=code,
-                    workspace_id=str(self.agent_data.workspace_id),
-                    created_by="agent"
-                )
+                try:
+                    from database import create_custom_tool
+                    tool_db_record = await create_custom_tool(
+                        name=name,
+                        description=description,
+                        code=code,
+                        workspace_id=str(self.agent_data.workspace_id),
+                        created_by="agent"
+                    )
+                except ImportError:
+                    tool_db_record = None
                 
                 return json.dumps(ToolCreationOutput(
                     success=True,
@@ -820,6 +1301,23 @@ class SpecialistAgent:
             }
     
     # ==============================================================================
+    # CONTEXT MANAGEMENT
+    # ==============================================================================
+    
+    def create_context(self, **kwargs) -> T:
+        """Create a context object of the specified type"""
+        if self.context_type == dict:
+            return kwargs
+        else:
+            # Assume it's a Pydantic model or dataclass
+            return self.context_type(**kwargs)
+    
+    async def execute_task_with_context(self, task: Task, **context_kwargs) -> Dict[str, Any]:
+        """Execute task with a properly typed context"""
+        context = self.create_context(**context_kwargs)
+        return await self.execute_task(task, context=context)
+    
+    # ==============================================================================
     # CORE METHODS
     # ==============================================================================
     
@@ -833,15 +1331,15 @@ class SpecialistAgent:
         try:
             # Create verification prompt
             verification_prompt = """
-            Perform a comprehensive capability verification:
-            1. List all available tools and their status
-            2. Check system connectivity and resources
-            3. Verify model configuration and access
-            4. Test basic functionality if possible
-            5. Report any missing requirements or limitations
-            
-            Provide a structured assessment of your capabilities.
-            """
+Perform a comprehensive capability verification:
+1. List all available tools and their status
+2. Check system connectivity and resources
+3. Verify model configuration and access
+4. Test basic functionality if possible
+5. Report any missing requirements or limitations
+
+Provide a structured assessment of your capabilities.
+"""
             
             result = await Runner.run(
                 self.agent,
@@ -905,134 +1403,208 @@ class SpecialistAgent:
             
             return False
     
-    async def execute_task(self, task: Task) -> Dict[str, Any]:
-        """
-        Execute a task with enhanced automation capabilities.
+    async def execute_task(self, task: Task, context: Optional[T] = None) -> Dict[str, Any]:
+        """Execute a task with full native handoff support, context management and tracing"""
+        # Generate trace ID per questo task
+        trace_id = gen_trace_id()
+        workflow_name = f"Task-{task.name}-{self.agent_data.name}"
         
-        Args:
-            task: The task to execute
-            
-        Returns:
-            Task result dictionary
-        """
-        try:
-            # Update task status to in progress
-            await update_task_status(
-                task_id=str(task.id),
-                status=TaskStatus.IN_PROGRESS.value
-            )
-            
-            # Log task start using internal method
-            await self._log_execution_internal(
-                "task_started",
-                json.dumps({
-                    "task_id": str(task.id),
-                    "task_name": task.name,
-                    "description": task.description
-                })
-            )
-            
-            # Enhanced task prompt with automation capabilities
-            task_prompt = f"""
-            Execute the following task with full automation capabilities:
-            
-            Task: {task.name}
-            Description: {task.description}
-            
-            AUTOMATION TOOLS AVAILABLE:
-            1. create_task_for_agent: Create new tasks for specialists
-            2. request_handoff: Hand off work to other agents
-            3. log_execution: Log your progress
-            4. report_progress: Report detailed progress
-            
-            IMPORTANT INSTRUCTIONS:
-            - If this task involves multiple phases, create specific tasks for each phase
-            - If you identify work that needs specific expertise, delegate it immediately
-            - If you complete your part but need follow-up, create those tasks now
-            - Use handoffs when you need to transfer context and data to others
-            - Be proactive - don't wait for manual intervention
-            
-            After completing your work:
-            1. Analyze what needs to happen next
-            2. Create specific tasks for other specialists if needed
-            3. Use handoffs to transfer work with proper context
-            4. Provide a comprehensive summary of actions taken
-            
-            Execute the task and handle all automation proactively.
-            """
-            
-            # Execute the task
-            result = await Runner.run(self.agent, task_prompt, max_turns=15)
-            
-            # Process the result
-            if isinstance(result.final_output, TaskExecutionOutput):
-                task_output = result.final_output
-                task_result = {
-                    "task_id": task_output.task_id,
-                    "status": task_output.status,
-                    "summary": task_output.summary,
-                    "detailed_results": task_output.detailed_results,
-                    "next_steps": task_output.next_steps,
-                    "suggested_handoff": task_output.suggested_handoff,
-                    "resources_consumed": task_output.resources_consumed
-                }
-            else:
-                # Fallback for unstructured output
-                task_result = {
-                    "output": result.final_output,
-                    "status": "completed",
-                    "automation_actions": {
-                        "tasks_created": [],
-                        "handoffs_requested": [],
-                        "next_steps_identified": []
+        with trace(workflow_name=workflow_name, trace_id=trace_id, group_id=str(task.id)):
+            try:
+                # Initialization span
+                with custom_span("Task Initialization"):
+                    await update_task_status(
+                        task_id=str(task.id),
+                        status=TaskStatus.IN_PROGRESS.value
+                    )
+                    
+                    # Log task start with trace metadata
+                    await self._log_execution_internal(
+                        "task_started",
+                        json.dumps({
+                            "task_id": str(task.id),
+                            "task_name": task.name,
+                            "description": task.description,
+                            "trace_id": trace_id,
+                            "workflow_name": workflow_name
+                        })
+                    )
+                
+                # Task execution span
+                with custom_span("Task Execution"):
+                    # Enhanced task prompt with handoff capabilities
+                    task_prompt = f"""
+Execute the following task with full automation and handoff capabilities:
+
+Task: {task.name}
+Description: {task.description}
+
+AUTOMATION TOOLS AVAILABLE:
+1. create_task_for_agent: Create new tasks for specialists
+2. request_handoff: Hand off work to other agents
+
+HANDOFF TOOLS AVAILABLE:
+1. escalate_to_senior: Escalate to more senior agents when needed
+2. report_to_coordinator: Report completion to project coordinator
+3. delegate_to_specialist: (Coordinators only) Delegate work to specialists
+
+IMPORTANT INSTRUCTIONS:
+- If this task involves multiple phases, create specific tasks for each phase
+- If you identify work that needs specific expertise, delegate it immediately
+- If you complete your part but need follow-up, create those tasks now
+- Use handoffs when you need to transfer context and data to others
+- Be proactive - don't wait for manual intervention
+
+When using handoffs:
+- Provide clear context and reasoning
+- Include all relevant work completed so far
+- Specify expected outputs from target agents
+- Use appropriate priority levels
+
+Execute the task and handle all automation and handoffs proactively.
+"""
+                    
+                    # Execute with context support
+                    result = await Runner.run(
+                        self.agent, 
+                        task_prompt, 
+                        max_turns=20,
+                        context=context
+                    )
+                
+                # Result processing span
+                with custom_span("Result Processing"):
+                    # SUCCESS CASE - Task completato normalmente
+                    task_result = {
+                        "output": result.final_output,
+                        "status": "completed",
+                        "max_turns_reached": False,
+                        "execution_success": True,
+                        "handoffs_performed": len([item for item in result.new_items if item.type == "handoff_output_item"]),
+                        "trace_id": trace_id,
+                        "workflow_name": workflow_name,
+                        "automation_actions": {
+                            "tasks_created": [],
+                            "handoffs_requested": [],
+                            "next_steps_identified": []
+                        }
                     }
-                }
-            
-            # Update task status with structured result
-            await update_task_status(
-                task_id=str(task.id),
-                status=TaskStatus.COMPLETED.value,
-                result=task_result
-            )
-            
-            # Log completion using internal method
-            await self._log_execution_internal(
-                "task_completed",
-                json.dumps({
-                    "task_id": str(task.id),
-                    "status": task_result.get("status"),
-                    "summary": task_result.get("summary", "")
-                })
-            )
-            
-            return task_result
-            
-        except Exception as e:
-            logger.error(f"Failed to execute task: {e}")
-            
-            error_result = {
-                "error": str(e),
-                "status": "failed",
-                "task_id": str(task.id),
-                "recoverable": True  # Indica che si può riprovare
-            }
-            
-            await update_task_status(
-                task_id=str(task.id),
-                status=TaskStatus.FAILED.value,
-                result=error_result
-            )
-            
-            # Log error using internal method
-            await self._log_execution_internal(
-                "task_failed",
-                json.dumps({
-                    "task_id": str(task.id),
-                    "error": str(e)
-                })
-            )
-            
-            return error_result
+                    
+                    # Update task status with structured result
+                    await update_task_status(
+                        task_id=str(task.id),
+                        status=TaskStatus.COMPLETED.value,
+                        result=task_result
+                    )
+                    
+                    # Log completion using internal method
+                    await self._log_execution_internal(
+                        "task_completed",
+                        json.dumps({
+                            "task_id": str(task.id),
+                            "status": task_result.get("status"),
+                            "handoffs_performed": task_result.get("handoffs_performed", 0),
+                            "trace_id": trace_id,
+                            "summary": str(result.final_output)[:200] + "..." if len(str(result.final_output)) > 200 else str(result.final_output)
+                        })
+                    )
+                    
+                    logger.info(f"Task {task.id} completed successfully. Trace: {trace_id}")
+                    return task_result
+                    
+            except MaxTurnsExceeded as max_turns_error:
+                # CRITICAL FIX - Gestione specifica per MaxTurnsExceeded
+                with custom_span("Max Turns Error Handling"):
+                    logger.error(f"Task {task.id} exceeded max turns without completion")
+                    
+                    # Prova a recuperare l'ultimo output parziale se disponibile
+                    partial_output = getattr(max_turns_error, 'last_output', None)
+                    
+                    error_result = {
+                        "error": "Task exceeded maximum turns (20) without reaching completion",
+                        "status": "failed",
+                        "max_turns_reached": True,
+                        "partial_output": partial_output,
+                        "execution_success": False,
+                        "failure_reason": "max_turns_exceeded",
+                        "trace_id": trace_id
+                    }
+                    
+                    # IMPORTANTE: Marca come FAILED, non COMPLETED
+                    await update_task_status(
+                        task_id=str(task.id), 
+                        status=TaskStatus.FAILED.value,  # ← QUESTO È IL FIX CRITICO
+                        result=error_result
+                    )
+                    
+                    await self._log_execution_internal("task_failed", 
+                        json.dumps({
+                            "task_id": str(task.id), 
+                            "error": "max_turns_exceeded",
+                            "trace_id": trace_id,
+                            "partial_output_length": len(str(partial_output)) if partial_output else 0
+                        }))
+                    
+                    return error_result
+                    
+            except (ModelBehaviorError, AgentsException) as sdk_error:
+                # Handle SDK-specific errors
+                with custom_span("SDK Error Handling"):
+                    logger.error(f"Task {task.id} failed with SDK error: {sdk_error}")
+                    
+                    error_result = {
+                        "error": f"Agent SDK error: {type(sdk_error).__name__}",
+                        "details": str(sdk_error),
+                        "status": "failed", 
+                        "execution_success": False,
+                        "failure_reason": "sdk_error",
+                        "trace_id": trace_id
+                    }
+                    
+                    await update_task_status(
+                        task_id=str(task.id),
+                        status=TaskStatus.FAILED.value,
+                        result=error_result
+                    )
+                    
+                    await self._log_execution_internal("task_failed",
+                        json.dumps({
+                            "task_id": str(task.id), 
+                            "error": str(sdk_error),
+                            "error_type": type(sdk_error).__name__,
+                            "trace_id": trace_id
+                        }))
+                    
+                    return error_result
+                    
+            except Exception as e:
+                # Altri tipi di errore
+                with custom_span("General Error Handling"):
+                    logger.error(f"Task {task.id} failed with error: {e}")
+                    
+                    error_result = {
+                        "error": str(e),
+                        "status": "failed", 
+                        "execution_success": False,
+                        "failure_reason": "execution_error",
+                        "trace_id": trace_id
+                    }
+                    
+                    await update_task_status(
+                        task_id=str(task.id),
+                        status=TaskStatus.FAILED.value,
+                        result=error_result
+                    )
+                    
+                    await self._log_execution_internal("task_failed",
+                        json.dumps({
+                            "task_id": str(task.id), 
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                            "trace_id": trace_id
+                        }))
+                    
+                    return error_result
     
     # ==============================================================================
     # UTILITY METHODS
@@ -1069,4 +1641,51 @@ class SpecialistAgent:
                 "output": len(self.agent.output_guardrails) > 0
             },
             "automation_enabled": True
+        }
+    
+    async def test_conversation_optimization(self, sample_history: List[Dict]) -> Dict[str, Any]:
+        """Test and validate conversation history optimization"""
+        original_size = len(sample_history)
+        
+        # Test basic optimization
+        handoff_data = HandoffInputData(
+            input_history=tuple(sample_history),
+            pre_handoff_items=tuple(),
+            new_items=tuple()
+        )
+        
+        basic_optimized = self._optimize_conversation_history(handoff_data)
+        basic_size = len(basic_optimized.input_history)
+        
+        # Test AI optimization
+        ai_optimized = await self._optimize_conversation_history_with_ai(handoff_data)
+        ai_size = len(ai_optimized.input_history)
+        
+        return {
+            "original_size": original_size,
+            "basic_optimized_size": basic_size,
+            "ai_optimized_size": ai_size,
+            "basic_reduction": round((1 - basic_size/original_size) * 100, 2),
+            "ai_reduction": round((1 - ai_size/original_size) * 100, 2),
+            "optimization_effective": basic_size < original_size or ai_size < original_size
+        }
+    
+    async def test_handoffs_configuration(self) -> Dict[str, Any]:
+        """Test method to verify handoffs are properly configured"""
+        handoff_info = []
+        
+        for handoff_obj in self.handoffs:
+            info = {
+                "tool_name": getattr(handoff_obj, 'tool_name', 'unknown'),
+                "description": getattr(handoff_obj, 'tool_description', 'no description'),
+                "input_type": str(getattr(handoff_obj, 'input_type', None)),
+                "has_callback": getattr(handoff_obj, 'on_handoff', None) is not None
+            }
+            handoff_info.append(info)
+        
+        return {
+            "agent_name": self.agent_data.name,
+            "agent_role": self.agent_data.role,
+            "handoffs_count": len(self.handoffs),
+            "handoffs_details": handoff_info
         }

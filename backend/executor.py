@@ -2,14 +2,13 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Set
 from uuid import UUID, uuid4
 import json
 import time
-# from collections import Counter # Importato nel secondo file ma non usato nel codice fornito, lo lascio commentato
 
 # Import da moduli del progetto
-from models import TaskStatus, Task, AgentStatus, WorkspaceStatus, Agent as AgentModelPydantic # Rinomina per chiarezza
+from models import TaskStatus, Task, AgentStatus, WorkspaceStatus, Agent as AgentModelPydantic
 from database import (
     list_tasks,
     update_task_status,
@@ -25,7 +24,7 @@ from database import (
 from ai_agents.manager import AgentManager
 
 # Import componenti per auto-generazione
-from task_analyzer import AutoTaskGenerator, EnhancedTaskExecutor, TaskAnalysisResult
+from task_analyzer import EnhancedTaskExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +39,8 @@ class BudgetTracker:
             "gpt-4.1": {"input": 0.03, "output": 0.06},
             "gpt-4.1-mini": {"input": 0.015, "output": 0.03},
             "gpt-4.1-nano": {"input": 0.01, "output": 0.02},
-            "gpt-4-turbo": {"input": 0.02, "output": 0.04}, # Esempio di altro modello
-            "gpt-3.5-turbo": {"input": 0.001, "output": 0.002} # Esempio di altro modello
+            "gpt-4-turbo": {"input": 0.02, "output": 0.04},
+            "gpt-3.5-turbo": {"input": 0.001, "output": 0.002}
         }
         # Modello di fallback se non specificato o non trovato
         self.default_model = "gpt-4.1-mini"
@@ -61,14 +60,14 @@ class BudgetTracker:
         usage_record = {
             "timestamp": datetime.now().isoformat(),
             "task_id": task_id,
-            "agent_id": agent_id, # Aggiunto per facilitare il filtro
+            "agent_id": agent_id,
             "model": model,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "input_cost": round(input_cost, 6),
             "output_cost": round(output_cost, 6),
             "total_cost": round(total_cost, 6),
-            "currency": "USD" # Esplicita la valuta
+            "currency": "USD"
         }
 
         self.usage_log[agent_id].append(usage_record)
@@ -89,7 +88,6 @@ class BudgetTracker:
 
         for agent_id in agent_ids:
             agent_total_cost = self.get_agent_total_cost(agent_id)
-            # FIX: Salviamo direttamente il costo come numero, non come oggetto
             agent_costs[agent_id] = round(agent_total_cost, 6)
             total_cost += agent_total_cost
 
@@ -106,7 +104,7 @@ class BudgetTracker:
         return {
             "workspace_id": workspace_id,
             "total_cost": round(total_cost, 6),
-            "agent_costs": agent_costs, # Ora contiene numeri diretti
+            "agent_costs": agent_costs,
             "total_tokens": total_tokens,
             "currency": "USD"
         }
@@ -123,29 +121,143 @@ class BudgetTracker:
 
 
 class TaskExecutor:
-    """Enhanced Task Executor with automatic task generation, pause/resume, and detailed stats."""
+    """Enhanced Task Executor with runaway protection and better monitoring"""
 
     def __init__(self):
         """Initialize the enhanced task executor."""
         self.running = False
-        self.paused = False # Stato di pausa
-        self.pause_event = asyncio.Event() # Evento per sincronizzare la pausa
-        self.pause_event.set() # Inizializza come non in pausa (l'evento è 'set')
+        self.paused = False
+        self.pause_event = asyncio.Event()
+        self.pause_event.set()
 
         self.workspace_managers: Dict[UUID, AgentManager] = {}
         self.budget_tracker = BudgetTracker()
-        self.execution_log: List[Dict[str, Any]] = [] # Log degli eventi di esecuzione
+        self.execution_log: List[Dict[str, Any]] = []
 
         # Configurazione concorrenza e coda
-        self.max_concurrent_tasks = int(os.getenv("MAX_CONCURRENT_TASKS", 3)) # Limite task concorrenti
-        self.max_queue_size = self.max_concurrent_tasks * 10 # Dimensione massima coda
-        self.active_tasks_count = 0 # Contatore task attivi
+        self.max_concurrent_tasks = int(os.getenv("MAX_CONCURRENT_TASKS", 3))
+        self.max_queue_size = self.max_concurrent_tasks * 10
+        self.active_tasks_count = 0
         self.task_queue: asyncio.Queue = asyncio.Queue(maxsize=self.max_queue_size)
-        self.worker_tasks: List[asyncio.Task] = [] # Riferimenti ai task worker
+        self.worker_tasks: List[asyncio.Task] = []
 
         # Componenti per automazione
-        self.auto_generator = AutoTaskGenerator() # Potrebbe non essere usato direttamente qui ma nell'handler
-        self.enhanced_handler = EnhancedTaskExecutor() # Handler per post-esecuzione (auto-generazione)
+        self.enhanced_handler = EnhancedTaskExecutor()
+
+        # AGGIUNTE per runaway protection
+        self.workspace_auto_generation_paused: Set[str] = set()
+        self.workspace_task_counts: Dict[str, Dict[str, int]] = {}
+        self.last_runaway_check: Optional[datetime] = None
+        
+        # Configurazione runaway protection
+        self.max_pending_tasks_per_workspace = int(os.getenv("MAX_PENDING_TASKS", 50))
+        self.max_handoff_percentage = float(os.getenv("MAX_HANDOFF_PERCENTAGE", 0.3))
+        self.runaway_check_interval = 300  # 5 minuti
+
+    async def check_workspace_health(self, workspace_id: str) -> Dict[str, Any]:
+        """Controlla la salute di un workspace e rileva possibili runaway"""
+        try:
+            all_tasks = await list_tasks(workspace_id)
+            
+            # Conta task per status
+            task_counts = {
+                'total': len(all_tasks),
+                'pending': len([t for t in all_tasks if t.get("status") == TaskStatus.PENDING.value]),
+                'completed': len([t for t in all_tasks if t.get("status") == TaskStatus.COMPLETED.value]),
+                'failed': len([t for t in all_tasks if t.get("status") == TaskStatus.FAILED.value]),
+                'in_progress': len([t for t in all_tasks if t.get("status") == TaskStatus.IN_PROGRESS.value])
+            }
+            
+            # Analizza pattern handoff
+            handoff_tasks = [t for t in all_tasks if "handoff" in t.get("name", "").lower()]
+            handoff_percentage = len(handoff_tasks) / len(all_tasks) if all_tasks else 0
+            
+            # Rileva runaway patterns
+            health_issues = []
+            
+            if task_counts['pending'] > self.max_pending_tasks_per_workspace:
+                health_issues.append(f"Excessive pending tasks: {task_counts['pending']}")
+            
+            if handoff_percentage > self.max_handoff_percentage:
+                health_issues.append(f"Excessive handoffs: {handoff_percentage:.1%}")
+            
+            # Check per task loop (stesso nome ripetuto)
+            task_names = [t.get("name", "") for t in all_tasks[-20:]]  # Ultimi 20 task
+            name_counts = {}
+            for name in task_names:
+                if name:
+                    name_counts[name] = name_counts.get(name, 0) + 1
+            
+            repeated_tasks = {name: count for name, count in name_counts.items() if count > 3}
+            if repeated_tasks:
+                health_issues.append(f"Repeated task patterns: {repeated_tasks}")
+            
+            # Check per task creation velocity
+            if len(all_tasks) > 10:
+                recent_tasks = sorted(all_tasks, key=lambda x: x.get("created_at", ""), reverse=True)[:10]
+                first_time = datetime.fromisoformat(recent_tasks[-1]["created_at"].replace('Z', '+00:00'))
+                last_time = datetime.fromisoformat(recent_tasks[0]["created_at"].replace('Z', '+00:00'))
+                time_diff = (last_time - first_time).total_seconds()
+                
+                if time_diff > 0:
+                    tasks_per_minute = (len(recent_tasks) / time_diff) * 60
+                    if tasks_per_minute > 5:  # Più di 5 task al minuto è sospetto
+                        health_issues.append(f"High task creation rate: {tasks_per_minute:.1f}/min")
+            
+            return {
+                'workspace_id': workspace_id,
+                'task_counts': task_counts,
+                'handoff_percentage': handoff_percentage,
+                'health_issues': health_issues,
+                'is_healthy': len(health_issues) == 0,
+                'auto_generation_paused': workspace_id in self.workspace_auto_generation_paused
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking workspace health for {workspace_id}: {e}")
+            return {
+                'workspace_id': workspace_id,
+                'error': str(e),
+                'is_healthy': False
+            }
+
+    async def _pause_auto_generation_for_workspace(self, workspace_id: str, reason: str = "runaway_detected"):
+        """Mette in pausa l'auto-generazione per un workspace"""
+        self.workspace_auto_generation_paused.add(workspace_id)
+        
+        # Log critico
+        logger.critical(f"AUTO-GENERATION PAUSED for workspace {workspace_id}. Reason: {reason}")
+        
+        # Aggiorna stato workspace se necessario
+        try:
+            workspace = await get_workspace(workspace_id)
+            if workspace and workspace.get("status") == "active":
+                await update_workspace_status(workspace_id, "needs_intervention")
+                logger.info(f"Updated workspace {workspace_id} status to 'needs_intervention'")
+        except Exception as e:
+            logger.error(f"Failed to update workspace status for {workspace_id}: {e}")
+        
+        # Notifica via log evento speciale per monitoring
+        self.execution_log.append({
+            "timestamp": datetime.now().isoformat(),
+            "event": "auto_generation_paused", 
+            "workspace_id": workspace_id,
+            "reason": reason,
+            "pending_tasks_count": len(await list_tasks(workspace_id))
+        })
+
+    async def _resume_auto_generation_for_workspace(self, workspace_id: str):
+        """Riprende l'auto-generazione per un workspace"""
+        if workspace_id in self.workspace_auto_generation_paused:
+            self.workspace_auto_generation_paused.remove(workspace_id)
+            logger.info(f"AUTO-GENERATION RESUMED for workspace {workspace_id}")
+            
+            # Log dell'evento
+            self.execution_log.append({
+                "timestamp": datetime.now().isoformat(),
+                "event": "auto_generation_resumed",
+                "workspace_id": workspace_id
+            })
 
     async def start(self):
         """Start the task executor service."""
@@ -155,8 +267,8 @@ class TaskExecutor:
 
         self.running = True
         self.paused = False
-        self.pause_event.set() # Assicura che non sia in pausa
-        self.execution_log = [] # Resetta il log all'avvio (o caricalo se persistente)
+        self.pause_event.set()
+        self.execution_log = []
         logger.info(f"Starting enhanced task executor. Max concurrent tasks: {self.max_concurrent_tasks}, Max queue size: {self.max_queue_size}")
 
         # Avvia i worker per processare la coda
@@ -174,20 +286,17 @@ class TaskExecutor:
 
         logger.info("Stopping task executor...")
         self.running = False
-        self.paused = True # Considera lo stop come una pausa definitiva
-        self.pause_event.set() # Sblocca eventuali attese sull'evento per permettere l'uscita dai loop
+        self.paused = True
+        self.pause_event.set()
 
-        # Invia segnali di terminazione ai worker (mettendo None nella coda)
+        # Invia segnali di terminazione ai worker
         for i in range(len(self.worker_tasks)):
             try:
-                # Usa timeout per evitare blocco se la coda è piena e i worker sono lenti a terminare
                 await asyncio.wait_for(self.task_queue.put(None), timeout=2.0)
             except asyncio.TimeoutError:
                 logger.warning(f"Timeout putting None signal in task_queue during stop (worker {i+1}/{len(self.worker_tasks)}).")
             except asyncio.QueueFull:
                  logger.warning(f"Queue full trying to put None signal during stop (worker {i+1}/{len(self.worker_tasks)}). May cause delay.")
-                 # Potresti provare a cancellare i worker direttamente se la coda è bloccata
-                 # for task in self.worker_tasks: task.cancel()
 
         # Attendi il completamento dei worker
         if self.worker_tasks:
@@ -207,7 +316,7 @@ class TaskExecutor:
             logger.info("Task executor is already paused.")
             return
         self.paused = True
-        self.pause_event.clear() # Blocca i wait() sull'evento
+        self.pause_event.clear()
         logger.info("Task executor paused. New task processing suspended. Workers will finish current tasks.")
 
     async def resume(self):
@@ -219,56 +328,92 @@ class TaskExecutor:
             logger.info("Task executor is already running (not paused).")
             return
         self.paused = False
-        self.pause_event.set() # Sblocca i wait() sull'evento
+        self.pause_event.set()
         logger.info("Task executor resumed.")
 
     async def execution_loop(self):
-        """Main loop to periodically check for pending tasks and new workspaces."""
+        """Main loop with periodic runaway checks"""
         while self.running:
             try:
-                await self.pause_event.wait() # Attende qui se in pausa
-                if not self.running: break # Esce se è stato fermato mentre era in pausa
-
-                # Logica principale del loop
+                await self.pause_event.wait()
+                if not self.running: 
+                    break
+                
+                # Main execution logic
                 logger.debug("Execution loop running: checking for tasks and workspaces.")
                 await self.process_all_pending_tasks()
                 await self.check_for_new_workspaces()
-
-                # Intervallo di attesa
-                await asyncio.sleep(10) # Controlla ogni 10 secondi
-
+                
+                # AGGIUNTA: Periodic runaway check ogni 5 minuti
+                if (self.last_runaway_check is None or 
+                    (datetime.now() - self.last_runaway_check).total_seconds() > self.runaway_check_interval):
+                    await self.periodic_runaway_check()
+                
+                # Attesa normale
+                await asyncio.sleep(10)
+                
             except asyncio.CancelledError:
                 logger.info("Execution loop cancelled.")
                 break
             except Exception as e:
                 logger.error(f"Error in execution_loop: {e}", exc_info=True)
-                # Attendi di più in caso di errore per evitare cicli rapidi di fallimenti
                 await asyncio.sleep(30)
+        
         logger.info("Execution loop finished.")
 
+    async def periodic_runaway_check(self):
+        """Check periodico per rilevare e gestire runaway task generation"""
+        try:
+            # Get all active workspaces
+            active_workspaces = await get_active_workspaces()
+            
+            runaway_detected = []
+            
+            for workspace_id in active_workspaces:
+                health_status = await self.check_workspace_health(workspace_id)
+                
+                if not health_status['is_healthy']:
+                    health_issues = health_status['health_issues']
+                    logger.warning(f"Runaway check - Workspace {workspace_id}: {health_issues}")
+                    
+                    # Se ci sono problemi critici e non è già pausato
+                    if (health_status['task_counts']['pending'] > 30 and 
+                        workspace_id not in self.workspace_auto_generation_paused):
+                        runaway_detected.append(workspace_id)
+                        await self._pause_auto_generation_for_workspace(workspace_id, 
+                            reason="Periodic runaway check detected excessive tasks")
+            
+            # Log summary
+            if runaway_detected:
+                logger.critical(f"Runaway check detected issues in {len(runaway_detected)} workspaces: {runaway_detected}")
+            else:
+                logger.debug(f"Runaway check completed - {len(active_workspaces)} workspaces healthy")
+            
+            self.last_runaway_check = datetime.now()
+            
+        except Exception as e:
+            logger.error(f"Error in periodic runaway check: {e}", exc_info=True)
 
     async def _task_worker(self):
         """Worker process that takes tasks from the queue and executes them."""
-        worker_id = uuid4() # ID univoco per il logging del worker
+        worker_id = uuid4()
         logger.info(f"Task worker {worker_id} started.")
         while self.running:
             try:
-                await self.pause_event.wait() # Attende qui se l'executor è in pausa
-                if not self.running: break # Esce se è stato fermato mentre era in pausa
+                await self.pause_event.wait()
+                if not self.running: break
 
                 manager: Optional[AgentManager] = None
                 task_dict: Optional[Dict] = None
                 try:
-                    # Attendi un task dalla coda con timeout per poter controllare self.running
-                    # e self.pause_event periodicamente anche se la coda è vuota
                     manager, task_dict = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
                 except asyncio.TimeoutError:
-                    continue # Nessun task, torna all'inizio del loop per ricontrollare lo stato
+                    continue
 
-                if task_dict is None: # Segnale di terminazione ricevuto
+                if task_dict is None:
                     self.task_queue.task_done()
                     logger.info(f"Worker {worker_id} received termination signal.")
-                    break # Esce dal loop del worker
+                    break
 
                 task_id = task_dict.get("id", "UnknownID")
                 workspace_id = task_dict.get("workspace_id", "UnknownWS")
@@ -277,120 +422,138 @@ class TaskExecutor:
                 # Incrementa contatore task attivi e esegui
                 self.active_tasks_count += 1
                 try:
-                    # Assicurati che il manager sia valido prima di procedere
                     if manager is None:
                          raise ValueError(f"Received task {task_id} with a null manager.")
                     await self.execute_task_with_tracking(manager, task_dict)
                 except Exception as e_exec:
-                    # Logga l'errore specifico dell'esecuzione del task
                     logger.error(f"Worker {worker_id} failed executing task {task_id}: {e_exec}", exc_info=True)
-                    # Lo stato del task dovrebbe essere già stato aggiornato a FAILED dentro execute_task_with_tracking
                 finally:
-                    # Decrementa contatore e segna il task come completato nella coda
                     self.active_tasks_count -= 1
                     self.task_queue.task_done()
                     logger.info(f"Worker {worker_id} finished processing task: {task_id}. Active tasks: {self.active_tasks_count}")
 
             except asyncio.CancelledError:
                 logger.info(f"Task worker {worker_id} cancelled.")
-                break # Esce dal loop del worker
+                break
             except Exception as e_worker:
-                # Cattura errori imprevisti nel loop del worker stesso (non nell'esecuzione del task)
                 logger.error(f"Unhandled error in task worker {worker_id}: {e_worker}", exc_info=True)
-                # Attendi un po' prima di continuare per evitare cicli di errore veloci
                 await asyncio.sleep(5)
 
         logger.info(f"Task worker {worker_id} exiting.")
 
-
     async def check_for_new_workspaces(self):
         """Check for active workspaces without any tasks and create an initial one."""
-        if self.paused: return # Non fare nulla se in pausa
+        if self.paused: return
 
         try:
             logger.debug("Checking for workspaces needing initial tasks")
-            active_ws_ids = await get_active_workspaces() # Prende solo ID di workspace attivi
+            active_ws_ids = await get_active_workspaces()
 
             for ws_id in active_ws_ids:
                 tasks = await list_tasks(ws_id)
-                if not tasks: # Se non ci sono task per questo workspace attivo
-                    workspace_data = await get_workspace(ws_id) # Prendi i dati completi del workspace
-                    # Controlla di nuovo lo stato perché potrebbe essere cambiato
+                if not tasks:
+                    workspace_data = await get_workspace(ws_id)
                     if workspace_data and workspace_data.get("status") == WorkspaceStatus.ACTIVE.value:
                         logger.info(f"Workspace {ws_id} ('{workspace_data.get('name')}') is active and has no tasks. Attempting to create initial task.")
                         await self.create_initial_workspace_task(ws_id)
                     elif not workspace_data:
                          logger.warning(f"Could not retrieve data for supposedly active workspace {ws_id} during initial task check.")
-                    # else: logger.debug(f"Workspace {ws_id} is no longer active or check returned no data.")
 
         except Exception as e:
             logger.error(f"Error checking for new workspaces: {e}", exc_info=True)
 
     async def process_all_pending_tasks(self):
         """Find workspaces with pending tasks and queue them for processing."""
-        if self.paused: return # Non fare nulla se in pausa
+        if self.paused: return
 
         try:
             logger.debug("Processing all pending tasks")
-            # Ottieni gli ID dei workspace che hanno task PENDING
             workspaces_with_pending = await get_workspaces_with_pending_tasks()
 
             if workspaces_with_pending:
                  logger.info(f"Found {len(workspaces_with_pending)} workspaces with pending tasks. Checking queue status.")
 
             for workspace_id in workspaces_with_pending:
-                # Controlla se la coda è piena prima di processare il workspace
                 if self.task_queue.full():
                     logger.warning(f"Task queue is full (Size: {self.task_queue.qsize()}/{self.max_queue_size}). Skipping adding tasks from workspace {workspace_id} for now.")
-                    continue # Passa al prossimo workspace se la coda è piena
+                    continue
 
-                # Se c'è spazio, processa i task di questo workspace
                 await self.process_workspace_tasks(workspace_id)
 
         except Exception as e:
             logger.error(f"Error processing all pending tasks: {e}", exc_info=True)
 
     async def process_workspace_tasks(self, workspace_id: str):
-        """Fetch pending tasks for a specific workspace and add them to the queue."""
-        if self.paused: return # Non fare nulla se in pausa
-
+        """Fetch pending tasks with enhanced runaway protection"""
+        if self.paused: 
+            return
+        
         try:
+            # STEP 1: Health check completo
+            health_status = await self.check_workspace_health(workspace_id)
+            
+            # Se workspace non è healthy, gestisci
+            if not health_status['is_healthy']:
+                health_issues = health_status['health_issues']
+                logger.warning(f"Workspace {workspace_id} health issues: {health_issues}")
+                
+                # Se ci sono problemi gravi, pausa auto-generazione
+                critical_issues = [issue for issue in health_issues if any(keyword in issue.lower() 
+                    for keyword in ['excessive pending', 'excessive handoffs', 'high task creation'])]
+                
+                if critical_issues and workspace_id not in self.workspace_auto_generation_paused:
+                    await self._pause_auto_generation_for_workspace(workspace_id, 
+                        reason=f"Health issues: {'; '.join(critical_issues)}")
+                    return
+            
+            # STEP 2: Se auto-generation è pausata, controlla se si può riprendere
+            if workspace_id in self.workspace_auto_generation_paused:
+                # Controlla se i problemi sono risolti
+                if health_status['is_healthy'] and health_status['task_counts']['pending'] < 10:
+                    await self._resume_auto_generation_for_workspace(workspace_id)
+                else:
+                    logger.info(f"Auto-generation still paused for {workspace_id}. "
+                               f"Pending: {health_status['task_counts']['pending']}")
+                    return
+            
+            # STEP 3: Processa task normalmente
             manager = await self.get_agent_manager(workspace_id)
             if not manager:
-                logger.error(f"Failed to get or initialize agent manager for workspace {workspace_id}. Cannot queue tasks.")
-                # Considera se aggiornare lo stato del workspace a 'error' o simile
+                logger.error(f"Failed to get agent manager for workspace {workspace_id}")
                 return
-
-            # Recupera i task PENDING dal DB per questo workspace
+            
+            # Get pending tasks
             tasks_db = await list_tasks(workspace_id)
             pending_tasks_dicts = [task for task in tasks_db if task.get("status") == TaskStatus.PENDING.value]
-
+            
             if not pending_tasks_dicts:
-                # logger.debug(f"No pending tasks found for workspace {workspace_id}.")
                 return
-
-            logger.info(f"Found {len(pending_tasks_dicts)} pending tasks for workspace {workspace_id}. Attempting to queue...")
+            
+            # STEP 4: Batch processing per evitare sovraccarico
+            batch_size = min(3, len(pending_tasks_dicts))  # Ridotto da 5 a 3 per maggiore controllo
+            tasks_to_process = pending_tasks_dicts[:batch_size]
+            
+            logger.info(f"Processing {len(tasks_to_process)}/{len(pending_tasks_dicts)} tasks for workspace {workspace_id}")
+            
             queued_count = 0
-            for task_dict in pending_tasks_dicts:
+            for task_dict in tasks_to_process:
                 if self.task_queue.full():
-                    logger.warning(f"Task queue became full while processing workspace {workspace_id}. Task {task_dict.get('id')} and subsequent tasks not added in this cycle.")
-                    break # Esce dal loop for per questo workspace
-
-                # Metti la tupla (manager, task_dict) nella coda
+                    logger.warning(f"Queue full, stopping task processing for workspace {workspace_id}")
+                    break
+                
                 try:
-                    # Usiamo put_nowait perché abbiamo già controllato .full()
-                    # Se ci fosse una race condition rara, catturerebbe l'eccezione
                     self.task_queue.put_nowait((manager, task_dict))
                     queued_count += 1
-                    # Potresti opzionalmente aggiornare lo stato del task nel DB a "QUEUED" qui
-                    # await update_task_status(task_dict["id"], "queued", {"detail": "Added to execution queue"})
                 except asyncio.QueueFull:
-                     logger.warning(f"QueueFull exception hit unexpectedly for task {task_dict.get('id')} in workspace {workspace_id}. Race condition?")
-                     break # Interrompi l'aggiunta per questo workspace
-
+                    logger.warning(f"Queue full during processing for workspace {workspace_id}")
+                    break
+            
             if queued_count > 0:
-                logger.info(f"Successfully queued {queued_count}/{len(pending_tasks_dicts)} pending tasks for workspace {workspace_id}. Queue size: {self.task_queue.qsize()}")
-
+                logger.info(f"Successfully queued {queued_count} tasks for workspace {workspace_id}")
+            
+            # STEP 5: Update workspace task counts per tracking
+            self.workspace_task_counts[workspace_id] = health_status['task_counts']
+            
         except Exception as e:
             logger.error(f"Error processing tasks for workspace {workspace_id}: {e}", exc_info=True)
 
@@ -402,25 +565,20 @@ class TaskExecutor:
             logger.error(f"Invalid workspace ID format: {workspace_id}. Cannot get/create manager.")
             return None
 
-        # Controlla se esiste già nella cache in memoria
         if workspace_uuid in self.workspace_managers:
-            # Potrebbe essere utile verificare se il manager è ancora 'valido' o reinizializzarlo periodicamente
             return self.workspace_managers[workspace_uuid]
 
-        # Se non esiste, crealo e inizializzalo
         logger.info(f"Creating new AgentManager instance for workspace {workspace_id}.")
         try:
-            manager = AgentManager(workspace_uuid) # Passa l'UUID
-            success = await manager.initialize() # L'inizializzazione carica agenti, workspace, ecc.
+            manager = AgentManager(workspace_uuid)
+            success = await manager.initialize()
 
             if success:
                 self.workspace_managers[workspace_uuid] = manager
                 logger.info(f"Initialized agent manager for workspace {workspace_id}")
                 return manager
             else:
-                # L'inizializzazione ha fallito (es. workspace non trovato nel DB, nessun agente)
                 logger.error(f"Failed to initialize agent manager for workspace {workspace_id}. Check logs for details from AgentManager.")
-                # Non memorizzare un manager non inizializzato
                 return None
         except Exception as e:
             logger.error(f"Exception creating or initializing agent manager for workspace {workspace_id}: {e}", exc_info=True)
@@ -437,16 +595,16 @@ class TaskExecutor:
              missing = [k for k, v in {'task_id': task_id, 'agent_id': agent_id, 'workspace_id': workspace_id}.items() if not v]
              error_msg = f"Task data incomplete: missing {', '.join(missing)}. Cannot execute."
              logger.error(error_msg)
-             if task_id: # Se almeno l'ID c'è, prova ad aggiornare lo stato
+             if task_id:
                  try:
                      await update_task_status(task_id, TaskStatus.FAILED.value, {"error": error_msg, "status_detail": "invalid_task_data"})
                  except Exception as db_err:
                       logger.error(f"Failed to update status for invalid task {task_id}: {db_err}")
-             return # Non procedere
+             return
 
-        start_time_tracking = time.time() # Tempo inizio esecuzione funzione
-        model_for_budget = "unknown" # Default, verrà aggiornato dopo aver caricato l'agente
-        estimated_input_tokens = 0 # Default
+        start_time_tracking = time.time()
+        model_for_budget = "unknown"
+        estimated_input_tokens = 0
 
         try:
             # Log inizio esecuzione
@@ -459,60 +617,49 @@ class TaskExecutor:
             await update_task_status(task_id, TaskStatus.IN_PROGRESS.value, {"detail": "Execution started by worker"})
 
             # Recupera dati agente per determinare il modello
-            agent_data_db = await get_agent(agent_id) # Assume che get_agent ritorni un dict o None
+            agent_data_db = await get_agent(agent_id)
             if not agent_data_db:
-                raise ValueError(f"Agent {agent_id} not found in database.") # Causa un FAILED controllato
+                raise ValueError(f"Agent {agent_id} not found in database.")
 
             # Determina il modello LLM da usare (e per il budget)
             llm_config = agent_data_db.get("llm_config", {})
-            model_for_budget = llm_config.get("model") # Prova a prenderlo dalla config specifica
-            if not model_for_budget: # Fallback basato su seniority se non c'è config->model
+            model_for_budget = llm_config.get("model")
+            if not model_for_budget:
                 seniority_map = {"junior": "gpt-4.1-nano", "senior": "gpt-4.1-mini", "expert": "gpt-4.1"}
                 model_for_budget = seniority_map.get(agent_data_db.get("seniority", "senior"), self.budget_tracker.default_model)
             logger.info(f"Executing task {task_id} ('{task_dict.get('name')}') with agent {agent_id} (Role: {agent_data_db.get('role', 'N/A')}) using model {model_for_budget}")
 
-            # Stima input tokens (molto approssimativa, l'agente dovrebbe fornire dati reali)
+            # Stima input tokens
             task_input_text = f"{task_dict.get('name', '')} {task_dict.get('description', '')}"
-            estimated_input_tokens = max(1, len(task_input_text) // 4) # Evita 0 tokens, usa 4 char/token approx
+            estimated_input_tokens = max(1, len(task_input_text) // 4)
 
-            # Costruisci l'oggetto Task Pydantic per passarlo all'esecuzione
-            # Assicurati che i campi obbligatori del modello Pydantic `Task` siano presenti
+            # Costruisci l'oggetto Task Pydantic
             try:
                 task_pydantic_obj = Task(
                     id=UUID(task_id),
                     workspace_id=UUID(workspace_id),
-                    agent_id=UUID(agent_id), # Già validato che non sia None
+                    agent_id=UUID(agent_id),
                     name=task_dict.get("name", "N/A"),
                     description=task_dict.get("description", ""),
-                    status=TaskStatus.IN_PROGRESS, # Stato attuale
-                    # Gestione date: usa quelle dal DB se presenti e valide, altrimenti now()
+                    status=TaskStatus.IN_PROGRESS,
                     created_at=datetime.fromisoformat(task_dict["created_at"]) if task_dict.get("created_at") else datetime.now(),
-                    updated_at=datetime.now(), # Aggiorna sempre l'updated_at all'inizio dell'esecuzione
-                    result=task_dict.get("result"), # Include risultati precedenti se presenti
-                    # Aggiungi altri campi se il modello Task li richiede (es. priority, dependencies)
-                    # priority=task_dict.get("priority", 0),
-                    # dependencies=task_dict.get("dependencies", []),
+                    updated_at=datetime.now(),
+                    result=task_dict.get("result"),
                 )
             except (ValueError, TypeError, KeyError) as pydantic_error:
                 logger.error(f"Error creating Pydantic Task object for task {task_id}: {pydantic_error}", exc_info=True)
                 raise ValueError("Internal error preparing task object.") from pydantic_error
 
             # --- ESECUZIONE EFFETTIVA DEL TASK ---
-            # Chiama il metodo execute_task del manager, passando l'oggetto Pydantic
-            # Assumiamo che `manager.execute_task` ritorni un dizionario con l'output e potenzialmente i token usati
-            # Se `execute_task` si aspetta solo l'UUID, cambia la chiamata in:
-            # result_from_agent = await manager.execute_task(UUID(task_id))
             result_from_agent: Dict[str, Any] = await manager.execute_task(task_pydantic_obj.id)
             # ------------------------------------
 
-            execution_time = time.time() - start_time_tracking # Tempo impiegato dall'agente
+            execution_time = time.time() - start_time_tracking
 
             # Estrai/stima output tokens e gestisci il risultato
             result_output = result_from_agent.get("output", "Task completed without explicit output.") if isinstance(result_from_agent, dict) else str(result_from_agent)
-            # Stima output tokens (se non forniti dall'agente)
             actual_output_tokens = result_from_agent.get("usage", {}).get("output_tokens")
             estimated_output_tokens = actual_output_tokens if actual_output_tokens is not None else max(1, len(str(result_output)) // 4)
-            # Usa i token reali se forniti dall'agente per il budget
             actual_input_tokens = result_from_agent.get("usage", {}).get("input_tokens")
             final_input_tokens = actual_input_tokens if actual_input_tokens is not None else estimated_input_tokens
 
@@ -520,25 +667,23 @@ class TaskExecutor:
             usage_record = self.budget_tracker.log_usage(
                 agent_id=agent_id, model=model_for_budget,
                 input_tokens=final_input_tokens,
-                output_tokens=estimated_output_tokens, # Usa la stima/valore reale ottenuto
+                output_tokens=estimated_output_tokens,
                 task_id=task_id
             )
 
             # Prepara il payload del risultato da salvare nel DB
             task_result_payload_for_db = {
-                "output": result_output, # Salva l'output principale
+                "output": result_output,
                 "status_detail": "completed_successfully",
                 "execution_time_seconds": round(execution_time, 2),
                 "model_used": model_for_budget,
-                 # Salva i token usati (reali se disponibili, altrimenti stime)
                 "tokens_used": {
                      "input": final_input_tokens,
                      "output": estimated_output_tokens,
-                     "estimated": actual_input_tokens is None or actual_output_tokens is None # Flag per indicare se sono stime
+                     "estimated": actual_input_tokens is None or actual_output_tokens is None
                  },
                 "cost_estimated": usage_record["total_cost"],
-                 # Potresti voler includere altri metadati restituiti dall'agente
-                "agent_metadata": result_from_agent.get("metadata") # Esempio
+                "agent_metadata": result_from_agent.get("metadata")
             }
             await update_task_status(task_id, TaskStatus.COMPLETED.value, task_result_payload_for_db)
 
@@ -562,22 +707,19 @@ class TaskExecutor:
                 completed_task_pydantic_obj_for_handler = Task(
                     id=UUID(task_id), workspace_id=UUID(workspace_id), agent_id=UUID(agent_id),
                     name=task_dict.get("name", "N/A"), description=task_dict.get("description", ""),
-                    status=TaskStatus.COMPLETED, # Stato finale
-                    result=task_result_payload_for_db, # Risultato completo salvato
-                    created_at=task_pydantic_obj.created_at, # Mantieni l'originale
-                    updated_at=datetime.now(), # Ora del completamento
-                    # priority=task_pydantic_obj.priority, # Mantieni altri campi
-                    # dependencies=task_pydantic_obj.dependencies,
+                    status=TaskStatus.COMPLETED,
+                    result=task_result_payload_for_db,
+                    created_at=task_pydantic_obj.created_at,
+                    updated_at=datetime.now(),
                 )
                 # Chiama l'handler passando l'oggetto Task completato e il workspace ID
                 await self.enhanced_handler.handle_task_completion(
                     completed_task=completed_task_pydantic_obj_for_handler,
-                    task_result=task_result_payload_for_db, # Passa anche il payload per contesto
-                    workspace_id=workspace_id # Passa il workspace ID esplicitamente
+                    task_result=task_result_payload_for_db,
+                    workspace_id=workspace_id
                 )
                 logger.info(f"Post-completion handler (e.g., auto-generation analysis) triggered for task {task_id}")
             except Exception as auto_error:
-                # Logga errore nella fase di post-completamento ma non fallire il task principale
                 logger.error(f"Error in post-completion handler for task {task_id}: {auto_error}", exc_info=True)
             # -----------------------------------------------------
 
@@ -587,23 +729,22 @@ class TaskExecutor:
             execution_time_failed = time.time() - start_time_tracking
 
             # Stima conservativa dei token per il budget in caso di fallimento
-            # Usa l'input stimato se disponibile, altrimenti 0
             input_tokens_failed = estimated_input_tokens if estimated_input_tokens > 0 else 0
-            output_tokens_failed = 50 # Un piccolo numero per rappresentare un output di errore o interrotto
+            output_tokens_failed = 50
 
             # Logga comunque il costo stimato del tentativo fallito
             usage_record_failed = self.budget_tracker.log_usage(
-                agent_id=agent_id, model=model_for_budget, # Usa il modello determinato, se disponibile
+                agent_id=agent_id, model=model_for_budget,
                 input_tokens=input_tokens_failed,
                 output_tokens=output_tokens_failed, task_id=task_id
             )
 
             # Prepara payload di errore per il DB
             error_payload_for_db = {
-                "error": str(e), # Messaggio di errore
+                "error": str(e),
                 "status_detail": "failed_during_execution",
                 "execution_time_seconds": round(execution_time_failed, 2),
-                "cost_estimated": usage_record_failed["total_cost"] # Costo del tentativo
+                "cost_estimated": usage_record_failed["total_cost"]
             }
             # Aggiorna lo stato del task a FAILED nel DB
             try:
@@ -621,7 +762,6 @@ class TaskExecutor:
             }
             self.execution_log.append(execution_error_log)
 
-
     async def create_initial_workspace_task(self, workspace_id: str) -> Optional[str]:
         """Creates the very first task for a workspace, typically assigning it to a project manager role."""
         try:
@@ -633,8 +773,6 @@ class TaskExecutor:
             agents = await db_list_agents(workspace_id)
             if not agents:
                 logger.warning(f"No agents found for workspace {workspace_id}. Cannot create initial task. Workspace might need agent setup.")
-                # Considera di aggiornare lo stato del workspace a "needs_agents" o simile
-                # await update_workspace_status(workspace_id, WorkspaceStatus.NEEDS_SETUP.value, {"reason": "No agents found"})
                 return None
 
             # Identifica l'agente "manager" o prendi il primo
@@ -680,10 +818,8 @@ class TaskExecutor:
                 workspace_id=workspace_id,
                 agent_id=pm_agent_id,
                 name="Project Initialization and Planning",
-                description=task_description.strip(), # Rimuovi spazi bianchi extra
-                status=TaskStatus.PENDING.value, # Inizia come pending
-                # Potresti aggiungere priorità qui se il modello la supporta
-                # priority=10
+                description=task_description.strip(),
+                status=TaskStatus.PENDING.value,
             )
 
             if initial_task_dict and initial_task_dict.get("id"):
@@ -711,12 +847,10 @@ class TaskExecutor:
 
         if workspace_id:
             try:
-                 # Assicura che il filtro usi UUID se gli ID nel log sono UUID
-                 # workspace_uuid_filter = UUID(workspace_id) # Se usi UUID
                  logs_to_filter = [log for log in logs_to_filter if log.get("workspace_id") == workspace_id]
             except ValueError:
                  logger.warning(f"Invalid workspace_id format '{workspace_id}' for filtering recent activity.")
-                 return [] # Ritorna lista vuota se l'ID non è valido per il filtro
+                 return []
 
         # Ordina dal più recente al meno recente e limita
         logs_to_filter.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
@@ -726,11 +860,10 @@ class TaskExecutor:
         """Get statistics specifically about auto-generated tasks or related events."""
         # Definisci gli eventi che indicano auto-generazione o handoff
         auto_gen_event_types = {
-            "auto_task_generated", # Assumendo che l'handler logghi questo evento
+            "auto_task_generated",
             "follow_up_generated",
             "handoff_requested",
-            "subtask_created_by_agent" # Se l'agente stesso logga quando crea un task
-            # Aggiungere altri tipi di eventi rilevanti qui
+            "subtask_created_by_agent"
         }
 
         auto_gen_events = [
@@ -744,80 +877,99 @@ class TaskExecutor:
         for event_type in auto_gen_event_types:
             event_counts[event_type] = sum(1 for log in auto_gen_events if log.get("event") == event_type)
 
-
         return {
             "total_auto_generation_related_events": len(auto_gen_events),
             "event_type_counts": event_counts,
-            "recent_auto_generation_events": auto_gen_events[:10], # Mostra i 10 più recenti
-            "auto_generation_enabled": True # Assumendo sia sempre attivo in questa versione
+            "recent_auto_generation_events": auto_gen_events[:10],
+            "auto_generation_enabled": True
+        }
+
+    def get_runaway_protection_status(self) -> Dict[str, Any]:
+        """Ritorna lo stato della runaway protection"""
+        return {
+            "paused_workspaces": list(self.workspace_auto_generation_paused),
+            "workspace_task_counts": self.workspace_task_counts,
+            "last_runaway_check": self.last_runaway_check.isoformat() if self.last_runaway_check else None,
+            "protection_enabled": True,
+            "max_pending_tasks": self.max_pending_tasks_per_workspace,
+            "max_handoff_percentage": self.max_handoff_percentage
         }
 
     def get_detailed_stats(self) -> Dict[str, Any]:
-            """Gathers detailed operational statistics about the executor."""
-            tasks_completed = 0
-            tasks_failed = 0
-            agent_activity: Dict[str, Dict[str, Any]] = {}
+        """Gathers detailed operational statistics including runaway protection"""
+        tasks_completed = 0
+        tasks_failed = 0
+        agent_activity: Dict[str, Dict[str, Any]] = {}
 
-            # Processa il log di esecuzione per contare successi e fallimenti
-            for log_entry in self.execution_log:
-                event = log_entry.get("event")
-                agent_id = log_entry.get("agent_id")
-                task_id = log_entry.get("task_id")
+        # Processa il log di esecuzione per contare successi e fallimenti
+        for log_entry in self.execution_log:
+            event = log_entry.get("event")
+            agent_id = log_entry.get("agent_id")
+            task_id = log_entry.get("task_id")
 
-                # FIX: Conta TUTTI i task completati/falliti, non solo quelli senza agent_id
-                if event == "task_completed":
-                    tasks_completed += 1
-                elif event == "task_failed":
-                    tasks_failed += 1
+            # Conta TUTTI i task completati/falliti, non solo quelli senza agent_id
+            if event == "task_completed":
+                tasks_completed += 1
+            elif event == "task_failed":
+                tasks_failed += 1
 
-                # Continua solo se c'è un agent_id per le statistiche per agente
-                if not agent_id:
-                    continue
+            # Continua solo se c'è un agent_id per le statistiche per agente
+            if not agent_id:
+                continue
 
-                # Inizializza le statistiche per l'agente se non già presenti
-                if agent_id not in agent_activity:
-                    agent_activity[agent_id] = {
-                        "completed": 0,
-                        "failed": 0,
-                        "total_cost": 0.0,
-                        "name": "Unknown",
-                        "role": "Unknown"
-                    }
+            # Inizializza le statistiche per l'agente se non già presenti
+            if agent_id not in agent_activity:
+                agent_activity[agent_id] = {
+                    "completed": 0,
+                    "failed": 0,
+                    "total_cost": 0.0,
+                    "name": "Unknown",
+                    "role": "Unknown"
+                }
 
-                # Aggiorna i conteggi per agente
-                if event == "task_completed":
-                    agent_activity[agent_id]["completed"] += 1
-                elif event == "task_failed":
-                    agent_activity[agent_id]["failed"] += 1
+            # Aggiorna i conteggi per agente
+            if event == "task_completed":
+                agent_activity[agent_id]["completed"] += 1
+            elif event == "task_failed":
+                agent_activity[agent_id]["failed"] += 1
 
-            # Arricchisci le statistiche degli agenti con il costo totale dal BudgetTracker
-            all_agent_ids_in_stats = list(agent_activity.keys())
-            for agent_id in all_agent_ids_in_stats:
-                 agent_total_cost = self.budget_tracker.get_agent_total_cost(agent_id)
-                 agent_activity[agent_id]["total_cost"] = round(agent_total_cost, 6)
+        # Arricchisci le statistiche degli agenti con il costo totale dal BudgetTracker
+        all_agent_ids_in_stats = list(agent_activity.keys())
+        for agent_id in all_agent_ids_in_stats:
+             agent_total_cost = self.budget_tracker.get_agent_total_cost(agent_id)
+             agent_activity[agent_id]["total_cost"] = round(agent_total_cost, 6)
 
-            # Stato attuale dell'executor
-            current_status = "stopped"
-            if self.running:
-                current_status = "paused" if self.paused else "running"
+        # Stato attuale dell'executor
+        current_status = "stopped"
+        if self.running:
+            current_status = "paused" if self.paused else "running"
 
-            return {
-                "executor_status": current_status,
-                "tasks_in_queue": self.task_queue.qsize(),
-                "tasks_actively_processing": self.active_tasks_count,
-                "max_concurrent_tasks": self.max_concurrent_tasks,
-                "total_execution_log_entries": len(self.execution_log),
-                # FIX: Rinomina per essere coerente con il frontend
-                "session_stats": { 
-                    "tasks_completed_successfully": tasks_completed,
-                    "tasks_failed": tasks_failed,
-                    "agent_activity": agent_activity
-                },
-                "budget_tracker_stats": {
-                    "tracked_agents_count": len(self.budget_tracker.usage_log),
-                },
-                "auto_generation_summary": self.get_auto_generation_stats()
+        base_stats = {
+            "executor_status": current_status,
+            "tasks_in_queue": self.task_queue.qsize(),
+            "tasks_actively_processing": self.active_tasks_count,
+            "max_concurrent_tasks": self.max_concurrent_tasks,
+            "total_execution_log_entries": len(self.execution_log),
+            "session_stats": { 
+                "tasks_completed_successfully": tasks_completed,
+                "tasks_failed": tasks_failed,
+                "agent_activity": agent_activity
+            },
+            "budget_tracker_stats": {
+                "tracked_agents_count": len(self.budget_tracker.usage_log),
+            },
+            "auto_generation_summary": self.get_auto_generation_stats()
+        }
+        
+        # Aggiungi stats runaway protection
+        base_stats.update({
+            "runaway_protection": self.get_runaway_protection_status(),
+            "workspace_health": {
+                workspace_id: counts for workspace_id, counts in self.workspace_task_counts.items()
             }
+        })
+        
+        return base_stats
 
 
 # --- Global Instance ---
@@ -842,40 +994,37 @@ async def resume_task_executor():
 
 def get_executor_stats() -> Dict[str, Any]:
      """Get detailed statistics from the global task executor."""
-     # Nota: questa funzione è sincrona, chiama un metodo sincrono dell'executor
      return task_executor.get_detailed_stats()
 
 def get_recent_executor_activity(workspace_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
      """Get recent activity logs, optionally filtered by workspace."""
-     # Nota: questa funzione è sincrona
      return task_executor.get_recent_activity(workspace_id=workspace_id, limit=limit)
 
 async def trigger_initial_workspace_task(workspace_id: str) -> Optional[str]:
     """Manually trigger the creation of an initial task for a specific workspace."""
-    # Nota: questa funzione è asincrona perché create_initial_workspace_task lo è
     return await task_executor.create_initial_workspace_task(workspace_id)
 
-# Esempio di come potresti avviare e fermare l'executor in un'applicazione principale
-# async def main():
-#     print("Starting executor...")
-#     await start_task_executor()
-#     try:
-#         # Tieni l'applicazione in esecuzione (es. un server web o un loop infinito)
-#         while True:
-#             # Ogni tanto stampa le statistiche
-#             stats = get_executor_stats()
-#             print(f"Executor Status: {stats['executor_status']}, Queue: {stats['tasks_in_queue']}, Active: {stats['tasks_actively_processing']}")
-#             await asyncio.sleep(60)
-#     except KeyboardInterrupt:
-#         print("Shutdown signal received.")
-#     finally:
-#         print("Stopping executor...")
-#         await stop_task_executor()
-#         print("Executor stopped.")
+# NUOVO: Endpoint per controllo manuale runaway
+async def trigger_runaway_check() -> Dict[str, Any]:
+    """Trigger manuale del check runaway protection"""
+    await task_executor.periodic_runaway_check()
+    return {
+        "success": True,
+        "message": "Runaway check completed",
+        "protection_status": task_executor.get_runaway_protection_status()
+    }
 
-# if __name__ == "__main__":
-#     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#     # Configura il logger specifico per questo modulo se necessario
-#     # logger = logging.getLogger(__name__)
-#     # logger.setLevel(logging.DEBUG) # Imposta a DEBUG per vedere più dettagli
-#     asyncio.run(main())
+# NUOVO: Funzione per reset manuale di workspace pausato
+async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
+    """Reset manuale dell'auto-generation per un workspace"""
+    if workspace_id in task_executor.workspace_auto_generation_paused:
+        await task_executor._resume_auto_generation_for_workspace(workspace_id)
+        return {
+            "success": True,
+            "message": f"Auto-generation resumed for workspace {workspace_id}"
+        }
+    else:
+        return {
+            "success": False,
+            "message": f"Auto-generation was not paused for workspace {workspace_id}"
+        }

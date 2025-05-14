@@ -99,6 +99,27 @@ export const api = {
         return handleApiError(error);
       }
     },
+    getTaskAnalysis: async (workspaceId: string): Promise<TaskAnalysisResponse> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/task-analysis`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    resetRunawayTasks: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/reset-runaway`, {
+          method: 'POST',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+},
     pauseExecutor: async (): Promise<{ message: string }> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/executor/pause`, {
@@ -147,7 +168,51 @@ export const api = {
       } catch (error) {
         return handleApiError(error);
       }
-    }
+    },
+        
+        getRunawayProtectionStatus: async (): Promise<any> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/status`);
+    if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+    return await response.json();
+  } catch (error) {
+    return handleApiError(error);
+  }
+},
+
+    triggerRunawayCheck: async (): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/check`, {
+          method: 'POST',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    resumeWorkspaceAutoGeneration: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
+          method: 'POST',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getWorkspaceHealth: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/health`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
   },
       
   // Human Feedback API

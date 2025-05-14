@@ -278,3 +278,34 @@ export interface FeedbackResponse {
   modifications?: any[];
   reason?: string;
 }
+
+export interface TaskAnalysisResponse {
+  task_counts: Record<string, number>;
+  failure_analysis: {
+    total_failures: number;
+    max_turns_failures: number;
+    execution_errors: number;
+    failure_reasons: Record<string, number>;
+    average_failure_time: number;
+  };
+  handoff_analysis: {
+    total_handoff_tasks: number;
+    handoff_success_rate: number;
+    recent_handoff_pattern: Array<{
+      name: string;
+      created_at: string;
+      status: string;
+      agent_id: string;
+    }>;
+    most_common_handoff_types: Record<string, number>;
+  };
+  potential_issues: {
+    runaway_detected: boolean;
+    excessive_handoffs: boolean;
+    high_failure_rate: boolean;
+    stuck_agents: string[];
+    queue_overflow_risk: boolean;
+  };
+  recommendations: string[];
+  analysis_timestamp: string;
+}
