@@ -9,7 +9,9 @@ import {
   DirectorTeamProposal,
   Handoff,
   FeedbackRequest, 
-  FeedbackResponse
+  FeedbackResponse,
+  ProjectDeliverables, 
+  DeliverableFeedback
 } from '@/types';
 
 // Determina l'URL base dell'API in base all'ambiente
@@ -88,6 +90,32 @@ export const api = {
       } catch (error) {
         return handleApiError(error);
       }
+    },
+    
+    getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverables> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables`);
+      if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+      return await response.json();
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+  
+    submitDeliverableFeedback: async (workspaceId: string, feedback: DeliverableFeedback): Promise<any> => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables/feedback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(feedback),
+          });
+          if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+          return await response.json();
+        } catch (error) {
+          return handleApiError(error);
+        }
     },
     
     getGlobalActivity: async (limit: number = 50): Promise<any[]> => {

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Literal
 from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
@@ -257,3 +257,32 @@ class DirectorTeamProposalResponse(BaseModel):
     status: str = "pending"
     
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
+class ProjectOutput(BaseModel):
+    task_id: str
+    task_name: str
+    output: str
+    agent_name: str
+    agent_role: str
+    created_at: datetime
+    summary: Optional[str] = None
+    type: str = "general"  # general, analysis, recommendation, document
+
+class ProjectDeliverables(BaseModel):
+    workspace_id: str
+    summary: str
+    key_outputs: List[ProjectOutput]
+    final_recommendations: List[str]
+    next_steps: List[str]
+    completion_status: Literal["in_progress", "awaiting_review", "completed"]
+    total_tasks: int
+    completed_tasks: int
+    generated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class DeliverableFeedback(BaseModel):
+    feedback_type: Literal["approve", "request_changes", "general_feedback"]
+    message: str
+    specific_tasks: Optional[List[str]] = None
+    priority: Literal["low", "medium", "high"] = "medium"

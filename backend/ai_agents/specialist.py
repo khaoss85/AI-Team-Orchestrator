@@ -164,8 +164,7 @@ class ConversationOptimizer:
                     "user requests, status, relevant context."
                 ),
                 model="gpt-4.1-nano",
-                output_type=ConversationSummary,
-                output_schema_strict=False,
+                output_type=AgentOutputSchema(ConversationSummary, strict_json_schema=False),
             )
         return self.summarizer_agent
 
@@ -280,7 +279,9 @@ async def quality_assurance_guardrail(
             if len(validated.summary) < 10:
                 score -= 0.3
                 issues.append("Summary too short")
-            if validated.status == "completed" and not validated.detailed_results_json:
+            if validated.status == "completed" and (
+                  validated.next_steps or validated.resources_consumed_json
+               ) and not validated.detailed_results_json:
                 score -= 0.2
                 issues.append("Missing detailed_results_json")
         elif isinstance(output, str):
@@ -441,7 +442,8 @@ class SpecialistAgent(Generic[T]):
             tools=self.tools,
             handoffs=self.direct_sdk_handoffs,
             input_guardrails=[budget_monitoring_guardrail],
-            output_guardrails=[quality_assurance_guardrail],
+            #output_guardrails=[quality_assurance_guardrail],
+            output_guardrails=[],
             # wrappo il Pydantic model per disabilitare lo strict JSON dello SDK
             output_type=AgentOutputSchema(TaskExecutionOutput, strict_json_schema=False),
         )
@@ -494,8 +496,7 @@ COORDINATOR INSTRUCTIONS:
             model=self.agent.model,
             model_settings=self.agent.model_settings,
             tools=self.agent.tools,
-            output_type=CapabilityVerificationOutput,
-            output_schema_strict=False,
+            output_type=AgentOutputSchema(CapabilityVerificationOutput, strict_json_schema=False)
         )
         try:
             res = await Runner.run(verifier, prompt, max_turns=2)

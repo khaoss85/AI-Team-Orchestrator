@@ -286,6 +286,18 @@ export default function ProjectDetailPage({ params: paramsPromise, searchParams 
                 </div>
               </div>
             </Link>
+              <Link 
+                  href={`/projects/${id}/deliverables`}
+                  className="block p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition"
+                >
+                  <div className="flex items-center">
+                    <span className="text-2xl mr-3">📋</span>
+                    <div>
+                      <h3 className="font-medium">Deliverables Finali</h3>
+                      <p className="text-sm text-gray-600">Visualizza output e risultati del progetto</p>
+                    </div>
+                  </div>
+                </Link>
           </div>
 
           {/* Monitoring Dashboard - Solo se ci sono agenti attivi */}

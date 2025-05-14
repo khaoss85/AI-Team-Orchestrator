@@ -4,6 +4,8 @@ from uuid import UUID
 import logging
 from datetime import datetime, timedelta
 from collections import Counter
+from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback
+from ai_agents.director import DirectorAgent
 
 from database import (
     get_workspace,
@@ -358,3 +360,246 @@ def _extract_major_milestones(
     milestones.sort(key=lambda x: x.get("date", ""))
     
     return milestones
+
+@router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
+async def get_project_deliverables(workspace_id: UUID):
+    """Get aggregated project deliverables and final outputs"""
+    try:
+        # Get workspace details
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        
+        # Get all tasks
+        tasks = await list_tasks(str(workspace_id))
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        # Get agents info for names/roles
+        agents = await db_list_agents(str(workspace_id))
+        agent_map = {a["id"]: a for a in agents}
+        
+        # Extract outputs from completed tasks
+        key_outputs = []
+        for task in completed_tasks:
+            result = task.get("result", {})
+            output_text = result.get("output", "")
+            
+            if output_text and len(output_text.strip()) > 10:  # Skip trivial outputs
+                agent_info = agent_map.get(task.get("agent_id"), {})
+                
+                # Classify output type
+                output_type = _classify_output_type(task.get("name", ""), output_text)
+                
+                key_outputs.append(ProjectOutput(
+                    task_id=task["id"],
+                    task_name=task.get("name", "Unnamed Task"),
+                    output=output_text[:1000] + "..." if len(output_text) > 1000 else output_text,
+                    agent_name=agent_info.get("name", "Unknown Agent"),
+                    agent_role=agent_info.get("role", "Unknown Role"),
+                    created_at=datetime.fromisoformat(task.get("updated_at", task.get("created_at", datetime.now().isoformat())).replace('Z', '+00:00')),
+                    type=output_type
+                ))
+        
+        # Generate AI summary if we have outputs
+        summary = await _generate_project_summary(workspace, key_outputs) if key_outputs else "No deliverables generated yet."
+        
+        # Extract recommendations and next steps
+        recommendations = _extract_recommendations(key_outputs)
+        next_steps = _extract_next_steps(key_outputs)
+        
+        # Determine completion status
+        completion_status = _determine_completion_status(tasks, key_outputs)
+        
+        return ProjectDeliverables(
+            workspace_id=str(workspace_id),
+            summary=summary,
+            key_outputs=key_outputs,
+            final_recommendations=recommendations,
+            next_steps=next_steps,
+            completion_status=completion_status,
+            total_tasks=len(tasks),
+            completed_tasks=len(completed_tasks),
+            generated_at=datetime.now()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting project deliverables: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get project deliverables: {str(e)}"
+        )
+
+@router.post("/{workspace_id}/deliverables/feedback", status_code=status.HTTP_200_OK)
+async def submit_deliverable_feedback(
+    workspace_id: UUID,
+    feedback: DeliverableFeedback
+):
+    """Submit feedback on project deliverables"""
+    try:
+        # Create a new task for handling the feedback
+        agents = await db_list_agents(str(workspace_id))
+        
+        # Find a coordinator/manager to handle feedback
+        coordinator = None
+        for agent in agents:
+            if any(role in agent.get("role", "").lower() for role in ["coordinator", "manager", "lead"]):
+                coordinator = agent
+                break
+        
+        if not coordinator and agents:
+            coordinator = agents[0]  # Fallback to first agent
+        
+        if coordinator:
+            task_name = f"User Feedback: {feedback.feedback_type.title()}"
+            task_description = f"""
+USER FEEDBACK ON PROJECT DELIVERABLES
+Type: {feedback.feedback_type.upper()}
+Priority: {feedback.priority.upper()}
+
+Message:
+{feedback.message}
+
+{"Specific tasks mentioned: " + ", ".join(feedback.specific_tasks) if feedback.specific_tasks else ""}
+
+Please review this feedback and take appropriate action:
+1. If approved, mark the project as completed
+2. If changes requested, create specific tasks to address the feedback
+3. If general feedback, incorporate into project improvements
+"""
+            
+            # Create the feedback task
+            await create_task(
+                workspace_id=str(workspace_id),
+                agent_id=coordinator["id"],
+                name=task_name,
+                description=task_description,
+                status=TaskStatus.PENDING.value
+            )
+        
+        return {
+            "success": True,
+            "message": "Feedback received and task created for handling",
+            "feedback_type": feedback.feedback_type
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting deliverable feedback: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit feedback: {str(e)}"
+        )
+
+# Helper functions
+def _classify_output_type(task_name: str, output: str) -> str:
+    """Classify the type of output based on task name and content"""
+    task_lower = task_name.lower()
+    output_lower = output.lower()
+    
+    if any(keyword in task_lower for keyword in ["analysis", "analyze", "research", "study"]):
+        return "analysis"
+    elif any(keyword in task_lower for keyword in ["recommend", "suggest", "strategy", "plan"]):
+        return "recommendation"
+    elif any(keyword in task_lower for keyword in ["document", "report", "write", "create"]):
+        return "document"
+    elif any(keyword in output_lower for keyword in ["recommend", "suggest", "should", "next steps"]):
+        return "recommendation"
+    else:
+        return "general"
+
+async def _generate_project_summary(workspace: Dict, outputs: List[ProjectOutput]) -> str:
+    """Generate AI summary of project deliverables"""
+    try:
+        director = DirectorAgent()
+        
+        # Create a simplified agent for summarization
+        from agents import Agent as OpenAIAgent
+        
+        summarizer = OpenAIAgent(
+            name="ProjectSummarizer",
+            instructions="""
+            You are an executive assistant summarizing project deliverables.
+            Create a concise, professional summary of what was accomplished.
+            Focus on key outcomes, deliverables, and overall project success.
+            """,
+            model="gpt-4.1-mini"
+        )
+        
+        # Prepare context
+        context = f"""
+        Project: {workspace.get('name', 'Unknown')}
+        Goal: {workspace.get('goal', 'Not specified')}
+        
+        Deliverables completed:
+        """
+        
+        for output in outputs[:10]:  # Limit to avoid token limits
+            context += f"\n- {output.task_name} (by {output.agent_name}): {output.output[:200]}..."
+        
+        from agents import Runner
+        result = await Runner.run(
+            summarizer,
+            f"Summarize these project deliverables:\n\n{context}",
+            max_turns=1
+        )
+        
+        return result.final_output if isinstance(result.final_output, str) else str(result.final_output)
+        
+    except Exception as e:
+        logger.error(f"Error generating AI summary: {e}")
+        # Fallback summary
+        return f"Project completed {len(outputs)} deliverables including {', '.join(set(o.type for o in outputs))}."
+
+def _extract_recommendations(outputs: List[ProjectOutput]) -> List[str]:
+    """Extract recommendations from outputs"""
+    recommendations = []
+    
+    for output in outputs:
+        if output.type == "recommendation":
+            # Extract bullet points or numbered lists from the output
+            lines = output.output.split('\n')
+            for line in lines:
+                line = line.strip()
+                if (line.startswith('-') or line.startswith('•') or 
+                    any(line.startswith(f"{i}.") for i in range(1, 10)) or
+                    "recommend" in line.lower() or "suggest" in line.lower()):
+                    clean_line = line.lstrip('-•0123456789. ').strip()
+                    if len(clean_line) > 10:
+                        recommendations.append(clean_line)
+    
+    # Deduplicate and limit
+    unique_recommendations = list(dict.fromkeys(recommendations))
+    return unique_recommendations[:10]
+
+def _extract_next_steps(outputs: List[ProjectOutput]) -> List[str]:
+    """Extract next steps from outputs"""
+    next_steps = []
+    
+    for output in outputs:
+        text_lower = output.output.lower()
+        if "next step" in text_lower or "follow up" in text_lower or "next action" in text_lower:
+            lines = output.output.split('\n')
+            for line in lines:
+                if any(phrase in line.lower() for phrase in ["next step", "follow up", "next action", "should", "need to"]):
+                    clean_line = line.strip().lstrip('-•0123456789. ')
+                    if len(clean_line) > 10 and clean_line not in next_steps:
+                        next_steps.append(clean_line)
+    
+    return next_steps[:5]
+
+def _determine_completion_status(tasks: List[Dict], outputs: List[ProjectOutput]) -> str:
+    """Determine project completion status"""
+    total_tasks = len(tasks)
+    completed_tasks = len([t for t in tasks if t.get("status") == "completed"])
+    pending_tasks = len([t for t in tasks if t.get("status") == "pending"])
+    
+    # If significant outputs and no pending tasks, awaiting review
+    if len(outputs) >= 3 and pending_tasks == 0:
+        return "awaiting_review"
+    # If high completion rate, awaiting review
+    elif completed_tasks / total_tasks > 0.8 if total_tasks > 0 else False:
+        return "awaiting_review"
+    # Otherwise in progress
+    else:
+        return "in_progress"

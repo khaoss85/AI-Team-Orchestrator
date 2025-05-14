@@ -309,3 +309,33 @@ export interface TaskAnalysisResponse {
   recommendations: string[];
   analysis_timestamp: string;
 }
+
+export interface ProjectOutput {
+  task_id: string;
+  task_name: string;
+  output: string;
+  agent_name: string;
+  agent_role: string;
+  created_at: string;
+  summary?: string;
+  type: 'general' | 'analysis' | 'recommendation' | 'document';
+}
+
+export interface ProjectDeliverables {
+  workspace_id: string;
+  summary: string;
+  key_outputs: ProjectOutput[];
+  final_recommendations: string[];
+  next_steps: string[];
+  completion_status: 'in_progress' | 'awaiting_review' | 'completed';
+  total_tasks: number;
+  completed_tasks: number;
+  generated_at: string;
+}
+
+export interface DeliverableFeedback {
+  feedback_type: 'approve' | 'request_changes' | 'general_feedback';
+  message: string;
+  specific_tasks?: string[];
+  priority: 'low' | 'medium' | 'high';
+}
