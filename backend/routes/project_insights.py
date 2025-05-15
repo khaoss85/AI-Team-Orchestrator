@@ -4,7 +4,7 @@ from uuid import UUID
 import logging
 from datetime import datetime, timedelta
 from collections import Counter
-from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback
+from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback, ProjectDeliverableCard
 from ai_agents.director import DirectorAgent
 
 from database import (
@@ -378,7 +378,7 @@ async def get_project_deliverables(workspace_id: UUID):
         agents = await db_list_agents(str(workspace_id))
         agent_map = {a["id"]: a for a in agents}
         
-        # Extract outputs from completed tasks
+        # Extract outputs from completed tasks - MANTENERE SEMPLICE
         key_outputs = []
         for task in completed_tasks:
             result = task.get("result", {})
@@ -390,6 +390,7 @@ async def get_project_deliverables(workspace_id: UUID):
                 # Classify output type
                 output_type = _classify_output_type(task.get("name", ""), output_text)
                 
+                # Crea ProjectOutput con campi base (retrocompatibile)
                 key_outputs.append(ProjectOutput(
                     task_id=task["id"],
                     task_name=task.get("name", "Unnamed Task"),
@@ -399,6 +400,22 @@ async def get_project_deliverables(workspace_id: UUID):
                     created_at=datetime.fromisoformat(task.get("updated_at", task.get("created_at", datetime.now().isoformat())).replace('Z', '+00:00')),
                     type=output_type
                 ))
+        
+        # Generate insight cards SEPARATAMENTE usando dati grezzi
+        insight_cards = []
+        if key_outputs:
+            insight_cards = await _generate_deliverable_insights([
+                {
+                    "task_id": output.task_id,
+                    "task_name": output.task_name,
+                    "output": output.output,
+                    "agent_name": output.agent_name,
+                    "agent_role": output.agent_role,
+                    "created_at": output.created_at.isoformat(),
+                    "type": output.type
+                }
+                for output in key_outputs
+            ])
         
         # Generate AI summary if we have outputs
         summary = await _generate_project_summary(workspace, key_outputs) if key_outputs else "No deliverables generated yet."
@@ -414,6 +431,7 @@ async def get_project_deliverables(workspace_id: UUID):
             workspace_id=str(workspace_id),
             summary=summary,
             key_outputs=key_outputs,
+            insight_cards=insight_cards,  # Aggiungi le insight cards
             final_recommendations=recommendations,
             next_steps=next_steps,
             completion_status=completion_status,
@@ -603,3 +621,276 @@ def _determine_completion_status(tasks: List[Dict], outputs: List[ProjectOutput]
     # Otherwise in progress
     else:
         return "in_progress"
+
+async def _generate_deliverable_insights(outputs: List[Dict]) -> List[ProjectDeliverableCard]:
+    """Generate user-friendly insights cards from task outputs"""
+    cards = []
+    
+    try:
+        # Raggruppa output per categoria
+        categorized_outputs = _categorize_outputs(outputs)
+        
+        for category, items in categorized_outputs.items():
+            if not items:
+                continue
+                
+            # Genera insight per ogni categoria
+            card = await _create_insight_card(category, items)
+            if card:
+                cards.append(card)
+        
+        return cards
+    except Exception as e:
+        logger.error(f"Error generating deliverable insights: {e}", exc_info=True)
+        # Return empty list if insight generation fails
+        return []
+
+def _categorize_outputs(outputs: List[Dict]) -> Dict[str, List[Dict]]:
+    """Categorize outputs into logical groups"""
+    categories = {
+        "research": [],
+        "planning": [],
+        "execution": [],
+        "analysis": [],
+        "review": []
+    }
+    
+    for output in outputs:
+        task_name = output.get("task_name", "").lower()
+        content = output.get("output", "").lower()
+        output_type = output.get("type", "general")
+        
+        # Intelligent categorization based on task name, content, and type
+        if (any(keyword in task_name for keyword in ["research", "investigate", "study", "explore", "gather"]) or
+            any(keyword in content[:200] for keyword in ["research", "investigate", "study", "explore"])):
+            categories["research"].append(output)
+        elif (any(keyword in task_name for keyword in ["plan", "strategy", "roadmap", "timeline", "milestone"]) or
+              any(keyword in content[:200] for keyword in ["plan", "strategy", "roadmap", "timeline"])):
+            categories["planning"].append(output)
+        elif (any(keyword in task_name for keyword in ["implement", "create", "build", "develop", "execute"]) or
+              any(keyword in content[:200] for keyword in ["implement", "create", "build", "develop"])):
+            categories["execution"].append(output)
+        elif (output_type == "analysis" or
+              any(keyword in task_name for keyword in ["analyze", "assessment", "evaluation", "metrics", "performance"]) or
+              any(keyword in content[:200] for keyword in ["analyze", "assessment", "evaluation", "metrics"])):
+            categories["analysis"].append(output)
+        elif (any(keyword in task_name for keyword in ["review", "feedback", "quality", "validation", "check"]) or
+              any(keyword in content[:200] for keyword in ["review", "feedback", "quality", "validation"])):
+            categories["review"].append(output)
+        else:
+            # Default categorization based on output type and length
+            if output_type == "recommendation":
+                categories["planning"].append(output)
+            elif len(content) > 500:
+                categories["analysis"].append(output)
+            else:
+                categories["execution"].append(output)
+    
+    return categories
+
+async def _create_insight_card(category: str, items: List[Dict]) -> Optional[ProjectDeliverableCard]:
+    """Create a user-friendly insight card for a category"""
+    try:
+        # Prepare content for AI analysis
+        combined_content = ""
+        task_names = []
+        
+        for item in items:
+            task_names.append(item.get("task_name", ""))
+            content = item.get("output", "")
+            # Limit content length to prevent token overuse
+            combined_content += f"\nTask: {item.get('task_name', '')}\nOutput: {content[:300]}...\n"
+        
+        # Create AI agent for insight generation
+        from agents import Agent as OpenAIAgent, Runner
+        
+        insight_generator = OpenAIAgent(
+            name="DeliverableInsightGenerator",
+            instructions=f"""
+            You are an expert at creating executive summaries from AI agent outputs.
+            
+            For this {category} category, create a concise, business-focused summary that:
+            1. Highlights KEY BUSINESS VALUE and outcomes
+            2. Extracts 2-4 concrete insights or learnings
+            3. Mentions any quantitative results (numbers, percentages, metrics)
+            4. Focuses on WHAT WAS ACHIEVED, not technical details
+            
+            Keep it professional but accessible. Write in present tense.
+            Example insights format:
+            • Market research identified 3 key customer segments
+            • Cost analysis shows 15% potential savings
+            • Implementation plan covers 6-month timeline
+            """,
+            model="gpt-4.1-mini"
+        )
+        
+        # Generate insights with retry logic
+        prompt = f"""
+        Category: {category.upper()}
+        Number of tasks: {len(items)}
+        
+        Summary of completed work:
+        {combined_content}
+        
+        Create a compelling 2-sentence summary and 2-4 key insights about what was accomplished.
+        """
+        
+        try:
+            result = await Runner.run(insight_generator, prompt, max_turns=1)
+            ai_summary = str(result.final_output)
+        except Exception as ai_error:
+            logger.warning(f"AI insight generation failed for {category}: {ai_error}")
+            # Fallback to simple summary
+            ai_summary = f"Completed {len(items)} {category} tasks including {', '.join(task_names[:2])}."
+        
+        # Extract insights from AI response
+        insights = _extract_insights_from_summary(ai_summary)
+        
+        # If no insights extracted, create fallback insights
+        if not insights:
+            insights = [f"Completed {len(items)} {category} deliverables"]
+            if len(items) > 1:
+                insights.append(f"Covered {len(set(task_names))} different areas")
+        
+        # Get category metadata
+        category_config = {
+            "research": {
+                "icon": "🔍",
+                "title": "Research & Discovery",
+                "description_template": "Market research and data gathering completed"
+            },
+            "planning": {
+                "icon": "📋",
+                "title": "Strategic Planning",
+                "description_template": "Project strategy and planning finalized"
+            },
+            "execution": {
+                "icon": "⚡",
+                "title": "Implementation",
+                "description_template": "Core deliverables implemented successfully"
+            },
+            "analysis": {
+                "icon": "📊",
+                "title": "Analysis & Insights",
+                "description_template": "Data analysis and insights generated"
+            },
+            "review": {
+                "icon": "✅",
+                "title": "Quality Assurance",
+                "description_template": "Quality review and validation completed"
+            }
+        }
+        
+        config = category_config.get(category, {
+            "icon": "📁",
+            "title": category.title(),
+            "description_template": f"{category.title()} deliverables completed"
+        })
+        
+        # Extract metrics if any
+        metrics = _extract_metrics_from_content(combined_content)
+        
+        # Calculate completeness score
+        completeness_score = min(100, len(items) * 20 + len(insights) * 15)
+        
+        # Get the primary creator
+        creators = [item.get("agent_name", "Unknown") for item in items]
+        primary_creator = max(set(creators), key=creators.count) if creators else "AI Team"
+        
+        # Get latest creation time
+        latest_time = max(
+            (datetime.fromisoformat(item.get("created_at", datetime.now().isoformat()).replace('Z', '+00:00')) 
+             for item in items if item.get("created_at")),
+            default=datetime.now()
+        )
+        
+        # Create clean description from AI summary
+        description = ai_summary.split('.')[0] + '.' if '.' in ai_summary else ai_summary[:150]
+        
+        return ProjectDeliverableCard(
+            id=f"{category}_{len(items)}_{int(latest_time.timestamp())}",
+            title=config["title"],
+            description=description,
+            category=category,
+            icon=config["icon"],
+            key_insights=insights[:4],  # Limit to 4 insights
+            metrics=metrics,
+            created_by=primary_creator,
+            created_at=latest_time,
+            completeness_score=min(100, completeness_score)
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating insight card for {category}: {e}", exc_info=True)
+        # Return a simple fallback card instead of None
+        return ProjectDeliverableCard(
+            id=f"{category}_fallback",
+            title=category.title(),
+            description=f"Completed {len(items)} {category} tasks successfully",
+            category=category,
+            icon="📁",
+            key_insights=[f"{len(items)} tasks completed in {category}"],
+            metrics=None,
+            created_by="AI Team",
+            created_at=datetime.now(),
+            completeness_score=80
+        )
+
+def _extract_insights_from_summary(summary: str) -> List[str]:
+    """Extract key insights from AI-generated summary"""
+    insights = []
+    
+    # Look for bullet points
+    lines = summary.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith(('•', '-', '*')) or any(line.startswith(f"{i}.") for i in range(1, 10)):
+            clean_insight = line.lstrip('•-*0123456789. ').strip()
+            if len(clean_insight) > 10 and len(clean_insight) < 100:
+                insights.append(clean_insight)
+    
+    # If no bullet points found, try to split by sentences and look for key phrases
+    if not insights:
+        sentences = [s.strip() for s in summary.split('.') if s.strip()]
+        for sentence in sentences:
+            if (len(sentence) > 10 and 
+                any(keyword in sentence.lower() for keyword in 
+                    ['completed', 'achieved', 'identified', 'analyzed', 'developed', 'created', 'found'])):
+                insights.append(sentence.strip())
+                if len(insights) >= 4:
+                    break
+    
+    return insights[:4]  # Always limit to 4 insights
+
+def _extract_metrics_from_content(content: str) -> Optional[Dict[str, Any]]:
+    """Extract any metrics, numbers, or quantitative data from content"""
+    import re
+    
+    metrics = {}
+    
+    try:
+        # Look for percentages
+        percentages = re.findall(r'(\d+(?:\.\d+)?)\s*%', content)
+        if percentages:
+            metrics['percentages'] = [f"{p}%" for p in percentages[:3]]
+        
+        # Look for currency amounts (more flexible pattern)
+        currency = re.findall(r'[\$€£¥]\s*(\d+(?:,\d{3})*(?:\.\d{2})?)', content)
+        if currency:
+            metrics['amounts'] = [f"${amount}" for amount in currency[:3]]
+        
+        # Look for large numbers (simplified)
+        numbers = re.findall(r'\b(\d{1,3}(?:,\d{3})+|\d{4,})\b', content)
+        if numbers:
+            metrics['quantities'] = numbers[:3]
+        
+        # Look for time periods
+        time_periods = re.findall(r'(\d+)\s+(days?|weeks?|months?|years?)', content, re.IGNORECASE)
+        if time_periods:
+            metrics['timeframes'] = [f"{num} {unit}" for num, unit in time_periods[:2]]
+        
+        return metrics if metrics else None
+        
+    except Exception as e:
+        logger.warning(f"Error extracting metrics: {e}")
+        return None

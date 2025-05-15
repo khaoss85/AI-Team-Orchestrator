@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
 import { ProjectDeliverables, ProjectOutput, DeliverableFeedback } from '@/types';
+import DeliverableInsightCard from './DeliverableInsightCard';
 import ConfirmModal from './ConfirmModal';
 
 interface ProjectDeliverableDashboardProps {
@@ -19,6 +20,9 @@ export default function ProjectDeliverableDashboard({ workspaceId }: ProjectDeli
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [expandedOutput, setExpandedOutput] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<'cards' | 'detailed'>('cards');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDeliverables();
@@ -202,53 +206,82 @@ export default function ProjectDeliverableDashboard({ workspaceId }: ProjectDeli
         </div>
       </div>
 
-      {/* Key Outputs */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">📁 Key Deliverables ({deliverables.key_outputs.length})</h2>
-        
-        {deliverables.key_outputs.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-2">📭</div>
-            <p>Nessun deliverable disponibile ancora</p>
+        {/* Key Deliverables - Visual Cards */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-lg font-semibold">🎯 Key Deliverables</h2>
+              <p className="text-sm text-gray-600">Highlights and insights from completed work</p>
+            </div>
+            {deliverables.insight_cards && deliverables.insight_cards.length > 0 && (
+              <button
+                onClick={() => setViewMode(viewMode === 'cards' ? 'detailed' : 'cards')}
+                className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition"
+              >
+                {viewMode === 'cards' ? 'View Details' : 'View Cards'}
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="space-y-4">
-            {deliverables.key_outputs.map((output) => (
-              <div key={output.task_id} className={`border rounded-lg p-4 ${getOutputTypeColor(output.type)}`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{getOutputTypeIcon(output.type)}</span>
-                    <h3 className="font-medium">{output.task_name}</h3>
-                    <span className="text-xs px-2 py-1 rounded-full bg-white bg-opacity-60">
-                      {output.type}
-                    </span>
+
+          {deliverables.insight_cards && deliverables.insight_cards.length > 0 && viewMode === 'cards' ? (
+            // Visual Cards View
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {deliverables.insight_cards.map((card) => (
+                <DeliverableInsightCard 
+                  key={card.id} 
+                  card={card}
+                  onViewDetails={() => {
+                    setExpandedCard(card.id);
+                    setViewMode('detailed');
+                  }}
+                />
+              ))}
+            </div>
+          ) : deliverables.key_outputs.length > 0 ? (
+            // Detailed List View (fallback o quando richiesto)
+            <div className="space-y-4">
+              {deliverables.key_outputs.map((output) => (
+                <div key={output.task_id} className={`border rounded-lg p-4 ${getOutputTypeColor(output.type)}`}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">{getOutputTypeIcon(output.type)}</span>
+                      <h3 className="font-medium">{output.task_name}</h3>
+                      <span className="text-xs px-2 py-1 rounded-full bg-white bg-opacity-60">
+                        {output.type}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setExpandedOutput(expandedOutput === output.task_id ? null : output.task_id)}
+                      className="text-xs text-gray-600 hover:text-gray-800"
+                    >
+                      {expandedOutput === output.task_id ? 'Riduci' : 'Espandi'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setExpandedOutput(expandedOutput === output.task_id ? null : output.task_id)}
-                    className="text-xs text-gray-600 hover:text-gray-800"
-                  >
-                    {expandedOutput === output.task_id ? 'Riduci' : 'Espandi'}
-                  </button>
+
+                  <div className="bg-white bg-opacity-60 rounded-md p-3 mb-2">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {expandedOutput === output.task_id ? output.output : 
+                       (output.output.length > 200 ? output.output.substring(0, 200) + '...' : output.output)}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs text-gray-600">
+                    <span>
+                      <strong>Creato da:</strong> {output.agent_name} ({output.agent_role})
+                    </span>
+                    <span>{formatDate(output.created_at)}</span>
+                  </div>
                 </div>
-                
-                <div className="bg-white bg-opacity-60 rounded-md p-3 mb-2">
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {expandedOutput === output.task_id ? output.output : 
-                     (output.output.length > 200 ? output.output.substring(0, 200) + '...' : output.output)}
-                  </p>
-                </div>
-                
-                <div className="flex justify-between items-center text-xs text-gray-600">
-                  <span>
-                    <strong>Creato da:</strong> {output.agent_name} ({output.agent_role})
-                  </span>
-                  <span>{formatDate(output.created_at)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <div className="text-4xl mb-3">🎯</div>
+              <h3 className="text-lg font-medium mb-2">No deliverables yet</h3>
+              <p className="text-sm">Insights will appear here as your team completes tasks</p>
+            </div>
+          )}
+        </div>
 
       {/* Recommendations & Next Steps */}
       {(deliverables.final_recommendations.length > 0 || deliverables.next_steps.length > 0) && (

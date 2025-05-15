@@ -119,13 +119,26 @@ class EnhancedTaskExecutor:
     def _should_analyze_task(self, completed_task: Task, task_result: Dict[str, Any]) -> bool:
         """Pre-filter to avoid analyzing tasks that shouldn't trigger follow-ups"""
         
-        # FILTER 1: Only analyze successfully completed tasks
+         # FILTER 1: Only analyze successfully completed tasks
         if task_result.get("status") != "completed":
             return False
-        
+
         # FILTER 2: Skip handoff tasks to prevent infinite loops
         if "handoff" in completed_task.name.lower():
             return False
+
+        # FILTER 3: Skip initialization tasks to prevent loops
+        if "initialization" in completed_task.name.lower():
+            return False
+
+        # FILTER 4: Skip analysis tasks to prevent loops
+        if "analysis" in completed_task.name.lower():
+            return False
+
+        # FILTER 5: Skip data collection tasks
+        if "data collection" in completed_task.name.lower():
+            return False
+        
             
         # FILTER 3: Check for execution success flag
         if not task_result.get("execution_success", True):

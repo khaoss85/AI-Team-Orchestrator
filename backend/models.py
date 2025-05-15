@@ -258,6 +258,20 @@ class DirectorTeamProposalResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
+    
+class ProjectDeliverableCard(BaseModel):
+    """User-friendly card representation of project deliverables"""
+    id: str
+    title: str
+    description: str
+    category: str
+    icon: str
+    key_insights: List[str]
+    metrics: Optional[Dict[str, Any]] = None
+    created_by: str
+    created_at: datetime
+    completeness_score: int = Field(ge=0, le=100, description="How complete/comprehensive this deliverable is")
+
 class ProjectOutput(BaseModel):
     task_id: str
     task_name: str
@@ -265,13 +279,20 @@ class ProjectOutput(BaseModel):
     agent_name: str
     agent_role: str
     created_at: datetime
-    summary: Optional[str] = None
     type: str = "general"  # general, analysis, recommendation, document
-
+    summary: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    key_insights: List[str] = Field(default_factory=list)
+    metrics: Optional[Dict[str, Any]] = None
+    visual_summary: Optional[str] = None
+    category: Optional[str] = None
+    
 class ProjectDeliverables(BaseModel):
     workspace_id: str
     summary: str
     key_outputs: List[ProjectOutput]
+    insight_cards: List[ProjectDeliverableCard] = Field(default_factory=list)
     final_recommendations: List[str]
     next_steps: List[str]
     completion_status: Literal["in_progress", "awaiting_review", "completed"]
@@ -286,3 +307,4 @@ class DeliverableFeedback(BaseModel):
     message: str
     specific_tasks: Optional[List[str]] = None
     priority: Literal["low", "medium", "high"] = "medium"
+    

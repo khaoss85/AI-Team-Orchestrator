@@ -587,20 +587,39 @@ class TaskExecutor:
     async def execute_task_with_tracking(self, manager: AgentManager, task_dict: dict):
         """Executes a single task, tracks budget, logs events, and triggers post-processing."""
         task_id = task_dict.get("id")
-        agent_id = task_dict.get("agent_id")
+
+        # Aggiungi controllo per task duplicati PER WORKSPACE
         workspace_id = task_dict.get("workspace_id")
+
+        # Inizializza il tracking per workspace se non esiste
+        if not hasattr(self, '_processed_tasks_by_workspace'):
+            self._processed_tasks_by_workspace = {}
+
+        # Inizializza set per questo workspace
+        if workspace_id not in self._processed_tasks_by_workspace:
+            self._processed_tasks_by_workspace[workspace_id] = set()
+
+        # Controlla se task già processato in questo workspace
+        if task_id in self._processed_tasks_by_workspace[workspace_id]:
+            logger.warning(f"Task {task_id} already processed in workspace {workspace_id}, skipping")
+            return
+
+        # Aggiungi task al set di quelli processati
+        self._processed_tasks_by_workspace[workspace_id].add(task_id)
+
+        agent_id = task_dict.get("agent_id")
 
         # Validazione preliminare
         if not all([task_id, agent_id, workspace_id]):
-             missing = [k for k, v in {'task_id': task_id, 'agent_id': agent_id, 'workspace_id': workspace_id}.items() if not v]
-             error_msg = f"Task data incomplete: missing {', '.join(missing)}. Cannot execute."
-             logger.error(error_msg)
-             if task_id:
-                 try:
-                     await update_task_status(task_id, TaskStatus.FAILED.value, {"error": error_msg, "status_detail": "invalid_task_data"})
-                 except Exception as db_err:
-                      logger.error(f"Failed to update status for invalid task {task_id}: {db_err}")
-             return
+            missing = [k for k, v in {'task_id': task_id, 'agent_id': agent_id, 'workspace_id': workspace_id}.items() if not v]
+            error_msg = f"Task data incomplete: missing {', '.join(missing)}. Cannot execute."
+            logger.error(error_msg)
+            if task_id:
+                try:
+                    await update_task_status(task_id, TaskStatus.FAILED.value, {"error": error_msg, "status_detail": "invalid_task_data"})
+                except Exception as db_err:
+                    logger.error(f"Failed to update status for invalid task {task_id}: {db_err}")
+            return
 
         start_time_tracking = time.time()
         model_for_budget = "unknown"

@@ -325,6 +325,7 @@ export interface ProjectDeliverables {
   workspace_id: string;
   summary: string;
   key_outputs: ProjectOutput[];
+  insight_cards?: ProjectDeliverableCard[];
   final_recommendations: string[];
   next_steps: string[];
   completion_status: 'in_progress' | 'awaiting_review' | 'completed';
@@ -338,4 +339,17 @@ export interface DeliverableFeedback {
   message: string;
   specific_tasks?: string[];
   priority: 'low' | 'medium' | 'high';
+}
+
+export interface ProjectDeliverableCard {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  icon: string;
+  key_insights: string[];
+  metrics?: Record<string, any>;
+  created_by: string;
+  created_at: string;
+  completeness_score: number;
 }

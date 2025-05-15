@@ -21,6 +21,7 @@ from routes.tools import router as tools_router
 from routes.monitoring import router as monitoring_router
 from routes.human_feedback import router as human_feedback_router
 from routes.project_insights import router as project_insights_router
+from routes.delegation_monitor import router as delegation_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -53,6 +54,7 @@ app.include_router(tools_router)
 app.include_router(monitoring_router) 
 app.include_router(human_feedback_router)
 app.include_router(project_insights_router)
+app.include_router(delegation_router)
 
 # Health check endpoint
 @app.get("/health")
