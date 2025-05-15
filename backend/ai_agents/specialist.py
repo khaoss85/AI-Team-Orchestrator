@@ -356,6 +356,10 @@ class SpecialistAgent(Generic[T]):
         self.delegation_attempts_cache: Dict[str, int] = {}
         self.max_delegation_attempts = 3
 
+        # Context tracking per handoff prevention
+        self._current_task_context: Dict[str, Any] = {}
+        self._handoff_attempts: set = set()
+
     def _validate_and_truncate_json(self, json_str: Optional[str], max_length: int = 5000) -> Optional[str]:
         """Valida e tronca JSON se necessario per evitare errori di parsing"""
         if not json_str:
@@ -551,167 +555,187 @@ COORDINATOR INSTRUCTIONS:
         )
         return passed
 
-    # --- Tool creators e _log_execution_internal, execute_task, ecc. ---
-    def _create_task_for_agent_tool(self):
-        @function_tool(name_override=self._task_creation_tool_name)
-        async def impl(
-            task_name: str = Field(...),
-            task_description: str = Field(...),
-            target_agent_role: str = Field(...),
-            priority: Literal["low","medium","high"] = Field("medium"),
-        ) -> str:
-            try:
-                # PREVENZIONE LOOP: check delegation attempts
-                cache_key = f"{target_agent_role.lower()}_{hash(task_description)}"
-                current_attempts = self.delegation_attempts_cache.get(cache_key, 0)
+    # --- Metodi helper aggiornati ---
+    async def _check_similar_tasks_exist(
+        self, 
+        workspace_id: str, 
+        task_name: str, 
+        task_description: str, 
+        target_agent_role: str
+    ) -> Optional[Dict]:
+        """Verifica se esistono task simili già pending o in_progress per evitare duplicati"""
+        try:
+            from database import list_tasks, get_agent
+            
+            tasks = await list_tasks(workspace_id)
+            pending_tasks = [t for t in tasks if t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]]
+            
+            # Normalizza per confronto
+            task_name_normalized = task_name.lower().strip()
+            description_normalized = task_description.lower().strip()
+            target_role_normalized = target_agent_role.lower().strip()
+            
+            # Estrai parole chiave principali dalla descrizione
+            description_keywords = set(word for word in description_normalized.split() 
+                                      if len(word) > 3 and word not in ['the', 'and', 'for', 'with', 'that', 'this'])
+            
+            for existing_task in pending_tasks:
+                existing_name = existing_task.get("name", "").lower().strip()
+                existing_desc = existing_task.get("description", "").lower().strip()
                 
-                if current_attempts >= self.max_delegation_attempts:
-                    logger.warning(f"Too many delegation attempts for {target_agent_role}, forcing self-execution")
-                    return await self._force_self_execution(task_name, task_description, target_agent_role, priority)
+                # Check 1: Nome molto simile (similarità >= 80%)
+                name_similarity = self._calculate_text_similarity(task_name_normalized, existing_name)
+                if name_similarity >= 0.8:
+                    logger.warning(f"Found similar task by name: {existing_task['name']} (similarity: {name_similarity:.2f})")
+                    return existing_task
                 
-                # Incrementa tentativi
-                self.delegation_attempts_cache[cache_key] = current_attempts + 1
+                # Check 2: Sovrapposizione significativa di parole chiave nella descrizione
+                existing_keywords = set(word for word in existing_desc.split() 
+                                       if len(word) > 3 and word not in ['the', 'and', 'for', 'with', 'that', 'this'])
                 
-                agents_db = await db_list_agents(str(self.agent_data.workspace_id))
+                if description_keywords and existing_keywords:
+                    keyword_overlap = len(description_keywords & existing_keywords) / min(len(description_keywords), len(existing_keywords))
+                    if keyword_overlap >= 0.6:  # 60% sovrapposizione parole chiave
+                        logger.warning(f"Found similar task by description keywords: {existing_task['name']} (overlap: {keyword_overlap:.2f})")
+                        return existing_task
                 
-                # STEP 1: FUZZY MATCHING MIGLIORATO
-                compatible_agents = self._find_compatible_agents(agents_db, target_agent_role)
-                
-                if compatible_agents:
-                    target_agent = compatible_agents[0]  # Già ordinati per score + seniority
-                    
-                    # Reset cache on successful delegation
-                    self.delegation_attempts_cache[cache_key] = 0
-                    
-                    # Crea il task con descrizione arricchita
-                    enhanced_description = self._create_enhanced_task_description(
-                        task_description, target_agent_role, target_agent, priority
-                    )
-                    
-                    created = await db_create_task(
-                        str(self.agent_data.workspace_id),
-                        target_agent["id"],
-                        task_name,
-                        enhanced_description,
-                        TaskStatus.PENDING.value
-                    )
-                    
-                    if created:
-                        out = TaskCreationOutput(
-                            success=True,
-                            task_id=created["id"],
-                            task_name=task_name,
-                            assigned_agent_name=target_agent["name"]
-                        )
-                        await self._log_execution_internal("subtask_delegated", {
-                            **out.model_dump(),
-                            "match_score": target_agent.get("match_score", 0),
-                            "match_type": "exact" if target_agent_role.lower() == target_agent["role"].lower() else "fuzzy"
-                        })
-                        return json.dumps(out.model_dump())
-                
-                # STEP 2: SELF-EXECUTION CHECK
-                if self._can_handle_task_myself(task_description, target_agent_role):
-                    return await self._handle_self_execution(task_name, task_description, target_agent_role, priority)
-                
-                # STEP 3: HUMAN ESCALATION (Semplificata)
-                escalation_task = await self._create_escalation_task(
-                    task_name, task_description, target_agent_role, priority
-                )
-                
-                if escalation_task:
-                    out = TaskCreationOutput(
-                        success=True,
-                        task_id=escalation_task["id"],
-                        task_name="Human Review Required",
-                        assigned_agent_name="HUMAN_REVIEW",
-                        error_message=f"No suitable agent for '{target_agent_role}' - human review requested"
-                    )
-                    await self._log_execution_internal("escalation_created", out.model_dump())
-                    return json.dumps(out.model_dump())
-                
-                # STEP 4: FALLBACK FAILURE
-                out = TaskCreationOutput(
-                    success=False,
-                    task_name=task_name,
-                    error_message=f"Cannot find suitable agent for '{target_agent_role}' and unable to escalate"
-                )
-                await self._log_execution_internal("delegation_failed", out.model_dump())
-                return json.dumps(out.model_dump())
-                
-            except Exception as e:
-                logger.error(f"Error in task delegation: {e}", exc_info=True)
-                out = TaskCreationOutput(
-                    success=False,
-                    task_name=task_name,
-                    error_message=f"Delegation error: {str(e)}"
-                )
-                return json.dumps(out.model_dump())
+                # Check 3: Task per stesso ruolo con parole chiave domain-specific simili
+                # Estrai il ruolo dell'agente assegnato al task esistente
+                if existing_task.get("agent_id"):
+                    existing_agent = await get_agent(existing_task["agent_id"])
+                    if existing_agent:
+                        existing_agent_role = existing_agent.get("role", "").lower()
+                        role_similarity = self._calculate_text_similarity(target_role_normalized, existing_agent_role)
+                        
+                        if role_similarity >= 0.7 and keyword_overlap >= 0.4:
+                            logger.warning(f"Found similar task for similar role: {existing_task['name']} (role similarity: {role_similarity:.2f})")
+                            return existing_task
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error checking similar tasks: {e}")
+            return None
+
+    def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+        """Calcola similarità tra due testi usando Jaccard similarity"""
+        if not text1 or not text2:
+            return 0.0
         
-        return impl
+        # Tokenize e normalizza
+        tokens1 = set(text1.lower().split())
+        tokens2 = set(text2.lower().split())
+        
+        # Jaccard similarity
+        intersection = len(tokens1 & tokens2)
+        union = len(tokens1 | tokens2)
+        
+        return intersection / union if union > 0 else 0.0
 
     def _find_compatible_agents(self, agents_db: List[Dict], target_role: str) -> List[Dict]:
-        """Trova agenti compatibili usando fuzzy matching intelligente"""
+        """Versione migliorata con soglie più stringenti e matching domain-agnostic"""
         target_lower = target_role.lower()
         candidates = []
         
-        # Matrice di compatibilità role-based (domain-agnostic)
+        # Matrice di compatibilità domain-agnostic più specifica
         role_compatibility = {
-            'analyst': ['analysis', 'research', 'investigation', 'data', 'brand', 'market', 'financial', 'business'],
-            'researcher': ['research', 'investigation', 'data', 'analysis', 'collection', 'study'],
-            'manager': ['management', 'coordination', 'planning', 'oversight', 'project', 'operations'],
-            'coordinator': ['coordination', 'management', 'planning', 'organization', 'orchestration'],
-            'specialist': ['expert', 'specialization', 'focused', 'technical', 'domain'],
-            'lead': ['leadership', 'direction', 'guidance', 'team', 'head'],
-            'advisor': ['advisory', 'consultation', 'guidance', 'recommendation', 'counsel'],
-            'strategist': ['strategy', 'planning', 'vision', 'roadmap', 'direction'],
-            'consultant': ['consulting', 'advisory', 'expert', 'guidance', 'solution']
+            'analyst': {
+                'compatible': ['analysis', 'research', 'investigation', 'data', 'insights', 'evaluation'],
+                'domains': ['brand', 'market', 'financial', 'business', 'performance', 'competitive']
+            },
+            'researcher': {
+                'compatible': ['research', 'investigation', 'data', 'collection', 'study', 'gathering'],
+                'domains': ['market', 'user', 'competitive', 'trend', 'academic']
+            },
+            'manager': {
+                'compatible': ['management', 'coordination', 'planning', 'oversight', 'leadership'],
+                'domains': ['project', 'operations', 'team', 'program', 'product']
+            },
+            'coordinator': {
+                'compatible': ['coordination', 'management', 'planning', 'organization', 'orchestration'],
+                'domains': ['project', 'team', 'operations', 'logistics']
+            },
+            'specialist': {
+                'compatible': ['expert', 'specialization', 'focused', 'technical', 'domain', 'dedicated'],
+                'domains': []  # Domain-specific, valutato caso per caso
+            },
+            'lead': {
+                'compatible': ['leadership', 'direction', 'guidance', 'head', 'senior'],
+                'domains': ['team', 'technical', 'project', 'development']
+            },
+            'strategist': {
+                'compatible': ['strategy', 'planning', 'vision', 'roadmap', 'direction'],
+                'domains': ['business', 'market', 'digital', 'product']
+            }
         }
+        
+        # Estrai domain dal target role
+        target_domain = self._extract_domain_from_role(target_role)
         
         for agent in agents_db:
             if (agent.get("status") == AgentStatus.ACTIVE.value and 
                 agent.get("id") != str(self.agent_data.id)):
                 
                 agent_role = agent.get("role", "").lower()
+                agent_domain = self._extract_domain_from_role(agent["role"])
                 
-                # 1. Exact match (highest priority)
+                # 1. Exact match (massima priorità)
                 if target_lower == agent_role:
                     agent['match_score'] = 10
                     candidates.append(agent)
                     continue
                 
-                # 2. Substring match
-                if target_lower in agent_role or agent_role in target_lower:
-                    agent['match_score'] = 8
+                # 2. Domain + role exact match (alta priorità)
+                if (target_domain and agent_domain and 
+                    target_domain == agent_domain and 
+                    any(role_type in target_lower and role_type in agent_role 
+                        for role_type in role_compatibility.keys())):
+                    agent['match_score'] = 9
                     candidates.append(agent)
                     continue
                 
-                # 3. Keyword compatibility
-                score = 0
-                for keyword, related_terms in role_compatibility.items():
-                    if keyword in target_lower:
-                        for term in related_terms:
-                            if term in agent_role:
-                                score += 2
-                                break
-                    if keyword in agent_role:
-                        for term in related_terms:
-                            if term in target_lower:
-                                score += 2
-                                break
+                # 3. Substring match con bonus domain
+                if target_lower in agent_role or agent_role in target_lower:
+                    score = 8
+                    if target_domain and agent_domain and target_domain == agent_domain:
+                        score += 1
+                    agent['match_score'] = score
+                    candidates.append(agent)
+                    continue
                 
-                # 4. Word overlap
+                # 4. Compatibilità basata su ruolo + domain
+                score = 0
+                
+                # Punteggio per compatibilità del ruolo base
+                for role_type, config in role_compatibility.items():
+                    if role_type in target_lower:
+                        for compatible_term in config['compatible']:
+                            if compatible_term in agent_role:
+                                score += 3
+                                break
+                        
+                        # Bonus per domain match
+                        if (target_domain and agent_domain and 
+                            target_domain == agent_domain):
+                            score += 2
+                        elif (target_domain and 
+                              target_domain in config.get('domains', [])):
+                            score += 1
+                        break
+                
+                # 5. Word overlap con weight per domain keywords
                 target_words = set(target_lower.split())
                 agent_words = set(agent_role.split())
                 overlap = len(target_words & agent_words)
-                score += overlap * 3
+                score += overlap * 2
                 
-                # 5. Bonus for generic roles that can handle many tasks
-                if any(generic in agent_role for generic in ['manager', 'coordinator', 'lead', 'generalist']):
-                    score += 1
+                # 6. Bonus per seniority compatibility
+                seniority_bonus = {'expert': 1.5, 'senior': 1.0, 'junior': 0.5}
+                score *= seniority_bonus.get(agent.get('seniority', 'junior'), 1.0)
                 
-                if score >= 4:  # Threshold per compatibilità
-                    agent['match_score'] = score
+                # Soglia più alta - solo agenti con score >= 6
+                if score >= 6:
+                    agent['match_score'] = round(score, 1)
                     candidates.append(agent)
         
         # Ordina per score e poi per seniority
@@ -724,38 +748,82 @@ COORDINATOR INSTRUCTIONS:
         logger.info(f"Found {len(candidates)} compatible agents for '{target_role}': {top3}")
         return candidates
 
+    def _extract_domain_from_role(self, role: str) -> Optional[str]:
+        """Estrae il dominio da un ruolo (es. 'Brand Analyst' -> 'brand')"""
+        role_lower = role.lower()
+        
+        # Domini comuni - espandibili
+        domains = {
+            'finance': ['financial', 'finance', 'investment', 'accounting', 'budget'],
+            'marketing': ['marketing', 'brand', 'campaign', 'promotion', 'social'],
+            'sales': ['sales', 'revenue', 'customer', 'client', 'business'],
+            'product': ['product', 'development', 'design', 'engineering'],
+            'data': ['data', 'analytics', 'statistics', 'insights', 'business intelligence'],
+            'hr': ['human resources', 'hr', 'talent', 'recruitment', 'people'],
+            'operations': ['operations', 'process', 'workflow', 'logistics'],
+            'strategy': ['strategy', 'strategic', 'planning', 'vision'],
+            'content': ['content', 'writing', 'editorial', 'copy'],
+            'research': ['research', 'investigation', 'study', 'analysis'],
+            'sports': ['sports', 'athletic', 'performance', 'fitness', 'competition'],
+            'technology': ['technology', 'tech', 'software', 'system', 'development']
+        }
+        
+        for domain, keywords in domains.items():
+            if any(keyword in role_lower for keyword in keywords):
+                return domain
+        
+        return None
+
     def _can_handle_task_myself(self, task_description: str, target_role: str) -> bool:
-        """Valuta se l'agente può gestire il task espandendo il suo scope"""
+        """Criteri più stringenti per auto-esecuzione - domain-agnostic"""
         my_role = self.agent_data.role.lower()
         target_lower = target_role.lower()
         task_lower = task_description.lower()
         
-        # 1. Coordinatori e manager possono gestire molti tipi di task
-        if any(role in my_role for role in ['coordinator', 'manager', 'lead', 'project']):
-            return True
+        # 1. Ruoli di coordinamento possono gestire task di coordinamento/management
+        coordinator_roles = ['coordinator', 'manager', 'lead', 'director']
+        coordinator_tasks = ['coordination', 'management', 'planning', 'oversight', 'orchestration']
         
-        # 2. Analisti possono spesso gestire diversi tipi di analisi
-        if 'analyst' in my_role and any(word in target_lower for word in ['analysis', 'research', 'investigation']):
-            return True
+        if (any(role in my_role for role in coordinator_roles) and 
+            any(task in target_lower or task in task_lower for task in coordinator_tasks)):
+            # Ma solo se è strettamente coordinamento, non esecuzione tecnica
+            technical_indicators = ['analysis', 'development', 'research', 'design', 'implementation']
+            if not any(tech in target_lower or tech in task_lower for tech in technical_indicators):
+                return True
         
-        # 3. Specialists possono espandere il loro dominio
-        if 'specialist' in my_role and any(word in task_lower for word in my_role.split()):
-            return True
+        # 2. Stesso domain + ruolo compatible
+        my_domain = self._extract_domain_from_role(self.agent_data.role)
+        target_domain = self._extract_domain_from_role(target_role)
         
-        # 4. Keyword overlap significativo
+        if my_domain and target_domain and my_domain == target_domain:
+            # Controlla compatibilità del ruolo base nel dominio
+            role_hierarchy = {
+                'analyst': ['research', 'investigation', 'data collection'],
+                'researcher': ['analysis', 'data collection'],
+                'specialist': ['related specialization'],
+                'lead': ['coordination', 'guidance']
+            }
+            
+            for my_role_type, compatible_tasks in role_hierarchy.items():
+                if my_role_type in my_role:
+                    if any(task in target_lower for task in compatible_tasks):
+                        return True
+        
+        # 3. Keyword overlap molto specifico (stessa specializzazione)
         my_keywords = set(my_role.split())
         target_keywords = set(target_lower.split())
         task_keywords = set(task_lower.split())
         
-        # Almeno 1 keyword condivisa con il target role O 2+ con il task
+        # Almeno 2 keyword condivise con il target role E nel mio dominio
         keyword_overlap_target = len(my_keywords & target_keywords)
-        keyword_overlap_task = len(my_keywords & task_keywords)
+        same_specialization = any(keyword in my_keywords for keyword in target_keywords 
+                                 if keyword not in ['analyst', 'manager', 'specialist', 'lead'])
         
-        can_handle = keyword_overlap_target >= 1 or keyword_overlap_task >= 2
+        can_handle = keyword_overlap_target >= 2 and same_specialization
         
         logger.info(f"Self-execution check for '{target_role}': "
-                   f"my_role='{my_role}', overlap_target={keyword_overlap_target}, "
-                   f"overlap_task={keyword_overlap_task}, can_handle={can_handle}")
+                   f"my_role='{my_role}', target_domain='{target_domain}', my_domain='{my_domain}', "
+                   f"overlap={keyword_overlap_target}, same_spec={same_specialization}, can_handle={can_handle}")
         
         return can_handle
 
@@ -1099,6 +1167,165 @@ If approving new agent, please specify:
         self.delegation_attempts_cache.clear()
         await self._log_execution_internal("delegation_cache_reset", {"reason": "periodic_maintenance"})   
 
+    # --- Tool creators AGGIORNATI ---
+    def _create_task_for_agent_tool(self):
+        @function_tool(name_override=self._task_creation_tool_name)
+        async def impl(
+            task_name: str = Field(...),
+            task_description: str = Field(...),
+            target_agent_role: str = Field(...),
+            priority: Literal["low","medium","high"] = Field("medium"),
+        ) -> str:
+            try:
+                # STEP 0: CONTROLLO IDEMPOTENZA - nuovo step
+                logger.info(f"Checking for existing similar tasks before creating '{task_name}' for '{target_agent_role}'")
+                existing_task = await self._check_similar_tasks_exist(
+                    str(self.agent_data.workspace_id), 
+                    task_name, 
+                    task_description, 
+                    target_agent_role
+                )
+                
+                if existing_task:
+                    logger.warning(f"Similar task already exists: {existing_task['name']} (ID: {existing_task['id']})")
+                    out = TaskCreationOutput(
+                        success=True,  # Non è un errore, è una ottimizzazione
+                        task_id=existing_task["id"],
+                        task_name=existing_task["name"],
+                        assigned_agent_name="EXISTING_TASK",
+                        error_message=f"Reusing existing similar task instead of creating duplicate"
+                    )
+                    await self._log_execution_internal("task_reused", out.model_dump())
+                    return json.dumps(out.model_dump())
+                
+                # PREVENZIONE LOOP: check delegation attempts
+                cache_key = f"{target_agent_role.lower()}_{hash(task_description)}"
+                current_attempts = self.delegation_attempts_cache.get(cache_key, 0)
+                
+                if current_attempts >= self.max_delegation_attempts:
+                    logger.warning(f"Too many delegation attempts for {target_agent_role}, forcing self-execution")
+                    return await self._force_self_execution(task_name, task_description, target_agent_role, priority)
+                
+                # Incrementa tentativi
+                self.delegation_attempts_cache[cache_key] = current_attempts + 1
+                
+                agents_db = await db_list_agents(str(self.agent_data.workspace_id))
+                
+                # STEP 1: FUZZY MATCHING MIGLIORATO
+                compatible_agents = self._find_compatible_agents(agents_db, target_agent_role)
+                
+                # SOGLIA PIÙ ALTA: Richiediamo match_score >= 8 per delega automatica
+                high_quality_matches = [a for a in compatible_agents if a.get('match_score', 0) >= 8]
+                
+                if high_quality_matches:
+                    target_agent = high_quality_matches[0]  # Già ordinati per score + seniority
+                    
+                    # Reset cache on successful delegation
+                    self.delegation_attempts_cache[cache_key] = 0
+                    
+                    # Crea il task con descrizione arricchita
+                    enhanced_description = self._create_enhanced_task_description(
+                        task_description, target_agent_role, target_agent, priority
+                    )
+                    
+                    created = await db_create_task(
+                        str(self.agent_data.workspace_id),
+                        target_agent["id"],
+                        task_name,
+                        enhanced_description,
+                        TaskStatus.PENDING.value
+                    )
+                    
+                    if created:
+                        out = TaskCreationOutput(
+                            success=True,
+                            task_id=created["id"],
+                            task_name=task_name,
+                            assigned_agent_name=target_agent["name"]
+                        )
+                        await self._log_execution_internal("subtask_delegated", {
+                            **out.model_dump(),
+                            "match_score": target_agent.get("match_score", 0),
+                            "match_type": "high_quality"
+                        })
+                        return json.dumps(out.model_dump())
+                
+                # Check per medium quality matches (6-7) solo se self-execution non è possibile
+                if compatible_agents and not self._can_handle_task_myself(task_description, target_agent_role):
+                    medium_quality_matches = [a for a in compatible_agents if 6 <= a.get('match_score', 0) < 8]
+                    if medium_quality_matches:
+                        logger.warning(f"Using medium quality match (score: {medium_quality_matches[0].get('match_score')}) due to no self-execution option")
+                        target_agent = medium_quality_matches[0]
+                        
+                        # Reset cache on successful delegation
+                        self.delegation_attempts_cache[cache_key] = 0
+                        
+                        enhanced_description = self._create_enhanced_task_description(
+                            task_description, target_agent_role, target_agent, priority
+                        )
+                        
+                        created = await db_create_task(
+                            str(self.agent_data.workspace_id),
+                            target_agent["id"],
+                            task_name,
+                            enhanced_description,
+                            TaskStatus.PENDING.value
+                        )
+                        
+                        if created:
+                            out = TaskCreationOutput(
+                                success=True,
+                                task_id=created["id"],
+                                task_name=task_name,
+                                assigned_agent_name=target_agent["name"]
+                            )
+                            await self._log_execution_internal("subtask_delegated", {
+                                **out.model_dump(),
+                                "match_score": target_agent.get("match_score", 0),
+                                "match_type": "medium_quality"
+                            })
+                            return json.dumps(out.model_dump())
+                
+                # STEP 2: SELF-EXECUTION CHECK
+                if self._can_handle_task_myself(task_description, target_agent_role):
+                    return await self._handle_self_execution(task_name, task_description, target_agent_role, priority)
+                
+                # STEP 3: HUMAN ESCALATION (Semplificata)
+                escalation_task = await self._create_escalation_task(
+                    task_name, task_description, target_agent_role, priority
+                )
+                
+                if escalation_task:
+                    out = TaskCreationOutput(
+                        success=True,
+                        task_id=escalation_task["id"],
+                        task_name="Human Review Required",
+                        assigned_agent_name="HUMAN_REVIEW",
+                        error_message=f"No suitable agent for '{target_agent_role}' - human review requested"
+                    )
+                    await self._log_execution_internal("escalation_created", out.model_dump())
+                    return json.dumps(out.model_dump())
+                
+                # STEP 4: FALLBACK FAILURE
+                out = TaskCreationOutput(
+                    success=False,
+                    task_name=task_name,
+                    error_message=f"Cannot find suitable agent for '{target_agent_role}' and unable to escalate"
+                )
+                await self._log_execution_internal("delegation_failed", out.model_dump())
+                return json.dumps(out.model_dump())
+                
+            except Exception as e:
+                logger.error(f"Error in task delegation: {e}", exc_info=True)
+                out = TaskCreationOutput(
+                    success=False,
+                    task_name=task_name,
+                    error_message=f"Delegation error: {str(e)}"
+                )
+                return json.dumps(out.model_dump())
+        
+        return impl
+
     def _create_request_handoff_tool(self):
         @function_tool(name_override=self._request_handoff_tool_name)
         async def impl(
@@ -1109,54 +1336,138 @@ If approving new agent, please specify:
             priority: Literal["low","medium","high"] = Field("medium"),
         ) -> str:
             try:
+                # PREVENZIONE HANDOFF LOOP
+                # 1. Controlla se abbiamo già fatto handoff per lo stesso task
+                task_context = getattr(self, '_current_task_context', {})
+                current_task_id = task_context.get('task_id')
+                
+                if current_task_id:
+                    handoff_cache_key = f"{current_task_id}_{target_role.lower()}"
+                    if handoff_cache_key in getattr(self, '_handoff_attempts', set()):
+                        logger.warning(f"Preventing handoff loop: already attempted handoff to {target_role} for task {current_task_id}")
+                        out = HandoffRequestOutput(
+                            success=False, 
+                            message=f"Handoff to {target_role} already attempted for this task. Consider completing current work or escalating differently."
+                        )
+                        return json.dumps(out.model_dump())
+                    
+                    # Registra il tentativo
+                    if not hasattr(self, '_handoff_attempts'):
+                        self._handoff_attempts = set()
+                    self._handoff_attempts.add(handoff_cache_key)
+                
+                # 2. Verifica che il target_role sia diverso dal nostro
+                if target_role.lower() == self.agent_data.role.lower():
+                    logger.warning(f"Preventing handoff to same role: {target_role}")
+                    out = HandoffRequestOutput(
+                        success=False,
+                        message=f"Cannot handoff to same role ({target_role}). Consider completing the task or escalating to a coordinator."
+                    )
+                    return json.dumps(out.model_dump())
+                
+                # 3. Trova agente target con soglia alta
                 agents_db = await db_list_agents(str(self.agent_data.workspace_id))
-                senior = {AgentSeniority.EXPERT.value:3, AgentSeniority.SENIOR.value:2, AgentSeniority.JUNIOR.value:1}
-                candidates = [
-                    a for a in agents_db
-                    if target_role.lower() in a.get("role","").lower()
-                    and a.get("status") == AgentStatus.ACTIVE.value
-                    and a.get("id") != str(self.agent_data.id)
-                ]
-                if candidates:
-                    candidates.sort(key=lambda x: senior.get(x.get("seniority"),0), reverse=True)
-                    tgt = candidates[0]
+                compatible_agents = self._find_compatible_agents(agents_db, target_role)
+                
+                # Richiediamo match_score >= 8 per handoff automatici
+                high_quality_matches = [a for a in compatible_agents if a.get('match_score', 0) >= 8]
+                
+                if high_quality_matches:
+                    tgt = high_quality_matches[0]
                 else:
+                    # Se non troviamo match di alta qualità, escalation al coordinator
                     coords = [
                         a for a in agents_db
                         if any(k in a.get("role","").lower() for k in ["coordinator","manager"])
                         and a.get("status") == AgentStatus.ACTIVE.value
                         and a.get("id") != str(self.agent_data.id)
                     ]
-                    tgt = coords[0] if coords else None
+                    
+                    if coords:
+                        tgt = coords[0]
+                        # Modifichiamo il messaggio per indicare che è un'escalation
+                        reason_for_handoff = f"ESCALATION: {reason_for_handoff} (Original target '{target_role}' not available with sufficient match quality)"
+                        specific_request_for_target = f"Please coordinate or find appropriate agent for: {specific_request_for_target}"
+                    else:
+                        tgt = None
+                
                 if not tgt:
-                    out = HandoffRequestOutput(success=False, message=f"No active agent for '{target_role}'")
+                    out = HandoffRequestOutput(
+                        success=False, 
+                        message=f"No suitable agent found for handoff to '{target_role}' and no coordinator available"
+                    )
                     return json.dumps(out.model_dump())
+                
+                # 4. Crea handoff task con context migliorato
                 name = f"Handoff from {self.agent_data.name}: {specific_request_for_target[:40]}..."
-                desc = (
-                    f"HANDOFF TASK (Priority {priority.upper()})\n"
-                    f"From: {self.agent_data.name}\n"
-                    f"To Role: {target_role}\n"
-                    f"Assigned: {tgt['name']}\n"
-                    f"Reason: {reason_for_handoff}\n"
-                    f"Work Done: {summary_of_work_done}\n"
-                    f"Request: {specific_request_for_target}"
-                )
+                
+                # CONTEXT HANDOFF MIGLIORATO - include informazioni per evitare loop
+                current_task_name = task_context.get('task_name', 'Unknown Task')
+                handoff_context = f"""
+HANDOFF TASK (Priority: {priority.upper()})
+
+=== HANDOFF DETAILS ===
+From Agent: {self.agent_data.name} ({self.agent_data.role})
+From Task: {current_task_name}
+To Role: {target_role}
+Assigned To: {tgt['name']} ({tgt.get('role', 'Unknown')})
+Match Quality: {tgt.get('match_score', 0)}/10
+
+=== CONTEXT ===
+Reason for Handoff: {reason_for_handoff}
+
+Work Already Completed:
+{summary_of_work_done}
+
+Specific Request for {target_role}:
+{specific_request_for_target}
+
+=== HANDOFF INSTRUCTIONS ===
+1. This is a HANDOFF - continue from where the previous agent left off
+2. Do NOT recreate work already completed (see "Work Already Completed" above)
+3. Focus on the specific request, not full task restart
+4. If you cannot complete this handoff, escalate to Project Manager/Coordinator
+5. Mark task as COMPLETED when handoff objective is achieved
+
+=== HANDOFF PREVENTION ===
+- Do NOT handoff back to "{self.agent_data.role}" roles
+- Do NOT create new tasks for work described in "Specific Request"
+- Complete this handoff task directly unless escalation to coordinator is needed
+"""
+                
                 created = await db_create_task(
                     str(self.agent_data.workspace_id),
                     tgt["id"],
                     name,
-                    desc,
+                    handoff_context,
                     TaskStatus.PENDING.value
                 )
+                
                 if not created:
-                    out = HandoffRequestOutput(success=False, message="DB failed")
+                    out = HandoffRequestOutput(success=False, message="Failed to create handoff task in database")
                 else:
-                    out = HandoffRequestOutput(success=True, message="Handoff created", handoff_task_id=created["id"], assigned_to_agent_name=tgt["name"])
-                await self._log_execution_internal("handoff_created", out.model_dump())
+                    out = HandoffRequestOutput(
+                        success=True, 
+                        message=f"Handoff created successfully to {tgt['name']}", 
+                        handoff_task_id=created["id"], 
+                        assigned_to_agent_name=tgt["name"]
+                    )
+                
+                await self._log_execution_internal("handoff_created", {
+                    **out.model_dump(),
+                    "target_role_requested": target_role,
+                    "actual_assignee_role": tgt.get("role"),
+                    "match_score": tgt.get("match_score", 0),
+                    "handoff_type": "escalation" if "coordinator" in tgt.get("role", "").lower() else "direct"
+                })
+                
                 return json.dumps(out.model_dump())
+                
             except Exception as e:
-                out = HandoffRequestOutput(success=False, message=str(e))
+                logger.error(f"Error in handoff creation: {e}", exc_info=True)
+                out = HandoffRequestOutput(success=False, message=f"Handoff error: {str(e)}")
                 return json.dumps(out.model_dump())
+        
         return impl
 
     async def _log_execution_internal(self, step: str, details: Union[str, Dict]) -> bool:
@@ -1273,10 +1584,28 @@ If approving new agent, please specify:
     
 
     async def execute_task(self, task: Task, context: Optional[T] = None) -> Dict[str, Any]:
+        # Aggiungi context tracking all'inizio del metodo execute_task
+        self._current_task_context = {
+            'task_id': str(task.id),
+            'task_name': task.name,
+            'agent_role': self.agent_data.role
+        }
+        
+        # Reset handoff attempts per nuovo task
+        self._handoff_attempts = set()
+        
         trace_id = gen_trace_id()
         workflow = f"Task-{task.name[:30]}-{self.agent_data.name}"
         with trace(workflow_name=workflow, trace_id=trace_id, group_id=str(task.id)):
             try:
+                # Log task context per debugging
+                await self._log_execution_internal("task_execution_started", {
+                    "task_id": str(task.id),
+                    "task_name": task.name,
+                    "agent_role": self.agent_data.role,
+                    "previous_handoffs": len(self._handoff_attempts)
+                })
+            
                 # Log dettagliato per debug
                 logger.info(f"[DEBUG] Starting task execution for {self.agent_data.name}")
                 logger.info(f"[DEBUG] Agent seniority: {self.agent_data.seniority}")
@@ -1397,5 +1726,14 @@ If approving new agent, please specify:
                     "trace_id": trace_id
                 }
                 await update_task_status(str(task.id), TaskStatus.FAILED.value, result=err)
-                await self._log_execution_internal("task_failed", err)
+                # Log fallimento con context
+                await self._log_execution_internal("task_execution_failed", {
+                    "task_id": str(task.id),
+                    "error": str(e),
+                    "handoff_attempts_made": list(self._handoff_attempts)
+                })
                 return err
+            finally:
+                # Cleanup context
+                self._current_task_context = {}
+                self._handoff_attempts = set()

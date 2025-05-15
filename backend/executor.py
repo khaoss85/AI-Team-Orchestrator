@@ -6,6 +6,8 @@ from typing import List, Dict, Any, Optional, Union, Set
 from uuid import UUID, uuid4
 import json
 import time
+from collections import defaultdict, Counter
+import difflib
 
 # Import da moduli del progetto
 from models import TaskStatus, Task, AgentStatus, WorkspaceStatus, Agent as AgentModelPydantic
@@ -155,9 +157,10 @@ class TaskExecutor:
         self.runaway_check_interval = 300  # 5 minuti
 
     async def check_workspace_health(self, workspace_id: str) -> Dict[str, Any]:
-        """Controlla la salute di un workspace e rileva possibili runaway"""
+        """Enhanced workspace health check with pattern recognition"""
         try:
             all_tasks = await list_tasks(workspace_id)
+            agents = await db_list_agents(workspace_id)
             
             # Conta task per status
             task_counts = {
@@ -168,49 +171,59 @@ class TaskExecutor:
                 'in_progress': len([t for t in all_tasks if t.get("status") == TaskStatus.IN_PROGRESS.value])
             }
             
-            # Analizza pattern handoff
-            handoff_tasks = [t for t in all_tasks if "handoff" in t.get("name", "").lower()]
-            handoff_percentage = len(handoff_tasks) / len(all_tasks) if all_tasks else 0
-            
-            # Rileva runaway patterns
+            # Analisi pattern dettagliata
+            pattern_analysis = self._analyze_task_patterns(all_tasks)
             health_issues = []
             
+            # 1. DETECTION: Excessive pending tasks
             if task_counts['pending'] > self.max_pending_tasks_per_workspace:
                 health_issues.append(f"Excessive pending tasks: {task_counts['pending']}")
             
-            if handoff_percentage > self.max_handoff_percentage:
-                health_issues.append(f"Excessive handoffs: {handoff_percentage:.1%}")
+            # 2. DETECTION: High task creation velocity
+            creation_velocity = self._calculate_task_creation_velocity(all_tasks)
+            if creation_velocity > 5.0:  # Più di 5 task/minuto
+                health_issues.append(f"High task creation rate: {creation_velocity:.1f}/min")
             
-            # Check per task loop (stesso nome ripetuto)
-            task_names = [t.get("name", "") for t in all_tasks[-20:]]  # Ultimi 20 task
-            name_counts = {}
-            for name in task_names:
-                if name:
-                    name_counts[name] = name_counts.get(name, 0) + 1
+            # 3. DETECTION: Repetitive task patterns (improved)
+            repeated_patterns = pattern_analysis['repeated_patterns']
+            if repeated_patterns:
+                health_issues.append(f"Repeated task patterns: {repeated_patterns}")
             
-            repeated_tasks = {name: count for name, count in name_counts.items() if count > 3}
-            if repeated_tasks:
-                health_issues.append(f"Repeated task patterns: {repeated_tasks}")
+            # 4. DETECTION: Delegation loops
+            delegation_loops = pattern_analysis['delegation_loops']
+            if delegation_loops:
+                health_issues.append(f"Delegation loops detected: {delegation_loops}")
             
-            # Check per task creation velocity
-            if len(all_tasks) > 10:
-                recent_tasks = sorted(all_tasks, key=lambda x: x.get("created_at", ""), reverse=True)[:10]
-                first_time = datetime.fromisoformat(recent_tasks[-1]["created_at"].replace('Z', '+00:00'))
-                last_time = datetime.fromisoformat(recent_tasks[0]["created_at"].replace('Z', '+00:00'))
-                time_diff = (last_time - first_time).total_seconds()
-                
-                if time_diff > 0:
-                    tasks_per_minute = (len(recent_tasks) / time_diff) * 60
-                    if tasks_per_minute > 5:  # Più di 5 task al minuto è sospetto
-                        health_issues.append(f"High task creation rate: {tasks_per_minute:.1f}/min")
+            # 5. DETECTION: Failed handoffs
+            failed_handoffs = pattern_analysis['failed_handoffs']
+            if failed_handoffs > 3:
+                health_issues.append(f"High handoff failure rate: {failed_handoffs} failed")
+            
+            # 6. DETECTION: Same-role recursion
+            same_role_recursion = pattern_analysis['same_role_recursion']
+            if same_role_recursion:
+                health_issues.append(f"Same-role task recursion: {same_role_recursion}")
+            
+            # 7. NEW: Detection of task orphaning (tasks without proper agents)
+            orphaned_tasks = [t for t in all_tasks if not t.get('agent_id') or 
+                             not any(a['id'] == t['agent_id'] for a in agents)]
+            if orphaned_tasks:
+                health_issues.append(f"Orphaned tasks without agents: {len(orphaned_tasks)}")
+            
+            # Calcola health score migliorato
+            health_score = self._calculate_improved_health_score(
+                task_counts, health_issues, creation_velocity, pattern_analysis
+            )
             
             return {
                 'workspace_id': workspace_id,
                 'task_counts': task_counts,
-                'handoff_percentage': handoff_percentage,
                 'health_issues': health_issues,
-                'is_healthy': len(health_issues) == 0,
-                'auto_generation_paused': workspace_id in self.workspace_auto_generation_paused
+                'health_score': health_score,
+                'is_healthy': len(health_issues) == 0 and health_score > 70,
+                'auto_generation_paused': workspace_id in self.workspace_auto_generation_paused,
+                'pattern_analysis': pattern_analysis,
+                'creation_velocity': creation_velocity
             }
             
         except Exception as e:
@@ -218,8 +231,530 @@ class TaskExecutor:
             return {
                 'workspace_id': workspace_id,
                 'error': str(e),
-                'is_healthy': False
+                'is_healthy': False,
+                'health_score': 0
             }
+
+    def _analyze_task_patterns(self, tasks: List[Dict]) -> Dict[str, Any]:
+        """Analyze task patterns for loop detection"""
+        
+        # Pattern 1: Repeated task names
+        task_names = [t.get("name", "") for t in tasks]
+        name_counts = Counter(task_names)
+        repeated_patterns = {name: count for name, count in name_counts.items() 
+                            if count > 3 and name}
+        
+        # Pattern 2: Delegation loops (A creates for B, B creates for A)
+        delegation_graph = defaultdict(list)
+        delegation_loops = []
+        
+        # Analizza delegation patterns dai log dell'executor
+        recent_activity = self.get_recent_activity(tasks[0].get('workspace_id') if tasks else None, 100)
+        
+        for activity in recent_activity:
+            if activity.get('event') == 'subtask_delegated':
+                details = activity.get('details', {})
+                source = details.get('delegated_by', '')
+                target = details.get('assigned_agent_name', '')
+                if source and target:
+                    delegation_graph[source].append(target)
+        
+        # Detect cycles in delegation graph
+        for source, targets in delegation_graph.items():
+            for target in targets:
+                if source in delegation_graph.get(target, []):
+                    delegation_loops.append(f"{source} ↔ {target}")
+        
+        # Pattern 3: Failed handoffs
+        failed_handoffs = sum(1 for activity in recent_activity 
+                             if activity.get('event') == 'handoff_created' and 
+                                'escalation' in activity.get('details', {}).get('handoff_type', ''))
+        
+        # Pattern 4: Same-role recursion (task created by same role for same role)
+        same_role_recursion = []
+        for activity in recent_activity:
+            if activity.get('event') == 'subtask_delegated':
+                details = activity.get('details', {})
+                # Se il ruolo richiesto è simile al ruolo che ha creato
+                source_role = details.get('source_agent_role', '').lower()
+                target_role = details.get('target_role', '').lower()
+                if source_role and target_role and source_role in target_role:
+                    same_role_recursion.append(f"{source_role} → {target_role}")
+        
+        # Pattern 5: Task description similarity (nuova detection)
+        description_clusters = self._find_similar_descriptions(tasks)
+        
+        return {
+            'repeated_patterns': repeated_patterns,
+            'delegation_loops': delegation_loops,
+            'failed_handoffs': failed_handoffs,
+            'same_role_recursion': list(set(same_role_recursion)),
+            'description_clusters': description_clusters
+        }
+
+    def _find_similar_descriptions(self, tasks: List[Dict]) -> List[Dict]:
+        """Find tasks with similar descriptions that might indicate loops"""
+        import difflib
+        
+        clusters = []
+        processed = set()
+        
+        for i, task1 in enumerate(tasks):
+            if i in processed:
+                continue
+                
+            desc1 = task1.get('description', '')[:200].lower()
+            if not desc1:
+                continue
+                
+            similar_tasks = [task1]
+            processed.add(i)
+            
+            for j, task2 in enumerate(tasks[i+1:], i+1):
+                if j in processed:
+                    continue
+                    
+                desc2 = task2.get('description', '')[:200].lower()
+                if not desc2:
+                    continue
+                
+                # Calcola similarità
+                similarity = difflib.SequenceMatcher(None, desc1, desc2).ratio()
+                if similarity > 0.7:  # 70% similar
+                    similar_tasks.append(task2)
+                    processed.add(j)
+            
+            if len(similar_tasks) > 1:
+                clusters.append({
+                    'count': len(similar_tasks),
+                    'sample_names': [t.get('name', '') for t in similar_tasks[:3]],
+                    'similarity_score': similarity
+                })
+        
+        return clusters
+
+    def _calculate_task_creation_velocity(self, tasks: List[Dict]) -> float:
+        """Calculate task creation velocity (tasks/minute) in recent period"""
+        if not tasks:
+            return 0.0
+        
+        # Analizza ultimi 30 minuti
+        now = datetime.now()
+        recent_tasks = []
+        
+        for task in tasks:
+            created_at_str = task.get('created_at')
+            if created_at_str:
+                try:
+                    created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                    if now - created_at < timedelta(minutes=30):
+                        recent_tasks.append(created_at)
+                except:
+                    continue
+        
+        if len(recent_tasks) < 2:
+            return 0.0
+        
+        # Calcola velocità nell'ultimo periodo con task
+        recent_tasks.sort()
+        time_span = (recent_tasks[-1] - recent_tasks[0]).total_seconds()
+        
+        if time_span > 0:
+            return (len(recent_tasks) / time_span) * 60  # tasks per minute
+        return 0.0
+
+    def _calculate_improved_health_score(
+        self, 
+        task_counts: Dict,
+        health_issues: List[str],
+        creation_velocity: float,
+        pattern_analysis: Dict
+    ) -> float:
+        """Calculate improved health score (0-100)"""
+        
+        score = 100.0
+        
+        # Penalty for health issues (major factor)
+        score -= len(health_issues) * 15
+        
+        # Penalty for high pending ratio
+        if task_counts['total'] > 0:
+            pending_ratio = task_counts['pending'] / task_counts['total']
+            if pending_ratio > 0.5:
+                score -= (pending_ratio - 0.5) * 40
+        
+        # Penalty for creation velocity
+        if creation_velocity > 3.0:
+            score -= min((creation_velocity - 3.0) * 10, 30)
+        
+        # Bonus for task completion
+        if task_counts['total'] > 0:
+            completion_ratio = task_counts['completed'] / task_counts['total']
+            score += completion_ratio * 20
+        
+        # Penalty for pattern issues
+        if pattern_analysis['repeated_patterns']:
+            score -= len(pattern_analysis['repeated_patterns']) * 5
+        
+        if pattern_analysis['delegation_loops']:
+            score -= len(pattern_analysis['delegation_loops']) * 10
+        
+        if pattern_analysis['description_clusters']:
+            score -= len(pattern_analysis['description_clusters']) * 5
+        
+        # Ensure score is between 0 and 100
+        return max(0.0, min(100.0, score))
+
+    async def periodic_runaway_check(self):
+        """Enhanced periodic runaway check with pattern recognition"""
+        try:
+            active_workspaces = await get_active_workspaces()
+            
+            runaway_detected = []
+            warning_workspaces = []
+            
+            for workspace_id in active_workspaces:
+                health_status = await self.check_workspace_health(workspace_id)
+                
+                # Classification logic migliorata
+                health_score = health_status['health_score']
+                health_issues = health_status['health_issues']
+                
+                # CRITICAL: Immediate pause needed
+                critical_indicators = [
+                    health_score < 30,
+                    health_status['task_counts']['pending'] > 50,
+                    any('High task creation rate' in issue for issue in health_issues),
+                    any('Delegation loops' in issue for issue in health_issues)
+                ]
+                
+                if any(critical_indicators) and workspace_id not in self.workspace_auto_generation_paused:
+                    runaway_detected.append({
+                        'workspace_id': workspace_id,
+                        'health_score': health_score,
+                        'critical_issues': [issue for issue in health_issues if any(term in issue.lower() 
+                                           for term in ['high task creation', 'delegation loops', 'excessive pending'])]
+                    })
+                    
+                    await self._pause_auto_generation_for_workspace(
+                        workspace_id, 
+                        reason=f"Critical health issues detected (score: {health_score})"
+                    )
+                
+                # WARNING: Monitor closely
+                elif health_score < 60 and health_issues:
+                    warning_workspaces.append({
+                        'workspace_id': workspace_id,
+                        'health_score': health_score,
+                        'issues': health_issues
+                    })
+            
+            # Log summary
+            if runaway_detected:
+                logger.critical(f"RUNAWAY DETECTED: {len(runaway_detected)} workspaces paused")
+                for item in runaway_detected:
+                    logger.critical(f"  - {item['workspace_id']}: score={item['health_score']}, issues={item['critical_issues']}")
+            
+            if warning_workspaces:
+                logger.warning(f"WORKSPACES AT RISK: {len(warning_workspaces)} need monitoring")
+                for item in warning_workspaces:
+                    logger.warning(f"  - {item['workspace_id']}: score={item['health_score']}")
+            
+            if not runaway_detected and not warning_workspaces:
+                logger.info(f"All {len(active_workspaces)} workspaces healthy")
+            
+            self.last_runaway_check = datetime.now()
+            
+            # Report per monitoring dashboard
+            return {
+                'timestamp': datetime.now().isoformat(),
+                'total_workspaces': len(active_workspaces),
+                'runaway_detected': len(runaway_detected),
+                'warnings': len(warning_workspaces),
+                'paused_workspaces': len(self.workspace_auto_generation_paused),
+                'runaway_details': runaway_detected,
+                'warning_details': warning_workspaces
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced runaway check: {e}", exc_info=True)
+            return {'error': str(e), 'timestamp': datetime.now().isoformat()}
+
+    async def create_initial_workspace_task(self, workspace_id: str) -> Optional[str]:
+        """Enhanced initial task creation with better project structuring"""
+        try:
+            workspace = await get_workspace(workspace_id)
+            if not workspace:
+                logger.error(f"Workspace {workspace_id} not found when trying to create initial task.")
+                return None
+
+            agents = await db_list_agents(workspace_id)
+            if not agents:
+                logger.warning(f"No agents found for workspace {workspace_id}. Cannot create initial task.")
+                return None
+
+            # Analisi migliore del team e selezione del leader
+            team_analysis = self._analyze_team_composition(agents)
+            project_lead = self._select_project_lead(agents, team_analysis)
+            
+            if not project_lead:
+                logger.error(f"No suitable project lead found for workspace {workspace_id}")
+                return None
+
+            logger.info(f"Selected {project_lead['name']} ({project_lead['role']}) as project lead for workspace {workspace_id}")
+
+            # Crea task iniziale strutturato per evitare deleghe immediate caotiche
+            initial_task_description = self._create_structured_initial_task(
+                workspace, project_lead, team_analysis
+            )
+
+            # Crea il task nel database
+            initial_task_dict = await create_task(
+                workspace_id=workspace_id,
+                agent_id=project_lead["id"],
+                name="Project Setup & Strategic Planning",
+                description=initial_task_description,
+                status=TaskStatus.PENDING.value,
+            )
+
+            if initial_task_dict and initial_task_dict.get("id"):
+                task_id = initial_task_dict["id"]
+                logger.info(f"Created structured initial task {task_id} for workspace {workspace_id}")
+                
+                # Log event di creazione
+                creation_log = {
+                    "timestamp": datetime.now().isoformat(),
+                    "event": "structured_initial_task_created",
+                    "task_id": task_id,
+                    "agent_id": project_lead["id"],
+                    "workspace_id": workspace_id,
+                    "task_name": initial_task_dict.get("name"),
+                    "assigned_role": project_lead["role"],
+                    "team_size": len(agents),
+                    "team_composition": team_analysis
+                }
+                self.execution_log.append(creation_log)
+                return task_id
+            else:
+                logger.error(f"Failed to create initial task in database for workspace {workspace_id}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating initial task for workspace {workspace_id}: {e}", exc_info=True)
+            return None
+
+    def _analyze_team_composition(self, agents: List[Dict]) -> Dict[str, Any]:
+        """Analyze team composition to understand capabilities"""
+        
+        composition = {
+            'total_agents': len(agents),
+            'by_seniority': {'junior': 0, 'senior': 0, 'expert': 0},
+            'by_role_type': defaultdict(int),
+            'available_domains': set(),
+            'leadership_candidates': [],
+            'specialists': []
+        }
+        
+        for agent in agents:
+            # Count by seniority
+            seniority = agent.get('seniority', 'junior')
+            composition['by_seniority'][seniority] += 1
+            
+            # Extract role type and domain
+            role = agent.get('role', '')
+            role_lower = role.lower()
+            
+            # Categorize role types
+            if any(term in role_lower for term in ['manager', 'coordinator', 'lead', 'director']):
+                composition['by_role_type']['leadership'] += 1
+                composition['leadership_candidates'].append(agent)
+            elif 'analyst' in role_lower:
+                composition['by_role_type']['analyst'] += 1
+                composition['specialists'].append(agent)
+            elif 'researcher' in role_lower:
+                composition['by_role_type']['researcher'] += 1
+                composition['specialists'].append(agent)
+            elif 'specialist' in role_lower:
+                composition['by_role_type']['specialist'] += 1
+                composition['specialists'].append(agent)
+            else:
+                composition['by_role_type']['other'] += 1
+            
+            # Extract domain
+            domain = self._extract_domain_from_role(role)
+            if domain:
+                composition['available_domains'].add(domain)
+        
+        composition['available_domains'] = list(composition['available_domains'])
+        return composition
+
+    def _select_project_lead(self, agents: List[Dict], team_analysis: Dict) -> Optional[Dict]:
+        """Select best project lead based on role and seniority"""
+        
+        # Priority 1: Designated managers/coordinators
+        leadership_candidates = team_analysis['leadership_candidates']
+        if leadership_candidates:
+            # Select most senior leader
+            return max(leadership_candidates, 
+                      key=lambda x: {'expert': 3, 'senior': 2, 'junior': 1}.get(x.get('seniority', 'junior'), 1))
+        
+        # Priority 2: Senior/Expert agents who can coordinate
+        coordinatable_agents = [
+            agent for agent in agents 
+            if agent.get('seniority') in ['senior', 'expert'] and
+               any(term in agent.get('role', '').lower() for term in ['analyst', 'lead', 'strategist'])
+        ]
+        
+        if coordinatable_agents:
+            return max(coordinatable_agents,
+                      key=lambda x: {'expert': 3, 'senior': 2, 'junior': 1}.get(x.get('seniority', 'junior'), 1))
+        
+        # Priority 3: Any senior agent
+        senior_agents = [agent for agent in agents if agent.get('seniority') in ['senior', 'expert']]
+        if senior_agents:
+            return senior_agents[0]
+        
+        # Fallback: First agent
+        return agents[0] if agents else None
+
+    def _create_structured_initial_task(
+        self, 
+        workspace: Dict, 
+        project_lead: Dict, 
+        team_analysis: Dict
+    ) -> str:
+        """Create a well-structured initial task that minimizes chaotic delegation"""
+        
+        workspace_goal = workspace.get('goal', 'No goal specified')
+        budget_info = workspace.get('budget', {})
+        team_size = team_analysis['total_agents']
+        available_domains = team_analysis['available_domains']
+        
+        # Crea template basato sulla composizione del team
+        task_description = f"""
+**PROJECT INITIATION & STRATEGIC SETUP**
+
+**PROJECT OVERVIEW**
+Goal: {workspace_goal}
+Budget: {budget_info.get('max_amount', 'N/A')} {budget_info.get('currency', '')} ({budget_info.get('strategy', 'Standard strategy')})
+Team Size: {team_size} agents
+Available Domains: {', '.join(available_domains)}
+
+**YOUR ROLE AS PROJECT LEAD**
+You are {project_lead['name']} ({project_lead['role']}) - responsible for project coordination and strategic planning.
+
+**PHASE 1: STRATEGIC PLANNING (REQUIRED)**
+Complete this phase BEFORE any delegation:
+
+1. **Project Analysis**
+   - Break down the main goal into 3-5 major phases
+   - Identify key deliverables for each phase
+   - Assess resource requirements and timeline
+
+2. **Team Mapping**
+   - Review available agents and their specializations
+   - Map phases to appropriate specialists
+   - Identify any capability gaps
+
+3. **Execution Strategy**
+   - Define clear handoff points between agents
+   - Establish success criteria for each phase
+   - Create workflow to minimize back-and-forth delegation
+
+**PHASE 2: CONTROLLED DELEGATION (AFTER PLANNING)**
+Only after completing Phase 1 analysis:
+
+4. **Create Specific Tasks** (not general ones)
+   - Create concrete, well-defined tasks for specialists
+   - Include clear input requirements and expected outputs
+   - Specify dependencies and handoff requirements
+
+5. **Establish Coordination Protocol**
+   - Set up regular check-ins or progress monitoring
+   - Define escalation paths for issues
+   - Ensure each specialist knows their specific scope
+
+**TEAM COMPOSITION ANALYSIS**
+{self._format_team_composition_for_task(team_analysis)}
+
+**OUTPUT REQUIREMENTS**
+Provide a comprehensive project plan including:
+1. Phase breakdown with clear deliverables
+2. Task assignments with rationale
+3. Timeline and dependency map
+4. Risk assessment and mitigation strategies
+5. Coordination protocol for team management
+
+**CRITICAL INSTRUCTIONS**
+- COMPLETE the strategic planning before delegating any tasks
+- Create SPECIFIC tasks (not "analyze X" but "analyze X to determine Y for decision Z")
+- Ensure each task has clear inputs, processes, and outputs
+- Avoid creating duplicate or overlapping tasks
+- Focus on PROJECT COMPLETION not endless iteration
+
+**SUCCESS CRITERIA**
+This initial phase is successful when:
+- Clear project roadmap exists
+- All team members have specific, actionable tasks
+- Workflow minimizes hand-offs and delegation
+- Project can proceed without coordinator micro-management
+"""
+        
+        return task_description.strip()
+
+    def _format_team_composition_for_task(self, team_analysis: Dict) -> str:
+        """Format team composition for inclusion in task description"""
+        
+        lines = []
+        lines.append(f"Total Team: {team_analysis['total_agents']} agents")
+        
+        # Seniority breakdown
+        seniority = team_analysis['by_seniority']
+        lines.append(f"Seniority: {seniority['expert']} Expert, {seniority['senior']} Senior, {seniority['junior']} Junior")
+        
+        # Role types
+        role_types = team_analysis['by_role_type']
+        lines.append("Role Distribution:")
+        for role_type, count in role_types.items():
+            if count > 0:
+                lines.append(f"  - {role_type.title()}: {count}")
+        
+        # Available domains
+        if team_analysis['available_domains']:
+            lines.append(f"Domains: {', '.join(team_analysis['available_domains'])}")
+        
+        # Key specialists
+        if team_analysis['specialists']:
+            lines.append("Key Specialists:")
+            for specialist in team_analysis['specialists'][:3]:  # Top 3
+                lines.append(f"  - {specialist['name']}: {specialist['role']}")
+        
+        return '\n'.join(lines)
+
+    def _extract_domain_from_role(self, role: str) -> Optional[str]:
+        """Extract domain from role - same as in specialist.py"""
+        role_lower = role.lower()
+        
+        domains = {
+            'finance': ['financial', 'finance', 'investment', 'accounting', 'budget'],
+            'marketing': ['marketing', 'brand', 'campaign', 'promotion', 'social'],
+            'sales': ['sales', 'revenue', 'customer', 'client', 'business'],
+            'product': ['product', 'development', 'design', 'engineering'],
+            'data': ['data', 'analytics', 'statistics', 'insights', 'intelligence'],
+            'hr': ['human resources', 'hr', 'talent', 'recruitment', 'people'],
+            'operations': ['operations', 'process', 'workflow', 'logistics'],
+            'strategy': ['strategy', 'strategic', 'planning', 'vision'],
+            'content': ['content', 'writing', 'editorial', 'copy'],
+            'research': ['research', 'investigation', 'study', 'analysis'],
+            'sports': ['sports', 'athletic', 'performance', 'fitness', 'competition'],
+            'technology': ['technology', 'tech', 'software', 'system', 'development']
+        }
+        
+        for domain, keywords in domains.items():
+            if any(keyword in role_lower for keyword in keywords):
+                return domain
+        
+        return None
 
     async def _pause_auto_generation_for_workspace(self, workspace_id: str, reason: str = "runaway_detected"):
         """Mette in pausa l'auto-generazione per un workspace"""
@@ -360,39 +895,6 @@ class TaskExecutor:
                 await asyncio.sleep(30)
         
         logger.info("Execution loop finished.")
-
-    async def periodic_runaway_check(self):
-        """Check periodico per rilevare e gestire runaway task generation"""
-        try:
-            # Get all active workspaces
-            active_workspaces = await get_active_workspaces()
-            
-            runaway_detected = []
-            
-            for workspace_id in active_workspaces:
-                health_status = await self.check_workspace_health(workspace_id)
-                
-                if not health_status['is_healthy']:
-                    health_issues = health_status['health_issues']
-                    logger.warning(f"Runaway check - Workspace {workspace_id}: {health_issues}")
-                    
-                    # Se ci sono problemi critici e non è già pausato
-                    if (health_status['task_counts']['pending'] > 30 and 
-                        workspace_id not in self.workspace_auto_generation_paused):
-                        runaway_detected.append(workspace_id)
-                        await self._pause_auto_generation_for_workspace(workspace_id, 
-                            reason="Periodic runaway check detected excessive tasks")
-            
-            # Log summary
-            if runaway_detected:
-                logger.critical(f"Runaway check detected issues in {len(runaway_detected)} workspaces: {runaway_detected}")
-            else:
-                logger.debug(f"Runaway check completed - {len(active_workspaces)} workspaces healthy")
-            
-            self.last_runaway_check = datetime.now()
-            
-        except Exception as e:
-            logger.error(f"Error in periodic runaway check: {e}", exc_info=True)
 
     async def _task_worker(self):
         """Worker process that takes tasks from the queue and executes them."""
@@ -780,85 +1282,6 @@ class TaskExecutor:
                 "cost": usage_record_failed["total_cost"], "error": str(e), "model": model_for_budget
             }
             self.execution_log.append(execution_error_log)
-
-    async def create_initial_workspace_task(self, workspace_id: str) -> Optional[str]:
-        """Creates the very first task for a workspace, typically assigning it to a project manager role."""
-        try:
-            workspace = await get_workspace(workspace_id)
-            if not workspace:
-                logger.error(f"Workspace {workspace_id} not found when trying to create initial task.")
-                return None
-
-            agents = await db_list_agents(workspace_id)
-            if not agents:
-                logger.warning(f"No agents found for workspace {workspace_id}. Cannot create initial task. Workspace might need agent setup.")
-                return None
-
-            # Identifica l'agente "manager" o prendi il primo
-            pm_agent = next((agent for agent in agents if any(keyword in agent.get("role", "").lower() for keyword in ["project", "coordinator", "manager", "lead"])), agents[0])
-            pm_agent_id = pm_agent["id"]
-            pm_agent_role = pm_agent.get("role", "Agent")
-
-            logger.info(f"Selected agent {pm_agent_id} ({pm_agent_role}) to receive the initial task for workspace {workspace_id}.")
-
-            # Descrizione dettagliata per il task iniziale, incoraggiando la pianificazione e delega
-            task_description = f"""
-            **Project Initialization: {workspace.get('name', 'Untitled Project')}**
-
-            **Workspace Goal:** {workspace.get('goal', 'No goal specified.')}
-            **Budget Info:** Max Amount: {workspace.get('budget', {}).get('max_amount', 'N/A')} {workspace.get('budget', {}).get('currency', '')}, Strategy: {workspace.get('budget', {}).get('strategy', 'N/A')}
-
-            **Your Role:** {pm_agent_role}
-
-            **Initial Objectives:**
-            1.  **Analyze:** Deeply understand the project goal, requirements, constraints, and deliverables based on the workspace information.
-            2.  **Plan:** Develop a high-level project plan. Break down the goal into major phases or milestones. Identify key sub-tasks within the initial phase.
-            3.  **Identify Resources:** Review the available team members (other agents in this workspace, if any) and their potential roles.
-            4.  **Delegate:** Using the appropriate tools/functions (e.g., 'create_task_for_agent'), create and assign the first set of specific, actionable tasks to yourself and/or other relevant agents based on your plan. *This is crucial for starting the workflow.*
-            5.  **Setup Communication:** Define basic communication or handoff protocols if multiple agents need to collaborate soon.
-            6.  **Report:** As the output of this task, provide a concise summary of your initial plan, the first set of tasks you have created/delegated, and any immediate questions or roadblocks.
-
-            **Team Agents Overview:**
-            """
-            # Aggiungi un riepilogo degli altri agenti se presenti
-            other_agents = [a for a in agents if a["id"] != pm_agent_id]
-            if other_agents:
-                task_description += "\n".join([f"- Agent ID: {a['id']}, Role: {a.get('role', 'N/A')}, Seniority: {a.get('seniority', 'N/A')}" for a in other_agents])
-            else:
-                task_description += "- You are currently the only agent assigned."
-
-            task_description += """
-
-            **Action Required:** Proceed with planning and delegation. Remember to use tools to create new tasks for others.
-            """
-
-            # Crea il task nel database
-            initial_task_dict = await create_task(
-                workspace_id=workspace_id,
-                agent_id=pm_agent_id,
-                name="Project Initialization and Planning",
-                description=task_description.strip(),
-                status=TaskStatus.PENDING.value,
-            )
-
-            if initial_task_dict and initial_task_dict.get("id"):
-                task_id = initial_task_dict["id"]
-                logger.info(f"Created initial task {task_id} for workspace {workspace_id}, assigned to agent {pm_agent_id}.")
-                # Log evento di creazione
-                creation_log = {
-                    "timestamp": datetime.now().isoformat(), "event": "initial_task_created",
-                    "task_id": task_id, "agent_id": pm_agent_id, "workspace_id": workspace_id,
-                    "task_name": initial_task_dict.get("name"),
-                    "assigned_role": pm_agent_role
-                }
-                self.execution_log.append(creation_log)
-                return task_id
-            else:
-                logger.error(f"Database call create_task seemed to fail or returned invalid data for initial task in workspace {workspace_id}.")
-                return None
-        except Exception as e:
-            logger.error(f"Error creating initial task for workspace {workspace_id}: {e}", exc_info=True)
-            return None
 
     def get_recent_activity(self, workspace_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent execution log events, optionally filtered by workspace."""
