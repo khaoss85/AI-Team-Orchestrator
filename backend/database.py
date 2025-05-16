@@ -105,8 +105,10 @@ async def create_agent(
 
 async def list_agents(workspace_id: str):
     try:
-        result = supabase.table("agents").select("*").eq("workspace_id", workspace_id).execute() # Rimossa await
-        return result.data
+        result = supabase.table("agents").select("*").eq("workspace_id", workspace_id).execute()
+        # Deserializza ogni agente
+        agents_data = [_deserialize_agent_json_fields(agent) for agent in result.data]
+        return agents_data
     except Exception as e:
         logger.error(f"Error listing agents: {e}")
         raise
@@ -257,8 +259,10 @@ async def list_tasks(workspace_id: str, status_filter: Optional[str] = None) -> 
         
 async def get_agent(agent_id: str):
     try:
-        result = supabase.table("agents").select("*").eq("id", agent_id).execute() # Rimossa await
-        return result.data[0] if result.data and len(result.data) > 0 else None
+        result = supabase.table("agents").select("*").eq("id", agent_id).execute()
+        if result.data and len(result.data) > 0:
+            return _deserialize_agent_json_fields(result.data[0])
+        return None
     except Exception as e:
         logger.error(f"Error retrieving agent: {e}")
         raise
@@ -479,3 +483,33 @@ async def cleanup_expired_feedback_requests() -> int:
     except Exception as e:
         logger.error(f"Error cleaning up expired requests: {e}")
         return 0
+def _deserialize_agent_json_fields(agent_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Deserializza i campi JSON di un agente da Supabase"""
+    if agent_data is None:
+        return agent_data
+    
+    # Copia per evitare modifiche in-place
+    agent = agent_data.copy()
+    
+    # Deserializza llm_config
+    if isinstance(agent.get('llm_config'), str):
+        try:
+            agent['llm_config'] = json.loads(agent['llm_config'])
+        except (json.JSONDecodeError, TypeError):
+            agent['llm_config'] = None
+    
+    # Deserializza tools
+    if isinstance(agent.get('tools'), str):
+        try:
+            agent['tools'] = json.loads(agent['tools'])
+        except (json.JSONDecodeError, TypeError):
+            agent['tools'] = []
+    
+    # Deserializza health
+    if isinstance(agent.get('health'), str):
+        try:
+            agent['health'] = json.loads(agent['health'])
+        except (json.JSONDecodeError, TypeError):
+            agent['health'] = {"status": "unknown", "last_update": None}
+    
+    return agent

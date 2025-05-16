@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
+import json
 
 from models import (
     AgentCreate,
@@ -52,11 +53,35 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
             detail=f"Failed to create agent: {str(e)}"
         )
 
-@router.get("/{workspace_id}", response_model=List[Agent]) # Endpoint esistente
+@router.get("/{workspace_id}", response_model=List[Agent])
 async def get_workspace_agents(workspace_id: UUID):
     """Get all agents in a workspace"""
     try:
-        agents_data = await db_list_agents(str(workspace_id)) # Usa db_list_agents
+        agents_data = await db_list_agents(str(workspace_id))
+        
+        # Deserializza i campi JSON prima della validazione Pydantic
+        for agent in agents_data:
+            # Deserializza llm_config se è una stringa
+            if isinstance(agent.get('llm_config'), str):
+                try:
+                    agent['llm_config'] = json.loads(agent['llm_config'])
+                except (json.JSONDecodeError, TypeError):
+                    agent['llm_config'] = None
+            
+            # Deserializza tools se è una stringa
+            if isinstance(agent.get('tools'), str):
+                try:
+                    agent['tools'] = json.loads(agent['tools'])
+                except (json.JSONDecodeError, TypeError):
+                    agent['tools'] = []
+            
+            # Deserializza health se è una stringa
+            if isinstance(agent.get('health'), str):
+                try:
+                    agent['health'] = json.loads(agent['health'])
+                except (json.JSONDecodeError, TypeError):
+                    agent['health'] = {"status": "unknown", "last_update": None}
+        
         return [Agent.model_validate(agent) for agent in agents_data]
     except Exception as e:
         logger.error(f"Error getting agents: {e}", exc_info=True)

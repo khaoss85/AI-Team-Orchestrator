@@ -1370,21 +1370,27 @@ class TaskExecutor:
 
     async def check_for_new_workspaces(self):
         """Controlla workspace attivi che necessitano task iniziali"""
-        if self.paused or not self.auto_generation_enabled:
-            logger.debug("Skip check_for_new_workspaces: Paused or global auto-gen disabled")
-            return
+        # RIMUOVI questo check per permettere task iniziali sempre  
+        # if self.paused or not self.auto_generation_enabled:
+        #     logger.debug("Skip check_for_new_workspaces: Paused or global auto-gen disabled")
+        #     return
         
+        if self.paused:
+            logger.debug("Skip check_for_new_workspaces: Executor paused")
+            return
+
         try:
             logger.debug("Checking for active workspaces needing initial tasks...")
             active_ws_ids = await get_active_workspaces()
-            
+
             for ws_id in active_ws_ids:
                 if ws_id in self.workspace_auto_generation_paused:
                     logger.info(f"Skip initial task for W:{ws_id}: auto-gen paused for this workspace")
                     continue
-                
+
                 # Se il workspace non ha task, crea task iniziale
-                if not await list_tasks(ws_id):
+                tasks = await list_tasks(ws_id)
+                if not tasks:
                     ws_data = await get_workspace(ws_id)
                     if ws_data and ws_data.get("status") == WorkspaceStatus.ACTIVE.value:
                         logger.info(f"W:{ws_id} ('{ws_data.get('name')}') active, no tasks. Creating initial task")
@@ -1394,10 +1400,10 @@ class TaskExecutor:
 
     async def create_initial_workspace_task(self, workspace_id: str) -> Optional[str]:
         """Crea task iniziale per un workspace"""
-        if not self.auto_generation_enabled:
-            logger.info(f"Global auto-gen disabled. No initial task for W:{workspace_id}")
-            return None
-        
+        # RIMUOVI questo check per permettere task iniziali sempre
+        # if not self.auto_generation_enabled:
+        #     logger.info(f"Global auto-gen disabled. No initial task for W:{workspace_id}")
+        #     return None
         if workspace_id in self.workspace_auto_generation_paused:
             logger.info(f"Auto-gen paused for W:{workspace_id}. No initial task")
             return None
@@ -1411,6 +1417,12 @@ class TaskExecutor:
             agents = await db_list_agents(workspace_id)
             if not agents:
                 logger.warning(f"No agents in W:{workspace_id}. No initial task")
+                return None
+            
+            # Verifica se esistono già task
+            existing_tasks = await list_tasks(workspace_id)
+            if existing_tasks:
+                logger.info(f"W:{workspace_id} already has {len(existing_tasks)} tasks. No initial task creation needed.")
                 return None
             
             # Analizza composizione team e seleziona lead
