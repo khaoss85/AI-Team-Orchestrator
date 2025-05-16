@@ -394,7 +394,7 @@ Do NOT add any text before or after this final JSON object. Your entire response
     def _initialize_tools(self) -> List[Any]:
         """Inizializza tools basati sul ruolo dell'agente"""
         tools_list: List[Any] = []
-        
+
         # Tool comuni a tutti
         tools_list.extend([
             self._create_log_execution_tool(),
@@ -449,8 +449,23 @@ Do NOT add any text before or after this final JSON object. Your entire response
         if self.agent_data.can_create_tools:
             tools_list.append(self._create_custom_tool_creator_tool())
             logger.info(f"Agent {self.agent_data.name} equipped with CustomToolCreatorTool.")
-            
-        logger.debug(f"Final tools for agent {self.agent_data.name}: {[getattr(t, 'name', t.__name__) for t in tools_list]}")
+
+        # FIX: Gestione più robusta del logging dei tool names
+        tool_names = []
+        for t in tools_list:
+            # Prova diversi modi per ottenere il nome del tool
+            if hasattr(t, 'name'):
+                tool_names.append(t.name)
+            elif hasattr(t, '__name__'):
+                tool_names.append(t.__name__)
+            elif hasattr(t, '_name'):
+                tool_names.append(t._name)
+            elif hasattr(t, '__class__'):
+                tool_names.append(t.__class__.__name__)
+            else:
+                tool_names.append(str(type(t).__name__))
+
+        logger.debug(f"Final tools for agent {self.agent_data.name}: {tool_names}")
         return tools_list
 
     def _calculate_text_similarity(self, text1: str, text2: str) -> float:
