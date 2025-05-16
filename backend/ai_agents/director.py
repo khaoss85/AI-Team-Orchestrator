@@ -234,10 +234,21 @@ Return *only* valid JSON as a string:
 
     @staticmethod
     @function_tool
-    async def estimate_costs(team_composition_json: str, duration_days: Optional[int] = 30) -> str:
-        """Stima i costi del team. 'team_composition_json' deve essere una stringa JSON di una lista di specifiche agenti."""
-        logger.info(f"Director Tool: estimate_costs invoked for {duration_days} days.")
-        actual_duration = duration_days if isinstance(duration_days, int) and duration_days > 0 else 30
+    async def estimate_costs(team_composition_json: str, duration_days: Optional[int] = None) -> str:
+        """
+        Stima i costi del team.
+
+        Args:
+            team_composition_json: Stringa JSON contenente la lista di specifiche agenti.
+            duration_days: Durata del progetto in giorni. Se non specificato, usa 30 giorni come default.
+
+        Returns:
+            JSON string con i costi stimati e breakdown per agente.
+        """
+        # Gestisci il default internamente
+        actual_duration = duration_days if duration_days is not None and duration_days > 0 else 30
+        logger.info(f"Director Tool: estimate_costs invoked for {actual_duration} days.")
+
         try:
             agents_specs: List[Dict[str, Any]] = json.loads(team_composition_json)
             if not isinstance(agents_specs, list):
@@ -258,7 +269,7 @@ Return *only* valid JSON as a string:
                 total_cost += agent_cost
                 agent_name = agent_spec.get('name', 'UnnamedAgent')
                 cost_breakdown[f"{agent_name} ({seniority_str})"] = round(agent_cost, 2)
-            
+
             return json.dumps({
                 "total_estimated_cost": round(total_cost, 2), "currency": "EUR",
                 "estimated_duration_days": actual_duration, "breakdown_by_agent": cost_breakdown,

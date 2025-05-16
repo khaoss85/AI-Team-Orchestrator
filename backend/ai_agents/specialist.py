@@ -669,8 +669,18 @@ REMEMBER:
 
         trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
         workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
-        trace_context_manager = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id)) if SDK_AVAILABLE else _dummy_async_context_manager() # type: ignore
-
+        try:
+            if SDK_AVAILABLE:
+                trace_context_manager = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id))
+                # Test se supporta async context manager
+                if not hasattr(trace_context_manager, '__aenter__'):
+                    raise AttributeError("TraceImpl doesn't support async context manager")
+            else:
+                trace_context_manager = _dummy_async_context_manager()
+        except (AttributeError, TypeError) as e:
+            logger.warning(f"SDK trace failed ({e}), using dummy context manager")
+            trace_context_manager = _dummy_async_context_manager()
+        
         async with trace_context_manager:
             try:
                 await self._log_execution_internal("task_execution_started", {"task_id": str(task.id), "task_name": task.name, "trace_id": trace_id_val})

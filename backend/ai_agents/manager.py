@@ -157,20 +157,22 @@ class AgentManager:
             healthy_count = 0
             for agent_id, specialist in self.agents.items():
                 try:
-                    # Health check veloce senza blocking
+                    # FIX: Serializza datetime per JSON
+                    health_dict = {
+                        "status": HealthStatus.HEALTHY.value,  # Usa .value per enum
+                        "last_update": datetime.now().isoformat(),  # Converti a string
+                        "details": {"initialization": "completed"}
+                    }
+
                     await update_agent_status(
                         str(agent_id),
                         None,
-                        AgentHealth(
-                            status=HealthStatus.HEALTHY,
-                            last_update=datetime.now(),
-                            details={"initialization": "completed"}
-                        ).model_dump()
+                        health_dict  # Ora è un dict serializzabile
                     )
                     healthy_count += 1
                 except Exception as e:
                     logger.warning(f"Health check failed for agent {agent_id}: {e}")
-            
+
             logger.info(f"Initial health check completed: {healthy_count}/{len(self.agents)} agents healthy")
             self.last_health_check = datetime.now()
         except Exception as e:

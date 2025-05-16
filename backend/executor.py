@@ -184,7 +184,7 @@ class TaskExecutor:
         self.worker_tasks: List[asyncio.Task] = []
 
         self.enhanced_handler = EnhancedTaskExecutor()
-        self.auto_generation_enabled: bool = False # Non persiste tra riavvii
+        self.auto_generation_enabled: bool = True # Non persiste tra riavvii
 
         # RUNAWAY PROTECTION CONFIGURATIONS
         self.workspace_auto_generation_paused: Set[str] = set()
@@ -764,16 +764,22 @@ class TaskExecutor:
         # Nota: per una gestione più robusta dei fusi orari e formati ISO complessi,
         # la libreria dateutil.parser.isoparse è raccomandata.
         if not tasks_db: return 0.0
-        now_utc, recent_creations = datetime.utcnow(), []
+        now = datetime.now()  
+        recent_creations = []
         for task_dict in tasks_db:
             created_at_str = task_dict.get('created_at')
             if created_at_str:
                 try:
                     dt = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
-                    # Assicurati che dt sia offset-aware (UTC) se now_utc è offset-aware
-                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timedelta(0)) # Assume UTC se naive
-                    if now_utc - dt < timedelta(minutes=window_min): recent_creations.append(dt)
-                except ValueError: logger.warning(f"Parse error: {created_at_str} for task {task_dict.get('id')}")
+                    # FIX: Se dt ha timezone info, rimuovila per compatibility
+                    if dt.tzinfo is not None:
+                        dt = dt.replace(tzinfo=None)
+
+                    if now - dt < timedelta(minutes=window_min): 
+                        recent_creations.append(dt)
+                except ValueError: 
+                    logger.warning(f"Parse error: {created_at_str} for task {task_dict.get('id')}")
+
         if len(recent_creations) < 2: return 0.0
         recent_creations.sort()
         span_sec = (recent_creations[-1] - recent_creations[0]).total_seconds()
@@ -1038,7 +1044,7 @@ ANTI_LOOP_CONFIG = {
     "max_pending_per_workspace": 8,       # ↓ da 50
     "max_delegation_attempts": 1,         # ↓ da 3
     "task_timeout_seconds": 120,          # 2 minuti
-    "auto_generation_disabled": True,     # disabilita auto-gen
+    "auto_generation_disabled": False,     # disabilita auto-gen
     "forced_completion": True,            # forza completion su errori
     "single_task_processing": True,       # un task per workspace
     "max_concurrent_global": 2,           # max 2 task globali
