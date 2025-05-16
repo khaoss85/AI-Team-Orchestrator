@@ -491,7 +491,38 @@ async def reset_runaway_tasks(workspace_id: UUID):
     except Exception as e:
         logger.error(f"Error in emergency reset: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+        
+@router.post("/tasks/{task_id}/reset", status_code=status.HTTP_200_OK)
+async def reset_failed_task(task_id: UUID):
+    """Reset un task fallito a pending"""
+    try:
+        from database import update_task_status
+        from models import TaskStatus
+        
+        # Reset del task a pending
+        updated = await update_task_status(
+            str(task_id), 
+            TaskStatus.PENDING.value,
+            {"reset_at": datetime.now().isoformat(), "reason": "Manual reset"}
+        )
+        
+        if updated:
+            return {
+                "success": True,
+                "message": f"Task {task_id} reset to pending"
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+    except Exception as e:
+        logger.error(f"Error resetting task: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset task: {str(e)}"
+        )
+        
 # METODI HELPER - CORRETTI SENZA SELF
 def _is_handoff_task(task: Dict) -> bool:
     """Determine if a task is a handoff task"""
