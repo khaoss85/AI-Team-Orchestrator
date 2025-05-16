@@ -1,4 +1,3 @@
-# backend/ai_agents/specialist.py
 import logging
 import os
 import json
@@ -51,16 +50,19 @@ except ImportError:
 
 from pydantic import BaseModel, Field, ConfigDict
 
+# IMPORT PMOrchestrationTools
+from ai_agents.tools import PMOrchestrationTools
+
 from models import (
     Agent as AgentModelPydantic,
     AgentStatus,
-    AgentHealth, # Definisce la struttura per health updates
-    HealthStatus, # Definisce la struttura per health updates
+    AgentHealth,
+    HealthStatus,
     Task,
     TaskStatus,
     AgentSeniority
 )
-from database import ( # Assicurarsi che queste funzioni di DB accettino keyword arguments come usate
+from database import (
     update_agent_status,
     update_task_status,
     create_task as db_create_task,
@@ -137,8 +139,8 @@ class SpecialistAgent(Generic[T]):
         if not os.getenv("OPENAI_API_KEY"):
             raise ValueError("OPENAI_API_KEY not set")
 
-        # Nomi dei tool per coerenza
-        self._create_task_tool_name = "create_task_for_agent_tool"
+        # Nomi dei tool per coerenza - aggiornati per il PM
+        self._create_task_tool_name = "create_and_assign_sub_task"  # AGGIORNATO per PM
         self._request_handoff_tool_name = "request_handoff_to_role_via_task"
         self._log_execution_tool_name = "log_execution_step"
         self._update_health_tool_name = "update_own_health_status"
@@ -158,9 +160,6 @@ class SpecialistAgent(Generic[T]):
 
         self.delegation_attempts_cache: Dict[str, int] = {} 
         self.max_delegation_attempts_per_task_desc = 2 
-        # Nota: delegation_attempts_cache non viene resettata per ogni execute_task principale
-        # per prevenire loop su sub-task identici ricorrenti.
-        # Considerare una strategia di eviction (es. LRU, pulizia periodica) se la cache cresce troppo.
 
         self._current_task_being_processed_id: Optional[str] = None
         self._handoff_attempts_for_current_task: set = set()
@@ -177,7 +176,11 @@ class SpecialistAgent(Generic[T]):
         is_manager_type_role = any(keyword in self.agent_data.role.lower() 
                                 for keyword in ['manager', 'coordinator', 'director', 'lead'])
 
-        instructions = self._create_anti_loop_prompt(is_manager_type_role)
+        # USA PROMPT SPECIFICO BASATO SUL RUOLO
+        if is_manager_type_role:
+            instructions = self._create_project_manager_prompt()
+        else:
+            instructions = self._create_specialist_anti_loop_prompt()
 
         agent_config = {
             "name": self.agent_data.name,
@@ -186,7 +189,7 @@ class SpecialistAgent(Generic[T]):
             "model_settings": ModelSettings(
                 temperature=temperature,
                 top_p=llm_config.get("top_p", 1.0),
-                max_tokens=llm_config.get("max_tokens", 2000),
+                max_tokens=llm_config.get("max_tokens", 3000),  # Aumentato per PM
             ),
             "tools": self.tools,
             "output_type": AgentOutputSchema(TaskExecutionOutput, strict_json_schema=False),
@@ -195,100 +198,137 @@ class SpecialistAgent(Generic[T]):
         if SDK_AVAILABLE and is_manager_type_role and self.direct_sdk_handoffs:
             agent_config["handoffs"] = self.direct_sdk_handoffs
             logger.info(f"Agent {self.agent_data.name} (Manager type) configured with {len(self.direct_sdk_handoffs)} SDK handoffs.")
-        elif is_manager_type_role and not SDK_AVAILABLE:
-             logger.warning(f"Agent {self.agent_data.name} (Manager type) could use SDK handoffs, but SDK is not fully available.")
         return OpenAIAgent(**agent_config)
 
-    def _create_anti_loop_prompt(self, is_manager: bool) -> str:
-        base_prompt_prefix = handoff_prompt.RECOMMENDED_PROMPT_PREFIX if SDK_AVAILABLE and is_manager else ""
-        core_prompt = f"""
+    def _create_project_manager_prompt(self) -> str:
+        """Prompt specifico per Project Manager agents"""
+        base_prompt_prefix = handoff_prompt.RECOMMENDED_PROMPT_PREFIX if SDK_AVAILABLE else ""
+        
+        available_tool_names = []
+        for tool in self.tools:
+            tool_name_attr = getattr(tool, 'name', getattr(tool, '__name__', None))
+            if tool_name_attr: available_tool_names.append(tool_name_attr)
+
+        sdk_handoff_tool_names = [h.name for h in self.direct_sdk_handoffs if hasattr(h, 'name')] if SDK_AVAILABLE else []
+
+        return f"""
 {base_prompt_prefix}
+You are a highly efficient AI Project Manager. Your name is {self.agent_data.name}.
+Your primary responsibility is to orchestrate the work of a team of specialist agents to achieve the project goal.
+You are equipped with the following tools: {', '.join(available_tool_names)}.
+{"You can also directly handoff to other agents using: " + ", ".join(sdk_handoff_tool_names) + "." if sdk_handoff_tool_names else ""}
 
-You are a '{self.agent_data.seniority.value}' AI specialist: '{self.agent_data.role}'.
-Your primary goal is to complete tasks efficiently and produce a final, concrete output.
+CURRENT TASK TYPE: PLANNING OR DELEGATION
 
-CRITICAL ANTI-LOOP & EXECUTION RULES:
-1. COMPLETE TASKS YOURSELF WHENEVER POSSIBLE. Prioritize direct execution over delegation.
-2. NEVER delegate tasks back to your own specific role ('{self.agent_data.role}') or to an identical role type if you are a specialist.
-3. If delegation is ABSOLUTELY necessary (e.g., task requires completely different expertise), be very specific about the sub-task and the required expertise for the target agent.
-4. AVOID CREATING TASKS THAT DUPLICATE EXISTING OR SIMILAR WORK.
-5. ALWAYS provide a comprehensive final summary of the work done and a clear status ('completed', 'failed', or 'requires_handoff') as per the schema.
-6. If a task is too complex or leads to multiple turns without resolution, simplify your approach or provide a partial but concrete result and mark as 'completed'.
-7. Ensure your 'detailed_results_json' and 'resources_consumed_json' are VALID JSON strings if provided.
+IF THE CURRENT TASK IS A PLANNING TASK (e.g., "Project Setup & Strategic Planning Kick-off"):
+1.  Thoroughly analyze the project goal and requirements.
+2.  Break down the project into logical phases and milestones.
+3.  For each phase, define key deliverables.
+4.  Identify the necessary sub-tasks for the *immediate next phase* (usually Phase 1 after initial planning).
+5.  For each sub-task, clearly define:
+    * A unique and descriptive `task_name`.
+    * A comprehensive `task_description` with all context, inputs, and expected outputs for the specialist.
+    * The `target_agent_role` best suited to perform it (e.g., "Data Analyst", "ContentSpecialist").
+    * A `priority` ("high", "medium", "low").
+6.  Your final output for a planning task MUST be a JSON object matching 'TaskExecutionOutput'.
+    * The `summary` should state that planning is complete and sub-tasks for the next phase are defined.
+    * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined, including their name, description, target_agent_role, and priority. Example:
+        "{{\\"defined_sub_tasks\\": [{{\\"name\\": \\"Sub-task 1\\", \\"description\\": \\"...\\", \\"target_agent_role\\": \\"RoleA\\", \\"priority\\": \\"high\\"}}], \\"overall_plan_summary\\": \\"..."}}"
+    * `next_steps` should include: "Delegate the defined sub-tasks using the '{self._create_task_tool_name}' tool."
+
+IF THE CURRENT TASK IS A DELEGATION TASK (e.g., "Delegate sub-tasks for Phase 1"):
+1.  Identify the sub-tasks defined in the previous planning phase (likely in the `detailed_results_json` or task context).
+2.  For EACH defined sub-task:
+    * Use the '{self._create_task_tool_name}' tool.
+    * Pass the `workspace_id` (currently: "{self.agent_data.workspace_id}").
+    * Pass the `task_name`, `task_description`, `target_agent_role`, and `priority` as defined in the plan.
+    * Pass the `parent_task_id` (ID of the current delegation task or the original planning task).
+3.  After attempting to create all sub-tasks, your final output MUST be a JSON object matching 'TaskExecutionOutput'.
+    * The `summary` should confirm how many sub-tasks were successfully created and delegated.
+    * The `detailed_results_json` should contain a JSON string listing the results from each call to '{self._create_task_tool_name}' (including any errors or success messages and created task IDs).
+    * `next_steps` should be: ["Monitor the progress of the delegated sub-tasks."].
+
+GENERAL RULES FOR PROJECT MANAGER:
+-   Your role is to PLAN and DELEGATE. Do NOT execute specialist tasks yourself unless the task is specifically about project management (e.g., creating a status report).
+-   Ensure task descriptions for specialists are extremely clear, complete, and actionable.
+-   Provide all necessary context from previous steps when creating sub-tasks.
+-   Always aim for a "completed" status in your TaskExecutionOutput once your planning or delegation for the current task is finished. Use "requires_handoff" VERY sparingly, only if you are truly blocked and need a different type of PM.
+-   If a tool call to '{self._create_task_tool_name}' fails for a sub-task, note the error and attempt to delegate other sub-tasks. Report all successes and failures in your final `detailed_results_json`.
+
+OUTPUT FORMAT REMINDER:
+Your final response for *every* interaction MUST be a single JSON object conforming to the 'TaskExecutionOutput' schema.
+Example for DELEGATION task completion:
+{{
+  "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
+  "status": "completed",
+  "summary": "Successfully created and delegated 3 sub-tasks for Phase 1.",
+  "detailed_results_json": "{{ \\"delegation_results\\": [ {{ \\"sub_task_name\\": \\"Competitor Analysis\\", \\"tool_call_result\\": {{ \\"success\\": true, \\"task_id\\": \\"...", \\"message\\": \\"..." }} }}, {{ \\"sub_task_name\\": \\"Audience Profile\\", \\"tool_call_result\\": {{ \\"success\\": false, \\"error\\": \\"No active agent for MarketingSpecialist\\" }} }} ] }}",
+  "next_steps": ["Monitor the progress of delegated sub-tasks."]
+}}
+Do NOT add any text before or after this final JSON object.
+""".strip()
+
+    def _create_specialist_anti_loop_prompt(self) -> str:
+        """Prompt specifico per specialist agents (non-manager)"""
+        available_tool_names = []
+        for tool in self.tools:
+            tool_name_attr = getattr(tool, 'name', getattr(tool, '__name__', None))
+            if tool_name_attr: available_tool_names.append(tool_name_attr)
+
+        return f"""
+You are a '{self.agent_data.seniority.value}' AI specialist in the role of: '{self.agent_data.role}'.
+Your specific expertise is: {self.agent_data.description or 'Not specified, assume general capabilities for your role.'}
+Your primary goal is to complete the assigned task efficiently and produce a final, concrete output.
+You are equipped with the following tools: {', '.join(available_tool_names) if available_tool_names else "No specific tools beyond core capabilities."}.
+
+CRITICAL EXECUTION RULES:
+1.  COMPLETE THE ASSIGNED TASK YOURSELF. Your focus is on execution using your expertise and tools.
+2.  If the task is partially outside your expertise but you can make significant progress on a component that IS within your expertise, complete that component thoroughly. Document what you did and what remains.
+3.  If the *entire* task is outside your expertise, OR if you have fully completed your part and the remaining work requires a *different* specialist (NOT your own role type):
+    * Use the '{self._request_handoff_tool_name}' tool.
+    * Clearly state the `target_agent_role` needed.
+    * Provide a `reason_for_handoff`.
+    * Give a `summary_of_work_done` by you (if any).
+    * Write a `specific_request_for_target` detailing what the next agent should do.
+4.  DO NOT create new general tasks or delegate work that you should be doing. The Project Manager handles task breakdown and assignment.
+5.  Always provide a comprehensive final summary of the work you performed and a clear status ('completed', 'failed', or 'requires_handoff') as per the TaskExecutionOutput schema.
+6.  If a task is too complex or leads to multiple turns without clear resolution, simplify your approach, provide the best partial but concrete result you can, and mark the task as 'completed' with notes on limitations.
+7.  Ensure your 'detailed_results_json' (if used) is a VALID JSON string. Null is acceptable if no structured data.
 
 OUTPUT REQUIREMENTS:
 Your final output for EACH task execution MUST be a single, valid JSON object matching the 'TaskExecutionOutput' schema:
-- "task_id": (string) ID of the current task being processed.
-- "status": (string) Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
-- "summary": (string) Concise summary of the work performed and the outcome. THIS IS MANDATORY.
-- "detailed_results_json": (string, optional) A valid JSON string containing detailed, structured results. Null if not applicable.
-- "next_steps": (array of strings, optional) Suggested next actions or follow-up tasks.
-- "suggested_handoff_target_role": (string, optional) ONLY if status is "requires_handoff". Specify the role to hand off to.
-- "resources_consumed_json": (string, optional) A valid JSON string for tracking resource usage (e.g., tokens, API calls). Null if not applicable.
+-   "task_id": (string) ID of the current task being processed (e.g., "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}").
+-   "status": (string) Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
+-   "summary": (string) Concise summary of the work performed and the outcome. THIS IS MANDATORY.
+-   "detailed_results_json": (string, optional) A valid JSON string containing detailed, structured results. Null if not applicable.
+-   "next_steps": (array of strings, optional) Only if you completed the task and have suggestions for the PM or for future work based on your findings.
+-   "suggested_handoff_target_role": (string, optional) ONLY if status is "requires_handoff". Specify the different specialist role to hand off to.
+-   "resources_consumed_json": (string, optional) A JSON string for any notable resource usage (e.g., API calls made by a tool you used).
 
-EXECUTION APPROACH:
-"""
-        available_tool_names = []
-        for tool in self.tools:
-            if hasattr(tool, 'name'): available_tool_names.append(tool.name)
-            elif hasattr(tool, '__name__'): available_tool_names.append(tool.__name__)
-
-        if is_manager:
-            core_prompt += f"""
-AS A MANAGER/COORDINATOR ({self.agent_data.role}):
-1. Analyze the incoming task thoroughly.
-2. Attempt to complete planning, coordination, or strategic tasks yourself.
-3. If sub-tasks require specialized expertise you don't possess, you can delegate.
-   - For direct, conversational handoff to another available agent: Use the SDK handoff tools (e.g., 'transfer_to_<AgentName>_<Role>'). These are for immediate continuation by another agent.
-   - To create a new, separate task for another agent to pick up: Use the '{self._create_task_tool_name}' tool.
-4. Ensure any delegation clearly defines the sub-task, expected outcome, and provides all necessary context.
-5. Always provide a comprehensive summary of what *you* achieved, even if delegating parts.
-6. Your primary role is to ensure the overall goal is met, through your own work or effective delegation.
-
-DELEGATION GUIDELINES (using '{self._create_task_tool_name}'):
-- Delegate only specific, well-defined sub-tasks.
-- Avoid delegating back to other manager/coordinator roles unless it's for a different management aspect.
-- Include all necessary context and clearly define expected outcomes.
-"""
-        else: # Specialist Agent
-            core_prompt += f"""
-AS A SPECIALIST IN {self.agent_data.role.upper()}:
-1. Focus on your specific area of expertise: {self.agent_data.description or f'Specialist in {self.agent_data.role}'}.
-2. Utilize your available tools effectively to complete tasks within your domain.
-3. If a task is partially outside your expertise but you can make significant progress, do so and document limitations.
-4. If a task is entirely outside your expertise OR you've completed your part and require another specialist:
-   - Use the '{self._request_handoff_tool_name}' to request a handoff. Provide a clear reason, summary of your work, and what the target role needs to do. This will create a new task for the appropriate agent.
-5. ALWAYS provide concrete deliverables and a final summary of your contribution.
-
-YOUR EXPERTISE: {self.agent_data.description or f'Specialist in {self.agent_data.role}'}
-"""
-
-        if available_tool_names:
-            core_prompt += f"\n\nAVAILABLE CUSTOM TOOLS (use these exact names when calling tools):\n- {', '.join(available_tool_names)}\n"
-        if SDK_AVAILABLE and is_manager and self.direct_sdk_handoffs:
-            sdk_handoff_tool_names = [h.name for h in self.direct_sdk_handoffs if hasattr(h, 'name')]
-            if sdk_handoff_tool_names:
-                 core_prompt += f"\nAVAILABLE SDK HANDOFF TOOLS (for direct conversational transfer):\n- {', '.join(sdk_handoff_tool_names)}\n"
-        core_prompt += """
-REMEMBER:
-- Prioritize task completion.
-- Avoid delegation loops by following the rules above.
-- Structure your final response strictly according to the 'TaskExecutionOutput' JSON schema.
-- Be clear, concise, and action-oriented in your summaries and results.
-"""
-        core_prompt += """
-CRITICAL: After you complete your analysis and work, you MUST end with a single JSON output in this EXACT format:
-{
-  "task_id": "...",
+Example of a 'completed' task by a specialist:
+{{
+  "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
   "status": "completed",
-  "summary": "Brief summary of what you accomplished",
-  "detailed_results_json": "{'phases': [...], 'deliverables': [...]}",
-  "next_steps": ["Step 1", "Step 2", "Step 3"]
-}
+  "summary": "Analyzed competitor X's Instagram strategy, identifying 3 key content pillars and an average engagement rate of 2.5%.",
+  "detailed_results_json": "{{ \\"competitor_analysis\\": {{ \\"name\\": \\"Competitor X\\", \\"content_pillars\\": [\\"Pillar A\\", \\"Pillar B\\", \\"Pillar C\\"], \\"engagement_rate\\": 0.025 }} }}",
+  "next_steps": ["Recommend PM to review findings for strategic adjustments."],
+  "suggested_handoff_target_role": null,
+  "resources_consumed_json": null
+}}
 
-Do NOT continue logging after producing this final JSON output. This JSON is what determines task completion.
-"""
-        return core_prompt.strip()
+Example of a task requiring handoff by a specialist:
+{{
+  "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
+  "status": "requires_handoff",
+  "summary": "Completed initial data extraction for market trends. Further statistical modeling is required, which is outside my data collection expertise.",
+  "detailed_results_json": "{{ \\"extracted_data_preview\\": [...] }}",
+  "next_steps": null,
+  "suggested_handoff_target_role": "Data Analyst",
+  "resources_consumed_json": null
+}}
+
+Do NOT add any text before or after this final JSON object. Your entire response must be this JSON.
+""".strip()
 
     def _create_sdk_handoffs(self) -> List[Any]:
         if not SDK_AVAILABLE or not handoff_filters:
@@ -352,15 +392,32 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
         return False
 
     def _initialize_tools(self) -> List[Any]:
+        """Inizializza tools basati sul ruolo dell'agente"""
         tools_list: List[Any] = []
+        
+        # Tool comuni a tutti
         tools_list.extend([
-            self._create_task_for_agent_tool(),
-            self._create_request_handoff_tool(),
             self._create_log_execution_tool(),
             self._create_update_health_status_tool(),
             self._create_report_progress_tool(),
         ])
 
+        # Aggiungi tool specifici per ruolo
+        current_agent_role_lower = self.agent_data.role.lower()
+
+        is_manager_type_role = any(keyword in current_agent_role_lower
+                                for keyword in ['manager', 'coordinator', 'director', 'lead'])
+
+        if is_manager_type_role:
+            # Tool specifici per Project Manager
+            tools_list.append(PMOrchestrationTools.create_and_assign_sub_task_tool)
+            tools_list.append(PMOrchestrationTools.get_team_roles_and_status_tool)
+            logger.info(f"Agent {self.agent_data.name} ({self.agent_data.role}) equipped with PMOrchestrationTools.")
+        else:
+            # Tool per specialisti (handoff)
+            tools_list.append(self._create_request_handoff_tool())
+
+        # Tool configurati nel database
         if self.agent_data.tools:
             for tool_config in self.agent_data.tools:
                 if isinstance(tool_config, dict):
@@ -375,8 +432,9 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
                             logger.info(f"Agent {self.agent_data.name} equipped with FileSearchTool for VS IDs: {vs_ids}.")
                         else:
                             logger.warning(f"Agent {self.agent_data.name}: file_search tool configured but no vector_store_ids found.")
-        
-        if "social" in self.agent_data.role.lower() or "instagram" in self.agent_data.role.lower():
+
+        # Tool per ruoli social/instagram
+        if "social" in current_agent_role_lower or "instagram" in current_agent_role_lower:
             try:
                 from tools.social_media import InstagramTools
                 tools_list.extend([
@@ -387,9 +445,12 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
             except ImportError: logger.warning("InstagramTools not available or path is incorrect (tools.social_media).")
             except AttributeError: logger.warning("InstagramTools found, but some specific tools are missing.")
 
+        # Tool per creazione custom tools
         if self.agent_data.can_create_tools:
             tools_list.append(self._create_custom_tool_creator_tool())
             logger.info(f"Agent {self.agent_data.name} equipped with CustomToolCreatorTool.")
+            
+        logger.debug(f"Final tools for agent {self.agent_data.name}: {[getattr(t, 'name', t.__name__) for t in tools_list]}")
         return tools_list
 
     def _calculate_text_similarity(self, text1: str, text2: str) -> float:
@@ -405,7 +466,6 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
         self, workspace_id: str, task_name: str, task_description: str
     ) -> Optional[Dict]:
         try:
-            # Nota: Assicurarsi che db_list_tasks accetti workspace_id come keyword argument.
             all_tasks = await db_list_tasks(workspace_id=workspace_id) 
             pending_or_in_progress_tasks = [
                 t for t in all_tasks 
@@ -426,74 +486,71 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
             logger.error(f"Error checking for similar tasks: {e}", exc_info=True)
             return None
 
-    def _create_task_for_agent_tool(self):
-        @function_tool(name_override=self._create_task_tool_name)
+    def _create_request_handoff_tool(self):
+        @function_tool(name_override=self._request_handoff_tool_name)
         async def impl(
-            task_name: str = Field(..., description="Clear and concise name for the new task."),
-            task_description: str = Field(..., description="Detailed description of what needs to be done for the new task."),
-            target_agent_role: str = Field(..., description="The role of the agent best suited to perform this new task (e.g., 'Data Analyst', 'Copywriter')."),
-            priority: Literal["low","medium","high"] = Field("medium", description="Priority of the new task."),
+            target_role: str = Field(..., description="The role of the agent you need to handoff to."),
+            reason_for_handoff: str = Field(..., description="Clear reason why this handoff is necessary."),
+            summary_of_work_done: str = Field(..., description="Detailed summary of work you completed."),
+            specific_request_for_target: str = Field(..., description="What exactly the target agent needs to do."),
+            priority: Literal["low","medium","high"] = Field("medium", description="Priority of the handoff request."),
         ) -> str:
             try:
-                existing_similar_task = await self._check_similar_tasks_exist(
-                    str(self.agent_data.workspace_id), task_name, task_description
-                )
-                if existing_similar_task:
-                    return json.dumps(TaskCreationOutput(
-                        success=True, task_id=existing_similar_task["id"],
-                        task_name=existing_similar_task["name"], assigned_agent_name="EXISTING_TASK",
-                        error_message="Reusing existing similar task."
-                    ).model_dump())
+                if not self._current_task_being_processed_id:
+                    logger.error("Cannot request handoff: _current_task_being_processed_id is not set.")
+                    return json.dumps(HandoffRequestOutput(success=False, message="Error: Current task context not found.").model_dump())
 
-                if self._is_same_role_type(self.agent_data.role.lower(), target_agent_role.lower()):
-                    self.self_delegation_tool_call_count += 1
-                    if self.self_delegation_tool_call_count > self.max_self_delegations_per_tool_call:
-                        logger.warning(f"Agent {self.agent_data.name} attempting excessive self-delegation to role type similar to '{target_agent_role}'.")
-                        self.self_delegation_tool_call_count = 0 
-                        return json.dumps(TaskCreationOutput(
-                            success=False, task_name=task_name,
-                            error_message=f"Self-delegation loop to role {target_agent_role} prevented. Re-evaluate."
-                        ).model_dump())
-                else:
-                    self.self_delegation_tool_call_count = 0
+                if self._is_same_role_type(self.agent_data.role.lower(), target_role.lower()):
+                    logger.warning(f"Handoff request from {self.agent_data.role} to similar role type {target_role} blocked.")
+                    return json.dumps(HandoffRequestOutput(success=False, message=f"Cannot handoff to similar role type ('{target_role}').").model_dump())
 
-                desc_hash = str(hash(task_description.lower().strip()))
-                current_attempts = self.delegation_attempts_cache.get(desc_hash, 0)
-                if current_attempts >= self.max_delegation_attempts_per_task_desc:
-                    logger.warning(f"Max delegation attempts reached for task description hash {desc_hash} to target role '{target_agent_role}'.")
-                    return json.dumps(TaskCreationOutput(
-                        success=False, task_name=task_name,
-                        error_message=f"Max delegation attempts reached for this sub-task to role {target_agent_role}."
-                    ).model_dump())
-                
+                handoff_attempt_key = target_role.lower()
+                if handoff_attempt_key in self._handoff_attempts_for_current_task:
+                    logger.warning(f"Duplicate handoff request for task '{self._current_task_being_processed_id}' to role '{target_role}' blocked.")
+                    return json.dumps(HandoffRequestOutput(success=False, message=f"Handoff to '{target_role}' already attempted for this task.").model_dump())
+
                 agents_in_db = await db_list_agents(str(self.agent_data.workspace_id))
-                compatible_agents = self._find_compatible_agents_anti_loop(agents_in_db, target_agent_role)
-                
-                if compatible_agents:
-                    target_agent = compatible_agents[0]
-                    enhanced_description = f"Original Task Request by {self.agent_data.name} ({self.agent_data.role}):\n{task_description}\n---\nContext: This task was created by {self.agent_data.name} for a specialist in '{target_agent_role}'.\nPriority: {priority.upper()}"
-                    # Nota: Assicurarsi che db_create_task accetti questi come keyword arguments.
-                    created_task = await db_create_task(
-                        workspace_id=str(self.agent_data.workspace_id),
-                        agent_id=str(target_agent["id"]), 
-                        name=task_name, description=enhanced_description,
-                        status=TaskStatus.PENDING.value,
-                    )
-                    if created_task:
-                        self.delegation_attempts_cache[desc_hash] = 0
-                        return json.dumps(TaskCreationOutput(
-                            success=True, task_id=created_task["id"], task_name=task_name,
-                            assigned_agent_name=target_agent["name"]
-                        ).model_dump())
-                    else: error_msg = "Failed to create task in database."
-                else: error_msg = f"No suitable active agent found for role '{target_agent_role}'."
+                compatible_agents = self._find_compatible_agents_anti_loop(agents_in_db, target_role)
+                original_target_role_for_log = target_role
 
-                self.delegation_attempts_cache[desc_hash] = current_attempts + 1
-                logger.warning(f"{error_msg} Task creation for '{task_name}' failed. Attempt {self.delegation_attempts_cache[desc_hash]}/{self.max_delegation_attempts_per_task_desc}.")
-                return json.dumps(TaskCreationOutput(success=False, task_name=task_name, error_message=error_msg).model_dump())
+                if not compatible_agents:
+                    logger.warning(f"No direct agent for handoff target role '{target_role}'. Attempting PM fallback.")
+                    compatible_agents = self._find_compatible_agents_anti_loop(agents_in_db, "Project Manager")
+                    if compatible_agents: 
+                        target_role_for_description = "Project Manager"
+                        reason_for_handoff = f"[ESCALATED to PM] Original Target: {original_target_role_for_log}. Reason: {reason_for_handoff}"
+                    else:
+                         logger.error(f"Handoff failed: No suitable agent for '{original_target_role_for_log}' or Project Manager.")
+                         return json.dumps(HandoffRequestOutput(success=False, message=f"No suitable agent for handoff to '{original_target_role_for_log}' or fallback.").model_dump())
+                else:
+                    target_role_for_description = target_role
+
+                target_agent_dict = compatible_agents[0]
+                handoff_task_name = f"HANDOFF from {self.agent_data.name} for Task ID: {self._current_task_being_processed_id}"
+                handoff_task_description = f"!!! HANDOFF TASK !!!\nPriority: {priority.upper()}\nOriginal Task ID: {self._current_task_being_processed_id}\nFrom: {self.agent_data.name} ({self.agent_data.role})\nTo (Intended): {target_role_for_description} (Assigned: {target_agent_dict.get('name')} - {target_agent_dict.get('role')})\nReason: {reason_for_handoff}\nWork Done by {self.agent_data.name}:\n{summary_of_work_done}\nSpecific Request for {target_agent_dict.get('role', target_role_for_description)}:\n{specific_request_for_target}\nInstructions: Review, continue progress. Avoid further delegation without manager approval."
+                
+                created_task = await db_create_task(
+                    workspace_id=str(self.agent_data.workspace_id), 
+                    agent_id=str(target_agent_dict["id"]),
+                    name=handoff_task_name, 
+                    description=handoff_task_description,
+                    status=TaskStatus.PENDING.value,
+                    priority=priority
+                )
+
+                if created_task:
+                    self._handoff_attempts_for_current_task.add(handoff_attempt_key)
+                    logger.info(f"Handoff task '{created_task['id']}' created for '{target_agent_dict.get('name')}' re: original task '{self._current_task_being_processed_id}'.")
+                    return json.dumps(HandoffRequestOutput(
+                        success=True, message=f"Handoff task created for {target_agent_dict.get('name')}.",
+                        handoff_task_id=created_task["id"], assigned_to_agent_name=target_agent_dict.get("name")
+                    ).model_dump())
+                else:
+                    logger.error("Failed to create handoff task in database.")
+                    return json.dumps(HandoffRequestOutput(success=False, message="Database error: Failed to create handoff task.").model_dump())
             except Exception as e:
-                logger.error(f"Error in '{self._create_task_tool_name}': {e}", exc_info=True)
-                return json.dumps(TaskCreationOutput(success=False, task_name=task_name, error_message=str(e)).model_dump())
+                logger.error(f"Error in '{self._request_handoff_tool_name}': {e}", exc_info=True)
+                return json.dumps(HandoffRequestOutput(success=False, message=str(e)).model_dump())
         return impl
 
     def _find_compatible_agents_anti_loop(self, agents_db_list: List[Dict[str, Any]], target_role: str) -> List[Dict[str, Any]]:
@@ -535,71 +592,6 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
         else: logger.warning(f"No compatible agents found for role '{target_role}'.")
         return candidates
 
-    def _create_request_handoff_tool(self):
-        @function_tool(name_override=self._request_handoff_tool_name)
-        async def impl(
-            target_role: str = Field(..., description="The role of the agent you need to handoff to."),
-            reason_for_handoff: str = Field(..., description="Clear reason why this handoff is necessary."),
-            summary_of_work_done: str = Field(..., description="Detailed summary of work you completed."),
-            specific_request_for_target: str = Field(..., description="What exactly the target agent needs to do."),
-            priority: Literal["low","medium","high"] = Field("medium", description="Priority of the handoff request."),
-        ) -> str:
-            try:
-                if not self._current_task_being_processed_id:
-                    logger.error("Cannot request handoff: _current_task_being_processed_id is not set.")
-                    return json.dumps(HandoffRequestOutput(success=False, message="Error: Current task context not found.").model_dump())
-
-                if self._is_same_role_type(self.agent_data.role.lower(), target_role.lower()):
-                    logger.warning(f"Handoff request from {self.agent_data.role} to similar role type {target_role} blocked.")
-                    return json.dumps(HandoffRequestOutput(success=False, message=f"Cannot handoff to similar role type ('{target_role}').").model_dump())
-
-                handoff_attempt_key = target_role.lower()
-                if handoff_attempt_key in self._handoff_attempts_for_current_task:
-                    logger.warning(f"Duplicate handoff request for task '{self._current_task_being_processed_id}' to role '{target_role}' blocked.")
-                    return json.dumps(HandoffRequestOutput(success=False, message=f"Handoff to '{target_role}' already attempted for this task.").model_dump())
-
-                agents_in_db = await db_list_agents(str(self.agent_data.workspace_id))
-                compatible_agents = self._find_compatible_agents_anti_loop(agents_in_db, target_role)
-                original_target_role_for_log = target_role
-
-                if not compatible_agents:
-                    logger.warning(f"No direct agent for handoff target role '{target_role}'. Attempting PM fallback.")
-                    compatible_agents = self._find_compatible_agents_anti_loop(agents_in_db, "Project Manager") # Specific role name
-                    if compatible_agents: 
-                        target_role_for_description = "Project Manager"
-                        reason_for_handoff = f"[ESCALATED to PM] Original Target: {original_target_role_for_log}. Reason: {reason_for_handoff}"
-                    else:
-                         logger.error(f"Handoff failed: No suitable agent for '{original_target_role_for_log}' or Project Manager.")
-                         return json.dumps(HandoffRequestOutput(success=False, message=f"No suitable agent for handoff to '{original_target_role_for_log}' or fallback.").model_dump())
-                else:
-                    target_role_for_description = target_role # Use original if direct match found
-
-                target_agent_dict = compatible_agents[0]
-                handoff_task_name = f"HANDOFF from {self.agent_data.name} for Task ID: {self._current_task_being_processed_id}"
-                handoff_task_description = f"!!! HANDOFF TASK !!!\nPriority: {priority.upper()}\nOriginal Task ID: {self._current_task_being_processed_id}\nFrom: {self.agent_data.name} ({self.agent_data.role})\nTo (Intended): {target_role_for_description} (Assigned: {target_agent_dict.get('name')} - {target_agent_dict.get('role')})\nReason: {reason_for_handoff}\nWork Done by {self.agent_data.name}:\n{summary_of_work_done}\nSpecific Request for {target_agent_dict.get('role', target_role_for_description)}:\n{specific_request_for_target}\nInstructions: Review, continue progress. Avoid further delegation without manager approval."
-                
-                # Nota: Assicurarsi che db_create_task accetti questi come keyword arguments.
-                created_task = await db_create_task(
-                    workspace_id=str(self.agent_data.workspace_id), agent_id=str(target_agent_dict["id"]),
-                    name=handoff_task_name, description=handoff_task_description,
-                    status=TaskStatus.PENDING.value,
-                )
-
-                if created_task:
-                    self._handoff_attempts_for_current_task.add(handoff_attempt_key)
-                    logger.info(f"Handoff task '{created_task['id']}' created for '{target_agent_dict.get('name')}' re: original task '{self._current_task_being_processed_id}'.")
-                    return json.dumps(HandoffRequestOutput(
-                        success=True, message=f"Handoff task created for {target_agent_dict.get('name')}.",
-                        handoff_task_id=created_task["id"], assigned_to_agent_name=target_agent_dict.get("name")
-                    ).model_dump())
-                else:
-                    logger.error("Failed to create handoff task in database.")
-                    return json.dumps(HandoffRequestOutput(success=False, message="Database error: Failed to create handoff task.").model_dump())
-            except Exception as e:
-                logger.error(f"Error in '{self._request_handoff_tool_name}': {e}", exc_info=True)
-                return json.dumps(HandoffRequestOutput(success=False, message=str(e)).model_dump())
-        return impl
-
     def _create_log_execution_tool(self):
         @function_tool(name_override=self._log_execution_tool_name)
         async def impl(step_name: str = Field(...), details_json: str = Field(...)):
@@ -610,14 +602,12 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
         @function_tool(name_override=self._update_health_tool_name)
         async def impl(status: Literal["healthy","degraded","unhealthy"] = Field(...), details_message: Optional[str] = Field(None)):
             try:
-                # La struttura di health_payload deve corrispondere a AgentHealth Pydantic model
                 health_payload = {
-                    "status": status, # Questo dovrebbe corrispondere a HealthStatus enum
+                    "status": status,
                     "last_update": datetime.now().isoformat(),
                     "details": {"message": details_message}
                 }
-                # Nota: Assicurarsi che update_agent_status accetti il payload di health in questo formato.
-                await update_agent_status(str(self.agent_data.id), health_info=health_payload)
+                await update_agent_status(str(self.agent_data.id), status=None, health=health_payload)
                 return json.dumps({"success": True, "message": f"Health status updated to {status}."})
             except Exception as e:
                 logger.error(f"Error in {self._update_health_tool_name} tool: {e}", exc_info=True)
@@ -676,15 +666,14 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
     async def execute_task(self, task: Task, context: Optional[T] = None) -> Dict[str, Any]:
         self._current_task_being_processed_id = str(task.id)
         self._handoff_attempts_for_current_task = set()
-        self.self_delegation_tool_call_count = 0 
-        # self.delegation_attempts_cache non viene resettata qui intenzionalmente (vedi __init__)
+        self.self_delegation_tool_call_count = 0
 
         trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
         workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
+        
         try:
             if SDK_AVAILABLE:
                 trace_context_manager = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id))
-                # Test se supporta async context manager
                 if not hasattr(trace_context_manager, '__aenter__'):
                     raise AttributeError("TraceImpl doesn't support async context manager")
             else:
@@ -695,52 +684,77 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
         
         async with trace_context_manager:
             try:
-                await self._log_execution_internal("task_execution_started", {"task_id": str(task.id), "task_name": task.name, "trace_id": trace_id_val})
-                # Nota: Assicurarsi che update_task_status accetti questi come keyword arguments.
-                await update_task_status(task_id=str(task.id), status=TaskStatus.IN_PROGRESS.value)
+                await self._log_execution_internal(
+                    "task_execution_started",
+                    {"task_id": str(task.id), "task_name": task.name, "trace_id": trace_id_val, "assigned_role": task.assigned_to_role}
+                )
+                await update_task_status(task_id=str(task.id), status=TaskStatus.IN_PROGRESS.value, result_payload={"status_detail": "Execution started by agent"})
                 
-                task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Description:\n{task.description}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
+                # Costruisci il prompt per l'agente, includendo il context_data se presente
+                task_context_info = ""
+                if task.context_data:  # CAMBIATO da context_data_json a context_data
+                    try:
+                        # task.context_data è già un dict, quindi serializza in JSON per il prompt
+                        context_json_str = json.dumps(task.context_data)
+                        task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (JSON):\n{context_json_str}"
+                    except Exception as e:
+                        logger.warning(f"Could not serialize context_data for task {task.id}: {e}. Passing as string.")
+                        task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (Raw String):\n{str(task.context_data)}"
+
+                task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
                 
+                # Esegui l'agente
+                max_turns_for_agent = 10
+                if isinstance(self.agent_data.llm_config, dict) and "max_turns_override" in self.agent_data.llm_config:
+                    max_turns_for_agent = self.agent_data.llm_config["max_turns_override"]
+
                 agent_run_result = await asyncio.wait_for(
-                    Runner.run(self.agent, task_prompt_content, max_turns=14, context=context),
+                    Runner.run(self.agent, task_prompt_content, max_turns=max_turns_for_agent, context=context),
                     timeout=self.execution_timeout
                 )
                 
                 final_llm_output = agent_run_result.final_output
                 execution_result_obj: TaskExecutionOutput
 
-                if isinstance(final_llm_output, TaskExecutionOutput): execution_result_obj = final_llm_output
+                if isinstance(final_llm_output, TaskExecutionOutput):
+                    execution_result_obj = final_llm_output
                 elif isinstance(final_llm_output, dict):
-                    if 'task_id' not in final_llm_output: final_llm_output['task_id'] = str(task.id)
-                    if 'status' not in final_llm_output: final_llm_output['status'] = 'completed'
-                    if 'summary' not in final_llm_output: final_llm_output['summary'] = "Task processing completed."
-                    try: execution_result_obj = TaskExecutionOutput.model_validate(final_llm_output)
+                    # Assicurati che i campi obbligatori ci siano prima di validare
+                    final_llm_output.setdefault('task_id', str(task.id))
+                    final_llm_output.setdefault('status', 'completed')
+                    final_llm_output.setdefault('summary', 'Task processing completed by agent.')
+                    try:
+                        execution_result_obj = TaskExecutionOutput.model_validate(final_llm_output)
                     except Exception as val_err:
-                        logger.error(f"Pydantic validation error for dict output: {val_err}. Raw: {str(final_llm_output)[:500]}")
+                        logger.error(f"Pydantic validation error for agent's dict output: {val_err}. Raw output: {str(final_llm_output)[:500]}")
                         execution_result_obj = TaskExecutionOutput(
                             task_id=str(task.id), status="failed", summary=f"Output validation error: {val_err}.",
-                            detailed_results_json=json.dumps({"error": "Output validation failed", "raw_output": str(final_llm_output)[:1000]})
+                            detailed_results_json=json.dumps({"error": "Agent output validation failed", "raw_output": str(final_llm_output)[:1000]})
                         )
                 else: 
-                    logger.warning(f"Unexpected final_output type: {type(final_llm_output)}. Raw: {str(final_llm_output)[:500]}")
+                    logger.warning(f"Agent returned unexpected final_output type: {type(final_llm_output)}. Output: {str(final_llm_output)[:500]}")
                     execution_result_obj = TaskExecutionOutput(
-                        task_id=str(task.id), status="completed", summary=str(final_llm_output)[:500] or "Completed with non-standard output.",
+                        task_id=str(task.id), status="completed",
+                        summary=str(final_llm_output)[:500] or "Completed with non-standard or empty output.",
                         detailed_results_json=json.dumps({"raw_output": str(final_llm_output)})
                     )
                 
+                # Sovrascrivi task_id per sicurezza, e aggiungi trace_id
                 execution_result_obj.task_id = str(task.id)
                 result_dict_to_save = execution_result_obj.model_dump()
-                result_dict_to_save["trace_id"] = trace_id_val
+                result_dict_to_save["trace_id_for_run"] = trace_id_val
                 
-                final_task_status_val = TaskStatus.COMPLETED.value
-                if execution_result_obj.status == "failed": final_task_status_val = TaskStatus.FAILED.value
+                # Determina lo stato finale del DB basato sullo status dell'output dell'agente
+                final_db_status = TaskStatus.COMPLETED.value
+                if execution_result_obj.status == "failed":
+                    final_db_status = TaskStatus.FAILED.value
                 elif execution_result_obj.status == "requires_handoff":
-                    logger.info(f"Task {task.id} resulted in 'requires_handoff' to role '{execution_result_obj.suggested_handoff_target_role}'.")
-                    # La task corrente è considerata completata dal punto di vista di questo agente.
+                    final_db_status = TaskStatus.COMPLETED.value
+                    logger.info(f"Task {task.id} by {self.agent_data.name} resulted in 'requires_handoff' to role '{execution_result_obj.suggested_handoff_target_role}'. This task is marked COMPLETED.")
                 
-                # Nota: Assicurarsi che update_task_status accetti questi come keyword arguments.
-                await update_task_status(task_id=str(task.id), status=final_task_status_val, result=result_dict_to_save)
-                # AGGIUNGI QUESTO LOG:
+                await update_task_status(task_id=str(task.id), status=final_db_status, result_payload=result_dict_to_save)
+                
+                # Log dettagliato dell'output
                 logger.info(f"TASK OUTPUT for {task.id}:")
                 logger.info(f"Summary: {execution_result_obj.summary}")
                 if execution_result_obj.detailed_results_json:
@@ -748,37 +762,52 @@ Do NOT continue logging after producing this final JSON output. This JSON is wha
                 if execution_result_obj.next_steps:
                     logger.info(f"Next Steps: {execution_result_obj.next_steps}")
                 if execution_result_obj.suggested_handoff_target_role:
-                    logger.info(f"Handoff Target: {execution_result_obj.suggested_handoff_target_role}")
+                    logger.info(f"Handoff Target Role: {execution_result_obj.suggested_handoff_target_role}")
 
-                await self._log_execution_internal("task_execution_finished", {"task_id": str(task.id), "final_status": final_task_status_val, "summary": execution_result_obj.summary})
+                await self._log_execution_internal(
+                    "task_execution_finished",
+                    {"task_id": str(task.id), "final_status_in_db": final_db_status, "agent_reported_status": execution_result_obj.status, "summary": execution_result_obj.summary}
+                )
                 return result_dict_to_save
 
             except asyncio.TimeoutError:
-                logger.warning(f"Task {task.id} (Trace: {trace_id_val}) timed out. Forcing completion.")
-                err_summary = f"Task forcibly completed due to timeout ({self.execution_timeout}s)."
-                err_res = TaskExecutionOutput(task_id=str(task.id), status="completed", summary=err_summary, detailed_results_json=json.dumps({"error": "TimeoutError", "reason": "forced_timeout_completion"})).model_dump()
-                err_res["trace_id"] = trace_id_val
-                await update_task_status(task_id=str(task.id), status=TaskStatus.COMPLETED.value, result=err_res)
-                await self._log_execution_internal("task_execution_timeout", err_res)
-                return err_res
+                timeout_summary = f"Task forcibly marked as TIMED_OUT after {self.execution_timeout}s."
+                logger.warning(f"Task {task.id} (Trace: {trace_id_val}) timed out ({self.execution_timeout}s).")
+                timeout_result = TaskExecutionOutput(
+                    task_id=str(task.id), status="failed",
+                    summary=timeout_summary,
+                    detailed_results_json=json.dumps({"error": "TimeoutError", "reason": "Task execution exceeded timeout limit."})
+                ).model_dump()
+                timeout_result["trace_id_for_run"] = trace_id_val
+                await update_task_status(task_id=str(task.id), status=TaskStatus.TIMED_OUT.value, result_payload=timeout_result)
+                await self._log_execution_internal("task_execution_timeout", {"task_id": str(task.id), "summary": timeout_summary})
+                return timeout_result
             
             except MaxTurnsExceeded as e: 
-                logger.warning(f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Forcing completion. Last: {str(getattr(e, 'last_output', 'N/A'))[:200]}")
-                err_summary = "Task forcibly completed due to exceeding max interaction turns."
-                err_res = TaskExecutionOutput(task_id=str(task.id), status="completed", summary=err_summary, detailed_results_json=json.dumps({"error": "MaxTurnsExceeded", "reason": "forced_max_turns_completion"})).model_dump()
-                err_res["trace_id"] = trace_id_val
-                await update_task_status(task_id=str(task.id), status=TaskStatus.COMPLETED.value, result=err_res)
-                await self._log_execution_internal("task_execution_max_turns", err_res)
-                return err_res
+                max_turns_summary = "Task forcibly marked as FAILED due to exceeding max interaction turns with LLM."
+                logger.warning(f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Last output: {str(getattr(e, 'last_output', 'N/A'))[:200]}")
+                max_turns_result = TaskExecutionOutput(
+                    task_id=str(task.id), status="failed",
+                    summary=max_turns_summary,
+                    detailed_results_json=json.dumps({"error": "MaxTurnsExceeded", "reason": str(e)})
+                ).model_dump()
+                max_turns_result["trace_id_for_run"] = trace_id_val
+                await update_task_status(task_id=str(task.id), status=TaskStatus.FAILED.value, result_payload=max_turns_result)
+                await self._log_execution_internal("task_execution_max_turns", {"task_id": str(task.id), "summary": max_turns_summary})
+                return max_turns_result
 
             except Exception as e: 
+                unhandled_error_summary = f"Task failed due to an unexpected error: {str(e)[:100]}..."
                 logger.error(f"Unhandled error executing task {task.id} (Trace: {trace_id_val}): {e}", exc_info=True)
-                err_summary = f"Task failed due to an unexpected error: {str(e)[:100]}..."
-                err_res = TaskExecutionOutput(task_id=str(task.id), status="failed", summary=err_summary, detailed_results_json=json.dumps({"error": str(e), "type": type(e).__name__, "reason": "unhandled_exception"})).model_dump()
-                err_res["trace_id"] = trace_id_val
-                await update_task_status(task_id=str(task.id), status=TaskStatus.FAILED.value, result=err_res)
-                await self._log_execution_internal("task_execution_unhandled_error", err_res)
-                return err_res
+                unhandled_error_result = TaskExecutionOutput(
+                    task_id=str(task.id), status="failed",
+                    summary=unhandled_error_summary,
+                    detailed_results_json=json.dumps({"error": str(e), "type": type(e).__name__})
+                ).model_dump()
+                unhandled_error_result["trace_id_for_run"] = trace_id_val
+                await update_task_status(task_id=str(task.id), status=TaskStatus.FAILED.value, result_payload=unhandled_error_result)
+                await self._log_execution_internal("task_execution_unhandled_error", {"task_id": str(task.id), "error": str(e)[:100]})
+                return unhandled_error_result
             finally:
                 self._current_task_being_processed_id = None
                 self._handoff_attempts_for_current_task = set()

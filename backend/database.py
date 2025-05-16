@@ -5,6 +5,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 from datetime import datetime, timedelta
+import json 
 
 # Load environment variables
 load_dotenv()
@@ -71,14 +72,14 @@ async def list_workspaces(user_id: str):
         raise
 
 async def create_agent(
-    workspace_id: str, 
-    name: str, 
-    role: str, 
-    seniority: str, 
-    description: Optional[str] = None, 
-    system_prompt: Optional[str] = None, 
-    llm_config: Optional[Dict[str, Any]] = None, 
-    tools: Optional[List[Dict[str, Any]]] = None,
+    workspace_id: str,
+    name: str,
+    role: str,
+    seniority: str, # Già stringa dal model AgentSeniority.value
+    description: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    llm_config: Optional[Dict[str, Any]] = None,
+    tools: Optional[List[Dict[str, Any]]] = None, # Assicurati che sia JSON serializzabile
     can_create_tools: bool = False
 ):
     try:
@@ -87,28 +88,19 @@ async def create_agent(
             "name": name,
             "role": role,
             "seniority": seniority,
-            "status": "active",
+            "status": "active", # O lo stato iniziale che preferisci
+            "health": {"status": "unknown", "last_update": datetime.now().isoformat()}, # Default health
             "can_create_tools": can_create_tools
         }
-        
         if description: data["description"] = description
         if system_prompt: data["system_prompt"] = system_prompt
-        if llm_config: data["llm_config"] = llm_config
-        if tools: data["tools"] = tools
-            
-        logger.debug(f"Attempting to insert agent with data: {data}")
-        result = supabase.table("agents").insert(data).execute() # Rimossa await
-        
-        if result.data and len(result.data) > 0:
-            logger.info(f"Successfully created agent: {result.data[0].get('id')}")
-            return result.data[0]
-        else:
-            logger.error(f"Failed to create agent or no data returned. Supabase response: {result}")
-            if hasattr(result, 'error') and result.error:
-                 logger.error(f"Supabase error details: {result.error.message if hasattr(result.error, 'message') else result.error}")
-            return None
+        if llm_config: data["llm_config"] = json.dumps(llm_config) # Serializza in JSON
+        if tools: data["tools"] = json.dumps(tools) # Serializza in JSON
+
+        result = supabase.table("agents").insert(data).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
     except Exception as e:
-        logger.error(f"Exception in create_agent: {e}", exc_info=True)
+        logger.error(f"Error creating agent: {e}", exc_info=True)
         raise
 
 async def list_agents(workspace_id: str):
@@ -144,31 +136,72 @@ async def update_agent_status(agent_id: str, status: Optional[str], health: Opti
         logger.error(f"Error updating agent status: {e}")
         raise
 
-async def create_task(workspace_id: str, agent_id: str, name: str, description: Optional[str], status: str = "pending"):
+async def create_task(
+    workspace_id: str,
+    name: str,
+    status: str,
+    agent_id: Optional[str] = None,
+    assigned_to_role: Optional[str] = None,
+    description: Optional[str] = None,
+    priority: str = "medium",
+    parent_task_id: Optional[str] = None,
+    depends_on_task_ids: Optional[List[str]] = None,
+    estimated_effort_hours: Optional[float] = None,
+    deadline: Optional[datetime] = None,
+    context_data: Optional[Dict[str, Any]] = None,  # CAMBIATO da context_data_json
+    result_payload: Optional[Dict[str, Any]] = None
+):
     try:
         data_to_insert = {
             "workspace_id": workspace_id,
-            "agent_id": agent_id,
             "name": name,
-            "status": status
+            "status": status,
+            "priority": priority,
         }
-        if description is not None: data_to_insert["description"] = description
+        if agent_id: data_to_insert["agent_id"] = agent_id
+        if assigned_to_role: data_to_insert["assigned_to_role"] = assigned_to_role
+        if description: data_to_insert["description"] = description
+        if parent_task_id: data_to_insert["parent_task_id"] = parent_task_id
+        if depends_on_task_ids: data_to_insert["depends_on_task_ids"] = depends_on_task_ids
+        if estimated_effort_hours is not None: data_to_insert["estimated_effort_hours"] = estimated_effort_hours
+        if deadline: data_to_insert["deadline"] = deadline.isoformat()
+        if context_data: data_to_insert["context_data"] = context_data  # CAMBIATO: salva direttamente il dict
+        if result_payload: data_to_insert["result"] = result_payload  # CAMBIATO: salva direttamente il dict
 
-        result = supabase.table("tasks").insert(data_to_insert).execute() # Rimossa await
-        return result.data[0] if result.data and len(result.data) > 0 else None
+        logger.debug(f"Creating task with data: {data_to_insert}")
+        db_result = supabase.table("tasks").insert(data_to_insert).execute()
+
+        if db_result.data and len(db_result.data) > 0:
+            logger.info(f"Task '{name}' (ID: {db_result.data[0]['id']}) created successfully for workspace {workspace_id}.")
+            return db_result.data[0]
+        else:
+            logger.error(f"Failed to create task '{name}' or no data returned. Supabase response: {db_result}")
+            if hasattr(db_result, 'error') and db_result.error:
+                 logger.error(f"Supabase error details: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
+            return None
     except Exception as e:
-        logger.error(f"Error creating task: {e}")
+        logger.error(f"Error creating task '{name}': {e}", exc_info=True)
         raise
 
-async def update_task_status(task_id: str, status: str, result: Optional[dict] = None):
-    data_to_update = {"status": status}
-    if result is not None: data_to_update["result"] = result
-    
+async def update_task_status(task_id: str, status: str, result_payload: Optional[dict] = None):
+    data_to_update = {"status": status, "updated_at": datetime.now().isoformat()}
+    if result_payload is not None:
+        # CAMBIATO: salva direttamente il dict, Supabase gestisce la serializzazione JSON per JSONB
+        data_to_update["result"] = result_payload
+
     try:
-        result = supabase.table("tasks").update(data_to_update).eq("id", task_id).execute() # Rimossa await
-        return result.data[0] if result.data and len(result.data) > 0 else None
+        db_result = supabase.table("tasks").update(data_to_update).eq("id", task_id).execute()
+        if db_result.data and len(db_result.data) > 0:
+            logger.info(f"Task {task_id} status updated to {status}.")
+            return db_result.data[0]
+        elif not hasattr(db_result, 'error') or db_result.error is None:
+            logger.info(f"Task {task_id} status updated to {status} (no data returned, assuming success).")
+            return {"id": task_id, "status": status}
+        else:
+            logger.error(f"Failed to update task {task_id}. Supabase error: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
+            return None
     except Exception as e:
-        logger.error(f"Error updating task status: {e}")
+        logger.error(f"Error updating task {task_id} status: {e}", exc_info=True)
         raise
 
 async def create_custom_tool(name: str, description: Optional[str], code: str, workspace_id: str, created_by: str):
@@ -210,12 +243,16 @@ async def delete_custom_tool(tool_id: str):
         logger.error(f"Error deleting custom tool: {e}")
         raise
         
-async def list_tasks(workspace_id: str):
+async def list_tasks(workspace_id: str, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     try:
-        result = supabase.table("tasks").select("*").eq("workspace_id", workspace_id).execute() # Rimossa await
-        return result.data
+        query = supabase.table("tasks").select("*").eq("workspace_id", workspace_id)
+        if status_filter:
+            query = query.eq("status", status_filter)
+        query = query.order("created_at", desc=True) # Ordina per creazione decrescente
+        result = query.execute()
+        return result.data if result.data else []
     except Exception as e:
-        logger.error(f"Error listing tasks: {e}")
+        logger.error(f"Error listing tasks for workspace {workspace_id}: {e}", exc_info=True)
         raise
         
 async def get_agent(agent_id: str):

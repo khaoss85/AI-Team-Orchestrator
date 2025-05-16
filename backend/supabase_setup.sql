@@ -179,3 +179,56 @@ ALTER TABLE agent_handoffs ADD COLUMN workspace_id UUID REFERENCES workspaces(id
 ALTER TABLE agent_handoffs ALTER COLUMN workspace_id SET NOT NULL;
 -- Aggiungi un indice per performance
 CREATE INDEX IF NOT EXISTS idx_agent_handoffs_workspace_id ON agent_handoffs(workspace_id);
+
+
+-- Funzione per aggiornare timestamp (NECESSARIA PRIMA DEI TRIGGER)
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE NOT NULL,
+    agent_id UUID REFERENCES agents(id) ON DELETE SET NULL,
+    assigned_to_role TEXT,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    priority TEXT NOT NULL DEFAULT 'medium',
+    parent_task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    depends_on_task_ids UUID[],
+    estimated_effort_hours FLOAT,
+    deadline TIMESTAMP WITH TIME ZONE,
+    context_data JSONB, -- Usare JSONB per flessibilità e indicizzazione campi interni
+    result JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+CREATE INDEX IF NOT EXISTS idx_tasks_workspace_id ON tasks(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_agent_id ON tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to_role ON tasks(assigned_to_role);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);
+-- Per depends_on_task_ids, se fai query frequenti per cercare task che dipendono da un ID specifico:
+CREATE INDEX IF NOT EXISTS idx_tasks_depends_on_gin ON tasks USING GIN (depends_on_task_ids);
+-- Per context_data, se fai query sui campi interni:
+CREATE INDEX IF NOT EXISTS idx_tasks_context_data_gin ON tasks USING GIN (context_data);
+
+-- Agent Handoffs (MODIFICATO per includere workspace_id come da tuo schema)
+CREATE TABLE IF NOT EXISTS agent_handoffs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE NOT NULL, -- Assicurato NOT NULL
+    source_agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
+    target_agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_agent_handoffs_workspace_id ON agent_handoffs(workspace_id);

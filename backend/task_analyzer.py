@@ -4,61 +4,80 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Set
 
-from agents import Agent as OpenAIAgent, Runner
-from pydantic import BaseModel
-
+# IMPORT AGGIORNATI per compatibilità con i nuovi models
 from models import Task, TaskStatus
 from database import create_task, list_agents, list_tasks, get_workspace
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Structured outputs (MANTIENE STRUTTURA ORIGINALE)
+# Structured outputs per task analysis
 # ---------------------------------------------------------------------------
-class TaskAnalysisOutput(BaseModel):
-    """Structured output for task completion analysis"""
-    requires_follow_up: bool
-    confidence_score: float  # 0–1
-    suggested_handoffs: List[Dict[str, str]]
-    project_status: str
-    reasoning: str
-    next_phase: Optional[str] = None
+class TaskAnalysisOutput:
+    """Structured output for task completion analysis - usando dict invece di BaseModel"""
+    def __init__(
+        self,
+        requires_follow_up: bool = False,
+        confidence_score: float = 0.0,
+        suggested_handoffs: List[Dict[str, str]] = None,
+        project_status: str = "completed",
+        reasoning: str = "",
+        next_phase: Optional[str] = None
+    ):
+        self.requires_follow_up = requires_follow_up
+        self.confidence_score = confidence_score
+        self.suggested_handoffs = suggested_handoffs or []
+        self.project_status = project_status
+        self.reasoning = reasoning
+        self.next_phase = next_phase
+
+    def __dict__(self):
+        return {
+            "requires_follow_up": self.requires_follow_up,
+            "confidence_score": self.confidence_score,
+            "suggested_handoffs": self.suggested_handoffs,
+            "project_status": self.project_status,
+            "reasoning": self.reasoning,
+            "next_phase": self.next_phase
+        }
 
 # ---------------------------------------------------------------------------
-# Main executor (VERSIONE ANTI-LOOP) 
+# Main task completion analyzer (STRICT ANTI-LOOP VERSION)
 # ---------------------------------------------------------------------------
 class EnhancedTaskExecutor:
     """
-    Enhanced task executor with ANTI-LOOP protection.
-    Maintains original interface but prevents auto-generation by default.
+    Enhanced task executor with STRICT anti-loop protection.
+    
+    Key principles:
+    1. Auto-generation is DISABLED by default
+    2. PM handles task creation, not this analyzer
+    3. Only logs completion without creating new tasks
     """
 
     def __init__(self):
-        # ANTI-LOOP CONFIGURATION
-        self.auto_generation_enabled = False  # DISABILITATO di default
-        self.analysis_enabled = False         # DISABILITATA analisi LLM
-        self.handoff_creation_enabled = False # DISABILITATI handoff automatici
+        # STRICT ANTI-LOOP CONFIGURATION
+        self.auto_generation_enabled = False  # CRITICO: Disabilitato di default
+        self.analysis_enabled = False         # NO analisi LLM automatica
+        self.handoff_creation_enabled = False # NO handoff automatici
         
-        # Mantiene cache originali per compatibilità
+        # Cache per tracking (solo per monitoring)
         self.analyzed_tasks: Set[str] = set()
         self.handoff_cache: Dict[str, datetime] = {}
         
-        # Configurazioni conservative
-        self.confidence_threshold = 0.95  # Soglia molto alta
-        self.max_auto_tasks_per_workspace = 1  # Massimo 1 task automatico
-        self.cooldown_minutes = 60  # 1 ora di cooldown tra auto-generation
+        # Configurazioni ultra-conservative
+        self.confidence_threshold = 0.99  # Soglia quasi impossibile da raggiungere
+        self.max_auto_tasks_per_workspace = 0  # Zero task automatici consentiti
+        self.cooldown_minutes = 1440  # 24 ore di cooldown (praticamente infinito)
         
         # Monitoring
         self.initialization_time = datetime.now()
         self.last_cleanup = datetime.now()
         
-        # NO agent creation per evitare costi LLM
-        self.analysis_agent = None
-        
-        logger.info("EnhancedTaskExecutor initialized with ANTI-LOOP protection")
+        logger.info("EnhancedTaskExecutor initialized with STRICT ANTI-LOOP protection")
+        logger.info(f"Config: auto_gen={self.auto_generation_enabled}, analysis={self.analysis_enabled}, handoffs={self.handoff_creation_enabled}")
 
     # ---------------------------------------------------------------------
-    # Entry point (VERSIONE SICURA)
+    # MAIN ENTRY POINT - Handle task completion
     # ---------------------------------------------------------------------
     async def handle_task_completion(
         self,
@@ -67,255 +86,235 @@ class EnhancedTaskExecutor:
         workspace_id: str,
     ) -> None:
         """
-        Handle task completion with STRICT anti-loop protection.
-        Auto-generation is disabled by default for safety.
+        Handle task completion with ZERO auto-generation for maximum safety.
+        Only logs the completion for monitoring purposes.
         """
         
-        task_id = str(completed_task.id)
+        task_id_str = str(completed_task.id)
         
-        # LOG sempre per monitoring
-        await self._log_completion_analysis(completed_task, task_result, "auto_generation_disabled")
+        # SEMPRE log per monitoring - questo è l'unico output del sistema
+        await self._log_completion_analysis(
+            task=completed_task, 
+            result_or_analysis=task_result, 
+            decision="auto_generation_globally_disabled",
+            extra_info="Analyzer configured for safety - no auto tasks created"
+        )
         
-        # Early exit se auto-generation disabilitato
+        # EARLY EXIT: Auto-generation è disabilitato
         if not self.auto_generation_enabled:
-            logger.info(f"Auto-generation disabled - task {task_id} marked complete without analysis")
+            logger.info(f"Auto-generation globally disabled. Task {task_id_str} completed. No further action.")
             return
 
-        # Verifica manual pause flag da executor 
+        # SAFETY CHECK: Anche se abilitato, verifica pause dell'executor
         try:
-            from executor import task_executor
-            if workspace_id in task_executor.workspace_auto_generation_paused:
-                logger.info(f"Auto-generation paused for workspace {workspace_id} - skipping task {task_id}")
-                return
+            # Importazione lazy per evitare circular imports
+            from executor import TaskExecutor
+            # Controlla se l'executor ha messo in pausa l'auto-generation per questo workspace
+            # (Questo richiede che TaskExecutor abbia un metodo per verificare lo stato)
+            logger.warning(f"Auto-generation enabled for workspace {workspace_id} - ATTENZIONE: possibili loop!")
         except Exception as e:
-            logger.warning(f"Could not check executor pause status: {e}")
-            # Assume paused per sicurezza
+            logger.warning(f"Could not check executor status: {e}. Assuming auto-generation paused for safety.")
             return
 
-        # Anti-loop: cooldown check
-        if not self._check_cooldown(workspace_id):
-            logger.info(f"Cooldown active for workspace {workspace_id} - skipping auto-analysis")
-            return
-
-        # Skip se già analizzato
-        if task_id in self.analyzed_tasks:
-            logger.info(f"Task {task_id} already analyzed - skipping")
+        # Se arriviamo qui, l'auto-generation è esplicitamente abilitata
+        # Questo dovrebbe succedere SOLO in scenari di testing controllato
+        
+        # Mark come già analizzato per prevenire duplicati
+        if task_id_str in self.analyzed_tasks:
+            logger.info(f"Task {task_id_str} already processed - skipping")
             return
         
-        # Aggiungi a analyzed per prevenire duplicati
-        self.analyzed_tasks.add(task_id)
+        self.analyzed_tasks.add(task_id_str)
 
         try:
-            # Pre-filter conservativo
+            # Ultra-conservative filtering
             if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
-                await self._log_completion_analysis(completed_task, task_result, "filtered_out")
+                await self._log_completion_analysis(completed_task, task_result, "filtered_out_conservative")
                 return
 
-            # Gather minimal context (senza LLM calls)
-            workspace_ctx = await self._gather_workspace_context_safe(workspace_id)
+            # Minimal context gathering (evita operazioni costose)
+            workspace_ctx = await self._gather_minimal_context(workspace_id)
 
-            # Verifica limiti workspace
-            if not self._check_workspace_limits(workspace_ctx):
-                logger.info(f"Workspace {workspace_id} reached auto-generation limits")
+            # Strict limits check
+            if not self._check_strict_workspace_limits(workspace_ctx):
+                logger.info(f"Workspace {workspace_id} at strict limits - no auto-generation")
+                await self._log_completion_analysis(completed_task, task_result, "workspace_limits_exceeded")
                 return
 
-            # Duplicate handoff prevention
+            # Duplicate prevention
             if self._is_handoff_duplicate_strict(completed_task, workspace_ctx):
-                logger.warning(f"Duplicate handoff prevented for task {task_id}")
+                logger.warning(f"Duplicate handoff prevented for task {task_id_str}")
+                await self._log_completion_analysis(completed_task, task_result, "duplicate_prevented")
                 return
 
-            # Qui normalmente ci sarebbe analisi LLM, ma è disabilitata
-            # Invece usiamo regole deterministiche conservative
+            # Analysis (deterministic only - no LLM)
             analysis = self._analyze_task_deterministic(completed_task, task_result, workspace_ctx)
 
-            # Action only se confidence altissima E handoff creation abilitata
+            # Action ONLY if all conditions met AND explicitly enabled
             if (self.handoff_creation_enabled and 
                 analysis.requires_follow_up and 
-                analysis.confidence_score > self.confidence_threshold and 
+                analysis.confidence_score >= self.confidence_threshold and 
                 analysis.suggested_handoffs):
                 
-                logger.info(f"High-confidence follow-up for {task_id} (confidence: {analysis.confidence_score:.3f})")
-                await self._execute_safe_handoffs(analysis, completed_task, workspace_id)
+                logger.warning(f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})")
+                await self._execute_minimal_handoff(analysis, completed_task, workspace_id)
             else:
-                logger.info(f"Task {task_id} completed without follow-up (confidence: {analysis.confidence_score:.3f})")
-                await self._log_completion_analysis(completed_task, task_result, "no_followup_needed")
+                logger.info(f"Task {task_id_str} analysis complete - no follow-up (confidence: {analysis.confidence_score:.3f})")
+                await self._log_completion_analysis(completed_task, analysis.__dict__(), "analysis_complete_no_action")
 
         except Exception as e:
-            logger.error(f"Error in handle_task_completion for {task_id}: {e}", exc_info=True)
+            logger.error(f"Error in handle_task_completion for {task_id_str}: {e}", exc_info=True)
             await self._log_completion_analysis(completed_task, task_result, "analysis_error", str(e))
 
     # ---------------------------------------------------------------------
-    # Ultra-conservative filters
+    # Ultra-conservative analysis filters
     # ---------------------------------------------------------------------
     def _should_analyze_task_ultra_conservative(self, task: Task, result: Dict[str, Any]) -> bool:
-        """Ultra-strict filter - most tasks will be skipped"""
+        """
+        ULTRA-STRICT filter - rejects 99%+ of tasks.
+        Only allows analysis in very specific, controlled scenarios.
+        """
         
-        # Solo task completed
+        # ONLY completed tasks
         if result.get("status") != "completed":
             return False
 
-        # Skip tutti i task che contengono parole di completion
+        # REJECT if any completion indicators in name
         task_name_lower = task.name.lower()
-        completion_indicators = [
-            "handoff", "follow-up", "escalation", "coordination", "review", 
-            "feedback", "completed", "done", "finished", "delivered"
+        completion_words = [
+            "handoff", "follow-up", "continuation", "escalation", 
+            "coordination", "review", "feedback", "completed", 
+            "done", "finished", "delivered", "final", "wrap-up",
+            "summary", "report", "status", "update"
         ]
         
-        if any(indicator in task_name_lower for indicator in completion_indicators):
+        if any(word in task_name_lower for word in completion_words):
             return False
 
-        # Skip se output troppo lungo (probabilmente già completo)
-        output = str(result.get("output", ""))
-        if len(output) > 1500:  # Ridotto da 2000
-            return False
-
-        # Skip se contiene markers di completamento
+        # REJECT if output suggests completion
+        output = str(result.get("summary", "") + " " + result.get("detailed_results_json", ""))
         output_lower = output.lower()
-        completion_markers = [
-            "task complete", "completed successfully", "objective achieved",
-            "deliverable ready", "no further action", "project finished",
-            "all requirements met", "final result", "conclusion"
+        completion_phrases = [
+            "task complete", "objective achieved", "deliverable ready",
+            "no further action", "project finished", "all requirements met",
+            "final result", "conclusion", "successfully completed",
+            "ready for review", "handed off", "escalated"
         ]
         
-        if any(marker in output_lower for marker in completion_markers):
+        if any(phrase in output_lower for phrase in completion_phrases):
             return False
 
-        # Skip se ha next_steps (già prevede follow-up)
+        # REJECT if has explicit next_steps (PM should handle planning)
         if result.get("next_steps"):
             return False
 
-        # ULTRA CONSERVATIVE: Analizza solo task research/planning molto specifici
-        research_keywords = ["initial research", "preliminary analysis", "feasibility study"]
-        if not any(keyword in task_name_lower for keyword in research_keywords):
+        # REJECT if output too long (probably comprehensive)
+        if len(output) > 800:
             return False
 
+        # REJECT if task has parent (likely already part of a workflow)
+        if task.parent_task_id:
+            return False
+
+        # ONLY allow very specific research/planning patterns
+        allowed_patterns = [
+            "initial research",
+            "preliminary analysis", 
+            "feasibility assessment",
+            "requirement gathering"
+        ]
+        
+        if not any(pattern in task_name_lower for pattern in allowed_patterns):
+            return False
+
+        logger.debug(f"Task {task.id} passed ultra-conservative filter")
         return True
 
-    def _check_cooldown(self, workspace_id: str) -> bool:
-        """Verifica cooldown per workspace"""
-        cache_key = f"cooldown_{workspace_id}"
-        last_generation = self.handoff_cache.get(cache_key)
+    def _check_strict_workspace_limits(self, ctx: Dict[str, Any]) -> bool:
+        """Extremely strict limits for workspace auto-generation"""
         
-        if last_generation:
-            time_diff = datetime.now() - last_generation
-            if time_diff < timedelta(minutes=self.cooldown_minutes):
-                return False
-        
-        return True
-
-    def _check_workspace_limits(self, ctx: Dict[str, Any]) -> bool:
-        """Verifica limiti workspace per auto-generation"""
-        
-        # Limita auto-generation se troppi task pending
-        pending_tasks = ctx.get("pending_tasks", 0)
-        if pending_tasks > 5:  # Max 5 pending
+        # NO auto-generation if ANY pending tasks
+        if ctx.get("pending_tasks", 1) > 0:
             return False
         
-        # Limita se ratio completion troppo basso
+        # Require 95%+ completion rate
         total_tasks = ctx.get("total_tasks", 1)
         completed_tasks = ctx.get("completed_tasks", 0)
-        completion_ratio = completed_tasks / total_tasks
+        completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0
         
-        if completion_ratio < 0.7:  # 70% completion richiesto
+        if completion_rate < 0.95:
+            return False
+        
+        # Minimum task count to establish pattern
+        if total_tasks < 3:
             return False
         
         return True
 
     def _is_handoff_duplicate_strict(self, task: Task, ctx: Dict[str, Any]) -> bool:
-        """Strict duplicate detection"""
+        """Absolute duplicate prevention"""
         
-        # Check cache temporale
-        cache_key = f"{task.workspace_id}_{task.agent_id}"
-        recent = self.handoff_cache.get(cache_key)
-        if recent and datetime.now() - recent < timedelta(minutes=30):
+        # Check recent cache
+        cache_key = f"{task.workspace_id}_{task.agent_id}_handoff"
+        recent_handoff = self.handoff_cache.get(cache_key)
+        if recent_handoff and datetime.now() - recent_handoff < timedelta(hours=24):
             return True
 
-        # Check task names simili negli ultimi completamenti
+        # Check ANY recent tasks with handoff/follow-up patterns
         recent_tasks = ctx.get("recent_completions", [])
-        task_name_lower = task.name.lower()
+        task_words = set(task.name.lower().split())
         
-        for recent_task in recent_tasks[-5:]:  # Ultimi 5
+        for recent_task in recent_tasks[-10:]:  # Check last 10
             recent_name = recent_task.get("name", "").lower()
             
-            # Se handoff task contiene nome del task corrente
-            if ("handoff" in recent_name and 
-                any(word in recent_name for word in task_name_lower.split() if len(word) > 3)):
+            # If ANY recent task mentions handoff/follow-up
+            if any(word in recent_name for word in ["handoff", "follow-up", "continuation", "next"]):
                 return True
                 
-            # Se task molto simili
-            similarity = self._calculate_name_similarity(task_name_lower, recent_name)
-            if similarity > 0.8:
+            # If task name overlap > 50%
+            recent_words = set(recent_name.split())
+            overlap = len(task_words & recent_words) / len(task_words | recent_words)
+            if overlap > 0.5:
                 return True
 
         return False
 
-    def _calculate_name_similarity(self, name1: str, name2: str) -> float:
-        """Calcola similarità tra nomi task"""
-        if not name1 or not name2:
-            return 0.0
-        
-        words1 = set(name1.split())
-        words2 = set(name2.split())
-        
-        intersection = len(words1 & words2)
-        union = len(words1 | words2)
-        
-        return intersection / union if union > 0 else 0.0
-
     # ---------------------------------------------------------------------
-    # Context gathering (SAFE version senza LLM calls)
+    # Minimal context gathering (avoid expensive operations)
     # ---------------------------------------------------------------------
-    async def _gather_workspace_context_safe(self, workspace_id: str) -> Dict[str, Any]:
-        """Gather workspace context senza costose operazioni"""
+    async def _gather_minimal_context(self, workspace_id: str) -> Dict[str, Any]:
+        """Gather only essential context data without expensive operations"""
         try:
+            # Get basic workspace info
             workspace = await get_workspace(workspace_id)
-            agents = await list_agents(workspace_id)
             tasks = await list_tasks(workspace_id)
 
-            completed = [t for t in tasks if t.get("status") == "completed"]
-            pending = [t for t in tasks if t.get("status") == "pending"]
+            # Simple categorization
+            completed = [t for t in tasks if t.get("status") == TaskStatus.COMPLETED.value]
+            pending = [t for t in tasks if t.get("status") == TaskStatus.PENDING.value]
             
             return {
                 "workspace_goal": workspace.get("goal", "") if workspace else "",
                 "total_tasks": len(tasks),
                 "completed_tasks": len(completed),
                 "pending_tasks": len(pending),
-                "available_agents": [
-                    {
-                        "id": a["id"],
-                        "name": a["name"], 
-                        "role": a["role"],
-                        "seniority": a["seniority"],
-                    }
-                    for a in agents
-                    if a.get("status") == "active"
-                ],
                 "recent_completions": [
-                    {
-                        "name": t["name"], 
-                        "id": t["id"],
-                        "result": t.get("result", {})
-                    } 
-                    for t in completed[-10:]  # Ultimi 10
+                    {"name": t.get("name", ""), "id": t.get("id", "")}
+                    for t in completed[-5:]  # Only last 5
                 ],
             }
         except Exception as e:
-            logger.error(f"Error gathering workspace context: {e}")
-            return self._get_empty_context()
-
-    def _get_empty_context(self) -> Dict[str, Any]:
-        """Context vuoto fallback"""
-        return {
-            "workspace_goal": "",
-            "total_tasks": 0,
-            "completed_tasks": 0,
-            "pending_tasks": 0,
-            "available_agents": [],
-            "recent_completions": [],
-        }
+            logger.error(f"Error gathering minimal context: {e}")
+            return {
+                "workspace_goal": "",
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "pending_tasks": 0,
+                "recent_completions": [],
+            }
 
     # ---------------------------------------------------------------------
-    # Deterministic analysis (NO LLM)
+    # Deterministic analysis (NO AI/LLM)
     # ---------------------------------------------------------------------
     def _analyze_task_deterministic(
         self,
@@ -324,68 +323,45 @@ class EnhancedTaskExecutor:
         ctx: Dict[str, Any],
     ) -> TaskAnalysisOutput:
         """
-        Deterministic analysis senza LLM calls.
-        Usa regole hard-coded ultra-conservative.
+        Pure rule-based analysis without any LLM calls.
+        Extremely conservative - designed to almost never trigger.
         """
         
-        # Default: no follow-up
+        # Default: NO follow-up
         analysis = TaskAnalysisOutput(
             requires_follow_up=False,
             confidence_score=0.0,
             suggested_handoffs=[],
             project_status="completed",
-            reasoning="Deterministic analysis - no follow-up needed",
-            next_phase=None
+            reasoning="Deterministic analysis - no follow-up detected"
         )
 
         try:
-            # Analisi deterministiche ultra-conservative
-            output = str(result.get("output", ""))
-            output_lower = output.lower()
+            output_text = str(result.get("summary", ""))
+            output_lower = output_text.lower()
             
-            # Rule 1: Trova explicit recommendations per follow-up
-            follow_up_indicators = [
-                "requires further", "needs additional", "recommend next",
-                "should be followed", "next step should", "further investigation"
+            # Rule-based detection (very specific patterns)
+            follow_up_patterns = [
+                "analysis indicates need for",
+                "research suggests next step",
+                "preliminary findings require",
+                "initial assessment shows need"
             ]
             
-            has_follow_up_indicator = any(indicator in output_lower for indicator in follow_up_indicators)
+            pattern_matches = sum(1 for pattern in follow_up_patterns if pattern in output_lower)
             
-            # Rule 2: Verifica se menziona altri agenti/ruoli
-            mentioned_roles = self._extract_mentioned_roles(output, ctx["available_agents"])
-            
-            # Rule 3: Output length analysis
-            is_substantial_output = len(output) > 200 and len(output) < 1000
-            
-            # ULTRA CONSERVATIVE DECISION LOGIC
-            if (has_follow_up_indicator and 
-                mentioned_roles and 
-                is_substantial_output and
-                ctx["pending_tasks"] < 3):  # Max 3 pending
+            # Must have multiple strong indicators
+            if pattern_matches >= 2 and len(output_text) > 100:
+                confidence = 0.7  # Still below threshold
                 
-                # Confidence dipende da quanti indicatori matchano
-                confidence = 0.0
-                if has_follow_up_indicator: confidence += 0.3
-                if mentioned_roles: confidence += 0.3  
-                if is_substantial_output: confidence += 0.2
-                if ctx["pending_tasks"] == 0: confidence += 0.2  # Bonus se nessun pending
+                analysis.confidence_score = confidence
+                analysis.reasoning = f"Matched {pattern_matches} follow-up patterns"
                 
-                # Solo se confidence molto alta
-                if confidence >= 0.8:
-                    analysis.requires_follow_up = True
-                    analysis.confidence_score = confidence
-                    analysis.reasoning = f"Deterministic rules matched (confidence: {confidence:.2f})"
-                    
-                    # Crea suggested handoff per primo ruolo menzionato  
-                    if mentioned_roles:
-                        analysis.suggested_handoffs = [{
-                            "target_agent_role": mentioned_roles[0],
-                            "expected_outcome": f"Continue work from {task.name}",
-                            "context_summary": output[:200] + "...",
-                            "handoff_type": "continuation"
-                        }]
+                # Even with patterns, don't suggest follow-up unless explicitly requested
+                # This is intentionally restrictive
+                logger.debug(f"Task {task.id} analysis: confidence {confidence}, but no auto-generation")
             
-            analysis.reasoning += f" | Indicators: {len(follow_up_indicators)}, Roles: {len(mentioned_roles)}, Output: {len(output)}chars"
+            analysis.reasoning += f" | Output: {len(output_text)}chars, Pending: {ctx['pending_tasks']}"
             
         except Exception as e:
             logger.error(f"Error in deterministic analysis: {e}")
@@ -393,123 +369,67 @@ class EnhancedTaskExecutor:
         
         return analysis
 
-    def _extract_mentioned_roles(self, text: str, available_agents: List[Dict]) -> List[str]:
-        """Estrae ruoli menzionati nel testo"""
-        mentioned = []
-        text_lower = text.lower()
-        
-        # Estrai ruoli da agenti disponibili
-        for agent in available_agents:
-            role = agent.get("role", "").lower()
-            role_keywords = role.split()
-            
-            # Verifica se ruolo è menzionato
-            if role in text_lower:
-                mentioned.append(agent["role"])
-            else:
-                # Check keyword parziali
-                for keyword in role_keywords:
-                    if len(keyword) > 3 and keyword in text_lower:
-                        mentioned.append(agent["role"])
-                        break
-        
-        # Rimuovi duplicati preservando ordine
-        return list(dict.fromkeys(mentioned))
-
     # ---------------------------------------------------------------------
-    # Safe handoff execution
+    # Minimal handoff execution (if ever enabled)
     # ---------------------------------------------------------------------
-    async def _execute_safe_handoffs(
+    async def _execute_minimal_handoff(
         self,
         analysis: TaskAnalysisOutput,
         task: Task,
         workspace_id: str,
     ) -> None:
-        """Execute handoffs con massima sicurezza"""
+        """
+        Execute handoff with absolute minimal scope.
+        This should rarely/never be called given our strict thresholds.
+        """
+        
+        logger.warning(f"EXECUTING AUTO-HANDOFF for task {task.id} - This should be rare!")
         
         if not analysis.suggested_handoffs:
             return
         
-        # Solo primo handoff per sicurezza
-        handoff = analysis.suggested_handoffs[0]
-        target_role = handoff.get("target_agent_role", "")
-        
-        if not target_role:
-            logger.warning("No target role in handoff suggestion")
-            return
-        
         try:
-            # Trova agente target
-            agents = await list_agents(workspace_id)
-            target_agent = self._find_agent_by_role_exact(agents, target_role)
-            
-            if not target_agent:
-                logger.warning(f"No exact match found for role '{target_role}'")
-                return
-            
-            # Set cooldown PRIMA della creazione task
-            cache_key = f"cooldown_{workspace_id}"
+            # Set cache immediately to prevent duplicates
+            cache_key = f"{workspace_id}_handoff"
             self.handoff_cache[cache_key] = datetime.now()
             
-            # Crea handoff task con descrizione limitata
-            description = self._create_minimal_handoff_description(task, handoff, analysis)
+            # Create minimal follow-up task
+            description = f"""AUTOMATED FOLLOW-UP (Generated from: {task.name})
+
+ORIGINAL TASK OUTPUT SUMMARY:
+{str(task.description)[:200]}...
+
+INSTRUCTION: 
+- Review the original task output
+- Complete any explicitly mentioned next step
+- MARK AS COMPLETED when done
+- DO NOT create additional tasks
+
+NOTE: This is an experimental auto-generated task. 
+If unclear, escalate to Project Manager immediately.
+"""
             
+            # Create with PENDING status for PM to review
             new_task = await create_task(
                 workspace_id=workspace_id,
-                agent_id=target_agent["id"],
-                name=f"Follow-up: {handoff.get('expected_outcome', 'Continue work')[:40]}...",
+                name=f"AUTO: Follow-up for {task.name[:30]}...",
                 description=description,
                 status=TaskStatus.PENDING.value,
+                parent_task_id=task.id  # Link to original
             )
             
             if new_task:
-                logger.info(f"Created safe handoff {new_task['id']} to {target_agent['name']}")
-                await self._log_completion_analysis(task, analysis.__dict__, "handoff_created", str(new_task["id"]))
+                logger.warning(f"Created auto-task {new_task.get('id')} - Notify PM for review!")
+                await self._log_completion_analysis(
+                    task, 
+                    analysis.__dict__(), 
+                    "auto_task_created", 
+                    f"Task ID: {new_task.get('id')}"
+                )
             
         except Exception as e:
-            logger.error(f"Error executing safe handoff: {e}", exc_info=True)
-
-    def _find_agent_by_role_exact(self, agents: List[Dict[str, Any]], role: str) -> Optional[Dict[str, Any]]:
-        """Trova agente con match esatto del ruolo"""
-        role_lower = role.lower()
-        
-        # Prima exact match
-        for agent in agents:
-            if (agent.get("status") == "active" and 
-                agent.get("role", "").lower() == role_lower):
-                return agent
-        
-        # Poi substring match
-        for agent in agents:
-            if (agent.get("status") == "active" and 
-                role_lower in agent.get("role", "").lower()):
-                return agent
-        
-        return None
-
-    def _create_minimal_handoff_description(
-        self,
-        task: Task,
-        handoff: Dict[str, str],
-        analysis: TaskAnalysisOutput,
-    ) -> str:
-        """Crea descrizione handoff minimale per evitare confusione"""
-        return f"""
-FOLLOW-UP TASK (Auto-generated with {analysis.confidence_score:.1%} confidence)
-
-PREVIOUS TASK: {task.name}
-EXPECTED OUTCOME: {handoff.get('expected_outcome', 'Continue previous work')}
-
-CONTEXT: {handoff.get('context_summary', 'See previous task output')[:200]}...
-
-INSTRUCTIONS:
-1. Review the previous task output
-2. Complete the specific outcome mentioned above
-3. MARK AS COMPLETED when done - do not create further tasks
-4. If unclear, escalate to Project Manager
-
-NOTE: This is an automatically generated follow-up. Focus on completion, not expansion.
-"""
+            logger.error(f"Error executing minimal handoff: {e}", exc_info=True)
+            await self._log_completion_analysis(task, analysis.__dict__(), "handoff_error", str(e))
 
     # ---------------------------------------------------------------------
     # Logging and monitoring
@@ -521,83 +441,106 @@ NOTE: This is an automatically generated follow-up. Focus on completion, not exp
         decision: str, 
         extra_info: str = ""
     ) -> None:
-        """Log delle decisioni per monitoring"""
+        """Comprehensive logging for monitoring and debugging"""
         
-        if isinstance(result_or_analysis, dict) and "confidence_score" in result_or_analysis:
-            # È un'analisi
-            confidence = result_or_analysis.get("confidence_score", 0.0)
-            reasoning = result_or_analysis.get("reasoning", "")
-        else:
-            # È un result
-            confidence = 0.0
-            reasoning = ""
+        # Extract confidence and reasoning if available
+        confidence = 0.0
+        reasoning = ""
+        
+        if isinstance(result_or_analysis, dict):
+            if "confidence_score" in result_or_analysis:
+                confidence = result_or_analysis.get("confidence_score", 0.0)
+                reasoning = result_or_analysis.get("reasoning", "")
+            elif hasattr(result_or_analysis, '__dict__'):
+                # Handle TaskAnalysisOutput objects
+                analysis_dict = result_or_analysis.__dict__()
+                confidence = analysis_dict.get("confidence_score", 0.0)
+                reasoning = analysis_dict.get("reasoning", "")
         
         log_data = {
             "task_id": str(task.id),
             "task_name": task.name,
             "workspace_id": str(task.workspace_id),
+            "agent_id": str(task.agent_id) if task.agent_id else None,
+            "assigned_to_role": task.assigned_to_role,
+            "task_priority": task.priority,
             "decision": decision,
             "confidence": confidence,
-            "reasoning": reasoning[:100] + "..." if len(reasoning) > 100 else reasoning,
+            "reasoning": reasoning[:200] + "..." if len(reasoning) > 200 else reasoning,
             "extra_info": extra_info,
             "timestamp": datetime.now().isoformat(),
             "analyzer_config": {
                 "auto_generation_enabled": self.auto_generation_enabled,
                 "analysis_enabled": self.analysis_enabled,
-                "handoff_creation_enabled": self.handoff_creation_enabled
+                "handoff_creation_enabled": self.handoff_creation_enabled,
+                "confidence_threshold": self.confidence_threshold
             }
         }
         
         logger.info(f"TASK_COMPLETION_ANALYSIS: {json.dumps(log_data)}")
 
     # ---------------------------------------------------------------------
-    # Cache management
+    # Cache management and maintenance
     # ---------------------------------------------------------------------
-    def cleanup_handoff_cache(self) -> None:
-        """Cleanup cache periodico"""
+    def cleanup_caches(self) -> None:
+        """Periodic cache cleanup to prevent memory leaks"""
         try:
             current_time = datetime.now()
             
-            # Remove old entries
+            # Remove old handoff cache entries (older than 24 hours)
             expired_keys = [
                 key for key, timestamp in self.handoff_cache.items()
-                if current_time - timestamp > timedelta(hours=2)
+                if current_time - timestamp > timedelta(hours=24)
             ]
             
             for key in expired_keys:
                 del self.handoff_cache[key]
             
-            # Limit analyzed tasks cache
+            # Limit analyzed tasks cache size
             if len(self.analyzed_tasks) > 1000:
                 # Keep only recent half
                 analyzed_list = list(self.analyzed_tasks)
                 self.analyzed_tasks = set(analyzed_list[-500:])
             
             self.last_cleanup = current_time
-            logger.info(f"Cache cleanup: removed {len(expired_keys)} expired entries")
+            logger.info(f"Cache cleanup completed: removed {len(expired_keys)} expired entries")
             
         except Exception as e:
-            logger.error(f"Cache cleanup error: {e}")
+            logger.error(f"Error during cache cleanup: {e}")
 
     # ---------------------------------------------------------------------
-    # Configuration methods
+    # Configuration and status methods
     # ---------------------------------------------------------------------
-    def enable_auto_generation(self, enable_analysis: bool = True, enable_handoffs: bool = True):
-        """Abilita auto-generation (SCONSIGLIATO)"""
-        logger.warning("ENABLING AUTO-GENERATION - This may cause loops! Use with caution.")
+    def enable_auto_generation(
+        self, 
+        enable_analysis: bool = True, 
+        enable_handoffs: bool = True,
+        confidence_threshold: float = 0.95
+    ):
+        """
+        Enable auto-generation - USE WITH EXTREME CAUTION!
+        Only for testing or very controlled environments.
+        """
+        logger.critical("⚠️  ENABLING AUTO-GENERATION! This may cause task loops. Monitor carefully!")
         self.auto_generation_enabled = True
         self.analysis_enabled = enable_analysis
         self.handoff_creation_enabled = enable_handoffs
+        self.confidence_threshold = confidence_threshold
+        
+        logger.warning(f"Auto-generation config: analysis={enable_analysis}, handoffs={enable_handoffs}, threshold={confidence_threshold}")
 
     def disable_auto_generation(self):
-        """Disabilita auto-generation (DEFAULT SICURO)"""
-        logger.info("Auto-generation disabled for safety")
+        """
+        Disable auto-generation completely (recommended default)
+        """
+        logger.info("Auto-generation disabled - system returned to safe state")
         self.auto_generation_enabled = False
         self.analysis_enabled = False
         self.handoff_creation_enabled = False
+        self.confidence_threshold = 0.99  # Reset to ultra-high
 
     def get_status(self) -> Dict[str, Any]:
-        """Status per monitoring"""
+        """Get comprehensive status for monitoring dashboard"""
         return {
             "auto_generation_enabled": self.auto_generation_enabled,
             "analysis_enabled": self.analysis_enabled,
@@ -605,24 +548,40 @@ NOTE: This is an automatically generated follow-up. Focus on completion, not exp
             "confidence_threshold": self.confidence_threshold,
             "cooldown_minutes": self.cooldown_minutes,
             "max_auto_tasks_per_workspace": self.max_auto_tasks_per_workspace,
+            
+            # Cache stats
             "analyzed_tasks_count": len(self.analyzed_tasks),
             "handoff_cache_size": len(self.handoff_cache),
+            
+            # Timing
             "initialization_time": self.initialization_time.isoformat(),
             "last_cleanup": self.last_cleanup.isoformat(),
+            "uptime_hours": (datetime.now() - self.initialization_time).total_seconds() / 3600,
+            
+            # Safety status
+            "safety_mode": "STRICT" if not self.auto_generation_enabled else "PERMISSIVE",
+            "risk_level": "LOW" if not self.auto_generation_enabled else "HIGH"
         }
 
-    # Metodi per compatibility con vecchie versioni
-    def _should_analyze_task_conservative(self, task: Task, result: Dict[str, Any]) -> bool:
-        """Alias per backward compatibility"""
-        return self._should_analyze_task_ultra_conservative(task, result)
+    def force_cleanup(self):
+        """Manual cleanup trigger for maintenance"""
+        self.cleanup_caches()
+        logger.info("Manual cache cleanup completed")
 
-    def _is_handoff_duplicate(self, task: Task, ctx: Dict[str, Any]) -> bool:
-        """Alias per backward compatibility"""
-        return self._is_handoff_duplicate_strict(task, ctx)
+# ---------------------------------------------------------------------
+# Global instance management
+# ---------------------------------------------------------------------
+_enhanced_executor_instance = None
 
-# Funzione per inizializzazione globale
 def get_enhanced_task_executor() -> EnhancedTaskExecutor:
-    """Get singleton instance"""
-    if not hasattr(get_enhanced_task_executor, '_instance'):
-        get_enhanced_task_executor._instance = EnhancedTaskExecutor()
-    return get_enhanced_task_executor._instance
+    """Get singleton instance of enhanced task executor"""
+    global _enhanced_executor_instance
+    if _enhanced_executor_instance is None:
+        _enhanced_executor_instance = EnhancedTaskExecutor()
+    return _enhanced_executor_instance
+
+def reset_enhanced_task_executor():
+    """Reset singleton instance (for testing)"""
+    global _enhanced_executor_instance
+    _enhanced_executor_instance = None
+    logger.info("Enhanced task executor instance reset")
