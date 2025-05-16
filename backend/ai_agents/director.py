@@ -1,595 +1,778 @@
+# backend/ai_agents/director.py
+"""DirectorAgent
+
+Genera e valida proposte di team di AI‑agents usando il paradigma tools‑within‑tools.
+Include:
+* fallback completo quando l'SDK "agents" non è disponibile
+* protezioni anti‑loop (team size, handoff, nomi univoci)
+* un'unica sorgente di costi (RATES_PER_DAY) condivisa fra estimatore e designer
+* compatibilità Python 3.8 (niente `list[str]`, `set[str]`)
+* fix per 'additionalProperties' error con l'SDK agents.
+* raggruppamento skill avanzato in design_team_structure.
+"""
+
 import logging
 import os
 import re
-from typing import List, Dict, Any, Optional, Union
-from uuid import UUID
 import json
+from typing import List, Dict, Any, Optional, Union, Set # Per type hints compatibili
+from uuid import UUID
 from enum import Enum
 
-from agents import Agent as OpenAIAgent
-from agents import Runner, ModelSettings, function_tool
+# ---------------------------------------------------------------------------
+# logging first (serve prima di eventuali fallback che usano logger)
+# ---------------------------------------------------------------------------
+logger: logging.Logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Try modern SDK, fall back gracefully
+# ---------------------------------------------------------------------------
+try:
+    from agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool # type: ignore
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
+    logger.warning("Modern 'agents' SDK not found; falling back to 'openai_agents'. Advanced features may be unavailable.")
+    try:
+        # legacy sdk
+        from openai_agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool # type: ignore
+    except ImportError: # ultimate fallback (no runtime execution, but code loads)
+        logger.error("No compatible Agent SDK found. DirectorAgent will operate in degraded mode.")
+
+        class OpenAIAgent: # type: ignore
+            def __init__(self, *args, **kwargs): pass
+        class Runner: # type: ignore
+            @staticmethod
+            async def run(*_a, **_kw):
+                # Simula un oggetto RunResult con un campo final_output per evitare AttributeError
+                class DummyRunResult:
+                    final_output: str = "{}" # Fallback JSON vuoto
+                logger.error("Runner.run called but SDK is unavailable. Returning dummy error output.")
+                error_payload = {
+                    "error": "SDK unavailable",
+                    "message": "Cannot execute LLM call without 'agents' or 'openai_agents' package."
+                }
+                # Per i tool che si aspettano un JSON di un certo tipo, questo potrebbe comunque fallire
+                # ma almeno il Runner.run non dà AttributeError
+                if _kw.get("prompt", "").startswith("Analyze requirements"): # analyze_project_requirements_llm
+                    error_payload = {
+                        "required_skills": [], "expertise_areas": [], "recommended_team_size": 1,
+                        "rationale": "Fallback due to unavailable SDK."}
+                elif _kw.get("prompt", "").startswith("Generate team proposal"): # create_team_proposal
+                     error_payload = {
+                         "agents": [], "handoffs": [], "estimated_cost": {"total_estimated_cost":0},
+                         "rationale": "Fallback due to unavailable SDK."}
+
+                DummyRunResult.final_output = json.dumps(error_payload)
+                return DummyRunResult
+
+        class ModelSettings: # type: ignore
+            def __init__(self, *args, **kwargs): pass
+        def function_tool(func): # type: ignore
+            return func
+
+# ---------------------------------------------------------------------------
+# Local project imports (pydantic models)
+# ---------------------------------------------------------------------------
 from models import (
     DirectorConfig,
     DirectorTeamProposal,
     AgentCreate,
     AgentSeniority,
-    HandoffProposalCreate 
+    HandoffProposalCreate,
 )
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Module‑level constants (single source of truth)
+# ---------------------------------------------------------------------------
+MAX_TEAM_SIZE: int = 6 # hard cap per workspace
+RATES_PER_DAY: Dict[str, int] = { # EUR/giorno
+    AgentSeniority.JUNIOR.value: 8,
+    AgentSeniority.SENIOR.value: 15,
+    AgentSeniority.EXPERT.value: 25,
+}
+COST_PER_MONTH: Dict[str, int] = {k: v * 30 for k, v in RATES_PER_DAY.items()}
+MODEL_BY_SENIORITY: Dict[str, str] = {
+    AgentSeniority.JUNIOR.value: "gpt-4.1-nano",
+    AgentSeniority.SENIOR.value: "gpt-4.1-mini",
+    AgentSeniority.EXPERT.value: "gpt-4.1",
+}
+# Domain mapping per raggruppamento skill in design_team_structure
+DOMAIN_MAPPING_DESIGN: Dict[str, List[str]] = {
+    'management': ['manage', 'coordina', 'plan', 'lead', 'oversight', 'project manage'],
+    'analysis': ['analy', 'research', 'investigat', 'evaluat', 'data', 'report', 'business intelligence', 'data mining', 'statistics'],
+    'content': ['content', 'writ', 'edit', 'communicat', 'copywrit', 'translate', 'proofread', 'blog', 'article'],
+    'marketing': ['market', 'promot', 'social media', 'brand', 'campaign', 'seo', 'advertis', 'digital market'],
+    'technical': ['develop', 'implement', 'cod', 'engine', 'architect', 'design', 'test', 'qa', 'it support', 'software', 'frontend', 'backend', 'database', 'cloud', 'devops'],
+    'financial': ['financ', 'budget', 'account', 'invest', 'payroll', 'cost analy'],
+    'creative_design': ['design', 'graphic', 'ui/ux', 'visual', 'art', 'illustration', 'logo'], # 'creative' rinominato per chiarezza
+    'legal': ['legal', 'compliance', 'contract', 'regulation'],
+    'hr': ['human resource', 'recruitment', 'hr', 'talent acquisition', 'onboarding'],
+    'customer_service': ['customer service', 'support', 'client interaction', 'helpdesk'],
+    'sales': ['sales', 'business development', 'lead generation', 'negotiation'],
+    # 'other_domain' sarà usato per skill non mappate
+}
 
+
+# ---------------------------------------------------------------------------
+# Typed helper for structured output (già presente, verificata)
+# ---------------------------------------------------------------------------
 class ProjectAnalysisOutput(BaseModel):
-    required_skills: List[str] = Field(..., description="List of specific skills required for the project.")
-    expertise_areas: List[str] = Field(..., description="Key areas of expertise needed.")
-    recommended_team_size: int = Field(..., description="Recommended number of agents for the team.")
-    rationale: str = Field(..., description="Brief explanation for the recommendations.")
+    required_skills: List[str]
+    expertise_areas: List[str]
+    recommended_team_size: int
+    rationale: str
 
+# ---------------------------------------------------------------------------
+# DirectorAgent definition
+# ---------------------------------------------------------------------------
 class DirectorAgent:
-    """Director Agent that plans and manages the team of AI agents"""
+    """Crea proposte di team di AI‑agents evitando delega circolare."""
 
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            logger.info("OPENAI_API_KEY environment variable is not set (DirectorAgent __init__), but tools are static.")
+        if not os.getenv("OPENAI_API_KEY") and SDK_AVAILABLE:
+            logger.warning("OPENAI_API_KEY non impostata – i tools LLM potrebbero fallire.")
+        self.max_team_size: int = MAX_TEAM_SIZE
+        self.min_team_size: int = 1
+        self.max_coordinator_ratio: float = 0.4
 
     @staticmethod
     @function_tool
-    async def analyze_project_requirements_llm(goal: str, constraints: str) -> str:
-        logger.info(f"Director Tool: Analyzing project requirements for goal: {goal}")
+    async def analyze_project_requirements_llm(goal: str, constraints_json: str) -> str:
+        """Restituisce JSON con skill, aree di expertise, team raccomandato. 'constraints_json' DEVE essere una stringa JSON valida."""
+        logger.info("Director Tool: analyze_project_requirements_llm invoked")
         try:
-            constraints_dict = {}
-            if isinstance(constraints, str):
-                try:
-                    constraints_dict = json.loads(constraints)
-                except json.JSONDecodeError:
-                    constraints_dict = {"raw_constraints": constraints}
-            else: 
-                constraints_dict = {"raw_constraints": str(constraints)}
-
-            budget = 0
-            if 'max_amount' in constraints_dict:
-                budget = constraints_dict['max_amount']
-            elif 'budget' in constraints_dict and isinstance(constraints_dict['budget'], dict):
-                budget = constraints_dict['budget'].get('max_amount', 0)
-            elif 'budget_constraint' in constraints_dict and isinstance(constraints_dict['budget_constraint'], dict): 
-                budget = constraints_dict['budget_constraint'].get('max_amount', 0)
-            
-            analyzer_agent_instructions = f"""
-            You are a highly experienced project analyst AI. Your task is to meticulously analyze project requirements to determine the necessary skills, expertise areas, and an optimal team size.
-
-            Project Goal: "{goal}"
-            Constraints (including budget if specified): {json.dumps(constraints_dict)}
-            Budget (EUR, if available): {budget if budget > 0 else 'Not specified or 0'}
-
-            Carefully consider the following when determining the 'recommended_team_size':
-            1.  **Number and Diversity of Skills**: Identify all distinct skills truly essential for the project's success. A higher number of diverse skills often requires more specialized agents.
-            2.  **Project Complexity**: Gauge the overall complexity. Is it a straightforward task, or does it involve multiple interconnected parts, significant research, or creative generation?
-            3.  **Budget Impact**:
-                * Low Budget (e.g., < 1500 EUR): Likely supports 1-2 agents, focusing on the most critical skills.
-                * Medium Budget (e.g., 1500-5000 EUR): Can support 2-4 agents, allowing for more specialization.
-                * High Budget (e.g., > 5000 EUR): Can support 3-6+ agents, enabling a comprehensive team with diverse seniorities.
-            4.  **Agent Roles**: Each agent should have a clear, distinct primary responsibility. Avoid excessive overlap. A typical project might involve roles like coordination/management, research, content creation, technical execution, analysis, etc., depending on the goal.
-            5.  **Efficiency vs. Coverage**: Balance the need for comprehensive skill coverage with team efficiency. Too many agents can increase coordination overhead.
-            6.  **Realistic Team Sizes**:
-                * Very Simple Tasks (1-2 core skills, low budget): 1-2 agents.
-                * Standard Projects (3-5 core skills, medium budget): 2-4 agents is typical.
-                * Complex Projects (5+ core skills, high budget, significant depth needed): 3-6 agents. Only recommend 7-8 for very large, multifaceted enterprise-level initiatives with substantial budgets.
-                * **Critically evaluate if the project truly needs more than 3-4 agents.** Justify clearly if recommending more.
-
-            Your output MUST be a single, valid JSON object with the following structure:
-            {{
-              "required_skills": ["Specific Skill 1", "Specific Skill 2", ...],
-              "expertise_areas": ["Broader Expertise Area 1", "Broader Expertise Area 2", ...],
-              "recommended_team_size": X,  // An integer representing the number of agents
-              "rationale": "A detailed explanation for your skill, expertise, and team size recommendations, explicitly justifying the team size based on the factors above, especially how the chosen number of agents will cover the identified skills within the given budget."
-            }}
-
-            Example for a complex task: If 'required_skills' has 6 items and budget is high, 'recommended_team_size' could be 4 or 5. If 'required_skills' has 3 items and budget is low, 'recommended_team_size' is likely 2 or 3.
-            Do not simply default to 3 agents if more or fewer are justifiable.
-            """
-
-            analyzer_agent = OpenAIAgent(
-                name="ProjectRequirementsAnalyzerAgent",
-                instructions=analyzer_agent_instructions,
-                model="gpt-4.1", 
-                model_settings=ModelSettings(temperature=0.25) 
-            )
-            
-            run_result = await Runner.run(analyzer_agent, 
-                                          "Analyze the provided project goal and constraints, then output the required skills, expertise areas, recommended team size, and rationale as a single JSON object.")
-            
-            analysis_output_str = run_result.final_output
-            analysis_output = {}
+            constraints_dict: Dict[str, Any] = {}
             try:
-                analysis_output = json.loads(analysis_output_str)
+                constraints_dict = json.loads(constraints_json)
             except json.JSONDecodeError:
-                logger.warning(f"Failed to parse JSON directly from LLM output for project analysis. Output: {analysis_output_str}. Attempting to extract.")
-                json_match = re.search(r'({[\s\S]*})', analysis_output_str, re.DOTALL) 
-                if json_match:
-                    try:
-                        analysis_output = json.loads(json_match.group(1))
-                    except json.JSONDecodeError as e_json_extract:
-                        logger.error(f"Failed to parse extracted JSON: {e_json_extract}. Extracted: {json_match.group(1)}")
-                        raise ValueError("Failed to parse or extract JSON from LLM.") from e_json_extract
-                else:
-                    logger.error("Could not extract JSON from LLM output for project analysis. Using fallback.")
-                    raise ValueError("No JSON found in LLM output.")
+                logger.warning(f"constraints_json non era un JSON valido: {constraints_json[:100]}. Trattato come testo grezzo.")
+                constraints_dict = {"raw_constraints": constraints_json} # Fallback se non è JSON
 
-            team_size = analysis_output.get("recommended_team_size")
-            if not isinstance(team_size, int) or team_size < 1:
-                logger.warning(f"Invalid or missing recommended_team_size ('{team_size}') from LLM, defaulting to 2 or based on skills.")
-                skills_count = len(analysis_output.get("required_skills", []))
-                team_size = max(1, min(skills_count, 3)) 
-            elif team_size > 8: 
-                logger.warning(f"Recommended_team_size {team_size} is too high, capping at 8.")
-                team_size = 8
-            
-            analysis_output["recommended_team_size"] = team_size
-            analysis_output.setdefault("required_skills", [])
-            analysis_output.setdefault("expertise_areas", [])
-            analysis_output.setdefault("rationale", "Rationale not explicitly provided by LLM or parsing error occurred.")
+            budget = (
+                constraints_dict.get("max_amount")
+                or constraints_dict.get("budget", {}).get("max_amount")
+                or constraints_dict.get("budget_constraint", {}).get("max_amount")
+                or 0
+            )
+            if not isinstance(budget, (int, float)): budget = 0 # Ensure budget is numeric
 
-            logger.info(f"Project analysis for goal '{goal}': {analysis_output}")
-            return json.dumps(analysis_output)
+            instruction = f"""You are a strategic project analyst AI.
+Project Goal: \"{goal}\"
+Constraints (from JSON string): {json.dumps(constraints_dict)}
+Budget (EUR): {budget or 'Not specified'}
+
+CRITICAL GUIDELINES:
+1. Keep team size CONSERVATIVE (1-{MAX_TEAM_SIZE}).
+2. Focus on ESSENTIAL skills only – avoid redundancy. Combine related skills where possible.
+3. Consider budget strictly.
+4. Prefer versatile agents when budget is tight.
+5. Each agent must have CLEAR, NON‑OVERLAPPING responsibilities.
+
+TEAM SIZE RULE OF THUMB (EUR):
+<1500 ⇒ 1‑2 | 1500‑3000 ⇒ 2‑3 | 3000‑5000 ⇒ 3‑4 | >5000 ⇒ up to {MAX_TEAM_SIZE}
+
+Return *only* valid JSON as a string:
+{{
+  "required_skills": ["Skill 1", "Aggregated Skill 2 (e.g. Content Creation encompassing writing, editing)"],
+  "expertise_areas": ["Domain 1", "Broader Area 2"],
+  "recommended_team_size": X,
+  "rationale": "Brief explanation for skills, expertise, and team size, considering budget and skill aggregation."
+}}"""
+
+            analyzer = OpenAIAgent(
+                name="ProjectRequirementsAnalyzer",
+                instructions=instruction,
+                model="gpt-4.1",
+                model_settings=ModelSettings(temperature=0.2),
+            )
+            result = await Runner.run(analyzer, "Analyze requirements and output structured JSON.")
+            raw_output = result.final_output
             
-        except Exception as e:
-            logger.error(f"Error in analyze_project_requirements_llm: {e}", exc_info=True)
-            budget_val = 0
+            data: Dict[str, Any] = {}
+            parsed_ok = False
             try:
-                constraints_dict_fb = json.loads(constraints) if isinstance(constraints, str) else constraints if isinstance(constraints, dict) else {}
-                if 'max_amount' in constraints_dict_fb: budget_val = constraints_dict_fb['max_amount']
-                elif 'budget' in constraints_dict_fb and isinstance(constraints_dict_fb['budget'], dict): budget_val = constraints_dict_fb['budget'].get('max_amount', 0)
-                elif 'budget_constraint' in constraints_dict_fb and isinstance(constraints_dict_fb['budget_constraint'], dict): budget_val = constraints_dict_fb['budget_constraint'].get('max_amount', 0)
-            except:
-                budget_val = 1000 
+                data = json.loads(raw_output)
+                parsed_ok = True
+            except json.JSONDecodeError:
+                match = re.search(r"```json\s*({[\s\S]*?})\s*```", raw_output, re.DOTALL) or \
+                        re.search(r"({[\s\S]*})", raw_output, re.DOTALL) # DOTALL per multiline
+                if match:
+                    try:
+                        data = json.loads(match.group(1))
+                        parsed_ok = True
+                    except json.JSONDecodeError:
+                        logger.error(f"analyze_project: Could not parse extracted JSON: {match.group(1)[:200]}")
+                else:
+                    logger.error(f"analyze_project: Could not extract JSON from raw output: {raw_output[:200]}")
 
-            num_words = len(goal.split())
-            if num_words < 5: base_size = 1
-            elif num_words < 10: base_size = 2
-            elif num_words < 20: base_size = 3
-            else: base_size = 4
+            if not parsed_ok or not isinstance(data, dict) or not data.get("required_skills") : # Check for a key field
+                logger.warning("analyze_project: Fallback due to parsing error or missing critical fields.")
+                data = {
+                    "required_skills": ["project_management", "general_task_execution"],
+                    "expertise_areas": ["general_business"],
+                    "recommended_team_size": 2,
+                    "rationale": "Fallback due to parsing error or incomplete LLM output for project analysis."
+                }
+
+            ts = data.get("recommended_team_size", 2)
+            if not isinstance(ts, int) or ts < 1: ts = 1 # Min 1
+            data["recommended_team_size"] = min(ts, MAX_TEAM_SIZE) # Cap at max
+            # Ensure all fields for ProjectAnalysisOutput are present
+            data.setdefault("required_skills", ["project_management"])
+            data.setdefault("expertise_areas", ["general"])
+            data.setdefault("rationale", "Analysis completed.")
             
-            team_size_fb = min(max(2, base_size + (1 if budget_val > 2000 else 0)), 5) 
+            return json.dumps(data)
+
+        except Exception as exc:
+            logger.error(f"analyze_project_requirements_llm failed critically: {exc}", exc_info=True)
+            return json.dumps({
+                "required_skills": ["critical_fallback_skill"], "expertise_areas": ["error_handling"],
+                "recommended_team_size": 1, "rationale": f"Critical fallback in analysis tool: {exc}"})
+
+    @staticmethod
+    @function_tool
+    async def estimate_costs(team_composition_json: str, duration_days: Optional[int] = 30) -> str:
+        """Stima i costi del team. 'team_composition_json' deve essere una stringa JSON di una lista di specifiche agenti."""
+        logger.info(f"Director Tool: estimate_costs invoked for {duration_days} days.")
+        actual_duration = duration_days if isinstance(duration_days, int) and duration_days > 0 else 30
+        try:
+            agents_specs: List[Dict[str, Any]] = json.loads(team_composition_json)
+            if not isinstance(agents_specs, list):
+                raise ValueError("team_composition_json must be a list of agent specifications.")
+
+            total_cost = 0.0
+            cost_breakdown: Dict[str, float] = {}
+            for agent_spec in agents_specs:
+                seniority_val = agent_spec.get("seniority", AgentSeniority.JUNIOR.value)
+                # Handle if seniority_val is an Enum member or string
+                if isinstance(seniority_val, Enum):
+                    seniority_str = seniority_val.value
+                else:
+                    seniority_str = str(seniority_val).lower()
+
+                rate = RATES_PER_DAY.get(seniority_str, RATES_PER_DAY[AgentSeniority.JUNIOR.value])
+                agent_cost = rate * actual_duration
+                total_cost += agent_cost
+                agent_name = agent_spec.get('name', 'UnnamedAgent')
+                cost_breakdown[f"{agent_name} ({seniority_str})"] = round(agent_cost, 2)
             
-            analysis_data = {
-                "required_skills": ["domain_expertise", "research", "content_creation"],
-                "expertise_areas": ["subject_matter_expertise", "user_experience"],
-                "recommended_team_size": team_size_fb,
-                "rationale": f"Fallback logic applied due to analysis error. Estimated team of {team_size_fb} agents based on project goal length and budget of {budget_val} EUR."
-            }
-            logger.warning(f"Using fallback project analysis: {analysis_data}")
-            return json.dumps(analysis_data)
+            return json.dumps({
+                "total_estimated_cost": round(total_cost, 2), "currency": "EUR",
+                "estimated_duration_days": actual_duration, "breakdown_by_agent": cost_breakdown,
+                "notes": "Cost estimates are based on projected daily rates and duration."})
+        except Exception as exc:
+            logger.error(f"estimate_costs failed: {exc}", exc_info=True)
+            return json.dumps({"error": str(exc), "total_estimated_cost": 0, "notes": "Error during cost estimation."})
+
+    @staticmethod
+    @function_tool
+    async def design_team_structure(required_skills_json: str, budget_total: float, max_agents: Optional[int] = None) -> str:
+        """Progetta la struttura del team. 'required_skills_json' è una stringa JSON di una lista di skill."""
+        logger.info(f"Director Tool: design_team_structure invoked. Max_agents: {max_agents}, Budget: {budget_total}")
+        try:
+            required_skills: List[str] = json.loads(required_skills_json)
+            
+            # Determine effective_max_agents respecting MAX_TEAM_SIZE
+            eff_max_agents = MAX_TEAM_SIZE
+            if isinstance(max_agents, int) and 0 < max_agents <= MAX_TEAM_SIZE:
+                eff_max_agents = max_agents
+            elif not required_skills: # No skills, no complex team needed
+                eff_max_agents = 1
+            # If max_agents is invalid or None, eff_max_agents remains MAX_TEAM_SIZE, or 1 if no skills.
+
+            team: List[Dict[str, Any]] = []
+            allocated_budget = 0.0
+            agents_created_count = 0
+
+            # --- Helper functions specific to design_team_structure ---
+            def _get_model_for_design(s_val: str) -> str:
+                return MODEL_BY_SENIORITY.get(s_val.lower(), MODEL_BY_SENIORITY[AgentSeniority.JUNIOR.value])
+
+            def _get_tools_for_design(role_str: str, s_val: str) -> List[Dict[str, str]]:
+                tools_list: List[Dict[str, str]] = []
+                if s_val.lower() in (AgentSeniority.SENIOR.value, AgentSeniority.EXPERT.value) or "manager" in role_str.lower():
+                    tools_list.append({"type": "web_search", "name": "web_search", "description": "Enables web searching for current information."})
+                if any(k_word in role_str.lower() for k_word in ("content", "research", "analysis", "market", "manager", "writing")):
+                    tools_list.append({"type": "file_search", "name": "file_search", "description": "Enables searching through provided documents."})
+                return tools_list
+
+            def _group_skills_for_design(skills_list: List[str]) -> List[Dict[str, Any]]:
+                s_groups: Dict[str, List[str]] = {domain_key: [] for domain_key in DOMAIN_MAPPING_DESIGN}
+                s_groups['other_domain'] = [] # For unmapped skills
+                
+                processed: Set[str] = set()
+                for skill_item in skills_list:
+                    normalized_skill = skill_item.lower()
+                    if normalized_skill in processed: continue
+                    
+                    assigned = False
+                    for domain_key, keywords in DOMAIN_MAPPING_DESIGN.items():
+                        if any(kw in normalized_skill for kw in keywords):
+                            s_groups[domain_key].append(skill_item) # Store original skill name
+                            assigned = True
+                            break 
+                    if not assigned:
+                        s_groups['other_domain'].append(skill_item)
+                    processed.add(normalized_skill)
+                
+                final_skill_groups: List[Dict[str, Any]] = []
+                for domain_name_key, skills_in_group_list in s_groups.items():
+                    if skills_in_group_list:
+                        final_skill_groups.append({
+                            'domain': domain_name_key if domain_name_key != 'other_domain' else None,
+                            'skills': skills_in_group_list,
+                            'importance': 'high' if domain_name_key in ['management', 'technical', 'analysis', 'sales'] else 'medium'
+                        })
+                return final_skill_groups
+
+            # --- Main design logic ---
+            # 1. Add Project Manager if team > 1 agent and budget allows
+            if eff_max_agents > 1:
+                pm_s_val = AgentSeniority.SENIOR.value
+                pm_c_val = COST_PER_MONTH[pm_s_val]
+                if allocated_budget + pm_c_val <= budget_total and agents_created_count < eff_max_agents:
+                    team.append({
+                        "name": "ProjectManager", "role": "Project Manager", "seniority": pm_s_val,
+                        "description": "Oversees project execution, coordinates team, manages communication and ensures goal alignment.",
+                        "system_prompt": "You are a Project Manager. Your primary goal is to lead the team to successfully complete the project. Coordinate tasks, manage resources, resolve blockers, and ensure clear communication. You are expected to handle coordination tasks yourself rather than delegating them further.",
+                        "llm_config": {"model": _get_model_for_design(pm_s_val), "temperature": 0.3},
+                        "tools": _get_tools_for_design("Project Manager", pm_s_val)})
+                    allocated_budget += pm_c_val; agents_created_count += 1
+            
+            # 2. Group remaining skills
+            skills_to_assign = required_skills
+            if any(a.get("role") == "Project Manager" for a in team): # If PM exists, filter out mgmt skills
+                mgmt_keywords = DOMAIN_MAPPING_DESIGN.get('management', [])
+                skills_to_assign = [s for s in required_skills if not any(kw in s.lower() for kw in mgmt_keywords)]
+            
+            skill_groups_list = _group_skills_for_design(skills_to_assign)
+
+            # 3. Create specialists for skill groups
+            for group_item in skill_groups_list:
+                if agents_created_count >= eff_max_agents or allocated_budget >= budget_total: break
+                if not group_item['skills']: continue
+
+                # Determine seniority based on remaining budget per slot and importance
+                s_val = AgentSeniority.JUNIOR.value # Default
+                slots_remaining = eff_max_agents - agents_created_count
+                if slots_remaining > 0:
+                    avg_budget_per_slot = (budget_total - allocated_budget) / slots_remaining
+                    if avg_budget_per_slot >= COST_PER_MONTH[AgentSeniority.EXPERT.value] and group_item['importance'] == 'high':
+                        s_val = AgentSeniority.EXPERT.value
+                    elif avg_budget_per_slot >= COST_PER_MONTH[AgentSeniority.SENIOR.value]:
+                        s_val = AgentSeniority.SENIOR.value
+                
+                agent_cost = COST_PER_MONTH[s_val]
+                # Downgrade if current seniority choice exceeds budget for this agent
+                if allocated_budget + agent_cost > budget_total:
+                    if s_val == AgentSeniority.EXPERT.value and allocated_budget + COST_PER_MONTH[AgentSeniority.SENIOR.value] <= budget_total:
+                        s_val = AgentSeniority.SENIOR.value
+                    elif s_val != AgentSeniority.JUNIOR.value and allocated_budget + COST_PER_MONTH[AgentSeniority.JUNIOR.value] <= budget_total:
+                        s_val = AgentSeniority.JUNIOR.value
+                    else: continue # Cannot afford even a Junior for this group
+                    agent_cost = COST_PER_MONTH[s_val] # Update cost after downgrade
+
+                # Create agent name and role
+                skill_name_base = group_item['skills'][0].replace('_', ' ').title()
+                domain_name_part = group_item['domain'].title().replace('_', '') + "" if group_item['domain'] and group_item['domain'] != "OtherDomain" else ""
+                name_prefix = domain_name_part if domain_name_part else re.sub(r'\W+', '', skill_name_base.split(' ')[0])
+                
+                base_agent_name = f"{name_prefix}Specialist"
+                unique_agent_name = base_agent_name
+                name_counter = 1
+                while any(a.get("name") == unique_agent_name for a in team):
+                    unique_agent_name = f"{base_agent_name}{name_counter}"; name_counter += 1
+                
+                agent_role_title = f"{domain_name_part} {skill_name_base} Specialist" if domain_name_part else f"{skill_name_base} Specialist"
+
+                team.append({
+                    "name": unique_agent_name, "role": agent_role_title.strip(), "seniority": s_val,
+                    "description": f"Handles tasks related to: {', '.join(group_item['skills'])} within the {group_item['domain'] or 'general'} domain.",
+                    "system_prompt": f"You are a {agent_role_title.strip()}. Your expertise covers: {', '.join(group_item['skills'])}. Complete tasks efficiently, collaborate when necessary, and avoid re-delegating tasks within your scope.",
+                    "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.35},
+                    "tools": _get_tools_for_design(agent_role_title, s_val)})
+                allocated_budget += agent_cost; agents_created_count += 1
+
+            if not team and required_skills: # If no agents were created but skills were listed
+                logger.warning("design_team_structure: No agents created, attempting minimal fallback agent.")
+                s_val = AgentSeniority.JUNIOR.value
+                if budget_total >= COST_PER_MONTH[s_val] and agents_created_count < eff_max_agents:
+                    team.append({
+                        "name": "GeneralTaskExecutor", "role": "General Task Executor", "seniority": s_val,
+                        "description": "Handles general project tasks due to constraints.",
+                        "system_prompt": "You are a General Task Executor. Handle all assigned tasks efficiently.",
+                        "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.4},
+                        "tools": _get_tools_for_design("General Task Executor", s_val)})
+                else:
+                    logger.error("design_team_structure: Could not create even a fallback agent.")
+                    return json.dumps([{"error": "Unable to design any agent within budget/constraints."}])
+            
+            logger.info(f"Team designed with {len(team)} agents. Budget used: {allocated_budget:.2f}/{budget_total:.2f}.")
+            return json.dumps(team)
+        except Exception as exc:
+            logger.error(f"design_team_structure critically failed: {exc}", exc_info=True)
+            return json.dumps([{"error": f"Critical failure in team design: {exc}"}])
+
+    def _is_same_role_type(self, role1: str, role2: str) -> bool:
+        """Checks if two roles are of the same broad type (manager, specialist)."""
+        if not role1 or not role2: return False
+        r1_lower, r2_lower = role1.lower(), role2.lower()
+        manager_kw = ("manager", "coordinator", "director", "lead", "supervisor")
+        # Specialist can include analyst, researcher, etc.
+        specialist_kw = ("specialist", "expert", "developer", "engineer", "writer", "designer", "analyst", "researcher", "consultant", "artist")
+        
+        def get_broad_type(role_str: str) -> str:
+            if any(kw in role_str for kw in manager_kw): return "manager"
+            if any(kw in role_str for kw in specialist_kw): return "specialist"
+            return "other"
+            
+        type_r1, type_r2 = get_broad_type(r1_lower), get_broad_type(r2_lower)
+        return type_r1 == type_r2 and type_r1 != "other"
 
     async def create_team_proposal(self, config: DirectorConfig) -> DirectorTeamProposal:
-        logger.info(f"Director Agent: Creating team proposal for workspace {config.workspace_id}")
+        logger.info(f"Director: Creating team proposal for workspace {config.workspace_id}")
 
-        director_agent_instructions = f"""
-You are an expert project director AI specializing in planning and assembling teams of AI agents for complex projects.
-Your primary goal is to analyze the given project requirements, design an optimal team of AI agents, define their roles, seniority, system prompts, and necessary handoffs, while adhering to budget constraints.
+        # Instructions per l'LLM orchestratore
+        # L'LLM deve capire che `constraints_json` per `analyze_project_requirements_llm` deve essere una stringa JSON.
+        # E che `required_skills_json` e `team_composition_json` per gli altri tool sono anche stringhe JSON.
+        director_instructions = f"""You are an expert AI team architect. Your goal is to design an efficient team of AI agents.
+Max team size is {self.max_team_size}.
 Project Goal: {config.goal}
-Budget Constraints: {json.dumps(config.budget_constraint)}
-User ID (for context, if needed): {config.user_id}
-Workspace ID (for context): {config.workspace_id}
+Budget Constraints (passed as JSON string to analysis tool): {json.dumps(config.budget_constraint)}
+User Feedback (if any): {config.user_feedback or "None"}
+
+Follow these steps precisely using the provided tools:
+1.  **Analyze Requirements**: Call `analyze_project_requirements_llm` with the project `goal` and `constraints_json` (which must be a JSON string representing the budget and other constraints). This will return a JSON string with `required_skills`, `expertise_areas`, `recommended_team_size`, and `rationale`.
+2.  **Design Team Structure**: Call `design_team_structure` using:
+    * `required_skills_json`: The `required_skills` list from step 1, formatted as a JSON string.
+    * `budget_total`: The `max_amount` from the budget constraints (float).
+    * `max_agents`: The `recommended_team_size` (int) from step 1.
+    This tool returns a JSON string list of agent specifications.
+3.  **Estimate Costs**: Call `estimate_costs` using:
+    * `team_composition_json`: The list of agents from step 2, formatted as a JSON string.
+    * `duration_days`: (Optional, defaults to 30) An estimated project duration in days.
+    This returns a JSON string with cost details.
+4.  **Define Handoffs**: Based on the team from step 2, define a list of handoff objects. Each handoff should have `from` (source agent name), `to` (list of target agent names), and `description`. Ensure handoffs are minimal, logical, and prevent loops (e.g., manager to specialist, specialist to specialist, specialist escalates to manager for critical issues only).
+5.  **Final Rationale**: Provide a brief rationale for your overall team design and handoff strategy.
+
+Your final output MUST be a single, valid JSON object containing the keys: "agents", "handoffs", "estimated_cost", and "rationale".
+Do NOT include any markdown formatting or explanatory text outside this JSON structure.
+Example for passing JSON string to tools: If constraints are {{"budget": 1000}}, pass it as the string "{{\\"budget\\": 1000}}".
 """
-
-        if hasattr(config, 'user_feedback') and config.user_feedback:
-            director_agent_instructions += f"""
-USER FEEDBACK (Please consider this carefully when designing the team):
-{config.user_feedback}
-"""
-
-        director_agent_instructions += """
-Your tasks are:
-1.  **Analyze Project Requirements**: Understand the project goal and constraints. Identify the core skills and expertise areas needed.
-    You MUST use the 'analyze_project_requirements_llm' tool to get a structured analysis including recommended team size.
-2.  **Design Team Structure**: Based on the analysis from step 1 (especially the 'required_skills' and 'recommended_team_size'), define the composition of the AI agent team by calling the 'design_team_structure' tool. Pass the 'recommended_team_size' as the 'max_agents' parameter to this tool.
-    The 'design_team_structure' tool will return a list of agent specifications.
-3.  **Define Handoffs**: Based on the designed team structure from step 2, identify critical points where tasks or information must be passed between agents.
-    For each handoff, specify:
-    * `from`: The name of the source agent (string, must match a name from the designed team).
-    * `to`: The name of the target agent (string, must match a name from the designed team) OR a list of target agent names (List[str]).
-    * `description`: A brief description of what is being handed off.
-4.  **Estimate Costs**: Provide a rough cost estimation using the 'estimate_costs' tool, passing the team composition from step 2 and a reasonable duration (e.g., 30 days).
-5.  **Provide Rationale**: Explain your overall team strategy, including why the final team structure (number of agents, roles, seniorities) is optimal, considering the project goal, identified skills, budget, and the output from the 'design_team_structure' tool.
-
-**IMPORTANT NAMING GUIDELINES:**
-When creating the team structure, use professional role names that sound natural in a business environment:
-- Instead of "DataAnalysisSpecialistAgent" → use "Data Analyst" or "Analytics Lead"
-- Instead of "SentimentAnalysisSpecialistAgent" → use "Brand Analyst" or "Social Media Analyst"  
-- Instead of "ProjectCoordinatorAgent" → use "Project Manager" or "Team Lead"
-
-Examples of good professional names:
-- Marketing Specialist, Content Strategist, Brand Manager
-- Data Analyst, Business Intelligence Specialist, Research Lead
-- Social Media Manager, Digital Marketing Specialist, SEO Specialist
-- Operations Manager, Program Director, Account Manager
-
-Avoid overly technical compound names. Keep names concise, professional, and recognizable in a business context.
-
-REMEMBER: Your final output MUST be a SINGLE VALID JSON OBJECT ONLY, not a Markdown document containing JSON. Do not include any explanatory text or markdown formatting - return ONLY pure JSON.
-The JSON structure MUST be:
-{
-  "agents": [
-    {
-      "name": "AgentName1", "role": "Role1", "seniority": "senior", "description": "...", "system_prompt": "...", 
-      "llm_config": {"model": "gpt-4.1-mini", "temperature": 0.3}, "tools": []
-    }
-  ],
-  "handoffs": [
-    {"from": "AgentName1", "to": "AgentName2", "description": "..."},
-    {"from": "AgentName2", "to": ["AgentName3", "AgentName1"], "description": "..."}
-  ],
-  "estimated_cost": {"total_estimated_cost": 123, "currency": "EUR", ...},
-  "rationale": "..."
-}
-DO NOT include any explanations, markdown, or other text outside this JSON structure.
-"""
-
-        available_tools_for_director_llm = [
+        available_tools_list = [
             DirectorAgent.analyze_project_requirements_llm,
             DirectorAgent.estimate_costs,
-            DirectorAgent.design_team_structure
+            DirectorAgent.design_team_structure,
         ]
-
-        director_llm_agent = OpenAIAgent(
-            name="AICrewTeamDirectorLLM",
-            instructions=director_agent_instructions,
-            model="gpt-4.1", 
-            model_settings=ModelSettings(temperature=0.2),
-            tools=available_tools_for_director_llm
+        llm_director_agent = OpenAIAgent(
+            name="EfficientTeamDirectorLLM",
+            instructions=director_instructions,
+            model="gpt-4.1", # Or "gpt-4-turbo" / "gpt-4o" if available and preferred
+            model_settings=ModelSettings(temperature=0.1), # Low temperature for more deterministic output
+            tools=available_tools_list,
         )
-        
-        final_output_json_str = ""
         try:
-            initial_prompt_to_llm = (
-                "Generate the AI agent team proposal for the project detailed in your instructions. "
-                "Follow these steps precisely: "
-                "1. Call 'analyze_project_requirements_llm' to get skills and recommended team size. "
-                "2. Call 'design_team_structure' using the 'required_skills' JSON string from step 1, and pass the 'recommended_team_size' from step 1 as the 'max_agents' parameter. "
-                "3. Call 'estimate_costs' using the agent list JSON string returned by 'design_team_structure'. "
-                "4. Formulate the handoffs based on the agent list from 'design_team_structure'. "
-                "5. Finally, construct the complete JSON proposal including 'agents' (from design_team_structure), 'handoffs', 'estimated_cost', and your 'rationale'. "
-                "YOUR RESPONSE MUST BE A VALID JSON OBJECT ONLY, with NO markdown, explanations, or other text."
+            # The prompt to the LLM Director agent. It needs to understand how to use the tools.
+            # The LLM will make multiple tool calls based on the instructions.
+            initial_user_prompt = (
+                "Please generate the AI agent team proposal as per your detailed instructions. "
+                "Ensure all tool inputs requiring JSON strings are correctly formatted. "
+                "Your final response must be only the complete JSON proposal object."
             )
-            run_result = await Runner.run(
-                director_llm_agent,
-                initial_prompt_to_llm
-            )
-            final_output_json_str = run_result.final_output
-            logger.info(f"Director LLM Agent Raw Output: {final_output_json_str}")
-            
-            parsed_json = None
+            run_result_obj = await Runner.run(llm_director_agent, initial_user_prompt)
+            raw_llm_output_json_str = run_result_obj.final_output
+            logger.debug(f"Director LLM raw output for proposal: {raw_llm_output_json_str}")
+
+            proposal_dict: Optional[Dict[str, Any]] = None
             try:
-                parsed_json = json.loads(final_output_json_str)
+                proposal_dict = json.loads(raw_llm_output_json_str)
             except json.JSONDecodeError:
-                logger.warning("LLM output is not valid JSON. Attempting to extract from markdown or text.")
-                json_match_md = re.search(r'```json\s*({[\s\S]*?})\s*```', final_output_json_str, re.DOTALL)
-                if json_match_md:
-                    final_output_json_str = json_match_md.group(1).strip()
-                else:
-                    json_match_braces = re.search(r'({[\s\S]*})', final_output_json_str, re.DOTALL)
-                    if json_match_braces:
-                        final_output_json_str = json_match_braces.group(1).strip()
+                logger.warning("LLM output for proposal is not valid JSON, attempting extraction...")
+                # Regex to find JSON block, even if wrapped in markdown
+                match_obj = re.search(r"```json\s*({[\s\S]*?})\s*```", raw_llm_output_json_str, re.DOTALL) or \
+                            re.search(r"({[\s\S]*})", raw_llm_output_json_str, re.DOTALL)
+                if match_obj:
+                    try:
+                        proposal_dict = json.loads(match_obj.group(1))
+                    except json.JSONDecodeError as e_inner:
+                        logger.error(f"Failed to parse extracted JSON for proposal: {e_inner}. Extracted: {match_obj.group(1)[:200]}")
+            
+            if proposal_dict is None or not isinstance(proposal_dict, dict) or not proposal_dict.get("agents"):
+                logger.error(f"Could not parse or extract valid JSON proposal from LLM. Using fallback. Output: {raw_llm_output_json_str[:300]}")
+                proposal_dict = self._create_fallback_dict(config) # Use dict fallback first
+
+            # Validate and sanitize the dictionary before creating Pydantic models
+            validated_proposal_data = self._validate_and_sanitize_proposal(proposal_dict, config)
+
+            agents_create_obj_list: List[AgentCreate] = []
+            for agent_spec_dict in validated_proposal_data.get("agents", []):
+                agent_spec_dict["workspace_id"] = config.workspace_id # Ensure UUID is passed
+                
+                # Robust seniority handling before Pydantic model creation
+                s_input = agent_spec_dict.get('seniority')
+                s_value_str: str
+                if isinstance(s_input, AgentSeniority): s_value_str = s_input.value
+                elif isinstance(s_input, str): s_value_str = s_input.lower()
+                else: s_value_str = AgentSeniority.JUNIOR.value # Default
+                try:
+                    agent_spec_dict['seniority'] = AgentSeniority(s_value_str) # Convert to Enum for Pydantic
+                except ValueError:
+                    agent_spec_dict['seniority'] = AgentSeniority.JUNIOR
+
+                # Ensure tools is a list of dicts
+                tools_list_sanitized: List[Dict[str,str]] = []
+                raw_tools = agent_spec_dict.get("tools", [])
+                if isinstance(raw_tools, list):
+                    for t_item in raw_tools:
+                        if isinstance(t_item, str): # If tool is just a name string
+                            tools_list_sanitized.append({"name": t_item, "type": "function", "description": f"Tool: {t_item}"})
+                        elif isinstance(t_item, dict) and "name" in t_item:
+                            t_item.setdefault("type", "function")
+                            t_item.setdefault("description", f"Tool: {t_item['name']}")
+                            tools_list_sanitized.append(t_item) # type: ignore
+                agent_spec_dict["tools"] = tools_list_sanitized
                 
                 try:
-                    parsed_json = json.loads(final_output_json_str)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Still failed to parse JSON after extraction attempts: {e}. LLM Output: {run_result.final_output}")
-                    raise ValueError(f"LLM output was not valid JSON after extraction: {e}")
+                    agents_create_obj_list.append(AgentCreate(**agent_spec_dict))
+                except Exception as e_ac: # Catch Pydantic validation errors etc.
+                    logger.error(f"Error creating AgentCreate for agent '{agent_spec_dict.get('name')}': {e_ac}", exc_info=True)
 
-            if not parsed_json:
-                 raise ValueError("Parsed JSON is empty after processing LLM output.")
-
-            proposal_data = parsed_json
-
-            # Ensure 'agents' key from LLM output is used, not re-created from an older list.
-            # The LLM is instructed to use the output of design_team_structure for the 'agents' list.
-            proposed_agents_data = proposal_data.get("agents", [])
-            agents_create_list: List[AgentCreate] = []
-            for agent_spec_data in proposed_agents_data:
-                agent_spec_data["workspace_id"] = str(config.workspace_id) # Ensure it's a string for Pydantic
-                
-                if "tools" in agent_spec_data and isinstance(agent_spec_data["tools"], list):
-                    converted_tools = []
-                    for tool_item in agent_spec_data["tools"]:
-                        if isinstance(tool_item, str):
-                            converted_tools.append({
-                                "name": tool_item, "type": "function", 
-                                "description": f"Custom tool: {tool_item}"
-                            })
-                        elif isinstance(tool_item, dict) and "name" in tool_item:
-                             converted_tools.append(tool_item)
-                        else:
-                            logger.warning(f"Skipping invalid tool format: {tool_item}")
-                    agent_spec_data["tools"] = converted_tools
-                
-                # Convert seniority string to AgentSeniority enum
-                if 'seniority' in agent_spec_data and isinstance(agent_spec_data['seniority'], str):
+            handoffs_obj_list: List[HandoffProposalCreate] = []
+            for h_spec in validated_proposal_data.get("handoffs", []):
+                if h_spec.get("from") and h_spec.get("to"):
+                    # Ensure 'to' is List[str] for HandoffProposalCreate
+                    if isinstance(h_spec["to"], str): h_spec["to"] = [h_spec["to"]]
                     try:
-                        agent_spec_data['seniority'] = AgentSeniority(agent_spec_data['seniority'].lower())
-                    except ValueError:
-                        logger.warning(f"Invalid seniority value '{agent_spec_data['seniority']}', defaulting to JUNIOR.")
-                        agent_spec_data['seniority'] = AgentSeniority.JUNIOR
-
-                agents_create_list.append(AgentCreate(**agent_spec_data))
-
-            proposed_handoffs_data = proposal_data.get("handoffs", [])
-            handoffs_proposal_list: List[HandoffProposalCreate] = []
-            for handoff_spec_data in proposed_handoffs_data:
-                source_name = handoff_spec_data.get("from") 
-                target_names = handoff_spec_data.get("to")
-                
-                if source_name and target_names:
-                    handoffs_proposal_list.append(HandoffProposalCreate(**handoff_spec_data))
-                else:
-                    logger.warning(f"Skipping handoff due to missing 'from' or 'to' field: {handoff_spec_data}")
-
-            proposal_data_extra = {}
+                        handoffs_obj_list.append(HandoffProposalCreate(**h_spec))
+                    except Exception as e_hc: # Catch Pydantic validation errors etc.
+                         logger.warning(f"Skipping invalid handoff spec {h_spec}: {e_hc}")
+            
+            extra_data_for_proposal: Dict[str, Any] = {}
             if hasattr(config, 'user_feedback') and config.user_feedback:
-                proposal_data_extra["user_feedback"] = config.user_feedback
+                extra_data_for_proposal["user_feedback"] = config.user_feedback
 
-            final_proposal = DirectorTeamProposal(
-                workspace_id=config.workspace_id,
-                agents=agents_create_list,
-                handoffs=handoffs_proposal_list,
-                estimated_cost=proposal_data.get("estimated_cost", {"total_estimated_cost": 0, "currency": "EUR", "breakdown_by_agent": {}}),
-                rationale=proposal_data.get("rationale", "No rationale provided by LLM."),
-                **proposal_data_extra
-            )
-            logger.info(f"Successfully created team proposal for workspace {config.workspace_id} with {len(agents_create_list)} agents")
-            return final_proposal
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON from LLM output: {e}\nLLM Output was: {final_output_json_str}")
-            raise ValueError(f"LLM output was not valid JSON: {e}")
-        except Exception as e:
-            logger.error(f"Error creating team proposal via LLM Director: {e}", exc_info=True)
             return DirectorTeamProposal(
-                workspace_id=config.workspace_id,
-                agents=[],
-                handoffs=[],
-                estimated_cost={"total_estimated_cost": 0, "currency": "EUR", "breakdown_by_agent": {}, "notes": "Error during estimation."},
-                rationale="Failed to generate team proposal due to an internal error. Please review logs."
+                workspace_id=config.workspace_id, # UUID
+                agents=agents_create_obj_list,
+                handoffs=handoffs_obj_list,
+                estimated_cost=validated_proposal_data.get("estimated_cost", {"total_estimated_cost": 0, "currency": "EUR"}),
+                rationale=validated_proposal_data.get("rationale", "Team proposal generated by DirectorAgent."),
+                **extra_data_for_proposal
             )
+        except Exception as exc_outer:
+            logger.error(f"create_team_proposal critically failed: {exc_outer}", exc_info=True)
+            return self._create_minimal_fallback_proposal(config, str(exc_outer))
 
-    @staticmethod
-    @function_tool
-    async def estimate_costs(team_composition_json: str, duration_days: Optional[int]) -> str:
-        if duration_days is None:
-            duration_days = 30
+    def _validate_and_sanitize_proposal(self, data: Dict[str, Any], config: DirectorConfig) -> Dict[str, Any]:
+        """Validates and sanitizes the raw proposal dictionary from LLM."""
+        agents_list: List[Dict[str, Any]] = data.get("agents", [])
+        if not agents_list or not isinstance(agents_list, list): # If no agents or not a list, use default
+            logger.warning("_validate_and_sanitize_proposal: No agents found or invalid format, creating default.")
+            data = self._create_fallback_dict(config) # This returns a dict with 'agents'
+            agents_list = data["agents"]
+
+        # 1. Cap team size
+        if len(agents_list) > self.max_team_size:
+            logger.info(f"Team size {len(agents_list)} exceeds max {self.max_team_size}. Truncating.")
+            agents_list = agents_list[:self.max_team_size]
+        
+        # 2. Ensure unique agent names
+        final_agents_list: List[Dict[str, Any]] = []
+        seen_agent_names: Set[str] = set()
+        for idx, agent_data in enumerate(agents_list):
+            base_name = agent_data.get("name", f"Agent{idx+1}")
+            current_name = base_name
+            name_idx = 1
+            while current_name in seen_agent_names:
+                current_name = f"{base_name}_{name_idx}"; name_idx += 1
+            if current_name != base_name: logger.info(f"Sanitized agent name from '{base_name}' to '{current_name}'.")
+            agent_data["name"] = current_name
+            seen_agent_names.add(current_name)
+            final_agents_list.append(agent_data)
+        data["agents"] = final_agents_list
+
+        # 3. Ensure at least 1 manager if team has more than 1 agent
+        if len(data["agents"]) > 1:
+            is_manager_present = any("manager" in a.get("role", "").lower() for a in data["agents"])
+            if not is_manager_present and data["agents"]: # Ensure list is not empty
+                logger.info("No manager in team > 1. Promoting first agent to Project Manager.")
+                data["agents"][0]["role"] = "Project Manager"
+                data["agents"][0]["seniority"] = AgentSeniority.SENIOR.value # Ensure it's the string value
+                data["agents"][0]["description"] = (data["agents"][0].get("description", "") + " Also coordinates the team and project.").strip()
+        
+        # 4. Validate handoffs
+        raw_handoffs = data.get("handoffs", [])
+        data["handoffs"] = self._validate_handoffs_list(raw_handoffs, data["agents"])
+
+        # 5. Ensure other fields exist
+        data.setdefault("estimated_cost", {"total_estimated_cost": 0, "currency": "EUR", "breakdown_by_agent": {}})
+        data.setdefault("rationale", "Proposal validated and sanitized by DirectorAgent.")
+        return data
+
+    def _validate_handoffs_list(self, handoffs_list_raw: List[Any], agents_list_validated: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Validates a list of handoff specifications."""
+        agent_name_to_role_map = {a["name"]: a.get("role", "").lower() for a in agents_list_validated if "name" in a}
+        valid_agent_names: Set[str] = set(agent_name_to_role_map.keys())
+        
+        final_valid_handoffs: List[Dict[str, Any]] = []
+        if not isinstance(handoffs_list_raw, list):
+            logger.warning("Handoffs data is not a list, defaulting to empty.")
+            return []
+
+        for h_data in handoffs_list_raw:
+            if not isinstance(h_data, dict): continue # Skip non-dict handoff items
+
+            src_agent_name = h_data.get("from")
+            raw_target_agent_names = h_data.get("to")
+
+            if not src_agent_name or src_agent_name not in valid_agent_names:
+                logger.warning(f"Invalid or missing 'from' agent '{src_agent_name}' in handoff. Skipping.")
+                continue
+
+            current_handoff_targets: List[str] = []
+            if isinstance(raw_target_agent_names, str): # Single target string
+                current_handoff_targets = [raw_target_agent_names]
+            elif isinstance(raw_target_agent_names, list): # List of target strings
+                current_handoff_targets = [tgt for tgt in raw_target_agent_names if isinstance(tgt, str)]
             
-        logger.info(f"Director Tool: Estimating costs for duration {duration_days} days.")
-        try:
-            team_composition = json.loads(team_composition_json)
-            total_cost = 0
-            cost_breakdown = {}
-            rates_per_day = {
-                AgentSeniority.JUNIOR.value: 5,
-                AgentSeniority.SENIOR.value: 10,
-                AgentSeniority.EXPERT.value: 18
-            }
-            
-            for agent_spec in team_composition:
-                role = agent_spec.get("role", "Unknown Role")
-                seniority_str = agent_spec.get("seniority", AgentSeniority.JUNIOR.value)
-                # Handle case where seniority_str might be an enum member if not properly stringified before json.loads
-                if isinstance(seniority_str, Enum):
-                    seniority_str = seniority_str.value
-
-                rate = rates_per_day.get(seniority_str, rates_per_day[AgentSeniority.JUNIOR.value])
-                agent_cost = rate * duration_days
-                total_cost += agent_cost
-                cost_breakdown[f"{role} ({seniority_str})"] = agent_cost
-            
-            logger.info(f"Estimated costs: Total={total_cost}, Breakdown={cost_breakdown}")
-            result = {
-                "total_estimated_cost": total_cost,
-                "currency": "EUR",
-                "breakdown_by_agent": cost_breakdown,
-                "estimated_duration_days": duration_days,
-                "notes": "Costs are estimates based on predefined daily rates per seniority. GPT-4.1 models offer better cost-efficiency than previous versions."
-            }
-            return json.dumps(result)
-        except Exception as e:
-            logger.error(f"Error in estimate_costs: {e}", exc_info=True)
-            error_result = {
-                "error": str(e),
-                "total_estimated_cost": 0,
-                "currency": "EUR",
-                "breakdown_by_agent": {},
-                "estimated_duration_days": duration_days,
-                "notes": "Error during cost estimation."
-            }
-            return json.dumps(error_result)
-
-    @staticmethod
-    @function_tool
-    async def design_team_structure(
-        required_skills_json: str,
-        expertise_areas_json: str,
-        budget_total: float,
-        max_agents: Optional[int] 
-    ) -> str:
-        try:
-            required_skills = json.loads(required_skills_json)
-            expertise_areas = json.loads(expertise_areas_json)
-            
-            initial_recommended_max_agents = max_agents # Il valore passato, che è 'recommended_team_size'
-
-            if not isinstance(initial_recommended_max_agents, int) or initial_recommended_max_agents < 1:
-                # Se max_agents non è valido, calcola un default basato sulle skill
-                effective_max_agents = max(1, min(len(required_skills), 4)) 
-                logger.info(f"Max_agents (recommended_team_size) was invalid ({initial_recommended_max_agents}), defaulting to {effective_max_agents} based on skills count.")
-            else:
-                effective_max_agents = initial_recommended_max_agents
-            
-            logger.info(f"Initial Max Agents for design (from recommendation): {effective_max_agents}")
-
-            num_required_skills = len(required_skills)
-            # Stima un costo medio per agente (es. per un senior) per valutare il budget
-            avg_cost_per_senior_agent_month = 30 * 10 # 300 EUR
-
-            # Se ci sono più skill del max_agents raccomandato E c'è budget teorico per più agenti
-            if num_required_skills > effective_max_agents:
-                # Quanti agenti in più servirebbero per coprire le skill?
-                needed_additional_agents = num_required_skills - effective_max_agents
+            validated_targets_for_handoff: List[str] = []
+            for target_name_candidate in current_handoff_targets:
+                if target_name_candidate not in valid_agent_names:
+                    logger.warning(f"Target agent '{target_name_candidate}' in handoff from '{src_agent_name}' not found. Skipping this target.")
+                    continue
+                if target_name_candidate == src_agent_name:
+                    logger.warning(f"Self-handoff from '{src_agent_name}' to self prevented.")
+                    continue
                 
-                # Budget stimato rimanente se usassimo il numero corrente di agenti (tutti senior per semplicità di stima)
-                estimated_current_team_cost = effective_max_agents * avg_cost_per_senior_agent_month
-                remaining_budget_if_current_max = budget_total - estimated_current_team_cost
-
-                # Quanti agenti *senior* aggiuntivi ci si potrebbe permettere?
-                affordable_additional_senior_agents = 0
-                if avg_cost_per_senior_agent_month > 0:
-                    affordable_additional_senior_agents = int(remaining_budget_if_current_max / avg_cost_per_senior_agent_month)
-
-                # Aumenta effective_max_agents se è logico e possibile, ma con moderazione
-                # Prendi il minimo tra gli agenti aggiuntivi necessari e quelli che ci si può permettere
-                increase_by = min(needed_additional_agents, affordable_additional_senior_agents)
-                
-                # Limita l'aumento (es. non più di 2 agenti aggiuntivi rispetto alla raccomandazione, o un cap assoluto)
-                increase_by = min(increase_by, 2) 
-                
-                if increase_by > 0:
-                    new_max_agents = min(effective_max_agents + increase_by, 8) # Cap assoluto di 8
-                    if new_max_agents > effective_max_agents:
-                        logger.info(f"Adjusting Max Agents for design from {effective_max_agents} to {new_max_agents} due to {num_required_skills} skills and available budget of {budget_total}.")
-                        effective_max_agents = new_max_agents
-            # === FINE LOGICA AGGIORNATA PER effective_max_agents ===
+                # Check for manager-to-manager handoff of the same type
+                src_role_str = agent_name_to_role_map.get(src_agent_name, "")
+                target_role_str = agent_name_to_role_map.get(target_name_candidate, "")
+                if self._is_same_role_type(src_role_str, target_role_str) and "manager" in src_role_str:
+                    logger.warning(f"Preventing manager-to-manager handoff between similar roles: {src_agent_name} ({src_role_str}) -> {target_name_candidate} ({target_role_str}).")
+                    continue
+                validated_targets_for_handoff.append(target_name_candidate)
             
-            logger.info(f"Director Tool: Designing team structure. Skills: {required_skills}, Budget: {budget_total}, Effective Max Agents for design: {effective_max_agents}")
-
-            team_specification: List[Dict[str, Any]] = []
-            
-            def get_native_tools_for_skill(skill: str, seniority: str) -> List[Dict[str, Any]]:
-                    tools = []
-                    skill_lower = skill.lower()
-
-                    # TUTTI gli agenti senior/expert hanno web search
-                    if seniority in ["senior", "expert"]:
-                        tools.append({
-                            "type": "web_search",
-                            "name": "web_search",
-                            "description": "Search the web for current information, trends, and research"
-                        })
-
-                    # Agenti per contenuti e strategia hanno accesso a file search
-                    if any(keyword in skill_lower for keyword in ['content', 'instagram', 'social media', 'strategy']):
-                        tools.append({
-                            "type": "file_search", 
-                            "name": "file_search",
-                            "description": "Search uploaded files, documents, and knowledge base for relevant information"
-                        })
-
-                    # Agenti coordinatori hanno tools aggiuntivi per automation
-                    if any(keyword in skill_lower for keyword in ['coordination', 'management', 'project']):
-                        # Aggiungeranno i custom tools in SpecialistAgent._initialize_tools()
-                        pass
-
-                    return tools
-            
-            
-            # Logica per il Project Coordinator (come prima)
-            # ... (assicurati che usi effective_max_agents) ...
-            pc_tools = get_native_tools_for_skill("coordination", AgentSeniority.SENIOR.value)
-
-            if effective_max_agents >= 3 and \
-               "project_management" not in [s.lower() for s in required_skills] and \
-               "project coordination" not in [s.lower() for s in required_skills] and \
-               "coordination" not in [s.lower() for s in required_skills]:
-                if len(team_specification) < effective_max_agents:
-                    team_specification.append({
-                        "name": "ProjectCoordinatorAgent",
-                        "role": "Project Coordination & Management",
-                        "seniority": AgentSeniority.SENIOR.value,
-                        "description": "Oversees the project, coordinates agent activities, manages timelines, and ensures goal alignment.",
-                        "system_prompt": "You are an AI Project Coordinator. Your goal is to ensure the efficient execution of the project by managing tasks, coordinating between specialist AI agents, tracking progress, and reporting status. You proactively identify bottlenecks and facilitate communication.",
-                        "llm_config": {"model": "gpt-4.1-mini", "temperature": 0.3},
-                        "tools": pc_tools
-                    })
-                else:
-                    logger.warning("Wanted to add ProjectCoordinatorAgent, but effective_max_agents limit reached.")
-
-
-            avg_cost_per_agent_seniority_map = {
-                AgentSeniority.JUNIOR.value: 30 * 5,
-                AgentSeniority.SENIOR.value: 30 * 10,
-                AgentSeniority.EXPERT.value: 30 * 18,
-            }
-            current_budget_allocated = sum(avg_cost_per_agent_seniority_map.get(spec["seniority"], 0) for spec in team_specification)
-            
-            # Escludi le skill di coordinamento se il ProjectCoordinatorAgent è già stato aggiunto
-            skills_to_assign = [
-                skill for skill in required_skills 
-                if skill.lower() not in ["project_management", "project coordination", "coordination"] or \
-                   not any(agent['name'] == "ProjectCoordinatorAgent" for agent in team_specification)
-            ]
-
-
-            for skill in skills_to_assign:
-                if len(team_specification) >= effective_max_agents:
-                    logger.warning(f"Reached effective_max_agents ({effective_max_agents}) before covering skill: {skill}.")
-                    break 
-                
-                remaining_budget = budget_total - current_budget_allocated
-                
-                chosen_seniority = AgentSeniority.JUNIOR.value # Default
-                # Logica di scelta seniority (come prima, ma usa avg_cost_per_agent_seniority_map)
-                if remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.EXPERT.value] and skill in expertise_areas:
-                    chosen_seniority = AgentSeniority.EXPERT.value
-                elif remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.SENIOR.value]:
-                    chosen_seniority = AgentSeniority.SENIOR.value
-                
-                cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
-
-                if cost_of_chosen_agent > remaining_budget:
-                    if chosen_seniority == AgentSeniority.EXPERT.value and remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.SENIOR.value]:
-                        chosen_seniority = AgentSeniority.SENIOR.value
-                        cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
-                    elif chosen_seniority != AgentSeniority.JUNIOR.value and remaining_budget >= avg_cost_per_agent_seniority_map[AgentSeniority.JUNIOR.value]:
-                         chosen_seniority = AgentSeniority.JUNIOR.value
-                         cost_of_chosen_agent = avg_cost_per_agent_seniority_map[chosen_seniority]
-                    else:
-                        logger.warning(f"Not enough budget for skill '{skill}' even with junior (cost: {cost_of_chosen_agent}, remaining: {remaining_budget}). Skipping this skill.")
-                        continue 
-
-                agent_name_base = skill.replace('_', ' ').title().replace(' ', '')
-                agent_name = f"{agent_name_base}SpecialistAgent"
-                name_suffix = 1
-                while any(a['name'] == agent_name for a in team_specification):
-                    agent_name = f"{agent_name_base}{name_suffix}SpecialistAgent"
-                    name_suffix += 1
-
-                agent_role = f"{skill.replace('_', ' ').title()} Specialization"
-                agent_description = f"Handles all tasks related to {skill.replace('_', ' ')}, utilizing specialized knowledge and tools."
-                agent_system_prompt = f"You are an AI specialist in {skill.replace('_', ' ')}. Your tasks involve detailed work in this area. Collaborate with other agents as needed and report your progress to the Project Coordinator if present."
-                
-                llm_model = "gpt-4.1-nano" 
-                if chosen_seniority == AgentSeniority.EXPERT.value: llm_model = "gpt-4.1"
-                elif chosen_seniority == AgentSeniority.SENIOR.value: llm_model = "gpt-4.1-mini"
-                
-                native_tools = get_native_tools_for_skill(skill, chosen_seniority)
-                
-                team_specification.append({
-                    "name": agent_name,
-                    "role": agent_role,
-                    "seniority": chosen_seniority, # Già stringa .value
-                    "description": agent_description,
-                    "system_prompt": agent_system_prompt,
-                    "llm_config": {"model": llm_model, "temperature": 0.3},
-                    "tools": native_tools 
+            if validated_targets_for_handoff:
+                final_valid_handoffs.append({
+                    "from": src_agent_name,
+                    "to": validated_targets_for_handoff, # Will be List[str]
+                    "description": h_data.get("description", f"Handoff from {src_agent_name} to {', '.join(validated_targets_for_handoff)}")
                 })
-                current_budget_allocated += cost_of_chosen_agent
+        return final_valid_handoffs
+
+    def _create_fallback_dict(self, config: DirectorConfig) -> Dict[str, Any]:
+        """Creates a fallback proposal dictionary for internal use."""
+        logger.info("Creating fallback proposal dictionary.")
+        # Pass budget_constraint (which can be None or Dict) to _create_default_agents
+        default_agents_list = self._create_default_agents(config.budget_constraint)
+        
+        total_est_cost = sum(agent.get("estimated_monthly_cost", COST_PER_MONTH[AgentSeniority.JUNIOR.value]) for agent in default_agents_list)
+        breakdown = {
+            agent.get("name", f"DefaultAgent{i}"): agent.get("estimated_monthly_cost", COST_PER_MONTH[AgentSeniority.JUNIOR.value])
+            for i, agent in enumerate(default_agents_list)
+        }
+        return {
+            "agents": default_agents_list, "handoffs": [],
+            "estimated_cost": {"total_estimated_cost": total_est_cost, "currency": "EUR", "breakdown_by_agent": breakdown},
+            "rationale": "Fallback minimal team due to an issue in proposal generation. Please review."
+        }
+
+    def _create_default_agents(self, budget_constraint_data: Optional[Union[Dict[str, Any], float]] = None) -> List[Dict[str, Any]]:
+        """Creates a default list of agent specifications."""
+        logger.debug("Creating default agents set for fallback.")
+        current_budget = 1000.0 # Default budget if parsing fails or not provided
+        if isinstance(budget_constraint_data, dict):
+            current_budget = float(budget_constraint_data.get("max_amount", 1000.0))
+        elif isinstance(budget_constraint_data, (int, float)):
+            current_budget = float(budget_constraint_data)
+
+        # estimated_monthly_cost is for internal fallback logic, not the primary estimate_costs tool
+        default_pm_spec = {
+            "name": "ProjectManager", "role": "Project Manager", "seniority": AgentSeniority.SENIOR.value,
+            "description": "Fallback: Manages project execution, coordinates team, ensures efficient completion.",
+            "system_prompt": self._create_specialist_prompt("Project Manager", ["project planning", "team coordination"]),
+            "llm_config": {"model": self._get_model_for_seniority(AgentSeniority.SENIOR.value), "temperature": 0.3},
+            "tools": self._get_tools_for_role("Project Manager", AgentSeniority.SENIOR.value),
+            "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value]
+        }
+        agents_list_default: List[Dict[str, Any]] = [default_pm_spec]
+
+        if current_budget > 1500 or len(agents_list_default) < self.min_team_size:
+            default_specialist_spec = {
+                "name": "TaskExecutorSpecialist", "role": "Task Executor Specialist", "seniority": AgentSeniority.JUNIOR.value,
+                "description": "Fallback: Handles specific project tasks and provides general support.",
+                "system_prompt": self._create_specialist_prompt("Task Executor Specialist", ["task execution", "problem solving"]),
+                "llm_config": {"model": self._get_model_for_seniority(AgentSeniority.JUNIOR.value), "temperature": 0.35},
+                "tools": self._get_tools_for_role("Task Executor Specialist", AgentSeniority.JUNIOR.value),
+                "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value]
+            }
+            agents_list_default.append(default_specialist_spec)
+        return agents_list_default
+
+    def _create_minimal_fallback_proposal(self, config: DirectorConfig, error_reason: str) -> DirectorTeamProposal:
+        """Creates a Pydantic DirectorTeamProposal object for critical fallback."""
+        logger.info(f"Creating minimal fallback DirectorTeamProposal due to: {error_reason}")
+        fallback_data_dict = self._create_fallback_dict(config) # Gets a dict with default agent(s)
+        
+        # Convert agent dicts to AgentCreate objects
+        minimal_agents_list: List[AgentCreate] = []
+        for agent_s in fallback_data_dict.get("agents", []):
+            agent_s["workspace_id"] = config.workspace_id # UUID
+            # Ensure seniority is Enum for AgentCreate
+            s_val_str = agent_s.get("seniority", AgentSeniority.JUNIOR.value)
+            if isinstance(s_val_str, Enum): s_val_str = s_val_str.value # if already enum, get value
+            try:
+                agent_s["seniority"] = AgentSeniority(s_val_str.lower())
+            except: agent_s["seniority"] = AgentSeniority.JUNIOR
             
-            if not team_specification and required_skills:
-                logger.warning("Could not form any team based on budget/constraints.")
-                return json.dumps([{"error": "Could not design a team within the given constraints (budget or agent limit)."}])
-            
-            logger.info(f"Designed team structure with {len(team_specification)} agents using effective_max_agents: {effective_max_agents}.")
-            return json.dumps(team_specification)
-            
-        except Exception as e:
-            logger.error(f"Error in design_team_structure: {e}", exc_info=True)
-            error_result = [{"error": str(e), "message": "Failed to design team structure"}]
-            return json.dumps(error_result)
+            try: minimal_agents_list.append(AgentCreate(**agent_s))
+            except Exception as e_ac_fb: logger.error(f"Error creating AgentCreate in minimal fallback: {e_ac_fb}")
+
+        if not minimal_agents_list: # Ensure at least one agent always
+            panic_agent_spec = self._create_default_agents()[0] # Get the PM spec
+            panic_agent_spec["workspace_id"] = config.workspace_id
+            panic_agent_spec["seniority"] = AgentSeniority(panic_agent_spec["seniority"])
+            minimal_agents_list.append(AgentCreate(**panic_agent_spec))
+            logger.warning("Panic: Created an ultra-minimal agent as last resort in fallback proposal.")
+
+
+        return DirectorTeamProposal(
+            workspace_id=config.workspace_id, # UUID
+            agents=minimal_agents_list,
+            handoffs=[], # No handoffs in minimal fallback
+            estimated_cost=fallback_data_dict.get("estimated_cost", {"total_estimated_cost": 0}), # type: ignore
+            rationale=f"Minimal fallback proposal automatically generated due to a critical error: {error_reason}. Please review team and project scope.",
+        )
+
+    # Helper methods for instance use (e.g., in _create_default_agents, _create_minimal_fallback_proposal)
+    # These are kept as instance methods for potential future use of 'self' if needed.
+    def _get_model_for_seniority(self, seniority_value_str: str) -> str:
+        """Get appropriate LLM model based on agent seniority string value."""
+        return MODEL_BY_SENIORITY.get(seniority_value_str.lower(), MODEL_BY_SENIORITY[AgentSeniority.JUNIOR.value])
+
+    def _get_tools_for_role(self, role_str: str, seniority_value_str: str) -> List[Dict[str, str]]:
+        """Get appropriate tools based on agent role and seniority string values."""
+        tools_output: List[Dict[str, str]] = []
+        role_l = role_str.lower()
+        seniority_l = seniority_value_str.lower()
+
+        if seniority_l in [AgentSeniority.SENIOR.value, AgentSeniority.EXPERT.value] or "manager" in role_l:
+            tools_output.append({"type": "web_search", "name": "web_search", "description": "Enables searching the web for current information."})
+        
+        if any(keyword in role_l for keyword in ['content', 'writing', 'research', 'analysis', 'marketing', 'manager']):
+            tools_output.append({"type": "file_search", "name": "file_search", "description": "Enables searching through provided documents and knowledge base."})
+        return tools_output
+
+    def _create_specialist_prompt(self, role_str: str, skills_list: List[str]) -> str:
+        """Create a standardized system prompt for specialist agents."""
+        skills_str_display = ', '.join(skills_list) if skills_list else "assigned tasks according to your role"
+        return f"""You are a {role_str}. Your expertise covers: {skills_str_display}.
+KEY PRINCIPLES:
+1. Execute tasks within your defined area of expertise with precision and high quality.
+2. Provide concrete, actionable results and complete deliverables directly.
+3. Do NOT delegate tasks back to the Project Manager that fall within your expertise. Escalate to the Project Manager ONLY for critical roadblocks, tasks clearly outside your scope (after attempting to clarify), or for significant project-level decisions.
+4. Focus on task completion and quality, minimizing unnecessary coordination overhead.
+5. Collaborate directly with other specialists when interdependent tasks arise, keeping the Project Manager informed of significant progress and critical interactions that may impact the project timeline or scope."""
