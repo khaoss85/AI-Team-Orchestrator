@@ -276,6 +276,18 @@ REMEMBER:
 - Structure your final response strictly according to the 'TaskExecutionOutput' JSON schema.
 - Be clear, concise, and action-oriented in your summaries and results.
 """
+        core_prompt += """
+CRITICAL: After you complete your analysis and work, you MUST end with a single JSON output in this EXACT format:
+{
+  "task_id": "...",
+  "status": "completed",
+  "summary": "Brief summary of what you accomplished",
+  "detailed_results_json": "{'phases': [...], 'deliverables': [...]}",
+  "next_steps": ["Step 1", "Step 2", "Step 3"]
+}
+
+Do NOT continue logging after producing this final JSON output. This JSON is what determines task completion.
+"""
         return core_prompt.strip()
 
     def _create_sdk_handoffs(self) -> List[Any]:
@@ -690,7 +702,7 @@ REMEMBER:
                 task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Description:\n{task.description}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
                 
                 agent_run_result = await asyncio.wait_for(
-                    Runner.run(self.agent, task_prompt_content, max_turns=3, context=context),
+                    Runner.run(self.agent, task_prompt_content, max_turns=14, context=context),
                     timeout=self.execution_timeout
                 )
                 
@@ -728,6 +740,16 @@ REMEMBER:
                 
                 # Nota: Assicurarsi che update_task_status accetti questi come keyword arguments.
                 await update_task_status(task_id=str(task.id), status=final_task_status_val, result=result_dict_to_save)
+                # AGGIUNGI QUESTO LOG:
+                logger.info(f"TASK OUTPUT for {task.id}:")
+                logger.info(f"Summary: {execution_result_obj.summary}")
+                if execution_result_obj.detailed_results_json:
+                    logger.info(f"Detailed Results: {execution_result_obj.detailed_results_json}")
+                if execution_result_obj.next_steps:
+                    logger.info(f"Next Steps: {execution_result_obj.next_steps}")
+                if execution_result_obj.suggested_handoff_target_role:
+                    logger.info(f"Handoff Target: {execution_result_obj.suggested_handoff_target_role}")
+
                 await self._log_execution_internal("task_execution_finished", {"task_id": str(task.id), "final_status": final_task_status_val, "summary": execution_result_obj.summary})
                 return result_dict_to_save
 
