@@ -1,3 +1,4 @@
+
 # backend/executor.py - Versione completa e aggiornata
 import asyncio
 import logging
@@ -683,46 +684,54 @@ class TaskExecutor:
             logger.info(f"Task {task_id} finished (status: {task_final_status_val}). Cost: ${usage_record['total_cost']:.6f}, Time: {execution_time:.2f}s")
 
             # POST-COMPLETION HANDLER
-            # Esegue solo se enabled e non paused per il workspace
-            if (task_final_status_val == TaskStatus.COMPLETED.value and 
-                self.auto_generation_enabled and 
-                workspace_id not in self.workspace_auto_generation_paused):
-                
+            # NUOVO: Gestisce selettivamente PM vs non-PM task
+            if task_final_status_val == TaskStatus.COMPLETED.value:
                 try:
-                    # Ricrea l'oggetto Task con lo stato finale per l'handler
-                    completed_task_for_handler = Task(
-                        id=task_pydantic_obj.id,
-                        workspace_id=task_pydantic_obj.workspace_id,
-                        agent_id=task_pydantic_obj.agent_id,
-                        assigned_to_role=task_pydantic_obj.assigned_to_role,
-                        name=task_pydantic_obj.name,
-                        description=task_pydantic_obj.description,
-                        status=TaskStatus.COMPLETED,  # Enum, non value
-                        priority=task_pydantic_obj.priority,
-                        parent_task_id=task_pydantic_obj.parent_task_id,
-                        depends_on_task_ids=task_pydantic_obj.depends_on_task_ids,
-                        estimated_effort_hours=task_pydantic_obj.estimated_effort_hours,
-                        deadline=task_pydantic_obj.deadline,
-                        context_data=task_pydantic_obj.context_data,
-                        result=task_result_payload_for_db,  # Risultato dell'esecuzione
-                        created_at=task_pydantic_obj.created_at,
-                        updated_at=datetime.now()  # Ora corrente
+                    # Determina se è un task di Project Manager
+                    is_pm_task = await self._is_project_manager_task(task_pydantic_obj, task_result_payload_for_db)
+                    
+                    # Per i PM esegui sempre, per gli altri solo se auto-gen è abilitata
+                    should_run_handler = (
+                        is_pm_task or  # PM task: sempre
+                        (self.auto_generation_enabled and workspace_id not in self.workspace_auto_generation_paused)  # Altri: solo se abilitato
                     )
                     
-                    logger.info(f"Calling enhanced_handler.handle_task_completion for task {task_id}")
-                    await self.enhanced_handler.handle_task_completion(
-                        completed_task=completed_task_for_handler,  # Passa l'oggetto Pydantic
-                        task_result=task_result_payload_for_db,  # Il dizionario del risultato  
-                        workspace_id=workspace_id
-                    )
-                    logger.info(f"Post-completion handler triggered for task {task_id}")
-                    
+                    if should_run_handler:
+                        # Ricrea l'oggetto Task con lo stato finale per l'handler
+                        completed_task_for_handler = Task(
+                            id=task_pydantic_obj.id,
+                            workspace_id=task_pydantic_obj.workspace_id,
+                            agent_id=task_pydantic_obj.agent_id,
+                            assigned_to_role=task_pydantic_obj.assigned_to_role,
+                            name=task_pydantic_obj.name,
+                            description=task_pydantic_obj.description,
+                            status=TaskStatus.COMPLETED,  # Enum, non value
+                            priority=task_pydantic_obj.priority,
+                            parent_task_id=task_pydantic_obj.parent_task_id,
+                            depends_on_task_ids=task_pydantic_obj.depends_on_task_ids,
+                            estimated_effort_hours=task_pydantic_obj.estimated_effort_hours,
+                            deadline=task_pydantic_obj.deadline,
+                            context_data=task_pydantic_obj.context_data,
+                            result=task_result_payload_for_db,  # Risultato dell'esecuzione
+                            created_at=task_pydantic_obj.created_at,
+                            updated_at=datetime.now()  # Ora corrente
+                        )
+                        
+                        handler_type = "PM auto-generation" if is_pm_task else "enhanced task handler"
+                        logger.info(f"Calling {handler_type} for task {task_id}")
+                        await self.enhanced_handler.handle_task_completion(
+                            completed_task=completed_task_for_handler,  # Passa l'oggetto Pydantic
+                            task_result=task_result_payload_for_db,  # Il dizionario del risultato  
+                            workspace_id=workspace_id
+                        )
+                        logger.info(f"{handler_type} completed for task {task_id}")
+                        
+                    else:
+                        reason = "not PM task and auto-gen disabled/paused"
+                        logger.info(f"Skipping post-completion for {task_id}: {reason}")
+                        
                 except Exception as auto_error:
                     logger.error(f"Error in post-completion handler for task {task_id}: {auto_error}", exc_info=True)
-            elif not self.auto_generation_enabled:
-                logger.info(f"Skipping post-completion: global auto-gen disabled for {task_id}")
-            elif workspace_id in self.workspace_auto_generation_paused:
-                logger.info(f"Skipping post-completion: auto-gen paused for W:{workspace_id} on task {task_id}")
 
         except Exception as e:
             # Gestione errori durante l'esecuzione
@@ -770,6 +779,39 @@ class TaskExecutor:
             # Aggiungi al completion tracker anche i task falliti
             if workspace_id:
                 self.task_completion_tracker[workspace_id].add(task_id)
+
+    async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:
+        """Determina se un task è stato completato da un Project Manager"""
+        
+        try:
+            # Metodo 1: Controlla l'agent_id se disponibile
+            if task.agent_id:
+                agent_data = await get_agent(str(task.agent_id))
+                if agent_data:
+                    role = agent_data.get('role', '').lower()
+                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead']):
+                        logger.info(f"Task {task.id} identified as PM task by agent role: {role}")
+                        return True
+        except Exception as e:
+            logger.warning(f"Could not check agent role for task {task.id}: {e}")
+        
+        # Metodo 2: Euristiche basate sul contenuto del task
+        task_name = task.name.lower()
+        task_desc = (task.description or "").lower()
+        
+        # Indicatori di task di PM
+        pm_indicators = [
+            "project setup", "strategic planning", "kick-off",
+            "planning", "coordination", "project manager",
+            "team assessment", "phase breakdown", "delegate"
+        ]
+        
+        for indicator in pm_indicators:
+            if indicator in task_name or indicator in task_desc:
+                logger.info(f"Task {task.id} identified as PM task by content indicator: {indicator}")
+                return True
+        
+        return False
 
     async def execution_loop(self):
         """Main execution loop del TaskExecutor"""

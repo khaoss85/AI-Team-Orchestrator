@@ -201,9 +201,9 @@ class SpecialistAgent(Generic[T]):
         return OpenAIAgent(**agent_config)
 
     def _create_project_manager_prompt(self) -> str:
-        """Prompt specifico per Project Manager agents"""
+        """Prompt specifico per Project Manager agents con output strutturato"""
         base_prompt_prefix = handoff_prompt.RECOMMENDED_PROMPT_PREFIX if SDK_AVAILABLE else ""
-        
+
         available_tool_names = []
         for tool in self.tools:
             tool_name_attr = getattr(tool, 'name', getattr(tool, '__name__', None))
@@ -212,61 +212,72 @@ class SpecialistAgent(Generic[T]):
         sdk_handoff_tool_names = [h.name for h in self.direct_sdk_handoffs if hasattr(h, 'name')] if SDK_AVAILABLE else []
 
         return f"""
-{base_prompt_prefix}
-You are a highly efficient AI Project Manager. Your name is {self.agent_data.name}.
-Your primary responsibility is to orchestrate the work of a team of specialist agents to achieve the project goal.
-You are equipped with the following tools: {', '.join(available_tool_names)}.
-{"You can also directly handoff to other agents using: " + ", ".join(sdk_handoff_tool_names) + "." if sdk_handoff_tool_names else ""}
+    {base_prompt_prefix}
+    You are a highly efficient AI Project Manager. Your name is {self.agent_data.name}.
+    Your primary responsibility is to orchestrate the work of a team of specialist agents to achieve the project goal.
+    You are equipped with the following tools: {', '.join(available_tool_names)}.
+    {"You can also directly handoff to other agents using: " + ", ".join(sdk_handoff_tool_names) + "." if sdk_handoff_tool_names else ""}
 
-CURRENT TASK TYPE: PLANNING OR DELEGATION
+    CURRENT TASK TYPE: PLANNING OR DELEGATION
 
-IF THE CURRENT TASK IS A PLANNING TASK (e.g., "Project Setup & Strategic Planning Kick-off"):
-1.  Thoroughly analyze the project goal and requirements.
-2.  Break down the project into logical phases and milestones.
-3.  For each phase, define key deliverables.
-4.  Identify the necessary sub-tasks for the *immediate next phase* (usually Phase 1 after initial planning).
-5.  For each sub-task, clearly define:
-    * A unique and descriptive `task_name`.
-    * A comprehensive `task_description` with all context, inputs, and expected outputs for the specialist.
-    * The `target_agent_role` best suited to perform it (e.g., "Data Analyst", "ContentSpecialist").
-    * A `priority` ("high", "medium", "low").
-6.  Your final output for a planning task MUST be a JSON object matching 'TaskExecutionOutput'.
-    * The `summary` should state that planning is complete and sub-tasks for the next phase are defined.
-    * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined, including their name, description, target_agent_role, and priority. Example:
-        "{{\\"defined_sub_tasks\\": [{{\\"name\\": \\"Sub-task 1\\", \\"description\\": \\"...\\", \\"target_agent_role\\": \\"RoleA\\", \\"priority\\": \\"high\\"}}], \\"overall_plan_summary\\": \\"..."}}"
-    * `next_steps` should include: "Delegate the defined sub-tasks using the '{self._create_task_tool_name}' tool."
+    IF THE CURRENT TASK IS A PLANNING TASK (e.g., "Project Setup & Strategic Planning Kick-off"):
+    1.  Thoroughly analyze the project goal and requirements.
+    2.  Break down the project into logical phases and milestones.
+    3.  For each phase, define key deliverables.
+    4.  Identify the necessary sub-tasks for the *immediate next phase* (usually Phase 1 after initial planning).
+    5.  For each sub-task, clearly define:
+        * A unique and descriptive `name`.
+        * A comprehensive `description` with all context, inputs, and expected outputs for the specialist.
+        * The `target_agent_role` best suited to perform it (e.g., "AnalysisSpecialist", "ContentSpecialist").
+        * A `priority` ("high", "medium", "low").
+    6.  Your final output for a planning task MUST be a JSON object matching 'TaskExecutionOutput'.
+        * The `summary` should state that planning is complete and sub-tasks for the next phase are defined.
+        * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined:
 
-IF THE CURRENT TASK IS A DELEGATION TASK (e.g., "Delegate sub-tasks for Phase 1"):
-1.  Identify the sub-tasks defined in the previous planning phase (likely in the `detailed_results_json` or task context).
-2.  For EACH defined sub-task:
-    * Use the '{self._create_task_tool_name}' tool.
-    * Pass the `workspace_id` (currently: "{self.agent_data.workspace_id}").
-    * Pass the `task_name`, `task_description`, `target_agent_role`, and `priority` as defined in the plan.
-    * Pass the `parent_task_id` (ID of the current delegation task or the original planning task).
-3.  After attempting to create all sub-tasks, your final output MUST be a JSON object matching 'TaskExecutionOutput'.
-    * The `summary` should confirm how many sub-tasks were successfully created and delegated.
-    * The `detailed_results_json` should contain a JSON string listing the results from each call to '{self._create_task_tool_name}' (including any errors or success messages and created task IDs).
-    * `next_steps` should be: ["Monitor the progress of the delegated sub-tasks."].
+        CRITICAL FORMAT for detailed_results_json:
+        {{"defined_sub_tasks": [
+            {{
+                "name": "Competitor Analysis",
+                "description": "Analyze top 5 competitors' Instagram strategies, content themes, posting frequency, and engagement rates.",
+                "target_agent_role": "AnalysisSpecialist",
+                "priority": "high"
+            }},
+            {{
+                "name": "Audience Profiling", 
+                "description": "Define target audience demographics, interests, and content preferences for bodybuilding niche.",
+                "target_agent_role": "AnalysisSpecialist",
+                "priority": "high"
+            }}
+        ], "overall_plan_summary": "..."}}
 
-GENERAL RULES FOR PROJECT MANAGER:
--   Your role is to PLAN and DELEGATE. Do NOT execute specialist tasks yourself unless the task is specifically about project management (e.g., creating a status report).
--   Ensure task descriptions for specialists are extremely clear, complete, and actionable.
--   Provide all necessary context from previous steps when creating sub-tasks.
--   Always aim for a "completed" status in your TaskExecutionOutput once your planning or delegation for the current task is finished. Use "requires_handoff" VERY sparingly, only if you are truly blocked and need a different type of PM.
--   If a tool call to '{self._create_task_tool_name}' fails for a sub-task, note the error and attempt to delegate other sub-tasks. Report all successes and failures in your final `detailed_results_json`.
+        * `next_steps` should include: ["Sub-tasks will be automatically created for the defined roles."]
 
-OUTPUT FORMAT REMINDER:
-Your final response for *every* interaction MUST be a single JSON object conforming to the 'TaskExecutionOutput' schema.
-Example for DELEGATION task completion:
-{{
-  "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
-  "status": "completed",
-  "summary": "Successfully created and delegated 3 sub-tasks for Phase 1.",
-  "detailed_results_json": "{{ \\"delegation_results\\": [ {{ \\"sub_task_name\\": \\"Competitor Analysis\\", \\"tool_call_result\\": {{ \\"success\\": true, \\"task_id\\": \\"...", \\"message\\": \\"..." }} }}, {{ \\"sub_task_name\\": \\"Audience Profile\\", \\"tool_call_result\\": {{ \\"success\\": false, \\"error\\": \\"No active agent for MarketingSpecialist\\" }} }} ] }}",
-  "next_steps": ["Monitor the progress of delegated sub-tasks."]
-}}
-Do NOT add any text before or after this final JSON object.
-""".strip()
+    IF THE CURRENT TASK IS A DELEGATION TASK:
+    1.  You have access to the '{self._create_task_tool_name}' tool.
+    2.  Use it to create and assign sub-tasks to appropriate specialists.
+    3.  Your final output MUST be a JSON object with delegation results.
+
+    CRITICAL GUIDELINES:
+    * Focus on planning & defining clear sub-tasks.
+    * NEVER delegate coordination tasks - those are YOUR responsibility.
+    * Provide complete context in sub-task descriptions.
+    * Always aim for "completed" status once your planning is finished.
+    * Your detailed_results_json must be VALID JSON - no trailing commas, proper escaping.
+
+    OUTPUT FORMAT REMINDER:
+    Your final response for *every* interaction MUST be a single JSON object conforming to the 'TaskExecutionOutput' schema.
+
+    Example for PLANNING task completion:
+    {{
+      "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
+      "status": "completed",
+      "summary": "Project planning completed with 4 defined phases and key deliverables. Initial 3 sub-tasks for Phase 1 are defined and ready for automatic creation.",
+      "detailed_results_json": "{{\\"defined_sub_tasks\\": [\\"name\\": \\"Task 1\\", \\"description\\": \\"...", \\"target_agent_role\\": \\"AnalysisSpecialist\\", \\"priority\\": \\"high\\"]", \\"overall_plan_summary\\": \\"..."\\"}}",
+      "next_steps": ["Sub-tasks will be automatically created for the defined roles."]
+    }}
+
+    Do NOT add any text before or after this final JSON object.
+    """.strip()
 
     def _create_specialist_anti_loop_prompt(self) -> str:
         """Prompt specifico per specialist agents (non-manager)"""

@@ -86,40 +86,38 @@ class EnhancedTaskExecutor:
         workspace_id: str,
     ) -> None:
         """
-        Handle task completion with ZERO auto-generation for maximum safety.
-        Only logs the completion for monitoring purposes.
+        Handle task completion with SELETTIVA per PM.
+        PM task: crea sempre sub-task automaticamente
+        Altri task: solo se auto-generation abilitata
         """
         
         task_id_str = str(completed_task.id)
         
-        # SEMPRE log per monitoring - questo è l'unico output del sistema
-        await self._log_completion_analysis(
-            task=completed_task, 
-            result_or_analysis=task_result, 
-            decision="auto_generation_globally_disabled",
-            extra_info="Analyzer configured for safety - no auto tasks created"
-        )
+        # Determina se è un PM task
+        is_pm_task = await self._is_project_manager_task(completed_task, task_result)
         
-        # EARLY EXIT: Auto-generation è disabilitato
+        # PM auto-generation: sempre abilitata
+        if is_pm_task:
+            logger.info(f"Project Manager task detected {task_id_str} - executing auto-generation")
+            pm_created_tasks = await self.handle_project_manager_completion(
+                completed_task, task_result, workspace_id
+            )
+            
+            if pm_created_tasks:
+                return  # Task PM completato con successo
+        
+        # Per non-PM: usa la logica esistente solo se auto-generation è abilitata
         if not self.auto_generation_enabled:
-            logger.info(f"Auto-generation globally disabled. Task {task_id_str} completed. No further action.")
+            logger.info(f"Non-PM task {task_id_str}: auto-generation globally disabled")
+            await self._log_completion_analysis(
+                task=completed_task, 
+                result_or_analysis=task_result, 
+                decision="auto_generation_globally_disabled",
+                extra_info="Analyzer configured for safety - no auto tasks created"
+            )
             return
-
-        # SAFETY CHECK: Anche se abilitato, verifica pause dell'executor
-        try:
-            # Importazione lazy per evitare circular imports
-            from executor import TaskExecutor
-            # Controlla se l'executor ha messo in pausa l'auto-generation per questo workspace
-            # (Questo richiede che TaskExecutor abbia un metodo per verificare lo stato)
-            logger.warning(f"Auto-generation enabled for workspace {workspace_id} - ATTENZIONE: possibili loop!")
-        except Exception as e:
-            logger.warning(f"Could not check executor status: {e}. Assuming auto-generation paused for safety.")
-            return
-
-        # Se arriviamo qui, l'auto-generation è esplicitamente abilitata
-        # Questo dovrebbe succedere SOLO in scenari di testing controllato
         
-        # Mark come già analizzato per prevenire duplicati
+        # Resto della logica esistente per task non-PM...
         if task_id_str in self.analyzed_tasks:
             logger.info(f"Task {task_id_str} already processed - skipping")
             return
@@ -127,7 +125,7 @@ class EnhancedTaskExecutor:
         self.analyzed_tasks.add(task_id_str)
 
         try:
-            # Ultra-conservative filtering
+            # Ultra-conservative filtering per non-PM
             if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
                 await self._log_completion_analysis(completed_task, task_result, "filtered_out_conservative")
                 return
@@ -165,6 +163,174 @@ class EnhancedTaskExecutor:
         except Exception as e:
             logger.error(f"Error in handle_task_completion for {task_id_str}: {e}", exc_info=True)
             await self._log_completion_analysis(completed_task, task_result, "analysis_error", str(e))
+
+    # ---------------------------------------------------------------------
+    # PROJECT MANAGER SPECIFIC HANDLING
+    # ---------------------------------------------------------------------
+    async def handle_project_manager_completion(
+        self,
+        task: Task,
+        result: Dict[str, Any],
+        workspace_id: str
+    ) -> bool:
+        """
+        Gestisce specificamente il completamento di task del Project Manager
+        creando automaticamente i sub-task definiti nel risultato.
+        
+        Returns:
+            bool: True se ha creato sub-task, False altrimenti
+        """
+        
+        logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
+        
+        try:
+            # Estrai i sub-task definiti dal risultato
+            detailed_results = result.get("detailed_results_json")
+            if not detailed_results:
+                logger.info(f"No detailed_results_json in PM task {task.id}")
+                return False
+            
+            # Parse del JSON dei risultati
+            try:
+                results_data = json.loads(detailed_results)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
+                return False
+            
+            # Cerca i sub-task definiti
+            defined_subtasks = results_data.get("defined_sub_tasks", [])
+            if not defined_subtasks:
+                logger.info(f"No defined_sub_tasks found in PM task {task.id}")
+                return False
+            
+            logger.info(f"Found {len(defined_subtasks)} sub-tasks to create for PM task {task.id}")
+            
+            # Importa create_task qui per evitare circular imports
+            from database import create_task
+            
+            # Crea ogni sub-task
+            created_count = 0
+            for subtask_def in defined_subtasks:
+                try:
+                    # Valida i campi richiesti
+                    required_fields = ["name", "description", "target_agent_role"]
+                    if not all(field in subtask_def for field in required_fields):
+                        logger.warning(f"Skipping invalid subtask definition: {subtask_def}")
+                        continue
+                    
+                    # Trova l'agente target
+                    target_role = subtask_def["target_agent_role"]
+                    target_agent = await self._find_agent_by_role(workspace_id, target_role)
+                    
+                    if not target_agent:
+                        logger.warning(f"No agent found for role '{target_role}' - skipping subtask '{subtask_def['name']}'")
+                        continue
+                    
+                    # Crea il sub-task
+                    created_task = await create_task(
+                        workspace_id=workspace_id,
+                        agent_id=str(target_agent["id"]),
+                        assigned_to_role=target_role,
+                        name=subtask_def["name"],
+                        description=subtask_def["description"],
+                        status=TaskStatus.PENDING.value,
+                        priority=subtask_def.get("priority", "medium"),
+                        parent_task_id=task.id,
+                        context_data={
+                            "created_by_pm": task.agent_id,
+                            "pm_task_id": str(task.id),
+                            "auto_generated": True
+                        }
+                    )
+                    
+                    if created_task:
+                        created_count += 1
+                        logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) for {target_agent['name']}")
+                    else:
+                        logger.error(f"Failed to create sub-task '{subtask_def['name']}'")
+                        
+                except Exception as e:
+                    logger.error(f"Error creating sub-task '{subtask_def.get('name', 'unknown')}': {e}", exc_info=True)
+                    continue
+            
+            # Log il risultato
+            success_msg = f"PM auto-generation completed: {created_count}/{len(defined_subtasks)} sub-tasks created"
+            logger.info(success_msg)
+            
+            # Log l'evento per monitoring
+            await self._log_completion_analysis(
+                task, 
+                result, 
+                "pm_auto_generation_completed",
+                f"Created {created_count} sub-tasks"
+            )
+            
+            return created_count > 0
+            
+        except Exception as e:
+            logger.error(f"Error in PM auto-generation for task {task.id}: {e}", exc_info=True)
+            await self._log_completion_analysis(
+                task, 
+                result, 
+                "pm_auto_generation_error",
+                str(e)
+            )
+            return False
+
+    async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
+        """Trova un agente attivo per il ruolo specificato"""
+        try:
+            # Importa qui per evitare circular imports
+            from database import list_agents as db_list_agents
+            
+            agents = await db_list_agents(workspace_id)
+            
+            # Cerca agenti con ruolo esatto
+            for agent in agents:
+                if (agent.get("role", "").lower() == role.lower() and 
+                    agent.get("status") == "active"):
+                    return agent
+            
+            # Cerca agenti con ruolo simile
+            for agent in agents:
+                agent_role = agent.get("role", "").lower()
+                if (role.lower() in agent_role and 
+                    agent.get("status") == "active"):
+                    return agent
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding agent by role '{role}': {e}")
+            return None
+
+    async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:
+        """Determina se un task è stato completato da un Project Manager"""
+        
+        try:
+            # Metodo 1: Controlla l'agent_id se disponibile
+            if task.agent_id:
+                from database import get_agent
+                agent_data = await get_agent(str(task.agent_id))
+                if agent_data:
+                    role = agent_data.get('role', '').lower()
+                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead']):
+                        return True
+        except Exception as e:
+            logger.warning(f"Could not check agent role for task {task.id}: {e}")
+        
+        # Metodo 2: Euristiche basate sul contenuto del task
+        task_name = task.name.lower()
+        task_desc = (task.description or "").lower()
+        
+        # Indicatori di task di PM
+        pm_indicators = [
+            "project setup", "strategic planning", "kick-off",
+            "planning", "coordination", "project manager",
+            "team assessment", "phase breakdown", "delegate"
+        ]
+        
+        return any(indicator in task_name or indicator in task_desc for indicator in pm_indicators)
 
     # ---------------------------------------------------------------------
     # Ultra-conservative analysis filters
@@ -567,7 +733,8 @@ If unclear, escalate to Project Manager immediately.
         """Manual cleanup trigger for maintenance"""
         self.cleanup_caches()
         logger.info("Manual cache cleanup completed")
-
+        
+        
 # ---------------------------------------------------------------------
 # Global instance management
 # ---------------------------------------------------------------------
