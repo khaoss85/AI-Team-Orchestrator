@@ -256,6 +256,10 @@ class SpecialistAgent(Generic[T]):
     1.  You have access to the '{self._create_task_tool_name}' tool.
     2.  Use it to create and assign sub-tasks to appropriate specialists.
     3.  Your final output MUST be a JSON object with delegation results.
+    4.  When calling this tool, you MUST provide the correct `workspace_id` for the current project.
+    For the current task you are processing (Task ID: {self._current_task_being_processed_id or 'UNKNOWN_TASK_ID'}),
+    the workspace ID you MUST use is: '{str(self.agent_data.workspace_id)}'.
+    DO NOT use "default" or any other placeholder for `workspace_id`.
 
     CRITICAL GUIDELINES:
     * Focus on planning & defining clear sub-tasks.

@@ -169,139 +169,205 @@ class EnhancedTaskExecutor:
     # ---------------------------------------------------------------------
     async def handle_project_manager_completion(
         self,
-        task: Task,
+        task: Task, # Assumendo che Task sia il tipo corretto importato da models
         result: Dict[str, Any],
         workspace_id: str
     ) -> bool:
         """
         Gestisce specificamente il completamento di task del Project Manager
         creando automaticamente i sub-task definiti nel risultato.
-        
+
         Returns:
             bool: True se ha creato sub-task, False altrimenti
         """
-        
+
         logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
-        
+
+        # --- DEBUGGING LOGS INIZIO ---
+        logger.info(f"PM_HANDLER_DEBUG --- Task ID: {task.id} --- Received result dictionary keys: {list(result.keys())}")
+        detailed_results_json_content = result.get("detailed_results_json")
+
+        if detailed_results_json_content is not None:
+            logger.info(f"PM_HANDLER_DEBUG --- detailed_results_json IS PRESENT. Type: {type(detailed_results_json_content)}. Content snippet: {str(detailed_results_json_content)[:500]}")
+        else:
+            # Logga l'intero 'result' se 'detailed_results_json' è mancante o None per un debug completo
+            try:
+                result_dump_for_log = json.dumps(result)
+            except TypeError: # In caso 'result' non sia serializzabile direttamente
+                result_dump_for_log = str(result)
+            logger.error(f"PM_HANDLER_CRITICAL_DEBUG --- detailed_results_json IS MISSING or None in result for task {task.id}. Full result for debugging: {result_dump_for_log}")
+            return False # Esce se manca il campo fondamentale
+        # --- DEBUGGING LOGS FINE ---
+
+        # Rinomina la variabile per chiarezza, ora sappiamo che non è None
+        detailed_results_str = detailed_results_json_content
+
+        # Il log originale per "No detailed_results_json" non dovrebbe più essere raggiunto se il controllo sopra ritorna False.
+        # Se si raggiunge questo punto, detailed_results_str è una stringa (o qualcosa che si comporta come tale).
+        if not isinstance(detailed_results_str, str) or not detailed_results_str.strip():
+            logger.error(f"PM task {task.id}: detailed_results_json is present but is not a non-empty string. Type: {type(detailed_results_str)}. Content: '{detailed_results_str}'")
+            return False
+
         try:
-            # Estrai i sub-task definiti dal risultato
-            detailed_results = result.get("detailed_results_json")
-            if not detailed_results:
-                logger.info(f"No detailed_results_json in PM task {task.id}")
-                return False
-            
             # Parse del JSON dei risultati
             try:
-                results_data = json.loads(detailed_results)
+                results_data = json.loads(detailed_results_str)
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
+                logger.error(f"Failed to parse detailed_results_json string for task {task.id}: {e}. Content was: {detailed_results_str}")
                 return False
-            
+
             # Cerca i sub-task definiti
             defined_subtasks = results_data.get("defined_sub_tasks", [])
             if not defined_subtasks:
-                logger.info(f"No defined_sub_tasks found in PM task {task.id}")
+                logger.info(f"No defined_sub_tasks found in the parsed JSON for PM task {task.id}")
                 return False
-            
+
+            if not isinstance(defined_subtasks, list):
+                logger.error(f"PM task {task.id}: 'defined_sub_tasks' is not a list. Found: {type(defined_subtasks)}")
+                return False
+
             logger.info(f"Found {len(defined_subtasks)} sub-tasks to create for PM task {task.id}")
-            
-            # Importa create_task qui per evitare circular imports
+
+            # Importa create_task qui per evitare circular imports se necessario, o assicurati sia importato a livello di modulo
             from database import create_task
-            
-            # Crea ogni sub-task
+
             created_count = 0
+            created_tasks_details = [] # Per un log più dettagliato
+
             for subtask_def in defined_subtasks:
+                if not isinstance(subtask_def, dict):
+                    logger.warning(f"Skipping invalid subtask definition (not a dict): {subtask_def}")
+                    continue
+
                 try:
-                    # Valida i campi richiesti
                     required_fields = ["name", "description", "target_agent_role"]
                     if not all(field in subtask_def for field in required_fields):
-                        logger.warning(f"Skipping invalid subtask definition: {subtask_def}")
+                        logger.warning(f"Skipping subtask definition with missing required fields: {subtask_def}. Missing: {[f for f in required_fields if f not in subtask_def]}")
                         continue
-                    
-                    # Trova l'agente target
+
                     target_role = subtask_def["target_agent_role"]
                     target_agent = await self._find_agent_by_role(workspace_id, target_role)
-                    
+
                     if not target_agent:
-                        logger.warning(f"No agent found for role '{target_role}' - skipping subtask '{subtask_def['name']}'")
+                        logger.warning(f"No active agent found for role '{target_role}' - skipping subtask creation for '{subtask_def['name']}'")
                         continue
-                    
+
                     # Crea il sub-task
                     created_task = await create_task(
                         workspace_id=workspace_id,
-                        agent_id=str(target_agent["id"]),
+                        agent_id=str(target_agent["id"]), # Assicurati che l'ID sia una stringa
                         assigned_to_role=target_role,
                         name=subtask_def["name"],
                         description=subtask_def["description"],
-                        status=TaskStatus.PENDING.value,
+                        status="pending", # Uso diretto di TaskStatus.PENDING.value se TaskStatus è un Enum
                         priority=subtask_def.get("priority", "medium"),
-                        parent_task_id=task.id,
+                        parent_task_id=str(task.id), # Assicurati che l'ID sia una stringa
                         context_data={
-                            "created_by_pm": task.agent_id,
-                            "pm_task_id": str(task.id),
-                            "auto_generated": True
+                            "created_by_pm_task_id": str(task.id),
+                            "auto_generated_by_pm": True,
+                            "source_pm_agent_id": str(task.agent_id) if task.agent_id else None
                         }
                     )
-                    
-                    if created_task:
+
+                    if created_task and created_task.get("id"):
                         created_count += 1
-                        logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) for {target_agent['name']}")
+                        task_detail_for_log = {"id": created_task['id'], "name": subtask_def['name'], "assigned_to": target_agent.get('name')}
+                        created_tasks_details.append(task_detail_for_log)
+                        logger.info(f"Successfully created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) and assigned to {target_agent.get('name', 'Unknown Agent')}")
                     else:
-                        logger.error(f"Failed to create sub-task '{subtask_def['name']}'")
-                        
-                except Exception as e:
-                    logger.error(f"Error creating sub-task '{subtask_def.get('name', 'unknown')}': {e}", exc_info=True)
+                        logger.error(f"Failed to create sub-task '{subtask_def['name']}' in database or no ID returned.")
+
+                except Exception as e_subtask: # Catching more specific errors might be better
+                    logger.error(f"Error processing subtask definition '{subtask_def.get('name', 'Unknown name')}': {e_subtask}", exc_info=True)
                     continue
-            
-            # Log il risultato
-            success_msg = f"PM auto-generation completed: {created_count}/{len(defined_subtasks)} sub-tasks created"
-            logger.info(success_msg)
-            
-            # Log l'evento per monitoring
-            await self._log_completion_analysis(
-                task, 
-                result, 
-                "pm_auto_generation_completed",
-                f"Created {created_count} sub-tasks"
-            )
-            
-            return created_count > 0
-            
-        except Exception as e:
-            logger.error(f"Error in PM auto-generation for task {task.id}: {e}", exc_info=True)
-            await self._log_completion_analysis(
-                task, 
-                result, 
-                "pm_auto_generation_error",
-                str(e)
-            )
+
+            if created_count > 0:
+                logger.info(f"PM auto-generation: Successfully created {created_count}/{len(defined_subtasks)} sub-tasks for PM task {task.id}. Details: {created_tasks_details}")
+                # Questo log ora avviene dentro EnhancedTaskExecutor.handle_task_completion
+                # await self._log_completion_analysis(
+                # task,
+                # {"created_subtasks_count": created_count, "details": created_tasks_details},
+                # "pm_subtasks_created",
+                # f"Created {created_count} sub-tasks."
+                # )
+                return True
+            else:
+                logger.info(f"PM auto-generation: No sub-tasks were created for PM task {task.id} out of {len(defined_subtasks)} defined.")
+                return False
+
+        except Exception as e_main:
+            logger.error(f"Critical error in handle_project_manager_completion for task {task.id}: {e_main}", exc_info=True)
+            # Anche qui, il logging dell'errore di analisi avviene in EnhancedTaskExecutor.handle_task_completion
+            # await self._log_completion_analysis(
+            # task,
+            # {"error": str(e_main)},
+            # "pm_handling_error",
+            # str(e_main)
+            # )
             return False
 
+
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
-        """Trova un agente attivo per il ruolo specificato"""
         try:
-            # Importa qui per evitare circular imports
             from database import list_agents as db_list_agents
-            
-            agents = await db_list_agents(workspace_id)
-            
-            # Cerca agenti con ruolo esatto
-            for agent in agents:
-                if (agent.get("role", "").lower() == role.lower() and 
-                    agent.get("status") == "active"):
-                    return agent
-            
-            # Cerca agenti con ruolo simile
-            for agent in agents:
-                agent_role = agent.get("role", "").lower()
-                if (role.lower() in agent_role and 
-                    agent.get("status") == "active"):
-                    return agent
-            
-            return None
-            
+
+            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Attempting to find agent for role '{role}' in workspace '{workspace_id}'")
+            agents_from_db = await db_list_agents(workspace_id)
+
+            if not agents_from_db:
+                logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No agents returned from DB for workspace {workspace_id}.")
+                return None
+
+            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Workspace: {workspace_id}, Target Role: '{role}'. Agents retrieved: {len(agents_from_db)}")
+            for idx, agent_in_db in enumerate(agents_from_db):
+                logger.info(f"PM_SUBTASK_AGENT_FINDER --- DB Agent {idx+1}: ID={agent_in_db.get('id')}, Name='{agent_in_db.get('name')}', Role='{agent_in_db.get('role')}', Status='{agent_in_db.get('status')}'")
+
+            target_role_lower = role.lower().strip()
+
+            candidate_agents = []
+            for agent in agents_from_db:
+                agent_role_db_lower = agent.get("role", "").lower().strip()
+                agent_status_db = agent.get("status")
+
+                logger.debug(f"PM_SUBTASK_AGENT_FINDER --- Comparing: DB Role='{agent_role_db_lower}' (Status='{agent_status_db}') vs Target Role='{target_role_lower}'")
+
+                if agent_status_db == "active":  # Considera solo agenti attivi
+                    match_score = 0
+                    if agent_role_db_lower == target_role_lower: # Match esatto
+                        match_score = 10
+                    elif target_role_lower in agent_role_db_lower: # Es: target "analyst" è in "data analyst specialist"
+                        match_score = 8
+                    elif agent_role_db_lower in target_role_lower: # Meno probabile, ma per completezza
+                        match_score = 5
+
+                    # Fallback: controllo se tutte le parole chiave del ruolo target sono nel ruolo del DB
+                    # Questo aiuta se il PM usa "Analysis Specialist" e il DB ha "Analysis & Reporting Specialist"
+                    if match_score < 5: # Se non c'è già un buon match per contenimento
+                        target_keywords = set(target_role_lower.replace("specialist", "").strip().split())
+                        agent_role_keywords = set(agent_role_db_lower.replace("specialist", "").strip().split())
+                        if target_keywords and target_keywords.issubset(agent_role_keywords):
+                            match_score = 6 # Buon punteggio per subset di keyword
+
+                    if match_score >= 6: # Soglia per considerare un match valido
+                        # Bonus per seniority (opzionale, ma può aiutare a scegliere tra più match)
+                        # seniority_bonus = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
+                        # match_score += seniority_bonus.get(agent.get("seniority", "junior").lower(), 0)
+                        candidate_agents.append({"agent_dict": agent, "score": match_score})
+
+            if not candidate_agents:
+                logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No suitable active agent found for role '{role}' in workspace {workspace_id} after checking {len(agents_from_db)} agents.")
+                return None
+
+            # Ordina i candidati per score (decrescente)
+            candidate_agents.sort(key=lambda x: x["score"], reverse=True)
+
+            best_match_agent_dict = candidate_agents[0]["agent_dict"]
+            best_match_score = candidate_agents[0]["score"]
+            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Best match for role '{role}': Agent '{best_match_agent_dict.get('name')}' (Role: '{best_match_agent_dict.get('role')}', Score: {best_match_score})")
+            return best_match_agent_dict
+
         except Exception as e:
-            logger.error(f"Error finding agent by role '{role}': {e}")
+            logger.error(f"PM_SUBTASK_AGENT_FINDER --- Error in _find_agent_by_role for role '{role}', workspace '{workspace_id}': {e}", exc_info=True)
             return None
 
     async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:

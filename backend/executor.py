@@ -640,9 +640,14 @@ class TaskExecutor:
             else:
                 task_final_status_val = agent_returned_status
 
-            # Prepara payload per il DB
-            task_result_payload_for_db = {
-                "output": result_output,
+            # Prepara payload completo partendo dall’output dell’agente
+            task_result_payload_for_db = result_from_agent.copy()
+
+            # Se l’agente ha fornito un campo "summary", usalo come riassunto testuale
+            task_result_payload_for_db["output"] = result_from_agent.get("summary", result_output)
+
+            # Aggiungi/aggiorna metadati di esecuzione
+            task_result_payload_for_db.update({
                 "status_detail": result_from_agent.get("status_detail", "completed_by_agent"),
                 "execution_time_seconds": round(execution_time, 2),
                 "model_used": model_for_budget,
@@ -652,10 +657,7 @@ class TaskExecutor:
                     "estimated": actual_input_tokens is None or actual_output_tokens is None
                 },
                 "cost_estimated": usage_record["total_cost"],
-                "agent_metadata": result_from_agent.get("metadata"),
-                "force_completed": result_from_agent.get("force_completed", False),
-                "completion_reason": result_from_agent.get("completion_reason")
-            }
+            })
             
             # Aggiorna task nel DB
             await update_task_status(task_id, task_final_status_val, task_result_payload_for_db)
