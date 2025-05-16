@@ -561,7 +561,7 @@ class TaskExecutor:
             try:
                 # Passa l'oggetto Pydantic Task al manager
                 result_from_agent = await asyncio.wait_for(
-                    manager.execute_task(task_pydantic_obj), 
+                    manager.execute_task(task_pydantic_obj.id), 
                     timeout=self.execution_timeout
                 )
                 
