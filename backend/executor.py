@@ -27,6 +27,9 @@ from database import (
 )
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor
+from task_analyzer import get_enhanced_task_executor  # serve per disattivare/controllare l’analizzatore
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -1026,3 +1029,90 @@ def get_runaway_protection_status() -> Dict[str, Any]:
     Compat: restituisce solo la sezione runaway_protection_status.
     """
     return task_executor.get_detailed_stats().get("runaway_protection_status", {})
+
+# ======================================================
+# ⚙️  ANTI-LOOP CONFIGURAZIONE GLOBALE  + UTILITIES
+# ======================================================
+
+ANTI_LOOP_CONFIG = {
+    "max_pending_per_workspace": 8,       # ↓ da 50
+    "max_delegation_attempts": 1,         # ↓ da 3
+    "task_timeout_seconds": 120,          # 2 minuti
+    "auto_generation_disabled": True,     # disabilita auto-gen
+    "forced_completion": True,            # forza completion su errori
+    "single_task_processing": True,       # un task per workspace
+    "max_concurrent_global": 2,           # max 2 task globali
+}
+
+async def apply_anti_loop_config() -> None:
+    """
+    Applica i parametri ANTI_LOOP_CONFIG all’istanza globale task_executor.
+    Può essere richiamata quante volte vuoi (idempotente).
+    """
+    global task_executor
+    logger.info("Applying anti-loop configuration ...")
+
+    # 1.  Limiti generali -----------------------------------------------
+    task_executor.max_pending_tasks_per_workspace = ANTI_LOOP_CONFIG["max_pending_per_workspace"]
+    task_executor.max_concurrent_tasks           = ANTI_LOOP_CONFIG["max_concurrent_global"]
+    task_executor.task_timeout                   = ANTI_LOOP_CONFIG["task_timeout_seconds"]
+
+    # 2.  Disabilita auto-generation su tutti i workspace attivi ---------
+    if ANTI_LOOP_CONFIG["auto_generation_disabled"]:
+        try:
+            active_ws = await get_active_workspaces()
+            task_executor.workspace_auto_generation_paused.update(active_ws)
+            logger.info(f"Auto-generation DISABLED for {len(active_ws)} workspace(s)")
+        except Exception as e:
+            logger.error(f"Failed disabling auto-generation: {e}")
+
+    # 3.  Sincronizza l’EnhancedTaskExecutor (se esiste) -----------------
+    try:
+        enhanced_exec = get_enhanced_task_executor()
+        enhanced_exec.disable_auto_generation()
+    except Exception as e:
+        logger.warning(f"Could not sync enhanced task executor: {e}")
+
+    # 4.  Log riepilogo --------------------------------------------------
+    summary = {
+        "max_pending_per_workspace": task_executor.max_pending_tasks_per_workspace,
+        "max_concurrent_tasks":      task_executor.max_concurrent_tasks,
+        "task_timeout":              task_executor.task_timeout,
+        "paused_workspaces":         len(task_executor.workspace_auto_generation_paused),
+        "auto_generation":           "DISABLED" if ANTI_LOOP_CONFIG["auto_generation_disabled"] else "ENABLED",
+    }
+    logger.info(f"✅ Anti-loop config applied: {json.dumps(summary)}")
+
+# ----------------------------------------------------------------------
+# Boostrapping: avvio executor + anti-loop + monitor ricorrente
+# ----------------------------------------------------------------------
+
+# Salviamo la reference alla start originale
+_original_start_task_executor = start_task_executor   # <- quella definita poche righe sotto
+
+async def start_task_executor() -> None:              # ⚠️ override
+    """
+    Avvia il TaskExecutor **e** applica subito la configurazione anti-loop.
+    Resta compatibile con chi importava `start_task_executor` dal modulo.
+    """
+    await _original_start_task_executor()
+    await apply_anti_loop_config()
+    # parte anche il monitor periodico
+    asyncio.create_task(_periodic_anti_loop_monitor())
+
+# Funzione di monitoraggio periodico (ogni 10 min)
+async def _periodic_anti_loop_monitor() -> None:
+    while task_executor.running:
+        try:
+            await asyncio.sleep(600)  # 10 min
+            # Se per qualunque ragione un workspace “sfugge”, lo ri-mettiamo in pausa
+            if ANTI_LOOP_CONFIG["auto_generation_disabled"]:
+                active_ws = await get_active_workspaces()
+                missing   = set(active_ws) - task_executor.workspace_auto_generation_paused
+                if missing:
+                    task_executor.workspace_auto_generation_paused.update(missing)
+                    logger.warning(f"Re-applied auto-gen pause to {len(missing)} workspace(s)")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in anti-loop monitor: {e}")
