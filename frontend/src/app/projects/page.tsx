@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace } from '@/types';
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,11 @@ export default function ProjectsPage() {
     fetchWorkspaces();
   }, []);
   
+  const handleProjectClick = (id: string) => {
+    // Use the router to navigate programmatically
+    router.push(`/projects/${id}`);
+  };
+  
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -85,49 +92,51 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {workspaces.map((workspace) => (
-            <Link href={`/projects/${workspace.id}`} key={workspace.id} className="block">
-              <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-lg font-medium text-gray-800">{workspace.name}</h2>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    workspace.status === 'active' ? 'bg-green-100 text-green-800' :
-                    workspace.status === 'created' ? 'bg-blue-100 text-blue-800' :
-                    workspace.status === 'paused' ? 'bg-yellow-100 text-yellow-800' :
-                    workspace.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {workspace.status === 'active' ? 'Attivo' :
-                     workspace.status === 'created' ? 'Creato' :
-                     workspace.status === 'paused' ? 'In pausa' :
-                     workspace.status === 'completed' ? 'Completato' :
-                     'Errore'}
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {workspace.description || 'Nessuna descrizione'}
-                </p>
-                
-                <div className="border-t pt-4 mt-4">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-gray-500">Obiettivo</p>
-                      <p className="font-medium text-gray-800 truncate">
-                        {workspace.goal || 'Non specificato'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Budget</p>
-                      <p className="font-medium text-gray-800">
-                        {workspace.budget 
-                          ? `${workspace.budget.max_amount} ${workspace.budget.currency}`
-                          : 'Non specificato'}
-                      </p>
-                    </div>
+            <div 
+              key={workspace.id}
+              onClick={() => handleProjectClick(workspace.id)}
+              className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-lg font-medium text-gray-800">{workspace.name}</h2>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  workspace.status === 'active' ? 'bg-green-100 text-green-800' :
+                  workspace.status === 'created' ? 'bg-blue-100 text-blue-800' :
+                  workspace.status === 'paused' ? 'bg-yellow-100 text-yellow-800' :
+                  workspace.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {workspace.status === 'active' ? 'Attivo' :
+                   workspace.status === 'created' ? 'Creato' :
+                   workspace.status === 'paused' ? 'In pausa' :
+                   workspace.status === 'completed' ? 'Completato' :
+                   'Errore'}
+                </span>
+              </div>
+              
+              <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                {workspace.description || 'Nessuna descrizione'}
+              </p>
+              
+              <div className="border-t pt-4 mt-4">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">Obiettivo</p>
+                    <p className="font-medium text-gray-800 truncate">
+                      {workspace.goal || 'Non specificato'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Budget</p>
+                    <p className="font-medium text-gray-800">
+                      {workspace.budget 
+                        ? `${workspace.budget.max_amount} ${workspace.budget.currency}`
+                        : 'Non specificato'}
+                    </p>
                   </div>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

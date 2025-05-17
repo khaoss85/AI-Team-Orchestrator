@@ -1,64 +1,120 @@
-"use client"
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Task } from '@/types';
 import ConfirmModal from '@/components/ConfirmModal';
 import ProjectInsightsDashboard from '@/components/ProjectInsightsDashboard';
+import { useRouter } from 'next/navigation';
 
-// Nuovi componenti specifici
+// Sezioni di componenti specifici
 import ProjectOverviewSection from '@/components/ProjectOverviewSection';
 import ProjectProgressSection from '@/components/ProjectProgressSection';
 import ProjectTeamSection from '@/components/ProjectTeamSection';
 import ProjectActionsSection from '@/components/ProjectActionsSection';
-import ProjectFeedbackSection from '@/components/ProjectFeedbackSection';
 
-export default function ProjectDashboard({ workspace, agents, loading, error, onStartTeam, onDeleteProject, isStartingTeam, isDeleteModalOpen, setIsDeleteModalOpen }) {
+export default function ProjectDashboard({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const workspaceId = params.id;
+  
+  // Stati per i dati
+  const [workspace, setWorkspace] = useState<any>(null);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [feedbackRequests, setFeedbackRequests] = useState<any[]>([]);
+  
+  // Stati per il controllo dell'UI
   const [activeTab, setActiveTab] = useState('overview');
-  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tasksLoading, setTasksLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [feedbackRequests, setFeedbackRequests] = useState([]);
+  const [isStartingTeam, setIsStartingTeam] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
+  // Fetch dei dati iniziali
   useEffect(() => {
-    if (workspace) {
-      fetchTasks();
-      fetchStats();
-      fetchFeedbackRequests();
-    }
-  }, [workspace?.id]);
+    const fetchData = async () => {
+      if (!workspaceId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch workspace
+        const workspaceData = await api.workspaces.get(workspaceId);
+        setWorkspace(workspaceData);
+        
+        // Fetch agents
+        try {
+          const agentsData = await api.agents.list(workspaceId);
+          setAgents(agentsData);
+        } catch (agentErr) {
+          console.error('Failed to fetch agents:', agentErr);
+        }
+        
+        // Fetch tasks
+        try {
+          setTasksLoading(true);
+          const tasksData = await api.monitoring.getWorkspaceTasks(workspaceId);
+          setTasks(tasksData);
+        } catch (taskErr) {
+          console.error('Failed to fetch tasks:', taskErr);
+        } finally {
+          setTasksLoading(false);
+        }
+        
+        // Fetch stats
+        try {
+          const statsData = await api.monitoring.getWorkspaceStatus(workspaceId);
+          setStats(statsData);
+        } catch (statsErr) {
+          console.error('Failed to fetch stats:', statsErr);
+        }
+        
+        // Fetch feedback requests
+        try {
+          const requests = await api.humanFeedback.getPendingRequests(workspaceId);
+          setFeedbackRequests(requests);
+        } catch (feedbackErr) {
+          console.error('Failed to fetch feedback requests:', feedbackErr);
+        }
+        
+      } catch (err) {
+        console.error('Error fetching workspace data:', err);
+        setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del progetto');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [workspaceId]);
   
-  const fetchTasks = async () => {
+  // Funzioni di azione
+  const handleStartTeam = async () => {
     try {
-      setTasksLoading(true);
-      const result = await api.monitoring.getWorkspaceTasks(workspace.id);
-      setTasks(result);
+      setIsStartingTeam(true);
+      await api.monitoring.startTeam(workspaceId);
+      // Reload workspace data to get updated status
+      const workspaceData = await api.workspaces.get(workspaceId);
+      setWorkspace(workspaceData);
     } catch (err) {
-      console.error('Error fetching tasks:', err);
+      console.error('Error starting team:', err);
     } finally {
-      setTasksLoading(false);
+      setIsStartingTeam(false);
     }
   };
   
-  const fetchStats = async () => {
+  const handleDeleteProject = async () => {
     try {
-      const result = await api.monitoring.getWorkspaceStatus(workspace.id);
-      setStats(result);
+      await api.workspaces.delete(workspaceId);
+      router.push('/projects');
     } catch (err) {
-      console.error('Error fetching stats:', err);
+      console.error('Error deleting project:', err);
     }
   };
   
-  const fetchFeedbackRequests = async () => {
-    try {
-      const requests = await api.humanFeedback.getPendingRequests(workspace.id);
-      setFeedbackRequests(requests);
-    } catch (err) {
-      console.error('Error fetching feedback requests:', err);
-    }
-  };
-
   // Calcoli per la barra di avanzamento
   const calculateProgress = () => {
     if (!tasks || tasks.length === 0) return 0;
@@ -79,7 +135,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
   };
   
   // Rendering condizionale in base allo stato di caricamento
-  if (loading && !workspace) {
+  if (loading) {
     return (
       <div className="container mx-auto">
         <div className="text-center py-10">
@@ -97,10 +153,44 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
         <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
           {error}
         </div>
+        <div className="flex space-x-4">
+          <button
+            onClick={() => router.push('/projects')}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition"
+          >
+            Torna alla lista progetti
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
+          >
+            Riprova
+          </button>
+        </div>
       </div>
     );
   }
 
+  // Verifica che workspace esista
+  if (!workspace) {
+    return (
+      <div className="container mx-auto">
+        <div className="text-center py-10">
+          <div className="text-3xl mb-3">😕</div>
+          <h2 className="text-xl font-medium mb-2">Progetto non trovato</h2>
+          <p className="text-gray-500 mb-4">Non è stato possibile trovare il progetto richiesto.</p>
+          <Link 
+            href="/projects"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
+          >
+            Torna alla lista progetti
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Componente principale
   return (
     <div className="container mx-auto">
       {/* Header con informazioni essenziali e navigazione */}
@@ -120,7 +210,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
                  workspace?.status === 'created' ? 'Creato' : 
                  workspace?.status === 'paused' ? 'In pausa' : 
                  workspace?.status === 'completed' ? 'Completato' : 
-                 'Stato sconosciuto'}
+                 workspace?.status}
               </span>
             </div>
             <p className="text-gray-600 mb-2">{workspace?.description}</p>
@@ -217,7 +307,12 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
       <div className="mb-6">
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            <ProjectOverviewSection workspace={workspace} tasks={tasks} agents={agents} stats={stats} />
+            <ProjectOverviewSection 
+              workspace={workspace} 
+              tasks={tasks} 
+              agents={agents} 
+              stats={stats} 
+            />
             
             {/* Alert per feedback richiesto */}
             {feedbackRequests.length > 0 && (
@@ -239,7 +334,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
             )}
             
             {/* Project Insights Dashboard */}
-            <ProjectInsightsDashboard workspaceId={workspace.id} />
+            <ProjectInsightsDashboard workspaceId={workspaceId} />
           </div>
         )}
         
@@ -247,7 +342,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
           <ProjectTeamSection 
             workspace={workspace}
             agents={agents}
-            workspaceId={workspace.id}
+            workspaceId={workspaceId}
           />
         )}
         
@@ -256,7 +351,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
             workspace={workspace}
             tasks={tasks}
             tasksLoading={tasksLoading}
-            workspaceId={workspace.id}
+            workspaceId={workspaceId}
           />
         )}
         
@@ -267,7 +362,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
               Esplora i risultati finali e gli output del progetto, inclusi documenti, analisi e raccomandazioni.
             </p>
             <Link 
-              href={`/projects/${workspace.id}/deliverables`}
+              href={`/projects/${workspaceId}/deliverables`}
               className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
             >
               Visualizza Deliverables
@@ -278,7 +373,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
         {activeTab === 'actions' && (
           <ProjectActionsSection 
             workspace={workspace}
-            onStartTeam={onStartTeam}
+            onStartTeam={handleStartTeam}
             onDeleteClick={() => setIsDeleteModalOpen(true)}
             isStartingTeam={isStartingTeam}
             feedbackRequests={feedbackRequests}
@@ -289,21 +384,21 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
       {/* Azioni rapide (sempre visibili) */}
       <div className="fixed bottom-6 right-6 flex space-x-3">
         <Link 
-          href={`/projects/${workspace.id}/team`}
+          href={`/projects/${workspaceId}/team`}
           className="flex items-center justify-center w-12 h-12 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all"
           title="Gestisci Team"
         >
           <span className="text-xl">👥</span>
         </Link>
         <Link 
-          href={`/projects/${workspace.id}/tasks`}
+          href={`/projects/${workspaceId}/tasks`}
           className="flex items-center justify-center w-12 h-12 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
           title="Visualizza Attività"
         >
           <span className="text-xl">📋</span>
         </Link>
         <Link 
-          href={`/projects/${workspace.id}/deliverables`}
+          href={`/projects/${workspaceId}/deliverables`}
           className="flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
           title="Visualizza Deliverables"
         >
@@ -318,7 +413,7 @@ export default function ProjectDashboard({ workspace, agents, loading, error, on
         message={`Sei sicuro di voler eliminare il progetto "${workspace?.name}"? Questa azione eliminerà anche tutti gli agenti e i dati associati. Questa azione non può essere annullata.`}
         confirmText="Elimina"
         cancelText="Annulla"
-        onConfirm={onDeleteProject}
+        onConfirm={handleDeleteProject}
         onCancel={() => setIsDeleteModalOpen(false)}
       />
     </div>
