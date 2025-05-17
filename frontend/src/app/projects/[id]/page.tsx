@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -13,8 +13,17 @@ import ProjectProgressSection from '@/components/ProjectProgressSection';
 import ProjectTeamSection from '@/components/ProjectTeamSection';
 import ProjectActionsSection from '@/components/ProjectActionsSection';
 
-export default function ProjectDashboard({ params }: { params: { id: string } }) {
+// Update the type definition to indicate params is a Promise
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
+
+export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const router = useRouter();
+  
+  // Use the React.use hook to "unwrap" the Promise
+  const params = use(paramsPromise);
   const workspaceId = params.id;
   
   // Stati per i dati
@@ -56,7 +65,11 @@ export default function ProjectDashboard({ params }: { params: { id: string } })
         // Fetch tasks
         try {
           setTasksLoading(true);
-          const tasksData = await api.monitoring.getWorkspaceTasks(workspaceId);
+          const response = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${workspaceId}/tasks`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch tasks: ${response.status}`);
+          }
+          const tasksData = await response.json();
           setTasks(tasksData);
         } catch (taskErr) {
           console.error('Failed to fetch tasks:', taskErr);
