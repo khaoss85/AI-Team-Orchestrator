@@ -350,6 +350,7 @@ export default function ProjectDashboard({ params }: { params: { id: string } })
           <ProjectProgressSection 
             workspace={workspace}
             tasks={tasks}
+            agents={agents}
             tasksLoading={tasksLoading}
             workspaceId={workspaceId}
           />
