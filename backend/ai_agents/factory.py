@@ -179,6 +179,7 @@ class AgentFactory:
         - Never handoff back to the same role type you're receiving from
         """
 
+
         # ROLE-SPECIFIC INSTRUCTIONS
         if role_type == "manager" or role_type == "coordinator":
             prompt += f"""

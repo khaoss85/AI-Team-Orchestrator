@@ -76,18 +76,18 @@ async def create_agent(
     workspace_id: str,
     name: str,
     role: str,
-    seniority: str, # Già stringa dal model AgentSeniority.value
+    seniority: str,
     description: Optional[str] = None,
     system_prompt: Optional[str] = None,
     llm_config: Optional[Dict[str, Any]] = None,
-    tools: Optional[List[Dict[str, Any]]] = None, # Assicurati che sia JSON serializzabile
+    tools: Optional[List[Dict[str, Any]]] = None,
     can_create_tools: bool = False,
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
-    personality_traits: Optional[List[str]] = None,
+    personality_traits: Optional[List[Dict]] = None,
     communication_style: Optional[str] = None,
-    hard_skills: Optional[List[Dict[str, Any]]] = None,
-    soft_skills: Optional[List[Dict[str, Any]]] = None,
+    hard_skills: Optional[List[Dict]] = None,
+    soft_skills: Optional[List[Dict]] = None,
     background_story: Optional[str] = None
 ):
     try:
@@ -96,22 +96,20 @@ async def create_agent(
             "name": name,
             "role": role,
             "seniority": seniority,
-            "status": "active", # O lo stato iniziale che preferisci
-            "health": {"status": "unknown", "last_update": datetime.now().isoformat()}, # Default health
+            "status": "active",
+            "health": {"status": "unknown", "last_update": datetime.now().isoformat()},
             "can_create_tools": can_create_tools
         }
         if description: data["description"] = description
         if system_prompt: data["system_prompt"] = system_prompt
-        if llm_config: data["llm_config"] = json.dumps(llm_config) # Serializza in JSON
-        if tools: data["tools"] = json.dumps(tools) # Serializza in JSON
-        
-        # Nuovi campi
+        if llm_config: data["llm_config"] = json.dumps(llm_config)
+        if tools: data["tools"] = json.dumps(tools)
         if first_name: data["first_name"] = first_name
         if last_name: data["last_name"] = last_name
-        if personality_traits: data["personality_traits"] = personality_traits  # Già JSON compatibile in Supabase
+        if personality_traits: data["personality_traits"] = json.dumps(personality_traits)
         if communication_style: data["communication_style"] = communication_style
-        if hard_skills: data["hard_skills"] = hard_skills  # Già JSON compatibile in Supabase
-        if soft_skills: data["soft_skills"] = soft_skills  # Già JSON compatibile in Supabase
+        if hard_skills: data["hard_skills"] = json.dumps(hard_skills)
+        if soft_skills: data["soft_skills"] = json.dumps(soft_skills)
         if background_story: data["background_story"] = background_story
 
         result = supabase.table("agents").insert(data).execute()
@@ -529,12 +527,25 @@ def _deserialize_agent_json_fields(agent_data: Dict[str, Any]) -> Dict[str, Any]
         except (json.JSONDecodeError, TypeError):
             agent['health'] = {"status": "unknown", "last_update": None}
     
-    # Deserializza i nuovi campi
-    for field in ['personality_traits', 'hard_skills', 'soft_skills']:
-        if field in agent and isinstance(agent[field], str):
-            try:
-                agent[field] = json.loads(agent[field])
-            except (json.JSONDecodeError, TypeError):
-                agent[field] = []
+    # Deserializza personality_traits
+    if isinstance(agent.get('personality_traits'), str):
+        try:
+            agent['personality_traits'] = json.loads(agent['personality_traits'])
+        except (json.JSONDecodeError, TypeError):
+            agent['personality_traits'] = []
+    
+    # Deserializza hard_skills
+    if isinstance(agent.get('hard_skills'), str):
+        try:
+            agent['hard_skills'] = json.loads(agent['hard_skills'])
+        except (json.JSONDecodeError, TypeError):
+            agent['hard_skills'] = []
+    
+    # Deserializza soft_skills
+    if isinstance(agent.get('soft_skills'), str):
+        try:
+            agent['soft_skills'] = json.loads(agent['soft_skills'])
+        except (json.JSONDecodeError, TypeError):
+            agent['soft_skills'] = []
     
     return agent

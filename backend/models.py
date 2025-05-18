@@ -84,6 +84,39 @@ class Workspace(BaseModel):
 
 
 # --- Agent Models ---
+
+class SkillLevel(str, Enum):
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    EXPERT = "expert"
+
+class PersonalityTrait(str, Enum):
+    ANALYTICAL = "analytical"
+    CREATIVE = "creative"
+    DETAIL_ORIENTED = "detail-oriented"
+    PROACTIVE = "proactive"
+    COLLABORATIVE = "collaborative"
+    DECISIVE = "decisive"
+    INNOVATIVE = "innovative"
+    METHODICAL = "methodical"
+    ADAPTABLE = "adaptable"
+    DIPLOMATIC = "diplomatic"
+
+class CommunicationStyle(str, Enum):
+    FORMAL = "formal"
+    CASUAL = "casual"
+    TECHNICAL = "technical"
+    CONCISE = "concise"
+    DETAILED = "detailed"
+    EMPATHETIC = "empathetic"
+    ASSERTIVE = "assertive"
+
+class Skill(BaseModel):
+    name: str
+    level: SkillLevel
+    description: Optional[str] = None
+
+    
 class AgentHealth(BaseModel):
     status: HealthStatus = HealthStatus.UNKNOWN
     last_update: Optional[datetime] = None
@@ -92,6 +125,8 @@ class AgentHealth(BaseModel):
 class AgentCreate(BaseModel):
     workspace_id: UUID
     name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: str
     seniority: AgentSeniority
     description: Optional[str] = None
@@ -99,16 +134,16 @@ class AgentCreate(BaseModel):
     llm_config: Optional[Dict[str, Any]] = None
     tools: Optional[List[Dict[str, Any]]] = None
     can_create_tools: bool = False
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
     personality_traits: Optional[List[PersonalityTrait]] = None
-    communication_style: Optional[str] = None
+    communication_style: Optional[CommunicationStyle] = None
     hard_skills: Optional[List[Skill]] = None
     soft_skills: Optional[List[Skill]] = None
     background_story: Optional[str] = None
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: Optional[str] = None
     seniority: Optional[AgentSeniority] = None
     description: Optional[str] = None
@@ -118,10 +153,8 @@ class AgentUpdate(BaseModel):
     llm_config: Optional[Dict[str, Any]] = None
     tools: Optional[List[Dict[str, Any]]] = None
     can_create_tools: Optional[bool] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
     personality_traits: Optional[List[PersonalityTrait]] = None
-    communication_style: Optional[str] = None
+    communication_style: Optional[CommunicationStyle] = None
     hard_skills: Optional[List[Skill]] = None
     soft_skills: Optional[List[Skill]] = None
     background_story: Optional[str] = None
@@ -130,6 +163,8 @@ class Agent(BaseModel):
     id: UUID
     workspace_id: UUID
     name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: str
     seniority: AgentSeniority
     description: Optional[str] = None
@@ -139,15 +174,13 @@ class Agent(BaseModel):
     llm_config: Optional[Dict[str, Any]] = None
     tools: Optional[List[Dict[str, Any]]] = None
     can_create_tools: bool = False
-    created_at: datetime
-    updated_at: datetime
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
     personality_traits: Optional[List[PersonalityTrait]] = None
-    communication_style: Optional[str] = None
+    communication_style: Optional[CommunicationStyle] = None
     hard_skills: Optional[List[Skill]] = None
     soft_skills: Optional[List[Skill]] = None
     background_story: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -383,26 +416,3 @@ class DeliverableFeedback(BaseModel):
     message: str
     specific_tasks: Optional[List[str]] = None
     priority: Literal["low","medium","high"] = "medium"
-
-class SkillLevel(str, Enum):
-    BEGINNER = "beginner"
-    INTERMEDIATE = "intermediate"
-    ADVANCED = "advanced"
-    EXPERT = "expert"
-
-class PersonalityTrait(str, Enum):
-    ANALYTICAL = "analytical"
-    CREATIVE = "creative"
-    COLLABORATIVE = "collaborative"
-    DETAIL_ORIENTED = "detail_oriented"
-    EMPATHETIC = "empathetic"
-    PROACTIVE = "proactive"
-    DIRECT = "direct"
-    DIPLOMATIC = "diplomatic"
-    OPTIMISTIC = "optimistic"
-    CAUTIOUS = "cautious"
-
-class Skill(BaseModel):
-    name: str
-    level: SkillLevel
-    description: Optional[str] = None
