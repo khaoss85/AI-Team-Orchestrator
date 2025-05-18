@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Handoff } from '@/types'; // Assicurati che Handoff sia importato
+import { Workspace, Agent, Handoff, SkillLevel, PersonalityTrait, CommunicationStyle } from '@/types'; 
 import AgentEditModal from '@/components/AgentEditModal';
 
 type Props = {
@@ -17,41 +17,40 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [handoffs, setHandoffs] = useState<Handoff[]>([]); // State per gli handoff
+  const [handoffs, setHandoffs] = useState<Handoff[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   useEffect(() => {
-    const fetchProjectTeam = async () => {
-      if (!id) return; // Non fare nulla se l'id non è ancora disponibile
-      try {
-        setLoading(true);
-        setError(null); // Resetta l'errore all'inizio del fetch
-        
-        const workspaceData = await api.workspaces.get(id);
-        setWorkspace(workspaceData);
-        
-        const agentsData = await api.agents.list(id);
-        setAgents(agentsData);
-        
-        // Recupera gli handoff per il workspace
-        const handoffsData = await api.handoffs.list(id);
-        setHandoffs(handoffsData);
-        
-      } catch (err: any) { // Tipizza err per accedere a message
-        console.error('Failed to fetch project team:', err);
-        setError(err.message || 'Impossibile caricare il team del progetto. Riprova più tardi.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProjectTeam();
+    fetchData();
   }, [id]);
+
+  const fetchData = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const workspaceData = await api.workspaces.get(id);
+      setWorkspace(workspaceData);
+      
+      const agentsData = await api.agents.list(id);
+      setAgents(agentsData);
+      
+      const handoffsData = await api.handoffs.list(id);
+      setHandoffs(handoffsData);
+      
+    } catch (err: any) {
+      console.error('Failed to fetch project team:', err);
+      setError(err.message || 'Impossibile caricare il team del progetto. Riprova più tardi.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  const getStatusLabel = (status: string) => { /* ... implementazione esistente ... */ 
+  const getStatusLabel = (status: string) => {
     switch(status) {
       case 'active': return 'Attivo';
       case 'created': return 'Creato';
@@ -63,7 +62,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getStatusColor = (status: string) => { /* ... implementazione esistente ... */ 
+  const getStatusColor = (status: string) => {
     switch(status) {
       case 'active': return 'bg-green-100 text-green-800';
       case 'created': return 'bg-blue-100 text-blue-800';
@@ -75,8 +74,8 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getHealthColor = (health?: string) => { /* ... implementazione esistente ... */ 
-     if (!health) return 'bg-gray-100 text-gray-800';
+  const getHealthColor = (health?: string) => {
+    if (!health) return 'bg-gray-100 text-gray-800';
     switch(health) {
       case 'healthy': return 'bg-green-100 text-green-800';
       case 'degraded': return 'bg-yellow-100 text-yellow-800';
@@ -85,7 +84,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getSeniorityColor = (seniority: string) => { /* ... implementazione esistente ... */ 
+  const getSeniorityColor = (seniority: string) => {
     switch(seniority) {
       case 'junior': return 'bg-blue-100 text-blue-800';
       case 'senior': return 'bg-purple-100 text-purple-800';
@@ -94,7 +93,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getSeniorityLabel = (seniority: string) => { /* ... implementazione esistente ... */ 
+  const getSeniorityLabel = (seniority: string) => {
     switch(seniority) {
       case 'junior': return 'Junior';
       case 'senior': return 'Senior';
@@ -103,7 +102,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const getCostPerDay = (seniority: string) => { /* ... implementazione esistente ... */ 
+  const getCostPerDay = (seniority: string) => {
     switch(seniority) {
       case 'junior': return 5;
       case 'senior': return 10;
@@ -112,9 +111,27 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  // Modificata per gestire il caso in cui handoffs potrebbe essere undefined
+  const getSkillLevelBadge = (level?: string) => {
+    if (!level) return "";
+    switch(level.toLowerCase()) {
+      case 'beginner': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'intermediate': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'expert': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+  
+  const formatPersonalityTraits = (traits: PersonalityTrait[] | undefined) => {
+    if (!traits || !Array.isArray(traits) || traits.length === 0) return "Non specificati";
+    return traits.map(trait => 
+      typeof trait === 'string' 
+        ? trait.replace(/_/g, ' ').replace(/-/g, ' ') 
+        : String(trait).replace(/_/g, ' ').replace(/-/g, ' ')
+    ).join(', ');
+  };
+  
   const getAgentHandoffs = (agentId: string): Handoff[] => {
-    if (!handoffs) return []; // Restituisci array vuoto se handoffs è undefined
+    if (!handoffs) return [];
     return handoffs.filter(h => h.source_agent_id === agentId || h.target_agent_id === agentId);
   };
   
@@ -124,17 +141,16 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
   };
   
   const handleSaveAgent = async (agentId: string, updates: Partial<Agent>) => {
-    if (!id) return; // Aggiunto controllo per id
+    if (!id) return;
     try {
-      const updatedAgent = await api.agents.update(id, agentId, updates); // Assicurati che id (workspace_id) sia passato
+      const updatedAgent = await api.agents.update(id, agentId, updates);
       setAgents(agents.map(agent => 
-        agent.id === agentId ? { ...agent, ...updatedAgent } : agent // Unisci per mantenere i dati non modificati
+        agent.id === agentId ? { ...agent, ...updatedAgent } : agent
       ));
       setIsEditModalOpen(false);
       setEditingAgent(null);
     } catch (err) {
       console.error('Failed to update agent:', err);
-      // Potresti voler mostrare un errore all'utente qui
       throw err; 
     }
   };
@@ -182,13 +198,19 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
               
               return (
                 <div key={agent.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  {/* ... (sezione info agente esistente) ... */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h2 className="text-xl font-semibold">{agent.name}</h2>
                       <p className="text-gray-600 font-medium">{agent.role}</p>
+                      
+                      {/* Nome completo se disponibile */}
+                      {(agent.first_name || agent.last_name) && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {`${agent.first_name || ''} ${agent.last_name || ''}`.trim()}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex space-x-2 items-center"> {/* items-center per allineare verticalmente i badge */}
+                    <div className="flex space-x-2 items-center">
                       <button
                         onClick={() => handleEditAgent(agent)}
                         className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition"
@@ -202,20 +224,96 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                         {getStatusLabel(agent.status)}
                       </span>
                       <span className={`text-xs px-3 py-1 rounded-full ${getHealthColor(agent.health?.status)}`}>
-                        {agent.health?.status || HealthStatus.UNKNOWN}
+                        {agent.health?.status || 'unknown'}
                       </span>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      {/* ... (descrizione, system prompt, llm config) ... */}
-                       <div>
+                      {/* Descrizione e system prompt */}
+                      <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">Descrizione</h3>
                         <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
                           {agent.description || 'Nessuna descrizione disponibile'}
                         </p>
                       </div>
+                      
+                      {/* Nuova sezione: Personalità e Caratteristiche */}
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Personalità e Caratteristiche</h3>
+                        <div className="bg-blue-50 p-3 rounded-md space-y-2">
+                          {/* Stile di comunicazione */}
+                          {agent.communication_style && (
+                            <div className="text-sm">
+                              <span className="font-medium text-blue-700">Stile di Comunicazione:</span>
+                              <span className="ml-2">{agent.communication_style}</span>
+                            </div>
+                          )}
+                          
+                          {/* Tratti di personalità */}
+                          {agent.personality_traits && agent.personality_traits.length > 0 && (
+                            <div className="text-sm">
+                              <span className="font-medium text-blue-700">Tratti di Personalità:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {agent.personality_traits.map((trait, i) => (
+                                  <span key={i} className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                                    {typeof trait === 'string' 
+                                      ? trait.replace(/_/g, ' ').replace(/-/g, ' ') 
+                                      : String(trait).replace(/_/g, ' ').replace(/-/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Background story */}
+                          {agent.background_story && (
+                            <div className="text-sm">
+                              <span className="font-medium text-blue-700">Background:</span>
+                              <p className="mt-1 text-sm">{agent.background_story}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Hard Skills */}
+                      {agent.hard_skills && agent.hard_skills.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-900 mb-1">Hard Skills</h3>
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <div className="space-y-2">
+                              {agent.hard_skills.map((skill, index) => (
+                                <div key={index} className="flex justify-between items-center bg-white p-2 rounded border border-gray-100">
+                                  <span className="font-medium">{skill.name}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${getSkillLevelBadge(skill.level as string)}`}>
+                                    {skill.level}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Soft Skills */}
+                      {agent.soft_skills && agent.soft_skills.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-900 mb-1">Soft Skills</h3>
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <div className="space-y-2">
+                              {agent.soft_skills.map((skill, index) => (
+                                <div key={index} className="flex justify-between items-center bg-white p-2 rounded border border-gray-100">
+                                  <span className="font-medium">{skill.name}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${getSkillLevelBadge(skill.level as string)}`}>
+                                    {skill.level}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       
                       <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">System Prompt</h3>
@@ -236,7 +334,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                                   <span className="font-medium">Modello:</span> {agent.llm_config.model}
                                 </div>
                               )}
-                              {typeof agent.llm_config.temperature === 'number' &&  ( // Controlla se è un numero
+                              {typeof agent.llm_config.temperature === 'number' && (
                                 <div>
                                   <span className="font-medium">Temperature:</span> {agent.llm_config.temperature}
                                 </div>
@@ -248,8 +346,8 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                     </div>
                     
                     <div className="space-y-4">
-                      {/* ... (strumenti, costo stimato) ... */}
-                       <div>
+                      {/* Tools, handoffs, costi */}
+                      <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">Strumenti Disponibili</h3>
                         <div className="space-y-2">
                           {agent.tools && agent.tools.length > 0 ? (
@@ -268,7 +366,6 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                         </div>
                       </div>
 
-                      {/* SEZIONE HANDOFF AGGIUNTA QUI */}
                       <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">Handoffs ({agentHandoffs.length})</h3>
                         <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-md">
@@ -321,7 +418,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
             })}
           </div>
           
-          {agents.length === 0 && !loading && ( // Aggiunto !loading per evitare flash
+          {agents.length === 0 && !loading && (
             <div className="text-center py-10 bg-white rounded-lg shadow-sm">
               <h3 className="text-lg font-medium text-gray-600 mb-2">Nessun agente nel team</h3>
               <p className="text-gray-500 mb-4">Configura il team per questo progetto</p>
@@ -339,8 +436,8 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
       <AgentEditModal
         isOpen={isEditModalOpen}
         agent={editingAgent}
-        allAgents={agents}   // <<< Passa tutti gli agenti
-        allHandoffs={handoffs} // <<< Passa tutti gli handoff
+        allAgents={agents}
+        allHandoffs={handoffs}
         onClose={() => {
           setIsEditModalOpen(false);
           setEditingAgent(null);

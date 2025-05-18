@@ -404,37 +404,72 @@ export const api = {
     },
         
     update: async (workspaceId: string, agentId: string, data: Partial<AgentCreateData>): Promise<Agent> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/${agentId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+       try {
+          // Prepara i dati da inviare, assicurandoti che i campi specializzati vengano gestiti correttamente
+          const updateData: any = { ...data };
+
+          // Rimuovi campi che non devono essere inviati
+          delete updateData.id;
+          delete updateData.workspace_id;
+          delete updateData.created_at;
+          delete updateData.updated_at;
+
+          // Assicurati che le strutture nidificate vengano serializzate correttamente se inviate come stringhe
+          // Nota: la trasformazione effettiva dipende da come l'API si aspetta i dati
+          if (updateData.personality_traits && Array.isArray(updateData.personality_traits)) {
+            // Conserva solo i valori stringa dei personality_traits per evitare problemi di serializzazione
+            updateData.personality_traits = updateData.personality_traits.map(trait => 
+              typeof trait === 'object' ? trait.value || trait.toString() : trait);
+          }
+
+          // Stessa cosa per le skills
+          if (updateData.hard_skills && Array.isArray(updateData.hard_skills)) {
+            updateData.hard_skills = updateData.hard_skills.map(skill => {
+              if (typeof skill === 'object' && skill.level) {
+                // Se il livello è un oggetto enum, prendi il suo valore stringa
+                if (typeof skill.level === 'object') {
+                  return { ...skill, level: skill.level.value || skill.level.toString() };
+                }
+              }
+              return skill;
+            });
+          }
+
+          if (updateData.soft_skills && Array.isArray(updateData.soft_skills)) {
+            updateData.soft_skills = updateData.soft_skills.map(skill => {
+              if (typeof skill === 'object' && skill.level) {
+                // Se il livello è un oggetto enum, prendi il suo valore stringa
+                if (typeof skill.level === 'object') {
+                  return { ...skill, level: skill.level.value || skill.level.toString() };
+                }
+              }
+              return skill;
+            });
+          }
+
+          // Se communication_style è un oggetto enum, prendi il suo valore stringa
+          if (updateData.communication_style && typeof updateData.communication_style === 'object') {
+            updateData.communication_style = updateData.communication_style.value || updateData.communication_style.toString();
+          }
+
+          const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/${agentId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData),
+          });
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+
+          return await response.json();
+        } catch (error) {
+          return handleApiError(error);
         }
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
+      },
     },
-    
-    verify: async (workspaceId: string): Promise<any> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/verify`, {
-          method: 'POST',
-        });
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    },
-  },
   
   // API Tasks
   tasks: {

@@ -32,6 +32,41 @@ export type AgentStatus = 'created' | 'initializing' | 'active' | 'paused' | 'er
 export type AgentSeniority = 'junior' | 'senior' | 'expert';
 export type HealthStatus = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
 
+export enum SkillLevel {
+  BEGINNER = "beginner",
+  INTERMEDIATE = "intermediate",
+  EXPERT = "expert"
+}
+
+export enum PersonalityTrait {
+  ANALYTICAL = "analytical",
+  CREATIVE = "creative",
+  DETAIL_ORIENTED = "detail-oriented",
+  PROACTIVE = "proactive",
+  COLLABORATIVE = "collaborative",
+  DECISIVE = "decisive",
+  INNOVATIVE = "innovative",
+  METHODICAL = "methodical",
+  ADAPTABLE = "adaptable",
+  DIPLOMATIC = "diplomatic"
+}
+
+export enum CommunicationStyle {
+  FORMAL = "formal",
+  CASUAL = "casual",
+  TECHNICAL = "technical",
+  CONCISE = "concise",
+  DETAILED = "detailed",
+  EMPATHETIC = "empathetic",
+  ASSERTIVE = "assertive"
+}
+
+export interface Skill {
+  name: string;
+  level: SkillLevel;
+  description?: string;
+}
+
 export interface AgentHealth {
   status: HealthStatus;
   last_update?: string;
@@ -42,14 +77,22 @@ export interface Agent {
   id: string;
   workspace_id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   role: string;
   seniority: AgentSeniority;
   description?: string;
   system_prompt?: string;
   status: AgentStatus;
   health: AgentHealth;
-  model_config?: Record<string, any>;
+  llm_config?: Record<string, any>;
   tools?: Record<string, any>[];
+  can_create_tools?: boolean;
+  personality_traits?: PersonalityTrait[];
+  communication_style?: CommunicationStyle;
+  hard_skills?: Skill[];
+  soft_skills?: Skill[];
+  background_story?: string;
   created_at: string;
   updated_at: string;
 }
