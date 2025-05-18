@@ -86,7 +86,7 @@ class AgentFactory:
         return seniority_model_map.get(seniority, "gpt-4.1")
     
     @staticmethod
-    def generate_system_prompt(agent_data: AgentModelPydantic) -> str:
+    def generate_system_prompt(agent_data: AgentModel) -> str:
         """Generate a comprehensive, domain-agnostic system prompt"""
 
         if agent_data.system_prompt:

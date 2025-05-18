@@ -309,6 +309,107 @@ Return *only* valid JSON as a string:
                 if any(k_word in role_str.lower() for k_word in ("content", "research", "analysis", "market", "manager", "writing")):
                     tools_list.append({"type": "file_search", "name": "file_search", "description": "Enables searching through provided documents."})
                 return tools_list
+     
+            def _generate_personality_for_role(role_str: str) -> Dict[str, Any]:
+                """Genera attributi di personalità basati sul ruolo."""
+                role_lower = role_str.lower()
+
+                # Default traits for all agents
+                personality = {
+                    "first_name": "",
+                    "last_name": "",
+                    "personality_traits": [],
+                    "communication_style": "",
+                    "hard_skills": [],
+                    "soft_skills": [],
+                    "background_story": ""
+                }
+
+                # Generate a suitable first name and last name
+                import random
+                first_names = ["Alex", "Sam", "Jordan", "Morgan", "Taylor", "Casey", "Riley", "Avery", "Quinn", "Jamie"]
+                last_names = ["Chen", "Smith", "Rodriguez", "Johnson", "Patel", "Wilson", "Garcia", "Martinez", "Lee", "Brown"]
+                personality["first_name"] = random.choice(first_names)
+                personality["last_name"] = random.choice(last_names)
+
+                # Set personality traits based on role
+                if "manager" in role_lower or "coordinator" in role_lower or "lead" in role_lower:
+                    personality["personality_traits"] = ["DECISIVE", "COLLABORATIVE", "PROACTIVE"]
+                    personality["communication_style"] = "ASSERTIVE"
+                    personality["soft_skills"] = [
+                        {"name": "Leadership", "level": "EXPERT"},
+                        {"name": "Communication", "level": "EXPERT"},
+                        {"name": "Team Coordination", "level": "EXPERT"}
+                    ]
+
+                elif "analyst" in role_lower or "research" in role_lower:
+                    personality["personality_traits"] = ["ANALYTICAL", "DETAIL_ORIENTED", "METHODICAL"]
+                    personality["communication_style"] = "TECHNICAL"
+                    personality["soft_skills"] = [
+                        {"name": "Critical Thinking", "level": "EXPERT"},
+                        {"name": "Problem Solving", "level": "EXPERT"}
+                    ]
+
+                elif "content" in role_lower or "writ" in role_lower:
+                    personality["personality_traits"] = ["CREATIVE", "DETAIL_ORIENTED", "ADAPTABLE"]
+                    personality["communication_style"] = "DETAILED"
+                    personality["soft_skills"] = [
+                        {"name": "Creativity", "level": "EXPERT"},
+                        {"name": "Writing", "level": "EXPERT"}
+                    ]
+
+                elif "develop" in role_lower or "engineer" in role_lower:
+                    personality["personality_traits"] = ["ANALYTICAL", "METHODICAL", "INNOVATIVE"]
+                    personality["communication_style"] = "TECHNICAL"
+                    personality["soft_skills"] = [
+                        {"name": "Problem Solving", "level": "EXPERT"},
+                        {"name": "Logical Thinking", "level": "EXPERT"}
+                    ]
+
+                else:
+                    # Default traits for unknown roles
+                    personality["personality_traits"] = ["ADAPTABLE", "COLLABORATIVE", "PROACTIVE"]
+                    personality["communication_style"] = "CONCISE"
+                    personality["soft_skills"] = [
+                        {"name": "Adaptability", "level": "EXPERT"},
+                        {"name": "Communication", "level": "INTERMEDIATE"}
+                    ]
+
+                # Add hard skills based on role keywords
+                hard_skills = []
+                if "analyst" in role_lower:
+                    hard_skills.append({"name": "Data Analysis", "level": "EXPERT"})
+                    hard_skills.append({"name": "Statistics", "level": "EXPERT"})
+                if "content" in role_lower or "writ" in role_lower:
+                    hard_skills.append({"name": "Content Creation", "level": "EXPERT"})
+                    hard_skills.append({"name": "Editing", "level": "EXPERT"})
+                if "develop" in role_lower or "engineer" in role_lower:
+                    hard_skills.append({"name": "Software Development", "level": "EXPERT"})
+                    hard_skills.append({"name": "Problem Solving", "level": "EXPERT"})
+                if "market" in role_lower:
+                    hard_skills.append({"name": "Market Research", "level": "EXPERT"})
+                    hard_skills.append({"name": "Campaign Planning", "level": "EXPERT"})
+
+                # If no specific hard skills were added, add general ones
+                if not hard_skills:
+                    hard_skills.append({"name": "Problem Solving", "level": "EXPERT"})
+                    hard_skills.append({"name": "Research", "level": "INTERMEDIATE"})
+
+                personality["hard_skills"] = hard_skills
+
+                # Add a background story based on role
+                if "manager" in role_lower:
+                    personality["background_story"] = "Experienced project manager with a track record of successfully coordinating cross-functional teams on complex projects."
+                elif "analyst" in role_lower:
+                    personality["background_story"] = "Data-driven analyst with expertise in extracting actionable insights from complex datasets."
+                elif "content" in role_lower:
+                    personality["background_story"] = "Creative content specialist with a passion for crafting engaging narratives that resonate with target audiences."
+                elif "develop" in role_lower:
+                    personality["background_story"] = "Skilled developer with experience building robust solutions to complex technical challenges."
+                else:
+                    personality["background_story"] = f"Specialized {role_str} with extensive experience in delivering high-quality results."
+
+                return personality
 
             def _group_skills_for_design(skills_list: List[str]) -> List[Dict[str, Any]]:
                 s_groups: Dict[str, List[str]] = {domain_key: [] for domain_key in DOMAIN_MAPPING_DESIGN}
@@ -345,12 +446,20 @@ Return *only* valid JSON as a string:
                 pm_s_val = AgentSeniority.SENIOR.value
                 pm_c_val = COST_PER_MONTH[pm_s_val]
                 if allocated_budget + pm_c_val <= budget_total and agents_created_count < eff_max_agents:
+                    pm_personality = _generate_personality_for_role("Project Manager")
                     team.append({
                         "name": "ProjectManager", "role": "Project Manager", "seniority": pm_s_val,
                         "description": "Oversees project execution, coordinates team, manages communication and ensures goal alignment.",
                         "system_prompt": "You are a Project Manager. Your primary goal is to lead the team to successfully complete the project. Coordinate tasks, manage resources, resolve blockers, and ensure clear communication. You are expected to handle coordination tasks yourself rather than delegating them further.",
                         "llm_config": {"model": _get_model_for_design(pm_s_val), "temperature": 0.3},
                         "tools": _get_tools_for_design("Project Manager", pm_s_val)})
+                        "first_name": pm_personality["first_name"],
+                        "last_name": pm_personality["last_name"],
+                        "personality_traits": pm_personality["personality_traits"],
+                        "communication_style": pm_personality["communication_style"],
+                        "hard_skills": pm_personality["hard_skills"],
+                        "soft_skills": pm_personality["soft_skills"],
+                        "background_story": pm_personality["background_story"]
                     allocated_budget += pm_c_val; agents_created_count += 1
             
             # 2. Group remaining skills
@@ -398,25 +507,40 @@ Return *only* valid JSON as a string:
                     unique_agent_name = f"{base_agent_name}{name_counter}"; name_counter += 1
                 
                 agent_role_title = f"{domain_name_part} {skill_name_base} Specialist" if domain_name_part else f"{skill_name_base} Specialist"
-
+                specialist_personality = _generate_personality_for_role(agent_role_title)
                 team.append({
                     "name": unique_agent_name, "role": agent_role_title.strip(), "seniority": s_val,
                     "description": f"Handles tasks related to: {', '.join(group_item['skills'])} within the {group_item['domain'] or 'general'} domain.",
                     "system_prompt": f"You are a {agent_role_title.strip()}. Your expertise covers: {', '.join(group_item['skills'])}. Complete tasks efficiently, collaborate when necessary, and avoid re-delegating tasks within your scope.",
                     "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.35},
                     "tools": _get_tools_for_design(agent_role_title, s_val)})
+                    "first_name": specialist_personality["first_name"],
+                    "last_name": specialist_personality["last_name"],
+                    "personality_traits": specialist_personality["personality_traits"],
+                    "communication_style": specialist_personality["communication_style"],
+                    "hard_skills": specialist_personality["hard_skills"],
+                    "soft_skills": specialist_personality["soft_skills"],
+                    "background_story": specialist_personality["background_story"
                 allocated_budget += agent_cost; agents_created_count += 1
 
             if not team and required_skills: # If no agents were created but skills were listed
                 logger.warning("design_team_structure: No agents created, attempting minimal fallback agent.")
                 s_val = AgentSeniority.JUNIOR.value
                 if budget_total >= COST_PER_MONTH[s_val] and agents_created_count < eff_max_agents:
+                    fallback_personality = _generate_personality_for_role("General Task Executor")
                     team.append({
                         "name": "GeneralTaskExecutor", "role": "General Task Executor", "seniority": s_val,
                         "description": "Handles general project tasks due to constraints.",
                         "system_prompt": "You are a General Task Executor. Handle all assigned tasks efficiently.",
                         "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.4},
                         "tools": _get_tools_for_design("General Task Executor", s_val)})
+                        "first_name": fallback_personality["first_name"],
+                        "last_name": fallback_personality["last_name"],
+                        "personality_traits": fallback_personality["personality_traits"],
+                        "communication_style": fallback_personality["communication_style"],
+                        "hard_skills": fallback_personality["hard_skills"],
+                        "soft_skills": fallback_personality["soft_skills"],
+                        "background_story": fallback_personality["background_story"]
                 else:
                     logger.error("design_team_structure: Could not create even a fallback agent.")
                     return json.dumps([{"error": "Unable to design any agent within budget/constraints."}])

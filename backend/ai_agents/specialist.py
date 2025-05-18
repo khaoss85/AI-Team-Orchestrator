@@ -283,7 +283,7 @@ class SpecialistAgent(Generic[T]):
     Do NOT add any text before or after this final JSON object.
     """.strip()
 
-     def _create_specialist_anti_loop_prompt(self) -> str:
+    def _create_specialist_anti_loop_prompt(self) -> str:
         """Prompt specifico per specialist agents (non-manager)"""
         available_tool_names = []
         for tool in self.tools:
