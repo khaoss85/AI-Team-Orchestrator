@@ -447,12 +447,13 @@ Return *only* valid JSON as a string:
                 pm_c_val = COST_PER_MONTH[pm_s_val]
                 if allocated_budget + pm_c_val <= budget_total and agents_created_count < eff_max_agents:
                     pm_personality = _generate_personality_for_role("Project Manager")
+
                     team.append({
                         "name": "ProjectManager", "role": "Project Manager", "seniority": pm_s_val,
                         "description": "Oversees project execution, coordinates team, manages communication and ensures goal alignment.",
                         "system_prompt": "You are a Project Manager. Your primary goal is to lead the team to successfully complete the project. Coordinate tasks, manage resources, resolve blockers, and ensure clear communication. You are expected to handle coordination tasks yourself rather than delegating them further.",
                         "llm_config": {"model": _get_model_for_design(pm_s_val), "temperature": 0.3},
-                        "tools": _get_tools_for_design("Project Manager", pm_s_val)})
+                        "tools": _get_tools_for_design("Project Manager", pm_s_val),
                         "first_name": pm_personality["first_name"],
                         "last_name": pm_personality["last_name"],
                         "personality_traits": pm_personality["personality_traits"],
@@ -460,6 +461,7 @@ Return *only* valid JSON as a string:
                         "hard_skills": pm_personality["hard_skills"],
                         "soft_skills": pm_personality["soft_skills"],
                         "background_story": pm_personality["background_story"]
+                    })
                     allocated_budget += pm_c_val; agents_created_count += 1
             
             # 2. Group remaining skills
@@ -509,18 +511,21 @@ Return *only* valid JSON as a string:
                 agent_role_title = f"{domain_name_part} {skill_name_base} Specialist" if domain_name_part else f"{skill_name_base} Specialist"
                 specialist_personality = _generate_personality_for_role(agent_role_title)
                 team.append({
-                    "name": unique_agent_name, "role": agent_role_title.strip(), "seniority": s_val,
+                    "name": unique_agent_name, 
+                    "role": agent_role_title.strip(), 
+                    "seniority": s_val,
                     "description": f"Handles tasks related to: {', '.join(group_item['skills'])} within the {group_item['domain'] or 'general'} domain.",
                     "system_prompt": f"You are a {agent_role_title.strip()}. Your expertise covers: {', '.join(group_item['skills'])}. Complete tasks efficiently, collaborate when necessary, and avoid re-delegating tasks within your scope.",
                     "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.35},
-                    "tools": _get_tools_for_design(agent_role_title, s_val)})
+                    "tools": _get_tools_for_design(agent_role_title, s_val),
                     "first_name": specialist_personality["first_name"],
                     "last_name": specialist_personality["last_name"],
                     "personality_traits": specialist_personality["personality_traits"],
                     "communication_style": specialist_personality["communication_style"],
                     "hard_skills": specialist_personality["hard_skills"],
                     "soft_skills": specialist_personality["soft_skills"],
-                    "background_story": specialist_personality["background_story"
+                    "background_story": specialist_personality["background_story"]
+                })
                 allocated_budget += agent_cost; agents_created_count += 1
 
             if not team and required_skills: # If no agents were created but skills were listed
@@ -533,7 +538,7 @@ Return *only* valid JSON as a string:
                         "description": "Handles general project tasks due to constraints.",
                         "system_prompt": "You are a General Task Executor. Handle all assigned tasks efficiently.",
                         "llm_config": {"model": _get_model_for_design(s_val), "temperature": 0.4},
-                        "tools": _get_tools_for_design("General Task Executor", s_val)})
+                        "tools": _get_tools_for_design("General Task Executor", s_val),
                         "first_name": fallback_personality["first_name"],
                         "last_name": fallback_personality["last_name"],
                         "personality_traits": fallback_personality["personality_traits"],
@@ -541,6 +546,7 @@ Return *only* valid JSON as a string:
                         "hard_skills": fallback_personality["hard_skills"],
                         "soft_skills": fallback_personality["soft_skills"],
                         "background_story": fallback_personality["background_story"]
+                    })
                 else:
                     logger.error("design_team_structure: Could not create even a fallback agent.")
                     return json.dumps([{"error": "Unable to design any agent within budget/constraints."}])
