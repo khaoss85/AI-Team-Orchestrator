@@ -86,64 +86,98 @@ class AgentFactory:
         return seniority_model_map.get(seniority, "gpt-4.1")
     
     @staticmethod
-    def generate_system_prompt(agent_data: AgentModel) -> str:
+    def generate_system_prompt(agent_data: AgentModelPydantic) -> str:
         """Generate a comprehensive, domain-agnostic system prompt"""
 
         if agent_data.system_prompt:
             return agent_data.system_prompt
 
-        # Estrai domain e ruolo base
+        # Extract domain and base role
         domain = AgentFactory._extract_domain(agent_data.role)
         role_type = AgentFactory._extract_role_type(agent_data.role)
 
         # Base prompt structure
         role_description = agent_data.description or f"specialist in {agent_data.role}"
 
-        # CORE PROMPT - Domain agnostic
+        # Create full name section
+        full_name = ""
+        if agent_data.first_name and agent_data.last_name:
+            full_name = f"Your name is {agent_data.first_name} {agent_data.last_name}. "
+        elif agent_data.first_name:
+            full_name = f"Your name is {agent_data.first_name}. "
+
+        # Create personality traits section
+        personality_section = ""
+        if agent_data.personality_traits:
+            traits = [trait.value for trait in agent_data.personality_traits]
+            personality_section = f"Your personality traits are: {', '.join(traits)}. "
+
+        # Create communication style section
+        communication_section = ""
+        if agent_data.communication_style:
+            communication_section = f"Your communication style is {agent_data.communication_style}. "
+
+        # Create skills sections
+        skills_section = ""
+        if agent_data.hard_skills:
+            hard_skills = [f"{skill.name} ({skill.level.value})" for skill in agent_data.hard_skills]
+            skills_section += f"Your technical skills include: {', '.join(hard_skills)}. "
+
+        if agent_data.soft_skills:
+            soft_skills = [f"{skill.name} ({skill.level.value})" for skill in agent_data.soft_skills]
+            skills_section += f"Your interpersonal skills include: {', '.join(soft_skills)}. "
+
+        # Create background section
+        background_section = ""
+        if agent_data.background_story:
+            background_section = f"Background: {agent_data.background_story} "
+
+        # CORE PROMPT - Domain agnostic with personality
         prompt = f"""
-    You are a {agent_data.seniority.value} AI agent specializing as a {role_description}.
+        You are a {agent_data.seniority.value} AI agent specializing as a {role_description}.
+        {full_name}{personality_section}{communication_section}{skills_section}{background_section}
 
-    ROLE CLARITY:
-    - Your primary role: {agent_data.role}
-    - Your domain: {domain}
-    - Your specialization: {role_type}
+        ROLE CLARITY:
+        - Your primary role: {agent_data.role}
+        - Your domain: {domain}
+        - Your specialization: {role_type}
 
-    OUTPUT REQUIREMENTS:
-    Your final output MUST be a JSON matching the 'TaskExecutionOutput' schema:
-    - task_id: String ID of the task
-    - status: "completed" | "failed" | "requires_handoff"
-    - summary: Concise summary of work done
-    - detailed_results_json: Valid JSON string with results (optional)
-    - next_steps: Array of suggested follow-up actions (optional)
-    - suggested_handoff_target_role: Role to handoff to if status is "requires_handoff" (optional)
-    - resources_consumed_json: JSON string with token/cost tracking (optional)
+        OUTPUT REQUIREMENTS:
+        Your final output MUST be a JSON matching the 'TaskExecutionOutput' schema:
+        - task_id: String ID of the task
+        - status: "completed" | "failed" | "requires_handoff"
+        - summary: Concise summary of work done
+        - detailed_results_json: Valid JSON string with results (optional)
+        - next_steps: Array of suggested follow-up actions (optional)
+        - suggested_handoff_target_role: Role to handoff to if status is "requires_handoff" (optional)
+        - resources_consumed_json: JSON string with token/cost tracking (optional)
 
-    IMPORTANT JSON GUIDELINES:
-    - Ensure all JSON fields are valid JSON strings or null
-    - Keep detailed_results_json concise (max 5000 chars)
-    - Use null for optional fields if not needed
-    - Never include partial or malformed JSON
+        IMPORTANT JSON GUIDELINES:
+        - Ensure all JSON fields are valid JSON strings or null
+        - Keep detailed_results_json concise (max 5000 chars)
+        - Use null for optional fields if not needed
+        - Never include partial or malformed JSON
 
-    TASK EXECUTION PRINCIPLES:
-    1. **Complete tasks within your expertise** - Don't delegate unnecessarily
-    2. **Be specific** - Provide concrete, actionable outputs
-    3. **Know your limits** - Use handoffs only when task requires expertise outside your domain
-    4. **Avoid task duplication** - Don't create tasks that might already exist
-    5. **Progressive completion** - Complete what you can, then handoff/delegate remaining parts
+        TASK EXECUTION PRINCIPLES:
+        1. **Complete tasks within your expertise** - Don't delegate unnecessarily
+        2. **Be specific** - Provide concrete, actionable outputs
+        3. **Know your limits** - Use handoffs only when task requires expertise outside your domain
+        4. **Avoid task duplication** - Don't create tasks that might already exist
+        5. **Progressive completion** - Complete what you can, then handoff/delegate remaining parts
 
-    DELEGATION RULES:
-    - Use create_task_for_agent_tool only for NEW work that requires different expertise
-    - Before delegating, check if similar work might already be in progress
-    - Be specific about what you need from the target role
-    - Don't delegate core responsibilities of your own role
+        DELEGATION RULES:
+        - Use create_task_for_agent_tool only for NEW work that requires different expertise
+        - Before delegating, check if similar work might already be in progress
+        - Be specific about what you need from the target role
+        - Don't delegate core responsibilities of your own role
 
-    HANDOFF RULES:
-    - Use request_handoff_to_role_via_task for passing CURRENT task to someone better suited
-    - Only handoff if you truly cannot complete the core objective
-    - Provide clear context of work already completed
-    - Specify exactly what the target role should do
-    - Never handoff back to the same role type you're receiving from
-    """
+        HANDOFF RULES:
+        - Use request_handoff_to_role_via_task for passing CURRENT task to someone better suited
+        - Only handoff if you truly cannot complete the core objective
+        - Provide clear context of work already completed
+        - Specify exactly what the target role should do
+        - Never handoff back to the same role type you're receiving from
+        """
 
         # ROLE-SPECIFIC INSTRUCTIONS
         if role_type == "manager" or role_type == "coordinator":

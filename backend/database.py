@@ -71,6 +71,7 @@ async def list_workspaces(user_id: str):
         logger.error(f"Error listing workspaces: {e}")
         raise
 
+
 async def create_agent(
     workspace_id: str,
     name: str,
@@ -80,7 +81,14 @@ async def create_agent(
     system_prompt: Optional[str] = None,
     llm_config: Optional[Dict[str, Any]] = None,
     tools: Optional[List[Dict[str, Any]]] = None, # Assicurati che sia JSON serializzabile
-    can_create_tools: bool = False
+    can_create_tools: bool = False,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    personality_traits: Optional[List[str]] = None,
+    communication_style: Optional[str] = None,
+    hard_skills: Optional[List[Dict[str, Any]]] = None,
+    soft_skills: Optional[List[Dict[str, Any]]] = None,
+    background_story: Optional[str] = None
 ):
     try:
         data = {
@@ -96,6 +104,15 @@ async def create_agent(
         if system_prompt: data["system_prompt"] = system_prompt
         if llm_config: data["llm_config"] = json.dumps(llm_config) # Serializza in JSON
         if tools: data["tools"] = json.dumps(tools) # Serializza in JSON
+        
+        # Nuovi campi
+        if first_name: data["first_name"] = first_name
+        if last_name: data["last_name"] = last_name
+        if personality_traits: data["personality_traits"] = personality_traits  # Già JSON compatibile in Supabase
+        if communication_style: data["communication_style"] = communication_style
+        if hard_skills: data["hard_skills"] = hard_skills  # Già JSON compatibile in Supabase
+        if soft_skills: data["soft_skills"] = soft_skills  # Già JSON compatibile in Supabase
+        if background_story: data["background_story"] = background_story
 
         result = supabase.table("agents").insert(data).execute()
         return result.data[0] if result.data and len(result.data) > 0 else None
@@ -511,5 +528,13 @@ def _deserialize_agent_json_fields(agent_data: Dict[str, Any]) -> Dict[str, Any]
             agent['health'] = json.loads(agent['health'])
         except (json.JSONDecodeError, TypeError):
             agent['health'] = {"status": "unknown", "last_update": None}
+    
+    # Deserializza i nuovi campi
+    for field in ['personality_traits', 'hard_skills', 'soft_skills']:
+        if field in agent and isinstance(agent[field], str):
+            try:
+                agent[field] = json.loads(agent[field])
+            except (json.JSONDecodeError, TypeError):
+                agent[field] = []
     
     return agent

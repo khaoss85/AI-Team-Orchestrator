@@ -232,3 +232,12 @@ CREATE TABLE IF NOT EXISTS agent_handoffs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_agent_handoffs_workspace_id ON agent_handoffs(workspace_id);
+
+ALTER TABLE IF EXISTS agents 
+ADD COLUMN IF NOT EXISTS first_name TEXT,
+ADD COLUMN IF NOT EXISTS last_name TEXT,
+ADD COLUMN IF NOT EXISTS personality_traits JSONB,
+ADD COLUMN IF NOT EXISTS communication_style TEXT,
+ADD COLUMN IF NOT EXISTS hard_skills JSONB,
+ADD COLUMN IF NOT EXISTS soft_skills JSONB,
+ADD COLUMN IF NOT EXISTS background_story TEXT;
