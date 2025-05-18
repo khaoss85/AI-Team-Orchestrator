@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { WorkspaceCreateData } from '@/types';
@@ -23,6 +23,28 @@ export default function NewProjectPage() {
       currency: 'EUR'
     }
   });
+  
+  // Carica i dati dal template se presente in localStorage
+  useEffect(() => {
+    const templateData = localStorage.getItem('projectTemplate');
+    if (templateData) {
+      try {
+        const template = JSON.parse(templateData);
+        setFormData(prev => ({
+          ...prev,
+          name: template.name || prev.name,
+          description: template.description || prev.description,
+          goal: template.goal || prev.goal,
+          budget: template.budget || prev.budget
+        }));
+        
+        // Rimuovi il template dopo l'uso
+        localStorage.removeItem('projectTemplate');
+      } catch (e) {
+        console.error('Error parsing template data:', e);
+      }
+    }
+  }, []);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

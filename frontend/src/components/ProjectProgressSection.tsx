@@ -317,29 +317,47 @@ export default function ProjectProgressSection({
         </div>
       </div>
       
-      {/* Timeline semplificata */}
-      <div className="mb-6 overflow-x-auto">
-        <div className="flex justify-between min-w-max">
-          {Object.entries(phaseStats).map(([phase, stats], index, array) => (
-            <div key={phase} className="flex flex-col items-center px-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                stats.percentage === 100 ? 'bg-green-100 text-green-700' : 
-                stats.percentage > 0 ? 'bg-blue-100 text-blue-700' : 
-                'bg-gray-100 text-gray-700'
-              }`}>
-                {getPhaseIcon(phase)}
+        {/* Timeline migliorata */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="relative flex items-center justify-between min-w-max py-6">
+            {Object.entries(phaseStats).map(([phase, stats], index, array) => (
+              <div key={phase} className="flex flex-col items-center px-8 relative">
+                {/* Nodo della fase */}
+                <div 
+                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${
+                    stats.percentage === 100 ? 'bg-green-500 text-white' : 
+                    stats.percentage > 0 ? 'bg-blue-500 text-white' : 
+                    'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  <span className="text-2xl">{getPhaseIcon(phase)}</span>
+                </div>
+
+                {/* Nome fase e progresso */}
+                <div className="text-sm font-medium mt-2 text-center">{phase}</div>
+                <div className="flex items-center mt-1">
+                  <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
+                    <div
+                      className={`h-1.5 rounded-full ${stats.percentage === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                      style={{ width: `${stats.percentage}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-gray-600">{stats.percentage}%</span>
+                </div>
+
+                {/* Linea di connessione */}
+                {index < array.length - 1 && (
+                  <div className="absolute h-0.5 bg-gray-300 w-16 left-full top-1/2 transform -translate-y-1/2 -translate-x-4">
+                    <div 
+                      className="absolute h-0.5 bg-green-500" 
+                      style={{ width: `${stats.percentage}%`, maxWidth: '100%' }}
+                    ></div>
+                  </div>
+                )}
               </div>
-              <div className="text-xs font-medium mt-1">{phase}</div>
-              <div className="text-xs text-gray-500">{stats.percentage}%</div>
-              
-              {/* Linea di connessione */}
-              {index < array.length - 1 && (
-                <div className="h-0.5 bg-gray-200 w-16 absolute left-full top-5 transform translate-x-2"></div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
       
       {/* Sezioni per fase */}
       <div className="space-y-4">

@@ -133,27 +133,39 @@ export default function ProjectOverviewSection({ workspace, tasks, agents, stats
       
       {/* Stato attuale del progetto */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold mb-4">Status del Progetto</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+        <h2 className="text-lg font-semibold mb-4">Metriche Chiave</h2>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div className="bg-white p-5 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition">
             <p className="text-3xl font-bold text-blue-700">{inProgressTasks}</p>
-            <p className="text-sm text-blue-600">In Corso</p>
+            <div className="flex items-center justify-center">
+              <span className="text-blue-500 mr-1">🔄</span>
+              <p className="text-sm text-blue-600">In Corso</p>
+            </div>
           </div>
-          
-          <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+
+          <div className="bg-white p-5 rounded-lg border border-green-200 shadow-sm hover:shadow-md transition">
             <p className="text-3xl font-bold text-green-700">{completedTasks}</p>
-            <p className="text-sm text-green-600">Completati</p>
+            <div className="flex items-center justify-center">
+              <span className="text-green-500 mr-1">✅</span>
+              <p className="text-sm text-green-600">Completati</p>
+            </div>
           </div>
-          
-          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+
+          <div className="bg-white p-5 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition">
             <p className="text-3xl font-bold text-yellow-700">{pendingTasks}</p>
-            <p className="text-sm text-yellow-600">In Attesa</p>
+            <div className="flex items-center justify-center">
+              <span className="text-yellow-500 mr-1">⏳</span>
+              <p className="text-sm text-yellow-600">In Attesa</p>
+            </div>
           </div>
-          
-          <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+
+          <div className="bg-white p-5 rounded-lg border border-red-200 shadow-sm hover:shadow-md transition">
             <p className="text-3xl font-bold text-red-700">{failedTasks}</p>
-            <p className="text-sm text-red-600">Falliti</p>
+            <div className="flex items-center justify-center">
+              <span className="text-red-500 mr-1">❌</span>
+              <p className="text-sm text-red-600">Falliti</p>
+            </div>
           </div>
         </div>
       </div>
