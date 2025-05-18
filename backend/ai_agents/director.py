@@ -719,7 +719,7 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
         if len(agents_list) > self.max_team_size:
             logger.info(f"Team size {len(agents_list)} exceeds max {self.max_team_size}. Truncating.")
             agents_list = agents_list[:self.max_team_size]
-        
+
         # 2. Ensure unique agent names
         final_agents_list: List[Dict[str, Any]] = []
         seen_agent_names: Set[str] = set()
@@ -732,7 +732,33 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
             if current_name != base_name: logger.info(f"Sanitized agent name from '{base_name}' to '{current_name}'.")
             agent_data["name"] = current_name
             seen_agent_names.add(current_name)
+
+            # Normalize case for enum values to fix Pydantic validation errors
+            # Fix personality_traits enum values
+            if "personality_traits" in agent_data and isinstance(agent_data["personality_traits"], list):
+                agent_data["personality_traits"] = [
+                    trait.lower() if isinstance(trait, str) else trait 
+                    for trait in agent_data["personality_traits"]
+                ]
+
+            # Fix communication_style enum value
+            if "communication_style" in agent_data and isinstance(agent_data["communication_style"], str):
+                agent_data["communication_style"] = agent_data["communication_style"].lower()
+
+            # Fix skill levels in hard_skills
+            if "hard_skills" in agent_data and isinstance(agent_data["hard_skills"], list):
+                for skill in agent_data["hard_skills"]:
+                    if isinstance(skill, dict) and "level" in skill and isinstance(skill["level"], str):
+                        skill["level"] = skill["level"].lower()
+
+            # Fix skill levels in soft_skills
+            if "soft_skills" in agent_data and isinstance(agent_data["soft_skills"], list):
+                for skill in agent_data["soft_skills"]:
+                    if isinstance(skill, dict) and "level" in skill and isinstance(skill["level"], str):
+                        skill["level"] = skill["level"].lower()
+
             final_agents_list.append(agent_data)
+
         data["agents"] = final_agents_list
 
         # 3. Ensure at least 1 manager if team has more than 1 agent
@@ -743,7 +769,7 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
                 data["agents"][0]["role"] = "Project Manager"
                 data["agents"][0]["seniority"] = AgentSeniority.SENIOR.value # Ensure it's the string value
                 data["agents"][0]["description"] = (data["agents"][0].get("description", "") + " Also coordinates the team and project.").strip()
-        
+
         # 4. Validate handoffs
         raw_handoffs = data.get("handoffs", [])
         data["handoffs"] = self._validate_handoffs_list(raw_handoffs, data["agents"])
