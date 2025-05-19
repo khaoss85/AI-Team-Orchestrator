@@ -96,22 +96,45 @@ export default function AgentEditModal({
 
   useEffect(() => {
     if (agent && isOpen) {
+      console.log('Agent data loaded:', agent); // Debug - rimuovere in produzione
+      
+      // Crea una copia sicura di agent per evitare problemi di mutability
+      const agentData = {...agent};
+      
+      // Gestisci i valori null o undefined per evitare errori
       setFormData({
-        name: agent.name,
-        role: agent.role,
-        seniority: agent.seniority,
-        description: agent.description || '',
-        system_prompt: agent.system_prompt || '',
-        llm_config: agent.llm_config || { model: 'gpt-4.1-mini', temperature: 0.3 },
-        tools: agent.tools || [],
-        // Inizializzazione campi di personalità
-        first_name: agent.first_name || '',
-        last_name: agent.last_name || '',
-        personality_traits: agent.personality_traits || [],
-        communication_style: agent.communication_style || CommunicationStyle.CASUAL,
-        hard_skills: agent.hard_skills || [],
-        soft_skills: agent.soft_skills || [],
-        background_story: agent.background_story || ''
+        name: agentData.name,
+        role: agentData.role,
+        seniority: agentData.seniority,
+        description: agentData.description || '',
+        system_prompt: agentData.system_prompt || '',
+        llm_config: agentData.llm_config || { model: 'gpt-4.1-mini', temperature: 0.3 },
+        tools: agentData.tools || [],
+        
+        // Inizializzazione campi di personalità con gestione sicura dei tipi
+        first_name: agentData.first_name || '',
+        last_name: agentData.last_name || '',
+        
+        // Assicurati che personality_traits sia un array valido
+        personality_traits: Array.isArray(agentData.personality_traits) 
+          ? agentData.personality_traits
+          : [],
+          
+        // Assicurati che communication_style sia un valore valido dell'enum
+        communication_style: agentData.communication_style 
+          ? agentData.communication_style 
+          : CommunicationStyle.CASUAL,
+          
+        // Assicurati che le skills siano array validi
+        hard_skills: Array.isArray(agentData.hard_skills) 
+          ? agentData.hard_skills
+          : [],
+          
+        soft_skills: Array.isArray(agentData.soft_skills) 
+          ? agentData.soft_skills 
+          : [],
+          
+        background_story: agentData.background_story || ''
       });
       
       const json = JSON.stringify(agent.tools || [], null, 2);
