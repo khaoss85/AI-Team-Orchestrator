@@ -736,10 +736,16 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
             # Normalize case for enum values to fix Pydantic validation errors
             # Fix personality_traits enum values
             if "personality_traits" in agent_data and isinstance(agent_data["personality_traits"], list):
-                agent_data["personality_traits"] = [
-                    trait.lower() if isinstance(trait, str) else trait 
-                    for trait in agent_data["personality_traits"]
-                ]
+                sanitized_traits = []
+                for trait in agent_data["personality_traits"]:
+                    if isinstance(trait, str):
+                        # Replace underscores with hyphens for enum compatibility
+                        normalized_trait = trait.lower().replace("_", "-")
+                        sanitized_traits.append(normalized_trait)
+                    else:
+                        sanitized_traits.append(trait)
+
+                agent_data["personality_traits"] = sanitized_traits
 
             # Fix communication_style enum value
             if "communication_style" in agent_data and isinstance(agent_data["communication_style"], str):

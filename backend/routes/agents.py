@@ -110,7 +110,7 @@ async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: Ag
     """Update an agent's configuration"""
     try:
         # Verifica che l'agente esista e appartenga al workspace
-        agents = await list_agents(str(workspace_id))
+        agents = await db_list_agents(str(workspace_id))  # Use the alias here
         agent = next((a for a in agents if a["id"] == str(agent_id)), None)
         
         if not agent:
@@ -125,6 +125,18 @@ async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: Ag
             if value is not None:
                 if field == "seniority" and hasattr(value, "value"):
                     update_data[field] = value.value
+                elif field in ["personality_traits", "hard_skills", "soft_skills"] and isinstance(value, list):
+                    # Properly handle list fields that might contain enum values
+                    if field == "personality_traits":
+                        update_data[field] = [trait.value if hasattr(trait, "value") else trait for trait in value]
+                    else:
+                        # For skills, which are objects with potential enum values
+                        processed_skills = []
+                        for skill in value:
+                            if isinstance(skill, dict) and "level" in skill and hasattr(skill["level"], "value"):
+                                skill["level"] = skill["level"].value
+                            processed_skills.append(skill)
+                        update_data[field] = processed_skills
                 else:
                     update_data[field] = value
         
@@ -141,7 +153,7 @@ async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: Ag
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating agent: {e}")
+        logger.error(f"Error updating agent: {e}", exc_info=True)  # Added exc_info=True for better error logging
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update agent: {str(e)}"

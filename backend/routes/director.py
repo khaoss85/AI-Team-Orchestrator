@@ -128,7 +128,8 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
             agent_payload_for_db["seniority"] = agent_create_data.seniority.value
             agent_payload_for_db["tools"] = tools_for_db 
 
-            valid_agent_keys = ["workspace_id", "name", "role", "seniority", "description", "system_prompt", "llm_config", "tools", "can_create_tools"]
+            #valid_agent_keys = ["workspace_id", "name", "role", "seniority", "description", "system_prompt", "llm_config", "tools", "can_create_tools"]
+            valid_agent_keys = list(AgentCreate.__annotations__.keys())
             agent_data_for_creation = {k: v for k, v in agent_payload_for_db.items() if k in valid_agent_keys}
 
             created_agent_db = await create_agent(**agent_data_for_creation)
