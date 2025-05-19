@@ -1,10 +1,9 @@
-// frontend/src/components/TaskResultDetails.tsx
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function TaskResultDetails({ result }) {
   if (!result) return null;
 
-  // Estrai i campi principali dal risultato
+  // Extract main fields from result
   const {
     summary,
     output,
@@ -17,22 +16,34 @@ export default function TaskResultDetails({ result }) {
     tokens_used
   } = result;
 
-  // Evita duplicazioni: mostra output o summary, non entrambi
-  const mainOutput = output || summary;
+  // Use only one source for the main content - prefer summary, then output
+  const mainContent = summary || output || "Nessun risultato disponibile";
 
-  // Parse del JSON dettagliato
+  // Parse detailed JSON if available
   let detailedResults = null;
   try {
-    detailedResults = typeof detailed_results_json === 'string' 
-      ? JSON.parse(detailed_results_json)
-      : detailed_results_json;
+    if (detailed_results_json) {
+      detailedResults = typeof detailed_results_json === 'string' 
+        ? JSON.parse(detailed_results_json)
+        : detailed_results_json;
+    } else if (result.detailed_results) {
+      // Alternative field name
+      detailedResults = result.detailed_results;
+    }
   } catch (e) {
     console.log('Errore nel parsing del JSON dettagliato', e);
   }
 
+  // Combine key points from different possible sources
+  const allKeyPoints = Array.isArray(key_points) && key_points.length > 0 
+    ? key_points 
+    : (result.keyPoints && Array.isArray(result.keyPoints)) 
+      ? result.keyPoints 
+      : [];
+
   return (
     <div className="space-y-6">
-      {/* Output Summary */}
+      {/* Main Output Section */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-5 rounded-lg border border-indigo-100">
         <h3 className="font-semibold text-indigo-800 text-lg mb-3 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -40,7 +51,7 @@ export default function TaskResultDetails({ result }) {
           </svg>
           Risultato
         </h3>
-        <p className="text-indigo-700 text-lg font-medium">{mainOutput}</p>
+        <div className="text-indigo-700 text-lg whitespace-pre-line">{mainContent}</div>
         
         {execution_time_seconds && (
           <div className="mt-3 flex items-center text-indigo-600 text-sm">
@@ -52,9 +63,8 @@ export default function TaskResultDetails({ result }) {
         )}
       </div>
 
-      {/* Key Points - Stilizzati meglio */}
-      {(Array.isArray(key_points) && key_points.length > 0) || 
-       (result.keyPoints && Array.isArray(result.keyPoints) && result.keyPoints.length > 0) ? (
+      {/* Key Points Section */}
+      {allKeyPoints.length > 0 && (
         <div className="bg-purple-50 p-5 rounded-lg border border-purple-100">
           <h3 className="font-semibold text-purple-800 text-lg mb-3 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -63,7 +73,7 @@ export default function TaskResultDetails({ result }) {
             Punti Chiave
           </h3>
           <ul className="space-y-2">
-            {(key_points.length > 0 ? key_points : result.keyPoints).map((point, index) => (
+            {allKeyPoints.map((point, index) => (
               <li key={index} className="flex">
                 <span className="bg-purple-200 text-purple-800 h-6 w-6 rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0">
                   {index + 1}
@@ -73,9 +83,9 @@ export default function TaskResultDetails({ result }) {
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
 
-      {/* Next Steps */}
+      {/* Next Steps Section */}
       {next_steps && next_steps.length > 0 && (
         <div className="bg-green-50 p-5 rounded-lg border border-green-100">
           <h3 className="font-semibold text-green-800 text-lg mb-3 flex items-center">
@@ -97,8 +107,8 @@ export default function TaskResultDetails({ result }) {
         </div>
       )}
 
-      {/* Detailed Results - Enhanced with better data recognition */}
-      {(detailedResults || result.audience_profile || result.competitors) && (
+      {/* Detailed Results Section */}
+      {detailedResults && (
         <div className="bg-white p-5 rounded-lg border border-gray-200">
           <h3 className="font-semibold text-gray-800 text-lg mb-4 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -107,7 +117,7 @@ export default function TaskResultDetails({ result }) {
             Dettagli
           </h3>
           
-          {renderEnhancedDetailedResults(detailedResults || result.audience_profile || result.competitors || {})}
+          <GenericDataRenderer data={detailedResults} />
         </div>
       )}
 
@@ -207,281 +217,128 @@ export default function TaskResultDetails({ result }) {
   );
 }
 
-// Helper function to render complex nested objects with enhanced pattern recognition
-function renderEnhancedDetailedResults(data) {
+// Universal data rendering component that handles different data structures
+const GenericDataRenderer = ({ data }) => {
+  // If data is null or not an object
   if (!data || typeof data !== 'object') {
     return <p className="text-gray-500 italic">Nessun dettaglio disponibile</p>;
   }
 
-  // Check if it's an array of competitors
-  if (Array.isArray(data) && data.length > 0 && data[0].name && (data[0].description || data[0].key_features)) {
-    return renderCompetitorsAnalysis(data);
-  }
-  
-  // Check for audience profile pattern
-  if (data.demographics || data.interests || data.audience_profile || data.content_preferences) {
-    return renderAudienceProfile(data);
-  }
-
-  // Check for weekly themes (editorial calendar)
-  if (data.weekly_themes) {
-    return renderEditorialCalendar(data);
-  }
-  
-  // Default rendering for other structured data
-  return renderStructuredData(data);
-}
-
-function renderCompetitorsAnalysis(competitors) {
-  return (
-    <div className="space-y-5">
-      <h4 className="text-md font-medium text-indigo-700 mb-3">Analisi Competitor</h4>
-      
-      <div className="grid grid-cols-1 gap-4">
-        {competitors.map((competitor, index) => (
-          <div key={index} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div className="flex justify-between items-start">
-              <h5 className="text-lg font-semibold text-blue-800">{competitor.name}</h5>
-              {competitor.market_share && (
-                <span className="bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-sm">
-                  {competitor.market_share}
-                </span>
-              )}
-            </div>
-            
-            {competitor.description && (
-              <p className="text-blue-700 mt-2">{competitor.description}</p>
-            )}
-            
-            {competitor.key_features && Array.isArray(competitor.key_features) && (
-              <div className="mt-3">
-                <p className="text-sm font-medium text-blue-800 mb-1">Caratteristiche chiave:</p>
-                <div className="flex flex-wrap gap-2">
-                  {competitor.key_features.map((feature, i) => (
-                    <span key={i} className="bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-xs">
-                      {feature}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {competitor.user_engagement && (
-              <div className="mt-3">
-                <p className="text-sm font-medium text-blue-800 mb-1">Engagement:</p>
-                <p className="text-blue-700 text-sm">{competitor.user_engagement}</p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function renderAudienceProfile(data) {
-  // Normalize different possible structures
-  const audience = data.audience_profile || data;
-  const demographics = audience.demographics || {};
-  const interests = audience.interests || [];
-  const contentPreferences = audience.content_preferences || {};
-  
-  return (
-    <div className="space-y-5">
-      <h4 className="text-md font-medium text-indigo-700 mb-3">Profilo Audience</h4>
-      
-      {/* Demographics */}
-      {Object.keys(demographics).length > 0 && (
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-          <h5 className="text-purple-800 font-medium mb-2">Demografia</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(demographics).map(([key, value]) => (
-              <div key={key} className="flex">
-                <span className="text-purple-800 font-medium mr-2 capitalize">{key.replace(/_/g, ' ')}:</span>
-                <span className="text-purple-700">{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Interests */}
-      {interests.length > 0 && (
-        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-          <h5 className="text-indigo-800 font-medium mb-2">Interessi</h5>
-          <div className="flex flex-wrap gap-2">
-            {interests.map((interest, index) => (
-              <span key={index} className="bg-indigo-200 text-indigo-800 px-3 py-1 rounded-md text-sm">
-                {interest}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Content Preferences */}
-      {Object.keys(contentPreferences).length > 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-          <h5 className="text-blue-800 font-medium mb-3">Preferenze di Contenuto</h5>
-          <div className="space-y-4">
-            {Object.entries(contentPreferences).map(([key, value]) => (
-              <div key={key}>
-                <h6 className="text-sm font-medium text-blue-800 mb-2 capitalize">{key.replace(/_/g, ' ')}:</h6>
-                {Array.isArray(value) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {value.map((item, i) => (
-                      <span key={i} className="bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-xs">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-blue-700">{value}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function renderEditorialCalendar(data) {
-  return (
-    <div className="space-y-5">
-      {/* Weekly Themes */}
-      <div>
-        <h4 className="text-md font-medium text-indigo-700 mb-3">Temi Settimanali</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {Object.entries(data.weekly_themes).map(([week, theme]) => (
-            <div key={week} className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-              <p className="font-medium text-indigo-800">{week.replace('_', ' ').toUpperCase()}</p>
-              <p className="text-indigo-700">{theme}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Posting Schedule */}
-      {data.posting_schedule && (
-        <div>
-          <h4 className="text-md font-medium text-indigo-700 mb-3">Calendario di Pubblicazione</h4>
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div className="flex justify-between mb-3">
-              <div>
-                <p className="text-blue-800 font-medium">Post settimanali</p>
-                <p className="text-2xl font-bold text-blue-900">{data.posting_schedule.posts_per_week}</p>
-              </div>
-              <div>
-                <p className="text-blue-800 font-medium">Reels settimanali</p>
-                <p className="text-2xl font-bold text-blue-900">{data.posting_schedule.reels_per_week}</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-blue-800 font-medium mb-2">Giorni Post</p>
-                <div className="flex flex-wrap gap-2">
-                  {data.posting_schedule.post_days.map(day => (
-                    <span key={day} className="bg-blue-200 text-blue-800 px-2 py-1 rounded-full text-xs">
-                      {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-blue-800 font-medium mb-2">Giorni Reels</p>
-                <div className="flex flex-wrap gap-2">
-                  {data.posting_schedule.reels_days.map(day => (
-                    <span key={day} className="bg-purple-200 text-purple-800 px-2 py-1 rounded-full text-xs">
-                      {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Content Types */}
-      {data.content_types && (
-        <div>
-          <h4 className="text-md font-medium text-indigo-700 mb-3">Tipi di Contenuto</h4>
-          <div className="flex flex-wrap gap-2">
-            {data.content_types.map(type => (
-              <span key={type} className="bg-green-100 text-green-800 px-3 py-1.5 rounded-md">
-                {type}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function renderStructuredData(data) {
+  // For arrays
   if (Array.isArray(data)) {
+    return <ArrayRenderer data={data} />;
+  }
+
+  // For objects
+  return <ObjectRenderer data={data} />;
+};
+
+// Component to render arrays
+const ArrayRenderer = ({ data }) => {
+  if (data.length === 0) {
+    return <p className="text-gray-500 italic">Array vuoto</p>;
+  }
+
+  // Check if array contains simple items
+  const hasSimpleItems = data.some(item => typeof item !== 'object' || item === null);
+
+  if (hasSimpleItems) {
     return (
-      <div className="bg-gray-50 rounded-lg p-4 overflow-auto max-h-[500px]">
-        <div className="space-y-4">
-          {data.map((item, index) => (
-            <div key={index} className="p-3 bg-white rounded-md border border-gray-200">
-              {typeof item === 'object' ? (
-                <div>
-                  {Object.entries(item).map(([key, value]) => (
-                    <div key={key} className="mb-2">
-                      <span className="font-medium text-gray-700 capitalize">{key.replace(/_/g, ' ')}:</span>
-                      <span className="ml-2">{
-                        typeof value === 'object' 
-                          ? JSON.stringify(value) 
-                          : Array.isArray(value) 
-                            ? value.join(', ') 
-                            : value
-                      }</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div>{item}</div>
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {data.map((item, index) => (
+          <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm">
+            {String(item)}
+          </span>
+        ))}
       </div>
     );
   }
-  
+
+  // For arrays of objects
   return (
     <div className="space-y-4">
-      {Object.entries(data).map(([key, value]) => (
-        <div key={key} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h4 className="text-md font-medium text-gray-800 mb-2 capitalize">
-            {key.replace(/_/g, ' ')}
-          </h4>
-          
-          {typeof value === 'object' ? (
-            Array.isArray(value) ? (
-              <div className="flex flex-wrap gap-2">
-                {value.map((item, i) => (
-                  <span key={i} className="bg-gray-200 text-gray-800 px-3 py-1 rounded-md text-sm">
-                    {typeof item === 'object' ? JSON.stringify(item) : item}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <pre className="bg-white p-3 rounded-md overflow-auto text-sm">
-                {JSON.stringify(value, null, 2)}
-              </pre>
-            )
+      {data.map((item, index) => (
+        <div key={index} className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div className="text-sm text-blue-700 font-medium mb-1">Item {index + 1}</div>
+          {typeof item === 'object' && item !== null ? (
+            <ObjectRenderer data={item} />
           ) : (
-            <p className="text-gray-700">{value}</p>
+            <span>{String(item)}</span>
           )}
         </div>
       ))}
     </div>
   );
-}
+};
+
+// Component to render objects
+const ObjectRenderer = ({ data, level = 0 }) => {
+  // For nested levels, limit depth for readability
+  const MAX_DEPTH = 3; 
+  
+  if (level > MAX_DEPTH) {
+    return (
+      <div className="p-2 bg-gray-100 rounded-md text-sm">
+        <button className="text-blue-600 hover:underline" 
+                onClick={() => alert(JSON.stringify(data, null, 2))}>
+          Oggetto nidificato (clicca per visualizzare)
+        </button>
+      </div>
+    );
+  }
+
+  // Organize properties into categories for better visual structure
+  const properties = Object.entries(data);
+  
+  // Split properties by type for better rendering
+  const simpleProps = [];
+  const arrayProps = [];
+  const objectProps = [];
+
+  properties.forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      arrayProps.push([key, value]);
+    } else if (typeof value === 'object' && value !== null) {
+      objectProps.push([key, value]);
+    } else {
+      simpleProps.push([key, value]);
+    }
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Simple properties */}
+      {simpleProps.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {simpleProps.map(([key, value]) => (
+            <div key={key} className="flex">
+              <span className="font-medium text-gray-700 mr-2 capitalize">{key.replace(/_/g, ' ')}:</span>
+              <span className="text-gray-800">{String(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Array properties */}
+      {arrayProps.map(([key, value]) => (
+        <div key={key} className="mt-3">
+          <h4 className="text-md font-medium text-indigo-700 mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
+          <ArrayRenderer data={value} />
+        </div>
+      ))}
+
+      {/* Object properties */}
+      {objectProps.map(([key, value]) => (
+        <div key={key} className="mt-3 bg-gray-50 p-3 rounded-lg">
+          <h4 className="text-md font-medium text-gray-700 mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
+          <ObjectRenderer data={value} level={level + 1} />
+        </div>
+      ))}
+
+      {/* If no properties were rendered */}
+      {properties.length === 0 && (
+        <p className="text-gray-500 italic">Oggetto vuoto</p>
+      )}
+    </div>
+  );
+};
