@@ -8,12 +8,14 @@ import ProjectInsightsDashboard from '@/components/ProjectInsightsDashboard';
 import { useRouter } from 'next/navigation';
 import AgentSkillRadarChart, { calculateTeamDimensions } from '@/components/AgentSkillRadarChart';
 import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
+import TaskResultDetails from '@/components/TaskResultDetails';
 
 // Mantieni la definizione dei tipi originale
 type Props = {
   params: Promise<{ id: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 };
+
 
 export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const router = useRouter();
@@ -610,12 +612,8 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
                   )}
                 </div>
                 
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Dettagli Completi</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-700 whitespace-pre-line">{activeResult.content.details}</p>
-                  </div>
-                </div>
+                <TaskResultDetails result={tasks.find(t => t.id === activeResultId)?.result} />
+
                 
                 <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
                   <button 
