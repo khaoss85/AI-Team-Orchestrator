@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Workspace, Agent } from '@/types';
+import AgentSkillRadarChart, { calculateAgentDimensions, calculateTeamDimensions } from './AgentSkillRadarChart';
 
 interface ProjectTeamSectionProps {
   workspace: Workspace;
@@ -9,6 +10,9 @@ interface ProjectTeamSectionProps {
 }
 
 export default function ProjectTeamSection({ workspace, agents, workspaceId }: ProjectTeamSectionProps) {
+  // Stato per visualizzare/nascondere il radar chart del team
+  const [showTeamRadar, setShowTeamRadar] = useState(true);
+  
   // Funzioni helper per la visualizzazione
   const getSeniorityColor = (seniority: string) => {
     switch(seniority) {
@@ -97,6 +101,9 @@ export default function ProjectTeamSection({ workspace, agents, workspaceId }: P
       </div>
     );
   };
+  
+  // Calcola le dimensioni del team 
+  const teamDimensions = calculateTeamDimensions(agents);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -119,6 +126,38 @@ export default function ProjectTeamSection({ workspace, agents, workspaceId }: P
         </Link>
       </div>
       
+      {/* Team Radar Chart */}
+      {agents.length > 0 && (
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-100">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-md font-semibold text-purple-900">Team Competency Matrix</h3>
+            <button 
+              className="text-xs px-3 py-1 bg-purple-100 text-purple-800 rounded-md"
+              onClick={() => setShowTeamRadar(!showTeamRadar)}
+            >
+              {showTeamRadar ? 'Nascondi' : 'Mostra'}
+            </button>
+          </div>
+          
+          {showTeamRadar && (
+            <div className="flex flex-col items-center">
+              <p className="text-sm text-purple-700 mb-3">
+                Questa matrice mostra le competenze medie del team sulle 6 dimensioni più rilevanti
+              </p>
+              <AgentSkillRadarChart 
+                skills={teamDimensions} 
+                title="Team Matrix" 
+                size={350} 
+                colorScheme="team" 
+              />
+              <div className="text-xs text-purple-600 mt-2">
+                Valori da 0 a 5 basati sulle competenze individuali degli agenti
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       {agents.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
           <div className="text-5xl mb-3">👥</div>
@@ -139,77 +178,87 @@ export default function ProjectTeamSection({ workspace, agents, workspaceId }: P
               <h3 className="font-medium text-lg mb-3 border-b pb-2">{role}</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {roleAgents.map(agent => (
-                  <div key={agent.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{agent.name}</h4>
-                        {/* Nome completo se disponibile */}
-                        {(agent.first_name || agent.last_name) && (
-                          <p className="text-sm text-gray-600">
-                            {`${agent.first_name || ''} ${agent.last_name || ''}`.trim()}
-                          </p>
-                        )}
+                {roleAgents.map(agent => {
+                  // Calcola le dimensioni dell'agente per il radar chart
+                  const agentDimensions = calculateAgentDimensions(agent);
+                  
+                  return (
+                    <div key={agent.id} className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition">
+                      <div className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{agent.name}</h4>
+                            {/* Nome completo se disponibile */}
+                            {(agent.first_name || agent.last_name) && (
+                              <p className="text-sm text-gray-600">
+                                {`${agent.first_name || ''} ${agent.last_name || ''}`.trim()}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getSeniorityColor(agent.seniority)}`}>
+                            {agent.seniority}
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mt-1 mb-2 line-clamp-2">
+                          {agent.description || `Agente specializzato in ${agent.role}`}
+                        </p>
+                        
+                        {/* Agent Radar Chart */}
+                        <div className="bg-white rounded-md border border-gray-100 mt-2 mb-3">
+                          <AgentSkillRadarChart 
+                            skills={agentDimensions} 
+                            title="Competency Profile"
+                            size={200}
+                            className="py-2" 
+                          />
+                        </div>
+                        
+                        {/* Nuova sezione per personalità e caratteristiche */}
+                        <div className="mt-3 mb-3 bg-white p-2 rounded-md border border-gray-100">
+                          {agent.communication_style && (
+                            <div className="text-xs text-gray-600 flex items-center mb-1">
+                              <span className="font-medium mr-1">Comunicazione:</span> 
+                              <span className="italic">{agent.communication_style}</span>
+                            </div>
+                          )}
+                          
+                          {agent.personality_traits && agent.personality_traits.length > 0 && (
+                            <div className="text-xs text-gray-600 mb-1">
+                              <span className="font-medium">Personalità:</span> {formatPersonalityTraits(agent.personality_traits)}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Skills section */}
+                        <div className="space-y-2">
+                          {agent.hard_skills && agent.hard_skills.length > 0 && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Hard Skills:</div>
+                              {renderSkills(agent.hard_skills)}
+                            </div>
+                          )}
+                          
+                          {agent.soft_skills && agent.soft_skills.length > 0 && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Soft Skills:</div>
+                              {renderSkills(agent.soft_skills)}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(agent.status)}`}>
+                            {agent.status}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getHealthColor(agent.health)}`}>
+                            {agent.health?.status || 'unknown'}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${getSeniorityColor(agent.seniority)}`}>
-                        {agent.seniority}
-                      </span>
                     </div>
-                    
-                    <p className="text-sm text-gray-600 mt-1 mb-2 line-clamp-2">
-                      {agent.description || `Agente specializzato in ${agent.role}`}
-                    </p>
-                    
-                    {/* Nuova sezione per personalità e caratteristiche */}
-                    <div className="mt-3 mb-3 bg-white p-2 rounded-md border border-gray-100">
-                      {agent.communication_style && (
-                        <div className="text-xs text-gray-600 flex items-center mb-1">
-                          <span className="font-medium mr-1">Comunicazione:</span> 
-                          <span className="italic">{agent.communication_style}</span>
-                        </div>
-                      )}
-                      
-                      {agent.personality_traits && agent.personality_traits.length > 0 && (
-                        <div className="text-xs text-gray-600 mb-1">
-                          <span className="font-medium">Personalità:</span> {formatPersonalityTraits(agent.personality_traits)}
-                        </div>
-                      )}
-                      
-                      {agent.background_story && (
-                        <div className="text-xs text-gray-600 mt-1">
-                          <span className="font-medium">Background:</span>
-                          <p className="italic mt-0.5 line-clamp-2">{agent.background_story}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Skills section */}
-                    <div className="space-y-2">
-                      {agent.hard_skills && agent.hard_skills.length > 0 && (
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Hard Skills:</div>
-                          {renderSkills(agent.hard_skills)}
-                        </div>
-                      )}
-                      
-                      {agent.soft_skills && agent.soft_skills.length > 0 && (
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">Soft Skills:</div>
-                          {renderSkills(agent.soft_skills)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
-                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(agent.status)}`}>
-                        {agent.status}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${getHealthColor(agent.health)}`}>
-                        {agent.health?.status || 'unknown'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

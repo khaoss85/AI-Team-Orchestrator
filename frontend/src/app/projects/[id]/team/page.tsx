@@ -1,10 +1,12 @@
-'use client';
+"use client"
 
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
 import { Workspace, Agent, Handoff, SkillLevel, PersonalityTrait, CommunicationStyle } from '@/types'; 
 import AgentEditModal from '@/components/AgentEditModal';
+import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
+import AgentSkillRadarChart, { calculateTeamDimensions } from '@/components/AgentSkillRadarChart';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -22,6 +24,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
   const [error, setError] = useState<string | null>(null);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showTeamRadar, setShowTeamRadar] = useState(true);
   
   useEffect(() => {
     fetchData();
@@ -155,6 +158,9 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
+  // Calcola le dimensioni del team 
+  const teamDimensions = calculateTeamDimensions(agents);
+  
   if (loading && !workspace) {
     return (
       <div className="container mx-auto">
@@ -189,6 +195,57 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
               <p className="text-2xl font-bold">{agents.length}</p>
             </div>
           </div>
+          
+          {/* Team Radar Chart */}
+          {agents.length > 1 && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-semibold">Team Competency Matrix</h2>
+                <button 
+                  className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-md text-sm"
+                  onClick={() => setShowTeamRadar(!showTeamRadar)}
+                >
+                  {showTeamRadar ? 'Nascondi grafico' : 'Mostra grafico'}
+                </button>
+              </div>
+              
+              {showTeamRadar && (
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg">
+                  <div className="flex flex-col items-center">
+                    <p className="text-purple-700 mb-4">
+                      Questa visualizzazione mostra la competenza media del team su 6 dimensioni chiave
+                    </p>
+                    <AgentSkillRadarChart 
+                      skills={teamDimensions} 
+                      title="Team Matrix" 
+                      size={450} 
+                      colorScheme="team" 
+                    />
+                    
+                    <div className="mt-6 w-full max-w-2xl">
+                      <h4 className="text-md font-medium text-gray-800 mb-2">Dimensioni principali del team:</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {teamDimensions.map((dim, index) => (
+                          <div key={index} className="bg-white p-2 rounded-md border border-gray-200 flex justify-between items-center">
+                            <span className="text-sm font-medium">{dim.name}</span>
+                            <div className="flex items-center">
+                              <div className="w-24 h-2 bg-gray-200 rounded-full mr-2">
+                                <div 
+                                  className="h-2 bg-purple-600 rounded-full"
+                                  style={{ width: `${(dim.value / 5) * 100}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs font-semibold">{dim.value}/5</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="grid grid-cols-1 gap-6">
             {agents.map((agent) => {
@@ -238,6 +295,9 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                           {agent.description || 'Nessuna descrizione disponibile'}
                         </p>
                       </div>
+                      
+                      {/* Radar Chart per l'agente */}
+                      <AgentDetailRadarSection agent={agent} />
                       
                       {/* Nuova sezione: Personalità e Caratteristiche */}
                       <div>
@@ -314,10 +374,32 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                           </div>
                         </div>
                       )}
-                      
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Tools, handoffs, costi */}
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-1">Strumenti Disponibili</h3>
+                        <div className="space-y-2">
+                          {agent.tools && agent.tools.length > 0 ? (
+                            agent.tools.map((tool, index) => (
+                              <div key={index} className="bg-indigo-50 p-3 rounded-md">
+                                <div className="flex justify-between items-start mb-1">
+                                  <span className="font-medium text-indigo-900">{tool.name}</span>
+                                  <span className="text-xs text-indigo-600">{typeof tool === 'object' && tool.type ? tool.type : 'N/D'}</span>
+                                </div>
+                                <p className="text-sm text-indigo-700">{typeof tool === 'object' && tool.description ? tool.description : ''}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500 italic">Nessuno strumento configurato</p>
+                          )}
+                        </div>
+                      </div>
+
                       <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">System Prompt</h3>
-                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
+                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto">
                           <pre className="whitespace-pre-wrap">
                             {agent.system_prompt || 'Nessun prompt di sistema definito'}
                           </pre>
@@ -343,29 +425,7 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
                           </div>
                         </div>
                       )}
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {/* Tools, handoffs, costi */}
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900 mb-1">Strumenti Disponibili</h3>
-                        <div className="space-y-2">
-                          {agent.tools && agent.tools.length > 0 ? (
-                            agent.tools.map((tool, index) => (
-                              <div key={index} className="bg-indigo-50 p-3 rounded-md">
-                                <div className="flex justify-between items-start mb-1">
-                                  <span className="font-medium text-indigo-900">{tool.name}</span>
-                                  <span className="text-xs text-indigo-600">{typeof tool === 'object' && tool.type ? tool.type : 'N/D'}</span>
-                                </div>
-                                <p className="text-sm text-indigo-700">{typeof tool === 'object' && tool.description ? tool.description : ''}</p>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500 italic">Nessuno strumento configurato</p>
-                          )}
-                        </div>
-                      </div>
-
+                      
                       <div>
                         <h3 className="text-sm font-medium text-gray-900 mb-1">Handoffs ({agentHandoffs.length})</h3>
                         <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-md">
