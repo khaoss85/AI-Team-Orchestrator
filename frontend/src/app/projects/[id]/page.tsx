@@ -9,13 +9,14 @@ import { useRouter } from 'next/navigation';
 import AgentSkillRadarChart, { calculateTeamDimensions } from '@/components/AgentSkillRadarChart';
 import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
 import TaskResultDetails from '@/components/TaskResultDetails';
+import ProjectActionsSection from '@/components/ProjectActionsSection';
+
 
 // Mantieni la definizione dei tipi originale
 type Props = {
   params: Promise<{ id: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 };
-
 
 export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const router = useRouter();
@@ -140,6 +141,10 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
     // Implementa la funzione per interagire con un agente
     console.log('Interact with agent:', agent);
   };
+    
+   const onDeleteClick = () => {
+      setIsDeleteModalOpen(true);
+    };
   
   // Calcoli per la barra di avanzamento
   const calculateProgress = () => {
@@ -1043,6 +1048,14 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
             
             {/* Project insights dashboard */}
             <ProjectInsightsDashboard workspaceId={workspaceId} />
+              
+              <ProjectActionsSection 
+  workspace={workspace}
+  onStartTeam={handleStartTeam}
+  onDeleteClick={onDeleteClick} 
+  isStartingTeam={isStartingTeam}
+  feedbackRequests={feedbackRequests}
+/>
             
             <div className="text-center mt-6">
               <Link 
