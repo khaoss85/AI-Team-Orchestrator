@@ -65,9 +65,9 @@ class EnhancedTaskExecutor:
         self.handoff_cache: Dict[str, datetime] = {}
         
         # Configurazioni ultra-conservative
-        self.confidence_threshold = 0.99  # Soglia quasi impossibile da raggiungere
-        self.max_auto_tasks_per_workspace = 0  # Zero task automatici consentiti
-        self.cooldown_minutes = 1440  # 24 ore di cooldown (praticamente infinito)
+        self.confidence_threshold = 0.70  
+        self.max_auto_tasks_per_workspace = 5  
+        self.cooldown_minutes = 60  
         
         # Monitoring
         self.initialization_time = datetime.now()
@@ -496,8 +496,8 @@ class EnhancedTaskExecutor:
             return False
 
         # REJECT if has explicit next_steps (PM should handle planning)
-        if result.get("next_steps"):
-            return False
+        #if result.get("next_steps"):
+        #    return False
 
         # REJECT if output too long (probably comprehensive)
         if len(output) > 800:
@@ -525,7 +525,7 @@ class EnhancedTaskExecutor:
         """Extremely strict limits for workspace auto-generation"""
         
         # NO auto-generation if ANY pending tasks
-        if ctx.get("pending_tasks", 1) > 0:
+        if ctx.get("pending_tasks", 1) > 3:
             return False
         
         # Require 95%+ completion rate
@@ -533,7 +533,7 @@ class EnhancedTaskExecutor:
         completed_tasks = ctx.get("completed_tasks", 0)
         completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0
         
-        if completion_rate < 0.95:
+        if completion_rate < 0.70:
             return False
         
         # Minimum task count to establish pattern
