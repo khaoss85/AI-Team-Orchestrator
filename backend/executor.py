@@ -1,4 +1,3 @@
-
 # backend/executor.py - Versione completa e aggiornata
 import asyncio
 import logging
@@ -468,9 +467,8 @@ class TaskExecutor:
                 "context_data": task_dict.get("context_data"),  # Già dict, non JSON string
                 "result": task_dict.get("result"),
                 "created_at": datetime.fromisoformat(task_dict["created_at"]) if task_dict.get("created_at") else datetime.now(),
-                "updated_at": datetime.fromisoformat(task_dict["updated_at"]) if task_dict.get("updated_at") else datetime.now()
+                "updated_at": datetime.fromisoformat(task_dict["updated_at"]) if task_dict.get("updated_at") else datetime.now() 
             }
-            
             task_pydantic_obj = Task.model_validate(task_dict_validated)
         except Exception as p_exc:
             logger.error(f"Failed to validate task_dict into Pydantic Task model for task ID {task_dict.get('id')}: {p_exc}", exc_info=True)
@@ -640,10 +638,10 @@ class TaskExecutor:
             else:
                 task_final_status_val = agent_returned_status
 
-            # Prepara payload completo partendo dall’output dell’agente
+            # Prepara payload completo partendo dall'output dell'agente
             task_result_payload_for_db = result_from_agent.copy()
 
-            # Se l’agente ha fornito un campo "summary", usalo come riassunto testuale
+            # Se l'agente ha fornito un campo "summary", usalo come riassunto testuale
             task_result_payload_for_db["output"] = result_from_agent.get("summary", result_output)
 
             # Aggiungi/aggiorna metadati di esecuzione
@@ -661,6 +659,9 @@ class TaskExecutor:
             
             # Aggiorna task nel DB
             await update_task_status(task_id, task_final_status_val, task_result_payload_for_db)
+
+            # AGGIUNTA: Verifica completamento progetto dopo task importanti
+            await self.check_project_completion_after_task(task_id, workspace_id)
 
             # Log risultato
             result_summary = (str(result_output)[:150] + "...") if len(str(result_output)) > 150 else str(result_output)
@@ -761,6 +762,12 @@ class TaskExecutor:
             try:
                 await update_task_status(task_id, final_fail_status, error_payload_for_db)
                 logger.info(f"Task {task_id} marked as FAILED due to execution error")
+                
+                # Richiama handler fallimenti
+                from task_analyzer import get_enhanced_task_executor
+                task_executor = get_enhanced_task_executor()
+                await task_executor.handle_failed_task(task_id, str(e), workspace_id)
+                
             except Exception as db_update_err:
                 logger.error(f"Failed to update task {task_id} to FAILED: {db_update_err}")
 
@@ -781,6 +788,44 @@ class TaskExecutor:
             # Aggiungi al completion tracker anche i task falliti
             if workspace_id:
                 self.task_completion_tracker[workspace_id].add(task_id)
+
+    async def check_project_completion_after_task(self, completed_task_id: str, workspace_id: str):
+        """Verifica se il progetto è completato dopo un task importante"""
+        try:
+            # Verifica se il task è un task di completamento
+            tasks = await list_tasks(workspace_id)
+            completed_task = next((t for t in tasks if t.get("id") == completed_task_id), None)
+            
+            if not completed_task:
+                return
+                
+            context_data = completed_task.get("context_data", {}) or {}
+            is_final_task = context_data.get("is_final_task", False)
+            project_phase = context_data.get("project_phase", "")
+            
+            # Se è un task di fase FINALIZATION completato, verifica completamento progetto
+            if (is_final_task or project_phase == "FINALIZATION") and completed_task.get("status") == "completed":
+                # Usa l'EnhancedTaskExecutor per verificare completamento
+                from task_analyzer import get_enhanced_task_executor
+                task_executor = get_enhanced_task_executor()
+                
+                is_completed = await task_executor.check_project_completion_criteria(workspace_id)
+                
+                if is_completed:
+                    # Aggiorna stato workspace
+                    workspace = await get_workspace(workspace_id)
+                    if workspace and workspace.get("status") != "completed":
+                        await update_workspace_status(workspace_id, "completed")
+                        
+                        logger.info(f"Project {workspace_id} automatically marked as COMPLETED")
+                        self.execution_log.append({
+                            "timestamp": datetime.now().isoformat(),
+                            "event": "project_completed",
+                            "workspace_id": workspace_id,
+                            "trigger_task_id": completed_task_id
+                        })
+        except Exception as e:
+            logger.error(f"Error checking project completion after task {completed_task_id}: {e}", exc_info=True)
 
     async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:
         """Determina se un task è stato completato da un Project Manager"""

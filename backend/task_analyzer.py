@@ -93,10 +93,32 @@ class EnhancedTaskExecutor:
         
         task_id_str = str(completed_task.id)
         
+        # AGGIUNTA: Verifica se è un task finale
+        context_data = completed_task.context_data or {}
+        is_final_task = context_data.get("is_final_task", False)
+        
+        # Se è un task finale completato, verifica il completamento del progetto
+        if is_final_task and task_result.get("status") == "completed":
+            # Marca il progetto come completato
+            workspace = await get_workspace(workspace_id)
+            if workspace and workspace.get("status") != "completed":
+                from database import update_workspace_status
+                try:
+                    await update_workspace_status(workspace_id, "completed")
+                    logger.info(f"Project {workspace_id} marked as COMPLETED")
+                except Exception as e:
+                    logger.error(f"Error marking project {workspace_id} as completed: {e}")
+            
+            return  # Non eseguire altra logica per task finali
+        
+        # AGGIUNTA: Valuta se creare task di assessment periodico
+        if task_result.get("status") == "completed":
+            await self.create_periodic_assessment_task(workspace_id)
+        
         # Determina se è un PM task
         is_pm_task = await self._is_project_manager_task(completed_task, task_result)
         
-        # PM auto-generation: sempre abilitata
+        # PM auto-generation: sempre abilitata  
         if is_pm_task:
             logger.info(f"Project Manager task detected {task_id_str} - executing auto-generation")
             pm_created_tasks = await self.handle_project_manager_completion(
@@ -276,11 +298,33 @@ class EnhancedTaskExecutor:
                     continue
 
                 target_role = subtask_def["target_agent_role"]
+                
+                # Verifica che non ci sia un ciclo di delegazione
+                source_agent_id = str(task.agent_id) if task.agent_id else None
+                if await self._is_delegation_loop(source_agent_id, target_role, workspace_id, str(task.id)):
+                    logger.warning(f"Skipping subtask creation '{subtask_def['name']}' - would create delegation loop")
+                    continue
+                
+                # Verifica se il task è un duplicato
+                existing_task = await self._detect_duplicate_task(
+                    subtask_def["name"], 
+                    subtask_def["description"], 
+                    workspace_id
+                )
+                
+                if existing_task:
+                    logger.warning(f"Skipping creation of duplicate task '{subtask_def['name']}' - similar to existing task {existing_task.get('id')}")
+                    continue
+
                 target_agent = await self._find_agent_by_role(workspace_id, target_role)
 
                 if not target_agent:
                     logger.warning(f"No active agent found for role '{target_role}' - skipping subtask creation for '{subtask_def['name']}'")
                     continue
+
+                # Recupera task completati per determinare la fase
+                tasks = await list_tasks(workspace_id)
+                completed_tasks_count = len([t for t in tasks if t.get("status") == "completed"])
 
                 # Crea il sub-task
                 created_task = await create_task(
@@ -295,7 +339,10 @@ class EnhancedTaskExecutor:
                     context_data={
                         "created_by_pm_task_id": str(task.id),
                         "auto_generated_by_pm": True,
-                        "source_pm_agent_id": str(task.agent_id) if task.agent_id else None
+                        "source_pm_agent_id": str(task.agent_id) if task.agent_id else None,
+                        "project_phase": self._determine_project_phase(subtask_def["name"], subtask_def["description"], completed_tasks_count),
+                        "failure_count": 0,
+                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed by agent")
                     }
                 )
 
@@ -328,6 +375,15 @@ class EnhancedTaskExecutor:
             if not agents_from_db:
                 logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No agents returned from DB for workspace {workspace_id}.")
                 return None
+
+            # NUOVA LOGICA: Se il task richiede coordinamento, assegnarlo sempre al PM
+            if "project manager" in role.lower() or any(keyword in role.lower() for keyword in 
+               ["meeting", "coordinate", "circulate", "schedule", "plan", "overview"]):
+                # Cerca specificamente un agente Project Manager
+                for agent in agents_from_db:
+                    if "project manager" in agent.get("role", "").lower() or "coordinator" in agent.get("role", "").lower():
+                        logger.info(f"PM_SUBTASK_AGENT_FINDER --- Found PM for coordination task: {agent.get('name')}")
+                        return agent
 
             logger.info(f"PM_SUBTASK_AGENT_FINDER --- Workspace: {workspace_id}, Target Role: '{role}'. Agents retrieved: {len(agents_from_db)}")
             for idx, agent_in_db in enumerate(agents_from_db):
@@ -486,6 +542,374 @@ class EnhancedTaskExecutor:
 
         return False
 
+    # ---------------------------------------------------------------------
+    # Nuove funzioni per il fix anti-loop
+    # ---------------------------------------------------------------------
+    def _determine_project_phase(self, task_name: str, task_desc: str, completed_tasks_count: int) -> str:
+        """Determina la fase del progetto in base al nome del task, descrizione e contesto"""
+        task_lower = task_name.lower() + " " + task_desc.lower()
+        
+        # Pattern di fase iniziale/analisi
+        if completed_tasks_count < 5 or any(kw in task_lower for kw in 
+            ["analys", "research", "initial", "assess", "plan", "investigate", "explore", "discover"]):
+            return "ANALYSIS"
+        
+        # Pattern di fase di implementazione
+        elif any(kw in task_lower for kw in 
+            ["implement", "create", "develop", "execute", "build", "produce", "construct", "write"]):
+            return "IMPLEMENTATION"
+        
+        # Pattern di fase finale
+        elif any(kw in task_lower for kw in 
+            ["finaliz", "review", "evaluat", "test", "valida", "conclude", "complete", "finish"]):
+            return "FINALIZATION"
+        
+        # Default - progresso in base al conteggio dei task
+        elif completed_tasks_count > 15:
+            return "FINALIZATION"
+        elif completed_tasks_count > 8:
+            return "IMPLEMENTATION"
+        else:
+            return "ANALYSIS"
+
+    async def _is_delegation_loop(self, source_agent_id: str, target_agent_id: str, workspace_id: str, parent_task_id: Optional[str] = None) -> bool:
+        """Verifica se esiste già un ciclo di delegazione nella catena dei task"""
+        if source_agent_id == target_agent_id:
+            return True  # Non delegare a sé stessi
+            
+        # Se non c'è parent task, non c'è loop
+        if not parent_task_id:
+            return False
+            
+        # Ricostruisci la catena di delegazione
+        delegation_chain = []
+        current_task_id = parent_task_id
+        max_depth = 0
+        
+        # Recupera task del workspace per costruire la genealogia
+        all_tasks = await list_tasks(workspace_id)
+        task_dict = {t.get("id"): t for t in all_tasks if t.get("id")}
+        
+        while current_task_id and max_depth < 10:  # Limite di sicurezza
+            parent_task = task_dict.get(current_task_id)
+            if not parent_task:
+                break
+                
+            delegator_id = parent_task.get("agent_id")
+            if delegator_id:
+                delegation_chain.append(delegator_id)
+                
+            # Passa al parent
+            current_task_id = parent_task.get("parent_task_id")
+            max_depth += 1
+        
+        # Verifica se il target ha già delegato al source
+        if target_agent_id in delegation_chain:
+            logger.warning(f"Detected delegation loop: {source_agent_id} -> {target_agent_id} (chain: {delegation_chain})")
+            return True
+            
+        # Verifica profondità massima delegazione
+        if len(delegation_chain) >= 3:  # Limite a 3 livelli di delegazione
+            logger.warning(f"Max delegation depth reached: {len(delegation_chain)} > 3")
+            return True
+            
+        return False
+
+    def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+        """Calcola la similarità tra due testi"""
+        if not text1 or not text2:
+            return 0.0
+            
+        # Normalizza i testi
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        
+        if not words1 or not words2:
+            return 0.0
+            
+        # Calcola coefficiente Jaccard
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
+        
+        return intersection / union if union > 0 else 0.0
+
+    async def _detect_duplicate_task(self, new_task_name: str, new_task_description: str, workspace_id: str) -> Optional[Dict]:
+        """Rileva se un task simile è già stato creato"""
+        existing_tasks = await list_tasks(workspace_id)
+        
+        # Normalizza il testo per confronto
+        new_name_normalized = new_task_name.lower()
+        new_desc_normalized = new_task_description.lower()
+        combined_new = f"{new_name_normalized} {new_desc_normalized}"
+        
+        for task in existing_tasks:
+            if task.get("status") in ["pending", "in_progress"]:
+                existing_name = task.get("name", "").lower()
+                existing_desc = task.get("description", "").lower()
+                combined_existing = f"{existing_name} {existing_desc}"
+                
+                # Calcola similarità
+                similarity = self._calculate_text_similarity(combined_new, combined_existing)
+                
+                if similarity > 0.75:  # 75% di somiglianza
+                    logger.warning(f"Detected potential duplicate task: {similarity*100:.1f}% similarity")
+                    return task
+        
+        return None
+
+    async def handle_failed_task(self, task_id: str, error_details: str, workspace_id: str) -> Optional[str]:
+        """Gestisce un task fallito decidendo se riassegnarlo o escalarlo"""
+        from database import get_task, update_task_status, list_agents, create_task
+        
+        # Recupera il task
+        tasks = await list_tasks(workspace_id)
+        task = next((t for t in tasks if t.get("id") == task_id), None)
+        
+        if not task:
+            logger.error(f"Cannot handle failed task {task_id} - not found")
+            return None
+        
+        # Incrementa contatore fallimenti
+        context_data = task.get("context_data", {}) or {}
+        failure_count = context_data.get("failure_count", 0) + 1
+        context_data["failure_count"] = failure_count
+        
+        # Se il task ha fallito troppe volte, escalation al PM
+        if failure_count >= 3:
+            # Trova il PM
+            agents = await list_agents(workspace_id)
+            pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
+            
+            if pm_agent:
+                # Crea task di intervento per il PM
+                intervention_task = await create_task(
+                    workspace_id=workspace_id,
+                    agent_id=pm_agent["id"],
+                    name=f"INTERVENTION: Handle Failed Task - {task.get('name')}",
+                    description=(
+                        f"The following task has failed {failure_count} times and needs intervention:\n\n"
+                        f"Task: {task.get('name')}\n"
+                        f"Error: {error_details}\n\n"
+                        "Please decide whether to:\n"
+                        "1. Modify and retry the task\n"
+                        "2. Skip this task and proceed with alternatives\n"
+                        "3. Update the project plan accordingly"
+                    ),
+                    status="pending",
+                    priority="high",
+                    context_data={
+                        "intervention_type": "failed_task",
+                        "original_task_id": task_id,
+                        "failure_count": failure_count,
+                        "error_details": error_details
+                    }
+                )
+                return intervention_task["id"]
+        else:
+            # Aggiorna il task con il conteggio fallimenti e riprova
+            await update_task_status(
+                task_id=task_id,
+                status="pending",  # Rimetti in pending per riprovare
+                result_payload={
+                    "failure_count": failure_count,
+                    "last_error": error_details,
+                    "retry_scheduled": True
+                }
+            )
+            return task_id
+        
+        return None
+    
+    async def evaluate_project_phase_transition(self, workspace_id: str) -> str:
+        """Determina se il progetto dovrebbe passare alla fase successiva"""
+        tasks = await list_tasks(workspace_id)
+        
+        # Conta task per fase
+        phase_counts = {
+            "ANALYSIS": 0,
+            "IMPLEMENTATION": 0,
+            "FINALIZATION": 0
+        }
+        
+        completed_phase_counts = {
+            "ANALYSIS": 0,
+            "IMPLEMENTATION": 0,
+            "FINALIZATION": 0
+        }
+        
+        # Conteggio task per fase
+        for task in tasks:
+            context_data = task.get("context_data", {}) or {}
+            phase = context_data.get("project_phase", "ANALYSIS")
+            if phase in phase_counts:
+                phase_counts[phase] += 1
+                
+                if task.get("status") == "completed":
+                    completed_phase_counts[phase] += 1
+        
+        # Determina la fase attuale
+        current_phase = "ANALYSIS"
+        if completed_phase_counts["ANALYSIS"] > 0 and phase_counts["IMPLEMENTATION"] > 0:
+            current_phase = "IMPLEMENTATION"
+        if completed_phase_counts["IMPLEMENTATION"] > 0 and phase_counts["FINALIZATION"] > 0:
+            current_phase = "FINALIZATION"
+        
+        # Calcola il completamento della fase
+        phase_completion = {
+            phase: completed_phase_counts[phase] / phase_counts[phase] if phase_counts[phase] > 0 else 0
+            for phase in phase_counts.keys()
+        }
+        
+        # Regole di transizione
+        if current_phase == "ANALYSIS" and phase_completion["ANALYSIS"] > 0.8:
+            logger.info(f"Project {workspace_id} ready to transition from ANALYSIS to IMPLEMENTATION phase")
+            return "IMPLEMENTATION"
+        elif current_phase == "IMPLEMENTATION" and phase_completion["IMPLEMENTATION"] > 0.7:
+            logger.info(f"Project {workspace_id} ready to transition from IMPLEMENTATION to FINALIZATION phase")
+            return "FINALIZATION"
+        elif current_phase == "FINALIZATION" and phase_completion["FINALIZATION"] > 0.9:
+            logger.info(f"Project {workspace_id} ready to be marked as COMPLETED")
+            return "COMPLETED"
+        
+        return current_phase
+
+    async def create_periodic_assessment_task(self, workspace_id: str) -> Optional[str]:
+        """Crea un task di valutazione periodica per il PM"""
+        from database import list_agents, list_tasks, create_task
+        
+        # Trova il Project Manager
+        agents = await list_agents(workspace_id)
+        pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
+        
+        if not pm_agent:
+            logger.warning(f"No PM found for workspace {workspace_id}")
+            return None
+        
+        # Crea un task di valutazione ogni N task completati
+        tasks = await list_tasks(workspace_id)
+        completed_count = len([t for t in tasks if t.get("status") == "completed"])
+        
+        if completed_count > 0 and completed_count % 5 == 0:  # Ogni 5 task completati
+            # Verifica la fase attuale
+            current_phase = await self.evaluate_project_phase_transition(workspace_id)
+            
+            assessment_task = await create_task(
+                workspace_id=workspace_id,
+                agent_id=pm_agent["id"],
+                name=f"Project Progress Assessment #{completed_count // 5}",
+                description=(
+                    f"Review the current project status. {completed_count} tasks have been completed.\n\n"
+                    f"Current project phase: {current_phase}\n\n"
+                    "1. Evaluate progress toward overall goal\n"
+                    "2. Identify any bottlenecks or issues\n"
+                    "3. Determine if project is ready to move to next phase\n"
+                    "4. Create appropriate follow-up tasks based on current project phase"
+                ),
+                status="pending",
+                priority="high",
+                context_data={
+                    "assessment_type": "periodic",
+                    "completed_tasks_count": completed_count,
+                    "current_phase": current_phase,
+                    "auto_generated": True
+                }
+            )
+            
+            if assessment_task and assessment_task.get("id"):
+                return assessment_task["id"]
+        
+        return None
+
+    async def check_project_completion_criteria(self, workspace_id: str) -> bool:
+        """Verifica criteri multipli per stabilire se un progetto è completato"""
+        
+        tasks = await list_tasks(workspace_id)
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        if not tasks:
+            return False
+        
+        # Criterio 1: Percentuale di completamento
+        completion_ratio = len(completed_tasks) / len(tasks) if tasks else 0
+        
+        # Criterio 2: Completamento delle fasi
+        phases_completed = {
+            "ANALYSIS": False,
+            "IMPLEMENTATION": False,
+            "FINALIZATION": False
+        }
+        
+        for task in completed_tasks:
+            context_data = task.get("context_data", {}) or {}
+            phase = context_data.get("project_phase")
+            if phase in phases_completed:
+                phases_completed[phase] = True
+        
+        # Criterio 3: Presenza di deliverable finali
+        has_final_deliverables = False
+        for task in completed_tasks:
+            if any(keyword in (task.get("name", "") or "").lower() for keyword in 
+                  ["final", "deliverable", "complete", "finished"]):
+                has_final_deliverables = True
+                break
+        
+        # Decisione di completamento basata su tutti i criteri
+        if completion_ratio > 0.85 and phases_completed["IMPLEMENTATION"] and has_final_deliverables:
+            # PROGETTO COMPLETO
+            return True
+        
+        # Se la fase di IMPLEMENTATION è completa ma mancano deliverable finali
+        if phases_completed["IMPLEMENTATION"] and not has_final_deliverables:
+            # Crea task per generare il deliverable finale
+            await self.create_final_deliverable_task(workspace_id)
+        
+        return False
+
+    async def create_final_deliverable_task(self, workspace_id: str) -> Optional[str]:
+        """Crea un task per il deliverable finale"""
+        from database import list_agents, create_task, get_workspace
+        
+        # Ottieni informazioni workspace
+        workspace = await get_workspace(workspace_id)
+        workspace_goal = workspace.get("goal", "Complete the project") if workspace else "Complete the project"
+        
+        # Trova il PM
+        agents = await list_agents(workspace_id)
+        pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
+        
+        if not pm_agent:
+            logger.warning(f"No PM found for workspace {workspace_id}")
+            return None
+        
+        # Crea task finale
+        final_task = await create_task(
+            workspace_id=workspace_id,
+            agent_id=pm_agent["id"],
+            name="FINAL: Project Deliverable Creation",
+            description=(
+                "Create the final project deliverable based on all completed work.\n\n"
+                f"PROJECT GOAL: {workspace_goal}\n\n"
+                "1. Review all completed tasks and collect key outputs\n"
+                "2. Synthesize findings into a cohesive final deliverable\n"
+                "3. Include executive summary, key findings, and recommendations\n"
+                "4. Ensure the deliverable completely addresses the original project goal\n\n"
+                "This is the final task for this project. Upon completion, the project will be marked as complete."
+            ),
+            status="pending",
+            priority="high",
+            context_data={
+                "task_type": "final_deliverable",
+                "project_phase": "FINALIZATION",
+                "auto_generated": True,
+                "is_final_task": True
+            }
+        )
+        
+        if final_task and final_task.get("id"):
+            return final_task["id"]
+        
+        return None
+    
     # ---------------------------------------------------------------------
     # Ultra-conservative analysis filters
     # ---------------------------------------------------------------------
