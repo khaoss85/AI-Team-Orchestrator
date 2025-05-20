@@ -169,143 +169,154 @@ class EnhancedTaskExecutor:
     # ---------------------------------------------------------------------
     async def handle_project_manager_completion(
         self,
-        task: Task, # Assumendo che Task sia il tipo corretto importato da models
+        task: Task, 
         result: Dict[str, Any],
         workspace_id: str
     ) -> bool:
         """
         Gestisce specificamente il completamento di task del Project Manager
         creando automaticamente i sub-task definiti nel risultato.
-
-        Returns:
-            bool: True se ha creato sub-task, False altrimenti
         """
 
         logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
 
-        # --- DEBUGGING LOGS INIZIO ---
+        # --- LOGGING MIGLIORATO PER DEBUG ---
         logger.info(f"PM_HANDLER_DEBUG --- Task ID: {task.id} --- Received result dictionary keys: {list(result.keys())}")
         detailed_results_json_content = result.get("detailed_results_json")
 
         if detailed_results_json_content is not None:
             logger.info(f"PM_HANDLER_DEBUG --- detailed_results_json IS PRESENT. Type: {type(detailed_results_json_content)}. Content snippet: {str(detailed_results_json_content)[:500]}")
         else:
-            # Logga l'intero 'result' se 'detailed_results_json' è mancante o None per un debug completo
+            logger.error(f"PM_HANDLER_CRITICAL_DEBUG --- detailed_results_json IS MISSING or None in result for task {task.id}. Full result for debugging: {str(result)[:500]}")
+            # NON uscire subito se manca detailed_results_json, proveremo altre strategie
+
+        # --- NUOVO: ESTRAZIONE SUB-TASK DA DIVERSE FONTI ---
+        defined_subtasks = []
+
+        # Fonte 1: detailed_results_json standard - DA CODICE ORIGINALE
+        if isinstance(detailed_results_json_content, str) and detailed_results_json_content.strip():
             try:
-                result_dump_for_log = json.dumps(result)
-            except TypeError: # In caso 'result' non sia serializzabile direttamente
-                result_dump_for_log = str(result)
-            logger.error(f"PM_HANDLER_CRITICAL_DEBUG --- detailed_results_json IS MISSING or None in result for task {task.id}. Full result for debugging: {result_dump_for_log}")
-            return False # Esce se manca il campo fondamentale
-        # --- DEBUGGING LOGS FINE ---
+                results_data = json.loads(detailed_results_json_content)
 
-        # Rinomina la variabile per chiarezza, ora sappiamo che non è None
-        detailed_results_str = detailed_results_json_content
-
-        # Il log originale per "No detailed_results_json" non dovrebbe più essere raggiunto se il controllo sopra ritorna False.
-        # Se si raggiunge questo punto, detailed_results_str è una stringa (o qualcosa che si comporta come tale).
-        if not isinstance(detailed_results_str, str) or not detailed_results_str.strip():
-            logger.error(f"PM task {task.id}: detailed_results_json is present but is not a non-empty string. Type: {type(detailed_results_str)}. Content: '{detailed_results_str}'")
-            return False
-
-        try:
-            # Parse del JSON dei risultati
-            try:
-                results_data = json.loads(detailed_results_str)
+                # Cerca i sub-task definiti con diverse possibili chiavi
+                for key in ["defined_sub_tasks", "sub_tasks", "subtasks", "tasks", "next_tasks"]:
+                    if key in results_data and isinstance(results_data[key], list):
+                        defined_subtasks.extend(results_data[key])
+                        logger.info(f"Trovati {len(results_data[key])} sub-task nella chiave '{key}'")
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse detailed_results_json string for task {task.id}: {e}. Content was: {detailed_results_str}")
-                return False
+                logger.error(f"Failed to parse detailed_results_json string for task {task.id}: {e}. Content was: {detailed_results_json_content[:200]}")
+                # Continuiamo per provare altre fonti
 
-            # Cerca i sub-task definiti
-            defined_subtasks = results_data.get("defined_sub_tasks", [])
-            if not defined_subtasks:
-                logger.info(f"No defined_sub_tasks found in the parsed JSON for PM task {task.id}")
-                return False
-
-            if not isinstance(defined_subtasks, list):
-                logger.error(f"PM task {task.id}: 'defined_sub_tasks' is not a list. Found: {type(defined_subtasks)}")
-                return False
-
-            logger.info(f"Found {len(defined_subtasks)} sub-tasks to create for PM task {task.id}")
-
-            # Importa create_task qui per evitare circular imports se necessario, o assicurati sia importato a livello di modulo
-            from database import create_task
-
-            created_count = 0
-            created_tasks_details = [] # Per un log più dettagliato
-
-            for subtask_def in defined_subtasks:
-                if not isinstance(subtask_def, dict):
-                    logger.warning(f"Skipping invalid subtask definition (not a dict): {subtask_def}")
+        # Fonte 2: next_steps array - NUOVA FONTE
+        next_steps = result.get("next_steps", [])
+        if not defined_subtasks and next_steps and isinstance(next_steps, list):
+            logger.info(f"Non trovati sub-task in detailed_results_json, provo a generarli da next_steps ({len(next_steps)})")
+            for step in next_steps:
+                if not isinstance(step, str):
                     continue
 
-                try:
-                    required_fields = ["name", "description", "target_agent_role"]
-                    if not all(field in subtask_def for field in required_fields):
-                        logger.warning(f"Skipping subtask definition with missing required fields: {subtask_def}. Missing: {[f for f in required_fields if f not in subtask_def]}")
-                        continue
+                # Inferisci target_role dal contenuto del next_step
+                target_role = "Specialist"  # Default generico
+                step_lower = step.lower()
 
-                    target_role = subtask_def["target_agent_role"]
-                    target_agent = await self._find_agent_by_role(workspace_id, target_role)
+                if any(kw in step_lower for kw in ["analy", "data", "research"]):
+                    target_role = "AnalysisSpecialist"
+                elif any(kw in step_lower for kw in ["content", "write", "text"]):
+                    target_role = "ContentSpecialist"
+                elif any(kw in step_lower for kw in ["technical", "develop", "implement"]):
+                    target_role = "TechnicalSpecialist"
 
-                    if not target_agent:
-                        logger.warning(f"No active agent found for role '{target_role}' - skipping subtask creation for '{subtask_def['name']}'")
-                        continue
+                # Crea sub-task dal next_step
+                subtask = {
+                    "name": f"Follow-up: {step[:50]}...",
+                    "description": f"Complete the following next step identified by the Project Manager:\n\n{step}\n\nThis task was automatically generated from the PM's next steps.",
+                    "target_agent_role": target_role,
+                    "priority": "medium"
+                }
+                defined_subtasks.append(subtask)
 
-                    # Crea il sub-task
-                    created_task = await create_task(
-                        workspace_id=workspace_id,
-                        agent_id=str(target_agent["id"]), # Assicurati che l'ID sia una stringa
-                        assigned_to_role=target_role,
-                        name=subtask_def["name"],
-                        description=subtask_def["description"],
-                        status="pending", # Uso diretto di TaskStatus.PENDING.value se TaskStatus è un Enum
-                        priority=subtask_def.get("priority", "medium"),
-                        parent_task_id=str(task.id), # Assicurati che l'ID sia una stringa
-                        context_data={
-                            "created_by_pm_task_id": str(task.id),
-                            "auto_generated_by_pm": True,
-                            "source_pm_agent_id": str(task.agent_id) if task.agent_id else None
-                        }
-                    )
+            if defined_subtasks:
+                logger.info(f"Creati {len(defined_subtasks)} sub-task da next_steps")
 
-                    if created_task and created_task.get("id"):
-                        created_count += 1
-                        task_detail_for_log = {"id": created_task['id'], "name": subtask_def['name'], "assigned_to": target_agent.get('name')}
-                        created_tasks_details.append(task_detail_for_log)
-                        logger.info(f"Successfully created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) and assigned to {target_agent.get('name', 'Unknown Agent')}")
-                    else:
-                        logger.error(f"Failed to create sub-task '{subtask_def['name']}' in database or no ID returned.")
+        # Fonte 3: summary come ultima risorsa - NUOVA FONTE
+        summary = result.get("summary", "")
+        if not defined_subtasks and isinstance(summary, str) and len(summary) > 50:
+            logger.info(f"Non trovati sub-task in detailed_results_json o next_steps, provo a generare da summary")
+            # Crea un task di follow-up se non abbiamo trovato nulla finora
+            subtask = {
+                "name": f"Follow-up: {task.name}",
+                "description": f"Based on the PM's summary:\n\n{summary}\n\nReview this output and determine appropriate next steps to advance the project. This task was automatically generated to ensure project continuity.",
+                "target_agent_role": "Specialist",  # Default generico
+                "priority": "medium"
+            }
+            defined_subtasks.append(subtask)
+            logger.info(f"Creato 1 sub-task di follow-up dalla summary")
 
-                except Exception as e_subtask: # Catching more specific errors might be better
-                    logger.error(f"Error processing subtask definition '{subtask_def.get('name', 'Unknown name')}': {e_subtask}", exc_info=True)
-                    continue
-
-            if created_count > 0:
-                logger.info(f"PM auto-generation: Successfully created {created_count}/{len(defined_subtasks)} sub-tasks for PM task {task.id}. Details: {created_tasks_details}")
-                # Questo log ora avviene dentro EnhancedTaskExecutor.handle_task_completion
-                # await self._log_completion_analysis(
-                # task,
-                # {"created_subtasks_count": created_count, "details": created_tasks_details},
-                # "pm_subtasks_created",
-                # f"Created {created_count} sub-tasks."
-                # )
-                return True
-            else:
-                logger.info(f"PM auto-generation: No sub-tasks were created for PM task {task.id} out of {len(defined_subtasks)} defined.")
-                return False
-
-        except Exception as e_main:
-            logger.error(f"Critical error in handle_project_manager_completion for task {task.id}: {e_main}", exc_info=True)
-            # Anche qui, il logging dell'errore di analisi avviene in EnhancedTaskExecutor.handle_task_completion
-            # await self._log_completion_analysis(
-            # task,
-            # {"error": str(e_main)},
-            # "pm_handling_error",
-            # str(e_main)
-            # )
+        # --- VERIFICA FINALE SUB-TASK ---
+        if not defined_subtasks:
+            logger.info(f"No sub-tasks were found or generated for PM task {task.id} from any source")
             return False
 
+        # --- CREAZIONE SUB-TASK NEL DATABASE - MANTIENE LA LOGICA ORIGINALE ---
+        # Importa create_task qui per evitare circular imports se necessario
+        from database import create_task
+
+        created_count = 0
+        created_tasks_details = []  # Per logging dettagliato
+
+        for subtask_def in defined_subtasks:
+            if not isinstance(subtask_def, dict):
+                logger.warning(f"Skipping invalid subtask definition (not a dict): {subtask_def}")
+                continue
+
+            try:
+                required_fields = ["name", "description", "target_agent_role"]
+                if not all(field in subtask_def for field in required_fields):
+                    logger.warning(f"Skipping subtask definition with missing required fields: {subtask_def}. Missing: {[f for f in required_fields if f not in subtask_def]}")
+                    continue
+
+                target_role = subtask_def["target_agent_role"]
+                target_agent = await self._find_agent_by_role(workspace_id, target_role)
+
+                if not target_agent:
+                    logger.warning(f"No active agent found for role '{target_role}' - skipping subtask creation for '{subtask_def['name']}'")
+                    continue
+
+                # Crea il sub-task
+                created_task = await create_task(
+                    workspace_id=workspace_id,
+                    agent_id=str(target_agent["id"]),
+                    assigned_to_role=target_role,
+                    name=subtask_def["name"],
+                    description=subtask_def["description"],
+                    status="pending",
+                    priority=subtask_def.get("priority", "medium"),
+                    parent_task_id=str(task.id),
+                    context_data={
+                        "created_by_pm_task_id": str(task.id),
+                        "auto_generated_by_pm": True,
+                        "source_pm_agent_id": str(task.agent_id) if task.agent_id else None
+                    }
+                )
+
+                if created_task and created_task.get("id"):
+                    created_count += 1
+                    task_detail_for_log = {"id": created_task['id'], "name": subtask_def['name'], "assigned_to": target_agent.get('name')}
+                    created_tasks_details.append(task_detail_for_log)
+                    logger.info(f"Successfully created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) and assigned to {target_agent.get('name', 'Unknown Agent')}")
+                else:
+                    logger.error(f"Failed to create sub-task '{subtask_def['name']}' in database or no ID returned.")
+
+            except Exception as e_subtask:
+                logger.error(f"Error processing subtask definition '{subtask_def.get('name', 'Unknown name')}': {e_subtask}", exc_info=True)
+                continue
+
+        if created_count > 0:
+            logger.info(f"PM auto-generation: Successfully created {created_count}/{len(defined_subtasks)} sub-tasks for PM task {task.id}. Details: {created_tasks_details}")
+            return True
+        else:
+            logger.info(f"PM auto-generation: No sub-tasks were created for PM task {task.id} out of {len(defined_subtasks)} defined.")
+            return False
 
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
         try:
@@ -431,7 +442,7 @@ class EnhancedTaskExecutor:
 
     async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:
         """Determina se un task è stato completato da un Project Manager"""
-        
+
         try:
             # Metodo 1: Controlla l'agent_id se disponibile
             if task.agent_id:
@@ -439,23 +450,41 @@ class EnhancedTaskExecutor:
                 agent_data = await get_agent(str(task.agent_id))
                 if agent_data:
                     role = agent_data.get('role', '').lower()
-                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead']):
+                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead', 'pm']):
+                        logger.info(f"Task {task.id} riconosciuto come task PM dall'agent role: {role}")
                         return True
         except Exception as e:
             logger.warning(f"Could not check agent role for task {task.id}: {e}")
-        
-        # Metodo 2: Euristiche basate sul contenuto del task
+
+        # Metodo 2: Euristiche basate sul contenuto del task - AMPLIATE
         task_name = task.name.lower()
         task_desc = (task.description or "").lower()
-        
-        # Indicatori di task di PM
+
+        # Indicatori di task di PM - AMPLIATI
         pm_indicators = [
-            "project setup", "strategic planning", "kick-off",
-            "planning", "coordination", "project manager",
-            "team assessment", "phase breakdown", "delegate"
+            "project setup", "strategic planning", "kick-off", "kickoff",
+            "planning", "coordination", "project manager", "initial",
+            "team assessment", "phase breakdown", "delegate", "strategy",
+            "project plan", "roadmap", "milestone", "management", "organize",
+            "phase 1", "phase one", "setup", "review", "overview"
         ]
-        
-        return any(indicator in task_name or indicator in task_desc for indicator in pm_indicators)
+
+        for indicator in pm_indicators:
+            if indicator in task_name or indicator in task_desc:
+                logger.info(f"Task {task.id} riconosciuto come task PM dall'indicatore: {indicator}")
+                return True
+
+        # Metodo 3: Verifica se il task contiene defined_sub_tasks
+        if result.get("detailed_results_json"):
+            try:
+                detailed_results = json.loads(result.get("detailed_results_json"))
+                if "defined_sub_tasks" in detailed_results or "sub_tasks" in detailed_results:
+                    logger.info(f"Task {task.id} riconosciuto come task PM perché contiene sub_tasks")
+                    return True
+            except:
+                pass
+
+        return False
 
     # ---------------------------------------------------------------------
     # Ultra-conservative analysis filters
@@ -473,11 +502,9 @@ class EnhancedTaskExecutor:
         # REJECT if any completion indicators in name
         task_name_lower = task.name.lower()
         completion_words = [
-            "handoff", "follow-up", "continuation", "escalation", 
-            "coordination", "review", "feedback", "completed", 
-            "done", "finished", "delivered", "final", "wrap-up",
-            "summary", "report", "status", "update"
-        ]
+                "handoff", "completed", "done", "finished", "delivered", 
+                "final", "wrap-up", "complete"
+            ] 
         
         if any(word in task_name_lower for word in completion_words):
             return False
@@ -500,11 +527,11 @@ class EnhancedTaskExecutor:
         #    return False
 
         # REJECT if output too long (probably comprehensive)
-        if len(output) > 800:
+        if len(output) > 1500:
             return False
 
         # REJECT if task has parent (likely already part of a workflow)
-        if task.parent_task_id:
+        if task.parent_task_id and any(word in task_name_lower for word in completion_words):
             return False
 
         # ONLY allow very specific research/planning patterns

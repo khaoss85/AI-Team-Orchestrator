@@ -791,7 +791,8 @@ class TaskExecutor:
                 agent_data = await get_agent(str(task.agent_id))
                 if agent_data:
                     role = agent_data.get('role', '').lower()
-                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead']):
+                    pm_keywords = ['manager', 'coordinator', 'director', 'lead', 'pm', 'project']
+                    if any(kw in role for kw in pm_keywords):
                         logger.info(f"Task {task.id} identified as PM task by agent role: {role}")
                         return True
         except Exception as e:
