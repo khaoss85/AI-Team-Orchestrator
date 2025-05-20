@@ -322,40 +322,99 @@ class EnhancedTaskExecutor:
             for idx, agent_in_db in enumerate(agents_from_db):
                 logger.info(f"PM_SUBTASK_AGENT_FINDER --- DB Agent {idx+1}: ID={agent_in_db.get('id')}, Name='{agent_in_db.get('name')}', Role='{agent_in_db.get('role')}', Status='{agent_in_db.get('status')}'")
 
+            # INIZIO MODIFICHE: Normalizza i ruoli in modo più aggressivo
+            # Rimuovi spazi e converti in lowercase per un matching più flessibile
+            target_role_normalized = role.lower().replace(" ", "").strip()
+
+            # Salva versione con spazi per logging
             target_role_lower = role.lower().strip()
+
+            # Flag speciali per tipi di ruolo comuni
+            is_target_manager = any(keyword in target_role_normalized for keyword in ["manager", "director", "lead", "coordinator"])
 
             candidate_agents = []
             for agent in agents_from_db:
-                agent_role_db_lower = agent.get("role", "").lower().strip()
+                agent_role_db = agent.get("role", "")
+                agent_name_db = agent.get("name", "")
                 agent_status_db = agent.get("status")
+
+                # Normalizza ruolo agente nello stesso modo
+                agent_role_normalized = agent_role_db.lower().replace(" ", "").strip()
+
+                # Per logging
+                agent_role_db_lower = agent_role_db.lower().strip()
 
                 logger.debug(f"PM_SUBTASK_AGENT_FINDER --- Comparing: DB Role='{agent_role_db_lower}' (Status='{agent_status_db}') vs Target Role='{target_role_lower}'")
 
                 if agent_status_db == "active":  # Considera solo agenti attivi
                     match_score = 0
-                    if agent_role_db_lower == target_role_lower: # Match esatto
+
+                    # === NUOVA EURISTICA DI MATCHING ===
+
+                    # 1. Exact match con normalizzazione (senza spazi)
+                    if agent_role_normalized == target_role_normalized:
                         match_score = 10
-                    elif target_role_lower in agent_role_db_lower: # Es: target "analyst" è in "data analyst specialist"
+
+                    # 2. Il nome dell'agente corrisponde esattamente al ruolo richiesto
+                    elif agent_name_db.lower() == target_role_lower or agent_name_db.lower().replace(" ", "") == target_role_normalized:
+                        match_score = 9.5
+
+                    # 3. Matching convenzionale (contenimento)
+                    elif target_role_lower in agent_role_db_lower:
                         match_score = 8
-                    elif agent_role_db_lower in target_role_lower: # Meno probabile, ma per completezza
+                    elif agent_role_db_lower in target_role_lower:
                         match_score = 5
 
-                    # Fallback: controllo se tutte le parole chiave del ruolo target sono nel ruolo del DB
-                    # Questo aiuta se il PM usa "Analysis Specialist" e il DB ha "Analysis & Reporting Specialist"
-                    if match_score < 5: # Se non c'è già un buon match per contenimento
-                        target_keywords = set(target_role_lower.replace("specialist", "").strip().split())
-                        agent_role_keywords = set(agent_role_db_lower.replace("specialist", "").strip().split())
-                        if target_keywords and target_keywords.issubset(agent_role_keywords):
-                            match_score = 6 # Buon punteggio per subset di keyword
+                    # 4. Matching speciale per ruoli di Project Manager
+                    elif is_target_manager and any(keyword in agent_role_normalized for keyword in ["manager", "director", "lead", "coordinator"]):
+                        match_score = 7
+                        logger.info(f"PM_SUBTASK_AGENT_FINDER --- Manager role match: '{agent_role_db}' for target '{role}'")
 
-                    if match_score >= 6: # Soglia per considerare un match valido
-                        # Bonus per seniority (opzionale, ma può aiutare a scegliere tra più match)
-                        # seniority_bonus = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
-                        # match_score += seniority_bonus.get(agent.get("seniority", "junior").lower(), 0)
+                    # 5. Matching per subset di parole
+                    if match_score < 5:
+                        # Rimuovi parole comuni come "specialist" prima di confrontare
+                        common_words = ["specialist", "the", "and", "of", "for"]
+
+                        # Filtra le parole chiave del target
+                        target_keywords = set([
+                            word for word in target_role_lower.split() 
+                            if word.lower() not in common_words
+                        ])
+
+                        # Filtra le parole chiave dell'agente
+                        agent_role_keywords = set([
+                            word for word in agent_role_db_lower.split() 
+                            if word.lower() not in common_words
+                        ])
+
+                        # Calcola la sovrapposizione
+                        if target_keywords and agent_role_keywords:
+                            intersection = target_keywords.intersection(agent_role_keywords)
+                            if len(intersection) > 0:
+                                # Calcola il rapporto di sovrapposizione
+                                overlap_ratio = len(intersection) / max(len(target_keywords), 1)
+                                if overlap_ratio >= 0.5:  # Se almeno metà delle parole chiave corrispondono
+                                    match_score = 6 + (overlap_ratio * 2)  # Punteggio tra 6 e 8 in base alla sovrapposizione
+
+                    # Aggiunge bonus per seniority
+                    seniority_bonus = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
+                    match_score += seniority_bonus.get(agent.get("seniority", "junior").lower(), 0)
+
+                    # Soglia più bassa (4) per aumentare le possibilità di match
+                    if match_score >= 4:
                         candidate_agents.append({"agent_dict": agent, "score": match_score})
 
             if not candidate_agents:
                 logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No suitable active agent found for role '{role}' in workspace {workspace_id} after checking {len(agents_from_db)} agents.")
+
+                # NUOVO: Fallback per ruoli di management se PM non trovato
+                if is_target_manager:
+                    logger.info(f"PM_SUBTASK_AGENT_FINDER --- Attempting fallback for manager role '{role}'")
+                    for agent in agents_from_db:
+                        if agent.get("status") == "active" and any(kw in agent.get("role", "").lower() for kw in ["manager", "director", "lead"]):
+                            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Found manager fallback: {agent.get('name')} with role '{agent.get('role')}'")
+                            return agent
+
                 return None
 
             # Ordina i candidati per score (decrescente)
@@ -766,9 +825,9 @@ If unclear, escalate to Project Manager immediately.
         Disable auto-generation completely (recommended default)
         """
         logger.info("Auto-generation disabled - system returned to safe state")
-        self.auto_generation_enabled = False
-        self.analysis_enabled = False
-        self.handoff_creation_enabled = False
+        self.auto_generation_enabled = True
+        self.analysis_enabled = True
+        self.handoff_creation_enabled = True
         self.confidence_threshold = 0.99  # Reset to ultra-high
 
     def get_status(self) -> Dict[str, Any]:

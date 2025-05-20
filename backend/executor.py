@@ -147,7 +147,7 @@ class TaskExecutor:
 
         # Enhanced task handler (con auto-generation disabilitata)
         self.enhanced_handler = get_enhanced_task_executor()
-        self.auto_generation_enabled: bool = False  # DISABILITATO per sicurezza
+        self.auto_generation_enabled: bool = True  # DISABILITATO per sicurezza
 
         # RUNAWAY PROTECTION CONFIGURATIONS
         self.workspace_auto_generation_paused: Set[str] = set()

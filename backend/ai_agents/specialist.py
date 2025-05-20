@@ -621,9 +621,14 @@ class SpecialistAgent(Generic[T]):
         return impl
 
     def _find_compatible_agents_anti_loop(self, agents_db_list: List[Dict[str, Any]], target_role: str) -> List[Dict[str, Any]]:
+        # Normalizzazione migliorata
         target_lower = target_role.lower().strip()
+        target_normalized = target_lower.replace(" ", "")
         candidates = []
         my_current_role_lower = self.agent_data.role.lower()
+
+        # Flag per ruoli speciali
+        is_target_manager = any(keyword in target_normalized for keyword in ["manager", "director", "lead", "coordinator"])
 
         for agent_dict in agents_db_list:
             if not isinstance(agent_dict, dict):
@@ -631,30 +636,53 @@ class SpecialistAgent(Generic[T]):
                 continue
             agent_id = agent_dict.get("id"); agent_status = agent_dict.get("status")
             agent_role = agent_dict.get("role", "").lower().strip()
+            agent_role_normalized = agent_role.replace(" ", "")
+            agent_name = agent_dict.get("name", "").lower()
             agent_seniority = agent_dict.get("seniority", AgentSeniority.JUNIOR.value)
 
             if (agent_status == AgentStatus.ACTIVE.value and str(agent_id) != str(self.agent_data.id)):
                 score = 0
-                if target_lower == agent_role: score = 10
-                elif target_lower in agent_role or agent_role in target_lower: score = 8
+
+                # Exact match (with and without spaces)
+                if target_lower == agent_role:
+                    score = 10
+                elif target_normalized == agent_role_normalized:
+                    score = 9.5
+                # Match by agent name
+                elif target_lower == agent_name or target_normalized == agent_name.replace(" ", ""):
+                    score = 9
+                # Containment matches
+                elif target_lower in agent_role or agent_role in target_lower:
+                    score = 8
+                # Special manager role matching
+                elif is_target_manager and any(keyword in agent_role_normalized for keyword in ["manager", "director", "lead", "coordinator"]):
+                    score = 7
+                # Word overlap scoring
                 else:
-                    target_words = set(target_lower.split()); agent_words = set(agent_role.split())
-                    score = len(target_words.intersection(agent_words)) * 2
-                
+                    # Filter out common words
+                    common_words = ["specialist", "the", "and", "of", "for"]
+                    target_words = set([w for w in target_lower.split() if w not in common_words])
+                    agent_words = set([w for w in agent_role.split() if w not in common_words])
+
+                    if target_words and agent_words:
+                        intersection = len(target_words.intersection(agent_words))
+                        if intersection > 0:
+                            # Calculate overlap ratio
+                            overlap_ratio = intersection / max(len(target_words), 1)
+                            score = intersection * 2 * (1 + overlap_ratio)  # Improved word match scoring
+
+                # Apply seniority boost
                 seniority_boost = {AgentSeniority.EXPERT.value: 1.5, AgentSeniority.SENIOR.value: 1.2, AgentSeniority.JUNIOR.value: 1.0}
                 score *= seniority_boost.get(agent_seniority, 1.0)
-                
-                if self._is_same_role_type(my_current_role_lower, agent_role):
-                    score *= 0.3 
-                    logger.debug(f"Applying same-role-type penalty for {agent_dict.get('name')} ({agent_role}). Score: {score:.2f}.")
 
-                if score >= 5: 
+                # Lower threshold to 4 for better inclusivity
+                if score >= 4: 
                     agent_dict['match_score'] = round(score, 1)
                     candidates.append(agent_dict)
-        
+
         seniority_order = {AgentSeniority.EXPERT.value: 3, AgentSeniority.SENIOR.value: 2, AgentSeniority.JUNIOR.value: 1}
         candidates.sort(key=lambda x: (x.get('match_score', 0), seniority_order.get(x.get('seniority'), 0)), reverse=True)
-        
+
         if candidates: logger.info(f"Found {len(candidates)} compatible agents for '{target_role}'. Top: {candidates[0].get('name')} (Score: {candidates[0].get('match_score')})")
         else: logger.warning(f"No compatible agents found for role '{target_role}'.")
         return candidates
