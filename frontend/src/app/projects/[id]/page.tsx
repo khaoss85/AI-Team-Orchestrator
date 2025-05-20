@@ -43,45 +43,54 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const [tasksLoading, setTasksLoading] = useState(true);
   const [isStartingTeam, setIsStartingTeam] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isBackgroundUpdating, setIsBackgroundUpdating] = useState(false);
+
   
   // Fetch dei dati iniziali
   useEffect(() => {
     fetchData();
   }, [workspaceId]);
   
-  const fetchData = async () => {
+const fetchData = async (silentUpdate = false) => {
     if (!workspaceId) return;
     
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Fetch workspace
-      const workspaceData = await api.workspaces.get(workspaceId);
-      setWorkspace(workspaceData);
-      
-      // Fetch agents
-      try {
-        const agentsData = await api.agents.list(workspaceId);
-        setAgents(agentsData);
-      } catch (agentErr) {
-        console.error('Failed to fetch agents:', agentErr);
-      }
-      
-      // Fetch tasks
-      try {
-        setTasksLoading(true);
-        const response = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${workspaceId}/tasks`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch tasks: ${response.status}`);
+      // Imposta loading solo se non è un aggiornamento silenzioso
+        if (!silentUpdate) {
+          setLoading(true);
         }
-        const tasksData = await response.json();
-        setTasks(tasksData);
-      } catch (taskErr) {
-        console.error('Failed to fetch tasks:', taskErr);
-      } finally {
-        setTasksLoading(false);
-      }
+        setError(null);
+
+        // Fetch workspace
+        const workspaceData = await api.workspaces.get(workspaceId);
+        setWorkspace(workspaceData);
+
+        // Fetch agents
+        try {
+          const agentsData = await api.agents.list(workspaceId);
+          setAgents(agentsData);
+        } catch (agentErr) {
+          console.error('Failed to fetch agents:', agentErr);
+        }
+
+        // Fetch tasks - con flag per loading specifico
+        try {
+          if (!silentUpdate) {
+            setTasksLoading(true);
+          }
+          const response = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${workspaceId}/tasks`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch tasks: ${response.status}`);
+          }
+          const tasksData = await response.json();
+          setTasks(tasksData);
+        } catch (taskErr) {
+          console.error('Failed to fetch tasks:', taskErr);
+        } finally {
+          if (!silentUpdate) {
+            setTasksLoading(false);
+          }
+        }
       
       // Fetch stats
       try {
@@ -101,26 +110,54 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
       
     } catch (err) {
       console.error('Error fetching workspace data:', err);
+      if (!silentUpdate) {
+        setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del progetto');
+        }
       setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del progetto');
     } finally {
-      setLoading(false);
+        if (!silentUpdate) {
+          setLoading(false);
+        }    
     }
   };
   
   // Funzioni di azione
-  const handleStartTeam = async () => {
-    try {
-      setIsStartingTeam(true);
-      await api.monitoring.startTeam(workspaceId);
-      // Reload workspace data to get updated status
-      const workspaceData = await api.workspaces.get(workspaceId);
-      setWorkspace(workspaceData);
-    } catch (err) {
-      console.error('Error starting team:', err);
-    } finally {
-      setIsStartingTeam(false);
-    }
-  };
+    const handleStartTeam = async () => {
+      try {
+        setIsStartingTeam(true);
+        await api.monitoring.startTeam(workspaceId);
+        setWorkspace(prev => ({ ...prev, status: 'active' }));
+
+        // Aggiornamento iniziale per cambiare lo stato del workspace
+        await fetchData(true);
+
+        // Indica che ci sono aggiornamenti in background
+        setIsBackgroundUpdating(true);
+
+        // Implementa una sequenza di polling limitata nel tempo
+        let pollCount = 0;
+        const maxPolls = 12; // Polling per circa 1 minuto (5s × 12)
+
+        const pollData = async () => {
+          await fetchData(true);
+          pollCount++;
+
+          if (pollCount < maxPolls) {
+            setTimeout(pollData, 5000);
+          } else {
+            setIsBackgroundUpdating(false);
+          }
+        };
+
+        // Avvia il polling dopo un breve ritardo
+        setTimeout(pollData, 3000);
+
+      } catch (err) {
+        console.error('Error starting team:', err);
+      } finally {
+        setIsStartingTeam(false);
+      }
+    };
   
   const handleDeleteProject = async () => {
     try {
@@ -825,6 +862,19 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
       
       {activeSection === 'team' && (
         <div className="space-y-6">
+        {/* Header con titolo e link */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Team di Agenti</h2>
+              <Link 
+                href={`/projects/${workspaceId}/team`}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+              >
+                <span>Gestisci Team</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </Link>
+            </div>
           {/* Sezione Team Radar */}
           {agents.length > 1 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1139,6 +1189,14 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
         onConfirm={handleDeleteProject}
         onCancel={() => setIsDeleteModalOpen(false)}
       />
+          
+          {/* Indicatore di aggiornamento in background - AGGIUNGI QUI */}
+        {isBackgroundUpdating && (
+          <div className="fixed bottom-4 left-4 bg-indigo-800 text-white px-4 py-2 rounded-full shadow-lg text-sm flex items-center z-40">
+            <div className="h-3 w-3 bg-white rounded-full animate-pulse mr-2"></div>
+            Sincronizzazione dati in corso...
+          </div>
+        )}
     </div>
   );
 }
