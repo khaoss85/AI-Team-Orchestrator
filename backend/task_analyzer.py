@@ -56,9 +56,9 @@ class EnhancedTaskExecutor:
 
     def __init__(self):
         # STRICT ANTI-LOOP CONFIGURATION
-        self.auto_generation_enabled = False  # CRITICO: Disabilitato di default
-        self.analysis_enabled = False         # NO analisi LLM automatica
-        self.handoff_creation_enabled = False # NO handoff automatici
+        self.auto_generation_enabled = True  # CRITICO: Disabilitato di default
+        self.analysis_enabled = True         # NO analisi LLM automatica
+        self.handoff_creation_enabled = True # NO handoff automatici
         
         # Cache per tracking (solo per monitoring)
         self.analyzed_tasks: Set[str] = set()
@@ -825,9 +825,9 @@ If unclear, escalate to Project Manager immediately.
         Disable auto-generation completely (recommended default)
         """
         logger.info("Auto-generation disabled - system returned to safe state")
-        self.auto_generation_enabled = True
-        self.analysis_enabled = True
-        self.handoff_creation_enabled = True
+        self.auto_generation_enabled = False  
+        self.analysis_enabled = False
+        self.handoff_creation_enabled = False
         self.confidence_threshold = 0.99  # Reset to ultra-high
 
     def get_status(self) -> Dict[str, Any]:
