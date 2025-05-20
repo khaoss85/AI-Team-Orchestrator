@@ -572,76 +572,141 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
             )}
           </div>
           
-          {/* Result details */}
-          <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-6">
-            {activeResult ? (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center">
-                    <span className="text-3xl mr-3">{activeResult.icon}</span>
-                    <div>
-                      <h2 className="text-xl font-semibold">{activeResult.title}</h2>
-                      <p className="text-gray-500">Creato da {activeResult.creator} • {activeResult.date}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <button onClick={() => console.log('Esporta')} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition">
-                      Esporta
-                    </button>
-                  </div>
+{/* Result details - Versione migliorata */}
+<div className="md:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+  {activeResult ? (
+    <>
+      {/* Header migliorato */}
+      <div className="bg-gray-50 border-b border-gray-200">
+        <div className="flex justify-between items-center px-6 py-4">
+          <div className="flex items-center">
+            <span className="text-3xl mr-3">{activeResult.icon}</span>
+            <div>
+              <h2 className="text-xl font-semibold">{activeResult.title}</h2>
+              <div className="flex items-center text-sm text-gray-500 mt-1">
+                <span>{activeResult.creator}</span>
+                <span className="mx-2">•</span>
+                <span>{activeResult.date}</span>
+                <span className={`ml-3 px-2 py-0.5 rounded-full text-xs ${getStatusColor(activeResult.type)}`}>
+                  {activeResult.type}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex space-x-2">
+            {/* Navigazione tra risultati */}
+            {projectResults.length > 1 && (
+              <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                <button 
+                  onClick={() => {
+                    const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
+                    if (currentIndex > 0) {
+                      setActiveResultId(projectResults[currentIndex - 1].id);
+                    }
+                  }}
+                  disabled={projectResults.findIndex(r => r.id === activeResultId) === 0}
+                  className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Risultato precedente"
+                >
+                  ← 
+                </button>
+                <div className="px-3 py-2 border-l border-r border-gray-200 text-sm">
+                  {projectResults.findIndex(r => r.id === activeResultId) + 1} di {projectResults.length}
                 </div>
-                
-                <div className="bg-indigo-50 p-4 rounded-lg mb-6">
-                  <h3 className="font-medium text-indigo-900 mb-2">Riepilogo</h3>
-                  <p className="text-indigo-800">{activeResult.content.summary}</p>
-                </div>
-                
-                <div className="mb-6">
-                  <h3 className="font-medium text-gray-900 mb-3">Punti Chiave</h3>
-                  {activeResult.content.keyPoints?.length > 0 ? (
-                    <ul className="space-y-2">
-                      {activeResult.content.keyPoints.map((point, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-indigo-500 mr-2">•</span>
-                          <span>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-gray-500 italic">Nessun punto chiave specificato</p>
-                  )}
-                </div>
-                
-                <TaskResultDetails result={tasks.find(t => t.id === activeResultId)?.result} />
-
-                
-                <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
-                  <button 
-                    onClick={() => console.log('Chiedi modifiche')} 
-                    className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition"
-                  >
-                    Chiedi Modifiche
-                  </button>
-                  <button 
-                    onClick={() => console.log('Approva')} 
-                    className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition"
-                  >
-                    Approva
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">💎</div>
-                <h3 className="text-xl font-medium text-gray-700 mb-2">Seleziona un risultato</h3>
-                <p className="text-gray-500">
-                  {projectResults.length > 0
-                    ? 'Seleziona un risultato dalla lista a sinistra per visualizzarne i dettagli'
-                    : 'Il team non ha ancora prodotto risultati'}
-                </p>
+                <button 
+                  onClick={() => {
+                    const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
+                    if (currentIndex < projectResults.length - 1) {
+                      setActiveResultId(projectResults[currentIndex + 1].id);
+                    }
+                  }}
+                  disabled={projectResults.findIndex(r => r.id === activeResultId) === projectResults.length - 1}
+                  className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Risultato successivo"
+                >
+                  →
+                </button>
               </div>
             )}
+            
+            <button 
+              onClick={() => {
+                // Funzione per esportare il risultato come file JSON
+                const task = tasks.find(t => t.id === activeResultId);
+                if (task && task.result) {
+                  const jsonStr = JSON.stringify(task.result, null, 2);
+                  const blob = new Blob([jsonStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${task.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_result.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }
+              }} 
+              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition flex items-center"
+            >
+              <span className="mr-1">↓</span> Esporta
+            </button>
           </div>
+        </div>
+      </div>
+      
+      {/* Contenuto principale con TaskResultDetails migliorato */}
+      <div className="p-6">
+        <TaskResultDetails result={tasks.find(t => t.id === activeResultId)?.result} />
+        
+        {/* Feedback e azioni */}
+        <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+          <div className="flex space-x-3">
+            <button 
+              onClick={() => console.log('Chiedi modifiche', activeResultId)} 
+              className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition flex items-center"
+            >
+              <span className="mr-1">✏️</span> Chiedi Modifiche
+            </button>
+            <button 
+              onClick={() => console.log('Commenta', activeResultId)} 
+              className="px-4 py-2 bg-gray-50 text-gray-700 rounded-md text-sm hover:bg-gray-100 transition flex items-center"
+            >
+              <span className="mr-1">💬</span> Commenta
+            </button>
+          </div>
+          
+          <button 
+            onClick={() => console.log('Approva', activeResultId)} 
+            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition flex items-center"
+          >
+            <span className="mr-1">✓</span> Approva
+          </button>
+        </div>
+      </div>
+    </>
+  ) : (
+    <div className="flex flex-col items-center justify-center p-12">
+      <div className="text-5xl mb-4">💎</div>
+      <h3 className="text-xl font-medium text-gray-700 mb-2">Seleziona un risultato</h3>
+      <p className="text-gray-500 text-center max-w-md">
+        {projectResults.length > 0
+          ? 'Seleziona un risultato dalla lista a sinistra per visualizzarne i dettagli'
+          : 'Il team non ha ancora prodotto risultati'}
+      </p>
+      {/* CTA se nessun risultato disponibile */}
+      {projectResults.length === 0 && workspace.status === 'created' && (
+        <button 
+          onClick={handleStartTeam}
+          className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
+          disabled={isStartingTeam}
+        >
+          {isStartingTeam ? 'Avvio...' : 'Avvia Team'}
+        </button>
+      )}
+    </div>
+  )}
+</div>
         </div>
       )}
       
