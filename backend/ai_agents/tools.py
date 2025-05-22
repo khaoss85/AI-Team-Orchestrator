@@ -2,6 +2,7 @@ import logging
 import json
 from typing import List, Dict, Any, Optional, Literal
 from uuid import UUID
+from datetime import datetime
 
 # Import corretto per function_tool
 try:

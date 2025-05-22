@@ -257,6 +257,13 @@ class EnhancedTaskExecutor:
 
         # Create the sub-tasks in the database
         from database import create_task
+        
+        try:
+            all_workspace_tasks = await list_tasks(workspace_id)
+            completed_tasks_count = len([t for t in all_workspace_tasks if t.get("status") == "completed"])
+        except Exception as e:
+            logger.warning(f"Could not count completed tasks for workspace {workspace_id}: {e}")
+            completed_tasks_count = 0
 
         created_count = 0
         created_tasks_ids = []
