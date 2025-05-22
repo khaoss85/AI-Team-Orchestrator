@@ -189,6 +189,7 @@ async def create_task(
             
             # Costruisci context_data automaticamente
             auto_context_data = await build_task_context_data(
+                workspace_id=workspace_id,
                 parent_task_id=created_by_task_id or parent_task_id,
                 agent_id=created_by_agent_id or agent_id,
                 creation_type=creation_type,
@@ -556,6 +557,7 @@ async def cleanup_expired_feedback_requests() -> int:
         return 0
     
 async def build_task_context_data(
+    workspace_id: str,  # AGGIUNTO: parametro obbligatorio
     parent_task_id: Optional[str] = None,
     agent_id: Optional[str] = None, 
     creation_type: str = "manual",
@@ -565,6 +567,7 @@ async def build_task_context_data(
     Costruisce context_data standardizzato per task, includendo tracking e anti-loop info.
     
     Args:
+        workspace_id: ID del workspace (obbligatorio)
         parent_task_id: ID del task genitore (se esistente)
         agent_id: ID dell'agente che ha creato il task
         creation_type: Tipo di creazione ("pm_completion", "handoff", "manual", ecc.)
@@ -586,8 +589,8 @@ async def build_task_context_data(
         
         # Recupera parent task per delegation depth inheritance
         try:
-            # Usa la funzione list_tasks esistente per recuperare il parent
-            workspace_tasks = await list_tasks("", status_filter=None)  # Get all tasks
+            # FIXED: Usa il workspace_id corretto invece di stringa vuota
+            workspace_tasks = await list_tasks(workspace_id, status_filter=None)
             parent_task = next((t for t in workspace_tasks if t.get("id") == parent_task_id), None)
             
             if parent_task:
