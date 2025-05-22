@@ -554,240 +554,17 @@ class TaskExecutor:
             estimated_input_tokens = max(1, len(task_input_text) // 4)
 
             # ESECUZIONE DEL TASK
-            result_from_agent: Dict[str, Any] = {}
-            task_final_status_val = TaskStatus.COMPLETED.value  # Default
-
-            try:
-                # Passa l'oggetto Pydantic Task al manager
-                result_from_agent = await asyncio.wait_for(
-                    manager.execute_task(task_pydantic_obj.id), 
-                    timeout=self.execution_timeout
-                )
-                
-                # Assicura che il result sia un dict
-                if not isinstance(result_from_agent, dict):
-                    logger.warning(f"Task {task_id} returned non-dict: {type(result_from_agent)}. Wrapping.")
-                    result_from_agent = {
-                        "output": str(result_from_agent),
-                        "status_detail": "wrapped_non_dict_result"
-                    }
-
-            except asyncio.TimeoutError:
-                # Gestione timeout
-                execution_time = time.time() - start_time_tracking
-                logger.warning(f"Task {task_id} timed out after {self.execution_timeout}s. Finalizing as TIMED_OUT")
-                task_final_status_val = TaskStatus.TIMED_OUT.value
-                
-                timeout_result_payload = {
-                    "output": f"Task forcibly finalized as TIMED_OUT after {self.execution_timeout}s",
-                    "status_detail": "timed_out_by_executor", 
-                    "execution_time_seconds": round(execution_time, 2),
-                    "model_used": model_for_budget,
-                    "tokens_used": {
-                        "input": estimated_input_tokens,
-                        "output": 0,
-                        "estimated": True
-                    },
-                    "cost_estimated": self.budget_tracker.log_usage(
-                        agent_id, model_for_budget, estimated_input_tokens, 0, task_id
-                    )["total_cost"],
-                    "timeout": True,
-                    "partial_result": True
-                }
-                
-                await update_task_status(task_id, task_final_status_val, timeout_result_payload)
-                
-                self.execution_log.append({
-                    "timestamp": datetime.now().isoformat(),
-                    "event": "task_execution_timeout",
-                    "task_id": task_id,
-                    "agent_id": agent_id,
-                    "workspace_id": workspace_id,
-                    "task_name": task_name,
-                    "execution_time": round(execution_time, 2),
-                    "cost": timeout_result_payload["cost_estimated"],
-                    "reason": "timeout",
-                    "status_returned": task_final_status_val
-                })
-                return
-
-            # PROCESSING DEL RISULTATO
-            execution_time = time.time() - start_time_tracking
-            result_output = result_from_agent.get("output", "Task completed by agent without explicit output")
-            
-            # Estrazione token usage (se disponibile dal result)
-            actual_output_tokens = result_from_agent.get("usage", {}).get("output_tokens")
-            estimated_output_tokens = actual_output_tokens if actual_output_tokens is not None else max(1, len(str(result_output)) // 4)
-            actual_input_tokens = result_from_agent.get("usage", {}).get("input_tokens")
-            final_input_tokens = actual_input_tokens if actual_input_tokens is not None else estimated_input_tokens
-
-            # Log budget usage
-            usage_record = self.budget_tracker.log_usage(
-                agent_id=agent_id,
-                model=model_for_budget,
-                input_tokens=final_input_tokens,
-                output_tokens=estimated_output_tokens,
-                task_id=task_id
-            )
-
-            # Determina status finale
-            agent_returned_status = result_from_agent.get("status", TaskStatus.COMPLETED.value)
-            if agent_returned_status not in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value]:
-                logger.warning(f"Agent for task {task_id} returned unconventional status '{agent_returned_status}'. Defaulting to COMPLETED")
-                task_final_status_val = TaskStatus.COMPLETED.value
-            else:
-                task_final_status_val = agent_returned_status
-
-            # Prepara payload completo partendo dall'output dell'agente
-            task_result_payload_for_db = result_from_agent.copy()
-
-            # Se l'agente ha fornito un campo "summary", usalo come riassunto testuale
-            task_result_payload_for_db["output"] = result_from_agent.get("summary", result_output)
-
-            # Aggiungi/aggiorna metadati di esecuzione
-            task_result_payload_for_db.update({
-                "status_detail": result_from_agent.get("status_detail", "completed_by_agent"),
-                "execution_time_seconds": round(execution_time, 2),
-                "model_used": model_for_budget,
-                "tokens_used": {
-                    "input": final_input_tokens,
-                    "output": estimated_output_tokens,
-                    "estimated": actual_input_tokens is None or actual_output_tokens is None
-                },
-                "cost_estimated": usage_record["total_cost"],
-            })
-            
-            # Aggiorna task nel DB
-            await update_task_status(task_id, task_final_status_val, task_result_payload_for_db)
-
-            # AGGIUNTA: Verifica completamento progetto dopo task importanti
-            await self.check_project_completion_after_task(task_id, workspace_id)
-
-            # Log risultato
-            result_summary = (str(result_output)[:150] + "...") if len(str(result_output)) > 150 else str(result_output)
-            execution_end_log = {
-                "timestamp": datetime.now().isoformat(),
-                "event": "task_execution_completed",
-                "task_id": task_id,
-                "agent_id": agent_id,
-                "workspace_id": workspace_id,
-                "task_name": task_name,
-                "status_returned": task_final_status_val,
-                "execution_time": round(execution_time, 2),
-                "cost": usage_record["total_cost"],
-                "model": model_for_budget,
-                "tokens_used": {
-                    "input": usage_record["input_tokens"],
-                    "output": usage_record["output_tokens"]
-                },
-                "result_summary": result_summary
-            }
-            self.execution_log.append(execution_end_log)
-            
-            logger.info(f"Task {task_id} finished (status: {task_final_status_val}). Cost: ${usage_record['total_cost']:.6f}, Time: {execution_time:.2f}s")
-
-            # POST-COMPLETION HANDLER
-            # NUOVO: Gestisce selettivamente PM vs non-PM task
-            if task_final_status_val == TaskStatus.COMPLETED.value:
-                try:
-                    # Determina se è un task di Project Manager
-                    is_pm_task = await self._is_project_manager_task(task_pydantic_obj, task_result_payload_for_db)
-                    
-                    # Per i PM esegui sempre, per gli altri solo se auto-gen è abilitata
-                    should_run_handler = (
-                        is_pm_task or  # PM task: sempre
-                        (self.auto_generation_enabled and workspace_id not in self.workspace_auto_generation_paused)  # Altri: solo se abilitato
-                    )
-                    
-                    if should_run_handler:
-                        # Ricrea l'oggetto Task con lo stato finale per l'handler
-                        completed_task_for_handler = Task(
-                            id=task_pydantic_obj.id,
-                            workspace_id=task_pydantic_obj.workspace_id,
-                            agent_id=task_pydantic_obj.agent_id,
-                            assigned_to_role=task_pydantic_obj.assigned_to_role,
-                            name=task_pydantic_obj.name,
-                            description=task_pydantic_obj.description,
-                            status=TaskStatus.COMPLETED,  # Enum, non value
-                            priority=task_pydantic_obj.priority,
-                            parent_task_id=task_pydantic_obj.parent_task_id,
-                            depends_on_task_ids=task_pydantic_obj.depends_on_task_ids,
-                            estimated_effort_hours=task_pydantic_obj.estimated_effort_hours,
-                            deadline=task_pydantic_obj.deadline,
-                            context_data=task_pydantic_obj.context_data,
-                            result=task_result_payload_for_db,  # Risultato dell'esecuzione
-                            created_at=task_pydantic_obj.created_at,
-                            updated_at=datetime.now()  # Ora corrente
-                        )
-                        
-                        handler_type = "PM auto-generation" if is_pm_task else "enhanced task handler"
-                        logger.info(f"Calling {handler_type} for task {task_id}")
-                        await self.enhanced_handler.handle_task_completion(
-                            completed_task=completed_task_for_handler,  # Passa l'oggetto Pydantic
-                            task_result=task_result_payload_for_db,  # Il dizionario del risultato  
-                            workspace_id=workspace_id
-                        )
-                        logger.info(f"{handler_type} completed for task {task_id}")
-                        
-                    else:
-                        reason = "not PM task and auto-gen disabled/paused"
-                        logger.info(f"Skipping post-completion for {task_id}: {reason}")
-                        
-                except Exception as auto_error:
-                    logger.error(f"Error in post-completion handler for task {task_id}: {auto_error}", exc_info=True)
-
+            await self.process_task_with_coordination(task_dict, manager)
+            return
         except Exception as e:
-            # Gestione errori durante l'esecuzione
-            logger.error(f"Critical error processing task {task_id} ('{task_name}'): {e}", exc_info=True)
-            execution_time_failed = time.time() - start_time_tracking
-            input_tokens_failed = estimated_input_tokens if estimated_input_tokens > 0 else 10
-            
-            # Log budget per task fallito
-            usage_record_failed = self.budget_tracker.log_usage(
-                agent_id=agent_id if agent_id else "unknown_agent",
-                model=model_for_budget,
-                input_tokens=input_tokens_failed,
-                output_tokens=0,
-                task_id=task_id
+            # Gestione errori che non sono stati catturati dal coordination layer
+            logger.error(f"Unhandled error in coordination layer for task {task_dict.get('id')}: {e}", exc_info=True)
+            await self._force_complete_task(
+                task_dict,
+                f"Coordination layer error: {str(e)[:200]}",
+                status_to_set=TaskStatus.FAILED.value
             )
-            
-            error_payload_for_db = {
-                "error": str(e)[:1000],
-                "status_detail": "failed_during_execution_phase",
-                "execution_time_seconds": round(execution_time_failed, 2),
-                "cost_estimated": usage_record_failed["total_cost"]
-            }
-            final_fail_status = TaskStatus.FAILED.value
-            
-            try:
-                await update_task_status(task_id, final_fail_status, error_payload_for_db)
-                logger.info(f"Task {task_id} marked as FAILED due to execution error")
-                
-                # Richiama handler fallimenti
-                from task_analyzer import get_enhanced_task_executor
-                task_executor = get_enhanced_task_executor()
-                await task_executor.handle_failed_task(task_id, str(e), workspace_id)
-                
-            except Exception as db_update_err:
-                logger.error(f"Failed to update task {task_id} to FAILED: {db_update_err}")
 
-            self.execution_log.append({
-                "timestamp": datetime.now().isoformat(),
-                "event": "task_execution_failed",
-                "task_id": task_id,
-                "agent_id": agent_id,
-                "workspace_id": workspace_id,
-                "task_name": task_name,
-                "execution_time": round(execution_time_failed, 2),
-                "cost": usage_record_failed["total_cost"],
-                "error": str(e)[:200],
-                "model": model_for_budget,
-                "status_returned": final_fail_status
-            })
-            
-            # Aggiungi al completion tracker anche i task falliti
-            if workspace_id:
-                self.task_completion_tracker[workspace_id].add(task_id)
 
     async def check_project_completion_after_task(self, completed_task_id: str, workspace_id: str):
         """Verifica se il progetto è completato dopo un task importante"""
@@ -870,6 +647,17 @@ class TaskExecutor:
                 await self.pause_event.wait()
                 if not self.running:
                     break
+                    
+                # Controllo circuit breaker prima di ogni ciclo
+                if self.check_global_circuit_breaker():
+                    logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused. Manual restart required.")
+                    self.execution_log.append({
+                        "timestamp": datetime.now().isoformat(),
+                        "event": "circuit_breaker_activated",
+                        "reason": "Abnormal behavior detected"
+                    })
+                    await asyncio.sleep(60)  # Attendi 60 secondi prima di tentare un nuovo check
+                    continue
 
                 logger.debug("Main exec loop: processing pending tasks, checking workspaces, runaway status")
                 
@@ -989,16 +777,28 @@ class TaskExecutor:
 
             # LOGICA DI PRIORITIZZAZIONE
             def get_task_priority_score(task_data):
+                delegation_depth = 0
+                if isinstance(task_data.get("context_data"), dict):
+                    delegation_depth = task_data.get("context_data", {}).get("delegation_depth", 0)
+
+                # Penalità per profondità di delega
+                depth_penalty = min(delegation_depth * 2, 8)  # Massimo 8 punti di penalità
+
+                # Priorità base
+                base_priority = 0
+
                 # 1. Task senza agent_id ma con assigned_to_role (necessitano assegnazione)
                 if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
-                    return 4  # Massima priorità per assegnazione
+                    base_priority = 10  # Massima priorità per assegnazione
 
                 # 2. Priority level
-                p = task_data.get("priority", "medium")
-                if p == "high": return 3
-                if p == "medium": return 2
-                if p == "low": return 1
-                return 0
+                p = task_data.get("priority", "medium").lower()
+                if p == "high": base_priority = 8
+                elif p == "medium": base_priority = 5
+                elif p == "low": base_priority = 3
+
+                # Priorità finale = base - penalità profondità
+                return max(1, base_priority - depth_penalty)  # Minimo 1 punto
 
             # Ordina per priorità e poi per data di creazione (FIFO)
             pending_eligible_tasks.sort(
@@ -1536,7 +1336,27 @@ class TaskExecutor:
                 name=task_name,
                 description=description,
                 status=TaskStatus.PENDING.value,
-                priority="high"
+                priority="high",
+
+                # TRACKING AUTOMATICO
+                creation_type="initial_workspace_setup",  # Task iniziale del workspace
+
+                # CONTEXT DATA SPECIFICO
+                context_data={
+                    "workspace_initialization": True,
+                    "selected_lead_agent": lead_agent['name'],
+                    "selected_lead_role": lead_agent['role'],
+                    "team_composition": {
+                        "total_agents": team_analysis['total_agents'],
+                        "leadership_candidates": len(team_analysis['leadership_candidates']),
+                        "specialists_count": len(team_analysis['specialists']),
+                        "available_domains": list(team_analysis['available_domains'])
+                    },
+                    "workspace_goal": workspace.get('goal', ''),
+                    "workspace_budget": workspace.get('budget', {}),
+                    "auto_generated": True,
+                    "is_project_kickoff": True
+                }
             )
             
             if created_task and created_task.get("id"):
@@ -1758,6 +1578,42 @@ class TaskExecutor:
         logs = [log for log in self.execution_log if not workspace_id or log.get("workspace_id") == workspace_id]
         # Ordina per timestamp decrescente e limita
         return sorted(logs, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
+    
+    def check_global_circuit_breaker(self) -> bool:
+        """Verifica condizioni anomale e attiva circuit breaker se necessario"""
+        try:
+            # 1. Controllo task creation rate (troppi task/min)
+            recent_task_creations = [
+                log for log in self.execution_log 
+                if log.get("event") in ["task_execution_started", "initial_task_created"]
+                and (datetime.now() - datetime.fromisoformat(log.get("timestamp", "2020-01-01"))).total_seconds() < 60
+            ]
+
+            if len(recent_task_creations) > 20:  # >20 task al minuto
+                logger.critical(f"🚨 CIRCUIT BREAKER: Task creation rate too high ({len(recent_task_creations)}/min)")
+                self.paused = True
+                self.pause_event.clear()
+                self.auto_generation_enabled = False
+                return True
+
+            # 2. Controllo fallimenti consecutivi
+            recent_failures = [
+                log for log in self.execution_log 
+                if log.get("event") in ["task_execution_failed", "task_execution_timeout"]
+                and (datetime.now() - datetime.fromisoformat(log.get("timestamp", "2020-01-01"))).total_seconds() < 300
+            ]
+
+            if len(recent_failures) > 10:  # >10 fallimenti in 5 min
+                logger.critical(f"🚨 CIRCUIT BREAKER: Failure rate too high ({len(recent_failures)}/5min)")
+                self.paused = True
+                self.pause_event.clear()
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error in circuit breaker check: {e}")
+            return False
 
     def get_detailed_stats(self) -> Dict[str, Any]:
         """Ottieni statistiche dettagliate dell'executor"""
@@ -1836,6 +1692,130 @@ class TaskExecutor:
         }
 
         return base_stats
+    
+    async def process_task_with_coordination(self, task_dict: Dict[str, Any], manager: AgentManager) -> None:
+        """
+        Metodo unificato per processare task con coordinamento completo tra tutti i moduli.
+        Garantisce consistenza nel tracking e anti-loop logic.
+        """
+        task_id = task_dict.get("id")
+        workspace_id = task_dict.get("workspace_id")
+        task_name = task_dict.get("name", "Unnamed Task")
+
+        # 1. Track centralmente task processing prima di iniziare
+        self.execution_log.append({
+            "timestamp": datetime.now().isoformat(),
+            "event": "coordinated_task_processing_started",
+            "task_id": task_id,
+            "workspace_id": workspace_id,
+            "task_name": task_name
+        })
+
+        # 2. Estrai attributi di delegation dal DB o context_data
+        delegation_depth = task_dict.get("delegation_depth", 0)  # Nuovo campo DB
+
+        # Fallback al context_data se delegation_depth non è nel record principale
+        if delegation_depth == 0 and isinstance(task_dict.get("context_data"), dict):
+            delegation_depth = task_dict.get("context_data", {}).get("delegation_depth", 0)
+
+        # Ottieni delegation chain dal context_data
+        delegation_chain = []
+        if isinstance(task_dict.get("context_data"), dict):
+            delegation_chain = task_dict.get("context_data", {}).get("delegation_chain", [])
+
+        # 3. Verifica anti-loop centralmente PRIMA dell'esecuzione
+        if delegation_depth > self.max_delegation_depth:
+            logger.warning(f"Task {task_id} exceeds max delegation depth ({delegation_depth} > {self.max_delegation_depth})")
+            await self._force_complete_task(
+                task_dict,
+                f"Maximum delegation depth exceeded ({delegation_depth}/{self.max_delegation_depth})",
+                status_to_set=TaskStatus.FAILED.value
+            )
+            return
+
+        # Verifica lunghezza chain (doppio controllo)
+        if len(delegation_chain) > self.max_delegation_depth:
+            logger.warning(f"Task {task_id} has delegation chain too long ({len(delegation_chain)} > {self.max_delegation_depth})")
+            await self._force_complete_task(
+                task_dict,
+                f"Delegation chain too long ({len(delegation_chain)} steps)",
+                status_to_set=TaskStatus.FAILED.value
+            )
+            return
+
+        # 4. Esecuzione coordinata con timeout unificato
+        try:
+            logger.info(f"Coordinated execution: Task {task_id} (depth: {delegation_depth}, chain: {len(delegation_chain)})")
+
+            # Esegui con timeout unificato tramite AgentManager
+            result = await asyncio.wait_for(
+                manager.execute_task(UUID(task_id)), 
+                timeout=self.execution_timeout
+            )
+
+            # 5. Log risultato intermedio
+            self.execution_log.append({
+                "timestamp": datetime.now().isoformat(),
+                "event": "coordinated_task_executed",
+                "task_id": task_id,
+                "workspace_id": workspace_id,
+                "delegation_depth": delegation_depth,
+                "execution_successful": True
+            })
+
+            # 6. Post-processing coordinato con EnhancedTaskExecutor
+            # Questo garantisce che post-processing sia soggetto alle stesse regole anti-loop
+            try:
+                # Crea oggetto Task per EnhancedTaskExecutor
+                task_obj = Task.model_validate(task_dict)
+
+                # Ottieni enhanced executor e processa
+                from task_analyzer import get_enhanced_task_executor
+                enhanced_executor = get_enhanced_task_executor()
+
+                # Passa result e coordination context
+                await enhanced_executor.handle_task_completion(
+                    task_obj, 
+                    result, 
+                    workspace_id
+                )
+
+                logger.info(f"Coordinated task processing completed successfully for {task_id}")
+
+            except Exception as post_error:
+                logger.error(f"Error in post-processing for task {task_id}: {post_error}", exc_info=True)
+                # Non fallire il task principale per errori di post-processing
+                self.execution_log.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "event": "coordinated_post_processing_error",
+                    "task_id": task_id,
+                    "error": str(post_error)
+                })
+
+        except asyncio.TimeoutError:
+            logger.error(f"Coordinated execution timeout for task {task_id} after {self.execution_timeout}s")
+            await self._force_complete_task(
+                task_dict,
+                f"Coordinated execution timeout after {self.execution_timeout}s",
+                status_to_set=TaskStatus.TIMED_OUT.value
+            )
+
+        except Exception as e:
+            logger.error(f"Coordinated task processing error for {task_id}: {e}", exc_info=True)
+            await self._force_complete_task(
+                task_dict,
+                f"Coordinated execution error: {str(e)[:200]}",
+                status_to_set=TaskStatus.FAILED.value
+            )
+
+        finally:
+            # 7. Log finale
+            self.execution_log.append({
+                "timestamp": datetime.now().isoformat(),
+                "event": "coordinated_task_processing_finished",
+                "task_id": task_id,
+                "workspace_id": workspace_id
+            })
 
 
 # Istanza globale del TaskExecutor

@@ -195,7 +195,16 @@ async def create_new_task(workspace_id: UUID, task: TaskCreate):
             agent_id=str(task.agent_id),
             name=task.name,
             description=task.description,
-            status=task.status.value
+            status=task.status.value,
+
+            # TRACKING AUTOMATICO
+            creation_type="manual_api",  # Creato via API manuale
+
+            # CONTEXT DATA
+            context_data={
+                "created_via": "agents_api_endpoint",
+                "api_timestamp": datetime.now().isoformat()
+            }
         )
         
         return Task.model_validate(task_data)

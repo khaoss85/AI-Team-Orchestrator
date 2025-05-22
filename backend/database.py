@@ -153,6 +153,8 @@ async def update_agent_status(agent_id: str, status: Optional[str], health: Opti
         logger.error(f"Error updating agent status: {e}")
         raise
 
+# In database.py, modifica la tua funzione create_task esistente
+
 async def create_task(
     workspace_id: str,
     name: str,
@@ -165,16 +167,68 @@ async def create_task(
     depends_on_task_ids: Optional[List[str]] = None,
     estimated_effort_hours: Optional[float] = None,
     deadline: Optional[datetime] = None,
-    context_data: Optional[Dict[str, Any]] = None,  # CAMBIATO da context_data_json
-    result_payload: Optional[Dict[str, Any]] = None
+    context_data: Optional[Dict[str, Any]] = None,
+    result_payload: Optional[Dict[str, Any]] = None,
+    created_by_task_id: Optional[str] = None,
+    created_by_agent_id: Optional[str] = None,
+    creation_type: Optional[str] = None,
+    parent_delegation_depth: int = 0,
+    auto_build_context: bool = True  # Nuovo flag per abilitare/disabilitare auto-build
 ):
     try:
+        # COSTRUZIONE AUTOMATICA DEL CONTEXT_DATA SE ABILITATA
+        if auto_build_context:
+            # Determina il creation_type se non fornito
+            if creation_type is None:
+                if created_by_task_id:
+                    creation_type = "task_delegation"
+                elif parent_task_id:
+                    creation_type = "subtask_creation"
+                else:
+                    creation_type = "manual"
+            
+            # Costruisci context_data automaticamente
+            auto_context_data = await build_task_context_data(
+                parent_task_id=created_by_task_id or parent_task_id,
+                agent_id=created_by_agent_id or agent_id,
+                creation_type=creation_type,
+                extra_data=context_data  # Merge dei dati extra forniti dall'utente
+            )
+            
+            # Se l'utente ha fornito context_data, fai merge preservando i dati utente
+            if context_data:
+                final_context_data = {**auto_context_data, **context_data}
+            else:
+                final_context_data = auto_context_data
+        else:
+            # Usa context_data fornito dall'utente senza modifiche
+            final_context_data = context_data
+        
+        # ESTRAZIONE DEI VALORI DAL CONTEXT_DATA PER I CAMPI DB
+        delegation_depth = 0
+        if isinstance(final_context_data, dict):
+            delegation_depth = final_context_data.get("delegation_depth", 0)
+            # Estrai anche created_by_* dal context se non forniti direttamente
+            if created_by_task_id is None:
+                created_by_task_id = final_context_data.get("created_by_task_id")
+            if created_by_agent_id is None:
+                created_by_agent_id = final_context_data.get("created_by_agent_id")
+            if creation_type is None:
+                creation_type = final_context_data.get("creation_type", "manual")
+
+        # COSTRUZIONE DEI DATI PER IL DATABASE
         data_to_insert = {
             "workspace_id": workspace_id,
             "name": name,
             "status": status,
             "priority": priority,
+            "created_by_task_id": created_by_task_id,
+            "created_by_agent_id": created_by_agent_id,
+            "creation_type": creation_type,
+            "delegation_depth": delegation_depth,
         }
+        
+        # Aggiungi campi opzionali
         if agent_id: data_to_insert["agent_id"] = agent_id
         if assigned_to_role: data_to_insert["assigned_to_role"] = assigned_to_role
         if description: data_to_insert["description"] = description
@@ -182,20 +236,22 @@ async def create_task(
         if depends_on_task_ids: data_to_insert["depends_on_task_ids"] = depends_on_task_ids
         if estimated_effort_hours is not None: data_to_insert["estimated_effort_hours"] = estimated_effort_hours
         if deadline: data_to_insert["deadline"] = deadline.isoformat()
-        if context_data: data_to_insert["context_data"] = context_data  # CAMBIATO: salva direttamente il dict
-        if result_payload: data_to_insert["result"] = result_payload  # CAMBIATO: salva direttamente il dict
+        if final_context_data: data_to_insert["context_data"] = final_context_data
+        if result_payload: data_to_insert["result"] = result_payload
 
-        logger.debug(f"Creating task with data: {data_to_insert}")
+        logger.debug(f"Creating task with enhanced tracking: {data_to_insert}")
         db_result = supabase.table("tasks").insert(data_to_insert).execute()
 
         if db_result.data and len(db_result.data) > 0:
-            logger.info(f"Task '{name}' (ID: {db_result.data[0]['id']}) created successfully for workspace {workspace_id}.")
-            return db_result.data[0]
+            created_task = db_result.data[0]
+            logger.info(f"Task '{name}' (ID: {created_task['id']}) created with delegation_depth={delegation_depth}, creation_type={creation_type}")
+            return created_task
         else:
-            logger.error(f"Failed to create task '{name}' or no data returned. Supabase response: {db_result}")
+            logger.error(f"Failed to create task '{name}'. Supabase response: {db_result}")
             if hasattr(db_result, 'error') and db_result.error:
-                 logger.error(f"Supabase error details: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
+                 logger.error(f"Supabase error: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
             return None
+            
     except Exception as e:
         logger.error(f"Error creating task '{name}': {e}", exc_info=True)
         raise
@@ -498,6 +554,72 @@ async def cleanup_expired_feedback_requests() -> int:
     except Exception as e:
         logger.error(f"Error cleaning up expired requests: {e}")
         return 0
+    
+async def build_task_context_data(
+    parent_task_id: Optional[str] = None,
+    agent_id: Optional[str] = None, 
+    creation_type: str = "manual",
+    extra_data: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Costruisce context_data standardizzato per task, includendo tracking e anti-loop info.
+    
+    Args:
+        parent_task_id: ID del task genitore (se esistente)
+        agent_id: ID dell'agente che ha creato il task
+        creation_type: Tipo di creazione ("pm_completion", "handoff", "manual", ecc.)
+        extra_data: Dati aggiuntivi specifici per il task
+        
+    Returns:
+        Dict con standardized context data
+    """
+    context_data = {
+        "created_at": datetime.now().isoformat(),
+        "creation_type": creation_type,
+        "delegation_depth": 0,  # Default
+        "delegation_chain": []
+    }
+    
+    # Tracking esplicito source
+    if parent_task_id:
+        context_data["created_by_task_id"] = parent_task_id
+        
+        # Recupera parent task per delegation depth inheritance
+        try:
+            # Usa la funzione list_tasks esistente per recuperare il parent
+            workspace_tasks = await list_tasks("", status_filter=None)  # Get all tasks
+            parent_task = next((t for t in workspace_tasks if t.get("id") == parent_task_id), None)
+            
+            if parent_task:
+                parent_context = parent_task.get("context_data", {})
+                
+                if isinstance(parent_context, dict):
+                    # Incrementa delegation depth
+                    parent_depth = parent_context.get("delegation_depth", 0)
+                    context_data["delegation_depth"] = parent_depth + 1
+                    
+                    # Traccia chain completa
+                    parent_chain = parent_context.get("delegation_chain", [])
+                    context_data["delegation_chain"] = parent_chain + [parent_task_id]
+                else:
+                    # Se parent non ha context_data strutturato, assume depth 0 per sicurezza
+                    context_data["delegation_depth"] = 1
+                    context_data["delegation_chain"] = [parent_task_id]
+        except Exception as e:
+            logger.warning(f"Error retrieving parent task info for {parent_task_id}: {e}")
+            # Fallback sicuro: assume delegation depth 1 se c'è un parent
+            context_data["delegation_depth"] = 1
+            context_data["delegation_chain"] = [parent_task_id] if parent_task_id else []
+    
+    if agent_id:
+        context_data["created_by_agent_id"] = agent_id
+    
+    # Merge extra data se fornito
+    if extra_data and isinstance(extra_data, dict):
+        context_data.update(extra_data)
+    
+    return context_data
+
 def _deserialize_agent_json_fields(agent_data: Dict[str, Any]) -> Dict[str, Any]:
     """Deserializza i campi JSON di un agente da Supabase"""
     if agent_data is None:

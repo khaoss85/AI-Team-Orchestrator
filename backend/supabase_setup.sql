@@ -241,3 +241,15 @@ ADD COLUMN IF NOT EXISTS communication_style TEXT,
 ADD COLUMN IF NOT EXISTS hard_skills JSONB,
 ADD COLUMN IF NOT EXISTS soft_skills JSONB,
 ADD COLUMN IF NOT EXISTS background_story TEXT;
+
+-- In supabase_setup.sql, aggiungi queste colonne se non esistono già
+ALTER TABLE IF EXISTS tasks 
+ADD COLUMN IF NOT EXISTS created_by_task_id UUID REFERENCES tasks(id),
+ADD COLUMN IF NOT EXISTS created_by_agent_id UUID REFERENCES agents(id),
+ADD COLUMN IF NOT EXISTS creation_type VARCHAR(50) DEFAULT 'manual',
+ADD COLUMN IF NOT EXISTS delegation_depth INTEGER DEFAULT 0;
+
+-- Indici per performance
+CREATE INDEX IF NOT EXISTS idx_tasks_created_by_task_id ON tasks(created_by_task_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_delegation_depth ON tasks(delegation_depth);
+CREATE INDEX IF NOT EXISTS idx_tasks_creation_type ON tasks(creation_type);

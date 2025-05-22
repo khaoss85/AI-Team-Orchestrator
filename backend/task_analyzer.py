@@ -85,106 +85,102 @@ class EnhancedTaskExecutor:
         task_result: Dict[str, Any],
         workspace_id: str,
     ) -> None:
-        """
-        Handle task completion with SELETTIVA per PM.
-        PM task: crea sempre sub-task automaticamente
-        Altri task: solo se auto-generation abilitata
-        """
-        
+        """Main handler with strict separation between PM and specialist flows."""
         task_id_str = str(completed_task.id)
-        
-        # AGGIUNTA: Verifica se è un task finale
-        context_data = completed_task.context_data or {}
-        is_final_task = context_data.get("is_final_task", False)
-        
-        # Se è un task finale completato, verifica il completamento del progetto
-        if is_final_task and task_result.get("status") == "completed":
-            # Marca il progetto come completato
-            workspace = await get_workspace(workspace_id)
-            if workspace and workspace.get("status") != "completed":
-                from database import update_workspace_status
-                try:
-                    await update_workspace_status(workspace_id, "completed")
-                    logger.info(f"Project {workspace_id} marked as COMPLETED")
-                except Exception as e:
-                    logger.error(f"Error marking project {workspace_id} as completed: {e}")
-            
-            return  # Non eseguire altra logica per task finali
-        
-        # AGGIUNTA: Valuta se creare task di assessment periodico
-        if task_result.get("status") == "completed":
-            await self.create_periodic_assessment_task(workspace_id)
-        
-        # Determina se è un PM task
-        is_pm_task = await self._is_project_manager_task(completed_task, task_result)
-        
-        # PM auto-generation: sempre abilitata  
-        if is_pm_task:
-            logger.info(f"Project Manager task detected {task_id_str} - executing auto-generation")
-            pm_created_tasks = await self.handle_project_manager_completion(
-                completed_task, task_result, workspace_id
-            )
-            
-            if pm_created_tasks:
-                return  # Task PM completato con successo
-        
-        # Per non-PM: usa la logica esistente solo se auto-generation è abilitata
-        if not self.auto_generation_enabled:
-            logger.info(f"Non-PM task {task_id_str}: auto-generation globally disabled")
-            await self._log_completion_analysis(
-                task=completed_task, 
-                result_or_analysis=task_result, 
-                decision="auto_generation_globally_disabled",
-                extra_info="Analyzer configured for safety - no auto tasks created"
-            )
-            return
-        
-        # Resto della logica esistente per task non-PM...
+
+        # Skip already-analyzed tasks
         if task_id_str in self.analyzed_tasks:
             logger.info(f"Task {task_id_str} already processed - skipping")
             return
-        
         self.analyzed_tasks.add(task_id_str)
 
         try:
-            # Ultra-conservative filtering per non-PM
-            if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
-                await self._log_completion_analysis(completed_task, task_result, "filtered_out_conservative")
+            # --- PM VS SPECIALIST DISPATCH ----------------------------------
+            is_pm_task = await self._is_project_manager_task(completed_task, task_result)
+
+            # --------------------- PM FLOW -----------------------------------
+            if is_pm_task:
+                logger.info(f"Processing task {task_id_str} as PM TASK")
+
+                # PM tasks always create sub-tasks
+                pm_created_tasks = await self.handle_project_manager_completion(
+                    completed_task, task_result, workspace_id
+                )
+
+                await self._log_completion_analysis(
+                    completed_task,
+                    task_result,
+                    "pm_task_processed",
+                    f"Sub-tasks created: {pm_created_tasks}",
+                )
                 return
 
-            # Minimal context gathering (evita operazioni costose)
+            # ----------------- SPECIALIST FLOW ------------------------------
+            logger.info(f"Processing task {task_id_str} as SPECIALIST TASK")
+
+            if not self.auto_generation_enabled:
+                logger.info(f"Task {task_id_str}: auto-generation disabled for specialist tasks")
+                await self._log_completion_analysis(
+                    completed_task, task_result, "specialist_task_completed_no_auto_gen"
+                )
+                return
+
+            # Ultra-conservative filtering (cheap checks first)
+            if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
+                await self._log_completion_analysis(
+                    completed_task, task_result, "filtered_out_conservative"
+                )
+                return
+
+            # Minimal workspace context (cheap)
             workspace_ctx = await self._gather_minimal_context(workspace_id)
 
-            # Strict limits check
+            # Strict quota / limits
             if not self._check_strict_workspace_limits(workspace_ctx):
                 logger.info(f"Workspace {workspace_id} at strict limits - no auto-generation")
-                await self._log_completion_analysis(completed_task, task_result, "workspace_limits_exceeded")
+                await self._log_completion_analysis(
+                    completed_task, task_result, "workspace_limits_exceeded"
+                )
                 return
 
             # Duplicate prevention
             if self._is_handoff_duplicate_strict(completed_task, workspace_ctx):
                 logger.warning(f"Duplicate handoff prevented for task {task_id_str}")
-                await self._log_completion_analysis(completed_task, task_result, "duplicate_prevented")
+                await self._log_completion_analysis(
+                    completed_task, task_result, "duplicate_prevented"
+                )
                 return
 
-            # Analysis (deterministic only - no LLM)
-            analysis = self._analyze_task_deterministic(completed_task, task_result, workspace_ctx)
+            # Deterministic (no-LLM) analysis
+            analysis = self._analyze_task_deterministic(
+                completed_task, task_result, workspace_ctx
+            )
 
-            # Action ONLY if all conditions met AND explicitly enabled
-            if (self.handoff_creation_enabled and 
-                analysis.requires_follow_up and 
-                analysis.confidence_score >= self.confidence_threshold and 
-                analysis.suggested_handoffs):
-                
-                logger.warning(f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})")
+            # Create follow-up task only if every hard gate passes
+            if (
+                self.handoff_creation_enabled
+                and analysis.requires_follow_up
+                and analysis.confidence_score >= self.confidence_threshold
+                and analysis.suggested_handoffs
+            ):
+                logger.warning(
+                    f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})"
+                )
                 await self._execute_minimal_handoff(analysis, completed_task, workspace_id)
             else:
-                logger.info(f"Task {task_id_str} analysis complete - no follow-up (confidence: {analysis.confidence_score:.3f})")
-                await self._log_completion_analysis(completed_task, analysis.__dict__(), "analysis_complete_no_action")
+                logger.info(
+                    f"Task {task_id_str} analysis complete - no follow-up "
+                    f"(confidence: {analysis.confidence_score:.3f})"
+                )
+                await self._log_completion_analysis(
+                    completed_task, analysis.__dict__(), "analysis_complete_no_action"
+                )
 
         except Exception as e:
             logger.error(f"Error in handle_task_completion for {task_id_str}: {e}", exc_info=True)
-            await self._log_completion_analysis(completed_task, task_result, "analysis_error", str(e))
+            await self._log_completion_analysis(
+                completed_task, task_result, "error_processing_task", str(e)
+            )
 
     # ---------------------------------------------------------------------
     # PROJECT MANAGER SPECIFIC HANDLING
@@ -195,96 +191,75 @@ class EnhancedTaskExecutor:
         result: Dict[str, Any],
         workspace_id: str
     ) -> bool:
-        """
-        Gestisce specificamente il completamento di task del Project Manager
-        creando automaticamente i sub-task definiti nel risultato.
-        """
+        """Handles Project Manager task completion by creating defined sub-tasks."""
 
         logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
 
-        # --- LOGGING MIGLIORATO PER DEBUG ---
-        logger.info(f"PM_HANDLER_DEBUG --- Task ID: {task.id} --- Received result dictionary keys: {list(result.keys())}")
+        # Extract detailed_results_json with proper validation
         detailed_results_json_content = result.get("detailed_results_json")
 
+        # Log detailed debugging info
+        logger.info(f"PM_HANDLER_DEBUG - Task {task.id} - Result keys: {list(result.keys())}")
         if detailed_results_json_content is not None:
-            logger.info(f"PM_HANDLER_DEBUG --- detailed_results_json IS PRESENT. Type: {type(detailed_results_json_content)}. Content snippet: {str(detailed_results_json_content)[:500]}")
+            logger.info(f"PM_HANDLER_DEBUG - detailed_results_json type: {type(detailed_results_json_content)}")
         else:
-            logger.error(f"PM_HANDLER_CRITICAL_DEBUG --- detailed_results_json IS MISSING or None in result for task {task.id}. Full result for debugging: {str(result)[:500]}")
-            # NON uscire subito se manca detailed_results_json, proveremo altre strategie
+            logger.error(f"PM_HANDLER_CRITICAL - detailed_results_json IS MISSING for task {task.id}")
 
-        # --- NUOVO: ESTRAZIONE SUB-TASK DA DIVERSE FONTI ---
+        # Parse the detailed_results_json to extract sub-tasks
         defined_subtasks = []
 
-        # Fonte 1: detailed_results_json standard - DA CODICE ORIGINALE
+        # Source 1: Parse detailed_results_json if it exists and is valid
         if isinstance(detailed_results_json_content, str) and detailed_results_json_content.strip():
             try:
                 results_data = json.loads(detailed_results_json_content)
 
-                # Cerca i sub-task definiti con diverse possibili chiavi
-                for key in ["defined_sub_tasks", "sub_tasks", "subtasks", "tasks", "next_tasks"]:
-                    if key in results_data and isinstance(results_data[key], list):
-                        defined_subtasks.extend(results_data[key])
-                        logger.info(f"Trovati {len(results_data[key])} sub-task nella chiave '{key}'")
+                # Try multiple possible keys for sub-tasks
+                if isinstance(results_data, dict):
+                    for key in ["defined_sub_tasks", "sub_tasks", "subtasks", "tasks", "next_tasks"]:
+                        if key in results_data and isinstance(results_data[key], list):
+                            defined_subtasks.extend(results_data[key])
+                            logger.info(f"Found {len(results_data[key])} sub-tasks in key '{key}'")
+                            break  # Only use the first valid key found
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse detailed_results_json string for task {task.id}: {e}. Content was: {detailed_results_json_content[:200]}")
-                # Continuiamo per provare altre fonti
+                logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
 
-        # Fonte 2: next_steps array - NUOVA FONTE
-        next_steps = result.get("next_steps", [])
-        if not defined_subtasks and next_steps and isinstance(next_steps, list):
-            logger.info(f"Non trovati sub-task in detailed_results_json, provo a generarli da next_steps ({len(next_steps)})")
-            for step in next_steps:
-                if not isinstance(step, str):
-                    continue
-
-                # Inferisci target_role dal contenuto del next_step
-                target_role = "Specialist"  # Default generico
-                step_lower = step.lower()
-
-                if any(kw in step_lower for kw in ["analy", "data", "research"]):
-                    target_role = "AnalysisSpecialist"
-                elif any(kw in step_lower for kw in ["content", "write", "text"]):
-                    target_role = "ContentSpecialist"
-                elif any(kw in step_lower for kw in ["technical", "develop", "implement"]):
-                    target_role = "TechnicalSpecialist"
-
-                # Crea sub-task dal next_step
-                subtask = {
-                    "name": f"Follow-up: {step[:50]}...",
-                    "description": f"Complete the following next step identified by the Project Manager:\n\n{step}\n\nThis task was automatically generated from the PM's next steps.",
-                    "target_agent_role": target_role,
-                    "priority": "medium"
-                }
-                defined_subtasks.append(subtask)
-
-            if defined_subtasks:
-                logger.info(f"Creati {len(defined_subtasks)} sub-task da next_steps")
-
-        # Fonte 3: summary come ultima risorsa - NUOVA FONTE
-        summary = result.get("summary", "")
-        if not defined_subtasks and isinstance(summary, str) and len(summary) > 50:
-            logger.info(f"Non trovati sub-task in detailed_results_json o next_steps, provo a generare da summary")
-            # Crea un task di follow-up se non abbiamo trovato nulla finora
-            subtask = {
-                "name": f"Follow-up: {task.name}",
-                "description": f"Based on the PM's summary:\n\n{summary}\n\nReview this output and determine appropriate next steps to advance the project. This task was automatically generated to ensure project continuity.",
-                "target_agent_role": "Specialist",  # Default generico
-                "priority": "medium"
-            }
-            defined_subtasks.append(subtask)
-            logger.info(f"Creato 1 sub-task di follow-up dalla summary")
-
-        # --- VERIFICA FINALE SUB-TASK ---
+        # Source 2: Try next_steps as fallback
         if not defined_subtasks:
-            logger.info(f"No sub-tasks were found or generated for PM task {task.id} from any source")
-            return False
+            logger.info(f"No sub-tasks found in detailed_results_json for task {task.id}. Trying next_steps.")
+            next_steps = result.get("next_steps", [])
 
-        # --- CREAZIONE SUB-TASK NEL DATABASE - MANTIENE LA LOGICA ORIGINALE ---
-        # Importa create_task qui per evitare circular imports se necessario
+            if isinstance(next_steps, list) and next_steps:
+                for step in next_steps:
+                    if not isinstance(step, str) or not step.strip():
+                        continue
+
+                    # Infer target_role from step content
+                    step_lower = step.lower()
+                    target_role = "Specialist"  # Default
+
+                    if any(kw in step_lower for kw in ["analy", "data", "research"]):
+                        target_role = "AnalysisSpecialist"
+                    elif any(kw in step_lower for kw in ["content", "write", "text"]):
+                        target_role = "ContentSpecialist"
+                    elif any(kw in step_lower for kw in ["develop", "implement", "code"]):
+                        target_role = "TechnicalSpecialist"
+
+                    subtask = {
+                        "name": f"Follow-up: {step[:50]}..." if len(step) > 50 else f"Follow-up: {step}",
+                        "description": f"Complete the following task defined by the Project Manager:\n\n{step}",
+                        "target_agent_role": target_role,
+                        "priority": "medium"
+                    }
+                    defined_subtasks.append(subtask)
+
+                if defined_subtasks:
+                    logger.info(f"Created {len(defined_subtasks)} sub-tasks from next_steps")
+
+        # Create the sub-tasks in the database
         from database import create_task
 
         created_count = 0
-        created_tasks_details = []  # Per logging dettagliato
+        created_tasks_ids = []
 
         for subtask_def in defined_subtasks:
             if not isinstance(subtask_def, dict):
@@ -292,41 +267,21 @@ class EnhancedTaskExecutor:
                 continue
 
             try:
+                # Validate required fields
                 required_fields = ["name", "description", "target_agent_role"]
                 if not all(field in subtask_def for field in required_fields):
-                    logger.warning(f"Skipping subtask definition with missing required fields: {subtask_def}. Missing: {[f for f in required_fields if f not in subtask_def]}")
+                    logger.warning(f"Skipping subtask missing required fields: {subtask_def}")
                     continue
 
+                # Find appropriate agent by role with improved logging
                 target_role = subtask_def["target_agent_role"]
-                
-                # Verifica che non ci sia un ciclo di delegazione
-                source_agent_id = str(task.agent_id) if task.agent_id else None
-                if await self._is_delegation_loop(source_agent_id, target_role, workspace_id, str(task.id)):
-                    logger.warning(f"Skipping subtask creation '{subtask_def['name']}' - would create delegation loop")
-                    continue
-                
-                # Verifica se il task è un duplicato
-                existing_task = await self._detect_duplicate_task(
-                    subtask_def["name"], 
-                    subtask_def["description"], 
-                    workspace_id
-                )
-                
-                if existing_task:
-                    logger.warning(f"Skipping creation of duplicate task '{subtask_def['name']}' - similar to existing task {existing_task.get('id')}")
-                    continue
-
                 target_agent = await self._find_agent_by_role(workspace_id, target_role)
 
                 if not target_agent:
-                    logger.warning(f"No active agent found for role '{target_role}' - skipping subtask creation for '{subtask_def['name']}'")
+                    logger.warning(f"No agent found for role '{target_role}'. Skipping subtask: {subtask_def['name']}")
                     continue
 
-                # Recupera task completati per determinare la fase
-                tasks = await list_tasks(workspace_id)
-                completed_tasks_count = len([t for t in tasks if t.get("status") == "completed"])
-
-                # Crea il sub-task
+                # Create the sub-task with explicit attribution tracking
                 created_task = await create_task(
                     workspace_id=workspace_id,
                     agent_id=str(target_agent["id"]),
@@ -336,210 +291,204 @@ class EnhancedTaskExecutor:
                     status="pending",
                     priority=subtask_def.get("priority", "medium"),
                     parent_task_id=str(task.id),
+
+                    # TRACKING AUTOMATICO
+                    created_by_task_id=str(task.id),  # Il PM task che ha creato questo subtask
+                    created_by_agent_id=str(task.agent_id) if task.agent_id else None,
+                    creation_type="pm_completion",  # Creato dal completamento di un task PM
+
+                    # CONTEXT DATA SPECIFICO
                     context_data={
-                        "created_by_pm_task_id": str(task.id),
                         "auto_generated_by_pm": True,
-                        "source_pm_agent_id": str(task.agent_id) if task.agent_id else None,
+                        "source_pm_task_name": task.name,
                         "project_phase": self._determine_project_phase(subtask_def["name"], subtask_def["description"], completed_tasks_count),
                         "failure_count": 0,
-                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed by agent")
+                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed by agent"),
+                        "subtask_definition_source": "pm_detailed_results_json",
+                        "pm_completion_timestamp": datetime.now().isoformat()
                     }
                 )
 
                 if created_task and created_task.get("id"):
                     created_count += 1
-                    task_detail_for_log = {"id": created_task['id'], "name": subtask_def['name'], "assigned_to": target_agent.get('name')}
-                    created_tasks_details.append(task_detail_for_log)
-                    logger.info(f"Successfully created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) and assigned to {target_agent.get('name', 'Unknown Agent')}")
+                    created_tasks_ids.append(created_task["id"])
+                    logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) for agent {target_agent.get('name')}")
                 else:
-                    logger.error(f"Failed to create sub-task '{subtask_def['name']}' in database or no ID returned.")
+                    logger.error(f"Failed to create sub-task in database: {subtask_def['name']}")
 
-            except Exception as e_subtask:
-                logger.error(f"Error processing subtask definition '{subtask_def.get('name', 'Unknown name')}': {e_subtask}", exc_info=True)
-                continue
+            except Exception as e:
+                logger.error(f"Error creating sub-task '{subtask_def.get('name', 'Unknown')}': {e}", exc_info=True)
 
-        if created_count > 0:
-            logger.info(f"PM auto-generation: Successfully created {created_count}/{len(defined_subtasks)} sub-tasks for PM task {task.id}. Details: {created_tasks_details}")
-            return True
-        else:
-            logger.info(f"PM auto-generation: No sub-tasks were created for PM task {task.id} out of {len(defined_subtasks)} defined.")
-            return False
+        logger.info(f"PM task {task.id} completion: Created {created_count}/{len(defined_subtasks)} sub-tasks")
+        return created_count > 0
 
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
+        """Find agent by role with multiple fuzzy matching strategies"""
         try:
             from database import list_agents as db_list_agents
 
-            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Attempting to find agent for role '{role}' in workspace '{workspace_id}'")
-            agents_from_db = await db_list_agents(workspace_id)
+            # Cache delle normalizzazioni per evitare lavoro ripetuto
+            normalized_roles_cache = {}
 
+            agents_from_db = await db_list_agents(workspace_id)
             if not agents_from_db:
-                logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No agents returned from DB for workspace {workspace_id}.")
+                logger.warning(f"No agents in workspace {workspace_id}")
                 return None
 
-            # NUOVA LOGICA: Se il task richiede coordinamento, assegnarlo sempre al PM
-            if "project manager" in role.lower() or any(keyword in role.lower() for keyword in 
-               ["meeting", "coordinate", "circulate", "schedule", "plan", "overview"]):
-                # Cerca specificamente un agente Project Manager
+            # Normalizza target role una sola volta
+            target_role_lower = role.lower().strip()
+            target_role_normalized = target_role_lower.replace(" ", "")
+            target_role_words = set(word for word in target_role_lower.split() if word not in ["specialist", "the", "and", "of"])
+
+            # Flag speciali
+            is_target_manager = any(keyword in target_role_normalized for keyword in 
+                                   ["manager", "coordinator", "director", "lead", "pm"])
+
+            candidates = []
+            for agent in agents_from_db:
+                if agent.get("status") != "active":
+                    continue
+
+                agent_role = agent.get("role", "").lower().strip()
+                # Normalizziamo solo se necessario, usando la cache
+                if agent_role not in normalized_roles_cache:
+                    normalized_roles_cache[agent_role] = {
+                        "normalized": agent_role.replace(" ", ""),
+                        "words": set(word for word in agent_role.split() if word not in ["specialist", "the", "and", "of"])
+                    }
+
+                agent_role_normalized = normalized_roles_cache[agent_role]["normalized"]
+                agent_role_words = normalized_roles_cache[agent_role]["words"]
+
+                # Matching multi-strategy con scoring
+                score = 0
+                match_reason = ""
+
+                # 1. Exact match
+                if agent_role == target_role_lower:
+                    score = 10
+                    match_reason = "exact match"
+                # 2. Normalized match
+                elif agent_role_normalized == target_role_normalized:
+                    score = 9.5
+                    match_reason = "normalized match"
+                # 3. Containment match
+                elif target_role_lower in agent_role:
+                    score = 8
+                    match_reason = "target contained in agent role"
+                elif agent_role in target_role_lower:
+                    score = 6
+                    match_reason = "agent role contained in target"
+                # 4. Manager role match
+                elif is_target_manager and any(keyword in agent_role_normalized for keyword in 
+                                             ["manager", "director", "lead", "coordinator", "pm"]):
+                    score = 7
+                    match_reason = "manager role match"
+
+                # 5. Word overlap - match by common words
+                if not score and agent_role_words and target_role_words:
+                    common_words = agent_role_words.intersection(target_role_words)
+                    if common_words:
+                        overlap_ratio = len(common_words) / len(target_role_words)
+                        word_score = 5 * overlap_ratio
+                        if word_score > score:
+                            score = word_score
+                            match_reason = f"word overlap: {', '.join(common_words)}"
+
+                # Seniority boost
+                seniority_boost = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
+                seniority = agent.get("seniority", "").lower()
+                if seniority in seniority_boost:
+                    score += seniority_boost[seniority]
+
+                # Se score sopra la soglia, aggiungi ai candidati
+                if score >= 4:
+                    candidates.append({
+                        "agent": agent,
+                        "score": round(score, 2),
+                        "reason": match_reason
+                    })
+
+            # Sort by score
+            candidates.sort(key=lambda x: x["score"], reverse=True)
+
+            if candidates:
+                best_match = candidates[0]["agent"]
+                logger.info(f"Agent match for '{role}': {best_match.get('name')} ({best_match.get('role')}) - Score: {candidates[0]['score']} ({candidates[0]['reason']})")
+                return best_match
+
+            # MIGLIORAMENTO: fallback più intelligente
+            # Se non è stato trovato nessun match e il ruolo target include "specialist"
+            # cerca qualsiasi agente che abbia "specialist" nel ruolo
+            if "specialist" in target_role_lower and not candidates:
                 for agent in agents_from_db:
-                    if "project manager" in agent.get("role", "").lower() or "coordinator" in agent.get("role", "").lower():
-                        logger.info(f"PM_SUBTASK_AGENT_FINDER --- Found PM for coordination task: {agent.get('name')}")
+                    if agent.get("status") == "active" and "specialist" in agent.get("role", "").lower():
+                        logger.info(f"Fallback match for '{role}': {agent.get('name')} (generic specialist)")
                         return agent
 
-            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Workspace: {workspace_id}, Target Role: '{role}'. Agents retrieved: {len(agents_from_db)}")
-            for idx, agent_in_db in enumerate(agents_from_db):
-                logger.info(f"PM_SUBTASK_AGENT_FINDER --- DB Agent {idx+1}: ID={agent_in_db.get('id')}, Name='{agent_in_db.get('name')}', Role='{agent_in_db.get('role')}', Status='{agent_in_db.get('status')}'")
+            # Fallback per ruoli manager
+            if is_target_manager and not candidates:
+                for agent in agents_from_db:
+                    if agent.get("status") == "active" and "manager" in agent.get("role", "").lower():
+                        logger.info(f"Fallback match for '{role}': {agent.get('name')} (generic manager)")
+                        return agent
 
-            # INIZIO MODIFICHE: Normalizza i ruoli in modo più aggressivo
-            # Rimuovi spazi e converti in lowercase per un matching più flessibile
-            target_role_normalized = role.lower().replace(" ", "").strip()
-
-            # Salva versione con spazi per logging
-            target_role_lower = role.lower().strip()
-
-            # Flag speciali per tipi di ruolo comuni
-            is_target_manager = any(keyword in target_role_normalized for keyword in ["manager", "director", "lead", "coordinator"])
-
-            candidate_agents = []
-            for agent in agents_from_db:
-                agent_role_db = agent.get("role", "")
-                agent_name_db = agent.get("name", "")
-                agent_status_db = agent.get("status")
-
-                # Normalizza ruolo agente nello stesso modo
-                agent_role_normalized = agent_role_db.lower().replace(" ", "").strip()
-
-                # Per logging
-                agent_role_db_lower = agent_role_db.lower().strip()
-
-                logger.debug(f"PM_SUBTASK_AGENT_FINDER --- Comparing: DB Role='{agent_role_db_lower}' (Status='{agent_status_db}') vs Target Role='{target_role_lower}'")
-
-                if agent_status_db == "active":  # Considera solo agenti attivi
-                    match_score = 0
-
-                    # === NUOVA EURISTICA DI MATCHING ===
-
-                    # 1. Exact match con normalizzazione (senza spazi)
-                    if agent_role_normalized == target_role_normalized:
-                        match_score = 10
-
-                    # 2. Il nome dell'agente corrisponde esattamente al ruolo richiesto
-                    elif agent_name_db.lower() == target_role_lower or agent_name_db.lower().replace(" ", "") == target_role_normalized:
-                        match_score = 9.5
-
-                    # 3. Matching convenzionale (contenimento)
-                    elif target_role_lower in agent_role_db_lower:
-                        match_score = 8
-                    elif agent_role_db_lower in target_role_lower:
-                        match_score = 5
-
-                    # 4. Matching speciale per ruoli di Project Manager
-                    elif is_target_manager and any(keyword in agent_role_normalized for keyword in ["manager", "director", "lead", "coordinator"]):
-                        match_score = 7
-                        logger.info(f"PM_SUBTASK_AGENT_FINDER --- Manager role match: '{agent_role_db}' for target '{role}'")
-
-                    # 5. Matching per subset di parole
-                    if match_score < 5:
-                        # Rimuovi parole comuni come "specialist" prima di confrontare
-                        common_words = ["specialist", "the", "and", "of", "for"]
-
-                        # Filtra le parole chiave del target
-                        target_keywords = set([
-                            word for word in target_role_lower.split() 
-                            if word.lower() not in common_words
-                        ])
-
-                        # Filtra le parole chiave dell'agente
-                        agent_role_keywords = set([
-                            word for word in agent_role_db_lower.split() 
-                            if word.lower() not in common_words
-                        ])
-
-                        # Calcola la sovrapposizione
-                        if target_keywords and agent_role_keywords:
-                            intersection = target_keywords.intersection(agent_role_keywords)
-                            if len(intersection) > 0:
-                                # Calcola il rapporto di sovrapposizione
-                                overlap_ratio = len(intersection) / max(len(target_keywords), 1)
-                                if overlap_ratio >= 0.5:  # Se almeno metà delle parole chiave corrispondono
-                                    match_score = 6 + (overlap_ratio * 2)  # Punteggio tra 6 e 8 in base alla sovrapposizione
-
-                    # Aggiunge bonus per seniority
-                    seniority_bonus = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
-                    match_score += seniority_bonus.get(agent.get("seniority", "junior").lower(), 0)
-
-                    # Soglia più bassa (4) per aumentare le possibilità di match
-                    if match_score >= 4:
-                        candidate_agents.append({"agent_dict": agent, "score": match_score})
-
-            if not candidate_agents:
-                logger.warning(f"PM_SUBTASK_AGENT_FINDER --- No suitable active agent found for role '{role}' in workspace {workspace_id} after checking {len(agents_from_db)} agents.")
-
-                # NUOVO: Fallback per ruoli di management se PM non trovato
-                if is_target_manager:
-                    logger.info(f"PM_SUBTASK_AGENT_FINDER --- Attempting fallback for manager role '{role}'")
-                    for agent in agents_from_db:
-                        if agent.get("status") == "active" and any(kw in agent.get("role", "").lower() for kw in ["manager", "director", "lead"]):
-                            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Found manager fallback: {agent.get('name')} with role '{agent.get('role')}'")
-                            return agent
-
-                return None
-
-            # Ordina i candidati per score (decrescente)
-            candidate_agents.sort(key=lambda x: x["score"], reverse=True)
-
-            best_match_agent_dict = candidate_agents[0]["agent_dict"]
-            best_match_score = candidate_agents[0]["score"]
-            logger.info(f"PM_SUBTASK_AGENT_FINDER --- Best match for role '{role}': Agent '{best_match_agent_dict.get('name')}' (Role: '{best_match_agent_dict.get('role')}', Score: {best_match_score})")
-            return best_match_agent_dict
+            logger.warning(f"No agent match for role '{role}' after all strategies")
+            return None
 
         except Exception as e:
-            logger.error(f"PM_SUBTASK_AGENT_FINDER --- Error in _find_agent_by_role for role '{role}', workspace '{workspace_id}': {e}", exc_info=True)
+            logger.error(f"Error finding agent by role: {e}", exc_info=True)
             return None
 
     async def _is_project_manager_task(self, task: Task, result: Dict[str, Any]) -> bool:
-        """Determina se un task è stato completato da un Project Manager"""
+        """Determines if a task was completed by a Project Manager agent."""
 
-        try:
-            # Metodo 1: Controlla l'agent_id se disponibile
-            if task.agent_id:
+        # Method 1 (PRIMARY): Check the actual agent role - most reliable
+        if task.agent_id:
+            try:
                 from database import get_agent
                 agent_data = await get_agent(str(task.agent_id))
                 if agent_data:
                     role = agent_data.get('role', '').lower()
-                    if any(kw in role for kw in ['manager', 'coordinator', 'director', 'lead', 'pm']):
-                        logger.info(f"Task {task.id} riconosciuto come task PM dall'agent role: {role}")
+                    # Explicit PM role checks
+                    pm_roles = ['project manager', 'coordinator', 'director', 'lead', 'pm']
+                    if any(pm_role in role for pm_role in pm_roles):
+                        logger.info(f"Task {task.id} identified as PM task by agent role (PRIMARY): {role}")
                         return True
-        except Exception as e:
-            logger.warning(f"Could not check agent role for task {task.id}: {e}")
+                    else:
+                        # If we have agent role data and it's NOT a PM role, log and return False immediately
+                        logger.info(f"Task {task.id} is NOT a PM task - executed by role: {role}")
+                        return False
+            except Exception as e:
+                logger.warning(f"Could not check agent role for task {task.id}: {e}")
 
-        # Metodo 2: Euristiche basate sul contenuto del task - AMPLIATE
-        task_name = task.name.lower()
-        task_desc = (task.description or "").lower()
-
-        # Indicatori di task di PM - AMPLIATI
-        pm_indicators = [
-            "project setup", "strategic planning", "kick-off", "kickoff",
-            "planning", "coordination", "project manager", "initial",
-            "team assessment", "phase breakdown", "delegate", "strategy",
-            "project plan", "roadmap", "milestone", "management", "organize",
-            "phase 1", "phase one", "setup", "review", "overview"
-        ]
-
-        for indicator in pm_indicators:
-            if indicator in task_name or indicator in task_desc:
-                logger.info(f"Task {task.id} riconosciuto come task PM dall'indicatore: {indicator}")
-                return True
-
-        # Metodo 3: Verifica se il task contiene defined_sub_tasks
-        if result.get("detailed_results_json"):
+        # Method 2 (SECONDARY): Check for PM-specific output structure
+        if isinstance(result.get("detailed_results_json"), str) and result.get("detailed_results_json").strip():
             try:
-                detailed_results = json.loads(result.get("detailed_results_json"))
-                if "defined_sub_tasks" in detailed_results or "sub_tasks" in detailed_results:
-                    logger.info(f"Task {task.id} riconosciuto come task PM perché contiene sub_tasks")
+                parsed_json = json.loads(result.get("detailed_results_json"))
+                if isinstance(parsed_json, dict) and any(key in parsed_json for key in ["defined_sub_tasks", "sub_tasks", "subtasks"]):
+                    logger.info(f"Task {task.id} identified as PM task by output structure (SECONDARY)")
                     return True
-            except:
+            except (json.JSONDecodeError, AttributeError, TypeError):
+                # Ignore parsing errors - this just means it's not a properly structured PM output
                 pass
 
+        # Method 3 (TERTIARY): Very specific keyword matching - highly restricted
+        task_name = task.name.lower() if task.name else ""
+
+        # Very specific PM planning task indicators - only in task name, not description
+        pm_planning_indicators = [
+            "project setup", "strategic planning", "kick-off", "project assessment", 
+            "phase planning", "team coordination"
+        ]
+
+        for indicator in pm_planning_indicators:
+            if indicator in task_name:  # Only check name, not description
+                logger.info(f"Task {task.id} identified as PM task by name indicator (TERTIARY): {indicator}")
+                return True
+
+        # Default assumption: Not a PM task
+        logger.debug(f"Task {task.id} NOT identified as PM task after all checks")
         return False
 
     # ---------------------------------------------------------------------
@@ -697,11 +646,20 @@ class EnhancedTaskExecutor:
                     ),
                     status="pending",
                     priority="high",
+                    # TRACKING AUTOMATICO
+                    created_by_task_id=task_id,  # Creato a causa del fallimento di questo task
+                    creation_type="failure_intervention",  # Intervento per fallimento
+
+                    # CONTEXT DATA SPECIFICO
                     context_data={
                         "intervention_type": "failed_task",
                         "original_task_id": task_id,
+                        "original_task_name": task.get('name'),
                         "failure_count": failure_count,
-                        "error_details": error_details
+                        "error_details": error_details,
+                        "requires_human_attention": True,
+                        "intervention_timestamp": datetime.now().isoformat(),
+                        "auto_escalated": True
                     }
                 )
                 return intervention_task["id"]
@@ -807,11 +765,20 @@ class EnhancedTaskExecutor:
                 ),
                 status="pending",
                 priority="high",
+                
+                # TRACKING AUTOMATICO
+                creation_type="periodic_assessment",  # Assessment periodico automatico
+
+                # CONTEXT DATA SPECIFICO
                 context_data={
                     "assessment_type": "periodic",
+                    "assessment_number": completed_count // 5,
                     "completed_tasks_count": completed_count,
                     "current_phase": current_phase,
-                    "auto_generated": True
+                    "auto_generated": True,
+                    "assessment_trigger": f"every_5_completions",
+                    "assessment_timestamp": datetime.now().isoformat(),
+                    "is_milestone_check": True
                 }
             )
             
@@ -897,11 +864,19 @@ class EnhancedTaskExecutor:
             ),
             status="pending",
             priority="high",
+            # TRACKING AUTOMATICO
+            creation_type="final_deliverable",  # Task finale del progetto
+
+            # CONTEXT DATA SPECIFICO
             context_data={
                 "task_type": "final_deliverable",
                 "project_phase": "FINALIZATION",
                 "auto_generated": True,
-                "is_final_task": True
+                "is_final_task": True,
+                "project_goal": workspace_goal,
+                "deliverable_creation_timestamp": datetime.now().isoformat(),
+                "triggers_project_completion": True,
+                "requires_synthesis": True
             }
         )
         
@@ -914,37 +889,36 @@ class EnhancedTaskExecutor:
     # Ultra-conservative analysis filters
     # ---------------------------------------------------------------------
     def _should_analyze_task_ultra_conservative(self, task: Task, result: Dict[str, Any]) -> bool:
-        """
-        ULTRA-STRICT filter - rejects 99%+ of tasks.
-        Only allows analysis in very specific, controlled scenarios.
-        """
-        
+        """Ultra-conservative filter for task analysis"""
+
         # ONLY completed tasks
         if result.get("status") != "completed":
             return False
 
         # REJECT if any completion indicators in name
-        task_name_lower = task.name.lower()
-        completion_words = [
-                "handoff", "completed", "done", "finished", "delivered", 
-                "final", "wrap-up", "complete"
-            ] 
-        
+        task_name_lower = task.name.lower() if task.name else ""
+        completion_words = ["handoff", "completed", "done", "finished", "delivered", "final"]
+
         if any(word in task_name_lower for word in completion_words):
             return False
 
-        # REJECT if output suggests completion
-        output = str(result.get("summary", "") + " " + result.get("detailed_results_json", ""))
+        # REJECT if output suggests completion - FIX TYPE ERROR HERE
+        output_parts = []
+        if result.get("summary"):
+            output_parts.append(str(result.get("summary", "")))
+        if result.get("detailed_results_json"):
+            if isinstance(result.get("detailed_results_json"), str):
+                output_parts.append(result.get("detailed_results_json"))
+            else:
+                output_parts.append(str(result.get("detailed_results_json")))
+
+        output = " ".join(output_parts)
         output_lower = output.lower()
-        completion_phrases = [
-            "task complete", "objective achieved", "deliverable ready",
-            "no further action", "project finished", "all requirements met",
-            "final result", "conclusion", "successfully completed",
-            "ready for review", "handed off", "escalated"
-        ]
-        
+
+        completion_phrases = ["task complete", "objective achieved", "deliverable ready"]
         if any(phrase in output_lower for phrase in completion_phrases):
             return False
+
 
         # REJECT if has explicit next_steps (PM should handle planning)
         #if result.get("next_steps"):
@@ -1124,8 +1098,20 @@ class EnhancedTaskExecutor:
         Execute handoff with absolute minimal scope.
         This should rarely/never be called given our strict thresholds.
         """
-        
         logger.warning(f"EXECUTING AUTO-HANDOFF for task {task.id} - This should be rare!")
+
+        delegation_depth = 0
+        if hasattr(task, 'context_data') and task.context_data:
+            if isinstance(task.context_data, dict):
+                delegation_depth = task.context_data.get('delegation_depth', 0)
+
+        if delegation_depth >= 2:  # Limite rigido a 2 livelli di delega
+            logger.warning(f"Handoff bloccato per task {task.id}: max delegation depth ({delegation_depth})")
+            await self._log_completion_analysis(
+                task, analysis.__dict__(), "handoff_blocked_max_depth", 
+                f"Delegation depth: {delegation_depth}"
+            )
+            return
         
         if not analysis.suggested_handoffs:
             return
@@ -1136,7 +1122,7 @@ class EnhancedTaskExecutor:
             self.handoff_cache[cache_key] = datetime.now()
             
             # Create minimal follow-up task
-            description = f"""AUTOMATED FOLLOW-UP (Generated from: {task.name})
+            description = f"""[AUTOMATED FOLLOW-UP] [Delegation Depth: {delegation_depth + 1}] (Generated from: {task.name})
 
 ORIGINAL TASK OUTPUT SUMMARY:
 {str(task.description)[:200]}...
@@ -1150,6 +1136,13 @@ INSTRUCTION:
 NOTE: This is an experimental auto-generated task. 
 If unclear, escalate to Project Manager immediately.
 """
+            context_data = {
+                "created_by_task_id": str(task.id),
+                "created_by_agent_id": str(task.agent_id) if task.agent_id else None,
+                "creation_method": "automated_handoff",
+                "delegation_depth": delegation_depth + 1,
+                "created_at": datetime.now().isoformat()
+            }
             
             # Create with PENDING status for PM to review
             new_task = await create_task(
@@ -1157,7 +1150,9 @@ If unclear, escalate to Project Manager immediately.
                 name=f"AUTO: Follow-up for {task.name[:30]}...",
                 description=description,
                 status=TaskStatus.PENDING.value,
-                parent_task_id=task.id  # Link to original
+                parent_task_id=str(task.id),
+                context_data=context_data
+
             )
             
             if new_task:

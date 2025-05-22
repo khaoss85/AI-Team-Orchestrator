@@ -235,6 +235,12 @@ class SpecialistAgent(Generic[T]):
         * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined:
 
         CRITICAL FORMAT for detailed_results_json:
+        Each subtask MUST have the following fields:
+        - name: Clear descriptive name
+        - description: Detailed task description
+        - target_agent_role: Role name that exists in the team
+        - priority: "high", "medium", or "low"
+
         {{"defined_sub_tasks": [
             {{
                 "name": "Competitor Analysis",
@@ -249,6 +255,8 @@ class SpecialistAgent(Generic[T]):
                 "priority": "high"
             }}
         ], "overall_plan_summary": "..."}}
+
+        FAILING TO PROVIDE THIS STRUCTURE WILL CAUSE PROJECT FAILURE
 
         * `next_steps` should include: ["Sub-tasks will be automatically created for the defined roles."]
 

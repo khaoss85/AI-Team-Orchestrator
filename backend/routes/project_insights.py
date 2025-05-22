@@ -493,7 +493,21 @@ Please review this feedback and take appropriate action:
                 agent_id=coordinator["id"],
                 name=task_name,
                 description=task_description,
-                status=TaskStatus.PENDING.value
+                status=TaskStatus.PENDING.value,
+                priority="high",  # Feedback è sempre alta priorità
+
+                # TRACKING AUTOMATICO
+                creation_type="user_feedback",  # Creato da feedback utente
+
+                # CONTEXT DATA SPECIFICO
+                context_data={
+                    "feedback_type": feedback.feedback_type,
+                    "feedback_priority": feedback.priority,
+                    "user_feedback": True,
+                    "feedback_timestamp": datetime.now().isoformat(),
+                    "specific_tasks_mentioned": feedback.specific_tasks or [],
+                    "original_feedback_message": feedback.message[:500]  # Primi 500 caratteri
+                }
             )
         
         return {

@@ -80,7 +80,19 @@ class PMOrchestrationTools:
                 status=TaskStatus.PENDING.value,
                 priority=priority,
                 parent_task_id=parent_task_id,
-                context_data=context_dict  # Passa il dict direttamente, non la stringa JSON
+
+                # TRACKING AUTOMATICO
+                created_by_task_id=parent_task_id,  # Questo subtask è creato da un task padre
+                created_by_agent_id=None,  # Sarà riempito automaticamente dall'agent_id del parent task
+                creation_type="pm_delegation",  # Delega da parte del Project Manager
+
+                # CONTEXT DATA SPECIFICO
+                context_data={
+                    **(context_dict or {}),  # Mantieni i dati originali se forniti
+                    "pm_tool_created": True,
+                    "tool_call_timestamp": datetime.now().isoformat(),
+                    "delegated_via": "pm_orchestration_tool"
+                }
             )
 
             if created_task_data and created_task_data.get("id"):
