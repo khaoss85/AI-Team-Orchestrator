@@ -118,63 +118,74 @@ class EnhancedTaskExecutor:
             # ----------------- SPECIALIST FLOW ------------------------------
             logger.info(f"Processing task {task_id_str} as SPECIALIST TASK")
 
+            # Process specialist task based on auto-generation settings
             if not self.auto_generation_enabled:
                 logger.info(f"Task {task_id_str}: auto-generation disabled for specialist tasks")
                 await self._log_completion_analysis(
                     completed_task, task_result, "specialist_task_completed_no_auto_gen"
                 )
-                return
-
-            # Ultra-conservative filtering (cheap checks first)
-            if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
-                await self._log_completion_analysis(
-                    completed_task, task_result, "filtered_out_conservative"
-                )
-                return
-
-            # Minimal workspace context (cheap)
-            workspace_ctx = await self._gather_minimal_context(workspace_id)
-
-            # Strict quota / limits
-            if not self._check_strict_workspace_limits(workspace_ctx):
-                logger.info(f"Workspace {workspace_id} at strict limits - no auto-generation")
-                await self._log_completion_analysis(
-                    completed_task, task_result, "workspace_limits_exceeded"
-                )
-                return
-
-            # Duplicate prevention
-            if self._is_handoff_duplicate_strict(completed_task, workspace_ctx):
-                logger.warning(f"Duplicate handoff prevented for task {task_id_str}")
-                await self._log_completion_analysis(
-                    completed_task, task_result, "duplicate_prevented"
-                )
-                return
-
-            # Deterministic (no-LLM) analysis
-            analysis = self._analyze_task_deterministic(
-                completed_task, task_result, workspace_ctx
-            )
-
-            # Create follow-up task only if every hard gate passes
-            if (
-                self.handoff_creation_enabled
-                and analysis.requires_follow_up
-                and analysis.confidence_score >= self.confidence_threshold
-                and analysis.suggested_handoffs
-            ):
-                logger.warning(
-                    f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})"
-                )
-                await self._execute_minimal_handoff(analysis, completed_task, workspace_id)
             else:
-                logger.info(
-                    f"Task {task_id_str} analysis complete - no follow-up "
-                    f"(confidence: {analysis.confidence_score:.3f})"
-                )
-                await self._log_completion_analysis(
-                    completed_task, analysis.__dict__(), "analysis_complete_no_action"
-                )
+                # Ultra-conservative filtering (cheap checks first)
+                if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
+                    await self._log_completion_analysis(
+                        completed_task, task_result, "filtered_out_conservative"
+                    )
+                else:
+                    # Minimal workspace context (cheap)
+                    workspace_ctx = await self._gather_minimal_context(workspace_id)
+
+                    # Strict quota / limits
+                    if not self._check_strict_workspace_limits(workspace_ctx):
+                        logger.info(f"Workspace {workspace_id} at strict limits - no auto-generation")
+                        await self._log_completion_analysis(
+                            completed_task, task_result, "workspace_limits_exceeded"
+                        )
+                    else:
+                        # Duplicate prevention
+                        if self._is_handoff_duplicate_strict(completed_task, workspace_ctx):
+                            logger.warning(f"Duplicate handoff prevented for task {task_id_str}")
+                            await self._log_completion_analysis(
+                                completed_task, task_result, "duplicate_prevented"
+                            )
+                        else:
+                            # Deterministic (no-LLM) analysis
+                            analysis = self._analyze_task_deterministic(
+                                completed_task, task_result, workspace_ctx
+                            )
+
+                            # Create follow-up task only if every hard gate passes
+                            if (
+                                self.handoff_creation_enabled
+                                and analysis.requires_follow_up
+                                and analysis.confidence_score >= self.confidence_threshold
+                                and analysis.suggested_handoffs
+                            ):
+                                logger.warning(
+                                    f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})"
+                                )
+                                await self._execute_minimal_handoff(analysis, completed_task, workspace_id)
+                            else:
+                                logger.info(
+                                    f"Task {task_id_str} analysis complete - no follow-up "
+                                    f"(confidence: {analysis.confidence_score:.3f})"
+                                )
+                                await self._log_completion_analysis(
+                                    completed_task, analysis.__dict__(), "analysis_complete_no_action"
+                                )
+
+            # ----- NUOVO: CHECK COMPLETAMENTO FASE DOPO OGNI TASK SPECIALISTA -----
+            # Questo viene eseguito sempre dopo aver processato un task specialista,
+            # indipendentemente dalle impostazioni di auto-generation
+            try:
+                pm_task_id = await self.check_phase_completion_and_trigger_pm(workspace_id)
+                if pm_task_id:
+                    logger.info(f"Phase completion detected - created PM task {pm_task_id}")
+                    await self._log_completion_analysis(
+                        completed_task, task_result, "phase_transition_triggered", 
+                        f"Created PM task: {pm_task_id}"
+                    )
+            except Exception as e:
+                logger.error(f"Error in phase completion check: {e}")
 
         except Exception as e:
             logger.error(f"Error in handle_task_completion for {task_id_str}: {e}", exc_info=True)
@@ -892,6 +903,130 @@ class EnhancedTaskExecutor:
         
         return None
     
+    async def check_phase_completion_and_trigger_pm(self, workspace_id: str) -> Optional[str]:
+        """Verifica se una fase è completata e crea task per il PM per la fase successiva"""
+
+        try:
+            tasks = await list_tasks(workspace_id)
+            agents = await list_agents(workspace_id)
+
+            # Trova il PM
+            pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
+            if not pm_agent:
+                logger.warning(f"No PM found in workspace {workspace_id}")
+                return None
+
+            # Analizza task per fase basandosi sui nomi e context_data
+            analysis_tasks = []
+            implementation_tasks = []
+
+            for task in tasks:
+                if task.get("status") == "completed":
+                    # Identifica task di analisi
+                    task_name = (task.get("name") or "").lower()
+                    context_data = task.get("context_data", {}) or {}
+                    project_phase = context_data.get("project_phase", "")
+
+                    # Task di analisi: per nome o fase
+                    if (any(keyword in task_name for keyword in ["analysis", "profiling", "audit", "research"]) or
+                        project_phase == "ANALYSIS"):
+                        analysis_tasks.append(task)
+
+                    # Task di implementazione: per fase
+                    elif project_phase == "IMPLEMENTATION":
+                        implementation_tasks.append(task)
+
+            logger.info(f"Phase check - Analysis tasks: {len(analysis_tasks)}, Implementation tasks: {len(implementation_tasks)}")
+
+            # Verifica se la fase ANALYSIS è completata (almeno 3 task) e IMPLEMENTATION non è iniziata
+            if len(analysis_tasks) >= 3 and len(implementation_tasks) == 0:
+                logger.info(f"Phase 1 (ANALYSIS) completed with {len(analysis_tasks)} tasks. Triggering Phase 2 planning.")
+
+                # Crea riassunto dei risultati di analisi
+                analysis_summary = self._summarize_completed_analysis(analysis_tasks)
+
+                # Crea task di pianificazione per la fase successiva
+                next_phase_task = await create_task(
+                    workspace_id=workspace_id,
+                    agent_id=pm_agent["id"],
+                    name="Phase 2 Planning: Content Strategy & Editorial Plan Development",
+                    description=f"""Based on the completed Phase 1 analysis, develop the comprehensive content strategy and editorial plan.
+
+    COMPLETED PHASE 1 ANALYSIS RESULTS:
+    {analysis_summary}
+
+    YOUR TASKS FOR PHASE 2:
+    1. **Content Strategy Framework**: Define content pillars, themes, and messaging strategy based on analysis
+    2. **Editorial Calendar Planning**: Create a detailed content calendar structure 
+    3. **Content Creation Workflow**: Define specific content creation tasks for ContentSpecialist
+    4. **Performance Metrics**: Define KPIs and measurement framework
+
+    CRITICAL OUTPUT REQUIREMENTS:
+    - Your detailed_results_json MUST contain "defined_sub_tasks" array
+    - Create specific, actionable sub-tasks for ContentSpecialist
+    - Focus on deliverables: Editorial Calendar, Content Templates, Publishing Schedule
+    - Each sub-task must have: name, description, target_agent_role, priority
+
+    Expected sub-tasks examples:
+    - "Create Monthly Editorial Calendar" → ContentSpecialist  
+    - "Develop Content Templates & Guidelines" → ContentSpecialist
+    - "Design Publishing Schedule & Workflow" → ContentSpecialist
+    """,
+                    status="pending",
+                    priority="high",
+                    creation_type="phase_transition",
+                    context_data={
+                        "project_phase": "IMPLEMENTATION",
+                        "phase_transition": "ANALYSIS_TO_IMPLEMENTATION", 
+                        "auto_generated": True,
+                        "triggers_next_phase": True,
+                        "previous_phase_tasks": [t["id"] for t in analysis_tasks],
+                        "phase_trigger_timestamp": datetime.now().isoformat()
+                    }
+                )
+
+                if next_phase_task and next_phase_task.get("id"):
+                    logger.info(f"✅ Created Phase 2 planning task {next_phase_task['id']} for PM {pm_agent['name']}")
+                    return next_phase_task["id"]
+                else:
+                    logger.error("❌ Failed to create Phase 2 planning task")
+
+            else:
+                logger.debug(f"Phase transition conditions not met: Analysis={len(analysis_tasks)}, Implementation={len(implementation_tasks)}")
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error checking phase completion: {e}", exc_info=True)
+            return None
+
+    def _summarize_completed_analysis(self, completed_tasks: List[Dict]) -> str:
+        """Crea un riassunto dei task di analisi completati"""
+        if not completed_tasks:
+            return "No analysis tasks completed."
+
+        summary_parts = []
+
+        for task in completed_tasks:
+            task_name = task.get("name", "Unknown Task")
+            result = task.get("result", {})
+
+            # Estrai summary dal result
+            summary = result.get("summary", "")
+            detailed_json = result.get("detailed_results_json", "")
+
+            # Usa summary se disponibile, altrimenti detailed_results_json
+            content = summary if summary else detailed_json
+
+            if content:
+                # Tronca a 150 caratteri per mantenere il riassunto gestibile
+                truncated = content[:150] + "..." if len(content) > 150 else content
+                summary_parts.append(f"• {task_name}: {truncated}")
+            else:
+                summary_parts.append(f"• {task_name}: Completed successfully")
+
+        return "\n".join(summary_parts)
+    
     # ---------------------------------------------------------------------
     # Ultra-conservative analysis filters
     # ---------------------------------------------------------------------
@@ -909,7 +1044,7 @@ class EnhancedTaskExecutor:
         if any(word in task_name_lower for word in completion_words):
             return False
 
-        # REJECT if output suggests completion - FIX TYPE ERROR HERE
+        # REJECT if output suggests completion
         output_parts = []
         if result.get("summary"):
             output_parts.append(str(result.get("summary", "")))
@@ -926,27 +1061,29 @@ class EnhancedTaskExecutor:
         if any(phrase in output_lower for phrase in completion_phrases):
             return False
 
-
-        # REJECT if has explicit next_steps (PM should handle planning)
-        #if result.get("next_steps"):
-        #    return False
-
         # REJECT if output too long (probably comprehensive)
         if len(output) > 1500:
             return False
 
-        # REJECT if task has parent (likely already part of a workflow)
-        if task.parent_task_id and any(word in task_name_lower for word in completion_words):
-            return False
-
-        # ONLY allow very specific research/planning patterns
-        allowed_patterns = [
-            "initial research",
-            "preliminary analysis", 
-            "feasibility assessment",
-            "requirement gathering"
+        # NUOVO: Permetti analisi per task che completano una fase
+        phase_completion_indicators = [
+            "analysis", "profiling", "audit", "research", 
+            "assessment", "evaluation", "investigation"
         ]
-        
+
+        # Se il task contiene indicatori di completamento di fase, permettilo
+        if any(indicator in task_name_lower for indicator in phase_completion_indicators):
+            logger.debug(f"Task {task.id} allowed for phase completion analysis")
+            return True
+
+        # ALLENTATO: Pattern permessi più ampi
+        allowed_patterns = [
+            "initial research", "preliminary analysis", "feasibility assessment",
+            "requirement gathering",
+            # AGGIUNTI per permettere progressione:
+            "analysis", "profiling", "audit", "research", "assessment"
+        ]
+
         if not any(pattern in task_name_lower for pattern in allowed_patterns):
             return False
 
