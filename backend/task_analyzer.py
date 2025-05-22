@@ -513,24 +513,25 @@ class EnhancedTaskExecutor:
     # Nuove funzioni per il fix anti-loop
     # ---------------------------------------------------------------------
     def _determine_project_phase(self, task_name: str, task_desc: str, completed_tasks_count: int) -> str:
-        """Determina la fase del progetto in base al nome del task, descrizione e contesto"""
+        """MIGLIORATO: Determina la fase del progetto con logica più accurata"""
         task_lower = task_name.lower() + " " + task_desc.lower()
-        
-        # Pattern di fase iniziale/analisi
-        if completed_tasks_count < 5 or any(kw in task_lower for kw in 
-            ["analys", "research", "initial", "assess", "plan", "investigate", "explore", "discover"]):
-            return "ANALYSIS"
-        
-        # Pattern di fase di implementazione
-        elif any(kw in task_lower for kw in 
-            ["implement", "create", "develop", "execute", "build", "produce", "construct", "write"]):
+
+        # Pattern specifici per Fase 2 (IMPLEMENTATION) - AGGIUNTO
+        if any(kw in task_lower for kw in 
+            ["content strategy", "editorial calendar", "publishing schedule", "content templates", 
+             "workflow", "guidelines", "framework", "calendar planning"]):
             return "IMPLEMENTATION"
-        
+
+        # Pattern di fase iniziale/analisi
+        elif completed_tasks_count < 5 or any(kw in task_lower for kw in 
+            ["analys", "research", "initial", "assess", "plan", "investigate", "explore", "discover", "competitor", "audience"]):
+            return "ANALYSIS"
+
         # Pattern di fase finale
         elif any(kw in task_lower for kw in 
-            ["finaliz", "review", "evaluat", "test", "valida", "conclude", "complete", "finish"]):
+            ["finaliz", "review", "evaluat", "test", "valida", "conclude", "complete", "finish", "publish", "launch"]):
             return "FINALIZATION"
-        
+
         # Default - progresso in base al conteggio dei task
         elif completed_tasks_count > 15:
             return "FINALIZATION"
@@ -935,6 +936,10 @@ class EnhancedTaskExecutor:
                     # Task di implementazione: per fase
                     elif project_phase == "IMPLEMENTATION":
                         implementation_tasks.append(task)
+                        
+                    if ("phase 2 planning" in task_name and 
+                        task.get("agent_id") == pm_agent["id"]):
+                        phase_2_planning_completed = True
 
             logger.info(f"Phase check - Analysis tasks: {len(analysis_tasks)}, Implementation tasks: {len(implementation_tasks)}")
 
