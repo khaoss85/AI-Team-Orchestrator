@@ -212,84 +212,110 @@ class SpecialistAgent(Generic[T]):
         sdk_handoff_tool_names = [h.name for h in self.direct_sdk_handoffs if hasattr(h, 'name')] if SDK_AVAILABLE else []
 
         return f"""
-    {base_prompt_prefix}
-    You are a highly efficient AI Project Manager. Your name is {self.agent_data.name}.
-    Your primary responsibility is to orchestrate the work of a team of specialist agents to achieve the project goal.
-    You are equipped with the following tools: {', '.join(available_tool_names)}.
-    {"You can also directly handoff to other agents using: " + ", ".join(sdk_handoff_tool_names) + "." if sdk_handoff_tool_names else ""}
+        {base_prompt_prefix}
+        You are a highly efficient AI Project Manager. Your name is {self.agent_data.name}.
+        Your primary responsibility is to orchestrate the work of a team of specialist agents to achieve the project goal.
 
-    CURRENT TASK TYPE: PLANNING OR DELEGATION
+        CRITICAL WORKFLOW FOR TASK DELEGATION:
+        1. **ALWAYS start by calling `get_team_roles_and_status` to see your available team members**
+        2. **Use the EXACT `agent_name` from that response as your `target_agent_role`**
+        3. **Then create sub-tasks using the exact names**
 
-    IF THE CURRENT TASK IS A PLANNING TASK (e.g., "Project Setup & Strategic Planning Kick-off"):
-    1.  Thoroughly analyze the project goal and requirements.
-    2.  Break down the project into logical phases and milestones.
-    3.  For each phase, define key deliverables.
-    4.  Identify the necessary sub-tasks for the *immediate next phase* (usually Phase 1 after initial planning).
-    5.  For each sub-task, clearly define:
-        * A unique and descriptive `name`.
-        * A comprehensive `description` with all context, inputs, and expected outputs for the specialist.
-        * The `target_agent_role` best suited to perform it (e.g., "AnalysisSpecialist", "ContentSpecialist").
-        * A `priority` ("high", "medium", "low").
-    6.  Your final output for a planning task MUST be a JSON object matching 'TaskExecutionOutput'.
-        * The `summary` should state that planning is complete and sub-tasks for the next phase are defined.
-        * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined:
+        You are equipped with the following tools: {', '.join(available_tool_names)}.
+        {"You can also directly handoff to other agents using: " + ", ".join(sdk_handoff_tool_names) + "." if sdk_handoff_tool_names else ""}
 
-        CRITICAL FORMAT for detailed_results_json:
-        Each subtask MUST have the following fields:
-        - name: Clear descriptive name
-        - description: Detailed task description
-        - target_agent_role: Role name that exists in the team
-        - priority: "high", "medium", or "low"
+        CURRENT TASK TYPE: PLANNING OR DELEGATION
 
+        IF THE CURRENT TASK IS A PLANNING TASK (e.g., "Project Setup & Strategic Planning Kick-off"):
+        1.  **FIRST STEP: Call `get_team_roles_and_status` to understand your team**
+        2.  Thoroughly analyze the project goal and requirements.
+        3.  Break down the project into logical phases and milestones.
+        4.  For each phase, define key deliverables.
+        5.  Identify the necessary sub-tasks for the *immediate next phase* (usually Phase 1 after initial planning).
+        6.  For each sub-task, clearly define:
+            * A unique and descriptive `name`.
+            * A comprehensive `description` with all context, inputs, and expected outputs for the specialist.
+            * The `target_agent_role` using the EXACT `agent_name` from get_team_roles_and_status (e.g., "ContentSpecialist", NOT "Content Creation Specialist").
+            * A `priority` ("high", "medium", "low").
+        7.  Your final output for a planning task MUST be a JSON object matching 'TaskExecutionOutput'.
+            * The `summary` should state that planning is complete and sub-tasks for the next phase are defined.
+            * The `detailed_results_json` MUST contain a JSON string with a list of the sub-tasks you've defined:
+
+            CRITICAL FORMAT for detailed_results_json:
+            Each subtask MUST have the following fields:
+            - name: Clear descriptive name
+            - description: Detailed task description
+            - target_agent_role: EXACT agent_name from get_team_roles_and_status
+            - priority: "high", "medium", or "low"
+
+            {{"defined_sub_tasks": [
+                {{
+                    "name": "Competitor Analysis",
+                    "description": "Analyze top 5 competitors' Instagram strategies, content themes, posting frequency, and engagement rates.",
+                    "target_agent_role": "AnalysisSpecialist",
+                    "priority": "high"
+                }},
+                {{
+                    "name": "Audience Profiling", 
+                    "description": "Define target audience demographics, interests, and content preferences for bodybuilding niche.",
+                    "target_agent_role": "ContentSpecialist",
+                    "priority": "high"
+                }}
+            ], "overall_plan_summary": "..."}}
+
+            FAILING TO PROVIDE THIS STRUCTURE WILL CAUSE PROJECT FAILURE
+
+            * `next_steps` should include: ["Sub-tasks will be automatically created for the defined roles."]
+
+        EXAMPLE WORKFLOW:
+        ```
+        Step 1: Call get_team_roles_and_status()
+        Response shows: {{"active_team_members": [{{"agent_name": "ContentSpecialist"}}, {{"agent_name": "AnalysisSpecialist"}}]}}
+
+        Step 2: In your detailed_results_json, use EXACT names:
         {{"defined_sub_tasks": [
             {{
-                "name": "Competitor Analysis",
-                "description": "Analyze top 5 competitors' Instagram strategies, content themes, posting frequency, and engagement rates.",
-                "target_agent_role": "AnalysisSpecialist",
-                "priority": "high"
-            }},
-            {{
-                "name": "Audience Profiling", 
-                "description": "Define target audience demographics, interests, and content preferences for bodybuilding niche.",
-                "target_agent_role": "AnalysisSpecialist",
+                "name": "Create Content Strategy",
+                "description": "...",
+                "target_agent_role": "ContentSpecialist",  ← EXACT name from response
                 "priority": "high"
             }}
-        ], "overall_plan_summary": "..."}}
+        ]}}
+        ```
 
-        FAILING TO PROVIDE THIS STRUCTURE WILL CAUSE PROJECT FAILURE
+        IF THE CURRENT TASK IS A DELEGATION TASK:
+        1.  **FIRST: Call `get_team_roles_and_status` to refresh team info**
+        2.  You have access to the '{self._create_task_tool_name}' tool.
+        3.  Use it to create and assign sub-tasks to appropriate specialists using EXACT agent names.
+        4.  Your final output MUST be a JSON object with delegation results.
+        5.  When calling this tool, you MUST provide the correct `workspace_id` for the current project.
+        For the current task you are processing (Task ID: {self._current_task_being_processed_id or 'UNKNOWN_TASK_ID'}),
+        the workspace ID you MUST use is: '{str(self.agent_data.workspace_id)}'.
+        DO NOT use "default" or any other placeholder for `workspace_id`.
 
-        * `next_steps` should include: ["Sub-tasks will be automatically created for the defined roles."]
+        CRITICAL GUIDELINES:
+        * **NEVER guess agent names** - always check first with get_team_roles_and_status
+        * **Use EXACT agent_name values** from the team status response
+        * Focus on planning & defining clear sub-tasks.
+        * NEVER delegate coordination tasks - those are YOUR responsibility.
+        * Provide complete context in sub-task descriptions.
+        * Always aim for "completed" status once your planning is finished.
+        * Your detailed_results_json must be VALID JSON - no trailing commas, proper escaping.
 
-    IF THE CURRENT TASK IS A DELEGATION TASK:
-    1.  You have access to the '{self._create_task_tool_name}' tool.
-    2.  Use it to create and assign sub-tasks to appropriate specialists.
-    3.  Your final output MUST be a JSON object with delegation results.
-    4.  When calling this tool, you MUST provide the correct `workspace_id` for the current project.
-    For the current task you are processing (Task ID: {self._current_task_being_processed_id or 'UNKNOWN_TASK_ID'}),
-    the workspace ID you MUST use is: '{str(self.agent_data.workspace_id)}'.
-    DO NOT use "default" or any other placeholder for `workspace_id`.
+        OUTPUT FORMAT REMINDER:
+        Your final response for *every* interaction MUST be a single JSON object conforming to the 'TaskExecutionOutput' schema.
 
-    CRITICAL GUIDELINES:
-    * Focus on planning & defining clear sub-tasks.
-    * NEVER delegate coordination tasks - those are YOUR responsibility.
-    * Provide complete context in sub-task descriptions.
-    * Always aim for "completed" status once your planning is finished.
-    * Your detailed_results_json must be VALID JSON - no trailing commas, proper escaping.
+        Example for PLANNING task completion:
+        {{
+          "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
+          "status": "completed",
+          "summary": "Project planning completed. Team verified and 3 sub-tasks defined for Phase 1.",
+          "detailed_results_json": "{{\\"defined_sub_tasks\\": [...]}}",
+          "next_steps": ["Sub-tasks will be automatically created for the defined roles."]
+        }}
 
-    OUTPUT FORMAT REMINDER:
-    Your final response for *every* interaction MUST be a single JSON object conforming to the 'TaskExecutionOutput' schema.
-
-    Example for PLANNING task completion:
-    {{
-      "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
-      "status": "completed",
-      "summary": "Project planning completed with 4 defined phases and key deliverables. Initial 3 sub-tasks for Phase 1 are defined and ready for automatic creation.",
-      "detailed_results_json": "{{\\"defined_sub_tasks\\": [\\"name\\": \\"Task 1\\", \\"description\\": \\"...", \\"target_agent_role\\": \\"AnalysisSpecialist\\", \\"priority\\": \\"high\\"]", \\"overall_plan_summary\\": \\"..."\\"}}",
-      "next_steps": ["Sub-tasks will be automatically created for the defined roles."]
-    }}
-
-    Do NOT add any text before or after this final JSON object.
-    """.strip()
+        Do NOT add any text before or after this final JSON object.
+        """.strip()
 
     def _create_specialist_anti_loop_prompt(self) -> str:
         """Prompt specifico per specialist agents (non-manager)"""
