@@ -169,16 +169,30 @@ CRITICAL GUIDELINES:
 3. Consider budget strictly.
 4. Prefer versatile agents when budget is tight.
 5. Each agent must have CLEAR, NON‑OVERLAPPING responsibilities.
+6. Think about domain expertise, process skills, and delivery capabilities
 
 TEAM SIZE RULE OF THUMB (EUR):
 <1500 ⇒ 1‑2 | 1500‑3000 ⇒ 2‑3 | 3000‑5000 ⇒ 3‑4 | >5000 ⇒ up to {MAX_TEAM_SIZE}
 
-Return *only* valid JSON as a string:
+SKILL EXTRACTION APPROACH:
+- Analyze the goal to identify required FUNCTIONAL areas (not just generic skills)
+- Consider project phases: Research → Strategy → Implementation → Delivery
+- Include domain-specific expertise where specialized knowledge is critical
+- Separate high-level strategy from hands-on execution tasks
+- Consider stakeholder management, compliance, and quality assurance needs
+
+EXAMPLES by domain:
+- Financial: "Financial Analysis", "Risk Assessment", "Regulatory Compliance"
+- Sports: "Performance Analytics", "Training Program Design", "Athlete Development"  
+- Healthcare: "Clinical Research", "Regulatory Affairs", "Patient Safety"
+- Technology: "System Architecture", "Security Implementation", "User Experience"
+
+Return *only* valid JSON:
 {{
-  "required_skills": ["Skill 1", "Aggregated Skill 2 (e.g. Content Creation encompassing writing, editing)"],
-  "expertise_areas": ["Domain 1", "Broader Area 2"],
+  "required_skills": ["Specific Functional Skill 1", "Domain Expertise 2", "Process Skill 3+"],
+  "expertise_areas": ["Primary Domain", "Supporting Area+"],
   "recommended_team_size": X,
-  "rationale": "Brief explanation for skills, expertise, and team size, considering budget and skill aggregation."
+  "rationale": "Domain-specific explanation of why these skills and team size are optimal"
 }}"""
 
             analyzer = OpenAIAgent(
@@ -285,21 +299,41 @@ Return *only* valid JSON as a string:
         logger.info(f"Director Tool: design_team_structure invoked. Max_agents: {max_agents}, Budget: {budget_total}")
         try:
             required_skills: List[str] = json.loads(required_skills_json)
-            
-            # Determine effective_max_agents respecting MAX_TEAM_SIZE
-            eff_max_agents = MAX_TEAM_SIZE
-            if isinstance(max_agents, int) and 0 < max_agents <= MAX_TEAM_SIZE:
-                eff_max_agents = max_agents
 
-            optimal_team_size = _calculate_optimal_team_size(budget_total, required_skills)
-            eff_max_agents = min(eff_max_agents, optimal_team_size)
-            logger.info(f"Effective max agents: {eff_max_agents} (budget: {budget_total}, skills: {len(required_skills)})")
+            # PRIMA DEFINISCI LE FUNZIONI HELPER (SPOSTATO IN ALTO)
+            def _calculate_optimal_team_size(budget_total: float, required_skills: List[str]) -> int:
+                """Calcola team size ottimale basato su budget e complessità"""
 
-            team: List[Dict[str, Any]] = []
-            allocated_budget = 0.0
-            agents_created_count = 0
+                # Budget-based sizing (più permissivo)
+                if budget_total >= 5000:
+                    budget_team_size = 6
+                elif budget_total >= 3000:
+                    budget_team_size = 5
+                elif budget_total >= 2000:
+                    budget_team_size = 4
+                elif budget_total >= 1200:
+                    budget_team_size = 3
+                elif budget_total >= 600:
+                    budget_team_size = 2
+                else:
+                    budget_team_size = 1
 
-            # --- Helper functions specific to design_team_structure ---
+                # Skill-based sizing
+                skill_complexity_score = len(required_skills)
+
+                # Boost per progetti complessi
+                if any(keyword in " ".join(required_skills).lower() for keyword in 
+                       ["marketing", "strategy", "content", "social media", "lead generation"]):
+                    skill_complexity_score += 2
+
+                skill_team_size = min(6, max(2, skill_complexity_score // 2 + 1))
+
+                # Prendi il massimo tra budget e skill sizing (più generoso)
+                optimal_size = max(budget_team_size, skill_team_size)
+
+                logger.info(f"Optimal team calculation: budget_size={budget_team_size}, skill_size={skill_team_size}, final={optimal_size}")
+                return optimal_size
+
             def _get_model_for_design(s_val: str) -> str:
                 return MODEL_BY_SENIORITY.get(s_val.lower(), MODEL_BY_SENIORITY[AgentSeniority.JUNIOR.value])
 
@@ -310,7 +344,7 @@ Return *only* valid JSON as a string:
                 if any(k_word in role_str.lower() for k_word in ("content", "research", "analysis", "market", "manager", "writing")):
                     tools_list.append({"type": "file_search", "name": "file_search", "description": "Enables searching through provided documents."})
                 return tools_list
-     
+
             def _generate_personality_for_role(role_str: str) -> Dict[str, Any]:
                 """Genera attributi di personalità basati sul ruolo."""
                 role_lower = role_str.lower()
@@ -412,48 +446,15 @@ Return *only* valid JSON as a string:
 
                 return personality
 
-            def _calculate_optimal_team_size(budget_total: float, required_skills: List[str]) -> int:
-                """Calcola team size ottimale basato su budget e complessità"""
-
-                # Budget-based sizing (più permissivo)
-                if budget_total >= 5000:
-                    budget_team_size = 6
-                elif budget_total >= 3000:
-                    budget_team_size = 5
-                elif budget_total >= 2000:
-                    budget_team_size = 4
-                elif budget_total >= 1200:
-                    budget_team_size = 3
-                elif budget_total >= 600:
-                    budget_team_size = 2
-                else:
-                    budget_team_size = 1
-
-                # Skill-based sizing
-                skill_complexity_score = len(required_skills)
-
-                # Boost per progetti complessi
-                if any(keyword in " ".join(required_skills).lower() for keyword in 
-                       ["marketing", "strategy", "content", "social media", "lead generation"]):
-                    skill_complexity_score += 2
-
-                skill_team_size = min(6, max(2, skill_complexity_score // 2 + 1))
-
-                # Prendi il massimo tra budget e skill sizing (più generoso)
-                optimal_size = max(budget_team_size, skill_team_size)
-
-                logger.info(f"Optimal team calculation: budget_size={budget_team_size}, skill_size={skill_team_size}, final={optimal_size}")
-                return optimal_size            
-            
             def _group_skills_for_design(skills_list: List[str]) -> List[Dict[str, Any]]:
                 s_groups: Dict[str, List[str]] = {domain_key: [] for domain_key in DOMAIN_MAPPING_DESIGN}
                 s_groups['other_domain'] = [] # For unmapped skills
-                
+
                 processed: Set[str] = set()
                 for skill_item in skills_list:
                     normalized_skill = skill_item.lower()
                     if normalized_skill in processed: continue
-                    
+
                     assigned = False
                     for domain_key, keywords in DOMAIN_MAPPING_DESIGN.items():
                         if any(kw in normalized_skill for kw in keywords):
@@ -463,7 +464,7 @@ Return *only* valid JSON as a string:
                     if not assigned:
                         s_groups['other_domain'].append(skill_item)
                     processed.add(normalized_skill)
-                
+
                 final_skill_groups: List[Dict[str, Any]] = []
                 for domain_name_key, skills_in_group_list in s_groups.items():
                     if skills_in_group_list:
@@ -474,7 +475,21 @@ Return *only* valid JSON as a string:
                         })
                 return final_skill_groups
 
-            # --- Main design logic ---
+            # ADESSO PUOI USARE LE FUNZIONI
+            # Determine effective_max_agents respecting MAX_TEAM_SIZE
+            eff_max_agents = MAX_TEAM_SIZE
+            if isinstance(max_agents, int) and 0 < max_agents <= MAX_TEAM_SIZE:
+                eff_max_agents = max_agents
+
+            optimal_team_size = _calculate_optimal_team_size(budget_total, required_skills)
+            eff_max_agents = min(eff_max_agents, optimal_team_size)
+            logger.info(f"Effective max agents: {eff_max_agents} (budget: {budget_total}, skills: {len(required_skills)})")
+
+            team: List[Dict[str, Any]] = []
+            allocated_budget = 0.0
+            agents_created_count = 0
+
+            # --- Main design logic --- (resto del codice rimane uguale)
             # 1. Add Project Manager if team > 1 agent and budget allows
             if eff_max_agents > 1:
                 pm_s_val = AgentSeniority.SENIOR.value
@@ -497,13 +512,13 @@ Return *only* valid JSON as a string:
                         "background_story": pm_personality["background_story"]
                     })
                     allocated_budget += pm_c_val; agents_created_count += 1
-            
+
             # 2. Group remaining skills
             skills_to_assign = required_skills
             if any(a.get("role") == "Project Manager" for a in team): # If PM exists, filter out mgmt skills
                 mgmt_keywords = DOMAIN_MAPPING_DESIGN.get('management', [])
                 skills_to_assign = [s for s in required_skills if not any(kw in s.lower() for kw in mgmt_keywords)]
-            
+
             skill_groups_list = _group_skills_for_design(skills_to_assign)
 
             # 3. Create specialists for skill groups
@@ -520,7 +535,7 @@ Return *only* valid JSON as a string:
                         s_val = AgentSeniority.EXPERT.value
                     elif avg_budget_per_slot >= COST_PER_MONTH[AgentSeniority.SENIOR.value]:
                         s_val = AgentSeniority.SENIOR.value
-                
+
                 agent_cost = COST_PER_MONTH[s_val]
                 # Downgrade if current seniority choice exceeds budget for this agent
                 if allocated_budget + agent_cost > budget_total:
@@ -535,13 +550,13 @@ Return *only* valid JSON as a string:
                 skill_name_base = group_item['skills'][0].replace('_', ' ').title()
                 domain_name_part = group_item['domain'].title().replace('_', '') + "" if group_item['domain'] and group_item['domain'] != "OtherDomain" else ""
                 name_prefix = domain_name_part if domain_name_part else re.sub(r'\W+', '', skill_name_base.split(' ')[0])
-                
+
                 base_agent_name = f"{name_prefix}Specialist"
                 unique_agent_name = base_agent_name
                 name_counter = 1
                 while any(a.get("name") == unique_agent_name for a in team):
                     unique_agent_name = f"{base_agent_name}{name_counter}"; name_counter += 1
-                
+
                 agent_role_title = f"{domain_name_part} {skill_name_base} Specialist" if domain_name_part else f"{skill_name_base} Specialist"
                 specialist_personality = _generate_personality_for_role(agent_role_title)
                 team.append({
@@ -584,7 +599,7 @@ Return *only* valid JSON as a string:
                 else:
                     logger.error("design_team_structure: Could not create even a fallback agent.")
                     return json.dumps([{"error": "Unable to design any agent within budget/constraints."}])
-            
+
             logger.info(f"Team designed with {len(team)} agents. Budget used: {allocated_budget:.2f}/{budget_total:.2f}.")
             return json.dumps(team)
         except Exception as exc:
