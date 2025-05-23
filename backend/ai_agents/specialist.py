@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional, Union, Literal, TypeVar, Generic, 
 from uuid import UUID # Tipo comune per ID, anche se non generati qui
 from datetime import datetime
 from enum import Enum
+import time
 
 # IMPORT COMPATIBILI SDK v0.0.15 + Fallback
 try:
@@ -776,10 +777,12 @@ class SpecialistAgent(Generic[T]):
         trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
         workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
         
+        start_time = time.time() # Inizio calcolo tempo esecuzione
+
         try:
             if SDK_AVAILABLE:
                 trace_context_manager = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id))
-                if not hasattr(trace_context_manager, '__aenter__'):
+                if not hasattr(trace_context_manager, '__aenter__'): # type: ignore
                     raise AttributeError("TraceImpl doesn't support async context manager")
             else:
                 trace_context_manager = _dummy_async_context_manager()
@@ -787,7 +790,7 @@ class SpecialistAgent(Generic[T]):
             logger.warning(f"SDK trace failed ({e}), using dummy context manager")
             trace_context_manager = _dummy_async_context_manager()
         
-        async with trace_context_manager:
+        async with trace_context_manager: # type: ignore
             try:
                 await self._log_execution_internal(
                     "task_execution_started",
@@ -795,11 +798,9 @@ class SpecialistAgent(Generic[T]):
                 )
                 await update_task_status(task_id=str(task.id), status=TaskStatus.IN_PROGRESS.value, result_payload={"status_detail": "Execution started by agent"})
                 
-                # Costruisci il prompt per l'agente, includendo il context_data se presente
                 task_context_info = ""
-                if task.context_data:  # CAMBIATO da context_data_json a context_data
+                if task.context_data:
                     try:
-                        # task.context_data è già un dict, quindi serializza in JSON per il prompt
                         context_json_str = json.dumps(task.context_data)
                         task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (JSON):\n{context_json_str}"
                     except Exception as e:
@@ -808,7 +809,6 @@ class SpecialistAgent(Generic[T]):
 
                 task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
                 
-                # Esegui l'agente
                 max_turns_for_agent = 10
                 if isinstance(self.agent_data.llm_config, dict) and "max_turns_override" in self.agent_data.llm_config:
                     max_turns_for_agent = self.agent_data.llm_config["max_turns_override"]
@@ -818,13 +818,14 @@ class SpecialistAgent(Generic[T]):
                     timeout=self.execution_timeout
                 )
                 
+                elapsed_time = time.time() - start_time # Fine calcolo tempo esecuzione
+
                 final_llm_output = agent_run_result.final_output
                 execution_result_obj: TaskExecutionOutput
 
                 if isinstance(final_llm_output, TaskExecutionOutput):
                     execution_result_obj = final_llm_output
                 elif isinstance(final_llm_output, dict):
-                    # Assicurati che i campi obbligatori ci siano prima di validare
                     final_llm_output.setdefault('task_id', str(task.id))
                     final_llm_output.setdefault('status', 'completed')
                     final_llm_output.setdefault('summary', 'Task processing completed by agent.')
@@ -844,22 +845,47 @@ class SpecialistAgent(Generic[T]):
                         detailed_results_json=json.dumps({"raw_output": str(final_llm_output)})
                     )
                 
-                # Sovrascrivi task_id per sicurezza, e aggiungi trace_id
-                execution_result_obj.task_id = str(task.id)
+                execution_result_obj.task_id = str(task.id) # Assicura che task_id sia quello corretto
                 result_dict_to_save = execution_result_obj.model_dump()
-                result_dict_to_save["trace_id_for_run"] = trace_id_val
                 
-                # Determina lo stato finale del DB basato sullo status dell'output dell'agente
+                # --- AGGIUNTA DEI CAMPI PER I DETTAGLI TECNICI ---
+                result_dict_to_save["execution_time_seconds"] = round(elapsed_time, 2)
+                result_dict_to_save["model_used"] = self.agent.model # Assumendo che self.agent.model contenga il nome del modello
+                result_dict_to_save["status_detail"] = f"{execution_result_obj.status}_by_agent" # Esempio di status_detail
+
+                # Estrazione di costi e token da resources_consumed_json, se presenti
+                if execution_result_obj.resources_consumed_json:
+                    try:
+                        resources = json.loads(execution_result_obj.resources_consumed_json)
+                        if isinstance(resources, dict):
+                            result_dict_to_save["cost_estimated"] = resources.get("cost", resources.get("total_cost"))
+                            
+                            input_tokens = resources.get("input_tokens")
+                            output_tokens = resources.get("output_tokens")
+                            total_tokens = resources.get("total_tokens")
+
+                            if input_tokens is not None and output_tokens is not None:
+                                result_dict_to_save["tokens_used"] = {"input": input_tokens, "output": output_tokens}
+                            elif total_tokens is not None: # Fallback se ci sono solo i token totali
+                                 result_dict_to_save["tokens_used"] = {"input": total_tokens, "output": 0} # Stima grossolana
+                            # Altrimenti, tokens_used non viene aggiunto se i dati non sono disponibili
+                    except json.JSONDecodeError:
+                        logger.warning(f"Impossibile fare il parse di resources_consumed_json per il task {task.id}: {execution_result_obj.resources_consumed_json}")
+                    except Exception as e:
+                        logger.error(f"Errore durante l'estrazione delle risorse consumate: {e}")
+                
+                result_dict_to_save["trace_id_for_run"] = trace_id_val
+                # --- FINE AGGIUNTA CAMPI ---
+
                 final_db_status = TaskStatus.COMPLETED.value
                 if execution_result_obj.status == "failed":
                     final_db_status = TaskStatus.FAILED.value
                 elif execution_result_obj.status == "requires_handoff":
-                    final_db_status = TaskStatus.COMPLETED.value
+                    final_db_status = TaskStatus.COMPLETED.value 
                     logger.info(f"Task {task.id} by {self.agent_data.name} resulted in 'requires_handoff' to role '{execution_result_obj.suggested_handoff_target_role}'. This task is marked COMPLETED.")
                 
                 await update_task_status(task_id=str(task.id), status=final_db_status, result_payload=result_dict_to_save)
                 
-                # Log dettagliato dell'output
                 logger.info(f"TASK OUTPUT for {task.id}:")
                 logger.info(f"Summary: {execution_result_obj.summary}")
                 if execution_result_obj.detailed_results_json:
@@ -876,40 +902,55 @@ class SpecialistAgent(Generic[T]):
                 return result_dict_to_save
 
             except asyncio.TimeoutError:
+                elapsed_time = time.time() - start_time # Calcola tempo anche in caso di timeout
                 timeout_summary = f"Task forcibly marked as TIMED_OUT after {self.execution_timeout}s."
                 logger.warning(f"Task {task.id} (Trace: {trace_id_val}) timed out ({self.execution_timeout}s).")
-                timeout_result = TaskExecutionOutput(
+                timeout_result_obj = TaskExecutionOutput(
                     task_id=str(task.id), status="failed",
                     summary=timeout_summary,
                     detailed_results_json=json.dumps({"error": "TimeoutError", "reason": "Task execution exceeded timeout limit."})
-                ).model_dump()
+                )
+                timeout_result = timeout_result_obj.model_dump()
                 timeout_result["trace_id_for_run"] = trace_id_val
+                timeout_result["execution_time_seconds"] = round(elapsed_time, 2)
+                timeout_result["model_used"] = self.agent.model
+                timeout_result["status_detail"] = "timed_out_by_agent_system"
                 await update_task_status(task_id=str(task.id), status=TaskStatus.TIMED_OUT.value, result_payload=timeout_result)
                 await self._log_execution_internal("task_execution_timeout", {"task_id": str(task.id), "summary": timeout_summary})
                 return timeout_result
             
             except MaxTurnsExceeded as e: 
+                elapsed_time = time.time() - start_time
                 max_turns_summary = "Task forcibly marked as FAILED due to exceeding max interaction turns with LLM."
                 logger.warning(f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Last output: {str(getattr(e, 'last_output', 'N/A'))[:200]}")
-                max_turns_result = TaskExecutionOutput(
+                max_turns_result_obj = TaskExecutionOutput(
                     task_id=str(task.id), status="failed",
                     summary=max_turns_summary,
                     detailed_results_json=json.dumps({"error": "MaxTurnsExceeded", "reason": str(e)})
-                ).model_dump()
+                )
+                max_turns_result = max_turns_result_obj.model_dump()
                 max_turns_result["trace_id_for_run"] = trace_id_val
+                max_turns_result["execution_time_seconds"] = round(elapsed_time, 2)
+                max_turns_result["model_used"] = self.agent.model
+                max_turns_result["status_detail"] = "failed_max_turns"
                 await update_task_status(task_id=str(task.id), status=TaskStatus.FAILED.value, result_payload=max_turns_result)
                 await self._log_execution_internal("task_execution_max_turns", {"task_id": str(task.id), "summary": max_turns_summary})
                 return max_turns_result
 
             except Exception as e: 
+                elapsed_time = time.time() - start_time
                 unhandled_error_summary = f"Task failed due to an unexpected error: {str(e)[:100]}..."
                 logger.error(f"Unhandled error executing task {task.id} (Trace: {trace_id_val}): {e}", exc_info=True)
-                unhandled_error_result = TaskExecutionOutput(
+                unhandled_error_result_obj = TaskExecutionOutput(
                     task_id=str(task.id), status="failed",
                     summary=unhandled_error_summary,
                     detailed_results_json=json.dumps({"error": str(e), "type": type(e).__name__})
-                ).model_dump()
+                )
+                unhandled_error_result = unhandled_error_result_obj.model_dump()
                 unhandled_error_result["trace_id_for_run"] = trace_id_val
+                unhandled_error_result["execution_time_seconds"] = round(elapsed_time, 2)
+                unhandled_error_result["model_used"] = self.agent.model
+                unhandled_error_result["status_detail"] = "failed_unhandled_exception"
                 await update_task_status(task_id=str(task.id), status=TaskStatus.FAILED.value, result_payload=unhandled_error_result)
                 await self._log_execution_internal("task_execution_unhandled_error", {"task_id": str(task.id), "error": str(e)[:100]})
                 return unhandled_error_result
