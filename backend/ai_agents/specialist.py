@@ -957,17 +957,57 @@ class SpecialistAgent(Generic[T]):
                             task_id=str(task.id), status="failed", summary=f"Output validation error: {val_err}.",
                             detailed_results_json=json.dumps({"error": "Agent output validation failed", "raw_output": str(final_llm_output)[:1000]})
                         )
-                else: 
-                    logger.warning(f"Agent returned unexpected final_output type: {type(final_llm_output)}. Output: {str(final_llm_output)[:500]}")
-                    execution_result_obj = TaskExecutionOutput(
-                        task_id=str(task.id), status="completed",
-                        summary=str(final_llm_output)[:500] or "Completed with non-standard or empty output.",
-                        detailed_results_json=json.dumps({"raw_output": str(final_llm_output)})
-                    )
+                else: # final_llm_output is likely a string
+                    logger.warning(f"Agent for task {task.id} returned raw string output. Attempting to parse as TaskExecutionOutput JSON. Output snippet: {str(final_llm_output)[:500]}")
+                    parsed_successfully_from_string = False
+                    extracted_json_dict = None
+                    try:
+                        # Regex per estrarre il blocco JSON, anche con ```json ... ```
+                        json_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})", str(final_llm_output), re.DOTALL)
+                        if json_match:
+                            actual_json_content_str = json_match.group(1) if json_match.group(1) else json_match.group(2)
+                            if actual_json_content_str:
+                                # Pulisci caratteri di controllo prima del parsing finale
+                                clean_actual_json_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', actual_json_content_str)
+                                extracted_json_dict = json.loads(clean_actual_json_str)
+                                
+                                if isinstance(extracted_json_dict, dict):
+                                    # Se il JSON estratto è l'intero TaskExecutionOutput
+                                    if "summary" in extracted_json_dict and "status" in extracted_json_dict:
+                                        extracted_json_dict.setdefault('task_id', str(task.id))
+                                        execution_result_obj = TaskExecutionOutput.model_validate(extracted_json_dict)
+                                        parsed_successfully_from_string = True
+                                        logger.info(f"Successfully parsed TaskExecutionOutput from agent's string output for task {task.id}.")
+                                    # Se il JSON estratto è solo il detailed_results_json
+                                    # (caso meno probabile se il prompt chiede TaskExecutionOutput completo)
+                                    else:
+                                        execution_result_obj = TaskExecutionOutput(
+                                            task_id=str(task.id),
+                                            status="completed", # Assumiamo completed se non specificato
+                                            summary=f"Successfully extracted structured data. Original summary might be missing or part of raw text. Raw text: {str(final_llm_output)[:200]}...",
+                                            detailed_results_json=json.dumps(extracted_json_dict) # Usa il JSON estratto qui
+                                        )
+                                        parsed_successfully_from_string = True
+                                        logger.info(f"Successfully parsed detailed_results_json from agent's string output for task {task.id}.")
+                                else:
+                                     logger.warning(f"Extracted content for task {task.id} was not a dictionary.")
+                        else:
+                            logger.warning(f"Could not find a JSON object within the string output for task {task.id}.")
+
+                    except (json.JSONDecodeError, Exception) as e: # Exception più generica per Pydantic ValidationError
+                        logger.error(f"Failed to parse string output or validate as TaskExecutionOutput JSON for task {task.id}: {e}. Raw string: {str(final_llm_output)[:500]}")
+                    
+                    if not parsed_successfully_from_string:
+                        # Fallback definitivo se il parsing dalla stringa fallisce
+                        execution_result_obj = TaskExecutionOutput(
+                            task_id=str(task.id), 
+                            status="completed", # Potrebbe essere "failed" se il contenuto indica un errore
+                            summary=f"Agent returned non-standard string output (first 500 chars): {str(final_llm_output)[:500]}",
+                            detailed_results_json=json.dumps({"error": "Agent returned raw string, not parsable into TaskExecutionOutput JSON or a valid detailed_results_json.", "raw_output_snippet": str(final_llm_output)[:1000]})
+                        )
                 
-                execution_result_obj.task_id = str(task.id) # Assicura che task_id sia quello corretto
+                execution_result_obj.task_id = str(task.id) 
                 
-                # NUOVO: Popola automaticamente resources_consumed_json
                 if token_usage or cost_data:
                     resources_consumed = {
                         "model": model_name,
@@ -976,11 +1016,18 @@ class SpecialistAgent(Generic[T]):
                         **cost_data,
                         "timestamp": datetime.now().isoformat()
                     }
+                    # Assicura che detailed_results_json sia una stringa valida
+                    if not isinstance(execution_result_obj.detailed_results_json, (str, type(None))):
+                        logger.warning(f"detailed_results_json is not a string or None for task {task.id}, attempting to stringify. Type: {type(execution_result_obj.detailed_results_json)}")
+                        try:
+                            execution_result_obj.detailed_results_json = json.dumps(execution_result_obj.detailed_results_json)
+                        except Exception: # Non dovrebbe succedere se Pydantic fa il suo lavoro
+                            execution_result_obj.detailed_results_json = json.dumps({"error": "Failed to stringify detailed_results_json"})
+                    
                     execution_result_obj.resources_consumed_json = json.dumps(resources_consumed)
                 
-                result_dict_to_save = execution_result_obj.model_dump()
+                result_dict_to_save = execution_result_obj.model_dump(exclude_none=True) # exclude_none=True per pulizia
                 
-                # --- AGGIUNTA DEI CAMPI PER I DETTAGLI TECNICI ---
                 result_dict_to_save["execution_time_seconds"] = round(elapsed_time, 2)
                 result_dict_to_save["model_used"] = model_name
                 result_dict_to_save["status_detail"] = f"{execution_result_obj.status}_by_agent"
@@ -990,25 +1037,19 @@ class SpecialistAgent(Generic[T]):
                     try:
                         resources = json.loads(execution_result_obj.resources_consumed_json)
                         if isinstance(resources, dict):
-                            result_dict_to_save["cost_estimated"] = resources.get("cost", resources.get("total_cost"))
+                            result_dict_to_save["cost_estimated"] = resources.get("total_cost") # Già total_cost in resources
                             
                             input_tokens = resources.get("input_tokens")
                             output_tokens = resources.get("output_tokens")
-                            total_tokens = resources.get("total_tokens")
-
                             if input_tokens is not None and output_tokens is not None:
                                 result_dict_to_save["tokens_used"] = {"input": input_tokens, "output": output_tokens}
-                            elif total_tokens is not None:
-                                 result_dict_to_save["tokens_used"] = {"input": total_tokens, "output": 0}
-                    except json.JSONDecodeError:
-                        logger.warning(f"Impossibile fare il parse di resources_consumed_json per il task {task.id}: {execution_result_obj.resources_consumed_json}")
+                            elif "total_tokens" in resources:
+                                result_dict_to_save["tokens_used"] = {"input": resources["total_tokens"], "output": 0} # Stima grezza
                     except Exception as e:
-                        logger.error(f"Errore durante l'estrazione delle risorse consumate: {e}")
+                        logger.warning(f"Error extracting cost/tokens from resources_consumed_json for task {task.id}: {e}")
                 
                 result_dict_to_save["trace_id_for_run"] = trace_id_val
-                # --- FINE AGGIUNTA CAMPI ---
 
-                # NUOVO: Registra nel BudgetTracker globale
                 await self._register_usage_in_budget_tracker(
                     str(task.id), model_name, token_usage, cost_data
                 )
