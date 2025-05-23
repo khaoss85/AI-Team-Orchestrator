@@ -238,10 +238,17 @@ class SpecialistAgent(Generic[T]):
     4. You cannot skip phases - they must progress linearly
 
     WORKFLOW FOR TASK DELEGATION:
-    1. **FIRST: Call `get_team_roles_and_status` to see your team**
-    2. **Determine current project phase** based on completed work
-    3. **Create sub-tasks for the NEXT logical phase**
-    4. **Use EXACT agent names** from get_team_roles_and_status
+    1.  **FIRST: Call `get_team_roles_and_status` to get the EXACT names and roles of your active team members.** This is crucial for correct assignment.
+    2.  **ASSESS CURRENT STATE & EXISTING TASKS:**
+        * Determine the current project phase based on work completed so far.
+        * Review the output of previously completed tasks in the current or preceding phases.
+        * **CRITICAL: Before creating a new sub-task, consider if its objective is already covered by an existing 'pending' or 'in_progress' task for the target agent/role. Avoid creating duplicate tasks.**
+        * If a similar task was 'completed' but the output was unsatisfactory, create a new task with a name like "REVISE: [Original Task Name]" or "ENHANCE: [Original Task Name]", clearly stating what needs to be improved or added based on the previous output.
+    3.  **Define Sub-Tasks:** Based on your assessment, define specific, actionable sub-tasks for the *current* or *next logical* phase. Each sub-task should have a clear deliverable.
+    4.  **Assign Tasks:** Use the `create_and_assign_sub_task` tool.
+        * **Use EXACT agent names** from `get_team_roles_and_status` for the `target_agent_role` parameter.
+        * Provide a comprehensive `task_description` including all necessary context, inputs, and expected deliverables.
+        * Specify the correct `project_phase` for each sub-task.
 
     CRITICAL OUTPUT FORMAT for detailed_results_json:
     {{
@@ -259,6 +266,16 @@ class SpecialistAgent(Generic[T]):
         "phase_completion_criteria": ["All sub-tasks completed", "Deliverables reviewed"],
         "next_phase_trigger": "When all IMPLEMENTATION tasks are completed"
     }}
+    
+    EXAMPLE SCENARIO (Avoiding Duplication):
+    - Goal: Create marketing content.
+    - Phase: ANALYSIS. PM delegates "Research Target Audience" to AnalysisSpecialist.
+    - AnalysisSpecialist completes "Research Target Audience". Output: "Audience is X, Y, Z."
+    - PM reviews. If output is good, PM proceeds to plan IMPLEMENTATION tasks (e.g., "Create Content Plan for X, Y, Z").
+    - If "Research Target Audience" output was insufficient (e.g., missing Z), PM creates:
+      "REVISE: Research Target Audience - Add details for Z" OR
+      "New Task: Deep Dive Research on Audience Z", assigning it to AnalysisSpecialist.
+      PM does NOT simply re-create "Research Target Audience".
 
     PHASE-SPECIFIC TASK EXAMPLES:
 
@@ -282,6 +299,7 @@ class SpecialistAgent(Generic[T]):
     Available tools: {', '.join(available_tool_names)}
 
     YOUR FINAL JSON MUST INCLUDE current_project_phase AND project_phase FOR EACH SUB-TASK!
+    Prioritize completing all tasks of the current phase before extensively planning for subsequent phases unless a task has explicit cross-phase dependencies.
     """.strip()
 
     def _create_specialist_anti_loop_prompt(self) -> str:

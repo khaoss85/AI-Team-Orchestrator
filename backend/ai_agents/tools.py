@@ -1,188 +1,238 @@
+# backend/ai_agents/tools.py
 import logging
 import json
-from typing import List, Dict, Any, Optional, Literal
+from typing import List, Dict, Any, Optional, Literal, Union # Aggiunto Union
 from uuid import UUID
 from datetime import datetime
+from pydantic import Field
+
 try:
     from agents import function_tool
 except ImportError:
-    from openai_agents import function_tool
+    from openai_agents import function_tool # type: ignore
 
-from pydantic import Field
-
-from models import TaskStatus
-from database import create_task as db_create_task, list_agents as db_list_agents
+from models import TaskStatus, ProjectPhase # Assicurati che ProjectPhase sia importato
+from database import (
+    create_task as db_create_task,
+    list_agents as db_list_agents,
+    list_tasks as db_list_tasks,
+    get_agent # Assicurati che get_agent sia importato
+)
 
 logger = logging.getLogger(__name__)
 
 class PMOrchestrationTools:
-    """Tools for Project Manager - NON PIÙ STATIC, RICEVE WORKSPACE_ID"""
-    
+    # Definisci i nomi dei tool come attributi di CLASSE
+    TOOL_NAME_CREATE_SUB_TASK = "create_and_assign_sub_task"
+    TOOL_NAME_GET_TEAM_STATUS = "get_team_roles_and_status"
+
     def __init__(self, workspace_id: str):
-        """Initialize with workspace_id - QUESTO È IL FIX PRINCIPALE"""
         self.workspace_id = workspace_id
         logger.info(f"PMOrchestrationTools initialized for workspace: {workspace_id}")
-    
+        # Non è più necessario impostare self._create_task_tool_name qui se usi gli attributi di classe
+
     def get_team_roles_and_status_tool(self):
-        """Creates tool with embedded workspace_id - NON HA PIÙ PARAMETRI"""
-        workspace_id = self.workspace_id  # Capture workspace_id in closure
+        """Creates tool to get team roles and status, with embedded workspace_id."""
+        workspace_id_str = self.workspace_id
         
-        @function_tool(name_override="get_team_roles_and_status")
-        async def impl() -> str:  # ⚠️ NOTA: NESSUN PARAMETRO workspace_id
-            """Get detailed information about available team members and their exact roles.
-            CRITICAL: Use this before creating sub-tasks to get the EXACT agent names and roles.
+        # Usa l'attributo di classe per name_override
+        @function_tool(name_override=PMOrchestrationTools.TOOL_NAME_GET_TEAM_STATUS)
+        async def impl() -> str:
+            """
+            Get detailed information about available team members, their EXACT names, roles, and current status.
+            CRITICAL: Call this tool BEFORE using 'create_and_assign_sub_task' to ensure you use the precise 'agent_name' for assignments.
+            This helps in assigning tasks to the correct and active agents.
             """
             try:
-                logger.info(f"Getting team roles for workspace: {workspace_id}")
+                logger.info(f"Tool '{PMOrchestrationTools.TOOL_NAME_GET_TEAM_STATUS}': Getting team roles for workspace: {workspace_id_str}")
+                agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
                 
-                # ORA USERÀ SEMPRE IL workspace_id CORRETTO
-                agents_in_db = await db_list_agents(workspace_id=workspace_id)
-                active_agents = [a for a in agents_in_db if a.get("status") == "active"]
+                active_agents_info = []
+                inactive_agents_info = []
+
+                for agent_data_dict in agents_in_db:
+                    agent_info = {
+                        "agent_name": agent_data_dict.get("name"),
+                        "exact_role": agent_data_dict.get("role"),  
+                        "seniority": agent_data_dict.get("seniority"),
+                        "status": agent_data_dict.get("status"),
+                        "description_summary": (agent_data_dict.get("description", "")[:100] + "..." 
+                                               if agent_data_dict.get("description", "") else "No description")
+                    }
+                    if agent_data_dict.get("status") == "active":
+                        active_agents_info.append(agent_info)
+                    else:
+                        inactive_agents_info.append(agent_info)
                 
-                team_info = {
-                    "workspace_id": workspace_id,
+                team_info_response = {
+                    "workspace_id": workspace_id_str,
                     "team_summary": {
                         "total_agents": len(agents_in_db),
-                        "active_agents": len(active_agents),
-                        "inactive_agents": len(agents_in_db) - len(active_agents)
+                        "active_agents_count": len(active_agents_info),
+                        "inactive_agents_count": len(inactive_agents_info)
                     },
-                    "active_team_members": []
+                    "active_team_members": active_agents_info,
+                    "usage_instructions": {
+                        "for_task_assignment": "When using 'create_and_assign_sub_task', you MUST provide the 'agent_name' from the 'active_team_members' list for the 'target_agent_role' parameter. Do NOT use the 'exact_role' for assignment.",
+                        "example_assignment": "If an active agent is listed as agent_name: 'ContentWriterBot', then for 'create_and_assign_sub_task', set target_agent_role='ContentWriterBot'."
+                    }
                 }
+                if inactive_agents_info:
+                    team_info_response["inactive_team_members_summary"] = [
+                        {"agent_name": ag["agent_name"], "status": ag["status"]} for ag in inactive_agents_info
+                    ]
                 
-                for agent in active_agents:
-                    team_info["active_team_members"].append({
-                        "agent_name": agent.get("name"),  # Nome esatto da usare
-                        "exact_role": agent.get("role"),  # Ruolo esatto da usare  
-                        "seniority": agent.get("seniority"),
-                        "specialization": agent.get("description", "")[:100] + "..." if agent.get("description", "") else "No description"
-                    })
-                
-                # Aggiungi istruzioni chiare per il PM
-                team_info["usage_instructions"] = {
-                    "for_task_creation": "Use the EXACT 'agent_name' when specifying target_agent_role in create_and_assign_sub_task",
-                    "example": "If you want to assign to ContentSpecialist, use target_agent_role='ContentSpecialist' (not the long role description)"
-                }
-                
-                return json.dumps(team_info, indent=2)
+                return json.dumps(team_info_response, indent=2)
                 
             except Exception as e:
-                logger.error(f"Error in get_team_roles_and_status: {e}", exc_info=True)
-                return json.dumps({"error": str(e), "workspace_id": workspace_id, "team_members": []})
-        
+                logger.error(f"Error in {PMOrchestrationTools.TOOL_NAME_GET_TEAM_STATUS} tool for workspace {workspace_id_str}: {e}", exc_info=True)
+                return json.dumps({"error": str(e), "workspace_id": workspace_id_str, "active_team_members": []})
         return impl
-    
+
     def create_and_assign_sub_task_tool(self):
-        """Creates sub-task tool with embedded workspace_id"""
-        workspace_id = self.workspace_id  # Capture workspace_id in closure
+        """Creates sub-task tool with embedded workspace_id and duplicate check."""
+        workspace_id_str = self.workspace_id 
         
-        @function_tool(name_override="create_and_assign_sub_task")
+        # Usa l'attributo di classe per name_override
+        @function_tool(name_override=PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK)
         async def impl(
-            task_name: str = Field(..., description="Clear, concise, and unique name for the new sub-task."),
-            task_description: str = Field(..., description="Detailed description of what needs to be done for the sub-task, including all necessary context, inputs, and expected deliverables."),
-            target_agent_role: str = Field(..., description="EXACT agent name from get_team_roles_and_status (e.g., 'ContentSpecialist', 'AnalysisSpecialist'). Use the exact 'agent_name' field, NOT the role description."),
-            priority: str = Field(default="medium", description="Priority of the sub-task: low, medium, or high"),
-            parent_task_id: Optional[str] = Field(None, description="ID of the parent task from which this sub-task is derived."),
-            context_data: Optional[str] = Field(None, description="Optional JSON string containing specific context or inputs for the task.")
+            task_name: str = Field(..., description="Clear, concise, and unique name for the new sub-task (max 100 chars)."),
+            task_description: str = Field(..., description="Detailed description (min 50 chars) of what needs to be done, including all necessary context, inputs, expected deliverables, and acceptance criteria."),
+            target_agent_role: str = Field(..., description="The EXACT 'agent_name' of the ACTIVE agent to assign this task to (e.g., 'ContentSpecialist', 'AnalysisLead'). Obtain this from 'get_team_roles_and_status' tool."),
+            priority: Literal["low", "medium", "high"] = Field(default="medium", description="Priority of the sub-task: low, medium, or high."),
+            project_phase: str = Field(..., description="The project phase this sub-task belongs to (e.g., ANALYSIS, IMPLEMENTATION, FINALIZATION). Must be one of the official project phases."),
+            parent_task_id: Optional[str] = Field(None, description="ID of the parent task (the PM's current task ID) from which this sub-task is derived. This is CRITICAL for tracking.")
         ) -> str:
-            """Creates a new sub-task based on the project plan and assigns it to an agent with the specified name.
-            IMPORTANT: Use EXACT agent names from get_team_roles_and_status response.
-            The task description must be comprehensive.
-            """
-            logger.info(f"Creating sub-task '{task_name}' for agent '{target_agent_role}' in workspace '{workspace_id}'.")
+            logger.info(f"Tool '{PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK}': Attempting to create sub-task '{task_name}' for agent NAME '{target_agent_role}' in workspace '{workspace_id_str}' for phase '{project_phase}'. Parent Task ID: {parent_task_id}")
             
+            if not parent_task_id:
+                logger.error(f"Tool '{PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK}': 'parent_task_id' is missing. This is required for proper task hierarchy and tracking.")
+                return json.dumps({
+                    "success": False, 
+                    "error": "Missing required parameter: 'parent_task_id'. Provide the ID of the current Project Manager task."
+                })
+
             try:
-                # ORA USERÀ SEMPRE IL workspace_id CORRETTO
-                agents_in_db = await db_list_agents(workspace_id=workspace_id)
-                
-                # Cerca prima per nome esatto (raccomandato)
-                target_agent = None
-                for agent in agents_in_db:
-                    if (agent.get("name", "").lower() == target_agent_role.lower() and 
-                        agent.get("status") == "active"):
-                        target_agent = agent
-                        logger.info(f"Found agent by exact name match: {agent.get('name')}")
-                        break
-                
-                # Fallback: cerca per ruolo (compatibilità)
-                if not target_agent:
-                    for agent in agents_in_db:
-                        if (agent.get("role", "").lower() == target_agent_role.lower() and 
-                            agent.get("status") == "active"):
-                            target_agent = agent
-                            logger.info(f"Found agent by role match: {agent.get('name')} ({agent.get('role')})")
-                            break
-                
-                if not target_agent:
-                    available_agents = [
-                        f"{a.get('name')} (role: {a.get('role')}, status: {a.get('status')})" 
-                        for a in agents_in_db
-                    ]
-                    
-                    error_msg = f"No active agent found with name or role '{target_agent_role}'"
-                    logger.warning(f"{error_msg}. Available: {available_agents}")
-                    
+                valid_phases = [p.value for p in ProjectPhase]
+                normalized_project_phase = project_phase.upper().strip()
+                if normalized_project_phase not in valid_phases:
                     return json.dumps({
-                        "success": False,
-                        "task_id": None,
-                        "error": error_msg,
-                        "suggestion": "Call get_team_roles_and_status first to see exact agent names",
-                        "available_agents": available_agents
+                        "success": False, 
+                        "error": f"Invalid project_phase '{project_phase}'. Must be one of {', '.join(valid_phases)}."
+                    })
+
+                all_current_tasks = await db_list_tasks(workspace_id=workspace_id_str)
+                task_name_lower = task_name.lower().strip()
+                
+                for existing_task_dict in all_current_tasks:
+                    if existing_task_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]:
+                        existing_name_lower = existing_task_dict.get("name", "").lower().strip()
+                        existing_phase = (existing_task_dict.get("context_data", {}).get("project_phase", "")).upper()
+                        
+                        is_same_target_agent = False
+                        existing_agent_id_in_task = existing_task_dict.get("agent_id")
+                        existing_assigned_role_in_task = existing_task_dict.get("assigned_to_role", "") 
+                        
+                        agents_in_db_for_check = await db_list_agents(workspace_id=workspace_id_str)
+                        target_agent_object_for_new_task = next((ag for ag in agents_in_db_for_check if ag.get("name", "").lower() == target_agent_role.lower() and ag.get("status") == "active"), None)
+
+                        if target_agent_object_for_new_task:
+                            if existing_agent_id_in_task == target_agent_object_for_new_task.get("id"):
+                                is_same_target_agent = True
+                            # Se il task esistente non ha agent_id ma ha un assigned_to_role che matcha il nome del target agent
+                            elif not existing_agent_id_in_task and existing_assigned_role_in_task.lower() == target_agent_role.lower():
+                                is_same_target_agent = True
+                        # Se non troviamo un target_agent_object per nome (improbabile se il PM usa get_team_roles_and_status),
+                        # e il task esistente ha un assigned_to_role che matcha, consideralo come stesso target
+                        elif not target_agent_object_for_new_task and existing_assigned_role_in_task.lower() == target_agent_role.lower():
+                             is_same_target_agent = True
+
+                        if task_name_lower == existing_name_lower and \
+                           existing_phase == normalized_project_phase and \
+                           is_same_target_agent:
+                            msg = f"Potential duplicate: A task named '{existing_task_dict.get('name')}' (ID: {existing_task_dict.get('id')}) is already '{existing_task_dict.get('status')}' targeting '{target_agent_role}' for phase '{normalized_project_phase}'. Not creating a new task."
+                            logger.warning(msg)
+                            return json.dumps({
+                                "success": False, 
+                                "task_id": existing_task_dict.get('id'), 
+                                "message": msg,
+                                "error": "Likely duplicate task detected (similar name, target agent/role, and phase)."
+                            })
+                
+                agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
+                target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "active"), None)
+                
+                if not target_agent:
+                    available_agents_summary = [{"name": a.get("name"), "role": a.get("role"), "status": a.get("status")} for a in agents_in_db]
+                    error_msg = f"Agent Assignment Error: No ACTIVE agent found with the EXACT name '{target_agent_role}'. Ensure the name matches an active agent from 'get_team_roles_and_status'."
+                    logger.warning(f"{error_msg}. Workspace: {workspace_id_str}. Available agents for reference: {available_agents_summary}")
+                    return json.dumps({
+                        "success": False, "task_id": None, "error": error_msg,
+                        "suggestion": "Call 'get_team_roles_and_status' again to verify the exact 'agent_name' of an ACTIVE agent.",
+                        "available_agents_summary": available_agents_summary
                     })
                 
-                # Parse context_data se fornito
-                context_dict = None
-                if context_data:
-                    try:
-                        context_dict = json.loads(context_data)
-                    except json.JSONDecodeError as je:
-                        logger.warning(f"Invalid JSON in context_data: {je}. Using as plain text in description.")
-                        task_description += f"\n\nAdditional Context: {context_data}"
+                pm_agent_id = None
+                if parent_task_id:
+                    pm_task_obj_list = [t for t in all_current_tasks if t.get("id") == parent_task_id]
+                    if pm_task_obj_list:
+                        pm_agent_id = pm_task_obj_list[0].get("agent_id")
+                        if not pm_agent_id: # Se il task genitore non ha un agent_id (improbabile per un task PM)
+                            logger.warning(f"Parent task {parent_task_id} has no agent_id. Cannot reliably determine PM delegator ID.")
+                    else:
+                        logger.warning(f"Could not find parent PM task {parent_task_id} to retrieve PM agent ID.")
                 
-                # Crea il task nel database
+                # Recupera il nome del PM se l'ID è disponibile
+                pm_name_delegator = "Unknown PM"
+                if pm_agent_id:
+                    pm_agent_obj = await get_agent(pm_agent_id) # Usa la funzione get_agent
+                    if pm_agent_obj:
+                        pm_name_delegator = pm_agent_obj.get("name", "Unknown PM")
+
+
+                final_context_data = {
+                    "project_phase": normalized_project_phase,
+                    "delegated_by_pm_tool": True,
+                    "tool_call_timestamp": datetime.now().isoformat(),
+                    "source_pm_task_id": parent_task_id, 
+                    "pm_name_who_delegated": pm_name_delegator,
+                    "target_agent_name_at_creation": target_agent.get("name"),
+                    "target_agent_role_at_creation": target_agent.get("role")
+                }
+                
                 created_task_data = await db_create_task(
-                    workspace_id=workspace_id,  # SEMPRE CORRETTO
-                    agent_id=str(target_agent["id"]),
-                    assigned_to_role=target_agent_role,
+                    workspace_id=workspace_id_str,
+                    agent_id=str(target_agent["id"]), 
+                    assigned_to_role=target_agent.get("role"), 
                     name=task_name,
                     description=task_description,
                     status=TaskStatus.PENDING.value,
                     priority=priority,
-                    parent_task_id=parent_task_id,
-                    
-                    # TRACKING AUTOMATICO
-                    created_by_task_id=parent_task_id,
-                    created_by_agent_id=None,
-                    creation_type="pm_delegation",
-                    
-                    # CONTEXT DATA SPECIFICO
-                    context_data={
-                        **(context_dict or {}),
-                        "pm_tool_created": True,
-                        "tool_call_timestamp": datetime.now().isoformat(),
-                        "delegated_via": "pm_orchestration_tool",
-                        "target_agent_found_by": "name" if target_agent.get("name", "").lower() == target_agent_role.lower() else "role"
-                    }
+                    parent_task_id=parent_task_id, 
+                    context_data=final_context_data,
+                    created_by_task_id=parent_task_id, 
+                    created_by_agent_id=pm_agent_id, 
+                    creation_type="pm_tool_delegation" 
                 )
                 
                 if created_task_data and created_task_data.get("id"):
                     task_created_id = created_task_data['id']
-                    msg = f"Sub-task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent {target_agent['name']} (Role: {target_agent.get('role', 'N/A')})."
+                    msg = f"Sub-task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent '{target_agent['name']}' (Role: '{target_agent.get('role', 'N/A')}') for project phase '{normalized_project_phase}'."
                     logger.info(msg)
-                    return json.dumps({
-                        "success": True,
-                        "task_id": task_created_id,
-                        "assigned_agent_id": str(target_agent["id"]),
+                    response_payload = {
+                        "success": True, "task_id": task_created_id,
                         "assigned_agent_name": target_agent["name"],
-                        "assigned_agent_role": target_agent.get('role'),
+                        "task_name_created": task_name, 
                         "message": msg
-                    })
+                    }
+                    return json.dumps(response_payload)
                 else:
-                    error_msg = f"Database error: Failed to create sub-task '{task_name}'."
+                    error_msg = f"Database error: Failed to create sub-task '{task_name}' for phase '{normalized_project_phase}'."
                     logger.error(f"{error_msg} DB response: {created_task_data}")
                     return json.dumps({"success": False, "task_id": None, "error": error_msg})
                     
             except Exception as e:
-                logger.error(f"Critical error in create_and_assign_sub_task_tool: {e}", exc_info=True)
+                logger.error(f"Critical error in {PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK} tool: {e}", exc_info=True)
                 return json.dumps({"success": False, "task_id": None, "error": f"An unexpected error occurred: {str(e)}"})
         
         return impl

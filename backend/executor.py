@@ -1303,6 +1303,15 @@ class TaskExecutor:
             if not workspace:
                 logger.error(f"W:{workspace_id} not found for initial task")
                 return None
+
+            # Verifica se lo stato è 'created' prima di procedere
+            if workspace.get("status") != WorkspaceStatus.CREATED.value:
+                logger.info(f"W:{workspace_id} is not in 'created' state (current: {workspace.get('status')}). Initial task likely already created or process started.")
+                # Potresti voler controllare se ci sono già task per decidere se procedere
+                existing_tasks_check = await list_tasks(workspace_id)
+                if existing_tasks_check:
+                    logger.info(f"W:{workspace_id} already has tasks. Skipping initial task creation.")
+                    return None # O l'ID del primo task se vuoi che il flusso continui
             
             agents = await db_list_agents(workspace_id)
             if not agents:
@@ -1362,8 +1371,15 @@ class TaskExecutor:
             if created_task and created_task.get("id"):
                 task_id = created_task["id"]
                 logger.info(f"Created initial task {task_id} ('{task_name}') for W:{workspace_id}, assigned to {lead_agent['name']}")
-                
-                # Log l'evento
+
+                # AGGIORNAMENTO STATO WORKSPACE
+                try:
+                    if workspace.get("status") == WorkspaceStatus.CREATED.value:
+                        await update_workspace_status(workspace_id, WorkspaceStatus.ACTIVE.value)
+                        logger.info(f"Workspace {workspace_id} status updated to ACTIVE after initial task creation.")
+                except Exception as e_ws_update:
+                    logger.error(f"Failed to update workspace {workspace_id} status to active: {e_ws_update}")
+
                 self.execution_log.append({
                     "timestamp": datetime.now().isoformat(),
                     "event": "initial_workspace_task_created",
@@ -1380,6 +1396,13 @@ class TaskExecutor:
                 
         except Exception as e:
             logger.error(f"Error creating initial task for W:{workspace_id}: {e}", exc_info=True)
+            # Se fallisce la creazione del task iniziale, il workspace potrebbe rimanere in 'created'
+            # o passare a 'error'
+            try:
+                await update_workspace_status(workspace_id, WorkspaceStatus.ERROR.value)
+                logger.info(f"Workspace {workspace_id} status set to ERROR due to failure in initial task creation.")
+            except Exception as e_ws_status:
+                logger.error(f"Additionally failed to set workspace {workspace_id} to ERROR: {e_ws_status}")
             return None
 
     def _analyze_team_composition(self, agents_list: List[Dict]) -> Dict[str, Any]:

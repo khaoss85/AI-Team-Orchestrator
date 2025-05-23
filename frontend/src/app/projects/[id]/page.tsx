@@ -12,7 +12,7 @@ import TaskResultDetails from '@/components/TaskResultDetails';
 import ProjectActionsSection from '@/components/ProjectActionsSection';
 import { useProjectDeliverables } from '@/hooks/useProjectDeliverables';
 import { transformTaskToEnhancedResult } from '@/utils/deliverableHelpers';
-import type { ProjectOutputExtended } from '@/types';
+import type { ProjectOutputExtended, Task, Agent } from '@/types';
 
 
 // Mantieni la definizione dei tipi originale
@@ -386,25 +386,6 @@ const fetchData = async (silentUpdate = false) => {
     return agent ? agent.name : 'Sistema';
   };
   
-  const determineTaskType = (task) => {
-    const name = (task.name || '').toLowerCase();
-    const description = (task.description || '').toLowerCase();
-    
-    if (name.includes('analis') || name.includes('ricerca') || description.includes('analis') || description.includes('ricerca')) return 'analysis';
-    if (name.includes('piano') || name.includes('strategi') || description.includes('piano') || description.includes('strategi')) return 'strategy';
-    if (name.includes('document') || name.includes('report') || description.includes('document') || description.includes('report')) return 'document';
-    return 'general';
-  };
-  
-  const getTaskIcon = (task) => {
-    const type = determineTaskType(task);
-    switch(type) {
-      case 'analysis': return '🔍';
-      case 'strategy': return '📈';
-      case 'document': return '📄';
-      default: return '📋';
-    }
-  };
   
   // Funzione aggiornata formatTaskContent
   const formatTaskContent = (task) => {
@@ -559,7 +540,7 @@ const fetchData = async (silentUpdate = false) => {
     }, 30_000);          // 30 s
     return () => clearInterval(id);
   }
-}, [workspace?.status, workspaceId, finalDeliverablesCount, refetchDeliverables]);
+}, [workspace?.status, workspaceId, finalDeliverables.length, refetchDeliverables]);
 
   
   // Filtra il risultato attivo

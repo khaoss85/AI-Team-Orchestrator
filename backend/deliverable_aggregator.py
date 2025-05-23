@@ -172,33 +172,29 @@ class DeliverableAggregator:
         completed_tasks: List[Dict], 
         deliverable_type: DeliverableType
     ) -> Dict[str, Any]:
-        """Aggrega i risultati dei task completati per tipo di deliverable"""
         
         aggregated = {
             "total_tasks": len(completed_tasks),
             "task_summaries": [],
-            "structured_data": {},
+            "structured_data": {}, # Inizializzato come dizionario vuoto
             "key_insights": [],
             "recommendations": []
         }
         
-        # Estrai dati strutturati dai task
         all_structured_data = []
         
         for task in completed_tasks:
             result = task.get("result", {}) or {}
             summary = result.get("summary", "")
             
-            # Aggiungi summary al aggregated
             if summary and len(summary.strip()) > 10:
                 aggregated["task_summaries"].append({
                     "task_name": task.get("name", ""),
                     "summary": summary,
-                    "agent_role": task.get("assigned_to_role", ""),
+                    "agent_role": task.get("assigned_to_role", ""), # Corretto da result.get(...) a task.get(...)
                     "completed_at": task.get("updated_at", "")
                 })
             
-            # Estrai JSON strutturato se presente
             detailed_json = result.get("detailed_results_json")
             if detailed_json and isinstance(detailed_json, str):
                 try:
@@ -210,11 +206,10 @@ class DeliverableAggregator:
                             "data": structured
                         })
                 except json.JSONDecodeError:
-                    pass
+                    pass # Ignora errori di parsing JSON per ora
             
-            # Estrai next_steps come insights/recommendations
             next_steps = result.get("next_steps", [])
-            if isinstance(next_steps, list):
+            if isinstance(next_steps, list): # Assicurati che sia una lista
                 aggregated["recommendations"].extend(next_steps)
         
         # Elaborazione specifica per tipo di deliverable
@@ -226,12 +221,13 @@ class DeliverableAggregator:
             aggregated["structured_data"] = self._extract_competitor_data(all_structured_data)
         else:
             # Aggregazione generica
+            data_sources_list = [item.get("task_name", "Unknown Source") for item in all_structured_data]
             aggregated["structured_data"] = {
                 "all_data": all_structured_data,
-                "data_sources": len(all_structured_data)
+                "data_sources": data_sources_list, # Ora è una lista di nomi
+                "num_data_sources": len(all_structured_data) # Campo aggiuntivo per il conteggio
             }
         
-        # Estrai key insights
         aggregated["key_insights"] = self._extract_key_insights(
             aggregated["task_summaries"], deliverable_type
         )
@@ -406,129 +402,157 @@ class DeliverableAggregator:
     ) -> str:
         """Crea descrizione specifica per il tipo di deliverable"""
         
+        # Utilizza 'num_data_sources' per il conteggio
+        num_sources = aggregated_data.get('structured_data', {}).get('num_data_sources', 0)
+        # Se 'num_data_sources' non è presente o non è un intero, fai un fallback
+        if not isinstance(num_sources, int):
+            data_sources_list_check = aggregated_data.get('structured_data', {}).get('data_sources', [])
+            num_sources = len(data_sources_list_check) if isinstance(data_sources_list_check, list) else 0
+
         base_context = f"""
 🎯 OBJECTIVE: {goal}
 
-📊 PROJECT SUMMARY:
-- Total tasks completed: {aggregated_data.get('total_tasks', 0)}
-- Key insights identified: {len(aggregated_data.get('key_insights', []))}
-- Structured data sources: {len(aggregated_data.get('structured_data', {}).get('data_sources', []))}
+📊 PROJECT SUMMARY (based on aggregated data):
+- Total tasks outputs aggregated: {aggregated_data.get('total_tasks', 0)}
+- Key insights extracted: {len(aggregated_data.get('key_insights', []))}
+- Number of structured data sources considered: {num_sources}
 
-🔍 YOUR MISSION: Create the FINAL DELIVERABLE that directly addresses the objective above.
+🔍 YOUR MISSION: Based on the aggregated project data, create the FINAL DELIVERABLE document that directly and comprehensively addresses the project objective stated above.
+Synthesize the information, key findings, and structured data provided in the 'context_data' of this task (specifically under 'aggregated_data') into a cohesive and actionable final output.
 """
         
+        # Istruzioni specifiche per il tipo di deliverable (come prima)
         if deliverable_type == DeliverableType.CONTACT_LIST:
+            num_actual_contacts = len(aggregated_data.get('structured_data', {}).get('contacts', []))
+            collection_methods_list = aggregated_data.get('structured_data', {}).get('collection_methods', [])
             specific_instructions = f"""
 📋 DELIVERABLE TYPE: CONTACT LIST
 
-📈 DATA AVAILABLE:
-- Total contacts found: {aggregated_data.get('structured_data', {}).get('total_contacts', 0)}
-- Collection sources: {aggregated_data.get('structured_data', {}).get('collection_methods', [])}
+📈 DATA AVAILABLE FOR SYNTHESIS (from 'aggregated_data' in context):
+- Total contacts found: {num_actual_contacts}
+- Collection sources: {collection_methods_list}
 
-✅ REQUIRED OUTPUT in detailed_results_json:
-{{
-  "deliverable_type": "contact_list",
-  "final_contact_list": [
-    {{
-      "name": "Contact Name",
-      "company": "Company",
-      "email": "email@example.com",
-      "phone": "+1234567890",
-      "title": "Job Title",
-      "source": "How this contact was found",
-      "qualification_score": "1-10",
-      "notes": "Additional relevant information"
-    }}
-  ],
-  "list_statistics": {{
-    "total_contacts": 500,
-    "qualified_leads": 300,
-    "sources_used": ["LinkedIn", "Company websites", "Industry databases"],
-    "quality_score": "8.5/10"
-  }},
-  "usage_recommendations": [
-    "Best outreach approach for this list",
-    "Optimal contact timing",
-    "Key messaging recommendations"
-  ]
-}}
+✅ REQUIRED OUTPUT in detailed_results_json (your response):
+{self._get_output_schema_instructions("contact_list")}
 
-🎯 FOCUS: Create a clean, usable contact list ready for cold calling/outreach.
+🎯 FOCUS: Create a clean, usable contact list ready for cold calling/outreach, including qualification scores and notes.
 """
-        
         elif deliverable_type == DeliverableType.CONTENT_STRATEGY:
+            total_content_pieces = len(aggregated_data.get('structured_data', {}).get('content_ideas', []))
+            num_strategies = len(aggregated_data.get('structured_data', {}).get('strategies', []))
             specific_instructions = f"""
 📋 DELIVERABLE TYPE: CONTENT STRATEGY
 
-📈 DATA AVAILABLE:
-- Content ideas generated: {aggregated_data.get('structured_data', {}).get('total_content_pieces', 0)}
-- Strategy components: {len(aggregated_data.get('structured_data', {}).get('strategies', []))}
+📈 DATA AVAILABLE FOR SYNTHESIS (from 'aggregated_data' in context):
+- Content ideas generated: {total_content_pieces}
+- Strategy components: {num_strategies}
 
-✅ REQUIRED OUTPUT in detailed_results_json:
-{{
-  "deliverable_type": "content_strategy",
-  "content_calendar": [
-    {{
-      "date": "2024-01-15",
-      "platform": "Instagram",
-      "content_type": "Image Post",
-      "caption": "Full caption text...",
-      "hashtags": ["#tag1", "#tag2"],
-      "engagement_target": "1000 likes, 50 comments"
-    }}
-  ],
-  "strategy_overview": {{
-    "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
-    "posting_frequency": "3 posts per week",
-    "target_audience": "Primary audience description",
-    "brand_voice": "Tone and style guidelines"
-  }},
-  "performance_targets": {{
-    "monthly_reach": 50000,
-    "engagement_rate": "4.5%",
-    "follower_growth": "10% monthly"
-  }}
-}}
+✅ REQUIRED OUTPUT in detailed_results_json (your response):
+{self._get_output_schema_instructions("content_strategy")}
 
-🎯 FOCUS: Create an actionable content strategy with specific posts and timing.
+🎯 FOCUS: Create an actionable content strategy with specific posts, timing, content pillars, and performance targets.
 """
-        
-        else:
-            # Generic deliverable
+        else: # Generic deliverable
             specific_instructions = f"""
-📋 DELIVERABLE TYPE: PROJECT REPORT
+📋 DELIVERABLE TYPE: PROJECT REPORT ({deliverable_type.value.replace('_', ' ').title() if deliverable_type else 'Generic'})
 
-✅ REQUIRED OUTPUT in detailed_results_json:
-{{
-  "deliverable_type": "project_report",
-  "executive_summary": "2-3 sentence overview of what was accomplished",
-  "key_findings": [
-    "Main finding 1",
-    "Main finding 2"
-  ],
-  "deliverables_created": [
-    {{
-      "name": "Deliverable Name",
-      "description": "What it contains",
-      "file_location": "Where to find it",
-      "usage_instructions": "How to use it"
-    }}
-  ],
-  "recommendations": [
-    "Next step 1",
-    "Next step 2"
-  ],
-  "project_metrics": {{
-    "tasks_completed": {aggregated_data.get('total_tasks', 0)},
-    "timeline": "Project duration",
-    "success_criteria_met": "Yes/No with explanation"
-  }}
-}}
+✅ REQUIRED OUTPUT in detailed_results_json (your response):
+{self._get_output_schema_instructions(deliverable_type.value if deliverable_type else "generic_report")}
 
-🎯 FOCUS: Create a comprehensive project report with actionable outcomes.
+🎯 FOCUS: Create a comprehensive project report with an executive summary, key findings, list of deliverables created during the project, actionable recommendations, and relevant project metrics.
 """
         
         return base_context + specific_instructions
+
+    # Assicurati che _get_output_schema_instructions sia definito come nella risposta precedente
+    def _get_output_schema_instructions(self, deliverable_type_value: str) -> str:
+        # Schemi JSON per i diversi tipi di deliverable
+        schemas = {
+            "contact_list": """
+{
+  "deliverable_type": "contact_list",
+  "executive_summary": "Summary of the contact list generation process and quality.",
+  "final_contact_list": [
+    {
+      "name": "Example Contact Name", 
+      "company": "Example Company Inc.", 
+      "email": "contact@example.com", 
+      "phone": "+1-555-123-4567", 
+      "title": "Chief Marketing Officer", 
+      "source_task_name": "ICP Research Task X",
+      "qualification_score": "8/10", 
+      "notes": "Interested in AI solutions for B2B."
+    }
+  ],
+  "list_statistics": { 
+    "total_contacts_generated": 500, 
+    "qualified_leads_criteria_met": 350,
+    "primary_sources_used": ["LinkedIn Sales Navigator", "Apollo.io", "Company Websites"],
+    "average_qualification_score": "7.5/10"
+  },
+  "usage_recommendations": [
+    "Segment list by company size for tailored outreach.",
+    "Prioritize contacts with qualification_score > 7 for initial email sequence.",
+    "Follow up within 24-48 hours for best engagement."
+  ]
+}""",
+            "content_strategy": """
+{
+  "deliverable_type": "content_strategy",
+  "executive_summary": "Overview of the content strategy, target audience, and key objectives.",
+  "content_pillars": ["Pillar 1: Educate on X", "Pillar 2: Showcase Y", "Pillar 3: Build Community Z"],
+  "target_audience_personas": [
+      {"name": "Persona A", "description": "Details of Persona A"},
+      {"name": "Persona B", "description": "Details of Persona B"}
+  ],
+  "editorial_calendar_highlights": [
+    {
+      "month": "June 2025", "theme": "Theme for June", 
+      "key_content_pieces": ["Blog Post: Title 1", "Webinar: Title 2", "Social Campaign: Theme A"]
+    }
+  ],
+  "platform_strategy": {
+      "linkedin": "Focus on thought leadership articles and case studies.",
+      "instagram": "Utilize reels for short tips and user-generated content.",
+      "blog": "In-depth guides and industry analysis."
+  },
+  "kpi_and_metrics": {
+    "primary_kpis": ["Website Traffic Increase by X%", "Lead Generation Y per month", "Engagement Rate Z%"],
+    "tracking_tools": ["Google Analytics", "MailUp Analytics", "Social Media Insights"]
+  },
+  "brand_voice_and_tone": "Professional yet approachable, expert but not condescending."
+}""",
+            "generic_report": """
+{
+  "deliverable_type": "project_report",
+  "executive_summary": "A concise (2-3 sentences) overview of the project's main accomplishments and outcomes.",
+  "project_goal_recap": "Restate the original project goal.",
+  "key_findings_and_insights": [
+    "Significant finding or insight 1, supported by data/evidence if possible.",
+    "Significant finding or insight 2, detailing its impact or implication."
+  ],
+  "summary_of_deliverables_produced": [
+    {
+      "deliverable_name": "Name of a key output/document produced during the project",
+      "description": "Brief description of what this deliverable contains and its purpose.",
+      "link_or_reference_if_applicable": "e.g., 'See attached document' or 'Result of Task XYZ'"
+    }
+  ],
+  "final_recommendations_and_next_steps": [
+    "Actionable recommendation 1 based on project outcomes.",
+    "Proposed next step 2 for future work or implementation."
+  ],
+  "overall_project_assessment": {
+    "tasks_completed_ratio": "X/Y tasks completed",
+    "budget_utilization_if_applicable": "Details on budget usage if tracked.",
+    "timeline_adherence": "Assessment of how the project adhered to its timeline.",
+    "challenges_faced_and_solutions": "Briefly mention any major challenges and how they were addressed.",
+    "project_success_rating": "Qualitative assessment (e.g., Highly Successful, Partially Successful, Needs Improvement) with justification."
+  }
+}"""
+        }
+        return schemas.get(deliverable_type_value, schemas["generic_report"])
+
 
 # Istanza globale
 deliverable_aggregator = DeliverableAggregator()
