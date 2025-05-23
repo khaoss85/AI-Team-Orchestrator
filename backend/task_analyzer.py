@@ -341,86 +341,136 @@ class EnhancedTaskExecutor:
         return created_count > 0
 
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
-        """Find agent by role with multiple fuzzy matching strategies"""
+        """Find agent by role with improved matching logic that prioritizes exact and semantic matches"""
         try:
             from database import list_agents as db_list_agents
-
-            # Cache delle normalizzazioni per evitare lavoro ripetuto
-            normalized_roles_cache = {}
 
             agents_from_db = await db_list_agents(workspace_id)
             if not agents_from_db:
                 logger.warning(f"No agents in workspace {workspace_id}")
                 return None
 
-            # Normalizza target role una sola volta
+            # Normalizza target role
             target_role_lower = role.lower().strip()
             target_role_normalized = target_role_lower.replace(" ", "")
-            target_role_words = set(word for word in target_role_lower.split() if word not in ["specialist", "the", "and", "of"])
+
+            # Estrai parole chiave significative (rimuovi parole comuni)
+            common_words = {"specialist", "the", "and", "of", "for", "in", "a", "an"}
+            target_role_words = set(word for word in target_role_lower.split() if word not in common_words)
 
             # Flag speciali
             is_target_manager = any(keyword in target_role_normalized for keyword in 
                                    ["manager", "coordinator", "director", "lead", "pm"])
 
             candidates = []
+
             for agent in agents_from_db:
                 if agent.get("status") != "active":
                     continue
 
                 agent_role = agent.get("role", "").lower().strip()
-                # Normalizziamo solo se necessario, usando la cache
-                if agent_role not in normalized_roles_cache:
-                    normalized_roles_cache[agent_role] = {
-                        "normalized": agent_role.replace(" ", ""),
-                        "words": set(word for word in agent_role.split() if word not in ["specialist", "the", "and", "of"])
-                    }
+                agent_name = agent.get("name", "").lower().strip()
+                agent_role_normalized = agent_role.replace(" ", "")
+                agent_role_words = set(word for word in agent_role.split() if word not in common_words)
+                agent_name_words = set(word for word in agent_name.split() if word not in common_words)
 
-                agent_role_normalized = normalized_roles_cache[agent_role]["normalized"]
-                agent_role_words = normalized_roles_cache[agent_role]["words"]
-
-                # Matching multi-strategy con scoring
                 score = 0
                 match_reason = ""
 
-                # 1. Exact match
+                # 1. EXACT MATCH su role
                 if agent_role == target_role_lower:
-                    score = 10
-                    match_reason = "exact match"
-                # 2. Normalized match
-                elif agent_role_normalized == target_role_normalized:
-                    score = 9.5
-                    match_reason = "normalized match"
-                # 3. Containment match
-                elif target_role_lower in agent_role:
-                    score = 8
-                    match_reason = "target contained in agent role"
-                elif agent_role in target_role_lower:
-                    score = 6
-                    match_reason = "agent role contained in target"
-                # 4. Manager role match
-                elif is_target_manager and any(keyword in agent_role_normalized for keyword in 
-                                             ["manager", "director", "lead", "coordinator", "pm"]):
-                    score = 7
-                    match_reason = "manager role match"
+                    score = 100
+                    match_reason = "exact role match"
 
-                # 5. Word overlap - match by common words
-                if not score and agent_role_words and target_role_words:
-                    common_words = agent_role_words.intersection(target_role_words)
-                    if common_words:
-                        overlap_ratio = len(common_words) / len(target_role_words)
-                        word_score = 5 * overlap_ratio
+                # 2. EXACT MATCH su name (nuovo!)
+                elif agent_name == target_role_lower:
+                    score = 95
+                    match_reason = "exact name match"
+
+                # 3. NORMALIZED MATCH su role
+                elif agent_role_normalized == target_role_normalized:
+                    score = 90
+                    match_reason = "normalized role match"
+
+                # 4. NORMALIZED MATCH su name (nuovo!)
+                elif agent_name.replace(" ", "") == target_role_normalized:
+                    score = 85
+                    match_reason = "normalized name match"
+
+                # 5. CONTAINMENT MATCH - target contenuto in agent role
+                elif target_role_lower in agent_role:
+                    score = 80
+                    match_reason = "target contained in agent role"
+
+                # 6. CONTAINMENT MATCH - target contenuto in agent name (nuovo!)
+                elif target_role_lower in agent_name:
+                    score = 75
+                    match_reason = "target contained in agent name"
+
+                # 7. CONTAINMENT MATCH - agent role contenuto in target
+                elif agent_role in target_role_lower:
+                    score = 70
+                    match_reason = "agent role contained in target"
+
+                # 8. SEMANTIC WORD OVERLAP - migliore logica (migliorato!)
+                elif target_role_words and (agent_role_words or agent_name_words):
+                    # Controlla overlap con role words
+                    role_common_words = agent_role_words.intersection(target_role_words)
+                    # Controlla overlap con name words  
+                    name_common_words = agent_name_words.intersection(target_role_words)
+
+                    # Usa il migliore dei due
+                    best_common_words = role_common_words if len(role_common_words) >= len(name_common_words) else name_common_words
+                    best_source = "role" if len(role_common_words) >= len(name_common_words) else "name"
+
+                    if best_common_words:
+                        # Calcola overlap ratio più sofisticato
+                        overlap_ratio = len(best_common_words) / len(target_role_words)
+                        coverage_ratio = len(best_common_words) / max(len(agent_role_words) if best_source == "role" else len(agent_name_words), 1)
+
+                        # Score basato su overlap quality
+                        word_score = 30 + (overlap_ratio * 30) + (coverage_ratio * 10)
+
                         if word_score > score:
                             score = word_score
-                            match_reason = f"word overlap: {', '.join(common_words)}"
+                            match_reason = f"word overlap in {best_source}: {', '.join(best_common_words)} (overlap: {overlap_ratio:.2f})"
 
-                # Seniority boost
-                seniority_boost = {"expert": 0.3, "senior": 0.2, "junior": 0.1}
-                seniority = agent.get("seniority", "").lower()
-                if seniority in seniority_boost:
-                    score += seniority_boost[seniority]
+                # 9. MANAGER ROLE MATCH
+                elif is_target_manager and any(keyword in agent_role_normalized for keyword in 
+                                             ["manager", "director", "lead", "coordinator", "pm"]):
+                    score = 65
+                    match_reason = "manager role match"
 
-                # Se score sopra la soglia, aggiungi ai candidati
-                if score >= 4:
+                # 10. PARTIAL KEYWORD MATCH - nuovo! Per catturare "Community" in "CommunitySpecialist"
+                else:
+                    partial_matches = []
+                    for target_word in target_role_words:
+                        if len(target_word) >= 4:  # Solo parole significative
+                            # Cerca in agent role
+                            for agent_word in agent_role_words:
+                                if target_word in agent_word or agent_word in target_word:
+                                    partial_matches.append((target_word, agent_word, "role"))
+                            # Cerca in agent name
+                            for agent_word in agent_name_words:
+                                if target_word in agent_word or agent_word in target_word:
+                                    partial_matches.append((target_word, agent_word, "name"))
+
+                    if partial_matches:
+                        # Score basato su qualità dei partial match
+                        partial_score = len(partial_matches) * 15
+                        if partial_score > score:
+                            score = partial_score
+                            matches_str = ", ".join([f"{pm[0]}→{pm[1]}({pm[2]})" for pm in partial_matches[:3]])
+                            match_reason = f"partial keyword match: {matches_str}"
+
+                # SENIORITY BOOST (solo per match con score > 0)
+                if score > 0:
+                    seniority_boost = {"expert": 5, "senior": 3, "junior": 1}
+                    seniority = agent.get("seniority", "").lower()
+                    score += seniority_boost.get(seniority, 0)
+
+                # SOGLIA PIÙ ALTA per evitare match spuri
+                if score >= 20:  # Aumentata da 4 a 20
                     candidates.append({
                         "agent": agent,
                         "score": round(score, 2),
@@ -432,26 +482,58 @@ class EnhancedTaskExecutor:
 
             if candidates:
                 best_match = candidates[0]["agent"]
-                logger.info(f"Agent match for '{role}': {best_match.get('name')} ({best_match.get('role')}) - Score: {candidates[0]['score']} ({candidates[0]['reason']})")
+                logger.info(f"✅ Agent match for '{role}': {best_match.get('name')} ({best_match.get('role')}) - Score: {candidates[0]['score']} ({candidates[0]['reason']})")
                 return best_match
 
-            # MIGLIORAMENTO: fallback più intelligente
-            # Se non è stato trovato nessun match e il ruolo target include "specialist"
-            # cerca qualsiasi agente che abbia "specialist" nel ruolo
-            if "specialist" in target_role_lower and not candidates:
-                for agent in agents_from_db:
-                    if agent.get("status") == "active" and "specialist" in agent.get("role", "").lower():
-                        logger.info(f"Fallback match for '{role}': {agent.get('name')} (generic specialist)")
-                        return agent
+            # FALLBACK MIGLIORATI - Solo se veramente necessario e con logica più stretta
 
-            # Fallback per ruoli manager
-            if is_target_manager and not candidates:
-                for agent in agents_from_db:
-                    if agent.get("status") == "active" and "manager" in agent.get("role", "").lower():
-                        logger.info(f"Fallback match for '{role}': {agent.get('name')} (generic manager)")
-                        return agent
+            # Fallback 1: Solo per ruoli manager specifici
+            if is_target_manager:
+                manager_agents = [agent for agent in agents_from_db 
+                                if agent.get("status") == "active" 
+                                and any(keyword in agent.get("role", "").lower() for keyword in ["manager", "coordinator", "director", "lead"])]
+                if manager_agents:
+                    # Preferisci "Project Manager" se disponibile
+                    pm_agents = [a for a in manager_agents if "project" in a.get("role", "").lower()]
+                    fallback_agent = pm_agents[0] if pm_agents else manager_agents[0]
+                    logger.warning(f"⚠️ Manager fallback for '{role}': {fallback_agent.get('name')} ({fallback_agent.get('role')})")
+                    return fallback_agent
 
-            logger.warning(f"No agent match for role '{role}' after all strategies")
+            # Fallback 2: MOLTO restrittivo per specialist - solo se target contiene parole chiave specifiche
+            if "specialist" in target_role_lower:
+                # Estrai la specializzazione (es: "Community" da "CommunitySpecialist")
+                specialization = target_role_lower.replace("specialist", "").strip()
+
+                if specialization and len(specialization) >= 3:  # Deve avere una specializzazione valida
+                    # Cerca specialist che hanno la specializzazione nel nome o ruolo
+                    matching_specialists = []
+                    for agent in agents_from_db:
+                        if (agent.get("status") == "active" and 
+                            "specialist" in agent.get("role", "").lower()):
+
+                            agent_text = f"{agent.get('name', '')} {agent.get('role', '')}".lower()
+                            if specialization in agent_text:
+                                matching_specialists.append(agent)
+
+                    if matching_specialists:
+                        # Prendi il primo specialist che matcha la specializzazione
+                        fallback_agent = matching_specialists[0]
+                        logger.warning(f"⚠️ Specialist fallback for '{role}': {fallback_agent.get('name')} (specialization: {specialization})")
+                        return fallback_agent
+
+                    # Se ancora non trova nulla, LOG ERROR invece di fallback generico
+                    logger.error(f"❌ NO SUITABLE AGENT for specialist role '{role}' with specialization '{specialization}'")
+                    logger.error(f"Available agents: {[(a.get('name'), a.get('role')) for a in agents_from_db if a.get('status') == 'active']}")
+                    return None  # Invece di fallback generico
+
+            # Nessun fallback generico - se non trova match specifici, ritorna None
+            logger.error(f"❌ NO AGENT MATCH for role '{role}' after all strategies")
+            logger.error(f"Available active agents: {[(a.get('name'), a.get('role')) for a in agents_from_db if a.get('status') == 'active']}")
+
+            # Suggerisci azioni correttive
+            if agents_from_db:
+                logger.error(f"💡 SUGGESTION: Check if '{role}' matches any of these agent names or roles exactly")
+
             return None
 
         except Exception as e:
