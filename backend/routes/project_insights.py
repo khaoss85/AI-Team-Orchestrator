@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
+import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
 from collections import Counter
 from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback, ProjectDeliverableCard
@@ -363,7 +364,7 @@ def _extract_major_milestones(
 
 @router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
 async def get_project_deliverables(workspace_id: UUID):
-    """Get aggregated project deliverables and final outputs"""
+    """Get aggregated project deliverables including final aggregated deliverable"""
     try:
         # Get workspace details
         workspace = await get_workspace(str(workspace_id))
@@ -400,6 +401,47 @@ async def get_project_deliverables(workspace_id: UUID):
                     created_at=datetime.fromisoformat(task.get("updated_at", task.get("created_at", datetime.now().isoformat())).replace('Z', '+00:00')),
                     type=output_type
                 ))
+        
+        # NUOVO: Controlla se esiste un deliverable finale aggregato
+        final_deliverable_task = None
+        for task in completed_tasks:
+            context_data = task.get("context_data", {}) or {}
+            if (context_data.get("is_final_deliverable") or 
+                context_data.get("deliverable_aggregation")):
+                final_deliverable_task = task
+                break
+        
+        # Se esiste un deliverable finale, usalo come deliverable principale
+        if final_deliverable_task:
+            result = final_deliverable_task.get("result", {}) or {}
+            detailed_json = result.get("detailed_results_json")
+            if detailed_json:
+                try:
+                    final_deliverable_data = json.loads(detailed_json)
+                    
+                    # Crea un output strutturato specifico per il deliverable finale
+                    final_output = ProjectOutput(
+                        task_id=final_deliverable_task["id"],
+                        task_name="🎯 " + final_deliverable_task.get("name", "Final Deliverable"),
+                        output=result.get("summary", ""),
+                        agent_name=agent_map.get(final_deliverable_task.get("agent_id"), {}).get("name", "Project Manager"),
+                        agent_role="Final Deliverable",
+                        created_at=datetime.fromisoformat(final_deliverable_task.get("updated_at", datetime.now().isoformat()).replace('Z', '+00:00')),
+                        type="final_deliverable",
+                        # NUOVO: Campi aggiuntivi per deliverable strutturato
+                        title=final_deliverable_data.get("deliverable_type", "Final Project Deliverable").replace("_", " ").title(),
+                        description=final_deliverable_data.get("executive_summary", "Comprehensive project deliverable"),
+                        key_insights=final_deliverable_data.get("key_findings", []),
+                        metrics=final_deliverable_data.get("project_metrics", {}),
+                        category="final_deliverable"
+                    )
+                    
+                    # Aggiungi il deliverable finale all'inizio della lista
+                    key_outputs.insert(0, final_output)
+                    logger.info(f"Added final deliverable to outputs: {final_deliverable_task['id']}")
+                    
+                except json.JSONDecodeError:
+                    logger.warning(f"Could not parse final deliverable JSON: {detailed_json[:200]}")
         
         # Generate insight cards SEPARATAMENTE usando dati grezzi
         insight_cards = []
