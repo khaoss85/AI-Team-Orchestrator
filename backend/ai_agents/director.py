@@ -290,9 +290,10 @@ Return *only* valid JSON as a string:
             eff_max_agents = MAX_TEAM_SIZE
             if isinstance(max_agents, int) and 0 < max_agents <= MAX_TEAM_SIZE:
                 eff_max_agents = max_agents
-            elif not required_skills: # No skills, no complex team needed
-                eff_max_agents = 1
-            # If max_agents is invalid or None, eff_max_agents remains MAX_TEAM_SIZE, or 1 if no skills.
+
+            optimal_team_size = _calculate_optimal_team_size(budget_total, required_skills)
+            eff_max_agents = min(eff_max_agents, optimal_team_size)
+            logger.info(f"Effective max agents: {eff_max_agents} (budget: {budget_total}, skills: {len(required_skills)})")
 
             team: List[Dict[str, Any]] = []
             allocated_budget = 0.0
@@ -411,6 +412,39 @@ Return *only* valid JSON as a string:
 
                 return personality
 
+            def _calculate_optimal_team_size(budget_total: float, required_skills: List[str]) -> int:
+                """Calcola team size ottimale basato su budget e complessità"""
+
+                # Budget-based sizing (più permissivo)
+                if budget_total >= 5000:
+                    budget_team_size = 6
+                elif budget_total >= 3000:
+                    budget_team_size = 5
+                elif budget_total >= 2000:
+                    budget_team_size = 4
+                elif budget_total >= 1200:
+                    budget_team_size = 3
+                elif budget_total >= 600:
+                    budget_team_size = 2
+                else:
+                    budget_team_size = 1
+
+                # Skill-based sizing
+                skill_complexity_score = len(required_skills)
+
+                # Boost per progetti complessi
+                if any(keyword in " ".join(required_skills).lower() for keyword in 
+                       ["marketing", "strategy", "content", "social media", "lead generation"]):
+                    skill_complexity_score += 2
+
+                skill_team_size = min(6, max(2, skill_complexity_score // 2 + 1))
+
+                # Prendi il massimo tra budget e skill sizing (più generoso)
+                optimal_size = max(budget_team_size, skill_team_size)
+
+                logger.info(f"Optimal team calculation: budget_size={budget_team_size}, skill_size={skill_team_size}, final={optimal_size}")
+                return optimal_size            
+            
             def _group_skills_for_design(skills_list: List[str]) -> List[Dict[str, Any]]:
                 s_groups: Dict[str, List[str]] = {domain_key: [] for domain_key in DOMAIN_MAPPING_DESIGN}
                 s_groups['other_domain'] = [] # For unmapped skills
