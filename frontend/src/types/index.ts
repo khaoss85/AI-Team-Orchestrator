@@ -1,6 +1,13 @@
 // Tipi per workspace/progetti
 export type WorkspaceStatus = 'created' | 'active' | 'paused' | 'completed' | 'error';
 
+export type OutputType =
+  | 'general'
+  | 'analysis'
+  | 'recommendation'
+  | 'document'
+  | 'final_deliverable';
+
 export interface Workspace {
   id: string;
   name: string;
@@ -361,7 +368,12 @@ export interface ProjectOutput {
   agent_role: string;
   created_at: string;
   summary?: string;
-  type: 'general' | 'analysis' | 'recommendation' | 'document';
+  type: OutputType;
+  title?: string;
+  description?: string;
+  key_insights?: string[];
+  metrics?: Record<string, any>;
+  category?: string;
 }
 
 export interface ProjectDeliverables {

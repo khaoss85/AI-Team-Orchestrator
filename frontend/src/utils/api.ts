@@ -5,13 +5,16 @@ import {
   AgentCreateData,
   Task,
   TaskCreateData,
+  TaskAnalysisResponse,
   DirectorConfig,
   DirectorTeamProposal,
   Handoff,
   FeedbackRequest, 
   FeedbackResponse,
   ProjectDeliverables, 
-  DeliverableFeedback
+  DeliverableFeedback,
+  ProjectDeliverablesExtended,
+  ProjectOutputExtended,
 } from '@/types';
 
 // Determina l'URL base dell'API in base all'ambiente
@@ -92,15 +95,75 @@ export const api = {
       }
     },
     
-    getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverables> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables`);
-      if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-      return await response.json();
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
+    getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverablesExtended> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        // VALIDAZIONE E TRASFORMAZIONE DEI DATI
+        const transformedData: ProjectDeliverablesExtended = {
+          ...data,
+          key_outputs: data.key_outputs.map((output: any) => ({
+            ...output,
+            created_at: typeof output.created_at === 'string' 
+              ? output.created_at 
+              : new Date(output.created_at).toISOString(),
+            // Assicura che i campi opzionali esistano
+            key_insights: output.key_insights || [],
+            metrics: output.metrics || {},
+            title: output.title || output.task_name,
+            description: output.description || '',
+            category: output.category || 'general'
+          }))
+        };
+        
+        return transformedData;
+      } catch (error) {
+        console.error('Error fetching deliverables:', error);
+        return handleApiError(error);
+      }
+    },
+
+    // NUOVO: Metodo specifico per recuperare solo deliverable finali
+    getFinalDeliverables: async (workspaceId: string): Promise<ProjectOutputExtended[]> => {
+      try {
+        const deliverables = await api.monitoring.getProjectDeliverables(workspaceId);
+        return deliverables.key_outputs.filter(output => 
+          output.type === 'final_deliverable' || output.category === 'final_deliverable'
+        );
+      } catch (error) {
+        console.error('Error fetching final deliverables:', error);
+        return handleApiError(error);
+      }
+    },
+
+    // NUOVO: Metodo per verificare se ci sono deliverable finali pronti
+    checkFinalDeliverablesStatus: async (workspaceId: string): Promise<{
+      hasFinalDeliverables: boolean;
+      count: number;
+      deliverables: ProjectOutputExtended[];
+    }> => {
+      try {
+        const finalDeliverables = await api.monitoring.getFinalDeliverables(workspaceId);
+        return {
+          hasFinalDeliverables: finalDeliverables.length > 0,
+          count: finalDeliverables.length,
+          deliverables: finalDeliverables
+        };
+      } catch (error) {
+        console.error('Error checking final deliverables status:', error);
+        return {
+          hasFinalDeliverables: false,
+          count: 0,
+          deliverables: []
+        };
+      }
+    },
   
     submitDeliverableFeedback: async (workspaceId: string, feedback: DeliverableFeedback): Promise<any> => {
         try {

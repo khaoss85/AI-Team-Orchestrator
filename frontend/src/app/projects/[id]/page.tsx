@@ -10,6 +10,9 @@ import AgentSkillRadarChart, { calculateTeamDimensions } from '@/components/Agen
 import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
 import TaskResultDetails from '@/components/TaskResultDetails';
 import ProjectActionsSection from '@/components/ProjectActionsSection';
+import { useProjectDeliverables } from '@/hooks/useProjectDeliverables';
+import { transformTaskToEnhancedResult } from '@/utils/deliverableHelpers';
+import type { ProjectOutputExtended } from '@/types';
 
 
 // Mantieni la definizione dei tipi originale
@@ -18,13 +21,148 @@ type Props = {
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
+// Componente per la visualizzazione migliorata dei deliverable finali
+function EnhancedFinalDeliverableView({ result }) {
+  if (!result || !result.content) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-3">🎯</div>
+        <p className="text-gray-500">Deliverable finale non disponibile</p>
+      </div>
+    );
+  }
+
+  const { content } = result;
+
+  return (
+    <div className="space-y-6">
+      {/* Executive Summary */}
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-100">
+        <h3 className="font-semibold text-indigo-800 text-lg mb-4 flex items-center">
+          <span className="text-2xl mr-2">🎯</span>
+          Executive Summary
+        </h3>
+        <div className="text-indigo-900 leading-relaxed bg-white bg-opacity-60 p-5 rounded-lg">
+          {content.summary}
+        </div>
+      </div>
+
+      {/* Key Insights */}
+      {content.keyInsights && content.keyInsights.length > 0 && (
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-lg border border-green-100">
+          <h3 className="font-semibold text-green-800 text-lg mb-4 flex items-center">
+            <span className="text-2xl mr-2">💡</span>
+            Key Insights
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {content.keyInsights.map((insight, index) => (
+              <div key={index} className="bg-white bg-opacity-60 p-4 rounded-lg border border-green-200">
+                <div className="flex items-start">
+                  <span className="bg-green-200 text-green-800 h-6 w-6 rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <span className="text-green-900 text-sm">{insight}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Metrics Dashboard */}
+      {content.metrics && Object.keys(content.metrics).length > 0 && (
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-lg border border-blue-100">
+          <h3 className="font-semibold text-blue-800 text-lg mb-4 flex items-center">
+            <span className="text-2xl mr-2">📊</span>
+            Project Metrics
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.entries(content.metrics).map(([key, values]) => (
+              <div key={key} className="bg-white bg-opacity-60 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-medium text-blue-800 mb-2 capitalize">{key.replace(/_/g, ' ')}</h4>
+                <div className="space-y-1">
+                  {Array.isArray(values) ? values.map((value, idx) => (
+                    <div key={idx} className="text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                      {value}
+                    </div>
+                  )) : (
+                    <div className="text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                      {values}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {content.recommendations && content.recommendations.length > 0 && (
+        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-lg border border-yellow-100">
+          <h3 className="font-semibold text-yellow-800 text-lg mb-4 flex items-center">
+            <span className="text-2xl mr-2">💭</span>
+            Recommendations
+          </h3>
+          <ul className="space-y-3">
+            {content.recommendations.map((rec, index) => (
+              <li key={index} className="flex bg-white bg-opacity-60 p-3 rounded-lg">
+                <span className="bg-yellow-200 text-yellow-800 h-6 w-6 rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0">
+                  {index + 1}
+                </span>
+                <span className="text-yellow-900">{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Next Steps */}
+      {content.nextSteps && content.nextSteps.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-100">
+          <h3 className="font-semibold text-purple-800 text-lg mb-4 flex items-center">
+            <span className="text-2xl mr-2">🚀</span>
+            Next Steps
+          </h3>
+          <ul className="space-y-3">
+            {content.nextSteps.map((step, index) => (
+              <li key={index} className="flex bg-white bg-opacity-60 p-3 rounded-lg">
+                <span className="bg-purple-200 text-purple-800 h-6 w-6 rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0">
+                  {index + 1}
+                </span>
+                <span className="text-purple-900">{step}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Additional Details */}
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+        <h3 className="font-semibold text-gray-800 text-lg mb-4 flex items-center">
+          <span className="text-2xl mr-2">📋</span>
+          Additional Details
+        </h3>
+        <TaskResultDetails result={content} />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const router = useRouter();
   
   // Use the React.use hook to "unwrap" the Promise
   const params = use(paramsPromise);
   const workspaceId = params.id;
-  
+  const {
+      deliverables,
+      finalDeliverables,
+      loading: deliverablesLoading,
+      error: deliverablesError,
+      refetch: refetchDeliverables,
+      finalDeliverablesCount
+    } = useProjectDeliverables(workspaceId);
   // Stati per i dati
   const [workspace, setWorkspace] = useState<any>(null);
   const [agents, setAgents] = useState<any[]>([]);
@@ -213,6 +351,7 @@ const fetchData = async (silentUpdate = false) => {
       case 'in_progress': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'failed': return 'bg-red-100 text-red-800';
+      case 'final_deliverable': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -227,6 +366,7 @@ const fetchData = async (silentUpdate = false) => {
       case 'in_progress': return 'In Corso';
       case 'pending': return 'In Attesa';
       case 'failed': return 'Fallito';
+      case 'final_deliverable': return 'Deliverable Finale';
       default: return status;
     }
   };
@@ -266,18 +406,44 @@ const fetchData = async (silentUpdate = false) => {
     }
   };
   
+  // Funzione aggiornata formatTaskContent
   const formatTaskContent = (task) => {
     if (!task.result) return { 
       summary: 'Nessun risultato disponibile',
       keyPoints: [],
-      details: ''
+      details: '',
+      keyInsights: [],
+      metrics: {},
+      recommendations: [],
+      nextSteps: []
     };
     
     try {
-      // Assumendo che result sia un oggetto JSON
       const result = typeof task.result === 'string' ? JSON.parse(task.result) : task.result;
       
-      // Tenta di estrarre punti chiave dai dati del risultato
+      // Estrai dati aggiuntivi per deliverable finali
+      let keyInsights = [];
+      let metrics = {};
+      let recommendations = [];
+      let nextSteps = [];
+      
+      // Se è un deliverable finale, estrai dati strutturati
+      if (task.context_data?.is_final_deliverable || task.context_data?.deliverable_aggregation) {
+        try {
+          const detailedData = result.detailed_results_json 
+            ? JSON.parse(result.detailed_results_json) 
+            : result;
+          
+          keyInsights = detailedData.key_findings || detailedData.key_insights || [];
+          metrics = detailedData.project_metrics || detailedData.metrics || {};
+          recommendations = detailedData.recommendations || detailedData.final_recommendations || [];
+          nextSteps = detailedData.next_steps || detailedData.action_items || [];
+        } catch (e) {
+          console.warn('Could not parse detailed deliverable data:', e);
+        }
+      }
+      
+      // Logica esistente per altri campi
       let keyPoints = [];
       if (result.key_points) {
         keyPoints = result.key_points;
@@ -287,18 +453,20 @@ const fetchData = async (silentUpdate = false) => {
         keyPoints = result.points;
       } else if (result.steps) {
         keyPoints = result.steps;
+      } else if (keyInsights.length > 0) {
+        keyPoints = keyInsights.slice(0, 3); // Use insights as key points
       } else {
-        // Crea punti chiave generici se non ne sono specificati
         keyPoints = [
           'Attività completata con successo',
           'Risultato generato dall\'agente ' + getAgentName(task.agent_id)
         ];
       }
       
-      // Tenta di estrarre il sommario dai dati del risultato
       let summary = '';
       if (result.summary) {
         summary = result.summary;
+      } else if (result.executive_summary) {
+        summary = result.executive_summary;
       } else if (result.output) {
         summary = result.output;
       } else if (result.conclusion) {
@@ -309,7 +477,6 @@ const fetchData = async (silentUpdate = false) => {
         summary = 'Risultato completato con successo';
       }
       
-      // Tenta di estrarre i dettagli dai dati del risultato
       let details = '';
       if (result.details) {
         details = result.details;
@@ -326,13 +493,21 @@ const fetchData = async (silentUpdate = false) => {
       return {
         summary,
         keyPoints: Array.isArray(keyPoints) ? keyPoints : [keyPoints],
-        details
+        details,
+        keyInsights,
+        metrics,
+        recommendations,
+        nextSteps
       };
     } catch (e) {
       return { 
         summary: 'Risultato disponibile ma in formato non standard',
         keyPoints: ['Formato dati non standard', 'Richiede interpretazione'],
-        details: typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2)
+        details: typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2),
+        keyInsights: [],
+        metrics: {},
+        recommendations: [],
+        nextSteps: []
       };
     }
   };
@@ -360,31 +535,32 @@ const fetchData = async (silentUpdate = false) => {
     return `${lastTask.name} (${getStatusLabel(lastTask.status)})`;
   };
   
-  // Costruisci l'elenco dei risultati
-  const projectResults = React.useMemo(() => {
-    if (!tasks) return [];
-    
-    return tasks
-      .filter(task => task.status === 'completed' && task.result)
-      .map(task => ({
-        id: task.id,
-        title: task.name,
-        description: task.description || 'Nessuna descrizione',
-        date: new Date(task.updated_at).toLocaleDateString(),
-        type: determineTaskType(task),
-        icon: getTaskIcon(task),
-        creator: getAgentName(task.agent_id),
-        content: formatTaskContent(task)
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [tasks, agents]);
-  
+  // Costruisci l'elenco dei risultati aggiornato
+    const projectResults = React.useMemo(() => {
+      if (!tasks) return [];
+      return tasks
+        .filter(t => t.status === 'completed' && t.result)
+        .map(t => transformTaskToEnhancedResult(t, agents))
+        .sort((a, b) => (a.priority - b.priority) ||
+          new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [tasks, agents]);
   // Usa il primo risultato come default se ce ne sono
   useEffect(() => {
     if (projectResults.length > 0 && !activeResultId) {
       setActiveResultId(projectResults[0].id);
     }
   }, [projectResults, activeResultId]);
+    
+  useEffect(() => {
+  if (workspace?.status === 'active') {
+    const id = setInterval(async () => {
+      const { count } = await api.monitoring.checkFinalDeliverablesStatus(workspaceId);
+      if (count > finalDeliverablesCount) await refetchDeliverables();
+    }, 30_000);          // 30 s
+    return () => clearInterval(id);
+  }
+}, [workspace?.status, workspaceId, finalDeliverablesCount, refetchDeliverables]);
+
   
   // Filtra il risultato attivo
   const activeResult = projectResults.find(r => r.id === activeResultId);
@@ -521,38 +697,180 @@ const fetchData = async (silentUpdate = false) => {
         </div>
       </div>
       
-      {/* Main navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button 
-          onClick={() => setActiveSection('results')}
-          className={`px-4 py-2 font-medium ${activeSection === 'results' ? 'text-indigo-600 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          💎 Risultati
-        </button>
-        <button 
-          onClick={() => setActiveSection('plan')}
-          className={`px-4 py-2 font-medium ${activeSection === 'plan' ? 'text-indigo-600 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          📋 Piano Attività
-        </button>
-        <button 
-          onClick={() => setActiveSection('team')}
-          className={`px-4 py-2 font-medium ${activeSection === 'team' ? 'text-indigo-600 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          👥 Team
-        </button>
-        <button 
-          onClick={() => setActiveSection('details')}
-          className={`px-4 py-2 font-medium ${activeSection === 'details' ? 'text-indigo-600 border-b-2 border-indigo-500' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          📊 Dettagli & Metriche
-        </button>
+      {/* Enhanced main navigation with status indicators */}
+      <div className="flex border-b border-gray-200 mb-6 bg-white rounded-lg shadow-sm p-1">
+        {[
+          {
+            id: 'results',
+            label: '💎 Risultati',
+            count: projectResults.length,
+            finalCount: finalDeliverables.length
+          },
+          {
+            id: 'plan',
+            label: '📋 Piano Attività',
+            count: tasks.length,
+            pendingCount: tasks.filter(t => t.status === 'pending').length
+          },
+          {
+            id: 'team',
+            label: '👥 Team',
+            count: agents.length,
+            activeCount: agents.filter(a => a.status === 'active').length
+          },
+          {
+            id: 'details',
+            label: '📊 Dettagli & Metriche',
+            count: feedbackRequests.length,
+            type: 'feedback'
+          }
+        ].map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveSection(tab.id)}
+            data-section={tab.id}
+            className={`relative px-4 py-3 font-medium text-sm rounded-md transition-all ${
+              activeSection === tab.id
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <span>{tab.label}</span>
+              
+              {/* Count indicators */}
+              {tab.count > 0 && (
+                <div className="flex items-center space-x-1">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-white bg-opacity-20 text-white'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                  
+                  {/* Special indicators */}
+                  {tab.id === 'results' && tab.finalCount > 0 && (
+                    <div className={`relative ${
+                      activeSection === tab.id ? '' : 'animate-pulse'
+                    }`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        activeSection === tab.id
+                          ? 'bg-yellow-400 text-yellow-900'
+                          : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                      }`}>
+                        🎯 {tab.finalCount}
+                      </span>
+                      {activeSection !== tab.id && (
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {tab.id === 'plan' && tab.pendingCount > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      activeSection === tab.id
+                        ? 'bg-orange-400 text-orange-900'
+                        : 'bg-orange-500 text-white'
+                    }`}>
+                      ⏳ {tab.pendingCount}
+                    </span>
+                  )}
+                  
+                  {tab.id === 'team' && tab.activeCount > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      activeSection === tab.id
+                        ? 'bg-green-400 text-green-900'
+                        : 'bg-green-500 text-white'
+                    }`}>
+                      ⚡ {tab.activeCount}
+                    </span>
+                  )}
+                  
+                  {tab.id === 'details' && tab.type === 'feedback' && tab.count > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      activeSection === tab.id
+                        ? 'bg-red-400 text-red-900'
+                        : 'bg-red-500 text-white animate-pulse'
+                    }`}>
+                      🚨 {tab.count}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Active indicator line */}
+            {activeSection === tab.id && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-white bg-opacity-50 rounded-full"></div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Quick status summary bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-indigo-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Progresso</p>
+              <p className="text-2xl font-bold text-indigo-600">{calculateProgress()}%</p>
+            </div>
+            <div className="text-indigo-500">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Deliverable Finali</p>
+              <p className="text-2xl font-bold text-green-600">
+                {finalDeliverables.length}
+              </p>
+            </div>
+            <div className="text-green-500">
+              🎯
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-orange-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Agenti Attivi</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {agents.filter(a => a.status === 'active').length}
+              </p>
+            </div>
+            <div className="text-orange-500">
+              👥
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Richiede Attenzione</p>
+              <p className="text-2xl font-bold text-red-600">
+                {feedbackRequests.length + tasks.filter(t => t.status === 'failed').length}
+              </p>
+            </div>
+            <div className="text-red-500">
+              🚨
+            </div>
+          </div>
+        </div>
       </div>
       
       {/* Contenuto basato sulla tab selezionata */}
       {activeSection === 'results' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Results list sidebar */}
+          {/* Enhanced Results list sidebar */}
           <div className="md:col-span-1 bg-white rounded-xl shadow-sm p-4">
             <h2 className="text-lg font-semibold mb-4">Risultati Prodotti</h2>
             
@@ -577,33 +895,120 @@ const fetchData = async (silentUpdate = false) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {projectResults.map(result => (
-                  <div 
-                    key={result.id} 
-                    onClick={() => setActiveResultId(result.id)}
-                    className={`p-3 rounded-lg cursor-pointer transition border ${
-                      result.id === activeResultId 
-                        ? 'border-indigo-300 bg-indigo-50' 
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      <div className="text-2xl mr-3">{result.icon}</div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{result.title}</h3>
-                        <p className="text-sm text-gray-500">{result.description}</p>
-                        <div className="flex items-center mt-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(result.type)}`}>
-                            {result.type}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {result.date}
-                          </span>
+                {/* Separare deliverable finali dai risultati normali */}
+                {(() => {
+                  const finals = finalDeliverables;
+                  const normalResults = projectResults.filter(r => r.type !== 'final_deliverable');
+                  
+                  return (
+                    <>
+                      {/* Final Deliverables Section */}
+                      {finals.length > 0 && (
+                        <div className="mb-6">
+                          <div className="flex items-center mb-3">
+                            <span className="text-sm font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full">
+                              🎯 Deliverable Finali
+                            </span>
+                          </div>
+                          
+                          {finals.map(result => (
+                            <div 
+                              key={result.id} 
+                              onClick={() => setActiveResultId(result.id)}
+                              className={`p-4 rounded-lg cursor-pointer transition-all border-2 mb-3 ${
+                                result.id === activeResultId 
+                                  ? 'border-indigo-400 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg' 
+                                  : 'border-indigo-200 bg-gradient-to-r from-indigo-25 to-purple-25 hover:border-indigo-300 hover:shadow-md'
+                              }`}
+                            >
+                              <div className="flex items-start">
+                                <div className="text-3xl mr-3">{result.icon}</div>
+                                <div className="flex-1">
+                                  <div className="flex items-center mb-1">
+                                    <h3 className="font-semibold text-indigo-900">{result.title}</h3>
+                                    <span className="ml-2 text-xs bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">
+                                      FINALE
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-indigo-700 mb-2">{result.description}</p>
+                                  
+                                  {/* Preview di key insights */}
+                                  {result.content?.keyInsights && result.content.keyInsights.length > 0 && (
+                                    <div className="mb-2">
+                                      <div className="text-xs text-indigo-600 mb-1">Key Insights:</div>
+                                      <ul className="text-xs text-indigo-700 space-y-0.5">
+                                        {result.content.keyInsights.slice(0, 2).map((insight, idx) => (
+                                          <li key={idx} className="flex items-start">
+                                            <span className="text-indigo-400 mr-1">•</span>
+                                            <span>{insight}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
+                                        {result.creator}
+                                      </span>
+                                      <span className="text-xs text-indigo-500">{result.date}</span>
+                                    </div>
+                                    {result.content?.metrics && Object.keys(result.content.metrics).length > 0 && (
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                        📊 Metriche
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                      )}
+                      
+                      {/* Normal Results Section */}
+                      {normalResults.length > 0 && (
+                        <div>
+                          <div className="flex items-center mb-3">
+                            <span className="text-sm font-medium text-gray-600">
+                              📋 Altri Risultati ({normalResults.length})
+                            </span>
+                          </div>
+                          
+                          {normalResults.map(result => (
+                            <div 
+                              key={result.id} 
+                              onClick={() => setActiveResultId(result.id)}
+                              className={`p-3 rounded-lg cursor-pointer transition border ${
+                                result.id === activeResultId 
+                                  ? 'border-indigo-300 bg-indigo-50' 
+                                  : 'border-gray-200 hover:bg-gray-50'
+                              }`}
+                            >
+                              {/* Existing normal result rendering */}
+                              <div className="flex items-start">
+                                <div className="text-2xl mr-3">{result.icon}</div>
+                                <div>
+                                  <h3 className="font-medium text-gray-900">{result.title}</h3>
+                                  <p className="text-sm text-gray-500">{result.description}</p>
+                                  <div className="flex items-center mt-2">
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(result.type)}`}>
+                                      {result.type}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      {result.date}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
             
@@ -614,141 +1019,156 @@ const fetchData = async (silentUpdate = false) => {
             )}
           </div>
           
-{/* Result details - Versione migliorata */}
-<div className="md:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-  {activeResult ? (
-    <>
-      {/* Header migliorato */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="flex justify-between items-center px-6 py-4">
-          <div className="flex items-center">
-            <span className="text-3xl mr-3">{activeResult.icon}</span>
-            <div>
-              <h2 className="text-xl font-semibold">{activeResult.title}</h2>
-              <div className="flex items-center text-sm text-gray-500 mt-1">
-                <span>{activeResult.creator}</span>
-                <span className="mx-2">•</span>
-                <span>{activeResult.date}</span>
-                <span className={`ml-3 px-2 py-0.5 rounded-full text-xs ${getStatusColor(activeResult.type)}`}>
-                  {activeResult.type}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex space-x-2">
-            {/* Navigazione tra risultati */}
-            {projectResults.length > 1 && (
-              <div className="flex border border-gray-200 rounded-md overflow-hidden">
-                <button 
-                  onClick={() => {
-                    const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
-                    if (currentIndex > 0) {
-                      setActiveResultId(projectResults[currentIndex - 1].id);
-                    }
-                  }}
-                  disabled={projectResults.findIndex(r => r.id === activeResultId) === 0}
-                  className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Risultato precedente"
-                >
-                  ← 
-                </button>
-                <div className="px-3 py-2 border-l border-r border-gray-200 text-sm">
-                  {projectResults.findIndex(r => r.id === activeResultId) + 1} di {projectResults.length}
+          {/* Enhanced Result details panel */}
+          <div className="md:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            {activeResult ? (
+              <>
+                {/* Enhanced header for final deliverables */}
+                <div className={`border-b border-gray-200 ${
+                  activeResult.type === 'final_deliverable' 
+                    ? 'bg-gradient-to-r from-indigo-50 to-purple-50' 
+                    : 'bg-gray-50'
+                }`}>
+                  <div className="flex justify-between items-center px-6 py-4">
+                    <div className="flex items-center">
+                      <span className="text-3xl mr-3">{activeResult.icon}</span>
+                      <div>
+                        <div className="flex items-center">
+                          <h2 className="text-xl font-semibold">{activeResult.title}</h2>
+                          {activeResult.type === 'final_deliverable' && (
+                            <span className="ml-3 text-xs bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full font-medium">
+                              🎯 DELIVERABLE FINALE
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-500 mt-1">
+                          <span>{activeResult.creator}</span>
+                          <span className="mx-2">•</span>
+                          <span>{activeResult.date}</span>
+                          <span className={`ml-3 px-2 py-0.5 rounded-full text-xs ${getStatusColor(activeResult.type)}`}>
+                            {activeResult.type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {/* Navigazione tra risultati */}
+                      {projectResults.length > 1 && (
+                        <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                          <button 
+                            onClick={() => {
+                              const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
+                              if (currentIndex > 0) {
+                                setActiveResultId(projectResults[currentIndex - 1].id);
+                              }
+                            }}
+                            disabled={projectResults.findIndex(r => r.id === activeResultId) === 0}
+                            className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Risultato precedente"
+                          >
+                            ← 
+                          </button>
+                          <div className="px-3 py-2 border-l border-r border-gray-200 text-sm">
+                            {projectResults.findIndex(r => r.id === activeResultId) + 1} di {projectResults.length}
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
+                              if (currentIndex < projectResults.length - 1) {
+                                setActiveResultId(projectResults[currentIndex + 1].id);
+                              }
+                            }}
+                            disabled={projectResults.findIndex(r => r.id === activeResultId) === projectResults.length - 1}
+                            className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Risultato successivo"
+                          >
+                            →
+                          </button>
+                        </div>
+                      )}
+                      
+                      <button 
+                        onClick={() => {
+                          // Funzione per esportare il risultato come file JSON
+                          const task = tasks.find(t => t.id === activeResultId);
+                          if (task && task.result) {
+                            const jsonStr = JSON.stringify(task.result, null, 2);
+                            const blob = new Blob([jsonStr], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${task.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_result.json`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }
+                        }} 
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition flex items-center"
+                      >
+                        <span className="mr-1">↓</span> Esporta
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => {
-                    const currentIndex = projectResults.findIndex(r => r.id === activeResultId);
-                    if (currentIndex < projectResults.length - 1) {
-                      setActiveResultId(projectResults[currentIndex + 1].id);
-                    }
-                  }}
-                  disabled={projectResults.findIndex(r => r.id === activeResultId) === projectResults.length - 1}
-                  className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Risultato successivo"
-                >
-                  →
-                </button>
+                
+                {/* Enhanced content area */}
+                <div className="p-6">
+                  {activeResult.type === 'final_deliverable' ? (
+                    <EnhancedFinalDeliverableView result={activeResult} />
+                  ) : (
+                    <TaskResultDetails result={tasks.find(t => t.id === activeResultId)?.result} />
+                  )}
+                  
+                  {/* Feedback e azioni */}
+                  <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex space-x-3">
+                      <button 
+                        onClick={() => console.log('Chiedi modifiche', activeResultId)} 
+                        className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition flex items-center"
+                      >
+                        <span className="mr-1">✏️</span> Chiedi Modifiche
+                      </button>
+                      <button 
+                        onClick={() => console.log('Commenta', activeResultId)} 
+                        className="px-4 py-2 bg-gray-50 text-gray-700 rounded-md text-sm hover:bg-gray-100 transition flex items-center"
+                      >
+                        <span className="mr-1">💬</span> Commenta
+                      </button>
+                    </div>
+                    
+                    <button 
+                      onClick={() => console.log('Approva', activeResultId)} 
+                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition flex items-center"
+                    >
+                      <span className="mr-1">✓</span> Approva
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12">
+                <div className="text-5xl mb-4">💎</div>
+                <h3 className="text-xl font-medium text-gray-700 mb-2">Seleziona un risultato</h3>
+                <p className="text-gray-500 text-center max-w-md">
+                  {projectResults.length > 0
+                    ? 'Seleziona un risultato dalla lista a sinistra per visualizzarne i dettagli'
+                    : 'Il team non ha ancora prodotto risultati'}
+                </p>
+                {/* CTA se nessun risultato disponibile */}
+                {projectResults.length === 0 && workspace.status === 'created' && (
+                  <button 
+                    onClick={handleStartTeam}
+                    className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
+                    disabled={isStartingTeam}
+                  >
+                    {isStartingTeam ? 'Avvio...' : 'Avvia Team'}
+                  </button>
+                )}
               </div>
             )}
-            
-            <button 
-              onClick={() => {
-                // Funzione per esportare il risultato come file JSON
-                const task = tasks.find(t => t.id === activeResultId);
-                if (task && task.result) {
-                  const jsonStr = JSON.stringify(task.result, null, 2);
-                  const blob = new Blob([jsonStr], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${task.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_result.json`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                }
-              }} 
-              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition flex items-center"
-            >
-              <span className="mr-1">↓</span> Esporta
-            </button>
           </div>
-        </div>
-      </div>
-      
-      {/* Contenuto principale con TaskResultDetails migliorato */}
-      <div className="p-6">
-        <TaskResultDetails result={tasks.find(t => t.id === activeResultId)?.result} />
-        
-        {/* Feedback e azioni */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-          <div className="flex space-x-3">
-            <button 
-              onClick={() => console.log('Chiedi modifiche', activeResultId)} 
-              className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm hover:bg-indigo-100 transition flex items-center"
-            >
-              <span className="mr-1">✏️</span> Chiedi Modifiche
-            </button>
-            <button 
-              onClick={() => console.log('Commenta', activeResultId)} 
-              className="px-4 py-2 bg-gray-50 text-gray-700 rounded-md text-sm hover:bg-gray-100 transition flex items-center"
-            >
-              <span className="mr-1">💬</span> Commenta
-            </button>
-          </div>
-          
-          <button 
-            onClick={() => console.log('Approva', activeResultId)} 
-            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition flex items-center"
-          >
-            <span className="mr-1">✓</span> Approva
-          </button>
-        </div>
-      </div>
-    </>
-  ) : (
-    <div className="flex flex-col items-center justify-center p-12">
-      <div className="text-5xl mb-4">💎</div>
-      <h3 className="text-xl font-medium text-gray-700 mb-2">Seleziona un risultato</h3>
-      <p className="text-gray-500 text-center max-w-md">
-        {projectResults.length > 0
-          ? 'Seleziona un risultato dalla lista a sinistra per visualizzarne i dettagli'
-          : 'Il team non ha ancora prodotto risultati'}
-      </p>
-      {/* CTA se nessun risultato disponibile */}
-      {projectResults.length === 0 && workspace.status === 'created' && (
-        <button 
-          onClick={handleStartTeam}
-          className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
-          disabled={isStartingTeam}
-        >
-          {isStartingTeam ? 'Avvio...' : 'Avvia Team'}
-        </button>
-      )}
-    </div>
-  )}
-</div>
         </div>
       )}
       

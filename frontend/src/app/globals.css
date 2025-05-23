@@ -38,3 +38,12 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #a0a0a0;
 }
+
+@keyframes deliverable-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
+}
+
+.final-deliverable-glow {
+  animation: deliverable-glow 2s ease-in-out infinite;
+}
