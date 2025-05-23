@@ -416,3 +416,22 @@ class DeliverableFeedback(BaseModel):
     message: str
     specific_tasks: Optional[List[str]] = None
     priority: Literal["low","medium","high"] = "medium"
+    
+class ProjectPhase(str, Enum):
+    ANALYSIS = "ANALYSIS"
+    IMPLEMENTATION = "IMPLEMENTATION" 
+    FINALIZATION = "FINALIZATION"
+    COMPLETED = "COMPLETED"
+
+PHASE_SEQUENCE = [
+    ProjectPhase.ANALYSIS,
+    ProjectPhase.IMPLEMENTATION,
+    ProjectPhase.FINALIZATION,
+    ProjectPhase.COMPLETED
+]
+
+PHASE_DESCRIPTIONS = {
+    ProjectPhase.ANALYSIS: "Research, competitor analysis, audience profiling, market research",
+    ProjectPhase.IMPLEMENTATION: "Strategy development, planning, frameworks, templates, workflows",
+    ProjectPhase.FINALIZATION: "Content creation, publishing, execution, final deliverables"
+}

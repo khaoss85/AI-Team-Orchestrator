@@ -6,9 +6,100 @@ from typing import List, Dict, Any, Optional, Set
 
 # IMPORT AGGIORNATI per compatibilità con i nuovi models
 from models import Task, TaskStatus
+from models import ProjectPhase, PHASE_SEQUENCE, PHASE_DESCRIPTIONS
 from database import create_task, list_agents, list_tasks, get_workspace
 
 logger = logging.getLogger(__name__)
+
+class PhaseManager:
+    """Gestisce centralmente le fasi del progetto"""
+    
+    @staticmethod
+    def validate_phase(phase: str) -> ProjectPhase:
+        """Valida e normalizza una fase"""
+        if not phase:
+            return ProjectPhase.ANALYSIS
+            
+        phase_upper = phase.upper().strip()
+        
+        # Exact match first
+        for valid_phase in ProjectPhase:
+            if phase_upper == valid_phase.value:
+                return valid_phase
+                
+        # Fallback mapping per compatibilità
+        fallback_mapping = {
+            "RESEARCH": ProjectPhase.ANALYSIS,
+            "STRATEGY": ProjectPhase.IMPLEMENTATION,
+            "PLANNING": ProjectPhase.IMPLEMENTATION,
+            "EXECUTION": ProjectPhase.FINALIZATION,
+            "CREATION": ProjectPhase.FINALIZATION,
+            "CONTENT": ProjectPhase.FINALIZATION,
+            "PUBLISHING": ProjectPhase.FINALIZATION
+        }
+        
+        return fallback_mapping.get(phase_upper, ProjectPhase.ANALYSIS)
+    
+    @staticmethod
+    def get_next_phase(current_phase: ProjectPhase) -> Optional[ProjectPhase]:
+        """Restituisce la fase successiva"""
+        try:
+            current_index = PHASE_SEQUENCE.index(current_phase)
+            if current_index < len(PHASE_SEQUENCE) - 1:
+                return PHASE_SEQUENCE[current_index + 1]
+        except (ValueError, IndexError):
+            logger.warning(f"Invalid phase for progression: {current_phase}")
+        return None
+    
+    @staticmethod
+    async def determine_workspace_current_phase(workspace_id: str) -> ProjectPhase:
+        """Determina la fase attuale del workspace basata sui task completati"""
+        try:
+            tasks = await list_tasks(workspace_id)
+            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+            
+            if not completed_tasks:
+                return ProjectPhase.ANALYSIS
+            
+            # Conta task completati per fase (con validazione)
+            phase_counts = {phase: 0 for phase in ProjectPhase}
+            
+            for task in completed_tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_phase = context_data.get("project_phase", "ANALYSIS")
+                validated_phase = PhaseManager.validate_phase(task_phase)
+                phase_counts[validated_phase] += 1
+            
+            logger.info(f"Workspace {workspace_id} phase counts: {phase_counts}")
+            
+            # Determina fase attuale basata sui completamenti (soglie conservative)
+            if phase_counts[ProjectPhase.FINALIZATION] >= 2:
+                return ProjectPhase.COMPLETED
+            elif phase_counts[ProjectPhase.IMPLEMENTATION] >= 2:
+                return ProjectPhase.FINALIZATION
+            elif phase_counts[ProjectPhase.ANALYSIS] >= 3:
+                return ProjectPhase.IMPLEMENTATION
+            else:
+                return ProjectPhase.ANALYSIS
+                
+        except Exception as e:
+            logger.error(f"Error determining workspace phase: {e}")
+            return ProjectPhase.ANALYSIS
+    
+    @staticmethod
+    def get_phase_description(phase: ProjectPhase) -> str:
+        """Restituisce la descrizione di una fase"""
+        return PHASE_DESCRIPTIONS.get(phase, "General project work")
+    
+    @staticmethod
+    def is_valid_phase_transition(from_phase: ProjectPhase, to_phase: ProjectPhase) -> bool:
+        """Verifica se una transizione di fase è valida"""
+        try:
+            from_index = PHASE_SEQUENCE.index(from_phase)
+            to_index = PHASE_SEQUENCE.index(to_phase)
+            return to_index == from_index + 1
+        except ValueError:
+            return False
 
 # ---------------------------------------------------------------------------
 # Structured outputs per task analysis
@@ -202,104 +293,75 @@ class EnhancedTaskExecutor:
         result: Dict[str, Any],
         workspace_id: str
     ) -> bool:
-        """Handles Project Manager task completion by creating defined sub-tasks."""
+        """AGGIORNATO: Handles Project Manager task completion con validazione fasi"""
 
         logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
 
-        # Extract detailed_results_json with proper validation
+        # Estrai detailed_results_json
         detailed_results_json_content = result.get("detailed_results_json")
+        if not detailed_results_json_content:
+            logger.error(f"PM task {task.id} missing detailed_results_json")
+            return False
 
-        # Log detailed debugging info
-        logger.info(f"PM_HANDLER_DEBUG - Task {task.id} - Result keys: {list(result.keys())}")
-        if detailed_results_json_content is not None:
-            logger.info(f"PM_HANDLER_DEBUG - detailed_results_json type: {type(detailed_results_json_content)}")
-        else:
-            logger.error(f"PM_HANDLER_CRITICAL - detailed_results_json IS MISSING for task {task.id}")
-
-        # Parse the detailed_results_json to extract sub-tasks
-        defined_subtasks = []
-
-        # Source 1: Parse detailed_results_json if it exists and is valid
-        if isinstance(detailed_results_json_content, str) and detailed_results_json_content.strip():
-            try:
-                results_data = json.loads(detailed_results_json_content)
-
-                # Try multiple possible keys for sub-tasks
-                if isinstance(results_data, dict):
-                    for key in ["defined_sub_tasks", "sub_tasks", "subtasks", "tasks", "next_tasks"]:
-                        if key in results_data and isinstance(results_data[key], list):
-                            defined_subtasks.extend(results_data[key])
-                            logger.info(f"Found {len(results_data[key])} sub-tasks in key '{key}'")
-                            break  # Only use the first valid key found
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
-
-        # Source 2: Try next_steps as fallback
-        if not defined_subtasks:
-            logger.info(f"No sub-tasks found in detailed_results_json for task {task.id}. Trying next_steps.")
-            next_steps = result.get("next_steps", [])
-
-            if isinstance(next_steps, list) and next_steps:
-                for step in next_steps:
-                    if not isinstance(step, str) or not step.strip():
-                        continue
-
-                    # Infer target_role from step content
-                    step_lower = step.lower()
-                    target_role = "Specialist"  # Default
-
-                    if any(kw in step_lower for kw in ["analy", "data", "research"]):
-                        target_role = "AnalysisSpecialist"
-                    elif any(kw in step_lower for kw in ["content", "write", "text"]):
-                        target_role = "ContentSpecialist"
-                    elif any(kw in step_lower for kw in ["develop", "implement", "code"]):
-                        target_role = "TechnicalSpecialist"
-
-                    subtask = {
-                        "name": f"Follow-up: {step[:50]}..." if len(step) > 50 else f"Follow-up: {step}",
-                        "description": f"Complete the following task defined by the Project Manager:\n\n{step}",
-                        "target_agent_role": target_role,
-                        "priority": "medium"
-                    }
-                    defined_subtasks.append(subtask)
-
-                if defined_subtasks:
-                    logger.info(f"Created {len(defined_subtasks)} sub-tasks from next_steps")
-
-        # Create the sub-tasks in the database
-        from database import create_task
-        
         try:
-            all_workspace_tasks = await list_tasks(workspace_id)
-            completed_tasks_count = len([t for t in all_workspace_tasks if t.get("status") == "completed"])
-        except Exception as e:
-            logger.warning(f"Could not count completed tasks for workspace {workspace_id}: {e}")
-            completed_tasks_count = 0
+            results_data = json.loads(detailed_results_json_content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
+            return False
+
+        # NUOVO: Validazione delle fasi
+        current_project_phase = results_data.get("current_project_phase")
+        if not current_project_phase:
+            logger.error(f"PM task {task.id} missing current_project_phase")
+            return False
+
+        validated_current_phase = PhaseManager.validate_phase(current_project_phase)
+        logger.info(f"PM specified phase: {current_project_phase} -> validated: {validated_current_phase.value}")
+
+        defined_subtasks = results_data.get("defined_sub_tasks", [])
+        if not defined_subtasks:
+            logger.warning(f"PM task {task.id} has no defined_sub_tasks")
+            return False
 
         created_count = 0
-        created_tasks_ids = []
+        phase_validation_errors = []
 
         for subtask_def in defined_subtasks:
             if not isinstance(subtask_def, dict):
-                logger.warning(f"Skipping invalid subtask definition (not a dict): {subtask_def}")
+                logger.warning(f"Skipping invalid subtask definition: {subtask_def}")
                 continue
 
             try:
-                # Validate required fields
+                # Validazione campi obbligatori
                 required_fields = ["name", "description", "target_agent_role"]
-                if not all(field in subtask_def for field in required_fields):
-                    logger.warning(f"Skipping subtask missing required fields: {subtask_def}")
+                missing_fields = [field for field in required_fields if not subtask_def.get(field)]
+                if missing_fields:
+                    logger.warning(f"Skipping subtask missing fields {missing_fields}: {subtask_def}")
                     continue
 
-                # Find appropriate agent by role with improved logging
+                # NUOVO: Validazione fase del sub-task
+                subtask_phase = subtask_def.get("project_phase")
+                if not subtask_phase:
+                    logger.warning(f"Sub-task missing project_phase, using current phase: {subtask_def['name']}")
+                    subtask_phase = validated_current_phase.value
+
+                validated_subtask_phase = PhaseManager.validate_phase(subtask_phase)
+                if subtask_phase != validated_subtask_phase.value:
+                    phase_validation_errors.append({
+                        "task": subtask_def['name'],
+                        "original": subtask_phase,
+                        "corrected": validated_subtask_phase.value
+                    })
+
+                # Trova agente appropriato
                 target_role = subtask_def["target_agent_role"]
                 target_agent = await self._find_agent_by_role(workspace_id, target_role)
 
                 if not target_agent:
-                    logger.warning(f"No agent found for role '{target_role}'. Skipping subtask: {subtask_def['name']}")
+                    logger.warning(f"No agent found for role '{target_role}'. Skipping: {subtask_def['name']}")
                     continue
 
-                # Create the sub-task with explicit attribution tracking
+                # Crea il sub-task con validazione completa
                 created_task = await create_task(
                     workspace_id=workspace_id,
                     agent_id=str(target_agent["id"]),
@@ -311,33 +373,40 @@ class EnhancedTaskExecutor:
                     parent_task_id=str(task.id),
 
                     # TRACKING AUTOMATICO
-                    created_by_task_id=str(task.id),  # Il PM task che ha creato questo subtask
+                    created_by_task_id=str(task.id),
                     created_by_agent_id=str(task.agent_id) if task.agent_id else None,
-                    creation_type="pm_completion",  # Creato dal completamento di un task PM
+                    creation_type="pm_completion",
 
-                    # CONTEXT DATA SPECIFICO
+                    # CONTEXT DATA CON VALIDAZIONE FASI
                     context_data={
                         "auto_generated_by_pm": True,
                         "source_pm_task_name": task.name,
-                        "project_phase": self._determine_project_phase(subtask_def["name"], subtask_def["description"], completed_tasks_count),
-                        "failure_count": 0,
-                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed by agent"),
-                        "subtask_definition_source": "pm_detailed_results_json",
+                        "project_phase": validated_subtask_phase.value,  # FASE VALIDATA
+                        "original_pm_phase": subtask_phase,  # Fase originale dal PM
+                        "pm_task_phase": validated_current_phase.value,
+                        "phase_validated": True,
+                        "phase_validation_timestamp": datetime.now().isoformat(),
+                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed"),
                         "pm_completion_timestamp": datetime.now().isoformat()
                     }
                 )
 
                 if created_task and created_task.get("id"):
                     created_count += 1
-                    created_tasks_ids.append(created_task["id"])
-                    logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) for agent {target_agent.get('name')}")
+                    logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) "
+                               f"for agent {target_agent.get('name')} in phase {validated_subtask_phase.value}")
                 else:
-                    logger.error(f"Failed to create sub-task in database: {subtask_def['name']}")
+                    logger.error(f"Failed to create sub-task: {subtask_def['name']}")
 
             except Exception as e:
                 logger.error(f"Error creating sub-task '{subtask_def.get('name', 'Unknown')}': {e}", exc_info=True)
 
-        logger.info(f"PM task {task.id} completion: Created {created_count}/{len(defined_subtasks)} sub-tasks")
+        # Log validation errors
+        if phase_validation_errors:
+            logger.warning(f"Phase validation corrections made: {phase_validation_errors}")
+
+        logger.info(f"PM task {task.id} completion: Created {created_count}/{len(defined_subtasks)} "
+                   f"sub-tasks for phase {validated_current_phase.value}")
         return created_count > 0
 
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
@@ -595,32 +664,9 @@ class EnhancedTaskExecutor:
     # Nuove funzioni per il fix anti-loop
     # ---------------------------------------------------------------------
     def _determine_project_phase(self, task_name: str, task_desc: str, completed_tasks_count: int) -> str:
-        """MIGLIORATO: Determina la fase del progetto con logica più accurata"""
-        task_lower = task_name.lower() + " " + task_desc.lower()
-
-        # Pattern specifici per Fase 2 (IMPLEMENTATION) - AGGIUNTO
-        if any(kw in task_lower for kw in 
-            ["content strategy", "editorial calendar", "publishing schedule", "content templates", 
-             "workflow", "guidelines", "framework", "calendar planning"]):
-            return "IMPLEMENTATION"
-
-        # Pattern di fase iniziale/analisi
-        elif completed_tasks_count < 5 or any(kw in task_lower for kw in 
-            ["analys", "research", "initial", "assess", "plan", "investigate", "explore", "discover", "competitor", "audience"]):
-            return "ANALYSIS"
-
-        # Pattern di fase finale
-        elif any(kw in task_lower for kw in 
-            ["finaliz", "review", "evaluat", "test", "valida", "conclude", "complete", "finish", "publish", "launch"]):
-            return "FINALIZATION"
-
-        # Default - progresso in base al conteggio dei task
-        elif completed_tasks_count > 15:
-            return "FINALIZATION"
-        elif completed_tasks_count > 8:
-            return "IMPLEMENTATION"
-        else:
-            return "ANALYSIS"
+        """DEPRECATED: Use PhaseManager.validate_phase() instead"""
+        # Usa il nuovo PhaseManager per compatibilità
+        return PhaseManager.validate_phase("IMPLEMENTATION").value
 
     async def _is_delegation_loop(self, source_agent_id: str, target_agent_id: str, workspace_id: str, parent_task_id: Optional[str] = None) -> bool:
         """Verifica se esiste già un ciclo di delegazione nella catena dei task"""
@@ -985,6 +1031,131 @@ class EnhancedTaskExecutor:
             return final_task["id"]
         
         return None
+    
+    async def _check_existing_phase_planning(self, workspace_id: str, target_phase: ProjectPhase) -> bool:
+        """Verifica se esiste già un task di planning per la fase target"""
+        try:
+            tasks = await list_tasks(workspace_id)
+
+            for task in tasks:
+                if task.get("status") in ["pending", "in_progress"]:
+                    context_data = task.get("context_data", {}) or {}
+
+                    # Controlla se è un task di planning per la fase target
+                    if (context_data.get("planning_task_marker") and 
+                        context_data.get("project_phase") == target_phase.value):
+                        logger.info(f"Found existing planning task for phase {target_phase.value}: {task['id']}")
+                        return True
+
+                    # Controlla anche per nome del task (fallback)
+                    task_name = (task.get("name") or "").lower()
+                    if (f"phase planning" in task_name and 
+                        target_phase.value.lower() in task_name):
+                        return True
+
+            return False
+        except Exception as e:
+            logger.error(f"Error checking existing phase planning: {e}")
+            return True  # Err on safe side
+
+    async def _find_project_manager(self, workspace_id: str) -> Optional[Dict]:
+        """Trova il Project Manager nel workspace"""
+        try:
+            agents = await list_agents(workspace_id)
+
+            for agent in agents:
+                if (agent.get("status") == "active" and 
+                    "project manager" in (agent.get("role") or "").lower()):
+                    return agent
+
+            # Fallback: cerca agenti con ruoli di leadership
+            for agent in agents:
+                if (agent.get("status") == "active" and 
+                    any(keyword in (agent.get("role") or "").lower() 
+                        for keyword in ["manager", "coordinator", "director", "lead"])):
+                    return agent
+
+            logger.warning(f"No project manager found in workspace {workspace_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error finding project manager: {e}")
+            return None
+
+    async def _create_phase_planning_task(
+        self, 
+        workspace_id: str, 
+        current_phase: ProjectPhase, 
+        next_phase: ProjectPhase
+    ) -> Optional[str]:
+        """Crea task di planning per la fase successiva"""
+
+        pm_agent = await self._find_project_manager(workspace_id)
+        if not pm_agent:
+            return None
+
+        phase_planning_templates = {
+            ProjectPhase.IMPLEMENTATION: {
+                "title": "Content Strategy & Editorial Plan Development",
+                "focus": "strategy frameworks, planning templates, workflows",
+                "examples": "Content Strategy Framework, Editorial Calendar Template, Publishing Workflow"
+            },
+            ProjectPhase.FINALIZATION: {
+                "title": "Content Creation & Publishing Execution", 
+                "focus": "content creation, publishing execution, final deliverables",
+                "examples": "Content Posts Creation, Publishing Schedule Execution, Performance Analytics"
+            }
+        }
+
+        template = phase_planning_templates.get(next_phase)
+        if not template:
+            logger.warning(f"No planning template for phase {next_phase.value}")
+            return None
+
+        task_name = f"Phase Planning: {template['title']}"
+
+        planning_task = await create_task(
+            workspace_id=workspace_id,
+            agent_id=pm_agent["id"],
+            name=task_name,
+            description=f"""Plan and define sub-tasks for the {next_phase.value} phase.
+
+    CURRENT PHASE COMPLETED: {current_phase.value}
+    TARGET PHASE: {next_phase.value}
+    FOCUS AREAS: {template['focus']}
+
+    CRITICAL REQUIREMENTS:
+    1. Your detailed_results_json MUST include:
+       - "current_project_phase": "{next_phase.value}"
+       - "defined_sub_tasks" array
+    2. Each sub-task MUST have "project_phase": "{next_phase.value}"
+    3. Use exact agent names from get_team_roles_and_status
+
+    EXAMPLE SUB-TASKS FOR {next_phase.value}:
+    {template['examples']}
+
+    Phase Description: {PhaseManager.get_phase_description(next_phase)}
+    """,
+            status="pending",
+            priority="high",
+            creation_type="phase_transition",
+            context_data={
+                "project_phase": next_phase.value,
+                "phase_transition": f"{current_phase.value}_TO_{next_phase.value}",
+                "planning_task_marker": True,
+                "phase_validated": True,
+                "target_phase": next_phase.value,
+                "completed_phase": current_phase.value,
+                "phase_trigger_timestamp": datetime.now().isoformat()
+            }
+        )
+
+        if planning_task and planning_task.get("id"):
+            logger.info(f"✅ Created phase planning task {planning_task['id']} "
+                       f"for transition {current_phase.value} → {next_phase.value}")
+            return planning_task["id"]
+        else:
+            logger.error(f"❌ Failed to create phase planning task for {next_phase.value}")
+            return None
     
     async def check_phase_completion_and_trigger_pm(self, workspace_id: str) -> Optional[str]:
         """Verifica se una fase è completata e crea task per il PM per la fase successiva"""
