@@ -3,15 +3,11 @@ import json
 from typing import List, Dict, Any, Optional, Literal
 from uuid import UUID
 from datetime import datetime
-
-# Import corretto per function_tool
 try:
     from agents import function_tool
 except ImportError:
-    # Fallback se il package si chiama diversamente
     from openai_agents import function_tool
 
-# Import del Field da Pydantic, NON dall'SDK
 from pydantic import Field
 
 from models import TaskStatus
@@ -20,166 +16,176 @@ from database import create_task as db_create_task, list_agents as db_list_agent
 logger = logging.getLogger(__name__)
 
 class PMOrchestrationTools:
-    @staticmethod
-    @function_tool(name_override="create_and_assign_sub_task")
-    async def create_and_assign_sub_task_tool(
-        workspace_id: str = Field(..., description="ID of the current workspace."),
-        task_name: str = Field(..., description="Clear, concise, and unique name for the new sub-task."),
-        task_description: str = Field(..., description="Detailed description of what needs to be done for the sub-task, including all necessary context, inputs, and expected deliverables."),
-        target_agent_role: str = Field(..., description="EXACT agent name from get_team_roles_and_status (e.g., 'ContentSpecialist', 'AnalysisSpecialist'). Use the exact 'agent_name' field, NOT the role description."),
-        priority: str = Field(default="medium", description="Priority of the sub-task: low, medium, or high"),
-        parent_task_id: Optional[str] = Field(None, description="ID of the parent task from which this sub-task is derived."),
-        context_data: Optional[str] = Field(None, description="Optional JSON string containing specific context or inputs for the task.")
-    ) -> str:
-        """
-        Creates a new sub-task based on the project plan and assigns it to an agent with the specified name.
-        IMPORTANT: Use EXACT agent names from get_team_roles_and_status response.
-        The task description must be comprehensive.
-        """
-        logger.info(f"PM Tool 'create_and_assign_sub_task': Creating sub-task '{task_name}' for agent '{target_agent_role}' in workspace '{workspace_id}'.")
-        try:
-            # 1. Trova un agente attivo con il nome o ruolo target
-            agents_in_db = await db_list_agents(workspace_id=workspace_id)
-
-            # Cerca prima per nome esatto (raccomandato)
-            target_agent = None
-            for agent in agents_in_db:
-                if (agent.get("name", "").lower() == target_agent_role.lower() and 
-                    agent.get("status") == "active"):
-                    target_agent = agent
-                    logger.info(f"Found agent by exact name match: {agent.get('name')}")
-                    break
-
-            # Fallback: cerca per ruolo (compatibilità)
-            if not target_agent:
+    """Tools for Project Manager - NON PIÙ STATIC, RICEVE WORKSPACE_ID"""
+    
+    def __init__(self, workspace_id: str):
+        """Initialize with workspace_id - QUESTO È IL FIX PRINCIPALE"""
+        self.workspace_id = workspace_id
+        logger.info(f"PMOrchestrationTools initialized for workspace: {workspace_id}")
+    
+    def get_team_roles_and_status_tool(self):
+        """Creates tool with embedded workspace_id - NON HA PIÙ PARAMETRI"""
+        workspace_id = self.workspace_id  # Capture workspace_id in closure
+        
+        @function_tool(name_override="get_team_roles_and_status")
+        async def impl() -> str:  # ⚠️ NOTA: NESSUN PARAMETRO workspace_id
+            """Get detailed information about available team members and their exact roles.
+            CRITICAL: Use this before creating sub-tasks to get the EXACT agent names and roles.
+            """
+            try:
+                logger.info(f"Getting team roles for workspace: {workspace_id}")
+                
+                # ORA USERÀ SEMPRE IL workspace_id CORRETTO
+                agents_in_db = await db_list_agents(workspace_id=workspace_id)
+                active_agents = [a for a in agents_in_db if a.get("status") == "active"]
+                
+                team_info = {
+                    "workspace_id": workspace_id,
+                    "team_summary": {
+                        "total_agents": len(agents_in_db),
+                        "active_agents": len(active_agents),
+                        "inactive_agents": len(agents_in_db) - len(active_agents)
+                    },
+                    "active_team_members": []
+                }
+                
+                for agent in active_agents:
+                    team_info["active_team_members"].append({
+                        "agent_name": agent.get("name"),  # Nome esatto da usare
+                        "exact_role": agent.get("role"),  # Ruolo esatto da usare  
+                        "seniority": agent.get("seniority"),
+                        "specialization": agent.get("description", "")[:100] + "..." if agent.get("description", "") else "No description"
+                    })
+                
+                # Aggiungi istruzioni chiare per il PM
+                team_info["usage_instructions"] = {
+                    "for_task_creation": "Use the EXACT 'agent_name' when specifying target_agent_role in create_and_assign_sub_task",
+                    "example": "If you want to assign to ContentSpecialist, use target_agent_role='ContentSpecialist' (not the long role description)"
+                }
+                
+                return json.dumps(team_info, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error in get_team_roles_and_status: {e}", exc_info=True)
+                return json.dumps({"error": str(e), "workspace_id": workspace_id, "team_members": []})
+        
+        return impl
+    
+    def create_and_assign_sub_task_tool(self):
+        """Creates sub-task tool with embedded workspace_id"""
+        workspace_id = self.workspace_id  # Capture workspace_id in closure
+        
+        @function_tool(name_override="create_and_assign_sub_task")
+        async def impl(
+            task_name: str = Field(..., description="Clear, concise, and unique name for the new sub-task."),
+            task_description: str = Field(..., description="Detailed description of what needs to be done for the sub-task, including all necessary context, inputs, and expected deliverables."),
+            target_agent_role: str = Field(..., description="EXACT agent name from get_team_roles_and_status (e.g., 'ContentSpecialist', 'AnalysisSpecialist'). Use the exact 'agent_name' field, NOT the role description."),
+            priority: str = Field(default="medium", description="Priority of the sub-task: low, medium, or high"),
+            parent_task_id: Optional[str] = Field(None, description="ID of the parent task from which this sub-task is derived."),
+            context_data: Optional[str] = Field(None, description="Optional JSON string containing specific context or inputs for the task.")
+        ) -> str:
+            """Creates a new sub-task based on the project plan and assigns it to an agent with the specified name.
+            IMPORTANT: Use EXACT agent names from get_team_roles_and_status response.
+            The task description must be comprehensive.
+            """
+            logger.info(f"Creating sub-task '{task_name}' for agent '{target_agent_role}' in workspace '{workspace_id}'.")
+            
+            try:
+                # ORA USERÀ SEMPRE IL workspace_id CORRETTO
+                agents_in_db = await db_list_agents(workspace_id=workspace_id)
+                
+                # Cerca prima per nome esatto (raccomandato)
+                target_agent = None
                 for agent in agents_in_db:
-                    if (agent.get("role", "").lower() == target_agent_role.lower() and 
+                    if (agent.get("name", "").lower() == target_agent_role.lower() and 
                         agent.get("status") == "active"):
                         target_agent = agent
-                        logger.info(f"Found agent by role match: {agent.get('name')} ({agent.get('role')})")
+                        logger.info(f"Found agent by exact name match: {agent.get('name')}")
                         break
-
-            if not target_agent:
-                available_agents = [
-                    f"{a.get('name')} (role: {a.get('role')}, status: {a.get('status')})" 
-                    for a in agents_in_db
-                ]
-
-                error_msg = f"No active agent found with name or role '{target_agent_role}'"
-                logger.warning(f"{error_msg}. Available: {available_agents}")
-
-                return json.dumps({
-                    "success": False,
-                    "task_id": None,
-                    "error": error_msg,
-                    "suggestion": "Call get_team_roles_and_status first to see exact agent names",
-                    "available_agents": available_agents
-                })
-
-            # Scegli l'agente trovato
-            target_agent_id_str = str(target_agent["id"])
-            assigned_agent_name = target_agent["name"]
-
-            # Parse context_data se fornito
-            context_dict = None
-            if context_data:
-                try:
-                    context_dict = json.loads(context_data)
-                except json.JSONDecodeError as je:
-                    logger.warning(f"Invalid JSON in context_data: {je}. Using as plain text in description.")
-                    # Se non è JSON valido, aggiungilo alla descrizione del task
-                    task_description += f"\n\nAdditional Context: {context_data}"
-
-            # 2. Crea il task nel database
-            created_task_data = await db_create_task(
-                workspace_id=workspace_id,
-                agent_id=target_agent_id_str,
-                assigned_to_role=target_agent_role,
-                name=task_name,
-                description=task_description,
-                status=TaskStatus.PENDING.value,
-                priority=priority,
-                parent_task_id=parent_task_id,
-
-                # TRACKING AUTOMATICO
-                created_by_task_id=parent_task_id,  # Questo subtask è creato da un task padre
-                created_by_agent_id=None,  # Sarà riempito automaticamente dall'agent_id del parent task
-                creation_type="pm_delegation",  # Delega da parte del Project Manager
-
-                # CONTEXT DATA SPECIFICO
-                context_data={
-                    **(context_dict or {}),  # Mantieni i dati originali se forniti
-                    "pm_tool_created": True,
-                    "tool_call_timestamp": datetime.now().isoformat(),
-                    "delegated_via": "pm_orchestration_tool",
-                    "target_agent_found_by": "name" if target_agent.get("name", "").lower() == target_agent_role.lower() else "role"
-                }
-            )
-
-            if created_task_data and created_task_data.get("id"):
-                task_created_id = created_task_data['id']
-                msg = f"Sub-task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent {assigned_agent_name} (Role: {target_agent.get('role', 'N/A')})."
-                logger.info(msg)
-                return json.dumps({
-                    "success": True,
-                    "task_id": task_created_id,
-                    "assigned_agent_id": target_agent_id_str,
-                    "assigned_agent_name": assigned_agent_name,
-                    "assigned_agent_role": target_agent.get('role'),
-                    "message": msg
-                })
-            else:
-                error_msg = f"Database error: Failed to create sub-task '{task_name}'."
-                logger.error(f"{error_msg} DB response: {created_task_data}")
-                return json.dumps({"success": False, "task_id": None, "error": error_msg})
-
-        except Exception as e:
-            logger.error(f"Critical error in create_and_assign_sub_task_tool: {e}", exc_info=True)
-            return json.dumps({"success": False, "task_id": None, "error": f"An unexpected error occurred: {str(e)}"})
-
-    @staticmethod
-    @function_tool(name_override="get_team_roles_and_status")
-    async def get_team_roles_and_status_tool(
-        workspace_id: str = Field(..., description="ID of the workspace to check")
-    ) -> str:
-        """
-        Get detailed information about available team members and their exact roles.
-        CRITICAL: Use this before creating sub-tasks to get the EXACT agent names and roles.
-        """
-        try:
-            agents_in_db = await db_list_agents(workspace_id=workspace_id)
-
-            active_agents = [a for a in agents_in_db if a.get("status") == "active"]
-
-            team_info = {
-                "workspace_id": workspace_id,
-                "team_summary": {
-                    "total_agents": len(agents_in_db),
-                    "active_agents": len(active_agents),
-                    "inactive_agents": len(agents_in_db) - len(active_agents)
-                },
-                "active_team_members": []
-            }
-
-            for agent in active_agents:
-                team_info["active_team_members"].append({
-                    "agent_name": agent.get("name"),  # Nome esatto da usare
-                    "exact_role": agent.get("role"),  # Ruolo esatto da usare  
-                    "seniority": agent.get("seniority"),
-                    "specialization": agent.get("description", "")[:100] + "..." if agent.get("description", "") else "No description"
-                })
-
-            # Aggiungi istruzioni chiare per il PM
-            team_info["usage_instructions"] = {
-                "for_task_creation": "Use the EXACT 'agent_name' when specifying target_agent_role in create_and_assign_sub_task",
-                "example": "If you want to assign to ContentSpecialist, use target_agent_role='ContentSpecialist' (not the long role description)"
-            }
-
-            return json.dumps(team_info, indent=2)
-
-        except Exception as e:
-            logger.error(f"Error in get_team_roles_and_status_tool: {e}", exc_info=True)
-            return json.dumps({"error": str(e), "team_members": []})
+                
+                # Fallback: cerca per ruolo (compatibilità)
+                if not target_agent:
+                    for agent in agents_in_db:
+                        if (agent.get("role", "").lower() == target_agent_role.lower() and 
+                            agent.get("status") == "active"):
+                            target_agent = agent
+                            logger.info(f"Found agent by role match: {agent.get('name')} ({agent.get('role')})")
+                            break
+                
+                if not target_agent:
+                    available_agents = [
+                        f"{a.get('name')} (role: {a.get('role')}, status: {a.get('status')})" 
+                        for a in agents_in_db
+                    ]
+                    
+                    error_msg = f"No active agent found with name or role '{target_agent_role}'"
+                    logger.warning(f"{error_msg}. Available: {available_agents}")
+                    
+                    return json.dumps({
+                        "success": False,
+                        "task_id": None,
+                        "error": error_msg,
+                        "suggestion": "Call get_team_roles_and_status first to see exact agent names",
+                        "available_agents": available_agents
+                    })
+                
+                # Parse context_data se fornito
+                context_dict = None
+                if context_data:
+                    try:
+                        context_dict = json.loads(context_data)
+                    except json.JSONDecodeError as je:
+                        logger.warning(f"Invalid JSON in context_data: {je}. Using as plain text in description.")
+                        task_description += f"\n\nAdditional Context: {context_data}"
+                
+                # Crea il task nel database
+                created_task_data = await db_create_task(
+                    workspace_id=workspace_id,  # SEMPRE CORRETTO
+                    agent_id=str(target_agent["id"]),
+                    assigned_to_role=target_agent_role,
+                    name=task_name,
+                    description=task_description,
+                    status=TaskStatus.PENDING.value,
+                    priority=priority,
+                    parent_task_id=parent_task_id,
+                    
+                    # TRACKING AUTOMATICO
+                    created_by_task_id=parent_task_id,
+                    created_by_agent_id=None,
+                    creation_type="pm_delegation",
+                    
+                    # CONTEXT DATA SPECIFICO
+                    context_data={
+                        **(context_dict or {}),
+                        "pm_tool_created": True,
+                        "tool_call_timestamp": datetime.now().isoformat(),
+                        "delegated_via": "pm_orchestration_tool",
+                        "target_agent_found_by": "name" if target_agent.get("name", "").lower() == target_agent_role.lower() else "role"
+                    }
+                )
+                
+                if created_task_data and created_task_data.get("id"):
+                    task_created_id = created_task_data['id']
+                    msg = f"Sub-task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent {target_agent['name']} (Role: {target_agent.get('role', 'N/A')})."
+                    logger.info(msg)
+                    return json.dumps({
+                        "success": True,
+                        "task_id": task_created_id,
+                        "assigned_agent_id": str(target_agent["id"]),
+                        "assigned_agent_name": target_agent["name"],
+                        "assigned_agent_role": target_agent.get('role'),
+                        "message": msg
+                    })
+                else:
+                    error_msg = f"Database error: Failed to create sub-task '{task_name}'."
+                    logger.error(f"{error_msg} DB response: {created_task_data}")
+                    return json.dumps({"success": False, "task_id": None, "error": error_msg})
+                    
+            except Exception as e:
+                logger.error(f"Critical error in create_and_assign_sub_task_tool: {e}", exc_info=True)
+                return json.dumps({"success": False, "task_id": None, "error": f"An unexpected error occurred: {str(e)}"})
+        
+        return impl
 
 class CommonTools:
     """Common tools that can be used by any agent"""

@@ -90,37 +90,41 @@ TOKEN_COSTS = {
 }
 
 class TaskExecutionOutput(BaseModel):
-    task_id: str
-    status: Literal["completed", "failed", "requires_handoff"] = "completed"
-    summary: str
-    detailed_results_json: Optional[str] = Field(None, description="Detailed structured results serialized as JSON string. Should be valid JSON.")
-    next_steps: Optional[List[str]] = Field(None, description="Suggested next actions or follow-up tasks.")
-    suggested_handoff_target_role: Optional[str] = Field(None, description="Role to hand off to if required (used if status is 'requires_handoff').")
-    resources_consumed_json: Optional[str] = Field(None, description="Resource usage serialized as JSON string (e.g. tokens). Should be valid JSON.")
+    task_id: str = Field(..., description="ID of the task")  # Required, no default
+    status: Literal["completed", "failed", "requires_handoff"] = Field(default="completed", description="Task completion status")
+    summary: str = Field(..., description="Summary of work performed")  # Required, no default
+    detailed_results_json: Optional[str] = Field(default=None, description="Detailed structured results as JSON string")
+    next_steps: Optional[List[str]] = Field(default=None, description="Suggested next actions")
+    suggested_handoff_target_role: Optional[str] = Field(default=None, description="Role to hand off to if required")
+    resources_consumed_json: Optional[str] = Field(default=None, description="Resource usage as JSON string")
+    
     model_config = ConfigDict(extra="forbid")
 
 class CapabilityVerificationOutput(BaseModel):
-    verification_status: Literal["passed", "failed"]
-    available_tools: List[str]
-    model_being_used: str
-    missing_requirements: Optional[List[str]] = None
-    recommendations: Optional[List[str]] = None
-    notes: Optional[str] = None
+    verification_status: Literal["passed", "failed"] = Field(..., description="Verification result")
+    available_tools: List[str] = Field(default_factory=list, description="List of available tools")
+    model_being_used: str = Field(..., description="Model being used")
+    missing_requirements: Optional[List[str]] = Field(default=None, description="Missing requirements")
+    recommendations: Optional[List[str]] = Field(default=None, description="Recommendations")
+    notes: Optional[str] = Field(default=None, description="Additional notes")
+    
     model_config = ConfigDict(extra="forbid")
 
 class TaskCreationOutput(BaseModel):
-    success: bool
-    task_id: Optional[str] = None
-    task_name: str
-    assigned_agent_name: Optional[str] = None
-    error_message: Optional[str] = None
+    success: bool = Field(..., description="Whether task creation succeeded")
+    task_id: Optional[str] = Field(default=None, description="Created task ID")
+    task_name: str = Field(..., description="Task name")
+    assigned_agent_name: Optional[str] = Field(default=None, description="Agent assigned to task")
+    error_message: Optional[str] = Field(default=None, description="Error message if failed")
+    
     model_config = ConfigDict(extra="forbid")
 
 class HandoffRequestOutput(BaseModel):
-    success: bool
-    message: str
-    handoff_task_id: Optional[str] = None
-    assigned_to_agent_name: Optional[str] = None
+    success: bool = Field(..., description="Whether handoff succeeded")
+    message: str = Field(..., description="Status message")
+    handoff_task_id: Optional[str] = Field(default=None, description="Created handoff task ID")
+    assigned_to_agent_name: Optional[str] = Field(default=None, description="Agent receiving handoff")
+    
     model_config = ConfigDict(extra="forbid")
 
 T = TypeVar('T')
@@ -457,10 +461,18 @@ class SpecialistAgent(Generic[T]):
                                 for keyword in ['manager', 'coordinator', 'director', 'lead'])
 
         if is_manager_type_role:
-            # Tool specifici per Project Manager
-            tools_list.append(PMOrchestrationTools.create_and_assign_sub_task_tool)
-            tools_list.append(PMOrchestrationTools.get_team_roles_and_status_tool)
-            logger.info(f"Agent {self.agent_data.name} ({self.agent_data.role}) equipped with PMOrchestrationTools.")
+            # FIX PRINCIPALE: Tool specifici per Project Manager
+            try:
+                # Crea istanza PMOrchestrationTools con workspace_id corretto
+                pm_tools = PMOrchestrationTools(str(self.agent_data.workspace_id))
+
+                # Aggiungi i tool chiamando i metodi di istanza (non più statici)
+                tools_list.append(pm_tools.create_and_assign_sub_task_tool())
+                tools_list.append(pm_tools.get_team_roles_and_status_tool())
+
+                logger.info(f"Agent {self.agent_data.name} ({self.agent_data.role}) equipped with PMOrchestrationTools for workspace {self.agent_data.workspace_id}.")
+            except Exception as e:
+                logger.error(f"Error initializing PMOrchestrationTools for {self.agent_data.name}: {e}", exc_info=True)
         else:
             # Tool per specialisti (handoff)
             tools_list.append(self._create_request_handoff_tool())
@@ -490,8 +502,10 @@ class SpecialistAgent(Generic[T]):
                     InstagramTools.generate_content_ideas,
                 ])
                 logger.info(f"Agent {self.agent_data.name} equipped with InstagramTools.")
-            except ImportError: logger.warning("InstagramTools not available or path is incorrect (tools.social_media).")
-            except AttributeError: logger.warning("InstagramTools found, but some specific tools are missing.")
+            except ImportError: 
+                logger.warning("InstagramTools not available or path is incorrect (tools.social_media).")
+            except AttributeError: 
+                logger.warning("InstagramTools found, but some specific tools are missing.")
 
         # Tool per creazione custom tools
         if self.agent_data.can_create_tools:
