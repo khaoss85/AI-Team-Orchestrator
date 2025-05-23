@@ -346,121 +346,281 @@ class EnhancedTaskExecutor:
         result: Dict[str, Any],
         workspace_id: str
     ) -> bool:
-        """Handles Project Manager task completion con validazione fasi"""
+        """
+        Gestisce il completamento di task del Project Manager con validazione fasi integrata.
 
-        logger.info(f"Handling PM task completion: {task.id} ('{task.name}')")
+        Combina:
+        - Parsing JSON robusto
+        - Validazione fasi tramite PhaseManager  
+        - Gestione task_id forniti dal PM tool
+        - Controllo duplicati dell'analyzer
+        - Matching agenti migliorato
+        - Context data dettagliato
+        """
+        task_id_str = str(task.id)
+        logger.info(f"TaskAnalyzer: Handling PM task completion: {task_id_str} ('{task.name}') for workspace {workspace_id}")
 
-        # Estrai detailed_results_json con safe parsing
-        detailed_results_json_content = result.get("detailed_results_json")
-        if not detailed_results_json_content:
-            logger.error(f"PM task {task.id} missing detailed_results_json")
+        # =================================================================
+        # 1. ESTRAZIONE E PARSING DETAILED_RESULTS_JSON
+        # =================================================================
+        detailed_results_json_str = result.get("detailed_results_json")
+        if not detailed_results_json_str:
+            logger.error(f"TaskAnalyzer: PM task {task_id_str} missing detailed_results_json in its result.")
+            return False
+
+        results_data = self._safe_json_loads(detailed_results_json_str)
+        if not results_data:
+            logger.error(f"TaskAnalyzer: PM task {task_id_str} failed to parse detailed_results_json. Content snippet: {detailed_results_json_str[:200]}")
+            return False
+
+        # =================================================================
+        # 2. VALIDAZIONE FASE CORRENTE CON PHASEMANAGER
+        # =================================================================
+        current_project_phase_from_pm_str = results_data.get("current_project_phase")
+        if not current_project_phase_from_pm_str:
+            logger.error(f"TaskAnalyzer: PM task {task_id_str} output missing 'current_project_phase' key.")
             return False
 
         try:
-            results_data = self._safe_json_loads(detailed_results_json_content)
+            # Usa PhaseManager per validazione centralizzata
+            validated_phase_enum = PhaseManager.validate_phase(current_project_phase_from_pm_str)
+            validated_phase_value = validated_phase_enum.value
+            logger.info(f"PM specified phase: {current_project_phase_from_pm_str} -> validated: {validated_phase_value}")
         except Exception as e:
-            logger.error(f"Failed to parse detailed_results_json for task {task.id}: {e}")
+            logger.error(f"TaskAnalyzer: PM task {task_id_str} phase validation failed: {e}")
             return False
 
-        # Validazione delle fasi
-        current_project_phase = results_data.get("current_project_phase")
-        if not current_project_phase:
-            logger.error(f"PM task {task.id} missing current_project_phase")
+        # =================================================================
+        # 3. ESTRAZIONE E VALIDAZIONE SUB-TASKS
+        # =================================================================
+        defined_sub_tasks_list = results_data.get("defined_sub_tasks", [])
+        if not isinstance(defined_sub_tasks_list, list):
+            logger.error(f"TaskAnalyzer: PM task {task_id_str} 'defined_sub_tasks' is not a list. Found: {type(defined_sub_tasks_list)}")
             return False
 
-        validated_current_phase = PhaseManager.validate_phase(current_project_phase)
-        logger.info(f"PM specified phase: {current_project_phase} -> validated: {validated_current_phase.value}")
+        if not defined_sub_tasks_list:
+            logger.info(f"TaskAnalyzer: PM task {task_id_str} did not define any sub-tasks for phase '{validated_phase_value}'. No new tasks to create.")
+            return True 
 
-        defined_subtasks = results_data.get("defined_sub_tasks", [])
-        if not defined_subtasks:
-            logger.warning(f"PM task {task.id} has no defined_sub_tasks")
+        logger.info(f"TaskAnalyzer: PM task {task_id_str} defined {len(defined_sub_tasks_list)} sub-tasks for phase '{validated_phase_value}'. Processing definitions...")
+
+        # =================================================================
+        # 4. PREPARAZIONE CONTESTO PER CREAZIONE TASK
+        # =================================================================
+        agents_in_workspace = await db_list_agents(workspace_id)
+        if not agents_in_workspace:
+            logger.error(f"TaskAnalyzer: No agents found in workspace {workspace_id} to assign sub-tasks from PM task {task_id_str}.")
             return False
 
-        created_count = 0
+        # Pre-fetch tutti i task per controllo duplicati
+        all_tasks_in_db_for_dedup = await list_tasks(workspace_id=workspace_id)
+
+        # Prepara delegation chain
+        delegation_chain_from_pm_task = task.context_data.get("delegation_chain", []) if task.context_data else []
+        if not isinstance(delegation_chain_from_pm_task, list):
+            delegation_chain_from_pm_task = []
+
+        # Contatori e tracking
+        created_by_analyzer_count = 0
+        skipped_by_analyzer_count = 0
         phase_validation_errors = []
 
-        for subtask_def in defined_subtasks:
-            if not isinstance(subtask_def, dict):
-                logger.warning(f"Skipping invalid subtask definition: {subtask_def}")
+        # =================================================================
+        # 5. PROCESSAMENTO SUB-TASKS
+        # =================================================================
+        for sub_task_def in defined_sub_tasks_list:
+            if not isinstance(sub_task_def, dict):
+                logger.warning(f"TaskAnalyzer: Invalid sub_task_def format (not a dict) in PM output for task {task_id_str}. Skipping: {sub_task_def}")
                 continue
 
+            # ---- Estrazione campi base ----
+            task_name = sub_task_def.get("name")
+            task_description = sub_task_def.get("description")
+            target_agent_name_from_pm = sub_task_def.get("target_agent_role") 
+            priority = sub_task_def.get("priority", "medium").lower()
+
+            # Validazione campi obbligatori
+            required_fields = ["name", "description", "target_agent_role"]
+            missing_fields = [field for field in required_fields if not sub_task_def.get(field)]
+            if missing_fields:
+                logger.warning(f"TaskAnalyzer: Sub-task definition missing fields {missing_fields}. Skipping: {sub_task_def}")
+                continue
+
+            # ---- Validazione fase sub-task ----
+            sub_task_project_phase_str_from_pm = sub_task_def.get("project_phase", validated_phase_value)
+
             try:
-                # Validazione campi obbligatori
-                required_fields = ["name", "description", "target_agent_role"]
-                missing_fields = [field for field in required_fields if not subtask_def.get(field)]
-                if missing_fields:
-                    logger.warning(f"Skipping subtask missing fields {missing_fields}: {subtask_def}")
-                    continue
+                sub_task_project_phase_enum = PhaseManager.validate_phase(sub_task_project_phase_str_from_pm)
+                sub_task_project_phase_value = sub_task_project_phase_enum.value
 
-                # Validazione fase del sub-task
-                subtask_phase = subtask_def.get("project_phase")
-                if not subtask_phase:
-                    logger.warning(f"Sub-task missing project_phase, using current phase: {subtask_def['name']}")
-                    subtask_phase = validated_current_phase.value
-
-                validated_subtask_phase = PhaseManager.validate_phase(subtask_phase)
-                if subtask_phase != validated_subtask_phase.value:
+                # Track phase corrections
+                if sub_task_project_phase_str_from_pm != sub_task_project_phase_value:
                     phase_validation_errors.append({
-                        "task": subtask_def['name'],
-                        "original": subtask_phase,
-                        "corrected": validated_subtask_phase.value
+                        "task": task_name,
+                        "original": sub_task_project_phase_str_from_pm,
+                        "corrected": sub_task_project_phase_value
                     })
+            except Exception as e:
+                logger.error(f"TaskAnalyzer: Sub-task '{task_name}' phase validation failed: {e}. Skipping.")
+                continue
 
-                # Trova agente appropriato
-                target_role = subtask_def["target_agent_role"]
-                target_agent = await self._find_agent_by_role(workspace_id, target_role)
+            # =============================================================
+            # 6. GESTIONE TASK_ID FORNITO DAL PM TOOL
+            # =============================================================
+            tool_created_task_id = sub_task_def.get("task_id")
+            if tool_created_task_id:
+                try:
+                    existing_task = await get_task(tool_created_task_id)
+                    if existing_task and existing_task.name.lower() == task_name.lower():
+                        logger.info(f"TaskAnalyzer: PM task {task_id_str} correctly referenced sub-task ID '{tool_created_task_id}' ('{task_name}') created via tool. Analyzer will not create duplicate.")
 
-                if not target_agent:
-                    logger.warning(f"No agent found for role '{target_role}'. Skipping: {subtask_def['name']}")
-                    continue
+                        # Aggiorna context del task esistente per tracciare riconoscimento analyzer
+                        try:
+                            updated_context = existing_task.context_data.copy() if existing_task.context_data else {}
+                            updated_context.update({
+                                "pm_analyzer_acknowledged_at": datetime.now().isoformat(),
+                                "acknowledged_by_pm_task": task_id_str,
+                                "phase_validated_by_analyzer": True,
+                                "analyzer_validated_phase": sub_task_project_phase_value
+                            })
+                            # Note: Qui potresti aggiungere una chiamata per aggiornare il context se necessario
+                        except Exception as e:
+                            logger.warning(f"Could not update context for existing task {tool_created_task_id}: {e}")
 
-                # Crea il sub-task con validazione completa
-                created_task = await create_task(
-                    workspace_id=workspace_id,
-                    agent_id=str(target_agent["id"]),
-                    assigned_to_role=target_role,
-                    name=subtask_def["name"],
-                    description=subtask_def["description"],
-                    status="pending",
-                    priority=subtask_def.get("priority", "medium"),
-                    parent_task_id=str(task.id),
+                        skipped_by_analyzer_count += 1
+                        continue 
+                    else:
+                        logger.warning(f"TaskAnalyzer: PM task {task_id_str} referenced sub-task ID '{tool_created_task_id}' for '{task_name}', but task not found or name mismatched. Analyzer will attempt creation after duplicate check.")
+                except Exception as e:
+                    logger.warning(f"Error checking tool-created task {tool_created_task_id}: {e}")
 
-                    # TRACKING AUTOMATICO
-                    created_by_task_id=str(task.id),
-                    created_by_agent_id=str(task.agent_id) if task.agent_id else None,
-                    creation_type="pm_completion",
+            # =============================================================
+            # 7. TROVA AGENTE TARGET CON ALGORITMO MIGLIORATO
+            # =============================================================
+            agent_to_assign = await self._find_agent_by_role(workspace_id, target_agent_name_from_pm)
+            if not agent_to_assign:
+                logger.warning(f"TaskAnalyzer: Sub-task '{task_name}': No suitable agent found for role '{target_agent_name_from_pm}'. Skipping creation.")
+                continue
 
-                    # CONTEXT DATA CON VALIDAZIONE FASI
-                    context_data={
-                        "auto_generated_by_pm": True,
-                        "source_pm_task_name": task.name,
-                        "project_phase": validated_subtask_phase.value,  # FASE VALIDATA
-                        "original_pm_phase": subtask_phase,  # Fase originale dal PM
-                        "pm_task_phase": validated_current_phase.value,
-                        "phase_validated": True,
-                        "phase_validation_timestamp": datetime.now().isoformat(),
-                        "expected_completion_criteria": subtask_def.get("completion_criteria", "Task completed"),
-                        "pm_completion_timestamp": datetime.now().isoformat()
-                    }
+            # =============================================================
+            # 8. CONTROLLO DUPLICATI ANALYZER (FALLBACK)
+            # =============================================================
+            is_duplicate_found_by_analyzer = False
+            for t_db_dict in all_tasks_in_db_for_dedup:
+                # Controllo multi-criterio per duplicati
+                name_match = t_db_dict.get("name", "").lower() == task_name.lower()
+                phase_match = (t_db_dict.get("context_data", {}).get("project_phase", "").upper() == sub_task_project_phase_value)
+                agent_match = (
+                    t_db_dict.get("agent_id") == agent_to_assign["id"] or 
+                    t_db_dict.get("assigned_to_role", "").lower() == target_agent_name_from_pm.lower()
+                )
+                status_match = t_db_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]
+                origin_match = (
+                    t_db_dict.get("parent_task_id") == task_id_str or 
+                    t_db_dict.get("context_data", {}).get("source_pm_task_id") == task_id_str
                 )
 
-                if created_task and created_task.get("id"):
-                    created_count += 1
-                    logger.info(f"Created sub-task '{subtask_def['name']}' (ID: {created_task['id']}) "
-                               f"for agent {target_agent.get('name')} in phase {validated_subtask_phase.value}")
+                if name_match and phase_match and agent_match and status_match and origin_match:
+                    logger.warning(f"TaskAnalyzer: Sub-task '{task_name}' appears to be duplicate of existing task {t_db_dict.get('id')} (status: {t_db_dict.get('status')}). Skipping creation.")
+                    is_duplicate_found_by_analyzer = True
+                    skipped_by_analyzer_count += 1
+                    break
+
+            if is_duplicate_found_by_analyzer:
+                continue
+
+            # =============================================================
+            # 9. CREAZIONE SUB-TASK
+            # =============================================================
+            logger.info(f"TaskAnalyzer: Creating sub-task '{task_name}' for agent '{agent_to_assign['name']}' in phase '{sub_task_project_phase_value}'.")
+
+            # Context data dettagliato per tracking completo
+            sub_task_context = {
+                # ---- Tracking fase ----
+                "project_phase": sub_task_project_phase_value,
+                "original_pm_phase_planner": validated_phase_value,
+                "phase_validated": True,
+                "phase_validation_timestamp": datetime.now().isoformat(),
+
+                # ---- Tracking origine ----
+                "source_pm_task_id": task_id_str,
+                "source_pm_task_name": task.name,
+                "created_by_task_analyzer": True,
+                "auto_generated_by_pm_output": True,
+
+                # ---- Tracking temporale ----
+                "pm_completion_timestamp": datetime.now().isoformat(),
+                "creation_method": "pm_completion_analyzer",
+
+                # ---- Delegation chain ----
+                "delegation_chain": delegation_chain_from_pm_task + [task_id_str],
+
+                # ---- Criteri completamento ----
+                "expected_completion_criteria": sub_task_def.get("completion_criteria", "Task completed successfully"),
+
+                # ---- Metadata aggiuntivi ----
+                "pm_specified_agent_role": target_agent_name_from_pm,
+                "assigned_agent_actual_role": agent_to_assign.get("role"),
+                "original_pm_phase_spec": sub_task_project_phase_str_from_pm if sub_task_project_phase_str_from_pm != sub_task_project_phase_value else None,
+            }
+
+            try:
+                created_db_task_dict = await db_create_task(
+                    workspace_id=workspace_id,
+                    agent_id=str(agent_to_assign["id"]),
+                    assigned_to_role=agent_to_assign.get("role"),
+                    name=task_name,
+                    description=task_description,
+                    status=TaskStatus.PENDING.value,
+                    priority=priority,
+                    parent_task_id=task_id_str, 
+                    context_data=sub_task_context,
+                    created_by_task_id=task_id_str,
+                    created_by_agent_id=str(task.agent_id) if task.agent_id else None,
+                    creation_type="pm_completion_analyzer" 
+                )
+
+                if created_db_task_dict and created_db_task_dict.get("id"):
+                    created_by_analyzer_count += 1
+                    logger.info(f"TaskAnalyzer: ✅ Successfully created sub-task '{created_db_task_dict['name']}' (ID: {created_db_task_dict['id']}) for agent {agent_to_assign['name']} in phase {sub_task_project_phase_value}")
                 else:
-                    logger.error(f"Failed to create sub-task: {subtask_def['name']}")
+                    logger.error(f"TaskAnalyzer: ❌ Failed to create sub-task '{task_name}' in DB. Response: {created_db_task_dict}")
 
             except Exception as e:
-                logger.error(f"Error creating sub-task '{subtask_def.get('name', 'Unknown')}': {e}", exc_info=True)
+                logger.error(f"TaskAnalyzer: Error creating sub-task '{task_name}': {e}", exc_info=True)
 
-        # Log validation errors
+        # =================================================================
+        # 10. LOGGING FINALE E VALIDAZIONE ERRORI
+        # =================================================================
+
+        # Log phase validation errors se presenti
         if phase_validation_errors:
-            logger.warning(f"Phase validation corrections made: {phase_validation_errors}")
+            logger.warning(f"TaskAnalyzer: Phase validation corrections made for PM task {task_id_str}: {phase_validation_errors}")
 
-        logger.info(f"PM task {task.id} completion: Created {created_count}/{len(defined_subtasks)} "
-                   f"sub-tasks for phase {validated_current_phase.value}")
-        return created_count > 0
+        # Summary finale
+        logger.info(f"TaskAnalyzer: PM task {task_id_str} completion processing finished.")
+        logger.info(f"  └─ Definitions processed: {len(defined_sub_tasks_list)}")
+        logger.info(f"  └─ Tasks created by analyzer: {created_by_analyzer_count}")
+        logger.info(f"  └─ Tasks skipped (already existed/PM provided ID): {skipped_by_analyzer_count}")
+        logger.info(f"  └─ Phase corrections: {len(phase_validation_errors)}")
+        logger.info(f"  └─ Target phase: {validated_phase_value}")
+
+        # Log structured per monitoring
+        completion_summary = {
+            "pm_task_id": task_id_str,
+            "pm_task_name": task.name,
+            "workspace_id": workspace_id,
+            "target_phase": validated_phase_value,
+            "subtasks_defined": len(defined_sub_tasks_list),
+            "subtasks_created": created_by_analyzer_count,
+            "subtasks_skipped": skipped_by_analyzer_count,
+            "phase_corrections": len(phase_validation_errors),
+            "completion_timestamp": datetime.now().isoformat()
+        }
+
+        logger.info(f"PM_COMPLETION_SUMMARY: {json.dumps(completion_summary)}")
+
+        return created_by_analyzer_count > 0
 
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
         """Find agent by role with improved matching logic"""

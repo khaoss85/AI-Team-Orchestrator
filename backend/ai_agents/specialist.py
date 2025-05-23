@@ -252,19 +252,25 @@ class SpecialistAgent(Generic[T]):
 
     CRITICAL OUTPUT FORMAT for detailed_results_json:
     {{
-        "current_project_phase": "IMPLEMENTATION",
-        "phase_rationale": "Analysis phase completed with 3 tasks, moving to implementation",
-        "defined_sub_tasks": [
+        "current_project_phase": "ANALYSIS", // Current phase you are planning FOR or CURRENTLY IN
+        "phase_rationale": "Rationale for this phase and the sub-tasks defined.",
+        "defined_sub_tasks": [ // List of sub-tasks you intend to create OR have ALREADY actioned using tools
             {{
-                "name": "Create Content Strategy Framework",
-                "description": "Develop comprehensive content strategy...",
-                "target_agent_role": "ContentSpecialist",
-                "priority": "high",
-                "project_phase": "IMPLEMENTATION"
+                // If you ALREADY CALLED 'create_and_assign_sub_task' for this conceptual task during your execution,
+                // you MUST include the 'task_id' you received from the tool's JSON response (even if success was false due to duplication).
+                // If the tool indicated success:false and provided an existing task_id (duplicate found), use THAT task_id.
+                // If the tool call failed critically and no task_id was returned, DO NOT include this task_id field for this entry.
+                "task_id": "OPTIONAL_EXISTING_OR_NEWLY_CREATED_TASK_ID_FROM_TOOL", 
+                "name": "Specific Sub-Task Name", // This MUST match the name you used in the tool call
+                "description": "Detailed description used in the tool call...",
+                "target_agent_role": "ExactAgentNameFromToolUsed", // Exact agent NAME used in tool
+                "priority": "high", // Priority used in tool
+                "project_phase": "ANALYSIS" // Phase used in tool
             }}
+            // ... more sub-tasks, each reflecting a tool call you made
         ],
-        "phase_completion_criteria": ["All sub-tasks completed", "Deliverables reviewed"],
-        "next_phase_trigger": "When all IMPLEMENTATION tasks are completed"
+        "phase_completion_criteria": ["All sub-tasks for this phase completed", "Deliverables for this phase reviewed"],
+        "next_phase_trigger": "When all [Current Phase Name] tasks are completed and reviewed."
     }}
     
     EXAMPLE SCENARIO (Avoiding Duplication):
