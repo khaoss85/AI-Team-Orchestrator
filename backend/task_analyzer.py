@@ -1158,104 +1158,29 @@ class EnhancedTaskExecutor:
             return None
     
     async def check_phase_completion_and_trigger_pm(self, workspace_id: str) -> Optional[str]:
-        """Verifica se una fase è completata e crea task per il PM per la fase successiva"""
+        """AGGIORNATO: Controllo fasi con PhaseManager"""
 
         try:
-            tasks = await list_tasks(workspace_id)
-            agents = await list_agents(workspace_id)
+            # Determina fase attuale usando PhaseManager
+            current_phase = await PhaseManager.determine_workspace_current_phase(workspace_id)
+            next_phase = PhaseManager.get_next_phase(current_phase)
 
-            # Trova il PM
-            pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
-            if not pm_agent:
-                logger.warning(f"No PM found in workspace {workspace_id}")
+            logger.info(f"Workspace {workspace_id} - Current phase: {current_phase.value}, Next: {next_phase.value if next_phase else 'None'}")
+
+            if not next_phase:
+                logger.info(f"Project {workspace_id} in final phase {current_phase.value}")
                 return None
 
-            # Analizza task per fase basandosi sui nomi e context_data
-            analysis_tasks = []
-            implementation_tasks = []
+            # Verifica se esiste già planning per la fase successiva
+            if await self._check_existing_phase_planning(workspace_id, next_phase):
+                logger.info(f"Phase planning for {next_phase.value} already exists")
+                return None
 
-            for task in tasks:
-                if task.get("status") == "completed":
-                    # Identifica task di analisi
-                    task_name = (task.get("name") or "").lower()
-                    context_data = task.get("context_data", {}) or {}
-                    project_phase = context_data.get("project_phase", "")
-
-                    # Task di analisi: per nome o fase
-                    if (any(keyword in task_name for keyword in ["analysis", "profiling", "audit", "research"]) or
-                        project_phase == "ANALYSIS"):
-                        analysis_tasks.append(task)
-
-                    # Task di implementazione: per fase
-                    elif project_phase == "IMPLEMENTATION":
-                        implementation_tasks.append(task)
-                        
-                    if ("phase 2 planning" in task_name and 
-                        task.get("agent_id") == pm_agent["id"]):
-                        phase_2_planning_completed = True
-
-            logger.info(f"Phase check - Analysis tasks: {len(analysis_tasks)}, Implementation tasks: {len(implementation_tasks)}")
-
-            # Verifica se la fase ANALYSIS è completata (almeno 3 task) e IMPLEMENTATION non è iniziata
-            if len(analysis_tasks) >= 3 and len(implementation_tasks) == 0:
-                logger.info(f"Phase 1 (ANALYSIS) completed with {len(analysis_tasks)} tasks. Triggering Phase 2 planning.")
-
-                # Crea riassunto dei risultati di analisi
-                analysis_summary = self._summarize_completed_analysis(analysis_tasks)
-
-                # Crea task di pianificazione per la fase successiva
-                next_phase_task = await create_task(
-                    workspace_id=workspace_id,
-                    agent_id=pm_agent["id"],
-                    name="Phase 2 Planning: Content Strategy & Editorial Plan Development",
-                    description=f"""Based on the completed Phase 1 analysis, develop the comprehensive content strategy and editorial plan.
-
-    COMPLETED PHASE 1 ANALYSIS RESULTS:
-    {analysis_summary}
-
-    YOUR TASKS FOR PHASE 2:
-    1. **Content Strategy Framework**: Define content pillars, themes, and messaging strategy based on analysis
-    2. **Editorial Calendar Planning**: Create a detailed content calendar structure 
-    3. **Content Creation Workflow**: Define specific content creation tasks for ContentSpecialist
-    4. **Performance Metrics**: Define KPIs and measurement framework
-
-    CRITICAL OUTPUT REQUIREMENTS:
-    - Your detailed_results_json MUST contain "defined_sub_tasks" array
-    - Create specific, actionable sub-tasks for ContentSpecialist
-    - Focus on deliverables: Editorial Calendar, Content Templates, Publishing Schedule
-    - Each sub-task must have: name, description, target_agent_role, priority
-
-    Expected sub-tasks examples:
-    - "Create Monthly Editorial Calendar" → ContentSpecialist  
-    - "Develop Content Templates & Guidelines" → ContentSpecialist
-    - "Design Publishing Schedule & Workflow" → ContentSpecialist
-    """,
-                    status="pending",
-                    priority="high",
-                    creation_type="phase_transition",
-                    context_data={
-                        "project_phase": "IMPLEMENTATION",
-                        "phase_transition": "ANALYSIS_TO_IMPLEMENTATION", 
-                        "auto_generated": True,
-                        "triggers_next_phase": True,
-                        "previous_phase_tasks": [t["id"] for t in analysis_tasks],
-                        "phase_trigger_timestamp": datetime.now().isoformat()
-                    }
-                )
-
-                if next_phase_task and next_phase_task.get("id"):
-                    logger.info(f"✅ Created Phase 2 planning task {next_phase_task['id']} for PM {pm_agent['name']}")
-                    return next_phase_task["id"]
-                else:
-                    logger.error("❌ Failed to create Phase 2 planning task")
-
-            else:
-                logger.debug(f"Phase transition conditions not met: Analysis={len(analysis_tasks)}, Implementation={len(implementation_tasks)}")
-
-            return None
+            # Crea task di planning per fase successiva
+            return await self._create_phase_planning_task(workspace_id, current_phase, next_phase)
 
         except Exception as e:
-            logger.error(f"Error checking phase completion: {e}", exc_info=True)
+            logger.error(f"Error in phase completion check: {e}", exc_info=True)
             return None
 
     def _summarize_completed_analysis(self, completed_tasks: List[Dict]) -> str:
