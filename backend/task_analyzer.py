@@ -934,103 +934,207 @@ class EnhancedTaskExecutor:
         
         return None
 
-    async def check_project_completion_criteria(self, workspace_id: str) -> bool:
-        """Verifica criteri multipli per stabilire se un progetto è completato"""
-        
-        tasks = await list_tasks(workspace_id)
-        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
-        
-        if not tasks:
-            return False
-        
-        # Criterio 1: Percentuale di completamento
-        completion_ratio = len(completed_tasks) / len(tasks) if tasks else 0
-        
-        # Criterio 2: Completamento delle fasi
-        phases_completed = {
-            "ANALYSIS": False,
-            "IMPLEMENTATION": False,
-            "FINALIZATION": False
-        }
-        
-        for task in completed_tasks:
-            context_data = task.get("context_data", {}) or {}
-            phase = context_data.get("project_phase")
-            if phase in phases_completed:
-                phases_completed[phase] = True
-        
-        # Criterio 3: Presenza di deliverable finali
-        has_final_deliverables = False
-        for task in completed_tasks:
-            if any(keyword in (task.get("name", "") or "").lower() for keyword in 
-                  ["final", "deliverable", "complete", "finished"]):
-                has_final_deliverables = True
-                break
-        
-        # Decisione di completamento basata su tutti i criteri
-        if completion_ratio > 0.85 and phases_completed["IMPLEMENTATION"] and has_final_deliverables:
-            # PROGETTO COMPLETO
-            return True
-        
-        # Se la fase di IMPLEMENTATION è completa ma mancano deliverable finali
-        if phases_completed["IMPLEMENTATION"] and not has_final_deliverables:
-            # Crea task per generare il deliverable finale
-            await self.create_final_deliverable_task(workspace_id)
-        
+async def check_project_completion_criteria(self, workspace_id: str) -> bool:
+    """Verifica criteri multipli per stabilire se un progetto è completato - VERSIONE MIGLIORATA"""
+    
+    tasks = await list_tasks(workspace_id)
+    completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+    
+    if not tasks:
         return False
+    
+    logger.info(f"Project completion check for {workspace_id}: {len(completed_tasks)}/{len(tasks)} tasks completed")
+    
+    # Criterio 1: Percentuale di completamento (soglia ridotta)
+    completion_ratio = len(completed_tasks) / len(tasks) if tasks else 0
+    logger.info(f"Completion ratio: {completion_ratio:.2%}")
+    
+    # Criterio 2: Completamento delle fasi (logica migliorata)
+    phases_completed = {
+        "ANALYSIS": False,
+        "IMPLEMENTATION": False,
+        "FINALIZATION": False
+    }
+    
+    # Conta task per fase
+    phase_task_counts = {"ANALYSIS": 0, "IMPLEMENTATION": 0, "FINALIZATION": 0}
+    phase_completed_counts = {"ANALYSIS": 0, "IMPLEMENTATION": 0, "FINALIZATION": 0}
+    
+    for task in tasks:
+        context_data = task.get("context_data", {}) or {}
+        phase = context_data.get("project_phase")
+        if phase in phases_completed:
+            phase_task_counts[phase] += 1
+            if task.get("status") == "completed":
+                phase_completed_counts[phase] += 1
+    
+    # Una fase è "completa" se ha almeno 1 task e il 70% sono completati
+    for phase in phases_completed:
+        if phase_task_counts[phase] > 0:
+            phase_completion_rate = phase_completed_counts[phase] / phase_task_counts[phase]
+            phases_completed[phase] = phase_completion_rate >= 0.7
+            logger.info(f"Phase {phase}: {phase_completed_counts[phase]}/{phase_task_counts[phase]} tasks ({phase_completion_rate:.1%})")
+    
+    # Criterio 3: Presenza di deliverable finali (logica espansa)
+    has_final_deliverables = False
+    final_keywords = ["final", "deliverable", "complete", "finished", "summary", "report", "conclusion"]
+    
+    for task in completed_tasks:
+        task_name_lower = (task.get("name", "") or "").lower()
+        task_desc_lower = (task.get("description", "") or "").lower()
+        
+        # Controlla sia nome che descrizione
+        if (any(keyword in task_name_lower for keyword in final_keywords) or
+            any(keyword in task_desc_lower for keyword in final_keywords)):
+            has_final_deliverables = True
+            logger.info(f"Found final deliverable: {task.get('name')}")
+            break
+        
+        # Controlla anche se è marcato come task finale nel context_data
+        context_data = task.get("context_data", {}) or {}
+        if context_data.get("is_final_task") or context_data.get("triggers_project_completion"):
+            has_final_deliverables = True
+            logger.info(f"Found final task by context: {task.get('name')}")
+            break
+    
+    logger.info(f"Project completion criteria - Ratio: {completion_ratio:.1%}, IMPL: {phases_completed['IMPLEMENTATION']}, Finals: {has_final_deliverables}")
+    
+    # SOGLIE RIDOTTE: 60% completamento invece di 85%
+    if completion_ratio > 0.60 and phases_completed["IMPLEMENTATION"] and has_final_deliverables:
+        logger.info(f"✅ Project {workspace_id} meets completion criteria!")
+        return True
+    
+    # AUTO-TRIGGER: Se IMPLEMENTATION è completa ma mancano deliverable finali, creali
+    if phases_completed["IMPLEMENTATION"] and not has_final_deliverables:
+        logger.info(f"IMPLEMENTATION complete but no final deliverables. Creating final task...")
+        final_task_id = await self.create_final_deliverable_task(workspace_id)
+        if final_task_id:
+            logger.info(f"Created final deliverable task: {final_task_id}")
+    
+    # FALLBACK: Se abbiamo molti task completati e almeno ANALYSIS+IMPLEMENTATION, considera completo
+    if (completion_ratio > 0.75 and 
+        phases_completed["ANALYSIS"] and 
+        phases_completed["IMPLEMENTATION"] and
+        len(completed_tasks) >= 5):  # Almeno 5 task completati
+        logger.warning(f"🔄 Project {workspace_id} meets fallback completion criteria (high completion rate)")
+        return True
+    
+    return False
 
     async def create_final_deliverable_task(self, workspace_id: str) -> Optional[str]:
-        """Crea un task per il deliverable finale"""
+        """Crea un task per il deliverable finale - VERSIONE MIGLIORATA"""
+
+        # Controlla se esiste già un task finale
+        tasks = await list_tasks(workspace_id)
+        existing_final_tasks = [
+            t for t in tasks 
+            if (t.get("status") in ["pending", "in_progress"] and
+                (any(keyword in (t.get("name") or "").lower() for keyword in ["final", "deliverable"]) or
+                 (t.get("context_data", {}) or {}).get("is_final_task")))
+        ]
+
+        if existing_final_tasks:
+            logger.info(f"Final task already exists: {existing_final_tasks[0]['id']}")
+            return existing_final_tasks[0]["id"]
+
         from database import list_agents, create_task, get_workspace
-        
+
         # Ottieni informazioni workspace
         workspace = await get_workspace(workspace_id)
         workspace_goal = workspace.get("goal", "Complete the project") if workspace else "Complete the project"
-        
+
         # Trova il PM
         agents = await list_agents(workspace_id)
         pm_agent = next((a for a in agents if "project manager" in (a.get("role") or "").lower()), None)
-        
+
         if not pm_agent:
             logger.warning(f"No PM found for workspace {workspace_id}")
             return None
-        
-        # Crea task finale
+
+        # Crea task finale con nome più riconoscibile
         final_task = await create_task(
             workspace_id=workspace_id,
             agent_id=pm_agent["id"],
-            name="FINAL: Project Deliverable Creation",
+            name="FINAL DELIVERABLE: Project Summary & Completion",  # Nome più chiaro
             description=(
-                "Create the final project deliverable based on all completed work.\n\n"
+                f"🎯 CREATE THE FINAL PROJECT DELIVERABLE\n\n"
                 f"PROJECT GOAL: {workspace_goal}\n\n"
-                "1. Review all completed tasks and collect key outputs\n"
-                "2. Synthesize findings into a cohesive final deliverable\n"
-                "3. Include executive summary, key findings, and recommendations\n"
-                "4. Ensure the deliverable completely addresses the original project goal\n\n"
-                "This is the final task for this project. Upon completion, the project will be marked as complete."
+                f"CRITICAL INSTRUCTIONS:\n"
+                f"1. Review ALL completed tasks and their outputs\n"
+                f"2. Create a comprehensive final deliverable/summary\n"
+                f"3. Include key findings, results, and recommendations\n"
+                f"4. Ensure the deliverable fully addresses the original project goal\n"
+                f"5. This task marks project completion when finished\n\n"
+                f"⚠️ IMPORTANT: Upon completion, this project will be marked as COMPLETED."
             ),
             status="pending",
             priority="high",
-            # TRACKING AUTOMATICO
-            creation_type="final_deliverable",  # Task finale del progetto
-
-            # CONTEXT DATA SPECIFICO
+            creation_type="final_deliverable",
             context_data={
                 "task_type": "final_deliverable",
                 "project_phase": "FINALIZATION",
                 "auto_generated": True,
-                "is_final_task": True,
+                "is_final_task": True,  # Marker importante
+                "triggers_project_completion": True,  # Marker importante
                 "project_goal": workspace_goal,
                 "deliverable_creation_timestamp": datetime.now().isoformat(),
-                "triggers_project_completion": True,
-                "requires_synthesis": True
+                "completion_keywords": ["final", "deliverable", "completion", "summary"]
             }
         )
-        
+
         if final_task and final_task.get("id"):
+            logger.info(f"✅ Created final deliverable task: {final_task['id']}")
             return final_task["id"]
-        
+
+        logger.error("❌ Failed to create final deliverable task")
         return None
+
+    # Metodo helper per debug
+    async def debug_project_status(self, workspace_id: str) -> Dict[str, Any]:
+        """Debug helper per capire lo stato del progetto"""
+
+        tasks = await list_tasks(workspace_id)
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+
+        # Analizza fasi
+        phase_analysis = {}
+        for phase in ["ANALYSIS", "IMPLEMENTATION", "FINALIZATION"]:
+            phase_tasks = [t for t in tasks if (t.get("context_data", {}) or {}).get("project_phase") == phase]
+            completed_phase_tasks = [t for t in phase_tasks if t.get("status") == "completed"]
+
+            phase_analysis[phase] = {
+                "total": len(phase_tasks),
+                "completed": len(completed_phase_tasks),
+                "completion_rate": len(completed_phase_tasks) / len(phase_tasks) if phase_tasks else 0,
+                "task_names": [t.get("name") for t in phase_tasks]
+            }
+
+        # Trova deliverable finali
+        final_tasks = []
+        final_keywords = ["final", "deliverable", "complete", "finished", "summary", "report"]
+
+        for task in tasks:
+            task_name_lower = (task.get("name", "") or "").lower()
+            context_data = task.get("context_data", {}) or {}
+
+            if (any(keyword in task_name_lower for keyword in final_keywords) or
+                context_data.get("is_final_task")):
+                final_tasks.append({
+                    "id": task.get("id"),
+                    "name": task.get("name"),
+                    "status": task.get("status"),
+                    "is_final_task": context_data.get("is_final_task", False)
+                })
+
+        return {
+            "workspace_id": workspace_id,
+            "total_tasks": len(tasks),
+            "completed_tasks": len(completed_tasks),
+            "completion_ratio": len(completed_tasks) / len(tasks) if tasks else 0,
+            "phase_analysis": phase_analysis,
+            "final_tasks": final_tasks,
+            "completion_criteria_met": await self.check_project_completion_criteria(workspace_id)
+        }
     
     async def _check_existing_phase_planning(self, workspace_id: str, target_phase: ProjectPhase) -> bool:
         """Verifica se esiste già un task di planning per la fase target"""
@@ -1273,6 +1377,52 @@ class EnhancedTaskExecutor:
         logger.debug(f"Task {task.id} passed ultra-conservative filter")
         return True
 
+    async def _log_completion_analysis(
+        self, 
+        task: Task, 
+        result_or_analysis: Any, 
+        decision: str, 
+        extra_info: str = ""
+    ) -> None:
+        """Comprehensive logging for monitoring and debugging"""
+        
+        # Extract confidence and reasoning if available
+        confidence = 0.0
+        reasoning = ""
+        
+        if isinstance(result_or_analysis, dict):
+            if "confidence_score" in result_or_analysis:
+                confidence = result_or_analysis.get("confidence_score", 0.0)
+                reasoning = result_or_analysis.get("reasoning", "")
+            elif hasattr(result_or_analysis, '__dict__'):
+                # Handle TaskAnalysisOutput objects
+                analysis_dict = result_or_analysis.__dict__()
+                confidence = analysis_dict.get("confidence_score", 0.0)
+                reasoning = analysis_dict.get("reasoning", "")
+        
+        log_data = {
+            "task_id": str(task.id),
+            "task_name": task.name,
+            "workspace_id": str(task.workspace_id),
+            "agent_id": str(task.agent_id) if task.agent_id else None,
+            "assigned_to_role": task.assigned_to_role,
+            "task_priority": task.priority,
+            "decision": decision,
+            "confidence": confidence,
+            "reasoning": reasoning[:200] + "..." if len(reasoning) > 200 else reasoning,
+            "extra_info": extra_info,
+            "timestamp": datetime.now().isoformat(),
+            "analyzer_config": {
+                "auto_generation_enabled": self.auto_generation_enabled,
+                "analysis_enabled": self.analysis_enabled,
+                "handoff_creation_enabled": self.handoff_creation_enabled,
+                "confidence_threshold": self.confidence_threshold
+            }
+        }
+        
+        logger.info(f"TASK_COMPLETION_ANALYSIS: {json.dumps(log_data)}")
+
+    # Altri metodi che potrebbero avere problemi di indentazione...
     def _check_strict_workspace_limits(self, ctx: Dict[str, Any]) -> bool:
         """Extremely strict limits for workspace auto-generation"""
         
@@ -1322,43 +1472,6 @@ class EnhancedTaskExecutor:
 
         return False
 
-    # ---------------------------------------------------------------------
-    # Minimal context gathering (avoid expensive operations)
-    # ---------------------------------------------------------------------
-    async def _gather_minimal_context(self, workspace_id: str) -> Dict[str, Any]:
-        """Gather only essential context data without expensive operations"""
-        try:
-            # Get basic workspace info
-            workspace = await get_workspace(workspace_id)
-            tasks = await list_tasks(workspace_id)
-
-            # Simple categorization
-            completed = [t for t in tasks if t.get("status") == TaskStatus.COMPLETED.value]
-            pending = [t for t in tasks if t.get("status") == TaskStatus.PENDING.value]
-            
-            return {
-                "workspace_goal": workspace.get("goal", "") if workspace else "",
-                "total_tasks": len(tasks),
-                "completed_tasks": len(completed),
-                "pending_tasks": len(pending),
-                "recent_completions": [
-                    {"name": t.get("name", ""), "id": t.get("id", "")}
-                    for t in completed[-5:]  # Only last 5
-                ],
-            }
-        except Exception as e:
-            logger.error(f"Error gathering minimal context: {e}")
-            return {
-                "workspace_goal": "",
-                "total_tasks": 0,
-                "completed_tasks": 0,
-                "pending_tasks": 0,
-                "recent_completions": [],
-            }
-
-    # ---------------------------------------------------------------------
-    # Deterministic analysis (NO AI/LLM)
-    # ---------------------------------------------------------------------
     def _analyze_task_deterministic(
         self,
         task: Task,
@@ -1412,9 +1525,37 @@ class EnhancedTaskExecutor:
         
         return analysis
 
-    # ---------------------------------------------------------------------
-    # Minimal handoff execution (if ever enabled)
-    # ---------------------------------------------------------------------
+    async def _gather_minimal_context(self, workspace_id: str) -> Dict[str, Any]:
+        """Gather only essential context data without expensive operations"""
+        try:
+            # Get basic workspace info
+            workspace = await get_workspace(workspace_id)
+            tasks = await list_tasks(workspace_id)
+
+            # Simple categorization
+            completed = [t for t in tasks if t.get("status") == TaskStatus.COMPLETED.value]
+            pending = [t for t in tasks if t.get("status") == TaskStatus.PENDING.value]
+            
+            return {
+                "workspace_goal": workspace.get("goal", "") if workspace else "",
+                "total_tasks": len(tasks),
+                "completed_tasks": len(completed),
+                "pending_tasks": len(pending),
+                "recent_completions": [
+                    {"name": t.get("name", ""), "id": t.get("id", "")}
+                    for t in completed[-5:]  # Only last 5
+                ],
+            }
+        except Exception as e:
+            logger.error(f"Error gathering minimal context: {e}")
+            return {
+                "workspace_goal": "",
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "pending_tasks": 0,
+                "recent_completions": [],
+            }
+
     async def _execute_minimal_handoff(
         self,
         analysis: TaskAnalysisOutput,
