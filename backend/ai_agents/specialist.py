@@ -748,6 +748,96 @@ class SpecialistAgent(Generic[T]):
             return json.dumps({"success": True, "message": f"Tool '{name}' proposed for review."})
         return impl
 
+    def _calculate_token_costs(
+        self, 
+        run_result: Any, 
+        model_name: str, 
+        estimated_input_tokens: int,
+        execution_time: float
+    ) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        """Calcola token usage e costi dal run result"""
+        try:
+            # Tenta di estrarre token usage dal run_result
+            input_tokens = estimated_input_tokens
+            output_tokens = 0
+            
+            # Metodi per estrarre token usage (dipende dalla versione SDK)
+            if hasattr(run_result, 'usage'):
+                usage = run_result.usage
+                input_tokens = getattr(usage, 'input_tokens', estimated_input_tokens)
+                output_tokens = getattr(usage, 'output_tokens', 0)
+            elif hasattr(run_result, 'token_usage'):
+                usage = run_result.token_usage
+                input_tokens = usage.get('input_tokens', estimated_input_tokens)
+                output_tokens = usage.get('output_tokens', 0)
+            elif hasattr(run_result, '_response_data'):
+                # Fallback per accesso ai dati raw
+                response_data = run_result._response_data
+                if isinstance(response_data, dict) and 'usage' in response_data:
+                    usage = response_data['usage']
+                    input_tokens = usage.get('prompt_tokens', estimated_input_tokens)
+                    output_tokens = usage.get('completion_tokens', 0)
+            else:
+                # Stima basata su output length se no token data disponibili
+                if hasattr(run_result, 'final_output'):
+                    output_text = str(run_result.final_output)
+                    output_tokens = max(1, len(output_text.split()) * 1.3)
+            
+            # Calcola costi
+            costs = TOKEN_COSTS.get(model_name, TOKEN_COSTS.get("gpt-4.1-mini", {}))
+            if costs:
+                input_cost = (input_tokens / 1000) * costs.get("input", 0)
+                output_cost = (output_tokens / 1000) * costs.get("output", 0)
+                total_cost = input_cost + output_cost
+            else:
+                input_cost = output_cost = total_cost = 0.0
+            
+            token_usage = {
+                "input_tokens": int(input_tokens),
+                "output_tokens": int(output_tokens),
+                "total_tokens": int(input_tokens + output_tokens)
+            }
+            
+            cost_data = {
+                "input_cost": round(input_cost, 6),
+                "output_cost": round(output_cost, 6),
+                "total_cost": round(total_cost, 6),
+                "currency": "USD",
+                "cost_per_hour": round(total_cost * 3600 / execution_time, 6) if execution_time > 0 else 0
+            }
+            
+            return token_usage, cost_data
+            
+        except Exception as e:
+            logger.warning(f"Error calculating token costs: {e}")
+            return {}, {}
+    
+    async def _register_usage_in_budget_tracker(
+        self, 
+        task_id: str, 
+        model_name: str, 
+        token_usage: Dict[str, Any], 
+        cost_data: Dict[str, Any]
+    ):
+        """Registra l'usage nel BudgetTracker globale"""
+        try:
+            # Import del task_executor globale
+            from executor import task_executor
+            
+            if token_usage and cost_data:
+                task_executor.budget_tracker.log_usage(
+                    agent_id=str(self.agent_data.id),
+                    model=model_name,
+                    input_tokens=token_usage.get("input_tokens", 0),
+                    output_tokens=token_usage.get("output_tokens", 0),
+                    task_id=task_id
+                )
+                
+                logger.info(f"Registered usage in BudgetTracker: Agent {self.agent_data.name}, "
+                           f"Task {task_id}, Cost: ${cost_data.get('total_cost', 0):.6f}")
+        except Exception as e:
+            logger.error(f"Error registering usage in BudgetTracker: {e}")
+
     async def _log_execution_internal(self, step: str, details: Union[str, Dict]) -> bool:
         try:
             if isinstance(details, str):
@@ -777,7 +867,7 @@ class SpecialistAgent(Generic[T]):
         trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
         workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
         
-        start_time = time.time() # Inizio calcolo tempo esecuzione
+        start_time = time.time()
 
         try:
             if SDK_AVAILABLE:
@@ -809,6 +899,13 @@ class SpecialistAgent(Generic[T]):
 
                 task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
                 
+                # NUOVO: Stima token di input per calcolo costi
+                input_text = f"{task.name} {task.description or ''}"
+                estimated_input_tokens = max(1, len(input_text.split()) * 1.3)  # Stima approssimativa
+                
+                # Ottieni il modello usato
+                model_name = self.agent.model
+                
                 max_turns_for_agent = 10
                 if isinstance(self.agent_data.llm_config, dict) and "max_turns_override" in self.agent_data.llm_config:
                     max_turns_for_agent = self.agent_data.llm_config["max_turns_override"]
@@ -818,7 +915,12 @@ class SpecialistAgent(Generic[T]):
                     timeout=self.execution_timeout
                 )
                 
-                elapsed_time = time.time() - start_time # Fine calcolo tempo esecuzione
+                elapsed_time = time.time() - start_time
+                
+                # NUOVO: Calcolo automatico dei costi/token
+                token_usage, cost_data = self._calculate_token_costs(
+                    agent_run_result, model_name, estimated_input_tokens, elapsed_time
+                )
 
                 final_llm_output = agent_run_result.final_output
                 execution_result_obj: TaskExecutionOutput
@@ -846,12 +948,24 @@ class SpecialistAgent(Generic[T]):
                     )
                 
                 execution_result_obj.task_id = str(task.id) # Assicura che task_id sia quello corretto
+                
+                # NUOVO: Popola automaticamente resources_consumed_json
+                if token_usage or cost_data:
+                    resources_consumed = {
+                        "model": model_name,
+                        "execution_time_seconds": round(elapsed_time, 2),
+                        **token_usage,
+                        **cost_data,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    execution_result_obj.resources_consumed_json = json.dumps(resources_consumed)
+                
                 result_dict_to_save = execution_result_obj.model_dump()
                 
                 # --- AGGIUNTA DEI CAMPI PER I DETTAGLI TECNICI ---
                 result_dict_to_save["execution_time_seconds"] = round(elapsed_time, 2)
-                result_dict_to_save["model_used"] = self.agent.model # Assumendo che self.agent.model contenga il nome del modello
-                result_dict_to_save["status_detail"] = f"{execution_result_obj.status}_by_agent" # Esempio di status_detail
+                result_dict_to_save["model_used"] = model_name
+                result_dict_to_save["status_detail"] = f"{execution_result_obj.status}_by_agent"
 
                 # Estrazione di costi e token da resources_consumed_json, se presenti
                 if execution_result_obj.resources_consumed_json:
@@ -866,9 +980,8 @@ class SpecialistAgent(Generic[T]):
 
                             if input_tokens is not None and output_tokens is not None:
                                 result_dict_to_save["tokens_used"] = {"input": input_tokens, "output": output_tokens}
-                            elif total_tokens is not None: # Fallback se ci sono solo i token totali
-                                 result_dict_to_save["tokens_used"] = {"input": total_tokens, "output": 0} # Stima grossolana
-                            # Altrimenti, tokens_used non viene aggiunto se i dati non sono disponibili
+                            elif total_tokens is not None:
+                                 result_dict_to_save["tokens_used"] = {"input": total_tokens, "output": 0}
                     except json.JSONDecodeError:
                         logger.warning(f"Impossibile fare il parse di resources_consumed_json per il task {task.id}: {execution_result_obj.resources_consumed_json}")
                     except Exception as e:
@@ -876,6 +989,11 @@ class SpecialistAgent(Generic[T]):
                 
                 result_dict_to_save["trace_id_for_run"] = trace_id_val
                 # --- FINE AGGIUNTA CAMPI ---
+
+                # NUOVO: Registra nel BudgetTracker globale
+                await self._register_usage_in_budget_tracker(
+                    str(task.id), model_name, token_usage, cost_data
+                )
 
                 final_db_status = TaskStatus.COMPLETED.value
                 if execution_result_obj.status == "failed":
@@ -902,7 +1020,7 @@ class SpecialistAgent(Generic[T]):
                 return result_dict_to_save
 
             except asyncio.TimeoutError:
-                elapsed_time = time.time() - start_time # Calcola tempo anche in caso di timeout
+                elapsed_time = time.time() - start_time
                 timeout_summary = f"Task forcibly marked as TIMED_OUT after {self.execution_timeout}s."
                 logger.warning(f"Task {task.id} (Trace: {trace_id_val}) timed out ({self.execution_timeout}s).")
                 timeout_result_obj = TaskExecutionOutput(
