@@ -674,3 +674,25 @@ def _deserialize_agent_json_fields(agent_data: Dict[str, Any]) -> Dict[str, Any]
             agent['soft_skills'] = []
     
     return agent
+
+async def get_task(task_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve a single task by its ID."""
+    try:
+        # .single() è usato per ottenere un singolo record.
+        # Se il task non esiste, PostgREST potrebbe sollevare un errore o restituire data vuota
+        # a seconda della configurazione del client Supabase.
+        # È buona norma gestire il caso in cui il task non venga trovato.
+        result = supabase.table("tasks").select("*").eq("id", task_id).maybe_single().execute()
+        # maybe_single() restituisce None se non trovato, senza sollevare eccezioni HTTP immediate
+        
+        if result.data:
+            return result.data
+        else:
+            # Se result.error è presente, loggalo per debugging
+            if hasattr(result, 'error') and result.error:
+                logger.warning(f"Error retrieving task {task_id} from Supabase: {result.error}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Exception while retrieving task {task_id}: {e}", exc_info=True)
+        return None

@@ -93,7 +93,7 @@ const suggestedProjects = [
   id: 'outbound-mailup',
   name: 'B2B Outbound Sales Lists',
   description: 'Creazione e qualificazione di liste di prospect per campagne outbound di MailUp',
-  goal: 'Raccogliere 500 contatti ICP (CMO/CTO di aziende SaaS europee) e lanciare 3 sequenze email su MailUp con open-rate ≥ 30 % in 6 settimane',
+  goal: 'Raccogliere 500 contatti ICP (CMO/CTO di aziende SaaS europee) e suggerire almeno 3 sequenze email da impostare su Hubspot con target open-rate ≥ 30 % e Click-to-rate almeno del 10% in 6 settimane',
   budget: { max_amount: 1000, currency: 'EUR' },
   icon: '📧',
   color: 'from-rose-500 to-pink-600',

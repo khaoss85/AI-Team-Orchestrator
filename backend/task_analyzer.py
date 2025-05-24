@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Set
 # IMPORT AGGIORNATI per compatibilità con i nuovi models
 from models import Task, TaskStatus
 from models import ProjectPhase, PHASE_SEQUENCE, PHASE_DESCRIPTIONS
-from database import create_task, list_agents, list_tasks, get_workspace
+from database import create_task, list_agents, list_tasks, get_workspace, get_task
 
 # NUOVO: Import per deliverable aggregation
 from deliverable_aggregator import check_and_create_final_deliverable
@@ -407,7 +407,7 @@ class EnhancedTaskExecutor:
         # =================================================================
         # 4. PREPARAZIONE CONTESTO PER CREAZIONE TASK
         # =================================================================
-        agents_in_workspace = await db_list_agents(workspace_id)
+        agents_in_workspace = await list_agents(workspace_id)
         if not agents_in_workspace:
             logger.error(f"TaskAnalyzer: No agents found in workspace {workspace_id} to assign sub-tasks from PM task {task_id_str}.")
             return False
@@ -436,7 +436,7 @@ class EnhancedTaskExecutor:
             # ---- Estrazione campi base ----
             task_name = sub_task_def.get("name")
             task_description = sub_task_def.get("description")
-            target_agent_name_from_pm = sub_task_def.get("target_agent_role") 
+            target_agent_name_from_pm = sub_task_def.get("target_agent_role") or ""
             priority = sub_task_def.get("priority", "medium").lower()
 
             # Validazione campi obbligatori
@@ -565,7 +565,7 @@ class EnhancedTaskExecutor:
             }
 
             try:
-                created_db_task_dict = await db_create_task(
+                created_db_task_dict = await create_task(
                     workspace_id=workspace_id,
                     agent_id=str(agent_to_assign["id"]),
                     assigned_to_role=agent_to_assign.get("role"),
