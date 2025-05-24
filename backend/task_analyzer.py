@@ -1,4 +1,6 @@
 # backend/task_analyzer.py - COMPLETE ENHANCED VERSION
+# Sostituisce completamente il file esistente
+
 import logging
 import json
 import re
@@ -1023,6 +1025,337 @@ Create tasks that will produce the final project deliverables.
         except Exception as e:
             logger.error(f"Error gathering context: {e}")
             return {"total_tasks": 0, "completed_tasks": 0, "pending_tasks": 0}
+
+    # ---------------------------------------------------------------------
+    # Additional methods from comprehensive version
+    # ---------------------------------------------------------------------
+    
+    async def _verify_phase_completion_criteria(
+        self, 
+        workspace_id: str, 
+        current_phase: ProjectPhase, 
+        target_phase: ProjectPhase
+    ) -> bool:
+        """Verifica che i criteri di completamento fase siano soddisfatti"""
+        try:
+            tasks = await list_tasks(workspace_id)
+            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+
+            # Conta task completati per fase
+            phase_counts = {phase: 0 for phase in ProjectPhase}
+            for task in completed_tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_phase = context_data.get("project_phase", "ANALYSIS")
+                validated_phase = PhaseManager.validate_phase(task_phase)
+                phase_counts[validated_phase] += 1
+
+            logger.info(f"📊 PHASE CRITERIA: Phase completion counts: {phase_counts}")
+
+            # Criteri specifici per transizione verso FINALIZATION
+            if target_phase == ProjectPhase.FINALIZATION:
+                analysis_completed = phase_counts[ProjectPhase.ANALYSIS] >= 2
+                implementation_completed = phase_counts[ProjectPhase.IMPLEMENTATION] >= 2
+
+                criteria_met = analysis_completed and implementation_completed
+
+                logger.info(f"📊 PHASE CRITERIA: For FINALIZATION transition - "
+                           f"Analysis: {phase_counts[ProjectPhase.ANALYSIS]} >= 2 ({analysis_completed}), "
+                           f"Implementation: {phase_counts[ProjectPhase.IMPLEMENTATION]} >= 2 ({implementation_completed}), "
+                           f"Criteria met: {criteria_met}")
+
+                return criteria_met
+
+            # Criteri per transizione verso IMPLEMENTATION
+            elif target_phase == ProjectPhase.IMPLEMENTATION:
+                analysis_completed = phase_counts[ProjectPhase.ANALYSIS] >= 2
+
+                logger.info(f"📊 PHASE CRITERIA: For IMPLEMENTATION transition - "
+                           f"Analysis: {phase_counts[ProjectPhase.ANALYSIS]} >= 2 ({analysis_completed})")
+
+                return analysis_completed
+
+            # Default: permettere transizioni
+            return True
+
+        except Exception as e:
+            logger.error(f"Error verifying phase completion criteria: {e}")
+            return False
+
+    def _should_analyze_task_ultra_conservative(self, task: Task, result: Dict[str, Any]) -> bool:
+        """Ultra-conservative filter for task analysis"""
+        if result.get("status") != "completed":
+            return False
+        
+        task_name_lower = task.name.lower() if task.name else ""
+        completion_words = ["handoff", "completed", "done", "finished", "delivered", "final"]
+        
+        if any(word in task_name_lower for word in completion_words):
+            return False
+        
+        output_parts = []
+        if result.get("summary"):
+            output_parts.append(str(result.get("summary", "")))
+        if result.get("detailed_results_json"):
+            if isinstance(result.get("detailed_results_json"), str):
+                output_parts.append(result.get("detailed_results_json"))
+            else:
+                output_parts.append(str(result.get("detailed_results_json")))
+        
+        output = " ".join(output_parts)
+        output_lower = output.lower()
+        
+        completion_phrases = ["task complete", "objective achieved", "deliverable ready"]
+        if any(phrase in output_lower for phrase in completion_phrases):
+            return False
+        
+        if len(output) > 1500:
+            return False
+        
+        phase_completion_indicators = [
+            "analysis", "profiling", "audit", "research", 
+            "assessment", "evaluation", "investigation"
+        ]
+        
+        if any(indicator in task_name_lower for indicator in phase_completion_indicators):
+            logger.debug(f"Task {task.id} allowed for phase completion analysis")
+            return True
+        
+        return False
+
+    def _check_strict_workspace_limits(self, ctx: Dict[str, Any]) -> bool:
+        """Extremely strict limits for workspace auto-generation"""
+        if ctx.get("pending_tasks", 1) > 3:
+            return False
+        
+        total_tasks = ctx.get("total_tasks", 1)
+        completed_tasks = ctx.get("completed_tasks", 0)
+        completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0
+        
+        if completion_rate < 0.70:
+            return False
+        
+        if total_tasks < 3:
+            return False
+        
+        return True
+
+    def _is_handoff_duplicate_strict(self, task: Task, ctx: Dict[str, Any]) -> bool:
+        """Absolute duplicate prevention"""
+        cache_key = f"{task.workspace_id}_{task.agent_id}_handoff"
+        recent_handoff = self.handoff_cache.get(cache_key)
+        if recent_handoff and datetime.now() - recent_handoff < timedelta(hours=24):
+            return True
+
+        recent_tasks = ctx.get("recent_completions", [])
+        task_words = set(task.name.lower().split())
+        
+        for recent_task in recent_tasks[-10:]:
+            recent_name = recent_task.get("name", "").lower()
+            
+            if any(word in recent_name for word in ["handoff", "follow-up", "continuation", "next"]):
+                return True
+                
+            recent_words = set(recent_name.split())
+            overlap = len(task_words & recent_words) / len(task_words | recent_words)
+            if overlap > 0.5:
+                return True
+
+        return False
+
+    def _analyze_task_deterministic(
+        self,
+        task: Task,
+        result: Dict[str, Any],
+        ctx: Dict[str, Any],
+    ) -> TaskAnalysisOutput:
+        """Pure rule-based analysis without any LLM calls"""
+        analysis = TaskAnalysisOutput(
+            requires_follow_up=False,
+            confidence_score=0.0,
+            suggested_handoffs=[],
+            project_status="completed",
+            reasoning="Deterministic analysis - no follow-up detected"
+        )
+
+        try:
+            output_text = str(result.get("summary", ""))
+            output_lower = output_text.lower()
+            
+            follow_up_patterns = [
+                "analysis indicates need for",
+                "research suggests next step",
+                "preliminary findings require",
+                "initial assessment shows need"
+            ]
+            
+            pattern_matches = sum(1 for pattern in follow_up_patterns if pattern in output_lower)
+            
+            if pattern_matches >= 2 and len(output_text) > 100:
+                confidence = 0.7
+                analysis.confidence_score = confidence
+                analysis.reasoning = f"Matched {pattern_matches} follow-up patterns"
+                logger.debug(f"Task {task.id} analysis: confidence {confidence}, but no auto-generation")
+            
+            analysis.reasoning += f" | Output: {len(output_text)}chars, Pending: {ctx['pending_tasks']}"
+            
+        except Exception as e:
+            logger.error(f"Error in deterministic analysis: {e}")
+            analysis.reasoning = f"Analysis error: {str(e)}"
+        
+        return analysis
+
+    async def _execute_minimal_handoff(
+        self,
+        analysis: TaskAnalysisOutput,
+        task: Task,
+        workspace_id: str,
+    ) -> None:
+        """Execute handoff with absolute minimal scope"""
+        logger.warning(f"EXECUTING AUTO-HANDOFF for task {task.id} - This should be rare!")
+
+        if not analysis.suggested_handoffs:
+            return
+        
+        try:
+            cache_key = f"{workspace_id}_handoff"
+            self.handoff_cache[cache_key] = datetime.now()
+            
+            description = f"""[AUTOMATED FOLLOW-UP] (Generated from: {task.name})
+
+ORIGINAL TASK OUTPUT SUMMARY:
+{str(task.description)[:200]}...
+
+INSTRUCTION: 
+- Review the original task output
+- Complete any explicitly mentioned next step
+- MARK AS COMPLETED when done
+- DO NOT create additional tasks
+
+NOTE: This is an experimental auto-generated task. 
+If unclear, escalate to Project Manager immediately.
+"""
+            context_data = {
+                "created_by_task_id": str(task.id),
+                "created_by_agent_id": str(task.agent_id) if task.agent_id else None,
+                "creation_method": "automated_handoff",
+                "created_at": datetime.now().isoformat()
+            }
+            
+            new_task = await create_task(
+                workspace_id=workspace_id,
+                name=f"AUTO: Follow-up for {task.name[:30]}...",
+                description=description,
+                status=TaskStatus.PENDING.value,
+                parent_task_id=str(task.id),
+                context_data=context_data
+            )
+            
+            if new_task:
+                logger.warning(f"Created auto-task {new_task.get('id')} - Notify PM for review!")
+                await self._log_completion_analysis(
+                    task, 
+                    analysis.__dict__(), 
+                    "auto_task_created", 
+                    f"Task ID: {new_task.get('id')}"
+                )
+            
+        except Exception as e:
+            logger.error(f"Error executing minimal handoff: {e}", exc_info=True)
+            await self._log_completion_analysis(task, analysis.__dict__(), "handoff_error", str(e))
+
+    async def _log_completion_analysis(
+        self, 
+        task: Task, 
+        result_or_analysis: Any, 
+        decision: str, 
+        extra_info: str = ""
+    ) -> None:
+        """Comprehensive logging for monitoring and debugging"""
+        
+        confidence = 0.0
+        reasoning = ""
+        
+        if isinstance(result_or_analysis, dict):
+            if "confidence_score" in result_or_analysis:
+                confidence = result_or_analysis.get("confidence_score", 0.0)
+                reasoning = result_or_analysis.get("reasoning", "")
+            elif hasattr(result_or_analysis, '__dict__'):
+                analysis_dict = result_or_analysis.__dict__()
+                confidence = analysis_dict.get("confidence_score", 0.0)
+                reasoning = analysis_dict.get("reasoning", "")
+        
+        log_data = {
+            "task_id": str(task.id),
+            "task_name": task.name,
+            "workspace_id": str(task.workspace_id),
+            "agent_id": str(task.agent_id) if task.agent_id else None,
+            "assigned_to_role": task.assigned_to_role,
+            "task_priority": task.priority,
+            "decision": decision,
+            "confidence": confidence,
+            "reasoning": reasoning[:200] + "..." if len(reasoning) > 200 else reasoning,
+            "extra_info": extra_info,
+            "timestamp": datetime.now().isoformat(),
+            "analyzer_config": {
+                "auto_generation_enabled": self.auto_generation_enabled,
+                "analysis_enabled": self.analysis_enabled,
+                "handoff_creation_enabled": self.handoff_creation_enabled,
+                "confidence_threshold": self.confidence_threshold
+            }
+        }
+        
+        logger.info(f"TASK_COMPLETION_ANALYSIS: {json.dumps(log_data)}")
+
+    def enable_auto_generation(
+        self, 
+        enable_analysis: bool = True, 
+        enable_handoffs: bool = True,
+        confidence_threshold: float = 0.95
+    ):
+        """Enable auto-generation - USE WITH EXTREME CAUTION!"""
+        logger.critical("⚠️  ENABLING AUTO-GENERATION! This may cause task loops. Monitor carefully!")
+        self.auto_generation_enabled = True
+        self.analysis_enabled = enable_analysis
+        self.handoff_creation_enabled = enable_handoffs
+        self.confidence_threshold = confidence_threshold
+        
+        logger.warning(f"Auto-generation config: analysis={enable_analysis}, handoffs={enable_handoffs}, threshold={confidence_threshold}")
+
+    def disable_auto_generation(self):
+        """Disable auto-generation completely (recommended default)"""
+        logger.info("Auto-generation disabled - system returned to safe state")
+        self.auto_generation_enabled = False  
+        self.analysis_enabled = False
+        self.handoff_creation_enabled = False
+        self.confidence_threshold = 0.99
+
+    def cleanup_caches(self) -> None:
+        """Periodic cache cleanup to prevent memory leaks"""
+        try:
+            current_time = datetime.now()
+            
+            expired_keys = [
+                key for key, timestamp in self.handoff_cache.items()
+                if current_time - timestamp > timedelta(hours=24)
+            ]
+            
+            for key in expired_keys:
+                del self.handoff_cache[key]
+            
+            if len(self.analyzed_tasks) > 1000:
+                analyzed_list = list(self.analyzed_tasks)
+                self.analyzed_tasks = set(analyzed_list[-500:])
+            
+            self.last_cleanup = current_time
+            logger.info(f"Cache cleanup completed: removed {len(expired_keys)} expired entries")
+            
+        except Exception as e:
+            logger.error(f"Error during cache cleanup: {e}")
+
+    def force_cleanup(self):
+        """Manual cleanup trigger for maintenance"""
+        self.cleanup_caches()
+        logger.info("Manual cache cleanup completed")
 
     def get_status(self) -> Dict[str, Any]:
         """Get enhanced status"""
