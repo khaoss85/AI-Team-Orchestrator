@@ -74,21 +74,82 @@ class PhaseManager:
                 validated_phase = PhaseManager.validate_phase(task_phase)
                 phase_counts[validated_phase] += 1
             
-            logger.info(f"Workspace {workspace_id} phase counts: {phase_counts}")
+            logger.info(f"📊 CURRENT PHASE: Workspace {workspace_id} phase counts: {phase_counts}")
             
-            # Determina fase attuale basata sui completamenti (soglie conservative)
+            # LOGICA CORRETTA: Determina la fase ATTUALE (non quella successiva)
             if phase_counts[ProjectPhase.FINALIZATION] >= 2:
-                return ProjectPhase.COMPLETED
-            elif phase_counts[ProjectPhase.IMPLEMENTATION] >= 2:
-                return ProjectPhase.FINALIZATION
-            elif phase_counts[ProjectPhase.ANALYSIS] >= 3:
-                return ProjectPhase.IMPLEMENTATION
+                current = ProjectPhase.COMPLETED
+            elif phase_counts[ProjectPhase.FINALIZATION] >= 1:
+                current = ProjectPhase.FINALIZATION
+            elif phase_counts[ProjectPhase.IMPLEMENTATION] >= 1:
+                current = ProjectPhase.IMPLEMENTATION
             else:
-                return ProjectPhase.ANALYSIS
+                current = ProjectPhase.ANALYSIS
+            
+            logger.info(f"📊 CURRENT PHASE: Determined current phase for {workspace_id}: {current.value}")
+            return current
                 
         except Exception as e:
             logger.error(f"Error determining workspace phase: {e}")
             return ProjectPhase.ANALYSIS
+        
+    @staticmethod
+    async def should_transition_to_next_phase(workspace_id: str) -> tuple[ProjectPhase, Optional[ProjectPhase]]:
+        """Determina se è il momento di transire alla fase successiva"""
+        try:
+            tasks = await list_tasks(workspace_id)
+            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+            pending_tasks = [t for t in tasks if t.get("status") in ["pending", "in_progress"]]
+            
+            # Conta task completati per fase
+            phase_counts = {phase: 0 for phase in ProjectPhase}
+            for task in completed_tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_phase = context_data.get("project_phase", "ANALYSIS")
+                validated_phase = PhaseManager.validate_phase(task_phase)
+                phase_counts[validated_phase] += 1
+            
+            # Conta task pendenti per fase
+            pending_phase_counts = {phase: 0 for phase in ProjectPhase}
+            for task in pending_tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_phase = context_data.get("project_phase", "ANALYSIS")
+                validated_phase = PhaseManager.validate_phase(task_phase)
+                pending_phase_counts[validated_phase] += 1
+            
+            logger.info(f"🚀 TRANSITION CHECK: Completed: {phase_counts}, Pending: {pending_phase_counts}")
+            
+            # LOGICA CHIAVE: Quando creare task per la fase successiva
+            return await self._create_phase_planning_task(workspace_id, current_phase, next_phase)
+            
+            # Se abbiamo task FINALIZATION completati, progetto finito
+            if phase_counts[ProjectPhase.FINALIZATION] >= 2:
+                return ProjectPhase.COMPLETED, None
+            
+            # CRITICO: Se abbiamo abbastanza IMPLEMENTATION completati E nessun task FINALIZATION pending
+            # Allora dobbiamo creare task per FINALIZATION
+            if (phase_counts[ProjectPhase.IMPLEMENTATION] >= 2 and 
+                pending_phase_counts[ProjectPhase.FINALIZATION] == 0):
+                
+                logger.info(f"🚀 TRANSITION: Ready for FINALIZATION! IMPL completed: {phase_counts[ProjectPhase.IMPLEMENTATION]}, FINAL pending: {pending_phase_counts[ProjectPhase.FINALIZATION]}")
+                return ProjectPhase.IMPLEMENTATION, ProjectPhase.FINALIZATION
+            
+            # Se abbiamo abbastanza ANALYSIS completati E nessun task IMPLEMENTATION pending
+            if (phase_counts[ProjectPhase.ANALYSIS] >= 2 and 
+                pending_phase_counts[ProjectPhase.IMPLEMENTATION] == 0):
+                
+                logger.info(f"🚀 TRANSITION: Ready for IMPLEMENTATION! ANAL completed: {phase_counts[ProjectPhase.ANALYSIS]}, IMPL pending: {pending_phase_counts[ProjectPhase.IMPLEMENTATION]}")
+                return ProjectPhase.ANALYSIS, ProjectPhase.IMPLEMENTATION
+            
+            # Determina fase attuale senza transizione
+            current_phase = await PhaseManager.determine_workspace_current_phase(workspace_id)
+            
+            logger.info(f"🚀 TRANSITION: Current phase: {current_phase.value}, no transition needed")
+            return current_phase, None
+            
+        except Exception as e:
+            logger.error(f"Error in phase transition check: {e}")
+            return ProjectPhase.ANALYSIS, None
     
     @staticmethod
     def get_phase_description(phase: ProjectPhase) -> str:
@@ -473,26 +534,33 @@ class EnhancedTaskExecutor:
                     existing_task = await get_task(tool_created_task_id)
                     if existing_task:
                         existing_task_name = existing_task.get("name")
-                        if existing_task_name and existing_task_name.lower() == task_name_from_pm.lower():
-                            logger.info(f"TaskAnalyzer: PM task {task_id_str} correctly referenced sub-task ID '{tool_created_task_id}' ('{task_name}') created via tool. Analyzer will not create duplicate.")
+                        current_task_name = sub_task_def.get("name")  # Nome del task corrente dal PM JSON
 
-                        # Aggiorna context del task esistente per tracciare riconoscimento analyzer
-                        try:
-                            updated_context = existing_task.context_data.copy() if existing_task.context_data else {}
-                            updated_context.update({
-                                "pm_analyzer_acknowledged_at": datetime.now().isoformat(),
-                                "acknowledged_by_pm_task": task_id_str,
-                                "phase_validated_by_analyzer": True,
-                                "analyzer_validated_phase": sub_task_project_phase_value
-                            })
-                            # Note: Qui potresti aggiungere una chiamata per aggiornare il context se necessario
-                        except Exception as e:
-                            logger.warning(f"Could not update context for existing task {tool_created_task_id}: {e}")
+                        if existing_task_name and current_task_name and existing_task_name.lower() == current_task_name.lower():
+                            logger.info(f"TaskAnalyzer: PM task {task_id_str} correctly referenced sub-task ID '{tool_created_task_id}' ('{current_task_name}') created via tool. Analyzer will not create duplicate.")
 
-                        skipped_by_analyzer_count += 1
-                        continue 
+                            # Aggiorna context del task esistente per tracciare riconoscimento analyzer
+                            try:
+                                existing_context_data = existing_task.get("context_data", {})
+                                updated_context = existing_context_data.copy() if existing_context_data else {}
+
+                                updated_context.update({
+                                    "pm_analyzer_acknowledged_at": datetime.now().isoformat(),
+                                    "acknowledged_by_pm_task": task_id_str,
+                                    "phase_validated_by_analyzer": True,
+                                    "analyzer_validated_phase": sub_task_project_phase_value
+                                })
+                                # Note: Qui potresti aggiungere una chiamata per aggiornare il context se necessario
+                                logger.debug(f"Updated context for task {tool_created_task_id} with analyzer acknowledgment")
+                            except Exception as e:
+                                logger.warning(f"Could not update context for existing task {tool_created_task_id}: {e}")
+
+                            skipped_by_analyzer_count += 1
+                            continue 
+                        else:
+                            logger.warning(f"TaskAnalyzer: PM task {task_id_str} referenced sub-task ID '{tool_created_task_id}' for '{current_task_name}', but task not found or name mismatched (existing: '{existing_task_name}'). Analyzer will attempt creation after duplicate check.")
                     else:
-                        logger.warning(f"TaskAnalyzer: PM task {task_id_str} referenced sub-task ID '{tool_created_task_id}' for '{task_name}', but task not found or name mismatched. Analyzer will attempt creation after duplicate check.")
+                        logger.warning(f"TaskAnalyzer: PM task {task_id_str} referenced sub-task ID '{tool_created_task_id}' but task not found in database. Analyzer will attempt creation after duplicate check.")
                 except Exception as e:
                     logger.warning(f"Error checking tool-created task {tool_created_task_id}: {e}")
 
@@ -505,17 +573,23 @@ class EnhancedTaskExecutor:
                 continue
 
             # =============================================================
-            # 8. CONTROLLO DUPLICATI ANALYZER (FALLBACK)
+            # 8. CONTROLLO DUPLICATI ANALYZER (FALLBACK) - FIX CRITICO
             # =============================================================
             is_duplicate_found_by_analyzer = False
             for t_db_dict in all_tasks_in_db_for_dedup:
                 # Controllo multi-criterio per duplicati
                 name_match = t_db_dict.get("name", "").lower() == task_name.lower()
                 phase_match = (t_db_dict.get("context_data", {}).get("project_phase", "").upper() == sub_task_project_phase_value)
+
+                # NUOVA RIGA CORRETTA - Gestisce None safely:
+                target_agent_name_safe = (target_agent_name_from_pm or "").lower()
+                assigned_role_db_safe = (t_db_dict.get("assigned_to_role") or "").lower()
+
                 agent_match = (
                     t_db_dict.get("agent_id") == agent_to_assign["id"] or 
-                    t_db_dict.get("assigned_to_role", "").lower() == target_agent_name_from_pm.lower()
+                    (target_agent_name_from_pm is not None and assigned_role_db_safe == target_agent_name_safe)
                 )
+
                 status_match = t_db_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]
                 origin_match = (
                     t_db_dict.get("parent_task_id") == task_id_str or 
@@ -530,6 +604,30 @@ class EnhancedTaskExecutor:
 
             if is_duplicate_found_by_analyzer:
                 continue
+
+            # Inoltre, aggiungi una validazione all'inizio del loop per sub_task_def:
+            for sub_task_def in defined_sub_tasks_list:
+                if not isinstance(sub_task_def, dict):
+                    logger.warning(f"TaskAnalyzer: Invalid sub_task_def format (not a dict) in PM output for task {task_id_str}. Skipping: {sub_task_def}")
+                    continue
+
+                # ---- Estrazione campi base con validazione migliorata ----
+                task_name = sub_task_def.get("name")
+                task_description = sub_task_def.get("description")
+                target_agent_name_from_pm = sub_task_def.get("target_agent_role") or ""  # Default a stringa vuota invece di None
+                priority = sub_task_def.get("priority", "medium").lower()
+
+                # Validazione campi obbligatori CON CONTROLLO PER target_agent_role
+                required_fields = ["name", "description"]  # target_agent_role verrà controllato separatamente
+                missing_fields = [field for field in required_fields if not sub_task_def.get(field)]
+
+                # Controllo specifico per target_agent_role
+                if not target_agent_name_from_pm or target_agent_name_from_pm.strip() == "":
+                    missing_fields.append("target_agent_role")
+
+                if missing_fields:
+                    logger.warning(f"TaskAnalyzer: Sub-task definition missing or empty fields {missing_fields}. Skipping: {sub_task_def}")
+                    continue
 
             # =============================================================
             # 9. CREAZIONE SUB-TASK
@@ -816,28 +914,97 @@ class EnhancedTaskExecutor:
     # Phase management methods
     # ---------------------------------------------------------------------
     async def check_phase_completion_and_trigger_pm(self, workspace_id: str) -> Optional[str]:
-        """Controllo fasi con PhaseManager"""
+        """Controllo fasi con PhaseManager - VERSIONE AGGIORNATA"""
 
         try:
-            current_phase = await PhaseManager.determine_workspace_current_phase(workspace_id)
-            next_phase = PhaseManager.get_next_phase(current_phase)
+            logger.info(f"🔍 PHASE CHECK: Starting for workspace {workspace_id}")
 
-            logger.info(f"Workspace {workspace_id} - Current phase: {current_phase.value}, Next: {next_phase.value if next_phase else 'None'}")
+            # USA LA NUOVA LOGICA DI TRANSIZIONE
+            current_phase, should_create_for_phase = await PhaseManager.should_transition_to_next_phase(workspace_id)
 
-            if not next_phase:
-                logger.info(f"Project {workspace_id} in final phase {current_phase.value}")
+            logger.info(f"🔍 PHASE CHECK: Current: {current_phase.value if current_phase else 'None'}, "
+                       f"Should create for: {should_create_for_phase.value if should_create_for_phase else 'None'}")
+
+            if not should_create_for_phase:
+                logger.info(f"🔍 PHASE CHECK: No transition needed for {workspace_id}")
                 return None
 
-            if await self._check_existing_phase_planning(workspace_id, next_phase):
-                logger.info(f"Phase planning for {next_phase.value} already exists")
+            # Controlla se esiste già planning per la fase target
+            if await self._check_existing_phase_planning(workspace_id, should_create_for_phase):
+                logger.info(f"🔍 PHASE CHECK: Planning for {should_create_for_phase.value} already exists")
                 return None
 
-            return await self._create_phase_planning_task(workspace_id, current_phase, next_phase)
+            # Controllo limiti workspace (più permissivo per phase transitions)
+            workspace_ctx = await self._gather_minimal_context(workspace_id)
+            pending_tasks = workspace_ctx.get("pending_tasks", 0)
+
+            # Limiti più permissivi per transizioni critiche
+            max_pending = 10 if should_create_for_phase == ProjectPhase.FINALIZATION else 8
+
+            if pending_tasks > max_pending:
+                logger.warning(f"🔍 PHASE CHECK: Too many pending tasks ({pending_tasks} > {max_pending}) - skipping transition to {should_create_for_phase.value}")
+                return None
+
+            logger.info(f"🚀 PHASE CHECK: Creating planning task for {should_create_for_phase.value}")
+
+            return await self._create_phase_planning_task(workspace_id, current_phase, should_create_for_phase)
 
         except Exception as e:
             logger.error(f"Error in phase completion check: {e}", exc_info=True)
             return None
 
+    async def _verify_phase_completion_criteria(
+        self, 
+        workspace_id: str, 
+        current_phase: ProjectPhase, 
+        target_phase: ProjectPhase
+    ) -> bool:
+        """Verifica che i criteri di completamento fase siano soddisfatti"""
+
+        try:
+            tasks = await list_tasks(workspace_id)
+            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+
+            # Conta task completati per fase
+            phase_counts = {phase: 0 for phase in ProjectPhase}
+            for task in completed_tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_phase = context_data.get("project_phase", "ANALYSIS")
+                validated_phase = PhaseManager.validate_phase(task_phase)
+                phase_counts[validated_phase] += 1
+
+            logger.info(f"📊 PHASE CRITERIA: Phase completion counts: {phase_counts}")
+
+            # Criteri specifici per transizione verso FINALIZATION
+            if target_phase == ProjectPhase.FINALIZATION:
+                analysis_completed = phase_counts[ProjectPhase.ANALYSIS] >= 2
+                implementation_completed = phase_counts[ProjectPhase.IMPLEMENTATION] >= 2
+
+                criteria_met = analysis_completed and implementation_completed
+
+                logger.info(f"📊 PHASE CRITERIA: For FINALIZATION transition - "
+                           f"Analysis: {phase_counts[ProjectPhase.ANALYSIS]} >= 2 ({analysis_completed}), "
+                           f"Implementation: {phase_counts[ProjectPhase.IMPLEMENTATION]} >= 2 ({implementation_completed}), "
+                           f"Criteria met: {criteria_met}")
+
+                return criteria_met
+
+            # Criteri per transizione verso IMPLEMENTATION
+            elif target_phase == ProjectPhase.IMPLEMENTATION:
+                analysis_completed = phase_counts[ProjectPhase.ANALYSIS] >= 2
+
+                logger.info(f"📊 PHASE CRITERIA: For IMPLEMENTATION transition - "
+                           f"Analysis: {phase_counts[ProjectPhase.ANALYSIS]} >= 2 ({analysis_completed})")
+
+                return analysis_completed
+
+            # Default: permettere transizioni
+            return True
+
+        except Exception as e:
+            logger.error(f"Error verifying phase completion criteria: {e}")
+            return False
+    
     async def _check_existing_phase_planning(self, workspace_id: str, target_phase: ProjectPhase) -> bool:
         """Verifica se esiste già un task di planning per la fase target"""
         try:
@@ -847,20 +1014,25 @@ class EnhancedTaskExecutor:
                 if task.get("status") in ["pending", "in_progress"]:
                     context_data = task.get("context_data", {}) or {}
 
+                    # Controlla marker specifico per planning task
                     if (context_data.get("planning_task_marker") and 
-                        context_data.get("project_phase") == target_phase.value):
-                        logger.info(f"Found existing planning task for phase {target_phase.value}: {task['id']}")
+                        context_data.get("target_phase") == target_phase.value):
+                        logger.info(f"🔍 EXISTING: Found planning task {task['id']} for {target_phase.value}")
                         return True
 
+                    # Controlla nel nome del task
                     task_name = (task.get("name") or "").lower()
-                    if (f"phase planning" in task_name and 
+                    if ("phase planning" in task_name and 
                         target_phase.value.lower() in task_name):
+                        logger.info(f"🔍 EXISTING: Found planning task by name {task['id']} for {target_phase.value}")
                         return True
 
+            logger.info(f"🔍 EXISTING: No planning tasks found for {target_phase.value}")
             return False
+
         except Exception as e:
             logger.error(f"Error checking existing phase planning: {e}")
-            return True
+            return True 
 
     async def _find_project_manager(self, workspace_id: str) -> Optional[Dict]:
         """Trova il Project Manager nel workspace"""
@@ -888,76 +1060,85 @@ class EnhancedTaskExecutor:
         self, 
         workspace_id: str, 
         current_phase: ProjectPhase, 
-        next_phase: ProjectPhase
+        target_phase: ProjectPhase
     ) -> Optional[str]:
-        """Crea task di planning per la fase successiva"""
+        """Crea task di planning per la fase target"""
 
         pm_agent = await self._find_project_manager(workspace_id)
         if not pm_agent:
+            logger.error(f"❌ No project manager found in workspace {workspace_id}")
             return None
 
-        phase_planning_templates = {
-            ProjectPhase.IMPLEMENTATION: {
-                "title": "Content Strategy & Editorial Plan Development",
-                "focus": "strategy frameworks, planning templates, workflows",
-                "examples": "Content Strategy Framework, Editorial Calendar Template, Publishing Workflow"
-            },
-            ProjectPhase.FINALIZATION: {
-                "title": "Content Creation & Publishing Execution", 
-                "focus": "content creation, publishing execution, final deliverables",
-                "examples": "Content Posts Creation, Publishing Schedule Execution, Performance Analytics"
-            }
-        }
+        # Template per le diverse fasi
+        if target_phase == ProjectPhase.FINALIZATION:
+            task_name = "🎯 CRITICAL: Phase Planning for FINALIZATION"
+            description = f"""🎯 FINAL PHASE PLANNING: Create deliverable tasks for project completion
 
-        template = phase_planning_templates.get(next_phase)
-        if not template:
-            logger.warning(f"No planning template for phase {next_phase.value}")
+    CRITICAL TRANSITION: {current_phase.value} → FINALIZATION
+
+    ⚠️ THIS IS THE FINAL PHASE - CREATE TASKS THAT COMPLETE THE PROJECT
+
+    MANDATORY REQUIREMENTS:
+    1. detailed_results_json MUST include:
+       - "current_project_phase": "FINALIZATION"
+       - "defined_sub_tasks" array with 3+ tasks
+    2. Each sub-task MUST have "project_phase": "FINALIZATION"
+    3. Use exact agent names from get_team_roles_and_status
+
+    🎯 FINALIZATION TASK EXAMPLES:
+    - "Create Final Instagram Content Posts" 
+    - "Generate Complete Lead Contact Database"
+    - "Compile Campaign Performance Report"
+    - "Create Executive Summary Document"
+
+    ⚠️ CRITICAL: These tasks will produce the final project deliverables!
+    """
+        elif target_phase == ProjectPhase.IMPLEMENTATION:
+            task_name = "📋 Phase Planning: Content Strategy & Implementation"
+            description = f"""📋 IMPLEMENTATION PHASE PLANNING
+
+    TRANSITION: {current_phase.value} → IMPLEMENTATION
+    FOCUS: Strategy frameworks, templates, workflows
+
+    REQUIREMENTS:
+    1. detailed_results_json MUST include:
+       - "current_project_phase": "IMPLEMENTATION"
+       - "defined_sub_tasks" array
+    2. Each sub-task MUST have "project_phase": "IMPLEMENTATION"
+
+    IMPLEMENTATION EXAMPLES:
+    - Content Strategy Framework
+    - Editorial Calendar Template  
+    - Publishing Workflow
+    """
+        else:
+            logger.warning(f"No template for phase {target_phase.value}")
             return None
-
-        task_name = f"Phase Planning: {template['title']}"
 
         planning_task = await create_task(
             workspace_id=workspace_id,
             agent_id=pm_agent["id"],
             name=task_name,
-            description=f"""Plan and define sub-tasks for the {next_phase.value} phase.
-
-CURRENT PHASE COMPLETED: {current_phase.value}
-TARGET PHASE: {next_phase.value}
-FOCUS AREAS: {template['focus']}
-
-CRITICAL REQUIREMENTS:
-1. Your detailed_results_json MUST include:
-   - "current_project_phase": "{next_phase.value}"
-   - "defined_sub_tasks" array
-2. Each sub-task MUST have "project_phase": "{next_phase.value}"
-3. Use exact agent names from get_team_roles_and_status
-
-EXAMPLE SUB-TASKS FOR {next_phase.value}:
-{template['examples']}
-
-Phase Description: {PhaseManager.get_phase_description(next_phase)}
-""",
+            description=description,
             status="pending",
             priority="high",
             creation_type="phase_transition",
             context_data={
-                "project_phase": next_phase.value,
-                "phase_transition": f"{current_phase.value}_TO_{next_phase.value}",
+                "project_phase": target_phase.value,
+                "phase_transition": f"{current_phase.value}_TO_{target_phase.value}",
                 "planning_task_marker": True,
-                "phase_validated": True,
-                "target_phase": next_phase.value,
+                "target_phase": target_phase.value,  # IMPORTANTE per _check_existing_phase_planning
                 "completed_phase": current_phase.value,
-                "phase_trigger_timestamp": datetime.now().isoformat()
+                "phase_trigger_timestamp": datetime.now().isoformat(),
+                "is_finalization_planning": target_phase == ProjectPhase.FINALIZATION
             }
         )
 
         if planning_task and planning_task.get("id"):
-            logger.info(f"✅ Created phase planning task {planning_task['id']} "
-                       f"for transition {current_phase.value} → {next_phase.value}")
+            logger.info(f"✅ CREATED planning task {planning_task['id']} for {target_phase.value}")
             return planning_task["id"]
         else:
-            logger.error(f"❌ Failed to create phase planning task for {next_phase.value}")
+            logger.error(f"❌ FAILED to create planning task for {target_phase.value}")
             return None
 
     # Mantieni tutti gli altri metodi esistenti...
