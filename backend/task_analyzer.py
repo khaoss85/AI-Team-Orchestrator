@@ -471,8 +471,10 @@ class EnhancedTaskExecutor:
             if tool_created_task_id:
                 try:
                     existing_task = await get_task(tool_created_task_id)
-                    if existing_task and existing_task.name.lower() == task_name.lower():
-                        logger.info(f"TaskAnalyzer: PM task {task_id_str} correctly referenced sub-task ID '{tool_created_task_id}' ('{task_name}') created via tool. Analyzer will not create duplicate.")
+                    if existing_task:
+                        existing_task_name = existing_task.get("name")
+                        if existing_task_name and existing_task_name.lower() == task_name_from_pm.lower():
+                            logger.info(f"TaskAnalyzer: PM task {task_id_str} correctly referenced sub-task ID '{tool_created_task_id}' ('{task_name}') created via tool. Analyzer will not create duplicate.")
 
                         # Aggiorna context del task esistente per tracciare riconoscimento analyzer
                         try:
