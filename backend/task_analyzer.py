@@ -119,9 +119,6 @@ class PhaseManager:
             
             logger.info(f"🚀 TRANSITION CHECK: Completed: {phase_counts}, Pending: {pending_phase_counts}")
             
-            # LOGICA CHIAVE: Quando creare task per la fase successiva
-            return await self._create_phase_planning_task(workspace_id, current_phase, next_phase)
-            
             # Se abbiamo task FINALIZATION completati, progetto finito
             if phase_counts[ProjectPhase.FINALIZATION] >= 2:
                 return ProjectPhase.COMPLETED, None
@@ -587,7 +584,7 @@ class EnhancedTaskExecutor:
 
                 agent_match = (
                     t_db_dict.get("agent_id") == agent_to_assign["id"] or 
-                    (target_agent_name_from_pm is not None and assigned_role_db_safe == target_agent_name_safe)
+                    (target_agent_name_from_pm is not None and assigned_role_db_safe == target_agent_name_safe)  # ← FISSO
                 )
 
                 status_match = t_db_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]
@@ -604,30 +601,6 @@ class EnhancedTaskExecutor:
 
             if is_duplicate_found_by_analyzer:
                 continue
-
-            # Inoltre, aggiungi una validazione all'inizio del loop per sub_task_def:
-            for sub_task_def in defined_sub_tasks_list:
-                if not isinstance(sub_task_def, dict):
-                    logger.warning(f"TaskAnalyzer: Invalid sub_task_def format (not a dict) in PM output for task {task_id_str}. Skipping: {sub_task_def}")
-                    continue
-
-                # ---- Estrazione campi base con validazione migliorata ----
-                task_name = sub_task_def.get("name")
-                task_description = sub_task_def.get("description")
-                target_agent_name_from_pm = sub_task_def.get("target_agent_role") or ""  # Default a stringa vuota invece di None
-                priority = sub_task_def.get("priority", "medium").lower()
-
-                # Validazione campi obbligatori CON CONTROLLO PER target_agent_role
-                required_fields = ["name", "description"]  # target_agent_role verrà controllato separatamente
-                missing_fields = [field for field in required_fields if not sub_task_def.get(field)]
-
-                # Controllo specifico per target_agent_role
-                if not target_agent_name_from_pm or target_agent_name_from_pm.strip() == "":
-                    missing_fields.append("target_agent_role")
-
-                if missing_fields:
-                    logger.warning(f"TaskAnalyzer: Sub-task definition missing or empty fields {missing_fields}. Skipping: {sub_task_def}")
-                    continue
 
             # =============================================================
             # 9. CREAZIONE SUB-TASK
