@@ -360,17 +360,100 @@ class EnhancedTaskExecutor:
 
             if is_pm_task:
                 logger.info(f"Processing PM task: {task_id_str}")
-                await self.handle_project_manager_completion(completed_task, task_result, workspace_id)
-            else:
-                logger.info(f"Processing specialist task: {task_id_str}")
-                # Specialist tasks can trigger deliverable checks
+                # PM tasks always create sub-tasks
+                pm_created_tasks = await self.handle_project_manager_completion(completed_task, task_result, workspace_id)
+
+                # After PM task completion, check for final deliverable
                 try:
                     from deliverable_aggregator import check_and_create_final_deliverable
-                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
-                    if deliverable_id:
-                        logger.critical(f"🎯 FINAL DELIVERABLE CREATED: {deliverable_id}")
+                    final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    if final_deliverable_id:
+                        logger.info(f"✅ PM task completion triggered final deliverable: {final_deliverable_id}")
+                        await self._log_completion_analysis(
+                            completed_task, task_result, "pm_triggered_final_deliverable",
+                            f"Created final deliverable: {final_deliverable_id}"
+                        )
                 except Exception as e:
-                    logger.error(f"Error checking final deliverable: {e}")
+                    logger.error(f"Error checking final deliverable after PM task: {e}")
+
+                await self._log_completion_analysis(
+                    completed_task,
+                    task_result,
+                    "pm_task_processed",
+                    f"Sub-tasks created: {pm_created_tasks}",
+                )
+                return
+
+            # SPECIALIST FLOW
+            logger.info(f"Processing specialist task: {task_id_str}")
+
+            # Process specialist task based on auto-generation settings
+            if not self.auto_generation_enabled:
+                logger.info(f"Task {task_id_str}: auto-generation disabled for specialist tasks")
+                await self._log_completion_analysis(
+                    completed_task, task_result, "specialist_task_completed_no_auto_gen"
+                )
+            else:
+                # Ultra-conservative filtering (cheap checks first)
+                if not self._should_analyze_task_ultra_conservative(completed_task, task_result):
+                    await self._log_completion_analysis(
+                        completed_task, task_result, "filtered_out_conservative"
+                    )
+                else:
+                    # Minimal workspace context (cheap)
+                    workspace_ctx = await self._gather_minimal_context(workspace_id)
+
+                    # Strict quota / limits
+                    if not self._check_strict_workspace_limits(workspace_ctx):
+                        logger.info(f"Workspace {workspace_id} at strict limits - no auto-generation")
+                        await self._log_completion_analysis(
+                            completed_task, task_result, "workspace_limits_exceeded"
+                        )
+                    else:
+                        # Duplicate prevention
+                        if self._is_handoff_duplicate_strict(completed_task, workspace_ctx):
+                            logger.warning(f"Duplicate handoff prevented for task {task_id_str}")
+                            await self._log_completion_analysis(
+                                completed_task, task_result, "duplicate_prevented"
+                            )
+                        else:
+                            # Deterministic (no-LLM) analysis
+                            analysis = self._analyze_task_deterministic(
+                                completed_task, task_result, workspace_ctx
+                            )
+
+                            # Create follow-up task only if every hard gate passes
+                            if (
+                                self.handoff_creation_enabled
+                                and analysis.requires_follow_up
+                                and analysis.confidence_score >= self.confidence_threshold
+                                and analysis.suggested_handoffs
+                            ):
+                                logger.warning(
+                                    f"CREATING AUTO-TASK for {task_id_str} (confidence: {analysis.confidence_score:.3f})"
+                                )
+                                await self._execute_minimal_handoff(analysis, completed_task, workspace_id)
+                            else:
+                                logger.info(
+                                    f"Task {task_id_str} analysis complete - no follow-up "
+                                    f"(confidence: {analysis.confidence_score:.3f})"
+                                )
+                                await self._log_completion_analysis(
+                                    completed_task, analysis.__dict__(), "analysis_complete_no_action"
+                                )
+
+            # After every specialist task, check for final deliverable
+            try:
+                from deliverable_aggregator import check_and_create_final_deliverable
+                final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                if final_deliverable_id:
+                    logger.info(f"🎯 Specialist task completion triggered final deliverable: {final_deliverable_id}")
+                    await self._log_completion_analysis(
+                        completed_task, task_result, "specialist_triggered_final_deliverable",
+                        f"Created final deliverable: {final_deliverable_id}"
+                    )
+            except Exception as e:
+                logger.error(f"Error checking final deliverable after specialist task: {e}")
 
             # Phase completion check (after any task)
             try:
