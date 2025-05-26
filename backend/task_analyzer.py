@@ -271,6 +271,15 @@ class TaskAnalysisOutput:
         self.project_status = project_status
         self.reasoning = reasoning
         self.next_phase = next_phase
+        
+        logger.critical("🔧 ENHANCED TASK EXECUTOR CONFIGURATION")
+        logger.critical(f"auto_generation_enabled: {self.auto_generation_enabled}")
+        logger.critical(f"analysis_enabled: {self.analysis_enabled}")
+        
+        # Force enable se env variable settata
+        if os.getenv("FORCE_DEBUG_AUTO_GENERATION", "false").lower() == "true":
+            self.auto_generation_enabled = True
+            self.analysis_enabled = True
 
     def __dict__(self):
         return {

@@ -523,6 +523,265 @@ async def reset_failed_task(task_id: UUID):
             detail=f"Failed to reset task: {str(e)}"
         )
         
+@router.get("/workspace/{workspace_id}/finalization-status", response_model=Dict[str, Any])
+async def get_workspace_finalization_status(workspace_id: UUID):
+    """
+    CRITICAL: Monitoring specifico per stato FINALIZATION
+    """
+    try:
+        all_tasks = await list_tasks(str(workspace_id))
+        
+        # Count FINALIZATION tasks
+        finalization_tasks = [
+            task for task in all_tasks
+            if isinstance(task.get("context_data"), dict) and 
+            task.get("context_data", {}).get("project_phase", "").upper() == "FINALIZATION"
+        ]
+        
+        finalization_pending = [
+            task for task in finalization_tasks
+            if task.get("status") == "pending"
+        ]
+        
+        finalization_completed = [
+            task for task in finalization_tasks
+            if task.get("status") == "completed"
+        ]
+        
+        # Check deliverables finali (cerca nei task)
+        final_deliverable_tasks = [
+            task for task in all_tasks
+            if (isinstance(task.get("context_data"), dict) and
+                (task.get("context_data", {}).get("is_final_deliverable") or
+                 task.get("context_data", {}).get("deliverable_aggregation") or
+                 "🎯" in task.get("name", "")))
+        ]
+        
+        completed_final_deliverables = [
+            task for task in final_deliverable_tasks
+            if task.get("status") == "completed"
+        ]
+        
+        status = {
+            "workspace_id": str(workspace_id),
+            "finalization_phase_active": len(finalization_tasks) > 0,
+            "finalization_tasks_total": len(finalization_tasks),
+            "finalization_tasks_pending": len(finalization_pending),
+            "finalization_tasks_completed": len(finalization_completed),
+            "final_deliverables_total": len(final_deliverable_tasks),
+            "final_deliverables_completed": len(completed_final_deliverables),
+            "project_completion_percentage": 0,
+            "next_action_needed": "UNKNOWN",
+            "analysis_timestamp": datetime.now().isoformat()
+        }
+        
+        # Calculate completion percentage
+        if final_deliverable_tasks:
+            status["project_completion_percentage"] = (
+                len(completed_final_deliverables) / len(final_deliverable_tasks) * 100
+            )
+        elif len(finalization_completed) > 0 and len(finalization_pending) == 0:
+            status["project_completion_percentage"] = 85  # High completion if FINALIZATION done
+        
+        # Determine next action
+        if len(finalization_pending) > 0:
+            status["next_action_needed"] = "EXECUTE_FINALIZATION_TASKS"
+        elif len(final_deliverable_tasks) == 0 and len(finalization_completed) >= 2:
+            status["next_action_needed"] = "CREATE_FINAL_DELIVERABLES"
+        elif len(completed_final_deliverables) < len(final_deliverable_tasks):
+            status["next_action_needed"] = "COMPLETE_DELIVERABLES"
+        else:
+            status["next_action_needed"] = "PROJECT_READY_FOR_HANDOFF"
+        
+        return status
+        
+    except Exception as e:
+        logger.error(f"Error getting finalization status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get finalization status: {str(e)}"
+        )
+
+@router.post("/workspace/{workspace_id}/force-finalization", status_code=status.HTTP_200_OK)
+async def force_finalization_if_stuck(workspace_id: UUID):
+    """
+    EMERGENCY: Forza completamento se stuck in FINALIZATION
+    """
+    try:
+        # Get current status
+        all_tasks = await list_tasks(str(workspace_id))
+        
+        finalization_pending = [
+            task for task in all_tasks
+            if (isinstance(task.get("context_data"), dict) and 
+                task.get("context_data", {}).get("project_phase", "").upper() == "FINALIZATION" and
+                task.get("status") == "pending")
+        ]
+        
+        # Check se è stuck (troppi pending, nessun completed)
+        finalization_completed = [
+            task for task in all_tasks
+            if (isinstance(task.get("context_data"), dict) and 
+                task.get("context_data", {}).get("project_phase", "").upper() == "FINALIZATION" and
+                task.get("status") == "completed")
+        ]
+        
+        if len(finalization_pending) > 3 and len(finalization_completed) == 0:
+            logger.critical(f"🚨 FINALIZATION STUCK DETECTED in W:{workspace_id}")
+            
+            # Trigger deliverable creation
+            try:
+                from deliverable_aggregator import check_and_create_final_deliverable
+                deliverable_id = await check_and_create_final_deliverable(str(workspace_id))
+                
+                return {
+                    "forced": True, 
+                    "reason": "stuck_finalization", 
+                    "action_taken": "triggered_deliverable_creation",
+                    "deliverable_task_id": deliverable_id
+                }
+            except Exception as e:
+                logger.error(f"Error forcing deliverable creation: {e}")
+                return {
+                    "forced": False, 
+                    "reason": "deliverable_creation_failed",
+                    "error": str(e)
+                }
+        
+        return {
+            "forced": False, 
+            "status": "healthy",
+            "finalization_pending": len(finalization_pending),
+            "finalization_completed": len(finalization_completed)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in force finalization: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to force finalization: {str(e)}"
+        )
+
+@router.post("/workspace/{workspace_id}/clear-stuck-tasks", status_code=status.HTTP_200_OK)
+async def clear_stuck_tasks_emergency(workspace_id: UUID):
+    """
+    EMERGENCY: Clear stuck tasks that might be blocking progress
+    """
+    try:
+        all_tasks = await list_tasks(str(workspace_id))
+        
+        # Identify potentially stuck tasks
+        stuck_candidates = []
+        current_time = datetime.now()
+        
+        for task in all_tasks:
+            if task.get("status") not in ["pending", "in_progress"]:
+                continue
+                
+            # Check age
+            created_at = task.get("created_at")
+            if created_at:
+                try:
+                    created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    age_hours = (current_time - created_time.replace(tzinfo=None)).total_seconds() / 3600
+                    
+                    # Tasks pending for more than 2 hours might be stuck
+                    if age_hours > 2:
+                        stuck_candidates.append({
+                            "task_id": task.get("id"),
+                            "name": task.get("name", ""),
+                            "age_hours": round(age_hours, 1),
+                            "status": task.get("status")
+                        })
+                except Exception as e:
+                    logger.debug(f"Error parsing task date: {e}")
+        
+        logger.warning(f"🧹 Found {len(stuck_candidates)} potentially stuck tasks in W:{workspace_id}")
+        
+        return {
+            "success": True,
+            "stuck_tasks_found": len(stuck_candidates),
+            "stuck_tasks": stuck_candidates[:10],  # Limit response size
+            "message": f"Identified {len(stuck_candidates)} potentially stuck tasks"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error clearing stuck tasks: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear stuck tasks: {str(e)}"
+        )
+
+async def get_workspace_finalization_status(workspace_id: str):
+    """
+    CRITICAL: Monitoring specifico per stato FINALIZATION
+    """
+    try:
+        all_tasks = await list_tasks(workspace_id)
+        deliverables = await get_workspace_deliverables(workspace_id)
+        
+        # Count FINALIZATION tasks
+        finalization_tasks = [
+            task for task in all_tasks
+            if task.get("context_data", {}).get("project_phase", "").upper() == "FINALIZATION"
+        ]
+        
+        finalization_pending = [
+            task for task in finalization_tasks
+            if task.get("status") == "PENDING"
+        ]
+        
+        finalization_completed = [
+            task for task in finalization_tasks
+            if task.get("status") == "COMPLETED"
+        ]
+        
+        # Check deliverables finali
+        final_deliverables = [
+            d for d in deliverables
+            if d.get("phase", "").upper() == "FINALIZATION" or d.get("is_final", False)
+        ]
+        
+        completed_final_deliverables = [
+            d for d in final_deliverables
+            if d.get("status") == "COMPLETED"
+        ]
+        
+        status = {
+            "workspace_id": workspace_id,
+            "finalization_phase_active": len(finalization_tasks) > 0,
+            "finalization_tasks_total": len(finalization_tasks),
+            "finalization_tasks_pending": len(finalization_pending),
+            "finalization_tasks_completed": len(finalization_completed),
+            "final_deliverables_total": len(final_deliverables),
+            "final_deliverables_completed": len(completed_final_deliverables),
+            "project_completion_percentage": 0,
+            "next_action_needed": "UNKNOWN"
+        }
+        
+        # Calculate completion percentage
+        if final_deliverables:
+            status["project_completion_percentage"] = (
+                len(completed_final_deliverables) / len(final_deliverables) * 100
+            )
+        
+        # Determine next action
+        if len(finalization_pending) > 0:
+            status["next_action_needed"] = "EXECUTE_FINALIZATION_TASKS"
+        elif len(final_deliverables) == 0:
+            status["next_action_needed"] = "CREATE_FINAL_DELIVERABLES"
+        elif len(completed_final_deliverables) < len(final_deliverables):
+            status["next_action_needed"] = "COMPLETE_DELIVERABLES"
+        else:
+            status["next_action_needed"] = "PROJECT_READY_FOR_HANDOFF"
+        
+        return status
+        
+    except Exception as e:
+        logger.error(f"Error getting finalization status: {e}")
+        return {"error": str(e)}
+    
+    
 # METODI HELPER - CORRETTI SENZA SELF
 def _is_handoff_task(task: Dict) -> bool:
     """Determine if a task is a handoff task"""

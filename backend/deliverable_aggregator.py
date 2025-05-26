@@ -18,9 +18,9 @@ from models import TaskStatus, ProjectPhase
 logger = logging.getLogger(__name__)
 
 # Enhanced configuration from environment
-DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "70"))
+DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
 ENABLE_AUTO_PROJECT_COMPLETION = os.getenv("ENABLE_AUTO_PROJECT_COMPLETION", "true").lower() == "true"
-MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "3"))
+MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
 
 class DeliverableType(str, Enum):
