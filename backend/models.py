@@ -6,6 +6,10 @@ from datetime import datetime
 from uuid import UUID
 from enum import Enum
 import json
+import warnings
+
+# Suppress Pydantic JSON schema warnings globally per questo modulo
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic._internal._generate_schema")
 
 # --- Enums ---
 class WorkspaceStatus(str, Enum):
@@ -139,6 +143,7 @@ class AgentCreate(BaseModel):
     hard_skills: Optional[List[Skill]] = None
     soft_skills: Optional[List[Skill]] = None
     background_story: Optional[str] = None
+    vector_store_ids: Optional[List[str]] = None
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
@@ -187,9 +192,9 @@ class Agent(BaseModel):
 
 # --- Handoff Models ---
 class HandoffProposalCreate(BaseModel):
-    source_agent_name: str = PydanticField(..., alias="from")
-    target_agent_names: Union[str, List[str]] = PydanticField(..., alias="to")
-    description: Optional[str] = None
+    source_agent_name: str = PydanticField(alias="from", description="Source agent name")
+    target_agent_names: Union[str, List[str]] = PydanticField(alias="to", description="Target agent name(s)")
+    description: Optional[str] = PydanticField(default="", description="Handoff description")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -347,14 +352,14 @@ class DirectorTeamProposalResponse(BaseModel):
 
 # --- Tool Outputs ---
 class TaskExecutionOutput(BaseModel):
-    task_id: str
-    status: Literal["completed","failed","requires_handoff"] = "completed"
-    summary: str
-    detailed_results_json: Optional[str] = PydanticField(None, description="JSON string of detailed results")
-    next_steps: Optional[List[str]] = PydanticField(None, description="Follow-up actions")
-    suggested_handoff_target_role: Optional[str] = PydanticField(None, description="Role for handoff")
-    resources_consumed_json: Optional[str] = PydanticField(None, description="Usage metrics JSON")
-
+    task_id: str = PydanticField(description="ID of the task")  
+    status: Literal["completed", "failed", "requires_handoff"] = PydanticField(default="completed", description="Task completion status")
+    summary: str = PydanticField(description="Summary of work performed")  
+    detailed_results_json: Optional[str] = PydanticField(default="", description="Detailed structured results as JSON string")
+    next_steps: Optional[List[str]] = PydanticField(default_factory=list, description="Suggested next actions")
+    suggested_handoff_target_role: Optional[str] = PydanticField(default="", description="Role to hand off to if required")
+    resources_consumed_json: Optional[str] = PydanticField(default="", description="Resource usage as JSON string")
+    
     model_config = ConfigDict(extra="forbid")
 
 class PMToolCreateSubTaskResponse(BaseModel):

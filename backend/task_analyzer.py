@@ -125,28 +125,31 @@ class PhaseManager:
             
             # ENHANCED TRANSITION LOGIC
             
-            # If FINALIZATION completed -> project finished
+           # If FINALIZATION completed -> project finished
             if phase_counts[ProjectPhase.FINALIZATION] >= 2:
                 return ProjectPhase.COMPLETED, None
-            
-            # For FINALIZATION: need IMPLEMENTATION + no conflicts
-            if (phase_counts[ProjectPhase.IMPLEMENTATION] >= 2 and 
-                pending_phase_counts[ProjectPhase.FINALIZATION] == 0 and
+
+            # For FINALIZATION: need IMPLEMENTATION + reasonable completion
+            # FIX: Ridotto il requisito da 2 a 1 per IMPLEMENTATION
+            if (phase_counts[ProjectPhase.IMPLEMENTATION] >= 1 and 
+                phase_counts[ProjectPhase.ANALYSIS] >= 1 and  # FIX: Assicura che ANALYSIS sia fatto
+                pending_phase_counts[ProjectPhase.FINALIZATION] <= 3 and  # FIX: Più permissivo sui pending
                 "FINALIZATION" not in planning_phases_executed and
                 "FINALIZATION" not in pending_planning_phases):
-                
+
                 logger.info(f"🚀 READY FOR FINALIZATION: {workspace_id}")
                 return ProjectPhase.IMPLEMENTATION, ProjectPhase.FINALIZATION
-            
+
             # For IMPLEMENTATION: need ANALYSIS + no conflicts
-            if (phase_counts[ProjectPhase.ANALYSIS] >= 2 and 
-                pending_phase_counts[ProjectPhase.IMPLEMENTATION] == 0 and
+            # FIX: Ridotto il requisito da 2 a 1 per ANALYSIS
+            if (phase_counts[ProjectPhase.ANALYSIS] >= 1 and 
+                pending_phase_counts[ProjectPhase.IMPLEMENTATION] <= 3 and  # FIX: Più permissivo sui pending
                 "IMPLEMENTATION" not in planning_phases_executed and
                 "IMPLEMENTATION" not in pending_planning_phases):
-                
+
                 logger.info(f"🚀 READY FOR IMPLEMENTATION: {workspace_id}")
                 return ProjectPhase.ANALYSIS, ProjectPhase.IMPLEMENTATION
-            
+
             # No transition needed
             current_phase = await PhaseManager.determine_workspace_current_phase(workspace_id)
             return current_phase, None
