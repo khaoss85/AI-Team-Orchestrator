@@ -1031,104 +1031,104 @@ class EnhancedDeliverableAggregator:
             return base_context + type_specific
     
     def _get_foolproof_output_schema(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
-    """Get foolproof output schema with simple, reliable JSON templates"""
+        """Get foolproof output schema with simple, reliable JSON templates"""
 
-    # Simplified, reliable JSON templates to prevent parsing errors
-    if deliverable_type_value == "contact_list":
-        return f"""
-**📞 CONTACT LIST DELIVERABLE - EXACT JSON TEMPLATE:**
+        # Simplified, reliable JSON templates to prevent parsing errors
+        if deliverable_type_value == "contact_list":
+            return f"""
+    **📞 CONTACT LIST DELIVERABLE - EXACT JSON TEMPLATE:**
 
-Copy this EXACT template and fill in the data:
+    Copy this EXACT template and fill in the data:
 
-{{
-  "deliverable_type": "contact_list",
-  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the contact list generation project. Include the business objective, methodology used, and key results achieved. This should be client-ready and professional.",
-  "key_findings": [
-    "Key insight 1 from contact research",
-    "Key insight 2 from lead generation", 
-    "Key insight 3 from data analysis"
-  ],
-  "project_metrics": {{
-    "total_contacts_generated": 0,
-    "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
-    "tasks_completed": {aggregated_data.get('total_tasks', 0)}
-  }},
-  "final_deliverable": {{
-    "contact_count": 0,
-    "primary_sources": ["List your data sources here"],
-    "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"]
-  }}
-}}
+    {{
+      "deliverable_type": "contact_list",
+      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the contact list generation project. Include the business objective, methodology used, and key results achieved. This should be client-ready and professional.",
+      "key_findings": [
+        "Key insight 1 from contact research",
+        "Key insight 2 from lead generation", 
+        "Key insight 3 from data analysis"
+      ],
+      "project_metrics": {{
+        "total_contacts_generated": 0,
+        "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
+        "tasks_completed": {aggregated_data.get('total_tasks', 0)}
+      }},
+      "final_deliverable": {{
+        "contact_count": 0,
+        "primary_sources": ["List your data sources here"],
+        "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"]
+      }}
+    }}
 
-🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
-"""
+    🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
+    """
 
-    elif deliverable_type_value == "content_strategy":
-        return f"""
-**📝 CONTENT STRATEGY DELIVERABLE - EXACT JSON TEMPLATE:**
+        elif deliverable_type_value == "content_strategy":
+            return f"""
+    **📝 CONTENT STRATEGY DELIVERABLE - EXACT JSON TEMPLATE:**
 
-Copy this EXACT template and fill in the data:
+    Copy this EXACT template and fill in the data:
 
-{{
-  "deliverable_type": "content_strategy",
-  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the content strategy development. Include the business objective, strategic approach, and expected outcomes. This should be client-ready and professional.",
-  "key_findings": [
-    "Strategic insight 1",
-    "Content opportunity 2",
-    "Audience insight 3"
-  ],
-  "project_metrics": {{
-    "content_ideas_generated": 0,
-    "strategy_frameworks_created": 0,
-    "tasks_completed": {aggregated_data.get('total_tasks', 0)}
-  }},
-  "final_deliverable": {{
-    "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
-    "platform_strategy": "Your platform recommendations",
-    "implementation_timeline": "Your recommended timeline"
-  }}
-}}
+    {{
+      "deliverable_type": "content_strategy",
+      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the content strategy development. Include the business objective, strategic approach, and expected outcomes. This should be client-ready and professional.",
+      "key_findings": [
+        "Strategic insight 1",
+        "Content opportunity 2",
+        "Audience insight 3"
+      ],
+      "project_metrics": {{
+        "content_ideas_generated": 0,
+        "strategy_frameworks_created": 0,
+        "tasks_completed": {aggregated_data.get('total_tasks', 0)}
+      }},
+      "final_deliverable": {{
+        "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
+        "platform_strategy": "Your platform recommendations",
+        "implementation_timeline": "Your recommended timeline"
+      }}
+    }}
 
-🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
-"""
+    🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
+    """
 
-    else:  # Generic report - MOST RELIABLE template
-        return f"""
-**📊 COMPREHENSIVE PROJECT REPORT - EXACT JSON TEMPLATE:**
+        else:  # Generic report - MOST RELIABLE template
+            return f"""
+    **📊 COMPREHENSIVE PROJECT REPORT - EXACT JSON TEMPLATE:**
 
-Copy this EXACT template and fill in the data:
+    Copy this EXACT template and fill in the data:
 
-{{
-  "deliverable_type": "project_report",
-  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the entire project. Start with the business objective: '{goal}'. Describe the methodology, key activities completed, main findings, and business value delivered. This should be professional and client-ready.",
-  "key_findings": [
-    "Major finding or insight 1 from project analysis",
-    "Important discovery or result 2 from completed tasks",
-    "Key outcome or recommendation 3 from project work"
-  ],
-  "project_metrics": {{
-    "total_tasks_completed": {aggregated_data.get('total_tasks', 0)},
-    "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
-    "key_insights_generated": {len(aggregated_data.get('key_insights', []))},
-    "completion_timeline": "X weeks/days"
-  }},
-  "final_deliverable": {{
-    "business_value": "Describe the main business value delivered",
-    "deliverables_produced": ["List main outputs created"],
-    "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"],
-    "success_metrics": "How to measure success of this project"
-  }}
-}}
+    {{
+      "deliverable_type": "project_report",
+      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the entire project. Start with the business objective: '{goal}'. Describe the methodology, key activities completed, main findings, and business value delivered. This should be professional and client-ready.",
+      "key_findings": [
+        "Major finding or insight 1 from project analysis",
+        "Important discovery or result 2 from completed tasks",
+        "Key outcome or recommendation 3 from project work"
+      ],
+      "project_metrics": {{
+        "total_tasks_completed": {aggregated_data.get('total_tasks', 0)},
+        "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
+        "key_insights_generated": {len(aggregated_data.get('key_insights', []))},
+        "completion_timeline": "X weeks/days"
+      }},
+      "final_deliverable": {{
+        "business_value": "Describe the main business value delivered",
+        "deliverables_produced": ["List main outputs created"],
+        "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"],
+        "success_metrics": "How to measure success of this project"
+      }}
+    }}
 
-🎯 **CRITICAL INSTRUCTIONS:**
-1. Copy the template EXACTLY as shown above
-2. Replace ALL placeholder text with real data from your project analysis
-3. Ensure the executive_summary is compelling and comprehensive
-4. Include specific, actionable findings and recommendations
-5. Double-check that your JSON is valid (no syntax errors)
+    🎯 **CRITICAL INSTRUCTIONS:**
+    1. Copy the template EXACTLY as shown above
+    2. Replace ALL placeholder text with real data from your project analysis
+    3. Ensure the executive_summary is compelling and comprehensive
+    4. Include specific, actionable findings and recommendations
+    5. Double-check that your JSON is valid (no syntax errors)
 
-🚨 **THIS IS THE FINAL PROJECT DELIVERABLE - MAKE IT EXCEPTIONAL!**
-"""
+    🚨 **THIS IS THE FINAL PROJECT DELIVERABLE - MAKE IT EXCEPTIONAL!**
+    """
     
     def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
         """Get enhanced output schema with actual data integration"""
