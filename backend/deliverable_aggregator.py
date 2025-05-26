@@ -873,14 +873,19 @@ class EnhancedDeliverableAggregator:
                 name=task_name,
                 description=description,
                 status="pending",
-                priority="critical",  # Use highest priority
+                priority="high",
                 creation_type="final_deliverable_aggregation_enhanced",
                 context_data={
                     "is_final_deliverable": True,
                     "deliverable_aggregation": True,
                     "deliverable_type": deliverable_type.value,
                     "project_phase": "FINALIZATION",
-                    "aggregated_data": aggregated_data,
+                    "aggregated_data_summary": {
+                        "total_tasks": aggregated_data.get("total_tasks", 0),
+                        "data_quality_score": aggregated_data.get("data_quality_score", 0),
+                        "key_insights_count": len(aggregated_data.get("key_insights", [])),
+                        "structured_data_sources": aggregated_data.get("structured_data", {}).get("num_data_sources", 0)
+                    },
                     "workspace_goal": workspace.get("goal", ""),
                     "creation_timestamp": datetime.now().isoformat(),
                     "triggers_project_completion": True,
@@ -1011,131 +1016,158 @@ class EnhancedDeliverableAggregator:
     
     def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
         """Get enhanced output schema with actual data integration"""
-        
+
+        import json
+
         # Enhanced schemas with real data integration
         if deliverable_type_value == "contact_list":
             structured_data = aggregated_data.get('structured_data', {})
             total_contacts = structured_data.get('total_contacts', 0)
-            
+            collection_methods = structured_data.get('collection_methods', [])
+            contact_fields = structured_data.get('contact_fields', [])
+            quality_score = aggregated_data.get('data_quality_score', 0)
+
+            # Serialize lists properly for JSON
+            collection_methods_json = json.dumps(collection_methods)
+            contact_fields_json = json.dumps(contact_fields)
+
             return f"""
-**📞 CONTACT LIST DELIVERABLE REQUIREMENTS:**
+    **📞 CONTACT LIST DELIVERABLE REQUIREMENTS:**
 
-**Available Data:**
-- {total_contacts} contacts identified from project tasks
-- Collection methods: {', '.join(structured_data.get('collection_methods', []))}
+    **Available Data:**
+    - {total_contacts} contacts identified from project tasks
+    - Collection methods: {', '.join(collection_methods)}
 
-**✅ REQUIRED OUTPUT in detailed_results_json:**
-{{
-  "deliverable_type": "contact_list",
-  "executive_summary": "Professional summary of contact list generation and quality.",
-  "final_contact_list": [
-    // Transform and include actual contacts from aggregated_data
+    **✅ REQUIRED OUTPUT in detailed_results_json:**
     {{
-      "name": "Contact Name",
-      "company": "Company Name", 
-      "email": "email@company.com",
-      "phone": "+1-555-000-0000",
-      "title": "Job Title",
-      "source": "Task/Method that found this contact",
-      "qualification_score": "8/10",
-      "notes": "Relevant notes about this contact"
+      "deliverable_type": "contact_list",
+      "executive_summary": "Professional summary of contact list generation and quality.",
+      "final_contact_list": [
+        {{
+          "name": "Contact Name",
+          "company": "Company Name", 
+          "email": "email@company.com",
+          "phone": "+1-555-000-0000",
+          "title": "Job Title",
+          "source": "Task/Method that found this contact",
+          "qualification_score": "8/10",
+          "notes": "Relevant notes about this contact"
+        }}
+      ],
+      "list_statistics": {{
+        "total_contacts_generated": {total_contacts},
+        "quality_score": "{quality_score}/100",
+        "primary_sources": {collection_methods_json},
+        "contact_fields_available": {contact_fields_json}
+      }},
+      "usage_recommendations": [
+        "Prioritize contacts with highest qualification scores",
+        "Segment by company size for targeted outreach",
+        "Use personalized messaging based on source context"
+      ]
     }}
-  ],
-  "list_statistics": {{
-    "total_contacts_generated": {total_contacts},
-    "quality_score": "{aggregated_data.get('data_quality_score', 0)}/100",
-    "primary_sources": {structured_data.get('collection_methods', [])},
-    "contact_fields_available": {structured_data.get('contact_fields', [])}
-  }},
-  "usage_recommendations": [
-    "Prioritize contacts with highest qualification scores",
-    "Segment by company size for targeted outreach",
-    "Use personalized messaging based on source context"
-  ]
-}}
 
-🎯 **CRITICAL:** Transform ALL contact data from aggregated_data into the final_contact_list!
-"""
-        
+    🎯 **CRITICAL:** Transform ALL contact data from aggregated_data into the final_contact_list!
+    """
+
         elif deliverable_type_value == "content_strategy":
             structured_data = aggregated_data.get('structured_data', {})
             content_count = len(structured_data.get('content_ideas', []))
-            
+            strategies_count = len(structured_data.get('strategies', []))
+            hashtags_count = len(structured_data.get('hashtags', []))
+            content_ideas = structured_data.get('content_ideas', [])[:5]  # First 5 ideas
+            hashtags = structured_data.get('hashtags', [])[:20]
+
+            # Serialize lists properly for JSON  
+            content_ideas_json = json.dumps(content_ideas)
+            hashtags_json = json.dumps(hashtags)
+
             return f"""
-**📝 CONTENT STRATEGY DELIVERABLE REQUIREMENTS:**
+    **📝 CONTENT STRATEGY DELIVERABLE REQUIREMENTS:**
 
-**Available Data:**
-- {content_count} content ideas generated
-- {len(structured_data.get('strategies', []))} strategy frameworks
-- Hashtags: {len(structured_data.get('hashtags', []))} identified
+    **Available Data:**
+    - {content_count} content ideas generated
+    - {strategies_count} strategy frameworks
+    - Hashtags: {hashtags_count} identified
 
-**✅ REQUIRED OUTPUT in detailed_results_json:**
-{{
-  "deliverable_type": "content_strategy",
-  "executive_summary": "Comprehensive content strategy overview and objectives.",
-  "content_pillars": ["Educational Content", "Brand Storytelling", "Community Engagement"],
-  "content_calendar": [
-    // Use actual content ideas from aggregated_data
+    **✅ REQUIRED OUTPUT in detailed_results_json:**
     {{
-      "month": "Current Month",
-      "theme": "Monthly Theme",
-      "content_pieces": {structured_data.get('content_ideas', [])[:5]}  // First 5 ideas
+      "deliverable_type": "content_strategy",
+      "executive_summary": "Comprehensive content strategy overview and objectives.",
+      "content_pillars": ["Educational Content", "Brand Storytelling", "Community Engagement"],
+      "content_calendar": [
+        {{
+          "month": "Current Month",
+          "theme": "Monthly Theme",
+          "content_pieces": {content_ideas_json}
+        }}
+      ],
+      "platform_strategy": {{
+        "instagram": "Strategy for Instagram based on analysis",
+        "linkedin": "Professional content approach",
+        "blog": "In-depth thought leadership"
+      }},
+      "recommended_hashtags": {hashtags_json},
+      "performance_targets": {{
+        "engagement_rate": "Target %",
+        "reach_growth": "Monthly growth target",
+        "lead_generation": "Leads per month target"
+      }}
     }}
-  ],
-  "platform_strategy": {{
-    "instagram": "Strategy for Instagram based on analysis",
-    "linkedin": "Professional content approach",
-    "blog": "In-depth thought leadership"
-  }},
-  "recommended_hashtags": {structured_data.get('hashtags', [])[:20]},
-  "performance_targets": {{
-    "engagement_rate": "Target %",
-    "reach_growth": "Monthly growth target",
-    "lead_generation": "Leads per month target"
-  }}
-}}
 
-🎯 **CRITICAL:** Integrate ALL content ideas and strategies from project analysis!
-"""
-        
+    🎯 **CRITICAL:** Integrate ALL content ideas and strategies from project analysis!
+    """
+
         else:  # Generic report
+            # FIX: Serialize complex data properly for JSON
+            total_tasks = aggregated_data.get('total_tasks', 0)
+            key_insights_count = len(aggregated_data.get('key_insights', []))
+            quality_score = aggregated_data.get('data_quality_score', 0)
+            key_insights = aggregated_data.get('key_insights', [])
+            project_metrics = aggregated_data.get('project_metrics', {})
+            recommendations = aggregated_data.get('recommendations', [])
+
+            # Serialize complex data properly
+            key_insights_json = json.dumps(key_insights)
+            project_metrics_json = json.dumps(project_metrics)
+            recommendations_json = json.dumps(recommendations)
+
             return f"""
-**📊 COMPREHENSIVE PROJECT REPORT REQUIREMENTS:**
+    **📊 COMPREHENSIVE PROJECT REPORT REQUIREMENTS:**
 
-**Available Project Data:**
-- {aggregated_data.get('total_tasks', 0)} completed tasks
-- {len(aggregated_data.get('key_insights', []))} key insights
-- Quality score: {aggregated_data.get('data_quality_score', 0)}/100
+    **Available Project Data:**
+    - {total_tasks} completed tasks
+    - {key_insights_count} key insights
+    - Quality score: {quality_score}/100
 
-**✅ REQUIRED OUTPUT in detailed_results_json:**
-{{
-  "deliverable_type": "project_report",
-  "executive_summary": "2-3 sentence overview of project accomplishments and outcomes.",
-  "project_goal_recap": "{goal}",
-  "key_findings": {aggregated_data.get('key_insights', [])},
-  "project_metrics": {aggregated_data.get('project_metrics', {})},
-  "deliverables_produced": [
-    // List all major outputs from completed tasks
+    **✅ REQUIRED OUTPUT in detailed_results_json:**
     {{
-      "deliverable_name": "Name from task analysis",
-      "description": "What was accomplished",
-      "value_delivered": "Business impact"
+      "deliverable_type": "project_report",
+      "executive_summary": "2-3 sentence overview of project accomplishments and outcomes.",
+      "project_goal_recap": "{goal}",
+      "key_findings": {key_insights_json},
+      "project_metrics": {project_metrics_json},
+      "deliverables_produced": [
+        {{
+          "deliverable_name": "Name from task analysis",
+          "description": "What was accomplished",
+          "value_delivered": "Business impact"
+        }}
+      ],
+      "final_recommendations": {recommendations_json},
+      "implementation_next_steps": [
+        "Immediate action item 1",
+        "Follow-up action item 2"
+      ],
+      "project_success_metrics": {{
+        "completion_rate": "X% of objectives achieved",
+        "quality_score": "{quality_score}/100",
+        "timeline_performance": "On schedule/Ahead/Behind"
+      }}
     }}
-  ],
-  "final_recommendations": {aggregated_data.get('recommendations', [])},
-  "implementation_next_steps": [
-    "Immediate action item 1",
-    "Follow-up action item 2"
-  ],
-  "project_success_metrics": {{
-    "completion_rate": "X% of objectives achieved",
-    "quality_score": "{aggregated_data.get('data_quality_score', 0)}/100",
-    "timeline_performance": "On schedule/Ahead/Behind"
-  }}
-}}
 
-🎯 **CRITICAL:** Synthesize ALL project data into comprehensive final report!
-"""
+    🎯 **CRITICAL:** Synthesize ALL project data into comprehensive final report!
+    """
     
     async def _trigger_project_completion_sequence(self, workspace_id: str, deliverable_task_id: str):
         """

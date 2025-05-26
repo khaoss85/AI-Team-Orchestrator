@@ -274,17 +274,9 @@ class TaskAnalysisOutput:
         self.project_status = project_status
         self.reasoning = reasoning
         self.next_phase = next_phase
-        
-        logger.critical("🔧 ENHANCED TASK EXECUTOR CONFIGURATION")
-        logger.critical(f"auto_generation_enabled: {self.auto_generation_enabled}")
-        logger.critical(f"analysis_enabled: {self.analysis_enabled}")
-        
-        # Force enable se env variable settata
-        if os.getenv("FORCE_DEBUG_AUTO_GENERATION", "false").lower() == "true":
-            self.auto_generation_enabled = True
-            self.analysis_enabled = True
 
     def __dict__(self):
+        """Return dictionary representation of the analysis output"""
         return {
             "requires_follow_up": self.requires_follow_up,
             "confidence_score": self.confidence_score,
@@ -322,6 +314,15 @@ class EnhancedTaskExecutor:
         self.initialization_time = datetime.now()
         self.last_cleanup = datetime.now()
         self.performance_metrics = defaultdict(int)
+        
+        logger.critical("🔧 ENHANCED TASK EXECUTOR CONFIGURATION")
+        logger.critical(f"auto_generation_enabled: {self.auto_generation_enabled}")
+        logger.critical(f"analysis_enabled: {self.analysis_enabled}")
+        
+        # Force enable se env variable settata
+        if os.getenv("FORCE_DEBUG_AUTO_GENERATION", "false").lower() == "true":
+            self.auto_generation_enabled = True
+            self.analysis_enabled = True
         
         logger.info("EnhancedTaskExecutor initialized with complete fixes")
 
