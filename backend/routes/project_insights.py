@@ -364,7 +364,7 @@ def _extract_major_milestones(
 
 @router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
 async def get_project_deliverables(workspace_id: UUID):
-    """Get aggregated project deliverables including final aggregated deliverable"""
+    """Get aggregated project deliverables including final aggregated deliverable - ENHANCED"""
     try:
         # Get workspace details
         workspace = await get_workspace(str(workspace_id))
@@ -379,11 +379,11 @@ async def get_project_deliverables(workspace_id: UUID):
         agents = await db_list_agents(str(workspace_id))
         agent_map = {a["id"]: a for a in agents}
         
-        # Extract outputs from completed tasks - MANTENERE SEMPLICE
+        # Extract outputs from completed tasks
         key_outputs = []
         for task in completed_tasks:
             result = task.get("result", {})
-            output_text = result.get("output", "")
+            output_text = result.get("summary", "")
             
             if output_text and len(output_text.strip()) > 10:  # Skip trivial outputs
                 agent_info = agent_map.get(task.get("agent_id"), {})
@@ -391,7 +391,6 @@ async def get_project_deliverables(workspace_id: UUID):
                 # Classify output type
                 output_type = _classify_output_type(task.get("name", ""), output_text)
                 
-                # Crea ProjectOutput con campi base (retrocompatibile)
                 key_outputs.append(ProjectOutput(
                     task_id=task["id"],
                     task_name=task.get("name", "Unnamed Task"),
@@ -402,78 +401,134 @@ async def get_project_deliverables(workspace_id: UUID):
                     type=output_type
                 ))
         
-        # NUOVO: Controlla se esiste un deliverable finale aggregato
+        # ENHANCED: Controlla se esiste un deliverable finale aggregato
         final_deliverable_task = None
         for task in completed_tasks:
             context_data = task.get("context_data", {}) or {}
             if (context_data.get("is_final_deliverable") or 
-                context_data.get("deliverable_aggregation")):
+                context_data.get("deliverable_aggregation") or
+                context_data.get("triggers_project_completion")):
                 final_deliverable_task = task
                 break
         
-        # Se esiste un deliverable finale, usalo come deliverable principale
+        # ENHANCED: Se esiste un deliverable finale, processalo con logica robusta
         if final_deliverable_task:
+            logger.info(f"🎯 PROCESSING final deliverable task: {final_deliverable_task['id']}")
             result = final_deliverable_task.get("result", {}) or {}
+            
+            # ENHANCED: Multiple fallback strategies for getting executive summary
+            executive_summary = ""
+            detailed_json_data = {}
+            
+            # Strategy 1: Try detailed_results_json parsing
             detailed_json = result.get("detailed_results_json")
-            if detailed_json:
+            if detailed_json and isinstance(detailed_json, str) and detailed_json.strip():
                 try:
-                    final_deliverable_data = json.loads(detailed_json)
-                    
-                    # Crea un output strutturato specifico per il deliverable finale
-                    final_output = ProjectOutput(
-                        task_id=final_deliverable_task["id"],
-                        task_name="🎯 " + final_deliverable_task.get("name", "Final Deliverable"),
-                        output=result.get("summary", ""),
-                        agent_name=agent_map.get(final_deliverable_task.get("agent_id"), {}).get("name", "Project Manager"),
-                        agent_role="Final Deliverable",
-                        created_at=datetime.fromisoformat(final_deliverable_task.get("updated_at", datetime.now().isoformat()).replace('Z', '+00:00')),
-                        type="final_deliverable",
-                        # NUOVO: Campi aggiuntivi per deliverable strutturato
-                        title=final_deliverable_data.get("deliverable_type", "Final Project Deliverable").replace("_", " ").title(),
-                        description=final_deliverable_data.get("executive_summary", "Comprehensive project deliverable"),
-                        key_insights=final_deliverable_data.get("key_findings", []),
-                        metrics=final_deliverable_data.get("project_metrics", {}),
-                        category="final_deliverable"
-                    )
-                    
-                    # Aggiungi il deliverable finale all'inizio della lista
-                    key_outputs.insert(0, final_output)
-                    logger.info(f"Added final deliverable to outputs: {final_deliverable_task['id']}")
-                    
-                except json.JSONDecodeError:
-                    logger.warning(f"Could not parse final deliverable JSON: {detailed_json[:200]}")
+                    detailed_json_data = json.loads(detailed_json)
+                    executive_summary = detailed_json_data.get("executive_summary", "")
+                    logger.info(f"🎯 SUCCESS: Parsed detailed_results_json for executive summary")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"🎯 WARNING: Failed to parse detailed_results_json: {e}")
+                    # Strategy 2: Try to extract partial data from malformed JSON
+                    try:
+                        # Look for executive_summary in the raw string
+                        import re
+                        exec_match = re.search(r'"executive_summary":\s*"([^"]*)"', detailed_json)
+                        if exec_match:
+                            executive_summary = exec_match.group(1)
+                            logger.info(f"🎯 RECOVERY: Extracted executive_summary from malformed JSON")
+                    except Exception as e2:
+                        logger.warning(f"🎯 RECOVERY FAILED: {e2}")
+            
+            # Strategy 3: Fallback to task summary if no executive_summary found
+            if not executive_summary:
+                executive_summary = result.get("summary", "")
+                if executive_summary:
+                    logger.info(f"🎯 FALLBACK: Using task summary as executive summary")
+            
+            # Strategy 4: Generate basic summary if still empty
+            if not executive_summary:
+                workspace_goal = workspace.get("goal", "")
+                executive_summary = f"Project deliverable completed for: {workspace_goal}"
+                logger.warning(f"🎯 EMERGENCY FALLBACK: Generated basic executive summary")
+            
+            # ENHANCED: Create comprehensive final output with robust data
+            try:
+                final_output = ProjectOutput(
+                    task_id=final_deliverable_task["id"],
+                    task_name="🎯 " + final_deliverable_task.get("name", "Final Deliverable"),
+                    output=executive_summary,  # This will now always have content
+                    agent_name=agent_map.get(final_deliverable_task.get("agent_id"), {}).get("name", "Project Manager"),
+                    agent_role="Final Deliverable",
+                    created_at=datetime.fromisoformat(final_deliverable_task.get("updated_at", datetime.now().isoformat()).replace('Z', '+00:00')),
+                    type="final_deliverable",
+                    # ENHANCED: Robust field extraction with fallbacks
+                    title=detailed_json_data.get("deliverable_type", "Final Project Deliverable").replace("_", " ").title(),
+                    description=executive_summary,  # Use the robust executive_summary
+                    key_insights=detailed_json_data.get("key_findings", detailed_json_data.get("key_insights", [])),
+                    metrics=detailed_json_data.get("project_metrics", detailed_json_data.get("project_success_metrics", {})),
+                    category="final_deliverable"
+                )
+                
+                # Add the final deliverable at the beginning of the list
+                key_outputs.insert(0, final_output)
+                logger.info(f"🎯 SUCCESS: Added final deliverable to outputs with robust data")
+                
+            except Exception as e:
+                logger.error(f"🎯 ERROR: Failed to create final ProjectOutput: {e}")
+                # Don't fail the whole request, just continue without final deliverable
         
-        # Generate insight cards SEPARATAMENTE usando dati grezzi
+        # ENHANCED: Generate insight cards with error handling
         insight_cards = []
-        if key_outputs:
-            insight_cards = await _generate_deliverable_insights([
-                {
-                    "task_id": output.task_id,
-                    "task_name": output.task_name,
-                    "output": output.output,
-                    "agent_name": output.agent_name,
-                    "agent_role": output.agent_role,
-                    "created_at": output.created_at.isoformat(),
-                    "type": output.type
-                }
-                for output in key_outputs
-            ])
+        try:
+            if key_outputs:
+                insight_cards = await _generate_deliverable_insights([
+                    {
+                        "task_id": output.task_id,
+                        "task_name": output.task_name,
+                        "output": output.output,
+                        "agent_name": output.agent_name,
+                        "agent_role": output.agent_role,
+                        "created_at": output.created_at.isoformat(),
+                        "type": output.type
+                    }
+                    for output in key_outputs
+                ])
+        except Exception as e:
+            logger.error(f"🎯 ERROR: Failed to generate insight cards: {e}")
+            insight_cards = []  # Continue without insight cards
         
-        # Generate AI summary if we have outputs
-        summary = await _generate_project_summary(workspace, key_outputs) if key_outputs else "No deliverables generated yet."
+        # Generate AI summary with fallback
+        summary = ""
+        try:
+            if key_outputs:
+                summary = await _generate_project_summary(workspace, key_outputs)
+            else:
+                summary = f"Project completed for workspace: {workspace.get('name', 'Unknown')}"
+        except Exception as e:
+            logger.error(f"🎯 ERROR: Failed to generate AI summary: {e}")
+            summary = f"Project deliverables generated for: {workspace.get('goal', 'project objectives')}"
         
-        # Extract recommendations and next steps
-        recommendations = _extract_recommendations(key_outputs)
-        next_steps = _extract_next_steps(key_outputs)
+        # Extract recommendations and next steps with error handling
+        recommendations = []
+        next_steps = []
+        try:
+            recommendations = _extract_recommendations(key_outputs)
+            next_steps = _extract_next_steps(key_outputs)
+        except Exception as e:
+            logger.error(f"🎯 ERROR: Failed to extract recommendations/next_steps: {e}")
         
         # Determine completion status
         completion_status = _determine_completion_status(tasks, key_outputs)
+        
+        logger.info(f"🎯 DELIVERABLE RESPONSE: {len(key_outputs)} outputs, "
+                   f"summary length: {len(summary)}, cards: {len(insight_cards)}")
         
         return ProjectDeliverables(
             workspace_id=str(workspace_id),
             summary=summary,
             key_outputs=key_outputs,
-            insight_cards=insight_cards,  # Aggiungi le insight cards
+            insight_cards=insight_cards,
             final_recommendations=recommendations,
             next_steps=next_steps,
             completion_status=completion_status,
@@ -485,7 +540,7 @@ async def get_project_deliverables(workspace_id: UUID):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting project deliverables: {e}", exc_info=True)
+        logger.error(f"🎯 CRITICAL ERROR in get_project_deliverables: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get project deliverables: {str(e)}"

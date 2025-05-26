@@ -988,11 +988,12 @@ class EnhancedDeliverableAggregator:
             deliverable_type: DeliverableType,
             aggregated_data: Dict[str, Any]
         ) -> str:
-            """Create comprehensive deliverable description with all aggregated data"""
+            """Create comprehensive deliverable description with all aggregated data - ENHANCED"""
 
             # Enhanced base context with quality metrics
             quality_score = aggregated_data.get("data_quality_score", 0)
             total_tasks = aggregated_data.get("total_tasks", 0)
+            key_insights_count = len(aggregated_data.get("key_insights", []))
 
             base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
 
@@ -1002,21 +1003,132 @@ class EnhancedDeliverableAggregator:
     - Total completed tasks analyzed: {total_tasks}
     - Data quality score: {quality_score}/100
     - Task summaries: {len(aggregated_data.get('task_summaries', []))}
-    - Key insights extracted: {len(aggregated_data.get('key_insights', []))}
+    - Key insights extracted: {key_insights_count}
     - Structured data sources: {aggregated_data.get('structured_data', {}).get('num_data_sources', 0)}
 
-    **🎯 YOUR MISSION:** 
+    **🎯 YOUR CRITICAL MISSION:** 
     Create the FINAL, CLIENT-READY deliverable that comprehensively addresses the project objective. 
-    Use ALL the aggregated data provided in the context_data of this task to create a polished, 
-    professional deliverable that synthesizes the entire project's work.
+
+    **🚨 MANDATORY OUTPUT FORMAT:**
+    Your response MUST be a valid JSON object in the detailed_results_json field that includes:
+    1. "executive_summary" - A compelling 2-3 paragraph project overview
+    2. "deliverable_type" - The type of deliverable created  
+    3. "key_findings" - Array of key insights from the project
+    4. "project_metrics" - Object with project statistics and metrics
+
+    **⚠️ CRITICAL REQUIREMENTS:**
+    - The detailed_results_json MUST be valid JSON (no trailing commas, proper escaping)
+    - The executive_summary MUST be comprehensive and client-ready
+    - Include ALL available data from the aggregated results provided
+    - This deliverable represents the culmination of the entire project
 
     **📋 DELIVERABLE TYPE:** {deliverable_type.value.replace('_', ' ').title()}
     """
 
-            # Type-specific instructions with enhanced schema
-            type_specific = self._get_enhanced_output_schema_instructions(deliverable_type.value, aggregated_data, goal)
+            # Enhanced type-specific instructions with foolproof JSON templates
+            type_specific = self._get_foolproof_output_schema(deliverable_type.value, aggregated_data, goal)
 
             return base_context + type_specific
+    
+    def _get_foolproof_output_schema(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
+    """Get foolproof output schema with simple, reliable JSON templates"""
+
+    # Simplified, reliable JSON templates to prevent parsing errors
+    if deliverable_type_value == "contact_list":
+        return f"""
+**📞 CONTACT LIST DELIVERABLE - EXACT JSON TEMPLATE:**
+
+Copy this EXACT template and fill in the data:
+
+{{
+  "deliverable_type": "contact_list",
+  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the contact list generation project. Include the business objective, methodology used, and key results achieved. This should be client-ready and professional.",
+  "key_findings": [
+    "Key insight 1 from contact research",
+    "Key insight 2 from lead generation", 
+    "Key insight 3 from data analysis"
+  ],
+  "project_metrics": {{
+    "total_contacts_generated": 0,
+    "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
+    "tasks_completed": {aggregated_data.get('total_tasks', 0)}
+  }},
+  "final_deliverable": {{
+    "contact_count": 0,
+    "primary_sources": ["List your data sources here"],
+    "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"]
+  }}
+}}
+
+🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
+"""
+
+    elif deliverable_type_value == "content_strategy":
+        return f"""
+**📝 CONTENT STRATEGY DELIVERABLE - EXACT JSON TEMPLATE:**
+
+Copy this EXACT template and fill in the data:
+
+{{
+  "deliverable_type": "content_strategy",
+  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the content strategy development. Include the business objective, strategic approach, and expected outcomes. This should be client-ready and professional.",
+  "key_findings": [
+    "Strategic insight 1",
+    "Content opportunity 2",
+    "Audience insight 3"
+  ],
+  "project_metrics": {{
+    "content_ideas_generated": 0,
+    "strategy_frameworks_created": 0,
+    "tasks_completed": {aggregated_data.get('total_tasks', 0)}
+  }},
+  "final_deliverable": {{
+    "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
+    "platform_strategy": "Your platform recommendations",
+    "implementation_timeline": "Your recommended timeline"
+  }}
+}}
+
+🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
+"""
+
+    else:  # Generic report - MOST RELIABLE template
+        return f"""
+**📊 COMPREHENSIVE PROJECT REPORT - EXACT JSON TEMPLATE:**
+
+Copy this EXACT template and fill in the data:
+
+{{
+  "deliverable_type": "project_report",
+  "executive_summary": "Write a comprehensive 2-3 paragraph summary of the entire project. Start with the business objective: '{goal}'. Describe the methodology, key activities completed, main findings, and business value delivered. This should be professional and client-ready.",
+  "key_findings": [
+    "Major finding or insight 1 from project analysis",
+    "Important discovery or result 2 from completed tasks",
+    "Key outcome or recommendation 3 from project work"
+  ],
+  "project_metrics": {{
+    "total_tasks_completed": {aggregated_data.get('total_tasks', 0)},
+    "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
+    "key_insights_generated": {len(aggregated_data.get('key_insights', []))},
+    "completion_timeline": "X weeks/days"
+  }},
+  "final_deliverable": {{
+    "business_value": "Describe the main business value delivered",
+    "deliverables_produced": ["List main outputs created"],
+    "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"],
+    "success_metrics": "How to measure success of this project"
+  }}
+}}
+
+🎯 **CRITICAL INSTRUCTIONS:**
+1. Copy the template EXACTLY as shown above
+2. Replace ALL placeholder text with real data from your project analysis
+3. Ensure the executive_summary is compelling and comprehensive
+4. Include specific, actionable findings and recommendations
+5. Double-check that your JSON is valid (no syntax errors)
+
+🚨 **THIS IS THE FINAL PROJECT DELIVERABLE - MAKE IT EXCEPTIONAL!**
+"""
     
     def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
         """Get enhanced output schema with actual data integration"""
@@ -1216,6 +1328,151 @@ class EnhancedDeliverableAggregator:
 deliverable_aggregator = EnhancedDeliverableAggregator()
 
 # Helper function for integration
-async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
-    """Enhanced wrapper function for integration"""
-    return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+async def check_and_create_final_deliverable(self, workspace_id: str) -> Optional[str]:
+    """ENHANCED: Check if ready for final deliverable with improved logic and verification"""
+    try:
+        logger.info(f"🎯 DELIVERABLE CHECK: Starting for workspace {workspace_id}")
+        
+        # Enhanced readiness check with multiple criteria
+        if not await self._is_ready_for_final_deliverable_enhanced(workspace_id):
+            logger.debug(f"🎯 NOT READY: Workspace {workspace_id}")
+            return None
+        
+        # Check if deliverable already exists
+        if await self._final_deliverable_exists_enhanced(workspace_id):
+            logger.info(f"🎯 EXISTS: Final deliverable already exists for {workspace_id}")
+            return None
+        
+        # Gather comprehensive project data
+        workspace = await get_workspace(workspace_id)
+        tasks = await list_tasks(workspace_id)
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        if not workspace:
+            logger.error(f"🎯 ERROR: Workspace {workspace_id} not found")
+            return None
+        
+        if len(completed_tasks) < self.min_completed_tasks:
+            logger.info(f"🎯 INSUFFICIENT: Only {len(completed_tasks)} completed tasks "
+                       f"(need {self.min_completed_tasks})")
+            return None
+        
+        # Enhanced deliverable type detection
+        deliverable_type = self._determine_deliverable_type_enhanced(workspace.get("goal", ""))
+        logger.info(f"🎯 TYPE: Detected deliverable type: {deliverable_type.value}")
+        
+        # Enhanced data aggregation
+        aggregated_data = await self._aggregate_task_results_enhanced(completed_tasks, deliverable_type)
+        
+        # Create final deliverable with enhanced features
+        deliverable_task_id = await self._create_final_deliverable_task_enhanced(
+            workspace_id, workspace, deliverable_type, aggregated_data
+        )
+        
+        if deliverable_task_id:
+            logger.critical(f"🎯 SUCCESS: Created final deliverable {deliverable_task_id} "
+                           f"for workspace {workspace_id} (type: {deliverable_type.value})")
+            
+            # ENHANCED: Start monitoring for completion
+            asyncio.create_task(self._monitor_deliverable_completion(workspace_id, deliverable_task_id))
+            
+            return deliverable_task_id
+        else:
+            logger.error(f"🎯 FAILED: Could not create deliverable for {workspace_id}")
+            return None
+        
+    except Exception as e:
+        logger.error(f"🎯 ERROR: Exception in deliverable check for {workspace_id}: {e}", exc_info=True)
+        return None
+
+    
+async def _verify_deliverable_completion(self, workspace_id: str, deliverable_task_id: str) -> bool:
+    """Verify that the deliverable task was completed successfully with valid data"""
+    try:
+        tasks = await list_tasks(workspace_id)
+        deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
+        
+        if not deliverable_task:
+            logger.error(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} not found")
+            return False
+        
+        if deliverable_task.get("status") != "completed":
+            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} not completed (status: {deliverable_task.get('status')})")
+            return False
+        
+        result = deliverable_task.get("result", {}) or {}
+        
+        # Check for summary
+        summary = result.get("summary", "")
+        if not summary or len(summary.strip()) < 50:
+            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has insufficient summary")
+            return False
+        
+        # Check for detailed_results_json
+        detailed_json = result.get("detailed_results_json")
+        if not detailed_json:
+            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} missing detailed_results_json")
+            return False
+        
+        # Try to parse the JSON
+        try:
+            parsed_data = json.loads(detailed_json)
+            
+            # Check for required fields
+            required_fields = ["deliverable_type", "executive_summary"]
+            missing_fields = [field for field in required_fields if not parsed_data.get(field)]
+            
+            if missing_fields:
+                logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} missing required fields: {missing_fields}")
+                return False
+            
+            executive_summary = parsed_data.get("executive_summary", "")
+            if len(executive_summary.strip()) < 100:
+                logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has insufficient executive summary")
+                return False
+            
+            logger.info(f"🎯 VERIFICATION SUCCESS: Deliverable task {deliverable_task_id} completed with valid data")
+            return True
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has invalid JSON: {e}")
+            return False
+        
+    except Exception as e:
+        logger.error(f"🎯 VERIFICATION ERROR: {e}")
+        return False
+    
+async def _monitor_deliverable_completion(self, workspace_id: str, deliverable_task_id: str):
+    """Monitor deliverable task completion and take action if it fails"""
+    try:
+        logger.info(f"🎯 MONITORING: Starting for deliverable {deliverable_task_id}")
+        
+        # Wait for task completion (check every 30 seconds for up to 10 minutes)
+        for attempt in range(20):  # 20 * 30 seconds = 10 minutes
+            await asyncio.sleep(30)
+            
+            # Check if task is completed
+            if await self._verify_deliverable_completion(workspace_id, deliverable_task_id):
+                logger.info(f"🎯 MONITORING SUCCESS: Deliverable {deliverable_task_id} completed successfully")
+                
+                # Trigger project completion
+                if ENABLE_AUTO_PROJECT_COMPLETION:
+                    try:
+                        await self._trigger_project_completion_sequence(workspace_id, deliverable_task_id)
+                    except Exception as e:
+                        logger.error(f"Error in project completion sequence: {e}")
+                return
+            
+            # Check if task failed
+            tasks = await list_tasks(workspace_id)
+            deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
+            
+            if deliverable_task and deliverable_task.get("status") == "failed":
+                logger.error(f"🎯 MONITORING FAILED: Deliverable {deliverable_task_id} failed")
+                # Could implement retry logic here
+                return
+        
+        logger.warning(f"🎯 MONITORING TIMEOUT: Deliverable {deliverable_task_id} did not complete in time")
+        
+    except Exception as e:
+        logger.error(f"🎯 MONITORING ERROR: {e}")

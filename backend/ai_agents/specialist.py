@@ -309,41 +309,37 @@ class SpecialistAgent(Generic[T]):
     """.strip()
 
     def _create_specialist_anti_loop_prompt(self) -> str:
-        """Prompt specifico per specialist agents (non-manager)"""
+        """Prompt specifico per specialist agents (non-manager) con JSON migliorato"""
         available_tool_names = []
         for tool in self.tools:
             tool_name_attr = getattr(tool, 'name', getattr(tool, '__name__', None))
-            if tool_name_attr: available_tool_names.append(tool_name_attr)
+            if tool_name_attr: 
+                available_tool_names.append(tool_name_attr)
 
-        # Creazione della sezione personalità
+        # Creazione delle sezioni personalità (rimane uguale)
         personality_section = ""
         if self.agent_data.personality_traits:
             traits = [trait.value for trait in self.agent_data.personality_traits]
             personality_section = f"Your personality traits are: {', '.join(traits)}.\n"
 
-        # Creazione della sezione communication style
         communication_section = ""
         if self.agent_data.communication_style:
             communication_section = f"Your communication style is: {self.agent_data.communication_style}.\n"
 
-        # Creazione della sezione hard skills
         hard_skills_section = ""
         if self.agent_data.hard_skills:
             skills = [f"{skill.name} ({skill.level.value})" for skill in self.agent_data.hard_skills]
             hard_skills_section = f"Your technical skills include: {', '.join(skills)}.\n"
 
-        # Creazione della sezione soft skills
         soft_skills_section = ""
         if self.agent_data.soft_skills:
             skills = [f"{skill.name} ({skill.level.value})" for skill in self.agent_data.soft_skills]
             soft_skills_section = f"Your interpersonal skills include: {', '.join(skills)}.\n"
 
-        # Creazione della sezione background
         background_section = ""
         if self.agent_data.background_story:
             background_section = f"Background: {self.agent_data.background_story}\n"
 
-        # Nome completo
         full_name = ""
         if self.agent_data.first_name and self.agent_data.last_name:
             full_name = f"Your name is {self.agent_data.first_name} {self.agent_data.last_name}.\n"
@@ -370,39 +366,51 @@ class SpecialistAgent(Generic[T]):
     4.  DO NOT create new general tasks or delegate work that you should be doing. The Project Manager handles task breakdown and assignment.
     5.  Always provide a comprehensive final summary of the work you performed and a clear status ('completed', 'failed', or 'requires_handoff') as per the TaskExecutionOutput schema.
     6.  If a task is too complex or leads to multiple turns without clear resolution, simplify your approach, provide the best partial but concrete result you can, and mark the task as 'completed' with notes on limitations.
-    7.  Ensure your 'detailed_results_json' (if used) is a VALID JSON string. Null is acceptable if no structured data.
+
+    🚨 CRITICAL JSON OUTPUT REQUIREMENTS:
+    7.  If your task requires detailed_results_json, it MUST be valid JSON:
+        * NO trailing commas
+        * Use double quotes for strings
+        * Escape special characters properly (\\" for quotes, \\\\ for backslashes)
+        * Test your JSON mentally before outputting
+        * If unsure about JSON validity, keep it simple with basic strings and arrays
+
+    8.  For FINAL DELIVERABLE tasks specifically:
+        * The detailed_results_json is CRITICAL for project success
+        * It must include "executive_summary" field with comprehensive content
+        * Follow the exact JSON template provided in the task description
+        * Double-check JSON syntax - invalid JSON will break the deliverable
 
     OUTPUT REQUIREMENTS:
     Your final output for EACH task execution MUST be a single, valid JSON object matching the 'TaskExecutionOutput' schema:
-    -   "task_id": (string) ID of the current task being processed (e.g., "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}").
-    -   "status": (string) Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
-    -   "summary": (string) Concise summary of the work performed and the outcome. THIS IS MANDATORY.
-    -   "detailed_results_json": (string, optional) A valid JSON string containing detailed, structured results. Null if not applicable.
-    -   "next_steps": (array of strings, optional) Only if you completed the task and have suggestions for the PM or for future work based on your findings.
-    -   "suggested_handoff_target_role": (string, optional) ONLY if status is "requires_handoff". Specify the different specialist role to hand off to.
-    -   "resources_consumed_json": (string, optional) A JSON string for any notable resource usage (e.g., API calls made by a tool you used).
+    - "task_id": (string) ID of the current task being processed (e.g., "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}").
+    - "status": (string) Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
+    - "summary": (string) Concise summary of the work performed and the outcome. THIS IS MANDATORY.
+    - "detailed_results_json": (string, optional) A VALID JSON STRING containing detailed, structured results. NULL if not applicable. MUST be valid JSON if provided.
+    - "next_steps": (array of strings, optional) Only if you completed the task and have suggestions for the PM or for future work based on your findings.
+    - "suggested_handoff_target_role": (string, optional) ONLY if status is "requires_handoff". Specify the different specialist role to hand off to.
+    - "resources_consumed_json": (string, optional) A JSON string for any notable resource usage.
 
-    Example of a 'completed' task by a specialist:
+    JSON VALIDATION CHECKLIST (for detailed_results_json):
+    ✅ All strings use double quotes (not single quotes)
+    ✅ No trailing commas after last items in objects/arrays
+    ✅ Special characters are properly escaped
+    ✅ Numbers don't have leading/trailing spaces
+    ✅ Boolean values are lowercase (true/false, not True/False)
+    ✅ No undefined or null values (use "null" if needed)
+
+    Example of a 'completed' task with VALID JSON:
     {{
       "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
       "status": "completed",
       "summary": "Analyzed competitor X's Instagram strategy, identifying 3 key content pillars and an average engagement rate of 2.5%.",
-      "detailed_results_json": "{{ \\"competitor_analysis\\": {{ \\"name\\": \\"Competitor X\\", \\"content_pillars\\": [\\"Pillar A\\", \\"Pillar B\\", \\"Pillar C\\"], \\"engagement_rate\\": 0.025 }} }}",
+      "detailed_results_json": "{{\\"competitor_analysis\\": {{\\"name\\": \\"Competitor X\\", \\"content_pillars\\": [\\"Pillar A\\", \\"Pillar B\\", \\"Pillar C\\"], \\"engagement_rate\\": 0.025}}}}",
       "next_steps": ["Recommend PM to review findings for strategic adjustments."],
       "suggested_handoff_target_role": null,
       "resources_consumed_json": null
     }}
 
-    Example of a task requiring handoff by a specialist:
-    {{
-      "task_id": "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}",
-      "status": "requires_handoff",
-      "summary": "Completed initial data extraction for market trends. Further statistical modeling is required, which is outside my data collection expertise.",
-      "detailed_results_json": "{{ \\"extracted_data_preview\\": [...] }}",
-      "next_steps": null,
-      "suggested_handoff_target_role": "Data Analyst",
-      "resources_consumed_json": null
-    }}
+    ⚠️ FINAL VALIDATION: Before outputting your response, mentally check that any JSON string in detailed_results_json is valid!
 
     Do NOT add any text before or after this final JSON object. Your entire response must be this JSON.
     """.strip()
