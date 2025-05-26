@@ -561,7 +561,7 @@ class EnhancedTaskExecutor:
 
             # Generate unique identifiers to prevent duplicates
             unique_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
+
             # Enhanced context data
             context_data = {
                 "project_phase": target_phase.value,
@@ -575,79 +575,84 @@ class EnhancedTaskExecutor:
                 "enhanced_planning_version": "2.0"
             }
 
-            # Phase-specific task creation
+            # FIXED: Phase-specific task creation with valid priorities
             if target_phase == ProjectPhase.FINALIZATION:
-                task_name = f"🎯 CRITICAL: Create Final Deliverables ({unique_timestamp})"
+                # FIXED: Remove "CRITICAL" from task name to avoid priority validation issues
+                task_name = f"🎯 FINALIZATION: Create Final Deliverables ({unique_timestamp})"
+                task_priority = "high"  # FIXED: Use valid priority instead of "critical"
+
                 description = f"""🎯 **FINAL PHASE PLANNING: PROJECT DELIVERABLES**
 
-**CRITICAL PHASE TRANSITION:** {current_phase.value} → FINALIZATION
+    **PHASE TRANSITION:** {current_phase.value} → FINALIZATION
 
-⚠️ **THIS IS THE PROJECT COMPLETION PHASE**
-Create tasks that will produce the final project deliverables.
+    ⚠️ **THIS IS THE PROJECT COMPLETION PHASE**
+    Create tasks that will produce the final project deliverables.
 
-**🔴 MANDATORY REQUIREMENTS:**
-1. **detailed_results_json MUST include:**
-   - "current_project_phase": "FINALIZATION" 
-   - "defined_sub_tasks": [array with 3+ deliverable tasks]
+    **🔴 MANDATORY REQUIREMENTS:**
+    1. **detailed_results_json MUST include:**
+       - "current_project_phase": "FINALIZATION" 
+       - "defined_sub_tasks": [array with 3+ deliverable tasks]
 
-2. **Each sub-task MUST have:**
-   - "project_phase": "FINALIZATION"
-   - Clear deliverable outcome
-   - Specific agent assignment
+    2. **Each sub-task MUST have:**
+       - "project_phase": "FINALIZATION"
+       - Clear deliverable outcome
+       - Specific agent assignment
 
-**📋 FINALIZATION TASK EXAMPLES:**
-- "Create Final Instagram Content Calendar" → ContentSpecialist
-- "Generate Complete Lead Contact Database" → AnalysisSpecialist
-- "Compile Campaign Performance Dashboard" → MarketingSpecialist
-- "Create Executive Summary Report" → ProjectManager
+    **📋 FINALIZATION TASK EXAMPLES:**
+    - "Create Final Instagram Content Calendar" → ContentSpecialist
+    - "Generate Complete Lead Contact Database" → AnalysisSpecialist
+    - "Compile Campaign Performance Dashboard" → MarketingSpecialist
+    - "Create Executive Summary Report" → ProjectManager
 
-**Planning Session ID:** {unique_timestamp}
-"""
+    **Planning Session ID:** {unique_timestamp}
+    """
                 context_data["is_finalization_planning"] = True
-                
+
             elif target_phase == ProjectPhase.IMPLEMENTATION:
                 task_name = f"📋 IMPLEMENTATION: Strategy & Framework ({unique_timestamp})"
+                task_priority = "high"  # FIXED: Use valid priority
+
                 description = f"""📋 **IMPLEMENTATION PHASE PLANNING**
 
-**PHASE TRANSITION:** {current_phase.value} → IMPLEMENTATION
+    **PHASE TRANSITION:** {current_phase.value} → IMPLEMENTATION
 
-**🔧 FOCUS: Strategy, Frameworks, Templates & Workflows**
+    **🔧 FOCUS: Strategy, Frameworks, Templates & Workflows**
 
-**📋 MANDATORY REQUIREMENTS:**
-1. **detailed_results_json MUST include:**
-   - "current_project_phase": "IMPLEMENTATION"
-   - "defined_sub_tasks": [array with implementation tasks]
+    **📋 MANDATORY REQUIREMENTS:**
+    1. **detailed_results_json MUST include:**
+       - "current_project_phase": "IMPLEMENTATION"
+       - "defined_sub_tasks": [array with implementation tasks]
 
-2. **Each sub-task MUST have:**
-   - "project_phase": "IMPLEMENTATION"
+    2. **Each sub-task MUST have:**
+       - "project_phase": "IMPLEMENTATION"
 
-**🛠️ IMPLEMENTATION TASK EXAMPLES:**
-- "Develop Content Strategy Framework" → ContentSpecialist
-- "Create Editorial Calendar Template" → ContentSpecialist
-- "Design Campaign Automation Workflow" → MarketingSpecialist
+    **🛠️ IMPLEMENTATION TASK EXAMPLES:**
+    - "Develop Content Strategy Framework" → ContentSpecialist
+    - "Create Editorial Calendar Template" → ContentSpecialist
+    - "Design Campaign Automation Workflow" → MarketingSpecialist
 
-**Planning Session ID:** {unique_timestamp}
-"""
+    **Planning Session ID:** {unique_timestamp}
+    """
                 context_data["is_implementation_planning"] = True
-                
+
             else:
                 logger.warning(f"No template for phase {target_phase.value}")
                 return None
 
-            # Create task
+            # FIXED: Create task with explicit valid priority
             planning_task = await create_task(
                 workspace_id=workspace_id,
                 agent_id=pm_agent["id"],
                 name=task_name,
                 description=description,
                 status="pending",
-                priority="high",
+                priority=task_priority, 
                 creation_type="phase_transition",
                 context_data=context_data
             )
 
             if planning_task and planning_task.get("id"):
-                logger.info(f"✅ PLANNING CREATED: {planning_task['id']} for {target_phase.value}")
+                logger.info(f"✅ PLANNING CREATED: {planning_task['id']} for {target_phase.value} with priority '{task_priority}'")
                 return planning_task["id"]
             else:
                 logger.error(f"❌ PLANNING FAILED for {target_phase.value}")

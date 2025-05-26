@@ -599,6 +599,14 @@ class TaskExecutor:
         """
         # Prima converte il dict in un oggetto Pydantic Task
         try:
+            # FIXED: Validate and sanitize priority before Pydantic validation
+            task_priority = task_dict.get("priority", "medium")
+            valid_priorities = ["low", "medium", "high"]
+
+            if task_priority not in valid_priorities:
+                logger.warning(f"Invalid priority '{task_priority}' for task {task_dict.get('id')}. Using 'high' instead.")
+                task_priority = "high"
+
             # Assicura che tutti i campi necessari siano presenti
             task_dict_validated = {
                 "id": task_dict["id"],
@@ -608,7 +616,7 @@ class TaskExecutor:
                 "name": task_dict["name"],
                 "description": task_dict.get("description", ""),
                 "status": task_dict.get("status", TaskStatus.PENDING.value),
-                "priority": task_dict.get("priority", "medium"),
+                "priority": task_priority,  # FIXED: Use validated priority
                 "parent_task_id": task_dict.get("parent_task_id"),
                 "depends_on_task_ids": task_dict.get("depends_on_task_ids"),
                 "estimated_effort_hours": task_dict.get("estimated_effort_hours"),

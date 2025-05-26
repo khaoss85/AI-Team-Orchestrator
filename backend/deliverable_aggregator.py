@@ -847,25 +847,28 @@ class EnhancedDeliverableAggregator:
         """
         ENHANCED: Create final deliverable task with comprehensive data and smart assignment
         """
-        
+
         try:
             # Find the best agent for deliverable creation
             agents = await list_agents(workspace_id)
             deliverable_agent = await self._find_best_deliverable_agent(agents, deliverable_type)
-            
+
             if not deliverable_agent:
                 logger.error(f"🎯 ERROR: No suitable agent for deliverable in workspace {workspace_id}")
                 return None
-            
+
             # Generate comprehensive task description
             description = self._create_enhanced_deliverable_description(
                 workspace.get("goal", ""), deliverable_type, aggregated_data
             )
-            
-            # Enhanced task name with type and timestamp
+
+            # FIXED: Enhanced task name WITHOUT "CRITICAL" to avoid priority validation issues
             timestamp = datetime.now().strftime("%Y%m%d_%H%M")
             task_name = f"🎯 FINAL DELIVERABLE: {deliverable_type.value.replace('_', ' ').title()} ({timestamp})"
-            
+
+            # FIXED: Explicitly ensure priority is valid
+            task_priority = "high"  # Must be one of: "low", "medium", "high"
+
             # Create the deliverable task
             deliverable_task = await create_task(
                 workspace_id=workspace_id,
@@ -873,7 +876,7 @@ class EnhancedDeliverableAggregator:
                 name=task_name,
                 description=description,
                 status="pending",
-                priority="high",
+                priority=task_priority,  # FIXED: Use explicit valid priority
                 creation_type="final_deliverable_aggregation_enhanced",
                 context_data={
                     "is_final_deliverable": True,
@@ -891,19 +894,20 @@ class EnhancedDeliverableAggregator:
                     "triggers_project_completion": True,
                     "enhanced_deliverable_version": "2.0",
                     "data_quality_score": aggregated_data.get("data_quality_score", 0),
-                    "agent_selection_reason": f"Selected {deliverable_agent['name']} for {deliverable_type.value}"
+                    "agent_selection_reason": f"Selected {deliverable_agent['name']} for {deliverable_type.value}",
+                    "is_high_priority_deliverable": True
                 }
             )
-            
+
             if deliverable_task and deliverable_task.get("id"):
                 logger.critical(f"🎯 DELIVERABLE CREATED: {deliverable_task['id']} "
                                f"assigned to {deliverable_agent['name']} "
-                               f"for type {deliverable_type.value}")
+                               f"for type {deliverable_type.value} with priority '{task_priority}'")
                 return deliverable_task["id"]
             else:
                 logger.error(f"🎯 DELIVERABLE FAILED: Database creation failed")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Error creating enhanced deliverable task: {e}", exc_info=True)
             return None

@@ -173,9 +173,16 @@ async def create_task(
     created_by_agent_id: Optional[str] = None,
     creation_type: Optional[str] = None,
     parent_delegation_depth: int = 0,
-    auto_build_context: bool = True  # Nuovo flag per abilitare/disabilitare auto-build
+    auto_build_context: bool = True
 ):
+    """Enhanced create_task with priority validation"""
     try:
+        # FIXED: Validate priority to prevent validation errors
+        valid_priorities = ["low", "medium", "high"]
+        if priority not in valid_priorities:
+            logger.warning(f"Invalid priority '{priority}' for task '{name}'. Using 'high' instead.")
+            priority = "high"  # Default to high for important tasks
+        
         # COSTRUZIONE AUTOMATICA DEL CONTEXT_DATA SE ABILITATA
         if auto_build_context:
             # Determina il creation_type se non fornito
@@ -222,7 +229,7 @@ async def create_task(
             "workspace_id": workspace_id,
             "name": name,
             "status": status,
-            "priority": priority,
+            "priority": priority,  # FIXED: Use validated priority
             "created_by_task_id": created_by_task_id,
             "created_by_agent_id": created_by_agent_id,
             "creation_type": creation_type,
@@ -240,12 +247,12 @@ async def create_task(
         if final_context_data: data_to_insert["context_data"] = final_context_data
         if result_payload: data_to_insert["result"] = result_payload
 
-        logger.debug(f"Creating task with enhanced tracking: {data_to_insert}")
+        logger.debug(f"Creating task with validated priority '{priority}': {data_to_insert['name']}")
         db_result = supabase.table("tasks").insert(data_to_insert).execute()
 
         if db_result.data and len(db_result.data) > 0:
             created_task = db_result.data[0]
-            logger.info(f"Task '{name}' (ID: {created_task['id']}) created with delegation_depth={delegation_depth}, creation_type={creation_type}")
+            logger.info(f"Task '{name}' (ID: {created_task['id']}) created with priority='{priority}', delegation_depth={delegation_depth}, creation_type={creation_type}")
             return created_task
         else:
             logger.error(f"Failed to create task '{name}'. Supabase response: {db_result}")
