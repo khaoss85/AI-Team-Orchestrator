@@ -1,4 +1,4 @@
-# backend/executor.py - Versione completa e aggiornata
+# backend/executor.py - Enhanced with FINALIZATION priority boost
 import asyncio
 import logging
 import os
@@ -27,6 +27,153 @@ from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 
 logger = logging.getLogger(__name__)
+
+# === ENHANCED FINALIZATION PRIORITY CONFIGURATIONS ===
+FINALIZATION_TASK_PRIORITY_BOOST = int(os.getenv("FINALIZATION_TASK_PRIORITY_BOOST", "1000"))
+ENABLE_SMART_PRIORITIZATION = os.getenv("ENABLE_SMART_PRIORITIZATION", "true").lower() == "true"
+
+# === ENHANCED PRIORITY SCORING FUNCTION ===
+def get_task_priority_score_enhanced(task_data):
+    """
+    ENHANCED: Smart prioritization with FINALIZATION boost and comprehensive scoring
+    """
+    try:
+        # Base priority score
+        base_priority = 0
+        
+        # === CRITICAL: FINALIZATION PHASE BOOST ===
+        context_data = task_data.get("context_data", {}) or {}
+        project_phase = ""
+        
+        if isinstance(context_data, dict):
+            project_phase = context_data.get("project_phase", "").upper()
+        
+        # MASSIVE boost for FINALIZATION tasks
+        if project_phase == "FINALIZATION":
+            base_priority = FINALIZATION_TASK_PRIORITY_BOOST
+            logger.critical(f"🎯 FINALIZATION BOOST: Task {task_data.get('id', 'unknown')} priority = {base_priority}")
+        
+        # High boost for phase planning tasks
+        elif context_data.get("planning_task_marker"):
+            target_phase = context_data.get("target_phase", "")
+            if target_phase == "FINALIZATION":
+                base_priority = FINALIZATION_TASK_PRIORITY_BOOST - 100  # Slightly lower than execution
+                logger.warning(f"🎯 FINALIZATION PLANNING BOOST: Task {task_data.get('id', 'unknown')} priority = {base_priority}")
+            else:
+                base_priority = 500  # High priority for any phase planning
+                logger.info(f"📋 PLANNING BOOST: Task {task_data.get('id', 'unknown')} priority = {base_priority}")
+        
+        # Enhanced priority based on task priority field
+        else:
+            priority_field = task_data.get("priority", "medium").lower()
+            priority_mapping = {
+                "high": 300,
+                "medium": 100,
+                "low": 50
+            }
+            base_priority = priority_mapping.get(priority_field, 100)
+        
+        # === DELEGATION DEPTH PENALTY ===
+        delegation_depth = 0
+        if isinstance(context_data, dict):
+            delegation_depth = context_data.get("delegation_depth", 0)
+        
+        # Progressive penalty for deep delegation
+        if delegation_depth > 0:
+            depth_penalty = min(delegation_depth * 50, 300)  # Max 300 penalty
+            base_priority = max(base_priority - depth_penalty, 10)  # Min 10 priority
+        
+        # === AGENT ASSIGNMENT BOOST ===
+        assignment_boost = 0
+        
+        # 1. Tasks without agent_id but with assigned_to_role (need assignment)
+        if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
+            assignment_boost = 200  # High boost for assignment needed
+            logger.info(f"🎭 ASSIGNMENT NEEDED: Task {task_data.get('id', 'unknown')} +{assignment_boost}")
+        
+        # 2. Tasks with specific agent assignment
+        elif task_data.get("agent_id"):
+            assignment_boost = 50  # Small boost for already assigned
+        
+        # === TIME-BASED FACTORS ===
+        time_boost = 0
+        created_at = task_data.get("created_at")
+        if created_at:
+            try:
+                # Parse creation time
+                if isinstance(created_at, str):
+                    created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                else:
+                    created_time = created_at
+                
+                # Age boost: older tasks get higher priority
+                task_age_hours = (datetime.now(created_time.tzinfo) - created_time).total_seconds() / 3600
+                
+                if task_age_hours > 2:  # Tasks older than 2 hours
+                    time_boost = min(int(task_age_hours * 5), 100)  # Max 100 boost
+                    
+            except Exception as e:
+                logger.debug(f"Error calculating task age: {e}")
+        
+        # === TASK TYPE ANALYSIS ===
+        task_name = task_data.get("name", "").lower()
+        name_boost = 0
+        
+        # High priority keywords
+        high_priority_keywords = [
+            "critical", "urgent", "final", "deliverable", "completion", 
+            "escalation", "handoff", "important"
+        ]
+        
+        medium_priority_keywords = [
+            "follow-up", "continuation", "review", "analysis"
+        ]
+        
+        if any(keyword in task_name for keyword in high_priority_keywords):
+            name_boost = 150
+        elif any(keyword in task_name for keyword in medium_priority_keywords):
+            name_boost = 75
+        
+        # === CREATION TYPE ANALYSIS ===
+        creation_type = context_data.get("creation_type", "") if isinstance(context_data, dict) else ""
+        creation_boost = 0
+        
+        creation_priority_map = {
+            "phase_transition": 400,        # Phase transitions are critical
+            "final_deliverable_aggregation": 800,  # Final deliverables critical
+            "pm_completion_analyzer": 200,  # PM-generated tasks important
+            "handoff": 150,                # Handoffs important
+            "escalation": 300,             # Escalations very important
+            "user_feedback": 250           # User feedback important
+        }
+        
+        creation_boost = creation_priority_map.get(creation_type, 0)
+        
+        # === FINAL CALCULATION ===
+        final_priority = (
+            base_priority +           # Base priority (includes FINALIZATION boost)
+            assignment_boost +        # Assignment status
+            time_boost +             # Age-based boost
+            name_boost +             # Name-based boost
+            creation_boost           # Creation type boost
+        )
+        
+        # Ensure minimum priority
+        final_priority = max(final_priority, 1)
+        
+        # Log detailed calculation for FINALIZATION tasks
+        if project_phase == "FINALIZATION" or final_priority > 500:
+            logger.warning(f"🔥 HIGH PRIORITY TASK: {task_data.get('name', 'Unknown')[:50]} "
+                          f"Final Priority: {final_priority} "
+                          f"(base:{base_priority}, assignment:{assignment_boost}, "
+                          f"time:{time_boost}, name:{name_boost}, creation:{creation_boost})")
+        
+        return final_priority
+        
+    except Exception as e:
+        logger.error(f"Error calculating enhanced task priority: {e}")
+        return 1  # Minimum priority fallback
+
 
 class BudgetTracker:
     """Tracks budget usage for agents with detailed cost monitoring"""
@@ -170,6 +317,8 @@ class TaskExecutor:
         logger.info(f"Task timeout: {self.execution_timeout}s")
         logger.info(f"Auto-generation: {'ENABLED' if self.auto_generation_enabled else 'DISABLED'}")
         logger.info(f"Runaway check interval: {self.runaway_check_interval}s")
+        logger.info(f"FINALIZATION priority boost: {FINALIZATION_TASK_PRIORITY_BOOST}")
+        logger.info(f"Smart prioritization: {'ENABLED' if ENABLE_SMART_PRIORITIZATION else 'DISABLED'}")
 
         # Avvia worker per processare la queue
         self.worker_tasks = [
@@ -565,7 +714,6 @@ class TaskExecutor:
                 status_to_set=TaskStatus.FAILED.value
             )
 
-
     async def check_project_completion_after_task(self, completed_task_id: str, workspace_id: str):
         """Verifica se il progetto è completato dopo un task importante"""
         try:
@@ -709,26 +857,27 @@ class TaskExecutor:
                 if self.task_queue.full():
                     logger.warning(f"Anti-loop Task Queue is full ({self.task_queue.qsize()}/{self.max_queue_size}). Skipping further workspace processing in this cycle")
                     break
-                await self.process_workspace_tasks_anti_loop_with_health_check(workspace_id)
+                await self.process_workspace_tasks_anti_loop_with_health_check_enhanced(workspace_id)
                 
         except Exception as e:
             logger.error(f"Error in process_pending_tasks_anti_loop: {e}", exc_info=True)
 
-    async def process_workspace_tasks_anti_loop_with_health_check(self, workspace_id: str):
-        """Processa task pendenti per un workspace con health check"""
+    async def process_workspace_tasks_anti_loop_with_health_check_enhanced(self, workspace_id: str):
+        """
+        ENHANCED VERSION: Processa task con prioritizzazione intelligente FINALIZATION
+        Sostituisce il metodo esistente process_workspace_tasks_anti_loop_with_health_check
+        """
         if self.paused:
             return
             
         try:
-            # Health check del workspace
+            # Health check del workspace (mantieni logica esistente)
             health_status = await self.check_workspace_health(workspace_id)
             
-            # Se il workspace non è healthy, potrebbe essere necessario pausare auto-generation
             if not health_status.get('is_healthy', True):
-                health_issues = health_status.get('health_issues', ["Unknown health issue"])
-                logger.warning(f"W:{workspace_id} health issues: {health_issues}. Auto-gen may be paused")
+                health_issues = health_status.get('health_issues', [])
+                logger.warning(f"W:{workspace_id} health issues: {health_issues}")
                 
-                # Controlla se ci sono problemi critici
                 critical_issues = [
                     issue for issue in health_issues 
                     if any(keyword in issue.lower() for keyword in ['excessive pending', 'high task creation', 'delegation loops'])
@@ -741,28 +890,27 @@ class TaskExecutor:
                     )
                     return
 
-            # Se auto-generation è paused, controlla se può essere ripresa
+            # Auto-generation resume check (mantieni logica esistente)
             if workspace_id in self.workspace_auto_generation_paused:
                 if (health_status.get('is_healthy') and 
                     health_status.get('task_counts', {}).get('pending', self.max_pending_tasks_per_workspace) < 10):
                     await self._resume_auto_generation_for_workspace(workspace_id)
                     logger.info(f"Auto-gen resumed for healthy W:{workspace_id}")
                 else:
-                    logger.info(f"Auto-gen remains paused for W:{workspace_id}. Health: {health_status.get('health_score', 'N/A')}, Pending: {health_status.get('task_counts',{}).get('pending','N/A')}")
                     return
 
-            # Check limite task per workspace
+            # Check limite task per workspace (mantieni logica esistente)
             current_anti_loop_proc_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
             if current_anti_loop_proc_count >= self.max_tasks_per_workspace_anti_loop:
                 return
 
-            # Ottieni agent manager per il workspace
+            # Ottieni agent manager
             manager = await self.get_agent_manager(workspace_id)
             if not manager:
-                logger.error(f"No agent manager for W:{workspace_id}. Cannot queue tasks")
+                logger.error(f"No agent manager for W:{workspace_id}")
                 return
 
-            # Prendi TUTTI i task per il workspace
+            # === ENHANCED: Ottieni TUTTI i task e applica prioritizzazione intelligente ===
             all_tasks_for_workspace = await list_tasks(workspace_id)
             
             # Filtra per task PENDING non già completati
@@ -775,58 +923,79 @@ class TaskExecutor:
             if not pending_eligible_tasks:
                 return
 
-            # LOGICA DI PRIORITIZZAZIONE
-            def get_task_priority_score(task_data):
-                delegation_depth = 0
-                if isinstance(task_data.get("context_data"), dict):
-                    delegation_depth = task_data.get("context_data", {}).get("delegation_depth", 0)
-
-                # Penalità per profondità di delega
-                depth_penalty = min(delegation_depth * 2, 8)  # Massimo 8 punti di penalità
-
-                # Priorità base
-                base_priority = 0
-
-                # 1. Task senza agent_id ma con assigned_to_role (necessitano assegnazione)
-                if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
-                    base_priority = 10  # Massima priorità per assegnazione
-
-                # 2. Priority level
-                p = task_data.get("priority", "medium").lower()
-                if p == "high": base_priority = 8
-                elif p == "medium": base_priority = 5
-                elif p == "low": base_priority = 3
-
-                # Priorità finale = base - penalità profondità
-                return max(1, base_priority - depth_penalty)  # Minimo 1 punto
-
-            # Ordina per priorità e poi per data di creazione (FIFO)
-            pending_eligible_tasks.sort(
-                key=lambda t: (
-                    get_task_priority_score(t),
-                    datetime.fromisoformat(t.get("created_at").replace("Z", "+00:00")) if t.get("created_at") else datetime.min
-                ),
-                reverse=True  # Prima i più prioritari, poi i più vecchi tra quelli con stessa priorità
-            )
+            # === ENHANCED PRIORITIZATION LOGIC ===
+            if ENABLE_SMART_PRIORITIZATION:
+                # Usa la nuova funzione di prioritizzazione
+                pending_eligible_tasks.sort(
+                    key=lambda t: (
+                        get_task_priority_score_enhanced(t),  # Primary: Enhanced priority score
+                        datetime.fromisoformat(t.get("created_at", "2020-01-01").replace("Z", "+00:00"))  # Secondary: FIFO
+                    ),
+                    reverse=True  # Higher priority first, then older tasks
+                )
+                
+                # Log the top priority task for monitoring
+                if pending_eligible_tasks:
+                    top_task = pending_eligible_tasks[0]
+                    top_priority = get_task_priority_score_enhanced(top_task)
+                    logger.info(f"🔥 TOP PRIORITY: '{top_task.get('name', 'Unknown')[:50]}' "
+                               f"Priority: {top_priority}, Phase: {top_task.get('context_data', {}).get('project_phase', 'N/A')}")
+            else:
+                # Fallback: uso prioritizzazione standard
+                pending_eligible_tasks.sort(
+                    key=lambda t: (
+                        self._get_task_priority_score_standard(t),
+                        datetime.fromisoformat(t.get("created_at", "2020-01-01").replace("Z", "+00:00"))
+                    ),
+                    reverse=True
+                )
             
+            # Prendi il task con massima priorità
             task_to_queue_dict = pending_eligible_tasks[0]
             task_id_to_queue = task_to_queue_dict.get("id")
 
-            # Validazione finale prima di mettere in coda
+            # Validazione finale (mantieni logica esistente)
             if not await self._validate_task_execution(task_to_queue_dict):
-                logger.warning(f"Pre-queue validation FAILED for task {task_id_to_queue} in W:{workspace_id}. Will not queue")
+                logger.warning(f"Pre-queue validation FAILED for task {task_id_to_queue}")
                 return
-                
-            # Aggiungi alla queue
+                    
+            # Aggiungi alla queue con log migliorato
             try:
                 self.task_queue.put_nowait((manager, task_to_queue_dict))
+                
+                task_phase = task_to_queue_dict.get('context_data', {}).get('project_phase', 'N/A')
                 needs_assign = not task_to_queue_dict.get('agent_id') and task_to_queue_dict.get('assigned_to_role')
-                logger.info(f"Queued task '{task_to_queue_dict.get('name')}' (ID: {task_id_to_queue}) from W:{workspace_id}. Priority: {task_to_queue_dict.get('priority', 'N/A')}, Needs Assign: {needs_assign}. Q size: {self.task_queue.qsize()}")
+                priority_score = get_task_priority_score_enhanced(task_to_queue_dict) if ENABLE_SMART_PRIORITIZATION else "standard"
+                
+                logger.info(f"🚀 QUEUED: '{task_to_queue_dict.get('name', 'Unknown')[:40]}' "
+                           f"(ID: {task_id_to_queue[:8]}) Priority: {priority_score}, "
+                           f"Phase: {task_phase}, Assign: {needs_assign}, Q: {self.task_queue.qsize()}")
+                
             except asyncio.QueueFull:
-                logger.warning(f"Task Queue is full. Could not queue task {task_id_to_queue} from W:{workspace_id}")
+                logger.warning(f"Task Queue FULL. Could not queue task {task_id_to_queue}")
         
         except Exception as e:
-            logger.error(f"Error in process_workspace_tasks_anti_loop_with_health_check for W:{workspace_id}: {e}", exc_info=True)
+            logger.error(f"Error in enhanced workspace task processing for W:{workspace_id}: {e}", exc_info=True)
+
+    def _get_task_priority_score_standard(self, task_data):
+        """Funzione standard di prioritizzazione (fallback)"""
+        delegation_depth = 0
+        context_data = task_data.get("context_data", {}) or {}
+        if isinstance(context_data, dict):
+            delegation_depth = context_data.get("delegation_depth", 0)
+
+        depth_penalty = min(delegation_depth * 2, 8)
+        base_priority = 0
+
+        if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
+            base_priority = 10
+        
+        p = task_data.get("priority", "medium").lower()
+        if p == "high": base_priority = 8
+        elif p == "medium": base_priority = 5
+        elif p == "low": base_priority = 3
+
+        return max(1, base_priority - depth_penalty)
 
     async def _cleanup_tracking_data(self):
         """Cleanup periodico dei dati di tracking per evitare memory leak"""
@@ -1654,7 +1823,10 @@ class TaskExecutor:
             "workspace_task_counts": dict(self.workspace_anti_loop_task_counts),
             "total_workspaces_tracked": len(self.task_completion_tracker),
             "total_delegation_chains": len(self.delegation_chain_tracker),
-            "total_execution_log_entries": len(self.execution_log)
+            "total_execution_log_entries": len(self.execution_log),
+            # ENHANCED FINALIZATION PRIORITY STATS
+            "finalization_priority_boost": FINALIZATION_TASK_PRIORITY_BOOST,
+            "smart_prioritization_enabled": ENABLE_SMART_PRIORITIZATION
         }
 
         # Statistiche sessione
