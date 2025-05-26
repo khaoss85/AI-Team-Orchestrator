@@ -974,42 +974,42 @@ class EnhancedDeliverableAggregator:
         return None
     
     def _create_enhanced_deliverable_description(
-        self, 
-        goal: str, 
-        deliverable_type: DeliverableType,
-        aggregated_data: Dict[str, Any]
-    ) -> str:
-        """Create comprehensive deliverable description with all aggregated data"""
-        
-        # Enhanced base context with quality metrics
-        quality_score = aggregated_data.get("data_quality_score", 0)
-        total_tasks = aggregated_data.get("total_tasks", 0)
-        
-        base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
+            self, 
+            goal: str, 
+            deliverable_type: DeliverableType,
+            aggregated_data: Dict[str, Any]
+        ) -> str:
+            """Create comprehensive deliverable description with all aggregated data"""
 
-**PROJECT OBJECTIVE:** {goal}
+            # Enhanced base context with quality metrics
+            quality_score = aggregated_data.get("data_quality_score", 0)
+            total_tasks = aggregated_data.get("total_tasks", 0)
 
-**📊 AGGREGATED PROJECT DATA SUMMARY:**
-- Total completed tasks analyzed: {total_tasks}
-- Data quality score: {quality_score}/100
-- Task summaries: {len(aggregated_data.get('task_summaries', []))}
-- Key insights extracted: {len(aggregated_data.get('key_insights', []))}
-- Structured data sources: {aggregated_data.get('structured_data', {}).get('num_data_sources', 0)}
+            base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
 
-**🎯 YOUR MISSION:** 
-Create the FINAL, CLIENT-READY deliverable that comprehensively addresses the project objective. 
-Use ALL the aggregated data provided in the context_data of this task to create a polished, 
-professional deliverable that synthesizes the entire project's work.
+    **PROJECT OBJECTIVE:** {goal}
 
-**📋 DELIVERABLE TYPE:** {deliverable_type.value.replace('_', ' ').title()}
-"""
-        
-        # Type-specific instructions with enhanced schema
-        type_specific = self._get_enhanced_output_schema_instructions(deliverable_type.value, aggregated_data)
-        
-        return base_context + type_specific
+    **📊 AGGREGATED PROJECT DATA SUMMARY:**
+    - Total completed tasks analyzed: {total_tasks}
+    - Data quality score: {quality_score}/100
+    - Task summaries: {len(aggregated_data.get('task_summaries', []))}
+    - Key insights extracted: {len(aggregated_data.get('key_insights', []))}
+    - Structured data sources: {aggregated_data.get('structured_data', {}).get('num_data_sources', 0)}
+
+    **🎯 YOUR MISSION:** 
+    Create the FINAL, CLIENT-READY deliverable that comprehensively addresses the project objective. 
+    Use ALL the aggregated data provided in the context_data of this task to create a polished, 
+    professional deliverable that synthesizes the entire project's work.
+
+    **📋 DELIVERABLE TYPE:** {deliverable_type.value.replace('_', ' ').title()}
+    """
+
+            # Type-specific instructions with enhanced schema
+            type_specific = self._get_enhanced_output_schema_instructions(deliverable_type.value, aggregated_data, goal)
+
+            return base_context + type_specific
     
-    def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict) -> str:
+    def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
         """Get enhanced output schema with actual data integration"""
         
         # Enhanced schemas with real data integration
