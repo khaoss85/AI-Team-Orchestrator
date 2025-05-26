@@ -1,8 +1,9 @@
 import os
+import re
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from uuid import UUID
 from datetime import datetime, timedelta
 import json 
@@ -35,6 +36,73 @@ except Exception as e:
     logger.error(f"Error creating Supabase client: {e}")
     raise
 
+def sanitize_unicode_for_postgres(data: Any) -> Any:
+    """
+    Sanitizza ricorsivamente i dati rimuovendo caratteri Unicode problematici per PostgreSQL
+    
+    Args:
+        data: Dati da sanitizzare (dict, list, str, o altro)
+    
+    Returns:
+        Dati sanitizzati senza caratteri problematici
+    """
+    if isinstance(data, str):
+        # Rimuovi caratteri nulli e altri caratteri di controllo problematici
+        # \u0000-\u001f: caratteri di controllo C0 (incluso \u0000)
+        # \u007f-\u009f: caratteri di controllo C1
+        sanitized = re.sub(r'[\u0000-\u001f\u007f-\u009f]', '', data)
+        
+        # Sostituisci caratteri Unicode problematici con spazi o equivalenti sicuri
+        sanitized = sanitized.replace('\x00', '')  # Rimuovi null bytes
+        sanitized = sanitized.replace('\ufeff', '')  # Rimuovi BOM
+        
+        return sanitized
+    
+    elif isinstance(data, dict):
+        return {key: sanitize_unicode_for_postgres(value) for key, value in data.items()}
+    
+    elif isinstance(data, list):
+        return [sanitize_unicode_for_postgres(item) for item in data]
+    
+    elif isinstance(data, tuple):
+        return tuple(sanitize_unicode_for_postgres(item) for item in data)
+    
+    else:
+        # Per numeri, booleani, None, ecc. restituisci così com'è
+        return data
+
+def safe_json_serialize(data: Any) -> str:
+    """
+    Serializza dati in JSON gestendo caratteri Unicode problematici
+    
+    Args:
+        data: Dati da serializzare
+    
+    Returns:
+        Stringa JSON sicura per PostgreSQL
+    """
+    try:
+        # Prima sanitizza i dati
+        clean_data = sanitize_unicode_for_postgres(data)
+        
+        # Poi serializza con ensure_ascii=False per preservare Unicode valido
+        # ma escapando caratteri problematici
+        json_str = json.dumps(clean_data, ensure_ascii=False, separators=(',', ':'))
+        
+        # Ulteriore pulizia della stringa JSON risultante
+        json_str = sanitize_unicode_for_postgres(json_str)
+        
+        # Verifica che il JSON sia ancora valido dopo la sanitizzazione
+        json.loads(json_str)  # Test parsing
+        
+        return json_str
+    
+    except (TypeError, ValueError) as e:
+        logger.error(f"Errore nella serializzazione JSON sicura: {e}")
+        # Fallback: restituisci JSON con rappresentazione stringa sicura
+        fallback_data = {"error": "JSON serialization failed", "original_error": str(e)}
+        return json.dumps(fallback_data, ensure_ascii=True)
+    
 # Database operations
 async def create_workspace(name: str, description: Optional[str], user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
     try:
@@ -154,7 +222,6 @@ async def update_agent_status(agent_id: str, status: Optional[str], health: Opti
         raise
 
 # In database.py, modifica la tua funzione create_task esistente
-
 async def create_task(
     workspace_id: str,
     name: str,
@@ -175,17 +242,21 @@ async def create_task(
     parent_delegation_depth: int = 0,
     auto_build_context: bool = True
 ):
-    """Enhanced create_task with priority validation"""
+    """Enhanced create_task con sanitizzazione Unicode"""
     try:
-        # FIXED: Validate priority to prevent validation errors
+        # Validazione priorità (codice esistente)
         valid_priorities = ["low", "medium", "high"]
         if priority not in valid_priorities:
             logger.warning(f"Invalid priority '{priority}' for task '{name}'. Using 'high' instead.")
-            priority = "high"  # Default to high for important tasks
+            priority = "high"
         
-        # COSTRUZIONE AUTOMATICA DEL CONTEXT_DATA SE ABILITATA
+        # NUOVO: Sanitizza i campi di testo in input
+        clean_name = sanitize_unicode_for_postgres(name)
+        clean_description = sanitize_unicode_for_postgres(description) if description else None
+        clean_assigned_to_role = sanitize_unicode_for_postgres(assigned_to_role) if assigned_to_role else None
+        
+        # Costruzione context_data (codice esistente...)
         if auto_build_context:
-            # Determina il creation_type se non fornito
             if creation_type is None:
                 if created_by_task_id:
                     creation_type = "task_delegation"
@@ -194,29 +265,29 @@ async def create_task(
                 else:
                     creation_type = "manual"
             
-            # Costruisci context_data automaticamente
             auto_context_data = await build_task_context_data(
                 workspace_id=workspace_id,
                 parent_task_id=created_by_task_id or parent_task_id,
                 agent_id=created_by_agent_id or agent_id,
                 creation_type=creation_type,
-                extra_data=context_data  # Merge dei dati extra forniti dall'utente
+                extra_data=context_data
             )
             
-            # Se l'utente ha fornito context_data, fai merge preservando i dati utente
             if context_data:
                 final_context_data = {**auto_context_data, **context_data}
             else:
                 final_context_data = auto_context_data
         else:
-            # Usa context_data fornito dall'utente senza modifiche
             final_context_data = context_data
         
-        # ESTRAZIONE DEI VALORI DAL CONTEXT_DATA PER I CAMPI DB
+        # NUOVO: Sanitizza context_data
+        if final_context_data:
+            final_context_data = sanitize_unicode_for_postgres(final_context_data)
+        
+        # Estrazione valori dal context_data (codice esistente...)
         delegation_depth = 0
         if isinstance(final_context_data, dict):
             delegation_depth = final_context_data.get("delegation_depth", 0)
-            # Estrai anche created_by_* dal context se non forniti direttamente
             if created_by_task_id is None:
                 created_by_task_id = final_context_data.get("created_by_task_id")
             if created_by_agent_id is None:
@@ -224,38 +295,41 @@ async def create_task(
             if creation_type is None:
                 creation_type = final_context_data.get("creation_type", "manual")
 
-        # COSTRUZIONE DEI DATI PER IL DATABASE
+        # Costruzione dati per il database
         data_to_insert = {
             "workspace_id": workspace_id,
-            "name": name,
+            "name": clean_name,  # AGGIORNATO: usa versione sanitizzata
             "status": status,
-            "priority": priority,  # FIXED: Use validated priority
+            "priority": priority,
             "created_by_task_id": created_by_task_id,
             "created_by_agent_id": created_by_agent_id,
             "creation_type": creation_type,
             "delegation_depth": delegation_depth,
         }
         
-        # Aggiungi campi opzionali
+        # Aggiungi campi opzionali (usando versioni sanitizzate)
         if agent_id: data_to_insert["agent_id"] = agent_id
-        if assigned_to_role: data_to_insert["assigned_to_role"] = assigned_to_role
-        if description: data_to_insert["description"] = description
+        if clean_assigned_to_role: data_to_insert["assigned_to_role"] = clean_assigned_to_role
+        if clean_description: data_to_insert["description"] = clean_description
         if parent_task_id: data_to_insert["parent_task_id"] = parent_task_id
         if depends_on_task_ids: data_to_insert["depends_on_task_ids"] = depends_on_task_ids
         if estimated_effort_hours is not None: data_to_insert["estimated_effort_hours"] = estimated_effort_hours
         if deadline: data_to_insert["deadline"] = deadline.isoformat()
         if final_context_data: data_to_insert["context_data"] = final_context_data
-        if result_payload: data_to_insert["result"] = result_payload
+        
+        # NUOVO: Sanitizza result_payload se presente
+        if result_payload: 
+            data_to_insert["result"] = sanitize_unicode_for_postgres(result_payload)
 
-        logger.debug(f"Creating task with validated priority '{priority}': {data_to_insert['name']}")
+        logger.debug(f"Creating task with sanitized data: {clean_name}")
         db_result = supabase.table("tasks").insert(data_to_insert).execute()
 
         if db_result.data and len(db_result.data) > 0:
             created_task = db_result.data[0]
-            logger.info(f"Task '{name}' (ID: {created_task['id']}) created with priority='{priority}', delegation_depth={delegation_depth}, creation_type={creation_type}")
+            logger.info(f"Task '{clean_name}' (ID: {created_task['id']}) created successfully")
             return created_task
         else:
-            logger.error(f"Failed to create task '{name}'. Supabase response: {db_result}")
+            logger.error(f"Failed to create task '{clean_name}'. Supabase response: {db_result}")
             if hasattr(db_result, 'error') and db_result.error:
                  logger.error(f"Supabase error: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
             return None
@@ -264,11 +338,58 @@ async def create_task(
         logger.error(f"Error creating task '{name}': {e}", exc_info=True)
         raise
 
+def sanitize_existing_json_payload(payload: Union[str, dict, list]) -> Union[str, dict, list]:
+    """
+    Sanitizza payload JSON esistenti che potrebbero contenere caratteri problematici
+    
+    Args:
+        payload: Payload da sanitizzare (può essere stringa JSON, dict, o list)
+    
+    Returns:
+        Payload sanitizzato
+    """
+    try:
+        if isinstance(payload, str):
+            # Se è una stringa, assumiamo sia JSON e proviamo a parsarla
+            try:
+                parsed = json.loads(payload)
+                clean_parsed = sanitize_unicode_for_postgres(parsed)
+                return json.dumps(clean_parsed, ensure_ascii=False)
+            except json.JSONDecodeError:
+                # Se non è JSON valido, trattala come stringa normale
+                return sanitize_unicode_for_postgres(payload)
+        else:
+            # Se è già un dict o list, sanitizzala direttamente
+            return sanitize_unicode_for_postgres(payload)
+    
+    except Exception as e:
+        logger.error(f"Error sanitizing JSON payload: {e}")
+        return {"error": "Payload sanitization failed", "original_error": str(e)}
+
 async def update_task_status(task_id: str, status: str, result_payload: Optional[dict] = None):
+    """
+    AGGIORNATO: Update task status con sanitizzazione Unicode
+    """
     data_to_update = {"status": status, "updated_at": datetime.now().isoformat()}
+    
     if result_payload is not None:
-        # CAMBIATO: salva direttamente il dict, Supabase gestisce la serializzazione JSON per JSONB
-        data_to_update["result"] = result_payload
+        try:
+            # NUOVO: Sanitizza i dati prima del salvataggio
+            clean_payload = sanitize_unicode_for_postgres(result_payload)
+            data_to_update["result"] = clean_payload
+            
+            # Log per debugging se sono stati rimossi caratteri problematici
+            if clean_payload != result_payload:
+                logger.warning(f"Unicode characters sanitized in task {task_id} result payload")
+                
+        except Exception as e:
+            logger.error(f"Error sanitizing result payload for task {task_id}: {e}")
+            # Fallback: salva un payload di errore sicuro
+            data_to_update["result"] = {
+                "error": "Result payload sanitization failed",
+                "original_error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
 
     try:
         db_result = supabase.table("tasks").update(data_to_update).eq("id", task_id).execute()
@@ -284,6 +405,7 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
     except Exception as e:
         logger.error(f"Error updating task {task_id} status: {e}", exc_info=True)
         raise
+
 
 async def create_custom_tool(name: str, description: Optional[str], code: str, workspace_id: str, created_by: str):
     try:
