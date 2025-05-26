@@ -5,6 +5,7 @@ import logging
 import json
 import re
 import os
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from enum import Enum
@@ -255,156 +256,83 @@ class EnhancedDeliverableAggregator:
             return False
     
     async def _final_deliverable_exists_enhanced(self, workspace_id: str) -> bool:
-        """
-        ENHANCED: Check for existing deliverable with multiple detection methods
-        FIXED: Improved logic to avoid false positives from planning tasks
-        """
-        try:
-            tasks = await list_tasks(workspace_id)
+            """
+            ENHANCED: Check for existing deliverable with multiple detection methods
+            FIXED: Improved logic to avoid false positives from planning tasks
+            """
+            try:
+                tasks = await list_tasks(workspace_id)
 
-            for task in tasks:
-                context_data = task.get("context_data", {}) or {}
-                task_name = (task.get("name", "") or "").upper()
+                for task in tasks:
+                    context_data = task.get("context_data", {}) or {}
+                    task_name = (task.get("name", "") or "").upper()
 
-                # PRIORITY 1: Explicit deliverable markers (most reliable)
-                if isinstance(context_data, dict):
-                    # Check for explicit deliverable flags
-                    if (context_data.get("is_final_deliverable") or 
-                        context_data.get("deliverable_aggregation") or
-                        context_data.get("triggers_project_completion")):
-                        logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
+                    # PRIORITY 1: Explicit deliverable markers (most reliable)
+                    if isinstance(context_data, dict):
+                        # Check for explicit deliverable flags
+                        if (context_data.get("is_final_deliverable") or 
+                            context_data.get("deliverable_aggregation") or
+                            context_data.get("triggers_project_completion")):
+                            logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
+                            return True
+
+                        # Check for deliverable creation types
+                        creation_type = context_data.get("creation_type", "")
+                        if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", "project_completion"]:
+                            logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
+                            return True
+
+                        # CRITICAL FIX: Exclude planning tasks explicitly
+                        if (context_data.get("planning_task_marker") or 
+                            creation_type == "phase_transition" or
+                            context_data.get("is_finalization_planning") or
+                            context_data.get("phase_transition")):
+                            logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
+                            continue  # Skip this task, it's a planning task
+
+                    # PRIORITY 2: Specific name patterns (more restrictive than before)
+                    # Only look for complete phrases that clearly indicate final deliverables
+                    specific_deliverable_patterns = [
+                        "FINAL DELIVERABLE:", 
+                        "PROJECT DELIVERABLE:", 
+                        "COMPLETE DELIVERABLE:",
+                        "FINAL PROJECT DELIVERABLE",
+                        "DELIVERABLE AGGREGATION"
+                    ]
+
+                    # Check for specific patterns but exclude planning patterns
+                    planning_exclusion_patterns = [
+                        "CREATE FINAL DELIVERABLES",  # This is planning, not the actual deliverable
+                        "PLANNING",
+                        "SETUP", 
+                        "CRITICAL: CREATE"
+                    ]
+
+                    # If it matches a planning pattern, skip it
+                    if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
+                        logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
+                        continue
+
+                    # Now check for deliverable patterns
+                    if any(pattern in task_name for pattern in specific_deliverable_patterns):
+                        logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
                         return True
 
-                    # Check for deliverable creation types
-                    creation_type = context_data.get("creation_type", "")
-                    if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", "project_completion"]:
-                        logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
+                    # PRIORITY 3: Legacy emoji check (most restrictive)
+                    # Only if it's clearly a deliverable context AND has the emoji
+                    if ("🎯" in task_name and 
+                        isinstance(context_data, dict) and
+                        context_data.get("deliverable_aggregation") and
+                        not context_data.get("planning_task_marker")):
+                        logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
                         return True
 
-                    # CRITICAL FIX: Exclude planning tasks explicitly
-                    if (context_data.get("planning_task_marker") or 
-                        creation_type == "phase_transition" or
-                        context_data.get("is_finalization_planning") or
-                        context_data.get("phase_transition")):
-                        logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
-                        continue  # Skip this task, it's a planning task
+                logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
+                return False
 
-                # PRIORITY 2: Specific name patterns (more restrictive than before)
-                # Only look for complete phrases that clearly indicate final deliverables
-                specific_deliverable_patterns = [
-                    "FINAL DELIVERABLE:", 
-                    "PROJECT DELIVERABLE:", 
-                    "COMPLETE DELIVERABLE:",
-                    "FINAL PROJECT DELIVERABLE",
-                    "DELIVERABLE AGGREGATION"
-                ]
-
-                # Check for specific patterns but exclude planning patterns
-                planning_exclusion_patterns = [
-                    "CREATE FINAL DELIVERABLES",  # This is planning, not the actual deliverable
-                    "PLANNING",
-                    "SETUP", 
-                    "CRITICAL: CREATE"
-                ]
-
-                # If it matches a planning pattern, skip it
-                if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
-                    logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
-                    continue
-
-                # Now check for deliverable patterns
-                if any(pattern in task_name for pattern in specific_deliverable_patterns):
-                    logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
-                    return True
-
-                # PRIORITY 3: Legacy emoji check (most restrictive)
-                # Only if it's clearly a deliverable context AND has the emoji
-                if ("🎯" in task_name and 
-                    isinstance(context_data, dict) and
-                    context_data.get("deliverable_aggregation") and
-                    not context_data.get("planning_task_marker")):
-                    logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
-                    return True
-
-            logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
-            return False
-        
-    except Exception as e:
-        logger.error(f"Error checking existing deliverable: {e}")
-        return True  # Safe default to prevent duplicates
-    try:
-        tasks = await list_tasks(workspace_id)
-        
-        for task in tasks:
-            context_data = task.get("context_data", {}) or {}
-            task_name = (task.get("name", "") or "").upper()
-            
-            # PRIORITY 1: Explicit deliverable markers (most reliable)
-            if isinstance(context_data, dict):
-                # Check for explicit deliverable flags
-                if (context_data.get("is_final_deliverable") or 
-                    context_data.get("deliverable_aggregation") or
-                    context_data.get("triggers_project_completion")):
-                    logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
-                    return True
-                
-                # Check for deliverable creation types
-                creation_type = context_data.get("creation_type", "")
-                if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", "project_completion"]:
-                    logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
-                    return True
-                
-                # CRITICAL: Exclude planning tasks explicitly
-                if (context_data.get("planning_task_marker") or 
-                    creation_type == "phase_transition" or
-                    context_data.get("is_finalization_planning") or
-                    context_data.get("phase_transition")):
-                    logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
-                    continue  # Skip this task, it's a planning task
-            
-            # PRIORITY 2: Specific name patterns (more restrictive than before)
-            # Only look for complete phrases that clearly indicate final deliverables
-            specific_deliverable_patterns = [
-                "FINAL DELIVERABLE:", 
-                "PROJECT DELIVERABLE:", 
-                "COMPLETE DELIVERABLE:",
-                "FINAL PROJECT DELIVERABLE",
-                "DELIVERABLE AGGREGATION"
-            ]
-            
-            # Check for specific patterns but exclude planning patterns
-            planning_exclusion_patterns = [
-                "CREATE FINAL DELIVERABLES",  # This is planning
-                "PLANNING",
-                "SETUP",
-                "CRITICAL: CREATE"
-            ]
-            
-            # If it matches a planning pattern, skip it
-            if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
-                logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
-                continue
-            
-            # Now check for deliverable patterns
-            if any(pattern in task_name for pattern in specific_deliverable_patterns):
-                logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
-                return True
-            
-            # PRIORITY 3: Legacy emoji check (most restrictive)
-            # Only if it's clearly a deliverable context AND has the emoji
-            if ("🎯" in task_name and 
-                isinstance(context_data, dict) and
-                context_data.get("deliverable_aggregation") and
-                not context_data.get("planning_task_marker")):
-                logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
-                return True
-        
-        logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
-        return False
-        
-    except Exception as e:
-        logger.error(f"Error checking existing deliverable: {e}")
-        return True  # Safe default to prevent duplicates
+            except Exception as e:
+                logger.error(f"Error checking existing deliverable: {e}")
+                return True  # Safe default to prevent duplicates
     
     def _determine_deliverable_type_enhanced(self, goal: str) -> DeliverableType:
         """

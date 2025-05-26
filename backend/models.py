@@ -143,7 +143,6 @@ class AgentCreate(BaseModel):
     hard_skills: Optional[List[Skill]] = None
     soft_skills: Optional[List[Skill]] = None
     background_story: Optional[str] = None
-    vector_store_ids: Optional[List[str]] = None
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
