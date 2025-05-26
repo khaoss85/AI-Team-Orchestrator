@@ -1328,151 +1328,28 @@ class EnhancedDeliverableAggregator:
 deliverable_aggregator = EnhancedDeliverableAggregator()
 
 # Helper function for integration
-async def check_and_create_final_deliverable(self, workspace_id: str) -> Optional[str]:
-    """ENHANCED: Check if ready for final deliverable with improved logic and verification"""
+async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
+    """
+    FIXED: Helper function che utilizza l'istanza globale dell'aggregator
+    """
     try:
-        logger.info(f"🎯 DELIVERABLE CHECK: Starting for workspace {workspace_id}")
-        
-        # Enhanced readiness check with multiple criteria
-        if not await self._is_ready_for_final_deliverable_enhanced(workspace_id):
-            logger.debug(f"🎯 NOT READY: Workspace {workspace_id}")
-            return None
-        
-        # Check if deliverable already exists
-        if await self._final_deliverable_exists_enhanced(workspace_id):
-            logger.info(f"🎯 EXISTS: Final deliverable already exists for {workspace_id}")
-            return None
-        
-        # Gather comprehensive project data
-        workspace = await get_workspace(workspace_id)
-        tasks = await list_tasks(workspace_id)
-        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
-        
-        if not workspace:
-            logger.error(f"🎯 ERROR: Workspace {workspace_id} not found")
-            return None
-        
-        if len(completed_tasks) < self.min_completed_tasks:
-            logger.info(f"🎯 INSUFFICIENT: Only {len(completed_tasks)} completed tasks "
-                       f"(need {self.min_completed_tasks})")
-            return None
-        
-        # Enhanced deliverable type detection
-        deliverable_type = self._determine_deliverable_type_enhanced(workspace.get("goal", ""))
-        logger.info(f"🎯 TYPE: Detected deliverable type: {deliverable_type.value}")
-        
-        # Enhanced data aggregation
-        aggregated_data = await self._aggregate_task_results_enhanced(completed_tasks, deliverable_type)
-        
-        # Create final deliverable with enhanced features
-        deliverable_task_id = await self._create_final_deliverable_task_enhanced(
-            workspace_id, workspace, deliverable_type, aggregated_data
-        )
-        
-        if deliverable_task_id:
-            logger.critical(f"🎯 SUCCESS: Created final deliverable {deliverable_task_id} "
-                           f"for workspace {workspace_id} (type: {deliverable_type.value})")
-            
-            # ENHANCED: Start monitoring for completion
-            asyncio.create_task(self._monitor_deliverable_completion(workspace_id, deliverable_task_id))
-            
-            return deliverable_task_id
-        else:
-            logger.error(f"🎯 FAILED: Could not create deliverable for {workspace_id}")
-            return None
-        
+        return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
     except Exception as e:
-        logger.error(f"🎯 ERROR: Exception in deliverable check for {workspace_id}: {e}", exc_info=True)
+        logger.error(f"Error in check_and_create_final_deliverable helper: {e}", exc_info=True)
         return None
 
     
-async def _verify_deliverable_completion(self, workspace_id: str, deliverable_task_id: str) -> bool:
+async def verify_deliverable_completion(workspace_id: str, deliverable_task_id: str) -> bool:
     """Verify that the deliverable task was completed successfully with valid data"""
     try:
-        tasks = await list_tasks(workspace_id)
-        deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
-        
-        if not deliverable_task:
-            logger.error(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} not found")
-            return False
-        
-        if deliverable_task.get("status") != "completed":
-            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} not completed (status: {deliverable_task.get('status')})")
-            return False
-        
-        result = deliverable_task.get("result", {}) or {}
-        
-        # Check for summary
-        summary = result.get("summary", "")
-        if not summary or len(summary.strip()) < 50:
-            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has insufficient summary")
-            return False
-        
-        # Check for detailed_results_json
-        detailed_json = result.get("detailed_results_json")
-        if not detailed_json:
-            logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} missing detailed_results_json")
-            return False
-        
-        # Try to parse the JSON
-        try:
-            parsed_data = json.loads(detailed_json)
-            
-            # Check for required fields
-            required_fields = ["deliverable_type", "executive_summary"]
-            missing_fields = [field for field in required_fields if not parsed_data.get(field)]
-            
-            if missing_fields:
-                logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} missing required fields: {missing_fields}")
-                return False
-            
-            executive_summary = parsed_data.get("executive_summary", "")
-            if len(executive_summary.strip()) < 100:
-                logger.warning(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has insufficient executive summary")
-                return False
-            
-            logger.info(f"🎯 VERIFICATION SUCCESS: Deliverable task {deliverable_task_id} completed with valid data")
-            return True
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"🎯 VERIFICATION: Deliverable task {deliverable_task_id} has invalid JSON: {e}")
-            return False
-        
+        return await deliverable_aggregator._verify_deliverable_completion(workspace_id, deliverable_task_id)
     except Exception as e:
-        logger.error(f"🎯 VERIFICATION ERROR: {e}")
+        logger.error(f"Error in verify_deliverable_completion helper: {e}")
         return False
     
-async def _monitor_deliverable_completion(self, workspace_id: str, deliverable_task_id: str):
+async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id: str):
     """Monitor deliverable task completion and take action if it fails"""
     try:
-        logger.info(f"🎯 MONITORING: Starting for deliverable {deliverable_task_id}")
-        
-        # Wait for task completion (check every 30 seconds for up to 10 minutes)
-        for attempt in range(20):  # 20 * 30 seconds = 10 minutes
-            await asyncio.sleep(30)
-            
-            # Check if task is completed
-            if await self._verify_deliverable_completion(workspace_id, deliverable_task_id):
-                logger.info(f"🎯 MONITORING SUCCESS: Deliverable {deliverable_task_id} completed successfully")
-                
-                # Trigger project completion
-                if ENABLE_AUTO_PROJECT_COMPLETION:
-                    try:
-                        await self._trigger_project_completion_sequence(workspace_id, deliverable_task_id)
-                    except Exception as e:
-                        logger.error(f"Error in project completion sequence: {e}")
-                return
-            
-            # Check if task failed
-            tasks = await list_tasks(workspace_id)
-            deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
-            
-            if deliverable_task and deliverable_task.get("status") == "failed":
-                logger.error(f"🎯 MONITORING FAILED: Deliverable {deliverable_task_id} failed")
-                # Could implement retry logic here
-                return
-        
-        logger.warning(f"🎯 MONITORING TIMEOUT: Deliverable {deliverable_task_id} did not complete in time")
-        
+        await deliverable_aggregator._monitor_deliverable_completion(workspace_id, deliverable_task_id)
     except Exception as e:
-        logger.error(f"🎯 MONITORING ERROR: {e}")
+        logger.error(f"Error in monitor_deliverable_completion helper: {e}")
