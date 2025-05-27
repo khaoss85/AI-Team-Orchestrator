@@ -11,14 +11,264 @@ import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
 import TaskResultDetails from '@/components/TaskResultDetails';
 import ProjectActionsSection from '@/components/ProjectActionsSection';
 import { useProjectDeliverables } from '@/hooks/useProjectDeliverables';
+import { useAssetManagement } from '@/hooks/useAssetManagement'; // 🆕 NEW
 import { transformTaskToEnhancedResult } from '@/utils/deliverableHelpers';
 import type { ProjectOutputExtended, Task, Agent } from '@/types';
 
-
-// Mantieni la definizione dei tipi originale
 type Props = {
   params: Promise<{ id: string }>;
   searchParams?: { [key: string]: string | string[] | undefined };
+};
+
+// 🆕 NEW: Asset Status Widget for Dashboard
+const AssetStatusWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }) => {
+  const { 
+    getAssetCompletionStats, 
+    isDeliverableReady, 
+    loading: assetLoading,
+    error: assetError 
+  } = useAssetManagement(workspaceId);
+
+  const assetStats = getAssetCompletionStats();
+  const deliverableReady = isDeliverableReady();
+
+  if (assetLoading) {
+    return (
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200 animate-pulse">
+        <div className="h-4 bg-purple-200 rounded w-1/3 mb-2"></div>
+        <div className="h-8 bg-purple-200 rounded"></div>
+      </div>
+    );
+  }
+
+  if (assetError || assetStats.totalAssets === 0) {
+    return (
+      <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
+        <div className="flex items-center">
+          <span className="text-2xl mr-3">📦</span>
+          <div>
+            <h4 className="font-medium text-gray-800">Asset Production</h4>
+            <p className="text-sm text-gray-600">Nessun asset in produzione</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-lg p-4 border transition-all duration-300 ${
+      deliverableReady 
+        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg' 
+        : 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200'
+    }`}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center">
+          <span className="text-2xl mr-3">{deliverableReady ? '🎯' : '📦'}</span>
+          <div>
+            <h4 className="font-medium text-gray-800">
+              {deliverableReady ? 'Asset Pronti!' : 'Asset in Produzione'}
+            </h4>
+            <p className="text-sm text-gray-600">
+              {assetStats.completedAssets}/{assetStats.totalAssets} asset completati
+            </p>
+          </div>
+        </div>
+        
+        <div className="text-right">
+          <div className="text-2xl font-bold text-indigo-600">
+            {Math.round(assetStats.completionRate)}%
+          </div>
+          {deliverableReady && (
+            <div className="text-xs text-green-600 font-medium animate-pulse">
+              Deliverable Ready!
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="mt-3">
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className={`h-2 rounded-full transition-all duration-500 ${
+              deliverableReady ? 'bg-green-500' : 'bg-indigo-500'
+            }`}
+            style={{ width: `${assetStats.completionRate}%` }}
+          ></div>
+        </div>
+      </div>
+      
+      {deliverableReady && (
+        <div className="mt-3">
+          <Link
+            href={`/projects/${workspaceId}/deliverables`}
+            className="inline-flex items-center text-sm bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition"
+          >
+            <span className="mr-1">🎯</span>
+            Visualizza Asset
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 🆕 Enhanced Tab Navigation with Asset Indicators
+const EnhancedTabNavigation: React.FC<{
+  activeSection: string;
+  setActiveSection: (section: string) => void;
+  projectResults: any[];
+  finalDeliverables: any[];
+  tasks: any[];
+  agents: any[];
+  feedbackRequests: any[];
+  assetStats: any;
+}> = ({ 
+  activeSection, 
+  setActiveSection, 
+  projectResults, 
+  finalDeliverables,
+  tasks, 
+  agents, 
+  feedbackRequests,
+  assetStats 
+}) => {
+  const tabs = [
+    {
+      id: 'results',
+      label: '💎 Risultati',
+      count: projectResults.length,
+      finalCount: finalDeliverables.length,
+      assetCount: assetStats.completedAssets
+    },
+    {
+      id: 'plan',
+      label: '📋 Piano Attività',
+      count: tasks.length,
+      pendingCount: tasks.filter(t => t.status === 'pending').length,
+      assetTaskCount: tasks.filter(t => 
+        t.context_data?.asset_production || 
+        t.context_data?.asset_oriented_task
+      ).length
+    },
+    {
+      id: 'team',
+      label: '👥 Team',
+      count: agents.length,
+      activeCount: agents.filter(a => a.status === 'active').length
+    },
+    {
+      id: 'details',
+      label: '📊 Dettagli & Metriche',
+      count: feedbackRequests.length,
+      type: 'feedback'
+    }
+  ];
+
+  return (
+    <div className="flex border-b border-gray-200 mb-6 bg-white rounded-lg shadow-sm p-1">
+      {tabs.map(tab => (
+        <button 
+          key={tab.id}
+          onClick={() => setActiveSection(tab.id)}
+          className={`relative px-4 py-3 font-medium text-sm rounded-md transition-all ${
+            activeSection === tab.id
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <span>{tab.label}</span>
+            
+            {/* Enhanced Count indicators with Asset support */}
+            {tab.count > 0 && (
+              <div className="flex items-center space-x-1">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  activeSection === tab.id
+                    ? 'bg-white bg-opacity-20 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {tab.count}
+                </span>
+                
+                {/* Special Asset Indicators */}
+                {tab.id === 'results' && tab.finalCount > 0 && (
+                  <div className={`relative ${
+                    activeSection === tab.id ? '' : 'animate-pulse'
+                  }`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                      activeSection === tab.id
+                        ? 'bg-yellow-400 text-yellow-900'
+                        : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                    }`}>
+                      🎯 {tab.finalCount}
+                    </span>
+                    {activeSection !== tab.id && assetStats.completedAssets > 0 && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                    )}
+                  </div>
+                )}
+
+                {tab.id === 'results' && tab.assetCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-green-400 text-green-900'
+                      : 'bg-green-500 text-white'
+                  }`}>
+                    📦 {tab.assetCount}
+                  </span>
+                )}
+                
+                {tab.id === 'plan' && tab.pendingCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-orange-400 text-orange-900'
+                      : 'bg-orange-500 text-white'
+                  }`}>
+                    ⏳ {tab.pendingCount}
+                  </span>
+                )}
+
+                {tab.id === 'plan' && tab.assetTaskCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-purple-400 text-purple-900'
+                      : 'bg-purple-500 text-white'
+                  }`}>
+                    🎯 {tab.assetTaskCount}
+                  </span>
+                )}
+                
+                {tab.id === 'team' && tab.activeCount > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-green-400 text-green-900'
+                      : 'bg-green-500 text-white'
+                  }`}>
+                    ⚡ {tab.activeCount}
+                  </span>
+                )}
+                
+                {tab.id === 'details' && tab.type === 'feedback' && tab.count > 0 && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    activeSection === tab.id
+                      ? 'bg-red-400 text-red-900'
+                      : 'bg-red-500 text-white animate-pulse'
+                  }`}>
+                    🚨 {tab.count}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Active indicator line */}
+          {activeSection === tab.id && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-white bg-opacity-50 rounded-full"></div>
+          )}
+        </button>
+      ))}
+    </div>
+  );
 };
 
 // Componente per la visualizzazione migliorata dei deliverable finali
@@ -151,18 +401,26 @@ function EnhancedFinalDeliverableView({ result }) {
 
 export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const router = useRouter();
-  
-  // Use the React.use hook to "unwrap" the Promise
   const params = use(paramsPromise);
   const workspaceId = params.id;
+
+  // 🆕 Enhanced hooks with Asset support
   const {
-      deliverables,
-      finalDeliverables,
-      loading: deliverablesLoading,
-      error: deliverablesError,
-      refetch: refetchDeliverables,
-      finalDeliverablesCount
-    } = useProjectDeliverables(workspaceId);
+    deliverables,
+    finalDeliverables,
+    loading: deliverablesLoading,
+    error: deliverablesError,
+    refetch: refetchDeliverables,
+    finalDeliverablesCount
+  } = useProjectDeliverables(workspaceId);
+
+  const {
+    getAssetCompletionStats,
+    isDeliverableReady,
+    loading: assetLoading,
+    error: assetError
+  } = useAssetManagement(workspaceId);
+
   // Stati per i dati
   const [workspace, setWorkspace] = useState<any>(null);
   const [agents, setAgents] = useState<any[]>([]);
@@ -183,52 +441,55 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isBackgroundUpdating, setIsBackgroundUpdating] = useState(false);
 
-  
+  // 🆕 Get asset stats
+  const assetStats = getAssetCompletionStats();
+  const deliverableReady = isDeliverableReady();
+
   // Fetch dei dati iniziali
   useEffect(() => {
     fetchData();
   }, [workspaceId]);
   
-const fetchData = async (silentUpdate = false) => {
+  // 🆕 Enhanced fetchData with asset awareness
+  const fetchData = async (silentUpdate = false) => {
     if (!workspaceId) return;
     
     try {
-      // Imposta loading solo se non è un aggiornamento silenzioso
+      if (!silentUpdate) {
+        setLoading(true);
+      }
+      setError(null);
+
+      // Fetch workspace
+      const workspaceData = await api.workspaces.get(workspaceId);
+      setWorkspace(workspaceData);
+
+      // Fetch agents
+      try {
+        const agentsData = await api.agents.list(workspaceId);
+        setAgents(agentsData);
+      } catch (agentErr) {
+        console.error('Failed to fetch agents:', agentErr);
+      }
+
+      // Fetch tasks con flag per loading specifico
+      try {
         if (!silentUpdate) {
-          setLoading(true);
+          setTasksLoading(true);
         }
-        setError(null);
-
-        // Fetch workspace
-        const workspaceData = await api.workspaces.get(workspaceId);
-        setWorkspace(workspaceData);
-
-        // Fetch agents
-        try {
-          const agentsData = await api.agents.list(workspaceId);
-          setAgents(agentsData);
-        } catch (agentErr) {
-          console.error('Failed to fetch agents:', agentErr);
+        const response = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${workspaceId}/tasks`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch tasks: ${response.status}`);
         }
-
-        // Fetch tasks - con flag per loading specifico
-        try {
-          if (!silentUpdate) {
-            setTasksLoading(true);
-          }
-          const response = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${workspaceId}/tasks`);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch tasks: ${response.status}`);
-          }
-          const tasksData = await response.json();
-          setTasks(tasksData);
-        } catch (taskErr) {
-          console.error('Failed to fetch tasks:', taskErr);
-        } finally {
-          if (!silentUpdate) {
-            setTasksLoading(false);
-          }
+        const tasksData = await response.json();
+        setTasks(tasksData);
+      } catch (taskErr) {
+        console.error('Failed to fetch tasks:', taskErr);
+      } finally {
+        if (!silentUpdate) {
+          setTasksLoading(false);
         }
+      }
       
       // Fetch stats
       try {
@@ -250,52 +511,68 @@ const fetchData = async (silentUpdate = false) => {
       console.error('Error fetching workspace data:', err);
       if (!silentUpdate) {
         setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del progetto');
-        }
-      setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del progetto');
+      }
     } finally {
-        if (!silentUpdate) {
-          setLoading(false);
-        }    
+      if (!silentUpdate) {
+        setLoading(false);
+      }    
     }
   };
   
-  // Funzioni di azione
-    const handleStartTeam = async () => {
-      try {
-        setIsStartingTeam(true);
-        await api.monitoring.startTeam(workspaceId);
-        setWorkspace(prev => ({ ...prev, status: 'active' }));
-
-        // Aggiornamento iniziale per cambiare lo stato del workspace
+  // 🆕 Enhanced polling for active workspaces with asset monitoring
+  useEffect(() => {
+    if (workspace?.status === 'active') {
+      const id = setInterval(async () => {
+        // Check for new final deliverables
+        const { count } = await api.monitoring.checkFinalDeliverablesStatus(workspaceId);
+        if (count > finalDeliverablesCount) {
+          await refetchDeliverables();
+        }
+        
+        // Update task data silently
         await fetchData(true);
+      }, 30_000);
+      return () => clearInterval(id);
+    }
+  }, [workspace?.status, workspaceId, finalDeliverables.length, refetchDeliverables]);
 
-        // Indica che ci sono aggiornamenti in background
-        setIsBackgroundUpdating(true);
+  // Funzioni di azione
+  const handleStartTeam = async () => {
+    try {
+      setIsStartingTeam(true);
+      await api.monitoring.startTeam(workspaceId);
+      setWorkspace(prev => ({ ...prev, status: 'active' }));
 
-        // Implementa una sequenza di polling limitata nel tempo
-        let pollCount = 0;
-        const maxPolls = 12; // Polling per circa 1 minuto (5s × 12)
+      // Aggiornamento iniziale per cambiare lo stato del workspace
+      await fetchData(true);
 
-        const pollData = async () => {
-          await fetchData(true);
-          pollCount++;
+      // Indica che ci sono aggiornamenti in background
+      setIsBackgroundUpdating(true);
 
-          if (pollCount < maxPolls) {
-            setTimeout(pollData, 5000);
-          } else {
-            setIsBackgroundUpdating(false);
-          }
-        };
+      // Implementa una sequenza di polling limitata nel tempo
+      let pollCount = 0;
+      const maxPolls = 12; // Polling per circa 1 minuto (5s × 12)
 
-        // Avvia il polling dopo un breve ritardo
-        setTimeout(pollData, 3000);
+      const pollData = async () => {
+        await fetchData(true);
+        pollCount++;
 
-      } catch (err) {
-        console.error('Error starting team:', err);
-      } finally {
-        setIsStartingTeam(false);
-      }
-    };
+        if (pollCount < maxPolls) {
+          setTimeout(pollData, 5000);
+        } else {
+          setIsBackgroundUpdating(false);
+        }
+      };
+
+      // Avvia il polling dopo un breve ritardo
+      setTimeout(pollData, 3000);
+
+    } catch (err) {
+      console.error('Error starting team:', err);
+    } finally {
+      setIsStartingTeam(false);
+    }
+  };
   
   const handleDeleteProject = async () => {
     try {
@@ -308,7 +585,6 @@ const fetchData = async (silentUpdate = false) => {
 
   const handleEditAgent = (agent) => {
     // Implementa la funzione per modificare un agente
-    // Puoi mantenere la funzionalità esistente
     console.log('Edit agent:', agent);
   };
   
@@ -317,14 +593,13 @@ const fetchData = async (silentUpdate = false) => {
     console.log('Interact with agent:', agent);
   };
     
-   const onDeleteClick = () => {
-      setIsDeleteModalOpen(true);
-    };
+  const onDeleteClick = () => {
+    setIsDeleteModalOpen(true);
+  };
   
-  // Calcoli per la barra di avanzamento
+  // 🆕 Enhanced calculations with asset awareness
   const calculateProgress = () => {
     if (!tasks || tasks.length === 0) return 0;
-    
     const completed = tasks.filter(t => t.status === 'completed').length;
     return Math.round((completed / tasks.length) * 100);
   };
@@ -385,7 +660,6 @@ const fetchData = async (silentUpdate = false) => {
     const agent = agents.find(a => a.id === agentId);
     return agent ? agent.name : 'Sistema';
   };
-  
   
   // Funzione aggiornata formatTaskContent
   const formatTaskContent = (task) => {
@@ -516,15 +790,16 @@ const fetchData = async (silentUpdate = false) => {
     return `${lastTask.name} (${getStatusLabel(lastTask.status)})`;
   };
   
-  // Costruisci l'elenco dei risultati aggiornato
-    const projectResults = React.useMemo(() => {
-      if (!tasks) return [];
-      return tasks
-        .filter(t => t.status === 'completed' && t.result)
-        .map(t => transformTaskToEnhancedResult(t, agents))
-        .sort((a, b) => (a.priority - b.priority) ||
-          new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [tasks, agents]);
+  // 🆕 Enhanced project results with asset awareness
+  const projectResults = React.useMemo(() => {
+    if (!tasks) return [];
+    return tasks
+      .filter(t => t.status === 'completed' && t.result)
+      .map(t => transformTaskToEnhancedResult(t, agents))
+      .sort((a, b) => (a.priority - b.priority) ||
+        new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [tasks, agents]);
+
   // Usa il primo risultato come default se ce ne sono
   useEffect(() => {
     if (projectResults.length > 0 && !activeResultId) {
@@ -532,17 +807,6 @@ const fetchData = async (silentUpdate = false) => {
     }
   }, [projectResults, activeResultId]);
     
-  useEffect(() => {
-  if (workspace?.status === 'active') {
-    const id = setInterval(async () => {
-      const { count } = await api.monitoring.checkFinalDeliverablesStatus(workspaceId);
-      if (count > finalDeliverablesCount) await refetchDeliverables();
-    }, 30_000);          // 30 s
-    return () => clearInterval(id);
-  }
-}, [workspace?.status, workspaceId, finalDeliverables.length, refetchDeliverables]);
-
-  
   // Filtra il risultato attivo
   const activeResult = projectResults.find(r => r.id === activeResultId);
   
@@ -627,7 +891,7 @@ const fetchData = async (silentUpdate = false) => {
   // Componente principale
   return (
     <div className="container mx-auto">
-      {/* Header con informazioni essenziali */}
+      {/* 🆕 Enhanced Header with Asset Status */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div className="mb-4 md:mb-0">
@@ -639,7 +903,7 @@ const fetchData = async (silentUpdate = false) => {
             </div>
             <p className="text-gray-600 mt-1">{workspace.description}</p>
             
-            {/* Obiettivo del progetto - evidenziato */}
+            {/* 🆕 Enhanced Obiettivo with Asset Context */}
             {workspace.goal && (
               <div className="mt-3 p-3 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-md">
                 <div className="flex items-start">
@@ -647,6 +911,11 @@ const fetchData = async (silentUpdate = false) => {
                   <div>
                     <p className="text-sm font-medium text-indigo-700">Obiettivo del progetto:</p>
                     <p className="text-sm text-indigo-900">{workspace.goal}</p>
+                    {deliverableReady && (
+                      <div className="mt-2 text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
+                        📦 Asset azionabili pronti per il raggiungimento dell'obiettivo
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -666,11 +935,18 @@ const fetchData = async (silentUpdate = false) => {
           </div>
         </div>
         
-        {/* Progress bar */}
+        {/* 🆕 Enhanced Progress bar with Asset Integration */}
         <div className="mt-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Progresso Progetto</span>
-            <span className="text-sm font-medium">{calculateProgress()}%</span>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium">{calculateProgress()}%</span>
+              {assetStats.totalAssets > 0 && (
+                <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                  📦 {assetStats.completedAssets} asset pronti
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${calculateProgress()}%` }}></div>
@@ -678,119 +954,20 @@ const fetchData = async (silentUpdate = false) => {
         </div>
       </div>
       
-      {/* Enhanced main navigation with status indicators */}
-      <div className="flex border-b border-gray-200 mb-6 bg-white rounded-lg shadow-sm p-1">
-        {[
-          {
-            id: 'results',
-            label: '💎 Risultati',
-            count: projectResults.length,
-            finalCount: finalDeliverables.length
-          },
-          {
-            id: 'plan',
-            label: '📋 Piano Attività',
-            count: tasks.length,
-            pendingCount: tasks.filter(t => t.status === 'pending').length
-          },
-          {
-            id: 'team',
-            label: '👥 Team',
-            count: agents.length,
-            activeCount: agents.filter(a => a.status === 'active').length
-          },
-          {
-            id: 'details',
-            label: '📊 Dettagli & Metriche',
-            count: feedbackRequests.length,
-            type: 'feedback'
-          }
-        ].map(tab => (
-          <button 
-            key={tab.id}
-            onClick={() => setActiveSection(tab.id)}
-            data-section={tab.id}
-            className={`relative px-4 py-3 font-medium text-sm rounded-md transition-all ${
-              activeSection === tab.id
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <span>{tab.label}</span>
-              
-              {/* Count indicators */}
-              {tab.count > 0 && (
-                <div className="flex items-center space-x-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    activeSection === tab.id
-                      ? 'bg-white bg-opacity-20 text-white'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {tab.count}
-                  </span>
-                  
-                  {/* Special indicators */}
-                  {tab.id === 'results' && tab.finalCount > 0 && (
-                    <div className={`relative ${
-                      activeSection === tab.id ? '' : 'animate-pulse'
-                    }`}>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        activeSection === tab.id
-                          ? 'bg-yellow-400 text-yellow-900'
-                          : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                      }`}>
-                        🎯 {tab.finalCount}
-                      </span>
-                      {activeSection !== tab.id && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {tab.id === 'plan' && tab.pendingCount > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      activeSection === tab.id
-                        ? 'bg-orange-400 text-orange-900'
-                        : 'bg-orange-500 text-white'
-                    }`}>
-                      ⏳ {tab.pendingCount}
-                    </span>
-                  )}
-                  
-                  {tab.id === 'team' && tab.activeCount > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      activeSection === tab.id
-                        ? 'bg-green-400 text-green-900'
-                        : 'bg-green-500 text-white'
-                    }`}>
-                      ⚡ {tab.activeCount}
-                    </span>
-                  )}
-                  
-                  {tab.id === 'details' && tab.type === 'feedback' && tab.count > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      activeSection === tab.id
-                        ? 'bg-red-400 text-red-900'
-                        : 'bg-red-500 text-white animate-pulse'
-                    }`}>
-                      🚨 {tab.count}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* Active indicator line */}
-            {activeSection === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-white bg-opacity-50 rounded-full"></div>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* 🆕 Enhanced Navigation with Asset Indicators */}
+      <EnhancedTabNavigation
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        projectResults={projectResults}
+        finalDeliverables={finalDeliverables}
+        tasks={tasks}
+        agents={agents}
+        feedbackRequests={feedbackRequests}
+        assetStats={assetStats}
+      />
 
-      {/* Quick status summary bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* 🆕 Enhanced Quick Status Summary with Asset Support */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-indigo-500">
           <div className="flex items-center justify-between">
             <div>
@@ -815,6 +992,29 @@ const fetchData = async (silentUpdate = false) => {
             </div>
             <div className="text-green-500">
               🎯
+            </div>
+          </div>
+        </div>
+
+        {/* 🆕 NEW: Asset Status Card */}
+        <div className={`rounded-lg shadow-sm p-4 border-l-4 ${
+          deliverableReady 
+            ? 'bg-white border-purple-500' 
+            : assetStats.totalAssets > 0 
+              ? 'bg-white border-orange-500'
+              : 'bg-gray-50 border-gray-300'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Asset Azionabili</p>
+              <p className={`text-2xl font-bold ${
+                deliverableReady ? 'text-purple-600' : 'text-orange-600'
+              }`}>
+                {assetStats.completedAssets}
+              </p>
+            </div>
+            <div className={deliverableReady ? 'text-purple-500' : 'text-orange-500'}>
+              📦
             </div>
           </div>
         </div>
@@ -847,6 +1047,13 @@ const fetchData = async (silentUpdate = false) => {
           </div>
         </div>
       </div>
+
+      {/* 🆕 NEW: Asset Status Widget */}
+      {assetStats.totalAssets > 0 && (
+        <div className="mb-6">
+          <AssetStatusWidget workspaceId={workspaceId} />
+        </div>
+      )}
       
       {/* Contenuto basato sulla tab selezionata */}
       {activeSection === 'results' && (
@@ -1244,12 +1451,12 @@ const fetchData = async (silentUpdate = false) => {
           
           {projectPlan.length > 0 && (
             <div className="mt-8 flex justify-between">
-              <button 
-                onClick={() => console.log('View complete plan')} 
+              <Link 
+                href={`/projects/${workspaceId}/tasks`}
                 className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition"
               >
                 Visualizza Piano Completo
-              </button>
+              </Link>
               <button 
                 onClick={() => console.log('Add new task')} 
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
@@ -1263,19 +1470,20 @@ const fetchData = async (silentUpdate = false) => {
       
       {activeSection === 'team' && (
         <div className="space-y-6">
-        {/* Header con titolo e link */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Team di Agenti</h2>
-              <Link 
-                href={`/projects/${workspaceId}/team`}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
-              >
-                <span>Gestisci Team</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </Link>
-            </div>
+          {/* Header con titolo e link */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Team di Agenti</h2>
+            <Link 
+              href={`/projects/${workspaceId}/team`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+            >
+              <span>Gestisci Team</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </Link>
+          </div>
+          
           {/* Sezione Team Radar */}
           {agents.length > 1 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1500,13 +1708,13 @@ const fetchData = async (silentUpdate = false) => {
             {/* Project insights dashboard */}
             <ProjectInsightsDashboard workspaceId={workspaceId} />
               
-              <ProjectActionsSection 
-  workspace={workspace}
-  onStartTeam={handleStartTeam}
-  onDeleteClick={onDeleteClick} 
-  isStartingTeam={isStartingTeam}
-  feedbackRequests={feedbackRequests}
-/>
+            <ProjectActionsSection 
+              workspace={workspace}
+              onStartTeam={handleStartTeam}
+              onDeleteClick={onDeleteClick} 
+              isStartingTeam={isStartingTeam}
+              feedbackRequests={feedbackRequests}
+            />
             
             <div className="text-center mt-6">
               <Link 
@@ -1580,24 +1788,24 @@ const fetchData = async (silentUpdate = false) => {
         </button>
       </div>
       
-      {/* Mantieni i modali esistenti */}
+      {/* Modali */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         title="Elimina progetto"
-        message={`Sei sicuro di voler eliminare il progetto "${workspace?.name}"? Questa azione eliminerà anche tutti gli agenti e i dati associati. Questa azione non può essere annullata.`}
+        message={`Sei sicuro di voler eliminare il progetto "${workspace?.name}"? Questa azione eliminerà anche tutti gli agenti, asset e i dati associati. Questa azione non può essere annullata.`}
         confirmText="Elimina"
         cancelText="Annulla"
         onConfirm={handleDeleteProject}
         onCancel={() => setIsDeleteModalOpen(false)}
       />
           
-          {/* Indicatore di aggiornamento in background - AGGIUNGI QUI */}
-        {isBackgroundUpdating && (
-          <div className="fixed bottom-4 left-4 bg-indigo-800 text-white px-4 py-2 rounded-full shadow-lg text-sm flex items-center z-40">
-            <div className="h-3 w-3 bg-white rounded-full animate-pulse mr-2"></div>
-            Sincronizzazione dati in corso...
-          </div>
-        )}
+      {/* 🆕 Background updating indicator */}
+      {isBackgroundUpdating && (
+        <div className="fixed bottom-4 left-4 bg-indigo-800 text-white px-4 py-2 rounded-full shadow-lg text-sm flex items-center z-40">
+          <div className="h-3 w-3 bg-white rounded-full animate-pulse mr-2"></div>
+          Sincronizzazione dati in corso...
+        </div>
+      )}
     </div>
   );
 }
