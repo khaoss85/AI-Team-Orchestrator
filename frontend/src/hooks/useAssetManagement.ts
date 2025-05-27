@@ -55,6 +55,7 @@ export interface AssetManagementState {
   error: string | null;
 }
 
+
 // 🔍 DEEP ASSET EXTRACTOR - Ispeziona ogni possibile location
 const extractActionableAssets = (deliverables: ProjectDeliverablesExtended): Record<string, ActionableAsset> => {
   const extractedAssets: Record<string, ActionableAsset> = {};
@@ -85,6 +86,14 @@ const extractActionableAssets = (deliverables: ProjectDeliverablesExtended): Rec
       console.log('🔍 [DEEP EXTRACTION] Found result.actionable_assets:', typeof output.result.actionable_assets);
       console.log('🔍 [DEEP EXTRACTION] Result assets keys:', Object.keys(output.result.actionable_assets));
       Object.assign(extractedAssets, output.result.actionable_assets);
+    }
+
+    // 🎯 NEW Location 2.5: Check for context_data with precomputed_deliverable (THIS IS THE KEY!)
+    if ((output as any).context_data?.precomputed_deliverable?.actionable_assets) {
+      console.log('🔍 [DEEP EXTRACTION] Found context_data.precomputed_deliverable.actionable_assets!');
+      const contextAssets = (output as any).context_data.precomputed_deliverable.actionable_assets;
+      console.log('🔍 [DEEP EXTRACTION] Context assets keys:', Object.keys(contextAssets));
+      Object.assign(extractedAssets, contextAssets);
     }
     
     // 🎯 Location 3: detailed_results_json parsing
