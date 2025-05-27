@@ -1412,45 +1412,58 @@ class SmartAssetExtractor:
         return extracted_assets
     
     def _is_asset_production_task(self, task: Dict) -> bool:
-        """Determina se un task è di produzione asset"""
-        
-        # Metodo 1: Check context_data
+        """Determina se un task è di produzione asset - ENHANCED"""
+
+        if result.get("status") != "completed":
+            return False
+
+        # Metodo 1: Check context_data (esistente)
         context_data = task.get("context_data", {}) or {}
         if isinstance(context_data, dict):
-            if context_data.get("asset_production") or context_data.get("asset_oriented_task"):
+            if (context_data.get("asset_production") or 
+                context_data.get("asset_oriented_task")):
                 return True
-            
-            # Check creation_type
-            creation_type = context_data.get("creation_type", "")
-            if creation_type in ["asset_production", "enhanced_pm_asset_tool"]:
-                return True
-        
-        # Metodo 2: Check task name pattern
-        task_name = (task.get("name") or "").upper()
-        if "PRODUCE ASSET:" in task_name or "ASSET PRODUCTION:" in task_name:
+
+        # Metodo 2: Check task name patterns (enhanced)
+        task_name = (task.get("name") or "").lower()
+        asset_indicators = [
+            "calendar", "database", "template", "framework", "strategy",
+            "contact", "content", "training", "financial", "model",
+            "analysis", "research", "plan", "workflow"
+        ]
+
+        if any(indicator in task_name for indicator in asset_indicators):
             return True
-        
-        # Metodo 3: Check detailed_results_json per indicatori asset
+
+        # Metodo 3: Enhanced structured output analysis
         result = task.get("result", {}) or {}
         detailed_json = result.get("detailed_results_json", "")
-        
-        if detailed_json:
-            # Look for structured asset patterns
+
+        if detailed_json and len(detailed_json) > 100:
             try:
                 data = json.loads(detailed_json)
                 if isinstance(data, dict):
-                    # Check for asset-specific structures
-                    asset_indicators = [
+                    # Check for actionable data structures
+                    actionable_structures = [
                         "contacts", "posts", "calendar", "exercises", "budget_categories",
-                        "recommendations", "action_plan", "strategy", "database"
+                        "recommendations", "action_plan", "strategy", "framework",
+                        "template", "workflow", "process", "database", "list"
                     ]
-                    
-                    data_keys = set(str(k).lower() for k in data.keys())
-                    if any(indicator in " ".join(data_keys) for indicator in asset_indicators):
+
+                    data_str = json.dumps(data).lower()
+                    structure_matches = sum(1 for struct in actionable_structures if struct in data_str)
+
+                    # If has multiple actionable structures, likely an asset
+                    if structure_matches >= 2:
                         return True
+
+                    # Check for data density (lots of structured content)
+                    if len(data) >= 5 and any(isinstance(v, (list, dict)) for v in data.values()):
+                        return True
+
             except json.JSONDecodeError:
                 pass
-        
+
         return False
     
     def _identify_asset_type(self, task: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
@@ -2064,6 +2077,28 @@ class AssetOrientedDeliverableAggregator(EnhancedDeliverableAggregator):
         
         return deliverable_task_id
     
+    def _serialize_deliverable_for_context(self, actionable_deliverable: ActionableDeliverable) -> Dict:
+        """Serializza deliverable per context_data con gestione datetime"""
+        try:
+            # Usa model_dump con mode='json' per serializzare datetime
+            deliverable_dict = actionable_deliverable.model_dump(mode='json')
+
+            # Assicurati che tutti i datetime siano stringhe ISO
+            def convert_datetime_recursive(obj):
+                if isinstance(obj, dict):
+                    return {k: convert_datetime_recursive(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_datetime_recursive(item) for item in obj]
+                elif isinstance(obj, datetime):
+                    return obj.isoformat()
+                else:
+                    return obj
+
+            return convert_datetime_recursive(deliverable_dict)
+        except Exception as e:
+            logger.error(f"Error serializing deliverable: {e}")
+            return {}
+    
     async def _create_asset_deliverable_task(
         self,
         workspace_id: str,
@@ -2112,7 +2147,7 @@ class AssetOrientedDeliverableAggregator(EnhancedDeliverableAggregator):
             }
             
             # Serializza actionable_deliverable per il task
-            deliverable_json = actionable_deliverable.model_dump()
+            deliverable_json = self._serialize_deliverable_for_context(actionable_deliverable)
             
             # Crea task con FIXED priority
             deliverable_task = await create_task(

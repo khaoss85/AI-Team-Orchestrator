@@ -5,8 +5,9 @@ from supabase import create_client, Client
 import logging
 from typing import Optional, Dict, Any, List, Union
 from uuid import UUID
+import uuid 
 from datetime import datetime, timedelta
-import json 
+import json
 
 # Load environment variables
 load_dotenv()
@@ -220,6 +221,61 @@ async def update_agent_status(agent_id: str, status: Optional[str], health: Opti
     except Exception as e:
         logger.error(f"Error updating agent status: {e}")
         raise
+        
+def _sanitize_uuid_string(uuid_value: Optional[Union[str, UUID]], field_name: str) -> Optional[str]:
+    if uuid_value is None:
+        return None
+
+    if isinstance(uuid_value, UUID): # Se è già un oggetto UUID
+        return str(uuid_value)
+
+    if not isinstance(uuid_value, str):
+        err_msg = f"Invalid type for UUID field {field_name}: expected string or UUID, got {type(uuid_value)}. Value: {uuid_value}"
+        logger.error(err_msg)
+        raise ValueError(err_msg) # O gestisci diversamente se il campo è nullable e vuoi inserire NULL
+
+    uuid_str = str(uuid_value).strip() # Rimuovi spazi bianchi
+
+    # Prova a parsare direttamente
+    try:
+        return str(uuid.UUID(uuid_str))
+    except ValueError:
+        # Se fallisce e la lunghezza è maggiore di 36 (lunghezza UUID standard)
+        # potrebbe essere il caso dell'UUID malformato con caratteri extra.
+        if len(uuid_str) > 36:
+            potential_uuid_part = uuid_str[:36]
+            try:
+                # Controlla se la parte troncata è un UUID valido
+                parsed_uuid = uuid.UUID(potential_uuid_part)
+                logger.warning(
+                    f"Sanitized malformed UUID string for {field_name}: "
+                    f"original '{uuid_str}', used '{str(parsed_uuid)}'."
+                )
+                return str(parsed_uuid)
+            except ValueError:
+                err_msg = (
+                    f"Invalid UUID string for {field_name} even after attempting to truncate: "
+                    f"original '{uuid_str}', attempted '{potential_uuid_part}'."
+                )
+                logger.error(err_msg)
+                raise ValueError(err_msg)
+        # Se la lunghezza è 32, potrebbe essere un UUID senza trattini
+        elif len(uuid_str) == 32:
+            try:
+                parsed_uuid = uuid.UUID(hex=uuid_str)
+                return str(parsed_uuid)
+            except ValueError:
+                err_msg = f"Invalid 32-character UUID string (no hyphens) for {field_name}: '{uuid_str}'."
+                logger.error(err_msg)
+                raise ValueError(err_msg)
+        else:
+            err_msg = (
+                f"Invalid UUID string for {field_name}: '{uuid_str}'. "
+                f"It's not a standard 36-char UUID, not a 32-char UUID without hyphens, "
+                f"and not truncatable from a longer string."
+            )
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
 # In database.py, modifica la tua funzione create_task esistente
 async def create_task(
@@ -239,89 +295,100 @@ async def create_task(
     created_by_task_id: Optional[str] = None,
     created_by_agent_id: Optional[str] = None,
     creation_type: Optional[str] = None,
-    parent_delegation_depth: int = 0,
-    auto_build_context: bool = True
+    # parent_delegation_depth non è direttamente usato qui, ma nel context_data
+    auto_build_context: bool = True  # Mantieni questo parametro
 ):
-    """Enhanced create_task con sanitizzazione Unicode"""
     try:
-        # Validazione priorità (codice esistente)
         valid_priorities = ["low", "medium", "high"]
         if priority not in valid_priorities:
             logger.warning(f"Invalid priority '{priority}' for task '{name}'. Using 'high' instead.")
             priority = "high"
-        
-        # NUOVO: Sanitizza i campi di testo in input
+
         clean_name = sanitize_unicode_for_postgres(name)
         clean_description = sanitize_unicode_for_postgres(description) if description else None
         clean_assigned_to_role = sanitize_unicode_for_postgres(assigned_to_role) if assigned_to_role else None
-        
-        # Costruzione context_data (codice esistente...)
+
+        final_context_data_dict: Optional[Dict[str, Any]] = None
         if auto_build_context:
-            if creation_type is None:
+            # Se creation_type non è passato, deduciamo
+            deduced_creation_type = creation_type
+            if deduced_creation_type is None:
                 if created_by_task_id:
-                    creation_type = "task_delegation"
-                elif parent_task_id:
-                    creation_type = "subtask_creation"
+                    deduced_creation_type = "task_delegation"
+                elif parent_task_id: # Anche se creato_da_task_id è preferito per il source
+                    deduced_creation_type = "subtask_creation"
                 else:
-                    creation_type = "manual"
-            
-            auto_context_data = await build_task_context_data(
+                    deduced_creation_type = "manual"
+
+            auto_built_context = await build_task_context_data(
                 workspace_id=workspace_id,
-                parent_task_id=created_by_task_id or parent_task_id,
-                agent_id=created_by_agent_id or agent_id,
-                creation_type=creation_type,
+                parent_task_id=created_by_task_id or parent_task_id, # Usa created_by_task_id se disponibile, altrimenti parent_task_id
+                agent_id=created_by_agent_id or agent_id, # Usa created_by_agent_id se disponibile
+                creation_type=deduced_creation_type,
                 extra_data=context_data
             )
-            
-            if context_data:
-                final_context_data = {**auto_context_data, **context_data}
-            else:
-                final_context_data = auto_context_data
-        else:
-            final_context_data = context_data
-        
-        # NUOVO: Sanitizza context_data
-        if final_context_data:
-            final_context_data = sanitize_unicode_for_postgres(final_context_data)
-        
-        # Estrazione valori dal context_data (codice esistente...)
-        delegation_depth = 0
-        if isinstance(final_context_data, dict):
-            delegation_depth = final_context_data.get("delegation_depth", 0)
-            if created_by_task_id is None:
-                created_by_task_id = final_context_data.get("created_by_task_id")
-            if created_by_agent_id is None:
-                created_by_agent_id = final_context_data.get("created_by_agent_id")
-            if creation_type is None:
-                creation_type = final_context_data.get("creation_type", "manual")
+            # Il context_data passato ha la precedenza se non nullo, altrimenti usa quello auto-costruito
+            final_context_data_dict = {**auto_built_context, **(context_data or {})}
 
-        # Costruzione dati per il database
-        data_to_insert = {
-            "workspace_id": workspace_id,
-            "name": clean_name,  # AGGIORNATO: usa versione sanitizzata
+        elif context_data is not None: # Se auto_build_context è False ma context_data è fornito
+            final_context_data_dict = context_data
+        # Se auto_build_context è False e context_data è None, final_context_data_dict rimarrà None
+
+        # Sanitizza final_context_data se esiste
+        if final_context_data_dict is not None:
+            final_context_data_dict = sanitize_unicode_for_postgres(final_context_data_dict)
+
+        # Estrai e valida i campi UUID
+        # Nota: workspace_id è già una stringa, ma è bene validarlo se proviene da input esterni.
+        # Qui assumiamo che workspace_id passato alla funzione sia già valido.
+        s_workspace_id = _sanitize_uuid_string(workspace_id, "workspace_id")
+        s_agent_id = _sanitize_uuid_string(agent_id, "agent_id") if agent_id else None
+        s_parent_task_id = _sanitize_uuid_string(parent_task_id, "parent_task_id") if parent_task_id else None
+        s_created_by_task_id = _sanitize_uuid_string(created_by_task_id, "created_by_task_id") if created_by_task_id else None
+        s_created_by_agent_id = _sanitize_uuid_string(created_by_agent_id, "created_by_agent_id") if created_by_agent_id else None
+        
+        s_depends_on_task_ids: Optional[List[str]] = None
+        if depends_on_task_ids:
+            s_depends_on_task_ids = [_sanitize_uuid_string(dep_id, f"depends_on_task_ids_element_{i}") for i, dep_id in enumerate(depends_on_task_ids)]
+
+
+        delegation_depth = 0
+        actual_creation_type = creation_type # Default al creation_type passato
+        if final_context_data_dict and isinstance(final_context_data_dict, dict) :
+            delegation_depth = final_context_data_dict.get("delegation_depth", 0)
+            # Se created_by_task_id non era settato, prova a prenderlo dal context
+            if not s_created_by_task_id:
+                 s_created_by_task_id = _sanitize_uuid_string(final_context_data_dict.get("created_by_task_id"), "context.created_by_task_id")
+            if not s_created_by_agent_id:
+                 s_created_by_agent_id = _sanitize_uuid_string(final_context_data_dict.get("created_by_agent_id"), "context.created_by_agent_id")
+            if not actual_creation_type: # Se il creation_type non era passato alla funzione, usa quello del context
+                actual_creation_type = final_context_data_dict.get("creation_type", "manual")
+
+
+        data_to_insert: Dict[str, Any] = {
+            "workspace_id": s_workspace_id,
+            "name": clean_name,
             "status": status,
             "priority": priority,
-            "created_by_task_id": created_by_task_id,
-            "created_by_agent_id": created_by_agent_id,
-            "creation_type": creation_type,
+            "created_by_task_id": s_created_by_task_id,
+            "created_by_agent_id": s_created_by_agent_id,
+            "creation_type": actual_creation_type,
             "delegation_depth": delegation_depth,
         }
-        
-        # Aggiungi campi opzionali (usando versioni sanitizzate)
-        if agent_id: data_to_insert["agent_id"] = agent_id
+
+        if s_agent_id: data_to_insert["agent_id"] = s_agent_id
         if clean_assigned_to_role: data_to_insert["assigned_to_role"] = clean_assigned_to_role
         if clean_description: data_to_insert["description"] = clean_description
-        if parent_task_id: data_to_insert["parent_task_id"] = parent_task_id
-        if depends_on_task_ids: data_to_insert["depends_on_task_ids"] = depends_on_task_ids
+        if s_parent_task_id: data_to_insert["parent_task_id"] = s_parent_task_id
+        if s_depends_on_task_ids: data_to_insert["depends_on_task_ids"] = s_depends_on_task_ids
         if estimated_effort_hours is not None: data_to_insert["estimated_effort_hours"] = estimated_effort_hours
         if deadline: data_to_insert["deadline"] = deadline.isoformat()
-        if final_context_data: data_to_insert["context_data"] = final_context_data
-        
-        # NUOVO: Sanitizza result_payload se presente
-        if result_payload: 
+        if final_context_data_dict: data_to_insert["context_data"] = final_context_data_dict
+
+        if result_payload:
             data_to_insert["result"] = sanitize_unicode_for_postgres(result_payload)
 
-        logger.debug(f"Creating task with sanitized data: {clean_name}")
+        logger.debug(f"Attempting to create task with data: {data_to_insert}")
         db_result = supabase.table("tasks").insert(data_to_insert).execute()
 
         if db_result.data and len(db_result.data) > 0:
@@ -329,13 +396,20 @@ async def create_task(
             logger.info(f"Task '{clean_name}' (ID: {created_task['id']}) created successfully")
             return created_task
         else:
-            logger.error(f"Failed to create task '{clean_name}'. Supabase response: {db_result}")
-            if hasattr(db_result, 'error') and db_result.error:
-                 logger.error(f"Supabase error: {db_result.error.message if hasattr(db_result.error, 'message') else db_result.error}")
-            return None
-            
+            err_msg = f"Failed to create task '{clean_name}'. Supabase response: {db_result}"
+            logger.error(err_msg)
+            if hasattr(db_result, 'error') and db_result.error and hasattr(db_result.error, 'message'):
+                logger.error(f"Supabase error message: {db_result.error.message}")
+                # Re-raise with more specific info if possible
+                if 'invalid input syntax for type uuid' in db_result.error.message:
+                    raise ValueError(f"Supabase UUID Syntax Error: {db_result.error.message}. Problematic data: {data_to_insert}")
+            raise Exception(err_msg) # Rilancia un'eccezione generica se non è un errore UUID specifico
+
+    except ValueError as ve: # Cattura specificamente i ValueError dalla sanitizzazione
+        logger.error(f"ValueError during task creation for '{name}': {ve}", exc_info=True)
+        raise # Rilancia l'eccezione per farla gestire dal chiamante (es. il tool)
     except Exception as e:
-        logger.error(f"Error creating task '{name}': {e}", exc_info=True)
+        logger.error(f"Unexpected error creating task '{name}': {e}", exc_info=True)
         raise
 
 def sanitize_existing_json_payload(payload: Union[str, dict, list]) -> Union[str, dict, list]:

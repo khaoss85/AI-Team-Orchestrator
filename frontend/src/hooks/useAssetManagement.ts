@@ -1,4 +1,4 @@
-// frontend/src/hooks/useAssetManagement.ts
+// frontend/src/hooks/useAssetManagement.ts - FIXED VERSION
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/utils/api';
@@ -101,37 +101,55 @@ export const useAssetManagement = (workspaceId: string) => {
   const getAssetProgress = useCallback(() => {
     if (!state.tracking) return { completed: 0, total: 0, percentage: 0 };
     
-    const { completed_asset_tasks, total_asset_tasks } = state.tracking.asset_summary;
+    const tracking = state.tracking;
+    const assetSummary = tracking.asset_summary;
+    
+    if (!assetSummary) return { completed: 0, total: 0, percentage: 0 };
+    
+    const completedTasks = assetSummary.completed_asset_tasks || 0;
+    const totalTasks = assetSummary.total_asset_tasks || 0;
+    
     return {
-      completed: completed_asset_tasks,
-      total: total_asset_tasks,
-      percentage: total_asset_tasks > 0 ? (completed_asset_tasks / total_asset_tasks) * 100 : 0,
+      completed: completedTasks,
+      total: totalTasks,
+      percentage: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
     };
   }, [state.tracking]);
 
   const getAssetsByType = useCallback((assetType: string): AssetTaskInfo[] => {
     if (!state.tracking) return [];
     
+    const tracking = state.tracking;
+    const completedAssets = tracking.completed_assets || [];
+    const pendingAssets = tracking.pending_assets || [];
+    
     return [
-      ...state.tracking.completed_assets,
-      ...state.tracking.pending_assets,
+      ...completedAssets,
+      ...pendingAssets,
     ].filter(asset => asset.asset_type === assetType);
   }, [state.tracking]);
 
   const isDeliverableReady = useCallback(() => {
-    return state.tracking?.asset_summary.deliverable_ready || false;
+    if (!state.tracking || !state.tracking.asset_summary) return false;
+    return state.tracking.asset_summary.deliverable_ready || false;
   }, [state.tracking]);
 
   const getRequiredAssetTypes = useCallback((): string[] => {
     if (!state.requirements) return [];
     
-    return state.requirements.primary_assets_needed.map(req => req.asset_type);
+    const requirements = state.requirements;
+    const primaryAssets = requirements.primary_assets_needed || [];
+    
+    return primaryAssets.map(req => req.asset_type);
   }, [state.requirements]);
 
   const getCompletedAssetTypes = useCallback((): string[] => {
     if (!state.tracking) return [];
     
-    return state.tracking.completed_assets
+    const tracking = state.tracking;
+    const completedAssets = tracking.completed_assets || [];
+    
+    return completedAssets
       .map(asset => asset.asset_type)
       .filter((type): type is string => Boolean(type));
   }, [state.tracking]);
@@ -146,24 +164,36 @@ export const useAssetManagement = (workspaceId: string) => {
   const getAssetTypeProgress = useCallback((assetType: string) => {
     if (!state.tracking) return { completed: 0, total: 0, percentage: 0 };
     
-    const typeData = state.tracking.asset_types_breakdown[assetType];
+    const tracking = state.tracking;
+    const assetTypesBreakdown = tracking.asset_types_breakdown || {};
+    const typeData = assetTypesBreakdown[assetType];
+    
     if (!typeData) return { completed: 0, total: 0, percentage: 0 };
     
+    const completed = typeData.completed || 0;
+    const total = typeData.total || 0;
+    
     return {
-      completed: typeData.completed,
-      total: typeData.total,
-      percentage: typeData.total > 0 ? (typeData.completed / typeData.total) * 100 : 0,
+      completed,
+      total,
+      percentage: total > 0 ? (completed / total) * 100 : 0,
     };
   }, [state.tracking]);
 
   const canExtractAssets = useCallback((): boolean => {
     if (!state.extractionStatus) return false;
     
-    return state.extractionStatus.extraction_summary.extraction_ready_tasks > 0;
+    const extractionStatus = state.extractionStatus;
+    const extractionSummary = extractionStatus.extraction_summary;
+    
+    if (!extractionSummary) return false;
+    
+    return (extractionSummary.extraction_ready_tasks || 0) > 0;
   }, [state.extractionStatus]);
 
   const getExtractionCandidates = useCallback(() => {
-    return state.extractionStatus?.extraction_candidates || [];
+    if (!state.extractionStatus) return [];
+    return state.extractionStatus.extraction_candidates || [];
   }, [state.extractionStatus]);
 
   const hasAssetSchemas = useCallback((): boolean => {
@@ -191,10 +221,11 @@ export const useAssetManagement = (workspaceId: string) => {
     
     // Check if task is in our asset tracking data
     if (state.tracking) {
-      const allAssetTasks = [
-        ...state.tracking.completed_assets,
-        ...state.tracking.pending_assets,
-      ];
+      const tracking = state.tracking;
+      const completedAssets = tracking.completed_assets || [];
+      const pendingAssets = tracking.pending_assets || [];
+      const allAssetTasks = [...completedAssets, ...pendingAssets];
+      
       return allAssetTasks.some(assetTask => assetTask.task_id === task.id);
     }
     
@@ -212,10 +243,11 @@ export const useAssetManagement = (workspaceId: string) => {
     
     // Try to find in tracking data
     if (state.tracking) {
-      const allAssetTasks = [
-        ...state.tracking.completed_assets,
-        ...state.tracking.pending_assets,
-      ];
+      const tracking = state.tracking;
+      const completedAssets = tracking.completed_assets || [];
+      const pendingAssets = tracking.pending_assets || [];
+      const allAssetTasks = [...completedAssets, ...pendingAssets];
+      
       const assetTask = allAssetTasks.find(assetTask => assetTask.task_id === task.id);
       if (assetTask?.asset_type) {
         return assetTask.asset_type;
@@ -232,8 +264,8 @@ export const useAssetManagement = (workspaceId: string) => {
     return null;
   }, [state.tracking]);
 
-  const getAssetCompletionStats = useCallback() => {
-    if (!state.tracking) {
+  const getAssetCompletionStats = useCallback(() => {
+    if (!state.tracking || !state.tracking.asset_summary) {
       return {
         totalAssets: 0,
         completedAssets: 0,
@@ -243,13 +275,14 @@ export const useAssetManagement = (workspaceId: string) => {
       };
     }
     
-    const { asset_summary } = state.tracking;
+    const assetSummary = state.tracking.asset_summary;
+    
     return {
-      totalAssets: asset_summary.total_asset_tasks,
-      completedAssets: asset_summary.completed_asset_tasks,
-      pendingAssets: asset_summary.pending_asset_tasks,
-      completionRate: asset_summary.completion_rate,
-      isDeliverableReady: asset_summary.deliverable_ready,
+      totalAssets: assetSummary.total_asset_tasks || 0,
+      completedAssets: assetSummary.completed_asset_tasks || 0,
+      pendingAssets: assetSummary.pending_asset_tasks || 0,
+      completionRate: assetSummary.completion_rate || 0,
+      isDeliverableReady: assetSummary.deliverable_ready || false,
     };
   }, [state.tracking]);
 

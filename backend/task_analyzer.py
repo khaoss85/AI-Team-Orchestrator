@@ -752,6 +752,16 @@ class EnhancedTaskExecutor:
             logger.error(f"Error finding project manager: {e}")
             return None
 
+    def _validate_task_id(self, task_id: str) -> bool:
+        """Valida formato UUID del task ID"""
+        try:
+            from uuid import UUID
+            UUID(task_id)
+            return True
+        except (ValueError, TypeError):
+            logger.error(f"Invalid task ID format: {task_id}")
+            return False
+    
     async def handle_project_manager_completion(
         self,
         task: Task, 
@@ -778,8 +788,15 @@ class EnhancedTaskExecutor:
         # Validate current project phase
         current_project_phase_from_pm_str = results_data.get("current_project_phase")
         if not current_project_phase_from_pm_str:
-            logger.error(f"TaskAnalyzer: PM task {task_id_str} output missing 'current_project_phase' key.")
-            return False
+            # Fallback: dedurre dalla fase del task corrente
+            task_context = task.context_data or {}
+            if isinstance(task_context, dict):
+                fallback_phase = task_context.get("project_phase", "IMPLEMENTATION")
+                logger.warning(f"PM task {task_id_str} missing current_project_phase, using fallback: {fallback_phase}")
+                current_project_phase_from_pm_str = fallback_phase
+            else:
+                logger.error(f"PM task {task_id_str} missing current_project_phase and no fallback available")
+                return False
 
         try:
             validated_phase_enum = PhaseManager.validate_phase(current_project_phase_from_pm_str)
@@ -861,6 +878,10 @@ class EnhancedTaskExecutor:
             tool_created_task_id = sub_task_def.get("task_id")
             if tool_created_task_id:
                 try:
+                    if not self._validate_task_id(tool_created_task_id):
+                        logger.warning(f"Skipping invalid task ID: {tool_created_task_id}")
+                        continue
+                        
                     existing_task = await get_task(tool_created_task_id)
                     if existing_task:
                         existing_task_name = existing_task.get("name")
