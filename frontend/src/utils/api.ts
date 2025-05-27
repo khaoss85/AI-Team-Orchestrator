@@ -616,54 +616,6 @@ export const api = {
         return handleApiError(error);
       }
     },
-    
-    // Instagram API wrappers
-    analyzeHashtags: async (hashtags: string[]): Promise<HashtagAnalysis> => {
-      try {
-        const hashtagsString = hashtags.join(',');
-        const response = await fetch(`${API_BASE_URL}/tools/instagram/analyze-hashtags?hashtags=${encodeURIComponent(hashtagsString)}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    },
-    
-    analyzeAccount: async (username: string): Promise<AccountAnalysis> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/tools/instagram/analyze-account/${username}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    },
-    
-    generateContentIdeas: async (topic: string, targetAudience: string, count: number = 5): Promise<ContentIdea[]> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/tools/instagram/generate-content-ideas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            topic,
-            target_audience: targetAudience,
-            count
-          }),
-        });
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    }
   },
   
   // API Director
