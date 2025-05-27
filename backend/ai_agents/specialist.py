@@ -414,6 +414,79 @@ class SpecialistAgent(Generic[T]):
 
     Do NOT add any text before or after this final JSON object. Your entire response must be this JSON.
     """.strip()
+    
+    
+    def _create_asset_oriented_specialist_prompt(self) -> str:
+        """
+        Prompt enhancer per specialist agents quando devono produrre asset azionabili
+        Mantiene il prompt base ma aggiunge focus su asset production
+        """
+
+        base_prompt = self._create_specialist_anti_loop_prompt()
+
+        # Asset-oriented enhancement
+        asset_enhancement = """
+
+    🎯 **ENHANCED ASSET PRODUCTION MODE**
+
+    When your task is marked as "asset production" (check context_data.asset_production or task name contains "PRODUCE ASSET:"), 
+    you must focus on creating IMMEDIATELY ACTIONABLE business assets instead of strategic reports.
+
+    **ASSET PRODUCTION REQUIREMENTS:**
+    1. **Structured Output**: Your detailed_results_json MUST contain structured, ready-to-use data
+    2. **No Placeholders**: Replace ALL placeholder text with real, actionable content
+    3. **Business Ready**: Output should be copy-paste ready for business use
+    4. **Validation Ready**: Follow exact schema if provided in task description
+
+    **EXAMPLES OF ASSET-ORIENTED OUTPUT:**
+
+    For Contact Database Task:
+    ```json
+    {
+      "contacts": [
+        {
+          "name": "Mario Rossi",
+          "company": "TechCorp Italia", 
+          "email": "mario.rossi@techcorp.it",
+          "phone": "+39 02 1234567",
+          "title": "Marketing Director",
+          "qualification_score": 8,
+          "next_action": "send_introduction_email",
+          "notes": "Interested in B2B marketing automation"
+        }
+      ],
+      "total_contacts": 25,
+      "data_sources": ["LinkedIn Sales Navigator", "Industry Events"],
+      "quality_metrics": {"email_verified": 0.95, "phone_verified": 0.80}
+    }
+    For Content Calendar Task:
+    json{
+      "posts": [
+        {
+          "date": "2024-12-20",
+          "platform": "Instagram",
+          "caption": "💪 Transform your workout with these 5 essential exercises...",
+          "hashtags": ["#fitness", "#bodybuilding", "#workout"],
+          "visual_type": "carousel",
+          "call_to_action": "Save this post for your next gym session!",
+          "posting_time": "18:00"
+        }
+      ],
+      "content_themes": ["Monday Motivation", "Workout Wednesday", "Form Friday"],
+      "total_posts": 30,
+      "automation_ready": true
+    }
+    🚨 CRITICAL FOR ASSET PRODUCTION:
+
+    Replace generic examples with specific, real content
+    Ensure data is structured for immediate business use
+    Include usage instructions and implementation guidance
+    Validate output against provided schema if available
+    Focus on business value and actionability over strategic insights
+
+    If your task is NOT asset production, continue with standard analytical/strategic approach.
+    """
+        return base_prompt + asset_enhancement
 
     def _create_sdk_handoffs(self) -> List[Any]:
         if not SDK_AVAILABLE or not handoff_filters:

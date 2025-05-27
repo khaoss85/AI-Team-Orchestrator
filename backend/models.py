@@ -439,3 +439,79 @@ PHASE_DESCRIPTIONS = {
     ProjectPhase.IMPLEMENTATION: "Strategy development, planning, frameworks, templates, workflows",
     ProjectPhase.FINALIZATION: "Content creation, publishing, execution, final deliverables"
 }
+# === DYNAMIC DELIVERABLE SYSTEM MODELS ===
+
+class AssetRequirement(BaseModel):
+    """Requisito per un asset azionabile"""
+    asset_type: str = PydanticField(..., description="Tipo di asset (es. contact_database, content_calendar)")
+    asset_format: str = PydanticField(..., description="Formato dell'asset (structured_data, document, spreadsheet)")
+    actionability_level: str = PydanticField(..., description="Livello di azionabilità (ready_to_use, needs_customization, template)")
+    business_impact: str = PydanticField(..., description="Impatto business (immediate, short_term, strategic)")
+    priority: int = PydanticField(default=1, description="Priorità dell'asset (1=alta, 5=bassa)")
+    validation_criteria: List[str] = PydanticField(default_factory=list, description="Criteri di validazione")
+
+class DeliverableRequirements(BaseModel):
+    """Requirements dinamici per un deliverable"""
+    workspace_id: str
+    deliverable_category: str = PydanticField(..., description="Categoria principale (marketing, finance, sports, etc.)")
+    primary_assets_needed: List[AssetRequirement]
+    deliverable_structure: Dict[str, Any] = PydanticField(..., description="Struttura del deliverable finale")
+    generated_at: datetime = PydanticField(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class AssetSchema(BaseModel):
+    """Schema dinamico per un asset"""
+    asset_name: str
+    schema_definition: Dict[str, Any] = PydanticField(..., description="Schema JSON per l'asset")
+    validation_rules: List[str] = PydanticField(default_factory=list)
+    usage_instructions: str = PydanticField(default="", description="Istruzioni per l'uso")
+    automation_ready: bool = PydanticField(default=False)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ExtractedAsset(BaseModel):
+    """Asset estratto da un task"""
+    asset_name: str
+    asset_data: Dict[str, Any]
+    source_task_id: str
+    extraction_method: str = PydanticField(..., description="Metodo di estrazione utilizzato")
+    validation_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    actionability_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    ready_to_use: bool = PydanticField(default=False)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ActionableDeliverable(BaseModel):
+    """Deliverable finale con asset azionabili"""
+    workspace_id: str
+    deliverable_id: str
+    meta: Dict[str, Any] = PydanticField(..., description="Metadati del deliverable")
+    executive_summary: str
+    actionable_assets: Dict[str, ExtractedAsset]
+    usage_guide: Dict[str, str] = PydanticField(default_factory=dict)
+    next_steps: List[str] = PydanticField(default_factory=list)
+    automation_ready: bool = PydanticField(default=False)
+    actionability_score: int = PydanticField(default=0, ge=0, le=100)
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# === ENHANCED TASK OUTPUT FOR ASSETS ===
+
+class AssetTaskExecutionOutput(TaskExecutionOutput):
+    """Extended TaskExecutionOutput per task di produzione asset"""
+    asset_type: Optional[str] = PydanticField(default=None, description="Tipo di asset prodotto")
+    asset_schema_validation: Optional[bool] = PydanticField(default=None, description="Se l'asset rispetta lo schema")
+    automation_instructions: Optional[str] = PydanticField(default=None, description="Istruzioni per automazione")
+    usage_notes: Optional[str] = PydanticField(default=None, description="Note per l'utilizzo")
+
+class AssetProductionContext(BaseModel):
+    """Context data per task di produzione asset"""
+    asset_production: bool = PydanticField(default=True)
+    target_schema: str = PydanticField(..., description="Nome dello schema target")
+    asset_type: str = PydanticField(..., description="Tipo di asset da produrre")
+    quality_requirements: List[str] = PydanticField(default_factory=list)
+    automation_requirements: List[str] = PydanticField(default_factory=list)
+    
+    model_config = ConfigDict(from_attributes=True)

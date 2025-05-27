@@ -15,6 +15,9 @@ from database import (
     update_workspace_status
 )
 from models import TaskStatus, ProjectPhase
+from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
+from deliverable_system.schema_generator import AssetSchemaGenerator
+from models import ExtractedAsset, ActionableDeliverable, AssetSchema
 
 logger = logging.getLogger(__name__)
 
@@ -1353,3 +1356,882 @@ async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id:
         await deliverable_aggregator._monitor_deliverable_completion(workspace_id, deliverable_task_id)
     except Exception as e:
         logger.error(f"Error in monitor_deliverable_completion helper: {e}")
+        
+# === ENHANCED ASSET-ORIENTED DELIVERABLE SYSTEM ===
+
+class SmartAssetExtractor:
+    """Estrattore intelligente di asset azionabili dai task results"""
+    
+    def __init__(self):
+        self.schema_generator = AssetSchemaGenerator()
+        
+    async def extract_actionable_assets(
+        self, 
+        completed_tasks: List[Dict], 
+        asset_schemas: Dict[str, AssetSchema],
+        workspace_id: str
+    ) -> Dict[str, ExtractedAsset]:
+        """
+        Estrae asset azionabili validandoli contro gli schemi dinamici
+        """
+        
+        extracted_assets = {}
+        
+        logger.info(f"🔍 ASSET EXTRACTION: Processing {len(completed_tasks)} completed tasks")
+        
+        # Identifica task di produzione asset
+        asset_tasks = [
+            task for task in completed_tasks 
+            if self._is_asset_production_task(task)
+        ]
+        
+        logger.info(f"🔍 ASSET TASKS: Found {len(asset_tasks)} asset production tasks")
+        
+        # Processa ogni task di asset production
+        for task in asset_tasks:
+            asset_type = self._identify_asset_type(task, asset_schemas)
+            
+            if asset_type and asset_type in asset_schemas:
+                # Estrazione con validazione contro schema
+                asset_data = await self._extract_and_validate_asset(
+                    task, asset_schemas[asset_type]
+                )
+                
+                if asset_data:
+                    extracted_assets[asset_type] = asset_data
+                    logger.info(f"✅ EXTRACTED: {asset_type} from task {task.get('id')}")
+            else:
+                # Tentativo di estrazione generica
+                generic_asset = await self._extract_generic_asset(task)
+                if generic_asset:
+                    generic_name = f"generic_asset_{task.get('id', '')}"
+                    extracted_assets[generic_name] = generic_asset
+                    logger.info(f"✅ EXTRACTED GENERIC: {generic_name}")
+        
+        logger.info(f"🔍 EXTRACTION COMPLETE: {len(extracted_assets)} assets extracted")
+        return extracted_assets
+    
+    def _is_asset_production_task(self, task: Dict) -> bool:
+        """Determina se un task è di produzione asset"""
+        
+        # Metodo 1: Check context_data
+        context_data = task.get("context_data", {}) or {}
+        if isinstance(context_data, dict):
+            if context_data.get("asset_production") or context_data.get("asset_oriented_task"):
+                return True
+            
+            # Check creation_type
+            creation_type = context_data.get("creation_type", "")
+            if creation_type in ["asset_production", "enhanced_pm_asset_tool"]:
+                return True
+        
+        # Metodo 2: Check task name pattern
+        task_name = (task.get("name") or "").upper()
+        if "PRODUCE ASSET:" in task_name or "ASSET PRODUCTION:" in task_name:
+            return True
+        
+        # Metodo 3: Check detailed_results_json per indicatori asset
+        result = task.get("result", {}) or {}
+        detailed_json = result.get("detailed_results_json", "")
+        
+        if detailed_json:
+            # Look for structured asset patterns
+            try:
+                data = json.loads(detailed_json)
+                if isinstance(data, dict):
+                    # Check for asset-specific structures
+                    asset_indicators = [
+                        "contacts", "posts", "calendar", "exercises", "budget_categories",
+                        "recommendations", "action_plan", "strategy", "database"
+                    ]
+                    
+                    data_keys = set(str(k).lower() for k in data.keys())
+                    if any(indicator in " ".join(data_keys) for indicator in asset_indicators):
+                        return True
+            except json.JSONDecodeError:
+                pass
+        
+        return False
+    
+    def _identify_asset_type(self, task: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
+        """Identifica il tipo di asset prodotto dal task"""
+        
+        # Metodo 1: Esplicito dal context_data
+        context_data = task.get("context_data", {}) or {}
+        if isinstance(context_data, dict):
+            asset_type = context_data.get("asset_type") or context_data.get("target_schema")
+            if asset_type and asset_type in asset_schemas:
+                return asset_type
+        
+        # Metodo 2: Deduzione dal nome del task
+        task_name = (task.get("name") or "").lower()
+        for asset_type in asset_schemas.keys():
+            asset_type_clean = asset_type.replace("_", " ")
+            if asset_type_clean in task_name or asset_type in task_name:
+                return asset_type
+        
+        # Metodo 3: Analisi del contenuto dell'output
+        result = task.get("result", {}) or {}
+        detailed_json = result.get("detailed_results_json", "")
+        
+        if detailed_json:
+            try:
+                data = json.loads(detailed_json)
+                return self._infer_asset_type_from_content(data, asset_schemas)
+            except json.JSONDecodeError:
+                pass
+        
+        return None
+    
+    def _infer_asset_type_from_content(self, data: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
+        """Inferisce il tipo di asset dal contenuto"""
+        
+        if not isinstance(data, dict):
+            return None
+        
+        data_keys = set(str(k).lower() for k in data.keys())
+        content_indicators = {
+            "content_calendar": ["posts", "calendar", "content", "schedule", "hashtags"],
+            "qualified_contact_database": ["contacts", "leads", "email", "phone", "company"],
+            "training_program": ["exercises", "workout", "training", "program", "sets", "reps"],
+            "financial_model": ["revenue", "costs", "budget", "financial", "cash_flow"],
+            "research_database": ["findings", "sources", "research", "data", "analysis"],
+            "action_plan": ["tasks", "objectives", "plan", "milestones", "actions"]
+        }
+        
+        best_match = None
+        max_matches = 0
+        
+        for asset_type, indicators in content_indicators.items():
+            if asset_type in asset_schemas:
+                matches = sum(1 for indicator in indicators if indicator in " ".join(data_keys))
+                if matches > max_matches:
+                    max_matches = matches
+                    best_match = asset_type
+        
+        return best_match if max_matches >= 2 else None
+    
+    async def _extract_and_validate_asset(self, task: Dict, schema: AssetSchema) -> Optional[ExtractedAsset]:
+        """
+        Estrae asset dal task result e lo valida contro lo schema
+        """
+        
+        result = task.get("result", {}) or {}
+        detailed_json = result.get("detailed_results_json", "")
+        
+        if not detailed_json:
+            logger.warning(f"No detailed_results_json in task {task.get('id')}")
+            return None
+        
+        try:
+            # Parse JSON
+            data = json.loads(detailed_json)
+            
+            if not isinstance(data, dict):
+                logger.warning(f"Invalid data format in task {task.get('id')}")
+                return None
+            
+            # Validazione contro schema
+            validation_result = self.schema_generator.validate_asset_against_schema(data, schema)
+            
+            # Calcola actionability score
+            actionability_score = self._calculate_actionability_score(data, schema, validation_result)
+            
+            # Determina se è ready to use
+            ready_to_use = (
+                validation_result.get("valid", False) and
+                validation_result.get("completeness_score", 0) >= 0.8 and
+                actionability_score >= 0.7
+            )
+            
+            extracted_asset = ExtractedAsset(
+                asset_name=schema.asset_name,
+                asset_data=data,
+                source_task_id=task.get("id", ""),
+                extraction_method="schema_validation",
+                validation_score=validation_result.get("completeness_score", 0),
+                actionability_score=actionability_score,
+                ready_to_use=ready_to_use
+            )
+            
+            return extracted_asset
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in task {task.get('id')}: {e}")
+            # Tentativo di estrazione da testo non strutturato
+            return await self._extract_from_unstructured_text(
+                result.get("summary", ""), schema, task.get("id", "")
+            )
+        except Exception as e:
+            logger.error(f"Error extracting asset from task {task.get('id')}: {e}")
+            return None
+    
+    async def _extract_from_unstructured_text(self, text: str, schema: AssetSchema, task_id: str) -> Optional[ExtractedAsset]:
+        """
+        Estrae asset da testo non strutturato (fallback)
+        """
+        
+        if not text or len(text) < 50:
+            return None
+        
+        # Extraction pattern molto semplice per ora
+        # In implementazione completa, userebbe NLP o LLM per estrazione
+        extracted_data = {
+            "extracted_from_text": True,
+            "original_text": text[:1000],  # Primi 1000 caratteri
+            "extraction_method": "text_fallback",
+            "confidence": "low"
+        }
+        
+        # Cerca pattern specifici nel testo
+        if "contact" in text.lower() or "email" in text.lower():
+            emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
+            if emails:
+                extracted_data["extracted_emails"] = emails
+        
+        if "http" in text.lower():
+            urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
+            if urls:
+                extracted_data["extracted_urls"] = urls
+        
+        return ExtractedAsset(
+            asset_name=schema.asset_name,
+            asset_data=extracted_data,
+            source_task_id=task_id,
+            extraction_method="text_fallback",
+            validation_score=0.3,  # Basso per text extraction
+            actionability_score=0.3,
+            ready_to_use=False
+        )
+    
+    async def _extract_generic_asset(self, task: Dict) -> Optional[ExtractedAsset]:
+        """
+        Estrazione generica per task non identificati come asset specifici
+        """
+        
+        result = task.get("result", {}) or {}
+        detailed_json = result.get("detailed_results_json", "")
+        summary = result.get("summary", "")
+        
+        if not detailed_json and not summary:
+            return None
+        
+        asset_data = {}
+        
+        # Estrai da detailed_results_json se disponibile
+        if detailed_json:
+            try:
+                parsed_data = json.loads(detailed_json)
+                if isinstance(parsed_data, dict):
+                    asset_data.update(parsed_data)
+            except json.JSONDecodeError:
+                asset_data["unparsed_json"] = detailed_json
+        
+        # Aggiungi summary
+        if summary:
+            asset_data["task_summary"] = summary
+        
+        # Metadati del task
+        asset_data["task_metadata"] = {
+            "task_name": task.get("name", ""),
+            "task_id": task.get("id", ""),
+            "assigned_to_role": task.get("assigned_to_role", ""),
+            "completed_at": task.get("updated_at", "")
+        }
+        
+        if not asset_data:
+            return None
+        
+        return ExtractedAsset(
+            asset_name="generic_output",
+            asset_data=asset_data,
+            source_task_id=task.get("id", ""),
+            extraction_method="generic_fallback",
+            validation_score=0.5,
+            actionability_score=0.4,
+            ready_to_use=False
+        )
+    
+    def _calculate_actionability_score(
+        self, 
+        data: Dict, 
+        schema: AssetSchema, 
+        validation_result: Dict
+    ) -> float:
+        """
+        Calcola score di azionabilità (0.0 - 1.0)
+        """
+        
+        score = 0.0
+        
+        # Base score dalla completeness
+        completeness = validation_result.get("completeness_score", 0)
+        score += completeness * 0.4
+        
+        # Bonus per assenza di placeholder
+        if not self._has_placeholders(data):
+            score += 0.2
+        
+        # Bonus per presenza di dati azionabili
+        if self._has_actionable_data(data):
+            score += 0.2
+        
+        # Bonus per automation readiness
+        if schema.automation_ready and self._is_automation_compatible(data):
+            score += 0.2
+        
+        return min(1.0, score)
+    
+    def _has_placeholders(self, data: Dict, depth: int = 0) -> bool:
+        """Verifica presenza di placeholder nei dati"""
+        
+        if depth > 3:  # Limite ricorsione
+            return False
+        
+        placeholders = ["string", "number", "tbd", "todo", "placeholder", "example", "sample"]
+        
+        for key, value in data.items():
+            if isinstance(value, str):
+                value_lower = value.lower()
+                if any(placeholder in value_lower for placeholder in placeholders):
+                    return True
+            elif isinstance(value, dict):
+                if self._has_placeholders(value, depth + 1):
+                    return True
+            elif isinstance(value, list) and value and isinstance(value[0], dict):
+                if self._has_placeholders(value[0], depth + 1):
+                    return True
+        
+        return False
+    
+    def _has_actionable_data(self, data: Dict) -> bool:
+        """Verifica presenza di dati azionabili"""
+        
+        # Indicatori di dati azionabili
+        actionable_indicators = [
+            "@",  # Email
+            "http",  # URL
+            "phone",  # Telefono
+            "date",  # Date
+            "$",  # Valori monetari
+            "%"   # Percentuali
+        ]
+        
+        data_str = json.dumps(data).lower()
+        return any(indicator in data_str for indicator in actionable_indicators)
+    
+    def _is_automation_compatible(self, data: Dict) -> bool:
+        """Verifica compatibilità con automazione"""
+        
+        # Criteri per automation compatibility
+        has_structured_lists = any(isinstance(v, list) and v for v in data.values())
+        has_consistent_fields = len(data) >= 3  # Almeno 3 campi
+        has_identifiers = any(key in str(data).lower() for key in ["id", "email", "name", "date"])
+        
+        return has_structured_lists and has_consistent_fields and has_identifiers
+
+
+class EnhancedDeliverablePackager:
+    """Assembla deliverable finali con asset azionabili"""
+    
+    def __init__(self):
+        self.requirements_analyzer = DeliverableRequirementsAnalyzer()
+    
+    async def create_actionable_deliverable(
+        self,
+        workspace_id: str,
+        workspace_goal: str,
+        extracted_assets: Dict[str, ExtractedAsset],
+        requirements: Optional[Dict] = None
+    ) -> ActionableDeliverable:
+        """
+        Crea deliverable finale con asset azionabili integrato
+        """
+        
+        # Genera executive summary dinamico
+        executive_summary = await self._generate_dynamic_executive_summary(
+            workspace_goal, extracted_assets
+        )
+        
+        # Genera usage guide
+        usage_guide = self._generate_comprehensive_usage_guide(extracted_assets)
+        
+        # Genera next steps azionabili
+        next_steps = self._generate_actionable_next_steps(extracted_assets)
+        
+        # Calcola automation readiness complessiva
+        automation_ready = self._calculate_overall_automation_readiness(extracted_assets)
+        
+        # Calcola actionability score complessivo
+        actionability_score = self._calculate_overall_actionability_score(extracted_assets)
+        
+        deliverable = ActionableDeliverable(
+            workspace_id=workspace_id,
+            deliverable_id=f"deliverable_{workspace_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            meta={
+                "project_goal": workspace_goal,
+                "total_assets": len(extracted_assets),
+                "ready_to_use_assets": sum(1 for asset in extracted_assets.values() if asset.ready_to_use),
+                "generation_method": "enhanced_asset_oriented",
+                "requirements_used": requirements is not None
+            },
+            executive_summary=executive_summary,
+            actionable_assets=extracted_assets,
+            usage_guide=usage_guide,
+            next_steps=next_steps,
+            automation_ready=automation_ready,
+            actionability_score=actionability_score
+        )
+        
+        logger.info(f"🎯 DELIVERABLE CREATED: {actionability_score}/100 actionability score, "
+                   f"{len(extracted_assets)} assets, automation: {automation_ready}")
+        
+        return deliverable
+    
+    async def _generate_dynamic_executive_summary(
+        self, 
+        workspace_goal: str, 
+        extracted_assets: Dict[str, ExtractedAsset]
+    ) -> str:
+        """
+        Genera executive summary dinamico basato sugli asset estratti
+        """
+        
+        total_assets = len(extracted_assets)
+        ready_assets = sum(1 for asset in extracted_assets.values() if asset.ready_to_use)
+        avg_actionability = sum(asset.actionability_score for asset in extracted_assets.values()) / total_assets if total_assets > 0 else 0
+        
+        # Asset breakdown
+        asset_types = list(extracted_assets.keys())
+        
+        summary = f"""**Project Objective Achievement Summary**
+
+**Goal:** {workspace_goal}
+
+**Deliverable Overview:**
+This project has successfully produced {total_assets} actionable business assets, with {ready_assets} assets ready for immediate implementation. The overall actionability score is {avg_actionability:.1%}, indicating {self._get_actionability_rating(avg_actionability)} business readiness.
+
+**Key Assets Delivered:**
+{self._format_asset_list(extracted_assets)}
+
+**Business Impact:**
+The delivered assets provide immediate value through {self._describe_business_impact(extracted_assets)}. These deliverables are designed for direct implementation and can generate measurable business outcomes within the first 30 days of deployment.
+
+**Implementation Readiness:**
+{ready_assets}/{total_assets} assets are ready for immediate use without modification. The remaining assets require minimal customization and can be implemented with standard business processes.
+"""
+        
+        return summary.strip()
+    
+    def _get_actionability_rating(self, score: float) -> str:
+        """Converte score in rating testuale"""
+        if score >= 0.8:
+            return "excellent"
+        elif score >= 0.6:
+            return "good"
+        elif score >= 0.4:
+            return "moderate"
+        else:
+            return "basic"
+    
+    def _format_asset_list(self, assets: Dict[str, ExtractedAsset]) -> str:
+        """Formatta lista asset per executive summary"""
+        
+        asset_lines = []
+        for name, asset in assets.items():
+            status = "✅ Ready to use" if asset.ready_to_use else "🔧 Needs customization"
+            asset_lines.append(f"- **{name.replace('_', ' ').title()}**: {status} (Actionability: {asset.actionability_score:.0%})")
+        
+        return "\n".join(asset_lines)
+    
+    def _describe_business_impact(self, assets: Dict[str, ExtractedAsset]) -> str:
+        """Descrive l'impatto business degli asset"""
+        
+        impact_areas = []
+        
+        for name, asset in assets.items():
+            if "contact" in name or "lead" in name:
+                impact_areas.append("lead generation and sales pipeline development")
+            elif "content" in name or "calendar" in name:
+                impact_areas.append("marketing campaign execution and content strategy")
+            elif "training" in name or "program" in name:
+                impact_areas.append("performance improvement and skill development")
+            elif "financial" in name or "budget" in name:
+                impact_areas.append("financial planning and resource optimization")
+            elif "research" in name or "analysis" in name:
+                impact_areas.append("data-driven decision making and strategic insights")
+        
+        if not impact_areas:
+            impact_areas.append("operational efficiency and strategic execution")
+        
+        return ", ".join(set(impact_areas))
+    
+    def _generate_comprehensive_usage_guide(self, assets: Dict[str, ExtractedAsset]) -> Dict[str, str]:
+        """Genera usage guide completa per tutti gli asset"""
+        
+        usage_guide = {}
+        
+        for name, asset in assets.items():
+            if asset.ready_to_use:
+                guide = f"✅ **Ready for immediate use**: This {name.replace('_', ' ')} can be implemented directly. "
+            else:
+                guide = f"🔧 **Requires customization**: Review and adapt this {name.replace('_', ' ')} to your specific context. "
+            
+            # Aggiungi istruzioni specifiche basate sul tipo
+            if "contact" in name:
+                guide += "Import into your CRM system and begin outreach campaigns. Prioritize contacts with highest qualification scores."
+            elif "content" in name:
+                guide += "Load into your content management tool and schedule posts according to the recommended timeline."
+            elif "calendar" in name:
+                guide += "Import into your scheduling system and set up automated posting if available."
+            elif "training" in name:
+                guide += "Begin implementation following the structured program timeline. Track progress using provided metrics."
+            elif "financial" in name:
+                guide += "Review assumptions, customize for your business model, and use for budget planning and investor presentations."
+            else:
+                guide += "Follow the structured format and adapt content to your specific business requirements."
+            
+            usage_guide[name] = guide
+        
+        return usage_guide
+    
+    def _generate_actionable_next_steps(self, assets: Dict[str, ExtractedAsset]) -> List[str]:
+        """Genera next steps azionabili"""
+        
+        next_steps = []
+        
+        # Step 1: Immediate actions
+        ready_assets = [name for name, asset in assets.items() if asset.ready_to_use]
+        if ready_assets:
+            next_steps.append(f"IMMEDIATE (Week 1): Implement ready-to-use assets: {', '.join(ready_assets[:3])}")
+        
+        # Step 2: Customization needed
+        custom_assets = [name for name, asset in assets.items() if not asset.ready_to_use]
+        if custom_assets:
+            next_steps.append(f"SHORT-TERM (Week 2-3): Customize and deploy: {', '.join(custom_assets[:3])}")
+        
+        # Step 3: Monitoring and optimization
+        if len(assets) > 0:
+            next_steps.append("ONGOING (Month 1+): Monitor performance metrics and optimize based on results")
+        
+        # Step 4: Asset-specific recommendations
+        for name, asset in assets.items():
+            if "contact" in name and asset.ready_to_use:
+                next_steps.append(f"Contact Strategy: Begin outreach to top-qualified leads from {name}")
+            elif "content" in name and asset.ready_to_use:
+                next_steps.append(f"Content Execution: Schedule first month of posts from {name}")
+        
+        return next_steps
+    
+    def _calculate_overall_automation_readiness(self, assets: Dict[str, ExtractedAsset]) -> bool:
+        """Calcola automation readiness complessiva"""
+        
+        if not assets:
+            return False
+        
+        automation_scores = []
+        for asset in assets.values():
+            # Considera automation ready se ha score alto e structured data
+            score = 0
+            if asset.actionability_score >= 0.7:
+                score += 0.5
+            if asset.ready_to_use:
+                score += 0.3
+            if isinstance(asset.asset_data, dict) and len(asset.asset_data) >= 3:
+                score += 0.2
+            
+            automation_scores.append(score)
+        
+        avg_automation_score = sum(automation_scores) / len(automation_scores)
+        return avg_automation_score >= 0.6  # 60% threshold
+    
+    def _calculate_overall_actionability_score(self, assets: Dict[str, ExtractedAsset]) -> int:
+        """Calcola actionability score complessivo (0-100)"""
+        
+        if not assets:
+            return 0
+        
+        # Media ponderata degli score individuali
+        total_score = sum(asset.actionability_score for asset in assets.values())
+        avg_score = total_score / len(assets)
+        
+        # Bonus per diversità di asset
+        diversity_bonus = min(len(assets) * 0.05, 0.2)  # Max 20% bonus
+        
+        # Bonus per asset ready-to-use
+        ready_ratio = sum(1 for asset in assets.values() if asset.ready_to_use) / len(assets)
+        ready_bonus = ready_ratio * 0.15  # Max 15% bonus
+        
+        final_score = (avg_score + diversity_bonus + ready_bonus) * 100
+        return min(100, int(final_score))
+
+
+# === INTEGRATION WITH EXISTING ENHANCED DELIVERABLE AGGREGATOR ===
+
+# Estendi la classe esistente EnhancedDeliverableAggregator
+class AssetOrientedDeliverableAggregator(EnhancedDeliverableAggregator):
+    """
+    Estensione della classe esistente per supportare asset-oriented deliverables
+    Mantiene backward compatibility completa
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.asset_extractor = SmartAssetExtractor()
+        self.asset_packager = EnhancedDeliverablePackager()
+        self.requirements_analyzer = DeliverableRequirementsAnalyzer()
+        self.schema_generator = AssetSchemaGenerator()
+        
+        logger.info("Asset-oriented deliverable aggregator initialized")
+    
+    async def check_and_create_final_deliverable(self, workspace_id: str) -> Optional[str]:
+        """
+        ENHANCED VERSION: Controlla e crea deliverable con asset azionabili
+        Fallback alla versione originale se asset-oriented approach fallisce
+        """
+        
+        try:
+            logger.info(f"🎯 ENHANCED DELIVERABLE CHECK: Starting asset-oriented approach for {workspace_id}")
+            
+            # Prima controlla readiness con logica esistente (mantiene compatibilità)
+            if not await self._is_ready_for_final_deliverable_enhanced(workspace_id):
+                logger.debug(f"🎯 NOT READY: Workspace {workspace_id} (using enhanced criteria)")
+                return None
+            
+            # Controlla se deliverable esiste già
+            if await self._final_deliverable_exists_enhanced(workspace_id):
+                logger.info(f"🎯 EXISTS: Final deliverable already exists for {workspace_id}")
+                return None
+            
+            # Tentativo asset-oriented approach
+            try:
+                asset_deliverable_id = await self._create_asset_oriented_deliverable(workspace_id)
+                if asset_deliverable_id:
+                    logger.critical(f"🎯 SUCCESS: Asset-oriented deliverable created: {asset_deliverable_id}")
+                    return asset_deliverable_id
+            except Exception as e:
+                logger.warning(f"Asset-oriented approach failed: {e}, falling back to original method")
+            
+            # Fallback alla versione originale
+            logger.info(f"🎯 FALLBACK: Using original deliverable approach for {workspace_id}")
+            return await super().check_and_create_final_deliverable(workspace_id)
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced deliverable check: {e}", exc_info=True)
+            return None
+    
+    async def _create_asset_oriented_deliverable(self, workspace_id: str) -> Optional[str]:
+        """
+        Crea deliverable usando il nuovo approccio asset-oriented
+        """
+        
+        # 1. Analizza requirements dinamicamente
+        requirements = await self.requirements_analyzer.analyze_deliverable_requirements(workspace_id)
+        
+        # 2. Genera schemi per asset
+        asset_schemas = await self.schema_generator.generate_asset_schemas(requirements)
+        
+        # 3. Raccogli task completati
+        workspace = await get_workspace(workspace_id)
+        tasks = await list_tasks(workspace_id)
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        if len(completed_tasks) < 2:
+            logger.warning(f"Insufficient completed tasks for asset extraction: {len(completed_tasks)}")
+            raise ValueError("Insufficient completed tasks")
+        
+        # 4. Estrai asset azionabili
+        extracted_assets = await self.asset_extractor.extract_actionable_assets(
+            completed_tasks, asset_schemas, workspace_id
+        )
+        
+        if not extracted_assets:
+            logger.warning(f"No actionable assets extracted from {len(completed_tasks)} tasks")
+            raise ValueError("No actionable assets extracted")
+        
+        # 5. Crea deliverable finale
+        actionable_deliverable = await self.asset_packager.create_actionable_deliverable(
+            workspace_id,
+            workspace.get("goal", ""),
+            extracted_assets,
+            requirements.model_dump()
+        )
+        
+        # 6. Crea task deliverable nel database
+        deliverable_task_id = await self._create_asset_deliverable_task(
+            workspace_id, workspace, actionable_deliverable
+        )
+        
+        return deliverable_task_id
+    
+    async def _create_asset_deliverable_task(
+        self,
+        workspace_id: str,
+        workspace: Dict,
+        actionable_deliverable: ActionableDeliverable
+    ) -> Optional[str]:
+        """
+        Crea task deliverable con asset azionabili
+        """
+        
+        try:
+            # Trova agente per deliverable (usa logica esistente)
+            agents = await list_agents(workspace_id)
+            deliverable_agent = await self._find_best_deliverable_agent(
+                agents, DeliverableType.GENERIC_REPORT  # Fallback type
+            )
+            
+            if not deliverable_agent:
+                logger.error(f"No suitable agent for asset deliverable in {workspace_id}")
+                return None
+            
+            # Crea descrizione arricchita
+            description = self._create_asset_deliverable_description(
+                workspace.get("goal", ""), actionable_deliverable
+            )
+            
+            # Nome task con timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            task_name = f"🎯 FINAL ASSET-READY DELIVERABLE ({timestamp})"
+            
+            # Context data arricchito
+            context_data = {
+                "is_final_deliverable": True,
+                "deliverable_aggregation": True,
+                "asset_oriented_deliverable": True,
+                "deliverable_type": "asset_ready_package",
+                "project_phase": "FINALIZATION",
+                "actionability_score": actionable_deliverable.actionability_score,
+                "automation_ready": actionable_deliverable.automation_ready,
+                "total_assets": len(actionable_deliverable.actionable_assets),
+                "ready_to_use_assets": sum(1 for asset in actionable_deliverable.actionable_assets.values() if asset.ready_to_use),
+                "workspace_goal": workspace.get("goal", ""),
+                "creation_timestamp": datetime.now().isoformat(),
+                "triggers_project_completion": True,
+                "enhanced_deliverable_version": "3.0_asset_oriented"
+            }
+            
+            # Serializza actionable_deliverable per il task
+            deliverable_json = actionable_deliverable.model_dump()
+            
+            # Crea task con FIXED priority
+            deliverable_task = await create_task(
+                workspace_id=workspace_id,
+                agent_id=deliverable_agent["id"],
+                name=task_name,
+                description=description,
+                status="pending",
+                priority="high",  # FIXED: Use valid priority value
+                creation_type="asset_oriented_deliverable",
+                context_data={
+                    **context_data,
+                    "precomputed_deliverable": deliverable_json  # Include pre-computed deliverable
+                }
+            )
+            
+            if deliverable_task and deliverable_task.get("id"):
+                logger.critical(f"🎯 ASSET DELIVERABLE CREATED: {deliverable_task['id']} "
+                               f"with {actionable_deliverable.actionability_score}/100 actionability")
+                return deliverable_task["id"]
+            else:
+                logger.error(f"Failed to create asset deliverable task in database")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating asset deliverable task: {e}", exc_info=True)
+            return None
+    
+    def _create_asset_deliverable_description(
+        self,
+        goal: str,
+        actionable_deliverable: ActionableDeliverable
+    ) -> str:
+        """
+        Crea descrizione per il task deliverable con asset azionabili
+        """
+        
+        total_assets = len(actionable_deliverable.actionable_assets)
+        ready_assets = sum(1 for asset in actionable_deliverable.actionable_assets.values() if asset.ready_to_use)
+        
+        description = f"""🎯 **FINAL ASSET-READY DELIVERABLE COMPILATION**
+
+**PROJECT OBJECTIVE:** {goal}
+
+**📦 PRE-COMPUTED DELIVERABLE PACKAGE:**
+This task contains a pre-computed deliverable package with {total_assets} actionable business assets.
+Your job is to format and present this package as the final project deliverable.
+
+**📊 ASSET INVENTORY:**
+- Total Assets: {total_assets}
+- Ready-to-Use: {ready_assets}
+- Actionability Score: {actionable_deliverable.actionability_score}/100
+- Automation Ready: {"Yes" if actionable_deliverable.automation_ready else "No"}
+
+**🎯 YOUR TASK:**
+1. Review the pre-computed deliverable data in your context
+2. Format it into a professional, client-ready presentation
+3. Ensure all assets are properly documented with usage instructions
+4. Create an executive summary that highlights business value
+5. Package everything into a comprehensive final deliverable
+
+**✅ REQUIRED OUTPUT FORMAT:**
+Your detailed_results_json must contain:
+```json
+{{
+  "deliverable_type": "asset_ready_package",
+  "executive_summary": "Professional 2-3 paragraph summary of deliverable value",
+  "actionable_assets": {{
+    "asset_name": {{
+      "data": "Complete asset data ready for use",
+      "usage_instructions": "How to implement this asset",
+      "business_value": "Expected impact and ROI",
+      "automation_potential": "How this can be automated"
+    }}
+  }},
+  "implementation_guide": {{
+    "immediate_actions": ["Week 1 actions"],
+    "short_term_goals": ["Month 1 goals"], 
+    "success_metrics": ["How to measure success"]
+  }},
+  "business_impact_projection": {{
+    "time_to_value": "Expected timeline for ROI",
+    "estimated_impact": "Projected business outcomes",
+    "automation_savings": "Efficiency gains from automation"
+  }}
+}}
+```
+
+**🚨 CRITICAL REQUIREMENTS:**
+- All assets must be immediately actionable (ready-to-copy-paste)
+- Include specific implementation steps for each asset
+- Provide clear ROI projections and success metrics
+- Ensure professional presentation suitable for client delivery
+- This is the FINAL deliverable - make it exceptional
+
+**📋 SUCCESS CRITERIA:**
+✅ Professional executive summary highlighting business value
+✅ All assets formatted for immediate business use  
+✅ Clear implementation roadmap with timelines
+✅ Measurable success criteria and ROI projections
+✅ Ready for client presentation and implementation
+"""
+        
+        return description.strip()
+
+
+# === GLOBAL INSTANCE REPLACEMENT ===
+
+# Sostituisci l'istanza globale con la versione asset-oriented
+deliverable_aggregator = AssetOrientedDeliverableAggregator()
+
+# Mantieni backward compatibility per la funzione helper esistente
+async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
+    """
+    ENHANCED: Helper function che usa il nuovo sistema asset-oriented
+    Mantiene backward compatibility completa
+    """
+    try:
+        return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+    except Exception as e:
+        logger.error(f"Error in enhanced check_and_create_final_deliverable: {e}", exc_info=True)
+        return None
