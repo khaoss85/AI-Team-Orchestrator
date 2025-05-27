@@ -233,13 +233,39 @@ async def get_executor_runtime_status_endpoint():
 
 @router.get("/executor/detailed-stats", response_model=Dict[str, Any])
 async def get_executor_detailed_stats_endpoint():
-    """Get detailed statistics from the task executor."""
+    """Get detailed statistics from the task executor with asset tracking"""
     try:
         stats = task_executor.get_detailed_stats()
         
         # FIX: Mappa session_task_stats a session_stats per compatibilità frontend
         if "session_task_stats" in stats and "session_stats" not in stats:
             stats["session_stats"] = stats.pop("session_task_stats")
+        
+        # NUOVO: Aggiungi asset-oriented statistics
+        recent_activity = task_executor.get_recent_activity(None, 100)
+        
+        asset_activity = {
+            "asset_tasks_processed": 0,
+            "asset_completion_events": 0,
+            "deliverable_triggers": 0,
+            "asset_enhancement_events": 0
+        }
+        
+        for activity in recent_activity:
+            event_type = activity.get("event", "")
+            
+            if "asset" in event_type:
+                if "completed" in event_type:
+                    asset_activity["asset_completion_events"] += 1
+                elif "processed" in event_type:
+                    asset_activity["asset_tasks_processed"] += 1
+                elif "enhancement" in event_type:
+                    asset_activity["asset_enhancement_events"] += 1
+            
+            if "deliverable" in event_type:
+                asset_activity["deliverable_triggers"] += 1
+        
+        stats["asset_tracking"] = asset_activity
         
         return stats
     except Exception as e:
@@ -867,3 +893,124 @@ def _generate_recommendations(
         recommendations.append("✅ System appears healthy. Continue monitoring.")
     
     return recommendations
+
+@router.get("/workspace/{workspace_id}/asset-tracking", response_model=Dict[str, Any])
+async def get_workspace_asset_tracking(workspace_id: UUID):
+    """Get asset-oriented task tracking for a workspace"""
+    try:
+        tasks = await list_tasks(str(workspace_id))
+        
+        # Identifica asset tasks
+        asset_tasks = []
+        completed_asset_tasks = []
+        pending_asset_tasks = []
+        
+        for task in tasks:
+            context_data = task.get("context_data", {}) or {}
+            if isinstance(context_data, dict):
+                if (context_data.get("asset_production") or 
+                    context_data.get("asset_oriented_task") or
+                    "PRODUCE ASSET:" in task.get("name", "").upper()):
+                    
+                    asset_info = {
+                        "task_id": task.get("id"),
+                        "task_name": task.get("name"),
+                        "asset_type": context_data.get("detected_asset_type") or context_data.get("asset_type"),
+                        "status": task.get("status"),
+                        "agent_role": task.get("assigned_to_role"),
+                        "created_at": task.get("created_at"),
+                        "updated_at": task.get("updated_at")
+                    }
+                    
+                    asset_tasks.append(asset_info)
+                    
+                    if task.get("status") == "completed":
+                        completed_asset_tasks.append(asset_info)
+                    elif task.get("status") in ["pending", "in_progress"]:
+                        pending_asset_tasks.append(asset_info)
+        
+        # Calcola statistiche
+        total_assets = len(asset_tasks)
+        completion_rate = len(completed_asset_tasks) / total_assets if total_assets > 0 else 0
+        
+        # Asset types breakdown
+        asset_types = {}
+        for task in asset_tasks:
+            asset_type = task.get("asset_type", "unknown")
+            if asset_type not in asset_types:
+                asset_types[asset_type] = {"total": 0, "completed": 0}
+            asset_types[asset_type]["total"] += 1
+            if task.get("status") == "completed":
+                asset_types[asset_type]["completed"] += 1
+        
+        return {
+            "workspace_id": str(workspace_id),
+            "asset_summary": {
+                "total_asset_tasks": total_assets,
+                "completed_asset_tasks": len(completed_asset_tasks),
+                "pending_asset_tasks": len(pending_asset_tasks),
+                "completion_rate": round(completion_rate * 100, 1),
+                "deliverable_ready": completion_rate >= 0.7  # 70% threshold
+            },
+            "asset_types_breakdown": asset_types,
+            "completed_assets": completed_asset_tasks,
+            "pending_assets": pending_asset_tasks,
+            "analysis_timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting asset tracking for {workspace_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get asset tracking: {str(e)}"
+        )
+
+@router.get("/workspace/{workspace_id}/deliverable-readiness", response_model=Dict[str, Any])
+async def get_deliverable_readiness_status(workspace_id: UUID):
+    """Check if workspace is ready for deliverable creation"""
+    try:
+        from deliverable_aggregator import deliverable_aggregator
+        
+        # Check using enhanced deliverable aggregator
+        is_ready = await deliverable_aggregator._is_ready_for_final_deliverable_enhanced(str(workspace_id))
+        has_existing = await deliverable_aggregator._final_deliverable_exists_enhanced(str(workspace_id))
+        
+        # Get detailed status
+        tasks = await list_tasks(str(workspace_id))
+        completed = [t for t in tasks if t.get("status") == "completed"]
+        pending = [t for t in tasks if t.get("status") == "pending"]
+        
+        # Asset completion analysis
+        asset_tasks = [
+            t for t in tasks 
+            if (isinstance(t.get("context_data"), dict) and 
+                (t.get("context_data", {}).get("asset_production") or 
+                 t.get("context_data", {}).get("asset_oriented_task")))
+        ]
+        
+        completed_assets = [t for t in asset_tasks if t.get("status") == "completed"]
+        
+        return {
+            "workspace_id": str(workspace_id),
+            "is_ready_for_deliverable": is_ready,
+            "has_existing_deliverable": has_existing,
+            "readiness_details": {
+                "total_tasks": len(tasks),
+                "completed_tasks": len(completed),
+                "pending_tasks": len(pending),
+                "completion_rate": len(completed) / len(tasks) if tasks else 0,
+                "asset_tasks": len(asset_tasks),
+                "completed_assets": len(completed_assets),
+                "asset_completion_rate": len(completed_assets) / len(asset_tasks) if asset_tasks else 0
+            },
+            "next_action": "create_deliverable" if is_ready and not has_existing else 
+                          "deliverable_exists" if has_existing else "continue_tasks",
+            "checked_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking deliverable readiness: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check deliverable readiness: {str(e)}"
+        )

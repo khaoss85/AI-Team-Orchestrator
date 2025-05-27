@@ -257,6 +257,79 @@ class BudgetTracker:
                 all_logs.extend(logs)
             return all_logs
 
+class AssetCoordinationMixin:
+    """
+    Mixin per coordinamento asset-oriented nel TaskExecutor esistente
+    Estende funzionalità senza modificare l'architettura base
+    """
+    
+    async def coordinate_asset_oriented_workflow(self, workspace_id: str):
+        """
+        Coordina il workflow asset-oriented per un workspace
+        """
+        
+        try:
+            # Verifica se il workspace ha task asset-oriented in corso
+            asset_tasks = await self._get_asset_oriented_tasks(workspace_id)
+            
+            if asset_tasks:
+                logger.info(f"🎯 ASSET COORDINATION: {len(asset_tasks)} asset tasks in workspace {workspace_id}")
+                
+                # Prioritizza task asset-oriented
+                await self._prioritize_asset_tasks(asset_tasks)
+                
+                # Monitora completamento per deliverable triggering
+                completed_asset_tasks = [t for t in asset_tasks if t.get("status") == "completed"]
+                
+                if len(completed_asset_tasks) >= len(asset_tasks) * 0.8:  # 80% asset tasks completed
+                    logger.info(f"🎯 ASSET THRESHOLD: 80% asset tasks completed, checking deliverable readiness")
+                    
+                    # Trigger enhanced deliverable check
+                    from deliverable_aggregator import check_and_create_final_deliverable
+                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    
+                    if deliverable_id:
+                        logger.critical(f"🎯 ASSET-TRIGGERED DELIVERABLE: {deliverable_id} created for {workspace_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in asset-oriented workflow coordination: {e}")
+    
+    async def _get_asset_oriented_tasks(self, workspace_id: str) -> List[Dict]:
+        """Ottieni task asset-oriented per un workspace"""
+        
+        try:
+            all_tasks = await list_tasks(workspace_id)
+            
+            asset_tasks = []
+            for task in all_tasks:
+                context_data = task.get("context_data", {}) or {}
+                
+                if isinstance(context_data, dict):
+                    if (context_data.get("asset_production") or 
+                        context_data.get("asset_oriented_task") or
+                        "PRODUCE ASSET:" in task.get("name", "")):
+                        asset_tasks.append(task)
+            
+            return asset_tasks
+            
+        except Exception as e:
+            logger.error(f"Error getting asset-oriented tasks: {e}")
+            return []
+    
+    async def _prioritize_asset_tasks(self, asset_tasks: List[Dict]):
+        """Prioritizza task asset-oriented nel sistema"""
+        
+        for task in asset_tasks:
+            if task.get("status") == "pending":
+                # Boost priority per asset tasks
+                try:
+                    await update_task_status(
+                        task["id"], 
+                        "pending",
+                        {"priority_boost": "asset_oriented", "boosted_at": datetime.now().isoformat()}
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to boost priority for asset task {task['id']}: {e}")
 
 class TaskExecutor(AssetCoordinationMixin):
     """Enhanced Task Executor with anti-loop protection and role-based task assignment"""
@@ -2028,80 +2101,6 @@ class TaskExecutor(AssetCoordinationMixin):
 
 # Istanza globale del TaskExecutor
 task_executor = TaskExecutor()
-
-class AssetCoordinationMixin:
-    """
-    Mixin per coordinamento asset-oriented nel TaskExecutor esistente
-    Estende funzionalità senza modificare l'architettura base
-    """
-    
-    async def coordinate_asset_oriented_workflow(self, workspace_id: str):
-        """
-        Coordina il workflow asset-oriented per un workspace
-        """
-        
-        try:
-            # Verifica se il workspace ha task asset-oriented in corso
-            asset_tasks = await self._get_asset_oriented_tasks(workspace_id)
-            
-            if asset_tasks:
-                logger.info(f"🎯 ASSET COORDINATION: {len(asset_tasks)} asset tasks in workspace {workspace_id}")
-                
-                # Prioritizza task asset-oriented
-                await self._prioritize_asset_tasks(asset_tasks)
-                
-                # Monitora completamento per deliverable triggering
-                completed_asset_tasks = [t for t in asset_tasks if t.get("status") == "completed"]
-                
-                if len(completed_asset_tasks) >= len(asset_tasks) * 0.8:  # 80% asset tasks completed
-                    logger.info(f"🎯 ASSET THRESHOLD: 80% asset tasks completed, checking deliverable readiness")
-                    
-                    # Trigger enhanced deliverable check
-                    from deliverable_aggregator import check_and_create_final_deliverable
-                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
-                    
-                    if deliverable_id:
-                        logger.critical(f"🎯 ASSET-TRIGGERED DELIVERABLE: {deliverable_id} created for {workspace_id}")
-            
-        except Exception as e:
-            logger.error(f"Error in asset-oriented workflow coordination: {e}")
-    
-    async def _get_asset_oriented_tasks(self, workspace_id: str) -> List[Dict]:
-        """Ottieni task asset-oriented per un workspace"""
-        
-        try:
-            all_tasks = await list_tasks(workspace_id)
-            
-            asset_tasks = []
-            for task in all_tasks:
-                context_data = task.get("context_data", {}) or {}
-                
-                if isinstance(context_data, dict):
-                    if (context_data.get("asset_production") or 
-                        context_data.get("asset_oriented_task") or
-                        "PRODUCE ASSET:" in task.get("name", "")):
-                        asset_tasks.append(task)
-            
-            return asset_tasks
-            
-        except Exception as e:
-            logger.error(f"Error getting asset-oriented tasks: {e}")
-            return []
-    
-    async def _prioritize_asset_tasks(self, asset_tasks: List[Dict]):
-        """Prioritizza task asset-oriented nel sistema"""
-        
-        for task in asset_tasks:
-            if task.get("status") == "pending":
-                # Boost priority per asset tasks
-                try:
-                    await update_task_status(
-                        task["id"], 
-                        "pending",
-                        {"priority_boost": "asset_oriented", "boosted_at": datetime.now().isoformat()}
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to boost priority for asset task {task['id']}: {e}")
 
 # Funzioni di controllo executor
 async def start_task_executor():

@@ -5,11 +5,12 @@
 1. [Overview del Sistema](#overview-del-sistema)
 2. [Architettura API](#architettura-api)
 3. [Endpoint Reference](#endpoint-reference)
-4. [Modelli di Dati](#modelli-di-dati)
-5. [Flussi di Lavoro](#flussi-di-lavoro)
-6. [Stati e Transizioni](#stati-e-transizioni)
-7. [Monitoring e Debugging](#monitoring-e-debugging)
-8. [Esempi Pratici](#esempi-pratici)
+4. [🆕 Asset Management](#asset-management)
+5. [Modelli di Dati](#modelli-di-dati)
+6. [Flussi di Lavoro](#flussi-di-lavoro)
+7. [Stati e Transizioni](#stati-e-transizioni)
+8. [Monitoring e Debugging](#monitoring-e-debugging)
+9. [Esempi Pratici](#esempi-pratici)
 
 ---
 
@@ -21,6 +22,8 @@
 - **Agenti AI**: Specialisti con ruoli specifici (PM, Analyst, Content Creator, etc.)
 - **Task**: Attività assegnate agli agenti con esecuzione automatica
 - **Handoffs**: Passaggi di lavoro tra agenti
+- **🆕 Asset Production**: Task specifici per produrre asset azionabili
+- **🆕 Deliverable Intelligence**: Analisi dinamica dei requisiti deliverable
 - **Deliverable**: Output finali aggregati del progetto
 
 ### Caratteristiche Principali
@@ -30,6 +33,9 @@
 ✅ **Phase Management**: Gestione fasi progetto (Analysis → Implementation → Finalization)  
 ✅ **Human Feedback**: Sistema di approvazione manuale  
 ✅ **Real-time Monitoring**: Dashboard per monitoraggio in tempo reale  
+✅ **🆕 Asset-Oriented Workflow**: Produzione automatica di asset business-ready  
+✅ **🆕 Dynamic Requirements Analysis**: Analisi intelligente dei requisiti deliverable  
+✅ **🆕 Schema-Driven Validation**: Validazione asset contro schemi dinamici  
 
 ---
 
@@ -42,14 +48,15 @@ http://localhost:8000
 
 ### Struttura Router
 ```
-/workspaces     # Gestione progetti
-/agents         # Gestione agenti AI
-/director       # Creazione team automatica
-/tools          # Tool personalizzati
-/monitoring     # Monitoraggio sistema
-/human-feedback # Approvazioni manuali
-/projects       # Insights e deliverable
-/delegation     # Analisi delegazione
+/workspaces         # Gestione progetti
+/agents             # Gestione agenti AI
+/director           # Creazione team automatica
+/tools              # Tool personalizzati
+/monitoring         # Monitoraggio sistema
+/human-feedback     # Approvazioni manuali
+/projects           # Insights e deliverable
+/delegation         # Analisi delegazione
+/asset-management   # 🆕 Gestione asset e schemi
 ```
 
 ### Headers Richiesti
@@ -294,6 +301,73 @@ GET /monitoring/workspace/{workspace_id}/status
 }
 ```
 
+#### 🆕 Asset Tracking
+```http
+GET /monitoring/workspace/{workspace_id}/asset-tracking
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "asset_summary": {
+    "total_asset_tasks": 5,
+    "completed_asset_tasks": 3,
+    "pending_asset_tasks": 2,
+    "completion_rate": 60.0,
+    "deliverable_ready": false
+  },
+  "asset_types_breakdown": {
+    "content_calendar": {"total": 1, "completed": 1},
+    "contact_database": {"total": 1, "completed": 1},
+    "training_program": {"total": 1, "completed": 0}
+  },
+  "completed_assets": [
+    {
+      "task_id": "uuid",
+      "task_name": "PRODUCE ASSET: Instagram Content Calendar",
+      "asset_type": "content_calendar",
+      "status": "completed",
+      "agent_role": "Content Specialist"
+    }
+  ],
+  "pending_assets": [
+    {
+      "task_id": "uuid",
+      "task_name": "PRODUCE ASSET: Lead Contact Database",
+      "asset_type": "contact_database",
+      "status": "pending",
+      "agent_role": "Data Analyst"
+    }
+  ]
+}
+```
+
+#### 🆕 Deliverable Readiness
+```http
+GET /monitoring/workspace/{workspace_id}/deliverable-readiness
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "is_ready_for_deliverable": true,
+  "has_existing_deliverable": false,
+  "readiness_details": {
+    "total_tasks": 20,
+    "completed_tasks": 15,
+    "pending_tasks": 5,
+    "completion_rate": 0.75,
+    "asset_tasks": 5,
+    "completed_assets": 4,
+    "asset_completion_rate": 0.8
+  },
+  "next_action": "create_deliverable",
+  "checked_at": "2024-01-20T16:00:00Z"
+}
+```
+
 #### Avvia Team
 ```http
 POST /monitoring/workspace/{workspace_id}/start
@@ -308,7 +382,7 @@ POST /monitoring/workspace/{workspace_id}/start
 }
 ```
 
-#### Analisi Task
+#### Analisi Task (Enhanced)
 ```http
 GET /monitoring/workspace/{workspace_id}/task-analysis
 ```
@@ -411,7 +485,66 @@ GET /projects/{workspace_id}/insights
 }
 ```
 
-#### Deliverable Progetto
+#### 🆕 Asset Insights
+```http
+GET /projects/{workspace_id}/asset-insights
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "deliverable_category": "marketing",
+  "requirements_analysis": {
+    "total_assets_needed": 3,
+    "required_asset_types": ["content_calendar", "audience_analysis", "contact_database"],
+    "asset_coverage_rate": 66.7,
+    "covered_assets": ["content_calendar", "contact_database"],
+    "missing_assets": ["audience_analysis"]
+  },
+  "asset_schemas_available": {
+    "content_calendar": {
+      "automation_ready": true,
+      "validation_rules_count": 3,
+      "main_fields": ["posts", "posting_schedule", "performance_targets"]
+    }
+  },
+  "current_asset_tasks": [
+    {
+      "task_id": "uuid",
+      "name": "Create Instagram Content Calendar",
+      "status": "completed",
+      "asset_type": "content_calendar",
+      "agent_role": "Content Specialist"
+    }
+  ],
+  "recommendations": [
+    "Create audience_analysis production task"
+  ]
+}
+```
+
+#### 🆕 Trigger Asset Analysis
+```http
+POST /projects/{workspace_id}/trigger-asset-analysis
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Asset requirements analysis completed",
+  "workspace_id": "uuid",
+  "analysis_results": {
+    "deliverable_category": "marketing",
+    "assets_needed": 3,
+    "asset_types": ["content_calendar", "audience_analysis", "contact_database"]
+  },
+  "triggered_at": "2024-01-20T16:30:00Z"
+}
+```
+
+#### Deliverable Progetto (Enhanced)
 ```http
 GET /projects/{workspace_id}/deliverables
 ```
@@ -424,12 +557,23 @@ GET /projects/{workspace_id}/deliverables
   "key_outputs": [
     {
       "task_id": "uuid",
-      "task_name": "🎯 FINAL DELIVERABLE: Content Strategy",
-      "output": "Executive Summary: Comprehensive Instagram marketing strategy...",
+      "task_name": "🎯 FINAL ASSET-READY DELIVERABLE",
+      "output": "Executive Summary: Comprehensive Instagram marketing strategy with 3 actionable business assets ready for immediate implementation...",
       "agent_name": "Content Strategist",
       "agent_role": "Content Strategy Specialist",
       "type": "final_deliverable",
-      "created_at": "2024-01-20T15:00:00Z"
+      "created_at": "2024-01-20T15:00:00Z",
+      "title": "Final Asset-Ready Deliverable",
+      "key_insights": [
+        "Content calendar with 30 days of posts ready for scheduling",
+        "Qualified contact database with 150+ leads",
+        "Audience analysis report with actionable insights"
+      ],
+      "metrics": {
+        "actionability_score": 95,
+        "automation_ready": true,
+        "assets_included": 3
+      }
     }
   ],
   "insight_cards": [
@@ -448,14 +592,14 @@ GET /projects/{workspace_id}/deliverables
     }
   ],
   "final_recommendations": [
-    "Focus on video content for higher engagement",
-    "Implement consistent posting schedule",
-    "Use data-driven hashtag strategy"
+    "Implement content calendar using provided schedule",
+    "Begin outreach to qualified leads in contact database",
+    "Use audience insights for targeted content creation"
   ],
   "next_steps": [
-    "Implement content calendar",
-    "Set up analytics tracking",
-    "Launch first campaign"
+    "IMMEDIATE (Week 1): Upload content calendar to scheduling tool",
+    "SHORT-TERM (Week 2-3): Import contact database to CRM",
+    "ONGOING (Month 1+): Monitor performance metrics and optimize"
   ],
   "completion_status": "awaiting_review",
   "generated_at": "2024-01-20T15:30:00Z"
@@ -570,6 +714,135 @@ GET /tools/retrieve-data/{workspace_id}/{key}
 
 ---
 
+## 🆕 Asset Management
+
+### Asset Requirements Analysis
+
+#### Get Asset Requirements
+```http
+GET /asset-management/workspace/{workspace_id}/requirements
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "deliverable_category": "marketing",
+  "primary_assets_needed": [
+    {
+      "asset_type": "content_calendar",
+      "asset_format": "structured_data",
+      "actionability_level": "ready_to_use",
+      "business_impact": "immediate",
+      "priority": 1,
+      "validation_criteria": ["posts_with_dates", "complete_captions", "hashtags_included"]
+    },
+    {
+      "asset_type": "qualified_contact_database",
+      "asset_format": "structured_data", 
+      "actionability_level": "ready_to_use",
+      "business_impact": "immediate",
+      "priority": 1,
+      "validation_criteria": ["contact_info_complete", "qualification_scores", "next_actions"]
+    }
+  ],
+  "deliverable_structure": {
+    "executive_summary": "required",
+    "actionable_assets": {
+      "content_calendar": {"asset_type": "content_calendar"},
+      "qualified_contact_database": {"asset_type": "qualified_contact_database"}
+    },
+    "usage_guide": "required",
+    "automation_instructions": "optional"
+  },
+  "generated_at": "2024-01-20T16:00:00Z"
+}
+```
+
+### Asset Schemas
+
+#### Get Asset Schemas
+```http
+GET /asset-management/workspace/{workspace_id}/schemas
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "available_schemas": {
+    "content_calendar": {
+      "asset_name": "content_calendar",
+      "schema_definition": {
+        "posts": [
+          {
+            "date": "YYYY-MM-DD",
+            "time": "HH:MM",
+            "platform": "instagram|facebook|linkedin|twitter",
+            "content_type": "image|video|carousel|story",
+            "caption": "string",
+            "hashtags": ["string"],
+            "visual_description": "string",
+            "call_to_action": "string"
+          }
+        ],
+        "posting_schedule": {
+          "frequency": "daily|weekly|biweekly",
+          "optimal_times": ["HH:MM"],
+          "content_mix": {
+            "educational": "percentage",
+            "promotional": "percentage"
+          }
+        }
+      },
+      "validation_rules": ["posts_with_dates", "complete_captions"],
+      "usage_instructions": "Import into your content management tool and schedule posts according to the recommended timeline.",
+      "automation_ready": true
+    }
+  },
+  "schema_count": 2,
+  "generated_at": "2024-01-20T16:00:00Z"
+}
+```
+
+### Asset Extraction Status
+
+#### Get Extraction Status
+```http
+GET /asset-management/workspace/{workspace_id}/extraction-status
+```
+
+**Response:**
+```json
+{
+  "workspace_id": "uuid",
+  "extraction_summary": {
+    "total_completed_tasks": 18,
+    "asset_production_tasks": 5,
+    "extraction_ready_tasks": 4,
+    "extraction_readiness_rate": 80.0
+  },
+  "extraction_candidates": [
+    {
+      "task_id": "uuid",
+      "task_name": "PRODUCE ASSET: Instagram Content Calendar",
+      "asset_type": "content_calendar",
+      "has_structured_output": true,
+      "output_size": 2540,
+      "extraction_ready": true,
+      "completed_at": "2024-01-20T14:30:00Z"
+    }
+  ],
+  "next_steps": [
+    "Run asset extraction on ready tasks",
+    "Create final deliverable with extracted assets"
+  ],
+  "analyzed_at": "2024-01-20T16:00:00Z"
+}
+```
+
+---
+
 ## 📋 Modelli di Dati
 
 ### Workspace
@@ -621,7 +894,7 @@ interface Agent {
 }
 ```
 
-### Task
+### Task (Enhanced)
 ```typescript
 interface Task {
   id: string;
@@ -636,20 +909,95 @@ interface Task {
   depends_on_task_ids?: string[];
   estimated_effort_hours?: number;
   deadline?: string;
-  context_data?: any;
+  context_data?: {
+    // 🆕 Asset-oriented fields
+    asset_production?: boolean;
+    asset_oriented_task?: boolean;
+    asset_type?: string;
+    detected_asset_type?: string;
+    project_phase?: "ANALYSIS" | "IMPLEMENTATION" | "FINALIZATION";
+    // Other context data...
+    [key: string]: any;
+  };
   result?: any;
   created_at: string;
   updated_at: string;
 }
 ```
 
-### Task Execution Result
+### 🆕 Asset Requirements
+```typescript
+interface AssetRequirement {
+  asset_type: string;
+  asset_format: "structured_data" | "document" | "spreadsheet";
+  actionability_level: "ready_to_use" | "needs_customization" | "template";
+  business_impact: "immediate" | "short_term" | "strategic";
+  priority: number;
+  validation_criteria: string[];
+}
+
+interface DeliverableRequirements {
+  workspace_id: string;
+  deliverable_category: string;
+  primary_assets_needed: AssetRequirement[];
+  deliverable_structure: {
+    executive_summary: string;
+    actionable_assets: Record<string, AssetRequirement>;
+    usage_guide: string;
+    automation_instructions?: string;
+  };
+  generated_at: string;
+}
+```
+
+### 🆕 Asset Schema
+```typescript
+interface AssetSchema {
+  asset_name: string;
+  schema_definition: Record<string, any>;
+  validation_rules: string[];
+  usage_instructions: string;
+  automation_ready: boolean;
+}
+```
+
+### 🆕 Asset Tracking
+```typescript
+interface AssetTrackingData {
+  workspace_id: string;
+  asset_summary: {
+    total_asset_tasks: number;
+    completed_asset_tasks: number;
+    pending_asset_tasks: number;
+    completion_rate: number;
+    deliverable_ready: boolean;
+  };
+  asset_types_breakdown: Record<string, {
+    total: number;
+    completed: number;
+  }>;
+  completed_assets: AssetTaskInfo[];
+  pending_assets: AssetTaskInfo[];
+}
+
+interface AssetTaskInfo {
+  task_id: string;
+  task_name: string;
+  asset_type?: string;
+  status: string;
+  agent_role?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+```
+
+### Task Execution Result (Enhanced)
 ```typescript
 interface TaskExecutionResult {
   task_id: string;
   status: "completed" | "failed" | "requires_handoff";
   summary: string;
-  detailed_results_json?: string;
+  detailed_results_json?: string; // 🆕 Can contain structured asset data
   next_steps?: string[];
   suggested_handoff_target_role?: string;
   resources_consumed_json?: string;
@@ -660,6 +1008,10 @@ interface TaskExecutionResult {
     input: number;
     output: number;
   };
+  // 🆕 Asset-specific fields
+  asset_validation_score?: number;
+  actionability_score?: number;
+  automation_ready?: boolean;
 }
 ```
 
@@ -685,7 +1037,29 @@ graph TD
 3. `POST /director/approve/{workspace_id}` - Approva e crea agenti
 4. `POST /monitoring/workspace/{workspace_id}/start` - Avvia il team
 
-### 2. Monitoraggio Progetto
+### 2. 🆕 Workflow Asset-Oriented
+
+```mermaid
+graph TD
+    A[Progetto Attivo] --> B[Analisi Requirements]
+    B --> C[Generazione Schemi Asset]
+    C --> D[Creazione Task Asset]
+    D --> E[Produzione Asset]
+    E --> F[Validazione Asset]
+    F --> G[Estrazione Asset]
+    G --> H[Aggregazione Deliverable]
+    H --> I[Deliverable Finale]
+```
+
+**Sequenza API Asset-Oriented:**
+1. `GET /asset-management/workspace/{id}/requirements` - Analizza requirements
+2. `GET /asset-management/workspace/{id}/schemas` - Ottieni schemi
+3. `POST /agents/{workspace_id}/tasks` - Crea asset production task
+4. `GET /monitoring/workspace/{id}/asset-tracking` - Monitora progresso
+5. `GET /asset-management/workspace/{id}/extraction-status` - Status estrazione
+6. `GET /projects/{id}/deliverables` - Deliverable finale con asset
+
+### 3. Monitoraggio Progetto (Enhanced)
 
 ```mermaid
 graph TD
@@ -693,10 +1067,14 @@ graph TD
     A --> C[Analisi Task]
     A --> D[Budget Tracking]
     A --> E[Insights Progetto]
-    B --> F[Azioni Correttive]
-    C --> F
-    D --> F
-    E --> G[Deliverable Ready]
+    A --> F[🆕 Asset Tracking]
+    A --> G[🆕 Deliverable Readiness]
+    B --> H[Azioni Correttive]
+    C --> H
+    D --> H
+    E --> I[Deliverable Ready]
+    F --> I
+    G --> I
 ```
 
 **Endpoint Chiave:**
@@ -704,28 +1082,35 @@ graph TD
 - `GET /monitoring/workspace/{id}/task-analysis` - Analisi dettagliata
 - `GET /monitoring/workspace/{id}/budget` - Monitoraggio costi
 - `GET /projects/{id}/insights` - Insights avanzati
+- `GET /monitoring/workspace/{id}/asset-tracking` - 🆕 Tracking asset
+- `GET /monitoring/workspace/{id}/deliverable-readiness` - 🆕 Readiness deliverable
 
-### 3. Gestione Fasi Progetto
+### 4. Gestione Fasi Progetto (Enhanced)
 
-Il sistema gestisce automaticamente 3 fasi:
+Il sistema gestisce automaticamente 3 fasi con **asset intelligence**:
 
 1. **ANALYSIS** - Ricerca, analisi competitor, audience
 2. **IMPLEMENTATION** - Strategia, framework, pianificazione  
-3. **FINALIZATION** - Creazione contenuti, deliverable finali
+3. **FINALIZATION** - 🆕 **Asset production**, deliverable finali
 
 **Endpoint Monitoraggio Fasi:**
 ```http
 GET /monitoring/workspace/{workspace_id}/finalization-status
 ```
 
-**Response:**
+**Response (Enhanced):**
 ```json
 {
   "finalization_phase_active": true,
   "finalization_tasks_completed": 2,
   "final_deliverables_completed": 1,
   "project_completion_percentage": 85,
-  "next_action_needed": "COMPLETE_DELIVERABLES"
+  "next_action_needed": "COMPLETE_DELIVERABLES",
+  "asset_production_status": {
+    "asset_tasks_in_finalization": 3,
+    "completed_asset_tasks": 2,
+    "asset_completion_rate": 66.7
+  }
 }
 ```
 
@@ -736,18 +1121,27 @@ GET /monitoring/workspace/{workspace_id}/finalization-status
 ### Stati Workspace
 - **created** → **active** (quando viene avviato il team)
 - **active** → **paused** (pausa manuale)
-- **active** → **completed** (progetto finito)
+- **active** → **completed** (progetto finito con deliverable)
 - **active** → **needs_intervention** (problemi rilevati)
 
-### Stati Task
+### Stati Task (Enhanced)
 - **pending** → **in_progress** → **completed**
 - **pending** → **in_progress** → **failed**
 - **pending** → **canceled**
+- **🆕 Asset Production States:**
+  - **asset_production: true** (task marcato per asset)
+  - **asset_type: "content_calendar"** (tipo asset da produrre)
+  - **project_phase: "FINALIZATION"** (fase di produzione asset)
 
 ### Stati Agent
 - **created** → **active** → **paused**/**terminated**
 
-### Gestione Errori
+### 🆕 Asset States
+- **Requirements**: **analyzed** → **schemas_generated** → **tasks_created**
+- **Asset Tasks**: **pending** → **producing** → **validating** → **extracted**
+- **Deliverable**: **not_ready** → **ready** → **creating** → **completed**
+
+### Gestione Errori (Enhanced)
 
 **Runaway Detection**: Il sistema rileva automaticamente loop infiniti
 ```http
@@ -760,16 +1154,24 @@ POST /monitoring/workspace/{id}/reset-runaway
 POST /monitoring/tasks/{task_id}/reset
 ```
 
+**🆕 Asset Validation**: Verifica qualità asset
+```http
+GET /asset-management/workspace/{id}/extraction-status
+```
+
 ---
 
 ## 🔍 Monitoring e Debugging
 
-### Dashboard Real-time
+### Dashboard Real-time (Enhanced)
 
 **Endpoint Chiave per Dashboard:**
 ```javascript
 // Status generale ogni 5 secondi
 GET /monitoring/workspace/{id}/status
+
+// 🆕 Asset tracking ogni 10 secondi
+GET /monitoring/workspace/{id}/asset-tracking
 
 // Attività recente ogni 10 secondi  
 GET /monitoring/workspace/{id}/activity?limit=20
@@ -777,30 +1179,40 @@ GET /monitoring/workspace/{id}/activity?limit=20
 // Budget ogni 30 secondi
 GET /monitoring/workspace/{id}/budget
 
+// 🆕 Deliverable readiness ogni 30 secondi
+GET /monitoring/workspace/{id}/deliverable-readiness
+
 // Analisi completa ogni 2 minuti
 GET /monitoring/workspace/{id}/task-analysis
+
+// 🆕 Asset insights ogni 5 minuti
+GET /projects/{id}/asset-insights
 ```
 
-### Indicatori di Salute
+### Indicatori di Salute (Enhanced)
 
 **Health Score**: 0-100 basato su:
 - Tasso di completamento task
 - Ratio fallimenti  
 - Attività agenti
 - Performance temporale
+- 🆕 **Asset completion rate**
+- 🆕 **Deliverable readiness score**
 
 **Warning Signs:**
 - `health_score < 60` - Problemi performance
 - `runaway_detected: true` - Loop infiniti
 - `excessive_handoffs: true` - Troppi passaggi
 - `stuck_agents: [...]` - Agenti inattivi
+- 🆕 `asset_completion_rate < 0.5` - Asset production lenta
+- 🆕 `deliverable_ready: false` - Deliverable non pronto
 
-### Log e Debug
+### Log e Debug (Enhanced)
 
 **Executor Status:**
 ```http
 GET /monitoring/executor/status
-GET /monitoring/executor/detailed-stats
+GET /monitoring/executor/detailed-stats  # 🆕 Include asset metrics
 ```
 
 **Controllo Executor:**
@@ -808,3 +1220,114 @@ GET /monitoring/executor/detailed-stats
 POST /monitoring/executor/pause
 POST /monitoring/executor/resume
 ```
+
+**🆕 Asset Debugging:**
+```http
+# Trigger manual asset analysis
+POST /projects/{workspace_id}/trigger-asset-analysis
+
+# Check asset extraction readiness
+GET /asset-management/workspace/{id}/extraction-status
+
+# View asset schemas for debugging
+GET /asset-management/workspace/{id}/schemas
+```
+
+---
+
+## 📊 Esempi Pratici
+
+### Esempio Dashboard Component (React)
+
+```typescript
+import React, { useState, useEffect } from 'react';
+
+interface DashboardData {
+  status: any;
+  assetTracking: any;
+  deliverableReadiness: any;
+  budget: any;
+}
+
+export const WorkspaceDashboard: React.FC<{workspaceId: string}> = ({ workspaceId }) => {
+  const [data, setData] = useState<DashboardData>();
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      const [status, assets, readiness, budget] = await Promise.all([
+        fetch(`/monitoring/workspace/${workspaceId}/status`).then(r => r.json()),
+        fetch(`/monitoring/workspace/${workspaceId}/asset-tracking`).then(r => r.json()),
+        fetch(`/monitoring/workspace/${workspaceId}/deliverable-readiness`).then(r => r.json()),
+        fetch(`/monitoring/workspace/${workspaceId}/budget`).then(r => r.json())
+      ]);
+      
+      setData({
+        status,
+        assetTracking: assets,
+        deliverableReadiness: readiness,
+        budget
+      });
+    };
+    
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // Update every 10s
+    
+    return () => clearInterval(interval);
+  }, [workspaceId]);
+
+  if (!data) return <div>Loading...</div>;
+
+  return (
+    <div className="dashboard">
+      {/* Status Overview */}
+      <div className="status-card">
+        <h3>Project Status</h3>
+        <p>Phase: {data.status.current_state?.phase}</p>
+        <p>Progress: {data.status.overview?.progress_percentage}%</p>
+        <p>Health Score: {data.status.overview?.health_score}/100</p>
+      </div>
+
+      {/* 🆕 Asset Tracking */}
+      <div className="asset-card">
+        <h3>Asset Production</h3>
+        <p>Completed Assets: {data.assetTracking.asset_summary?.completed_asset_tasks}</p>
+        <p>Pending Assets: {data.assetTracking.asset_summary?.pending_asset_tasks}</p>
+        <p>Completion Rate: {data.assetTracking.asset_summary?.completion_rate}%</p>
+        {data.assetTracking.asset_summary?.deliverable_ready && (
+          <div className="ready-indicator">✅ Deliverable Ready!</div>
+        )}
+      </div>
+
+      {/* 🆕 Deliverable Readiness */}
+      <div className="readiness-card">
+        <h3>Deliverable Status</h3>
+        <p>Ready: {data.deliverableReadiness.is_ready_for_deliverable ? 'Yes' : 'No'}</p>
+        <p>Next Action: {data.deliverableReadiness.next_action}</p>
+        {data.deliverableReadiness.next_action === 'create_deliverable' && (
+          <button onClick={() => createDeliverable(workspaceId)}>
+            Create Final Deliverable
+          </button>
+        )}
+      </div>
+
+      {/* Budget */}
+      <div className="budget-card">
+        <h3>Budget</h3>
+        <p>Used: ${data.budget.total_cost}</p>
+        <p>Limit: ${data.budget.budget_limit}</p>
+        <p>Usage: {data.budget.budget_percentage}%</p>
+      </div>
+    </div>
+  );
+};
+
+const createDeliverable = async (workspaceId: string) => {
+  // This would trigger the deliverable creation process
+  const response = await fetch(`/projects/${workspaceId}/deliverables`, {
+    method: 'POST'
+  });
+  console.log('Deliverable creation triggered');
+};
+```
+
+Questo README aggiornato ora include tutte le nuove funzionalità asset-oriented mantenendo la struttura e lo stile originale, fornendo una documentazione completa per il frontend delle nuove capabilities del sistema.
