@@ -68,7 +68,6 @@ const AssetActionCard: React.FC<{
   );
 };
 
-// NEW: Asset Dashboard Widget
 const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }) => {
   const [assetData, setAssetData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -85,9 +84,10 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
   useEffect(() => {
     const fetchAssetData = async () => {
       try {
+        // 🔧 FIXED: Use correct API paths
         const [trackingData, readinessData] = await Promise.all([
-          api.assetManagement.getAssetTracking(workspaceId),
-          api.assetManagement.getDeliverableReadiness(workspaceId)
+          api.monitoring.getAssetTracking(workspaceId),      
+          api.monitoring.getDeliverableReadiness(workspaceId) 
         ]);
         setAssetData({ tracking: trackingData, readiness: readinessData });
       } catch (error) {

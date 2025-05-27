@@ -1,10 +1,9 @@
-// frontend/src/app/projects/[id]/asset-analysis/page.tsx - ASSET ANALYSIS PAGE
+// frontend/src/app/projects/[id]/asset-analysis/page.tsx - FIXED VERSION
 
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, use } from 'react';
 import Link from 'next/link';
-import { api } from '@/utils/api';
 import { useAssetManagement } from '@/hooks/useAssetManagement';
 
 type Props = {
@@ -16,11 +15,16 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
   const params = use(paramsPromise);
   const { id } = params;
 
+  // 🆕 FIXED: Use the enhanced hook properly
   const {
+    tracking,
     requirements,
     schemas,
     extractionStatus,
+    assets,
+    assetDisplayData,
     getAssetCompletionStats,
+    triggerAssetAnalysis,
     loading,
     error,
     refresh
@@ -33,10 +37,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
   const handleTriggerAnalysis = async () => {
     try {
       setTriggeringAnalysis(true);
-      await api.projects.triggerAssetAnalysis(id);
-      setTimeout(() => {
-        refresh();
-      }, 2000);
+      await triggerAssetAnalysis();
     } catch (error) {
       console.error('Error triggering analysis:', error);
     } finally {
@@ -130,6 +131,57 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
           </div>
         </div>
       </div>
+
+      {/* 🆕 NEW: Processed Assets Overview */}
+      {assetDisplayData.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
+          <h2 className="text-lg font-semibold mb-4">📦 Asset Azionabili Prodotti</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {assetDisplayData.map((assetData, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium capitalize">
+                    {assetData.asset.asset_name.replace(/_/g, ' ')}
+                  </h3>
+                  {assetData.asset.ready_to_use ? (
+                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                      ✅ Pronto
+                    </span>
+                  ) : (
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                      🔧 In lavorazione
+                    </span>
+                  )}
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium">Azionabilità:</span>
+                    <span className="ml-2">{Math.round(assetData.asset.actionability_score * 100)}%</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Validazione:</span>
+                    <span className="ml-2">{Math.round(assetData.asset.validation_score * 100)}%</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Task origine:</span>
+                    <span className="ml-2 font-mono text-xs">{assetData.task_info.task_id.substring(0, 8)}...</span>
+                  </div>
+                </div>
+
+                {assetData.schema && (
+                  <div className="mt-3">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      📐 Schema disponibile
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Requirements Analysis */}
       {requirements && (
@@ -323,7 +375,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
       )}
 
       {/* No Data State */}
-      {!requirements && !Object.keys(schemas).length && !extractionStatus && (
+      {!requirements && !Object.keys(schemas).length && !extractionStatus && assetDisplayData.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
           <div className="text-6xl mb-4">🔬</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna Analisi Asset Disponibile</h3>

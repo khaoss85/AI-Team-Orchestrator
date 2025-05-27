@@ -1,23 +1,14 @@
+// frontend/src/components/AssetDashboard.tsx - ENHANCED & UNIFIED VERSION
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { api } from '@/utils/api';
-import type { 
-  AssetTrackingData, 
-  ActionableAsset, 
-  AssetTaskInfo,
-  AssetRequirement,
-  AssetSchema
-} from '@/types';
+import React, { useState } from 'react';
+import { useAssetManagement } from '@/hooks/useAssetManagement';
+import ActionableAssetViewer from './ActionableAssetViewer';
+import type { ActionableAsset } from '@/types';
 
 interface AssetDashboardProps {
   workspaceId: string;
-}
-
-interface AssetDisplayData {
-  asset: ActionableAsset;
-  task_info: AssetTaskInfo;
-  schema?: AssetSchema;
 }
 
 // Asset Viewer Component per singolo asset
@@ -25,8 +16,9 @@ const AssetViewer: React.FC<{
   asset: ActionableAsset;
   onDownload?: () => void;
   onUse?: () => void;
+  onViewDetails?: () => void;
   showActions?: boolean;
-}> = ({ asset, onDownload, onUse, showActions = true }) => {
+}> = ({ asset, onDownload, onUse, onViewDetails, showActions = true }) => {
   const getActionabilityColor = (score: number) => {
     if (score >= 0.8) return 'text-green-600 bg-green-50 border-green-200';
     if (score >= 0.6) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
@@ -189,10 +181,23 @@ const AssetViewer: React.FC<{
         {/* Actions */}
         {showActions && (
           <div className="mt-6 flex space-x-3">
+            {onViewDetails && (
+              <button
+                onClick={onViewDetails}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Visualizza Dettagli
+              </button>
+            )}
+
             {onDownload && (
               <button
                 onClick={onDownload}
-                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center justify-center"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition flex items-center justify-center"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -204,7 +209,7 @@ const AssetViewer: React.FC<{
             {asset.ready_to_use && onUse && (
               <button
                 onClick={onUse}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition flex items-center justify-center"
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition flex items-center justify-center"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -235,72 +240,24 @@ const AssetViewer: React.FC<{
 
 // Main Asset Dashboard Component
 export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
-  const [tracking, setTracking] = useState<AssetTrackingData | null>(null);
-  const [requirements, setRequirements] = useState<any>(null);
-  const [schemas, setSchemas] = useState<Record<string, AssetSchema>>({});
-  const [assets, setAssets] = useState<AssetDisplayData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 🆕 FIXED: Use enhanced hook properly
+  const {
+    tracking,
+    requirements,
+    schemas,
+    assets,
+    assetDisplayData,
+    getAssetCompletionStats,
+    triggerAssetAnalysis,
+    loading,
+    error,
+    refresh
+  } = useAssetManagement(workspaceId);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'requirements'>('overview');
+  const [selectedAsset, setSelectedAsset] = useState<ActionableAsset | null>(null);
 
-  useEffect(() => {
-    fetchAssetData();
-  }, [workspaceId]);
-
-  const fetchAssetData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch all asset-related data
-      const [trackingData, requirementsData, schemasData] = await Promise.all([
-        api.monitoring.getAssetTracking(workspaceId),
-        api.assetManagement.getRequirements(workspaceId).catch(e => {
-          console.warn('Requirements not available:', e);
-          return null;
-        }),
-        api.assetManagement.getSchemas(workspaceId).catch(e => {
-          console.warn('Schemas not available:', e);
-          return { available_schemas: {} };
-        })
-      ]);
-
-      setTracking(trackingData);
-      setRequirements(requirementsData);
-      setSchemas(schemasData?.available_schemas || {});
-
-      // Process completed assets
-      const processedAssets: AssetDisplayData[] = [];
-      for (const completedAsset of trackingData.completed_assets) {
-        // For now, create a mock ActionableAsset from the task info
-        // In a real implementation, this would come from the extraction API
-        const mockAsset: ActionableAsset = {
-          asset_name: completedAsset.asset_type || 'unknown_asset',
-          asset_data: { placeholder: 'Asset data would be here from extraction' },
-          source_task_id: completedAsset.task_id,
-          extraction_method: 'automatic',
-          validation_score: 0.85,
-          actionability_score: 0.9,
-          ready_to_use: true,
-          usage_instructions: 'Asset is ready for immediate use',
-          automation_ready: true
-        };
-
-        processedAssets.push({
-          asset: mockAsset,
-          task_info: completedAsset,
-          schema: schemas[completedAsset.asset_type || '']
-        });
-      }
-
-      setAssets(processedAssets);
-    } catch (err) {
-      console.error('Error fetching asset data:', err);
-      setError(err instanceof Error ? err.message : 'Errore nel caricamento asset');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const assetStats = getAssetCompletionStats();
 
   const handleDownloadAsset = (asset: ActionableAsset) => {
     const dataStr = JSON.stringify(asset.asset_data, null, 2);
@@ -320,6 +277,10 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
     const dataStr = JSON.stringify(asset.asset_data, null, 2);
     navigator.clipboard.writeText(dataStr);
     alert('Asset copiato negli appunti! Puoi ora incollarlo nel tuo strumento preferito.');
+  };
+
+  const handleViewAssetDetails = (asset: ActionableAsset) => {
+    setSelectedAsset(asset);
   };
 
   if (loading) {
@@ -347,7 +308,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
           <h3 className="text-lg font-medium text-gray-900 mb-2">Errore nel caricamento</h3>
           <p className="text-gray-500 mb-4">{error}</p>
           <button 
-            onClick={fetchAssetData}
+            onClick={refresh}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition"
           >
             Riprova
@@ -367,7 +328,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
             <p className="text-gray-600">Risultati business-ready pronti per l'implementazione</p>
           </div>
           <button 
-            onClick={fetchAssetData}
+            onClick={refresh}
             className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-md text-sm hover:bg-indigo-100 transition"
           >
             Aggiorna
@@ -380,7 +341,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8 px-6">
             {[
-              { id: 'overview', label: '📊 Panoramica', count: tracking?.asset_summary.completed_asset_tasks || 0 },
+              { id: 'overview', label: '📊 Panoramica', count: assetStats.totalAssets },
               { id: 'assets', label: '🎯 Asset Pronti', count: assets.length },
               { id: 'requirements', label: '📋 Requisiti', count: requirements?.primary_assets_needed?.length || 0 }
             ].map(tab => (
@@ -408,7 +369,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
 
         {/* Tab Content */}
         <div className="p-6">
-          {activeTab === 'overview' && tracking && (
+          {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -416,7 +377,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-blue-600 text-sm font-medium">Asset Totali</p>
-                      <p className="text-2xl font-bold text-blue-900">{tracking.asset_summary.total_asset_tasks}</p>
+                      <p className="text-2xl font-bold text-blue-900">{assetStats.totalAssets}</p>
                     </div>
                     <div className="text-blue-500 text-2xl">📄</div>
                   </div>
@@ -426,7 +387,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-green-600 text-sm font-medium">Completati</p>
-                      <p className="text-2xl font-bold text-green-900">{tracking.asset_summary.completed_asset_tasks}</p>
+                      <p className="text-2xl font-bold text-green-900">{assetStats.completedAssets}</p>
                     </div>
                     <div className="text-green-500 text-2xl">✅</div>
                   </div>
@@ -436,7 +397,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-yellow-600 text-sm font-medium">In Corso</p>
-                      <p className="text-2xl font-bold text-yellow-900">{tracking.asset_summary.pending_asset_tasks}</p>
+                      <p className="text-2xl font-bold text-yellow-900">{assetStats.pendingAssets}</p>
                     </div>
                     <div className="text-yellow-500 text-2xl">⏳</div>
                   </div>
@@ -446,7 +407,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-purple-600 text-sm font-medium">Tasso Completamento</p>
-                      <p className="text-2xl font-bold text-purple-900">{tracking.asset_summary.completion_rate}%</p>
+                      <p className="text-2xl font-bold text-purple-900">{Math.round(assetStats.completionRate)}%</p>
                     </div>
                     <div className="text-purple-500 text-2xl">📈</div>
                   </div>
@@ -454,28 +415,30 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
               </div>
 
               {/* Asset Types Breakdown */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h3 className="font-medium text-gray-900 mb-4">📊 Distribuzione per Tipo di Asset</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(tracking.asset_types_breakdown).map(([type, data]) => (
-                    <div key={type} className="bg-white p-4 rounded-lg border border-gray-200">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-medium text-gray-800 capitalize">{type.replace(/_/g, ' ')}</h4>
-                        <span className="text-sm text-gray-500">{data.completed}/{data.total}</span>
+              {tracking?.asset_types_breakdown && Object.keys(tracking.asset_types_breakdown).length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="font-medium text-gray-900 mb-4">📊 Distribuzione per Tipo di Asset</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(tracking.asset_types_breakdown).map(([type, data]) => (
+                      <div key={type} className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium text-gray-800 capitalize">{type.replace(/_/g, ' ')}</h4>
+                          <span className="text-sm text-gray-500">{data.completed}/{data.total}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${(data.completed / data.total) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${(data.completed / data.total) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Deliverable Ready Status */}
-              {tracking.asset_summary.deliverable_ready && (
+              {assetStats.isDeliverableReady && (
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
                   <div className="flex items-center">
                     <div className="text-4xl mr-4">🎯</div>
@@ -503,12 +466,13 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {assets.map((assetData, index) => (
+                  {assetDisplayData.map((assetData, index) => (
                     <AssetViewer
                       key={index}
                       asset={assetData.asset}
                       onDownload={() => handleDownloadAsset(assetData.asset)}
                       onUse={() => handleUseAsset(assetData.asset)}
+                      onViewDetails={() => handleViewAssetDetails(assetData.asset)}
                       showActions={true}
                     />
                   ))}
@@ -531,7 +495,7 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {requirements.primary_assets_needed.map((req: AssetRequirement, index: number) => (
+                    {requirements.primary_assets_needed.map((req, index) => (
                       <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-medium text-gray-900 capitalize">
@@ -599,6 +563,15 @@ export default function AssetDashboard({ workspaceId }: AssetDashboardProps) {
           )}
         </div>
       </div>
+
+      {/* Asset Viewer Modal */}
+      {selectedAsset && (
+        <ActionableAssetViewer
+          assetName={selectedAsset.asset_name}
+          asset={selectedAsset}
+          onClose={() => setSelectedAsset(null)}
+        />
+      )}
     </div>
   );
 }

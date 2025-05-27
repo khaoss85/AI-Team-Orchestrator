@@ -130,17 +130,7 @@ export interface Task {
   result?: Record<string, any>;
   created_at: string;
   updated_at: string;
- d  context_data?: {
-    asset_production?: boolean;
-    asset_oriented_task?: boolean;
-    asset_type?: string;
-    detected_asset_type?: string;
-    project_phase?: 'ANALYSIS' | 'IMPLEMENTATION' | 'FINALIZATION';
-    is_final_deliverable?: boolean;
-    deliverable_aggregation?: boolean;
-    triggers_project_completion?: boolean;
-    [key: string]: any;
-  };
+  context_data?: EnhancedTaskContextData;
 }
 
 export interface TaskCreateData {
@@ -382,7 +372,7 @@ export interface TaskAnalysisResponse {
 }
 
 export interface ActionableAsset {
-  asset_name: string;
+  asset_name: string;  // Keep snake_case for API consistency
   asset_data: Record<string, any>;
   source_task_id: string;
   extraction_method: string;
@@ -556,4 +546,157 @@ export interface ProjectDeliverableCard {
   created_by: string;
   created_at: string;
   completeness_score: number;
+    
+export interface AssetDisplayData {
+  asset: ActionableAsset;
+  task_info: AssetTaskInfo;
+  schema?: AssetSchema;
+}
+
+export interface AssetManagementState {
+  // Raw API data
+  tracking: AssetTrackingData | null;
+  requirements: {
+    workspace_id: string;
+    deliverable_category: string;
+    primary_assets_needed: AssetRequirement[];
+    deliverable_structure: Record<string, any>;
+    generated_at: string;
+  } | null;
+  schemas: Record<string, AssetSchema>;
+  extractionStatus: {
+    extraction_summary: {
+      total_completed_tasks: number;
+      asset_production_tasks: number;
+      extraction_ready_tasks: number;
+      extraction_readiness_rate: number;
+    };
+    extraction_candidates: Array<{
+      task_id: string;
+      task_name: string;
+      asset_type?: string;
+      has_structured_output: boolean;
+      extraction_ready: boolean;
+      completed_at: string;
+    }>;
+    next_steps: string[];
+  } | null;
+  
+  // Processed deliverable assets
+  deliverableAssets: Record<string, ActionableAsset>;
+  processedAssets: AssetDisplayData[];
+  
+  // States
+  loading: boolean;
+  error: string | null;
+}
+
+export interface AssetCompletionStats {
+  totalAssets: number;
+  completedAssets: number;
+  pendingAssets: number;
+  completionRate: number;
+  isDeliverableReady: boolean;
+}
+
+export interface AssetProgress {
+  completed: number;
+  total: number;
+  percentage: number;
+}
+
+export interface UseAssetManagementReturn {
+  // Direct access to structured data
+  tracking: AssetTrackingData | null;
+  requirements: AssetManagementState['requirements'];
+  schemas: Record<string, AssetSchema>;
+  extractionStatus: AssetManagementState['extractionStatus'];
+  
+  // Direct access to processed assets
+  assets: ActionableAsset[];
+  assetDisplayData: AssetDisplayData[];
+  deliverableAssets: Record<string, ActionableAsset>;
+  
+  // States
+  loading: boolean;
+  error: string | null;
+  
+  // Actions
+  refresh: () => Promise<void>;
+  triggerAssetAnalysis: () => Promise<boolean>;
+  checkDeliverableReadiness: () => Promise<boolean>;
+  
+  // Computed values and helpers
+  getAssetProgress: () => AssetProgress;
+  getAssetsByType: (assetType: string) => AssetDisplayData[];
+  isDeliverableReady: () => boolean;
+  getRequiredAssetTypes: () => string[];
+  getCompletedAssetTypes: () => string[];
+  getMissingAssetTypes: () => string[];
+  getAssetTypeProgress: (assetType: string) => AssetProgress;
+  canExtractAssets: () => boolean;
+  getExtractionCandidates: () => Array<{
+    task_id: string;
+    task_name: string;
+    asset_type?: string;
+    has_structured_output: boolean;
+    extraction_ready: boolean;
+    completed_at: string;
+  }>;
+  hasAssetSchemas: () => boolean;
+  getSchemaForAssetType: (assetType: string) => AssetSchema | null;
+  isAssetTask: (task: any) => boolean;
+  getAssetTypeFromTask: (task: any) => string | null;
+  getAssetCompletionStats: () => AssetCompletionStats;
+}
+
+export interface EnhancedTaskContextData {
+  // Asset-oriented fields
+  asset_production?: boolean;
+  asset_oriented_task?: boolean;
+  asset_type?: string;
+  detected_asset_type?: string;
+  project_phase?: 'ANALYSIS' | 'IMPLEMENTATION' | 'FINALIZATION';
+  is_final_deliverable?: boolean;
+  deliverable_aggregation?: boolean;
+  triggers_project_completion?: boolean;
+  
+  [key: string]: any;
+}
+
+export interface AssetViewerProps {
+  asset: ActionableAsset;
+  onDownload?: () => void;
+  onUse?: () => void;
+  onViewDetails?: () => void;
+  showActions?: boolean;
+}
+
+export interface AssetDashboardProps {
+  workspaceId: string;
+}
+
+export interface EnhancedProjectResult {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  type: string;
+  icon: string;
+  creator: string;
+  isFinalDeliverable: boolean;
+  completeness: number;
+  priority: number;
+  content: {
+    summary: string;
+    keyPoints: string[];
+    details: string;
+    keyInsights: string[];
+    metrics: Record<string, any>;
+    recommendations: string[];
+    nextSteps: string[];
+    actionableAssets?: Record<string, ActionableAsset>;
+    usageGuide?: Record<string, string>;
+  };
+}
 }
