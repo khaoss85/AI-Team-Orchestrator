@@ -1,4 +1,6 @@
-// Tipi per workspace/progetti
+// frontend/src/types/index.ts - COMPLETE ENHANCED VERSION WITH ASSET SUPPORT
+
+// ✅ Base types remain unchanged
 export type WorkspaceStatus = 'created' | 'active' | 'paused' | 'completed' | 'error';
 
 export type OutputType =
@@ -34,7 +36,7 @@ export interface WorkspaceCreateData {
   };
 }
 
-// Tipi per agenti
+// ✅ Agent types remain unchanged
 export type AgentStatus = 'created' | 'initializing' | 'active' | 'paused' | 'error' | 'terminated';
 export type AgentSeniority = 'junior' | 'senior' | 'expert';
 export type HealthStatus = 'unknown' | 'healthy' | 'degraded' | 'unhealthy';
@@ -115,7 +117,7 @@ export interface AgentCreateData {
   tools?: Record<string, any>[];
 }
 
-// Tipi per task
+// ✅ Task types - Enhanced with asset context
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'canceled';
 
 export interface Task {
@@ -128,6 +130,17 @@ export interface Task {
   result?: Record<string, any>;
   created_at: string;
   updated_at: string;
+ d  context_data?: {
+    asset_production?: boolean;
+    asset_oriented_task?: boolean;
+    asset_type?: string;
+    detected_asset_type?: string;
+    project_phase?: 'ANALYSIS' | 'IMPLEMENTATION' | 'FINALIZATION';
+    is_final_deliverable?: boolean;
+    deliverable_aggregation?: boolean;
+    triggers_project_completion?: boolean;
+    [key: string]: any;
+  };
 }
 
 export interface TaskCreateData {
@@ -138,7 +151,7 @@ export interface TaskCreateData {
   status?: TaskStatus;
 }
 
-// Tipi per handoff
+// ✅ Handoff types remain unchanged
 export interface Handoff {
   id: string;
   source_agent_id: string;
@@ -153,7 +166,7 @@ export interface HandoffCreateData {
   description?: string;
 }
 
-// Tipi per il director
+// ✅ Director types remain unchanged
 export interface DirectorConfig {
   workspace_id: string;
   goal: string;
@@ -183,7 +196,7 @@ export interface DirectorTeamProposal {
   user_feedback?: string;
 }
 
-// Tipi per tool personalizzati
+// ✅ Custom tools remain unchanged
 export interface CustomTool {
   id: string;
   workspace_id: string;
@@ -203,7 +216,7 @@ export interface CustomToolCreate {
   created_by: string;
 }
 
-// Tipi per l'analisi Instagram
+// ✅ Instagram tools remain unchanged
 export interface HashtagAnalysis {
   [hashtag: string]: {
     posts_count: number;
@@ -265,6 +278,7 @@ export interface ContentIdea {
   visual_elements: string[];
 }
 
+// ✅ Executor types - Enhanced with asset tracking
 export interface ExecutorStatus {
   is_running: boolean;
   is_paused: boolean;
@@ -274,13 +288,13 @@ export interface ExecutorStatus {
 export interface AgentActivityStat {
   completed: number;
   failed: number;
-  name?: string; // Il nome potrebbe essere aggiunto in futuro
+  name?: string;
 }
 
 export interface SessionStats {
   tasks_completed_successfully: number;
   tasks_failed: number;
-  agent_activity: Record<string, AgentActivityStat>; // agent_id come chiave
+  agent_activity: Record<string, AgentActivityStat>;
 }
 
 export interface ExecutorDetailedStats {
@@ -293,9 +307,16 @@ export interface ExecutorDetailedStats {
   budget_tracker_stats: {
     tracked_agents_count: number;
   };
+  // 🆕 NEW: Asset tracking in executor stats
+  asset_tracking?: {
+    asset_tasks_processed: number;
+    asset_completion_events: number;
+    deliverable_triggers: number;
+    asset_enhancement_events: number;
+  };
 }
 
-// Human Feedback Types
+// ✅ Human Feedback types remain unchanged
 export interface FeedbackRequest {
   id: string;
   workspace_id: string;
@@ -360,6 +381,99 @@ export interface TaskAnalysisResponse {
   analysis_timestamp: string;
 }
 
+export interface ActionableAsset {
+  asset_name: string;
+  asset_data: Record<string, any>;
+  source_task_id: string;
+  extraction_method: string;
+  validation_score: number;
+  actionability_score: number;
+  ready_to_use: boolean;
+  usage_instructions?: string;
+  automation_ready?: boolean;
+  file_download_url?: string;
+  schema_compliant?: boolean;
+}
+
+export interface AssetRequirement {
+  asset_type: string;
+  asset_format: 'structured_data' | 'document' | 'spreadsheet';
+  actionability_level: 'ready_to_use' | 'needs_customization' | 'template';
+  business_impact: 'immediate' | 'short_term' | 'strategic';
+  priority: number;
+  validation_criteria: string[];
+}
+
+export interface AssetSchema {
+  asset_name: string;
+  schema_definition: Record<string, any>;
+  validation_rules: string[];
+  usage_instructions: string;
+  automation_ready: boolean;
+}
+
+export interface AssetTrackingData {
+  workspace_id: string;
+  asset_summary: {
+    total_asset_tasks: number;
+    completed_asset_tasks: number;
+    pending_asset_tasks: number;
+    completion_rate: number;
+    deliverable_ready: boolean;
+  };
+  asset_types_breakdown: Record<string, {
+    total: number;
+    completed: number;
+  }>;
+  completed_assets: AssetTaskInfo[];
+  pending_assets: AssetTaskInfo[];
+  analysis_timestamp: string;
+}
+
+export interface AssetTaskInfo {
+  task_id: string;
+  task_name: string;
+  asset_type?: string;
+  status: string;
+  agent_role?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 🆕 NEW: Asset Dashboard Types
+export interface AssetViewerProps {
+  asset: ActionableAsset;
+  onDownload?: (asset: ActionableAsset) => void;
+  onUse?: (asset: ActionableAsset) => void;
+  showActions?: boolean;
+}
+
+export interface AssetDashboardData {
+  requirements: {
+    deliverable_category: string;
+    primary_assets_needed: AssetRequirement[];
+    deliverable_structure: Record<string, any>;
+  };
+  tracking: AssetTrackingData;
+  schemas: Record<string, AssetSchema>;
+  extraction_status: {
+    extraction_summary: {
+      total_completed_tasks: number;
+      asset_production_tasks: number;
+      extraction_ready_tasks: number;
+      extraction_readiness_rate: number;
+    };
+    extraction_candidates: Array<{
+      task_id: string;
+      task_name: string;
+      asset_type?: string;
+      has_structured_output: boolean;
+      extraction_ready: boolean;
+    }>;
+  };
+}
+
+// ✅ Enhanced Project Deliverables - Backward Compatible
 export interface ProjectOutput {
   task_id: string;
   task_name: string;
@@ -374,6 +488,30 @@ export interface ProjectOutput {
   key_insights?: string[];
   metrics?: Record<string, any>;
   category?: string;
+  actionable_assets?: Record<string, ActionableAsset>;
+  actionability_score?: number;
+  automation_ready?: boolean;
+  usage_guide?: Record<string, string>;
+  next_steps?: string[];
+}
+
+export interface ProjectOutputExtended extends ProjectOutput {
+  // Additional frontend-specific fields
+  icon?: string;
+  priority?: number;
+  completeness?: number;
+  isFinalDeliverable?: boolean;
+  content?: {
+    summary: string;
+    keyPoints: string[];
+    details: string;
+    keyInsights: string[];
+    metrics: Record<string, any>;
+    recommendations: string[];
+    nextSteps: string[];
+    actionableAssets?: Record<string, ActionableAsset>;
+    usageGuide?: Record<string, string>;
+  };
 }
 
 export interface ProjectDeliverables {
@@ -387,6 +525,17 @@ export interface ProjectDeliverables {
   total_tasks: number;
   completed_tasks: number;
   generated_at: string;
+}
+
+export interface ProjectDeliverablesExtended extends ProjectDeliverables {
+  key_outputs: ProjectOutputExtended[];
+  asset_summary?: {
+    total_assets: number;
+    ready_to_use_assets: number;
+    automation_ready_assets: number;
+    average_actionability_score: number;
+  };
+  actionable_assets_catalog?: Record<string, ActionableAsset>;
 }
 
 export interface DeliverableFeedback {

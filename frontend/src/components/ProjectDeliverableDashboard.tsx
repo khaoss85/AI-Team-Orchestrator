@@ -2,12 +2,194 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
-import { ProjectDeliverables, DeliverableFeedback } from '@/types';
+import { ProjectDeliverables, DeliverableFeedback, ActionableAsset } from '@/types';
 import DeliverableInsightCard from './DeliverableInsightCard';
 
 interface ProjectDeliverableDashboardProps {
   workspaceId: string;
 }
+
+// NEW: Enhanced ActionableAsset display component
+const ActionableAssetCard: React.FC<{
+  assetName: string;
+  asset: ActionableAsset;
+  onDownload: () => void;
+  onViewDetails: () => void;
+}> = ({ assetName, asset, onDownload, onViewDetails }) => {
+  const getAssetIcon = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('calendar')) return '📅';
+    if (lowerName.includes('contact') || lowerName.includes('database')) return '📊';
+    if (lowerName.includes('strategy')) return '🎯';
+    if (lowerName.includes('content')) return '📝';
+    if (lowerName.includes('analysis')) return '📈';
+    return '📦';
+  };
+
+  const getActionabilityColor = (score: number) => {
+    if (score >= 0.8) return 'from-green-500 to-emerald-600';
+    if (score >= 0.6) return 'from-yellow-500 to-orange-600';
+    return 'from-red-500 to-pink-600';
+  };
+
+  const getActionabilityLabel = (score: number) => {
+    if (score >= 0.8) return 'Pronto all\'uso';
+    if (score >= 0.6) return 'Richiede personalizzazione';
+    return 'Template di base';
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+      {/* Header with actionability score */}
+      <div className={`bg-gradient-to-r ${getActionabilityColor(asset.actionability_score)} p-4 text-white`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-2xl mr-3">{getAssetIcon(assetName)}</span>
+            <div>
+              <h3 className="font-bold text-lg">{assetName.replace(/_/g, ' ').toUpperCase()}</h3>
+              <p className="text-sm opacity-90">{getActionabilityLabel(asset.actionability_score)}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold">{Math.round(asset.actionability_score * 100)}%</div>
+            <div className="text-xs opacity-90">Azionabilità</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6">
+        {/* Asset validation and ready status */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="text-center">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              asset.validation_score >= 0.8 
+                ? 'bg-green-100 text-green-800' 
+                : asset.validation_score >= 0.6
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-red-100 text-red-800'
+            }`}>
+              {asset.validation_score >= 0.8 ? '✅' : asset.validation_score >= 0.6 ? '⚠️' : '❌'}
+              <span className="ml-1">Validazione: {Math.round(asset.validation_score * 100)}%</span>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              asset.ready_to_use 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-orange-100 text-orange-800'
+            }`}>
+              {asset.ready_to_use ? '🚀' : '🔧'}
+              <span className="ml-1">{asset.ready_to_use ? 'Pronto' : 'In lavorazione'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Asset data preview */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <h4 className="font-medium text-gray-800 mb-2">Anteprima Dati:</h4>
+          <div className="space-y-2">
+            {Object.entries(asset.asset_data).slice(0, 3).map(([key, value], index) => (
+              <div key={index} className="flex justify-between text-sm">
+                <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
+                <span className="font-medium text-gray-800 truncate ml-2">
+                  {Array.isArray(value) 
+                    ? `${value.length} elementi`
+                    : typeof value === 'object'
+                      ? 'Dati strutturati'
+                      : String(value).length > 30
+                        ? `${String(value).slice(0, 30)}...`
+                        : String(value)
+                  }
+                </span>
+              </div>
+            ))}
+            {Object.keys(asset.asset_data).length > 3 && (
+              <div className="text-xs text-gray-500 text-center pt-2">
+                +{Object.keys(asset.asset_data).length - 3} altri campi...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Extraction info */}
+        <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
+          <div className="flex items-center text-blue-800">
+            <span className="mr-2">🔬</span>
+            <span className="font-medium">Metodo estrazione:</span>
+            <span className="ml-1">{asset.extraction_method}</span>
+          </div>
+          <div className="flex items-center text-blue-700 mt-1">
+            <span className="mr-2">📋</span>
+            <span>Task origine: {asset.source_task_id.slice(0, 8)}...</span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex space-x-3">
+          <button
+            onClick={onViewDetails}
+            className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center"
+          >
+            <span className="mr-2">👁️</span>
+            Visualizza Dettagli
+          </button>
+          <button
+            onClick={onDownload}
+            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center justify-center"
+          >
+            <span className="mr-2">📥</span>
+            Scarica Asset
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// NEW: Simple Asset Viewer Modal (you can create a separate component later)
+const SimpleAssetViewer: React.FC<{
+  assetName: string;
+  asset: ActionableAsset;
+  onClose: () => void;
+}> = ({ assetName, asset, onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
+          <h2 className="text-2xl font-bold">{assetName.replace(/_/g, ' ').toUpperCase()}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Dati Asset</h3>
+              <pre className="bg-gray-50 p-4 rounded-lg overflow-auto text-sm">
+                {JSON.stringify(asset.asset_data, null, 2)}
+              </pre>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-gray-700">Score Validazione</h4>
+                <p className="text-2xl font-bold text-green-600">{Math.round(asset.validation_score * 100)}%</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-700">Score Azionabilità</h4>
+                <p className="text-2xl font-bold text-blue-600">{Math.round(asset.actionability_score * 100)}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ProjectDeliverableDashboard({
   workspaceId,
@@ -26,6 +208,9 @@ export default function ProjectDeliverableDashboard({
 
   const [viewMode, setViewMode] = useState<'cards' | 'detailed'>('cards');
   const [expandedOutput, setExpandedOutput] = useState<string | null>(null);
+  
+  // NEW: Asset states
+  const [selectedAsset, setSelectedAsset] = useState<{name: string, asset: ActionableAsset} | null>(null);
 
   /* --------------------------- Fetch deliverables -------------------------- */
 
@@ -73,6 +258,28 @@ export default function ProjectDeliverableDashboard({
     } finally {
       setSubmittingFeedback(false);
     }
+  };
+
+  /* ----------------------------- NEW: Asset Actions ----------------------------- */
+
+  const handleDownloadAsset = (assetName: string, asset: ActionableAsset) => {
+    try {
+      const dataUri = 'data:application/json;charset=utf-8,' + 
+        encodeURIComponent(JSON.stringify(asset.asset_data, null, 2));
+      const link = document.createElement('a');
+      link.href = dataUri;
+      link.download = `${assetName}_${new Date().getTime()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading asset:', error);
+      alert('Errore durante il download dell\'asset');
+    }
+  };
+
+  const handleViewAssetDetails = (assetName: string, asset: ActionableAsset) => {
+    setSelectedAsset({ name: assetName, asset });
   };
 
   /* ----------------------------- Helpers UI ------------------------------- */
@@ -148,6 +355,34 @@ export default function ProjectDeliverableDashboard({
       </div>
     );
 
+  /* --------------------------- NEW: Extract actionable assets --------------------------- */
+
+  // Extract actionable assets from final deliverables
+  const actionableAssets: Record<string, ActionableAsset> = {};
+  
+  deliverables.key_outputs
+    .filter(output => output.type === 'final_deliverable')
+    .forEach(output => {
+      // Check different possible locations for actionable assets
+      if (output.result?.actionable_assets) {
+        Object.assign(actionableAssets, output.result.actionable_assets);
+      }
+      // Also check if the result itself has actionable structure
+      if (output.result && typeof output.result === 'object') {
+        const result = output.result;
+        if (result.detailed_results_json) {
+          try {
+            const detailed = JSON.parse(result.detailed_results_json);
+            if (detailed.actionable_assets) {
+              Object.assign(actionableAssets, detailed.actionable_assets);
+            }
+          } catch (e) {
+            console.debug('Could not parse detailed_results_json for assets');
+          }
+        }
+      }
+    });
+
   /* --------------------------- Filters & slices --------------------------- */
 
   const finalDeliverables = deliverables.key_outputs.filter(
@@ -156,6 +391,8 @@ export default function ProjectDeliverableDashboard({
   const normalDeliverables = deliverables.key_outputs.filter(
     (o) => o.type !== 'final_deliverable' && o.category !== 'final_deliverable',
   );
+
+  const hasActionableAssets = Object.keys(actionableAssets).length > 0;
 
   /* --------------------------------- JSX ---------------------------------- */
 
@@ -166,7 +403,9 @@ export default function ProjectDeliverableDashboard({
         <div className="flex justify-between">
           <div>
             <h1 className="text-2xl font-semibold">📋 Project Deliverables</h1>
-            <p className="text-gray-600">Risultati finali e output del progetto</p>
+            <p className="text-gray-600">
+              Risultati finali{hasActionableAssets ? ' e asset azionabili' : ''} del progetto
+            </p>
           </div>
           <div className="text-right">
             <span className={`px-3 py-1 rounded-full text-sm border ${getStatusColor(deliverables.completion_status)}`}>
@@ -185,6 +424,56 @@ export default function ProjectDeliverableDashboard({
         </div>
       </div>
 
+      {/* NEW: Actionable Assets Section */}
+      {hasActionableAssets && (
+        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl p-8 border border-indigo-200 shadow-lg">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mb-4">
+              <span className="text-2xl">🎯</span>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Asset Azionabili Pronti!</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Il tuo progetto ha prodotto <strong>{Object.keys(actionableAssets).length} asset business-ready</strong> che puoi utilizzare immediatamente.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(actionableAssets).map(([assetName, asset]) => (
+              <ActionableAssetCard
+                key={assetName}
+                assetName={assetName}
+                asset={asset}
+                onDownload={() => handleDownloadAsset(assetName, asset)}
+                onViewDetails={() => handleViewAssetDetails(assetName, asset)}
+              />
+            ))}
+          </div>
+
+          {/* Quick actions for all assets */}
+          <div className="mt-8 text-center">
+            <div className="inline-flex space-x-4">
+              <button
+                onClick={() => {
+                  // Download all assets
+                  Object.entries(actionableAssets).forEach(([name, asset]) => {
+                    setTimeout(() => handleDownloadAsset(name, asset), 100);
+                  });
+                }}
+                className="bg-white text-indigo-700 px-6 py-3 rounded-lg font-medium hover:bg-indigo-50 transition border border-indigo-200 shadow-sm"
+              >
+                📦 Scarica Tutti gli Asset
+              </button>
+              <button
+                onClick={() => setShowFeedbackForm(true)}
+                className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition shadow-sm"
+              >
+                💬 Fornisci Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Executive summary */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-3">📊 Executive Summary</h2>
@@ -202,7 +491,8 @@ export default function ProjectDeliverableDashboard({
                 <h2 className="text-2xl font-bold">Deliverable Finale Completato</h2>
               </div>
               <p className="text-indigo-100">
-                Il tuo progetto ha raggiunto un traguardo importante con la produzione del deliverable finale.
+                Il tuo progetto ha raggiunto un traguardo importante con la produzione del deliverable finale
+                {hasActionableAssets && <span className="font-semibold"> contenente {Object.keys(actionableAssets).length} asset azionabili</span>}.
               </p>
             </div>
             <div className="bg-white/20 rounded-full p-4">
@@ -293,7 +583,9 @@ export default function ProjectDeliverableDashboard({
           <div className="bg-white/10 rounded-lg p-4 flex justify-between items-center">
             <div>
               <p className="font-medium">Pronto per la revisione finale?</p>
-              <p className="text-sm text-indigo-200">Approva il deliverable o richiedi modifiche</p>
+              <p className="text-sm text-indigo-200">
+                Approva il deliverable{hasActionableAssets ? ' e gli asset' : ''} o richiedi modifiche
+              </p>
             </div>
             <div className="flex gap-3">
               <button
@@ -387,19 +679,22 @@ export default function ProjectDeliverableDashboard({
         ) : (
           <div className="text-center py-8 text-gray-500">
             <div className="text-4xl mb-2">📋</div>
-            Tutti i deliverable sono stati consolidati nel deliverable finale
+            {hasActionableAssets 
+              ? 'Tutti i deliverable sono stati consolidati negli asset azionabili' 
+              : 'Nessun deliverable intermedio disponibile'}
           </div>
         )}
       </div>
 
-      {/* Feedback */}
+      {/* Enhanced Feedback section */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-4">💬 Feedback e Azioni</h2>
 
         {!showFeedbackForm ? (
           <>
             <p className="text-gray-600 mb-4">
-              Cosa ne pensi dei risultati? Puoi approvare il progetto o richiedere modifiche.
+              Cosa ne pensi dei risultati{hasActionableAssets ? ' e degli asset prodotti' : ''}? 
+              Puoi approvare il progetto o richiedere modifiche.
             </p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -409,7 +704,7 @@ export default function ProjectDeliverableDashboard({
                 }}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
-                ✅ Approva Progetto
+                ✅ Approva {hasActionableAssets ? 'Asset e ' : ''}Progetto
               </button>
               <button
                 onClick={() => {
@@ -435,7 +730,7 @@ export default function ProjectDeliverableDashboard({
           <div className="space-y-4">
             <div className="flex justify-between">
               <h3 className="font-medium">
-                {feedbackType === 'approve' && '✅ Approva Progetto'}
+                {feedbackType === 'approve' && `✅ Approva ${hasActionableAssets ? 'Asset e ' : ''}Progetto`}
                 {feedbackType === 'request_changes' && '📝 Richiedi Modifiche'}
                 {feedbackType === 'general_feedback' && '💭 Feedback Generale'}
               </h3>
@@ -451,9 +746,9 @@ export default function ProjectDeliverableDashboard({
               className="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500"
               placeholder={
                 feedbackType === 'approve'
-                  ? 'Es. Ottimo lavoro! Il progetto soddisfa tutti i requisiti…'
+                  ? `Es. Ottimo lavoro! ${hasActionableAssets ? 'Gli asset sono perfetti e pronti all\'uso. ' : ''}Il progetto soddisfa tutti i requisiti…`
                   : feedbackType === 'request_changes'
-                  ? 'Es. Vorrei che venissero approfonditi i seguenti aspetti…'
+                  ? `Es. ${hasActionableAssets ? 'Gli asset sono buoni ma vorrei modifiche su... ' : ''}Vorrei che venissero approfonditi i seguenti aspetti…`
                   : 'Es. Suggerimento per migliorare…'
               }
             />
@@ -486,6 +781,15 @@ export default function ProjectDeliverableDashboard({
           </div>
         )}
       </div>
+
+      {/* NEW: Asset Viewer Modal */}
+      {selectedAsset && (
+        <SimpleAssetViewer
+          assetName={selectedAsset.name}
+          asset={selectedAsset.asset}
+          onClose={() => setSelectedAsset(null)}
+        />
+      )}
     </div>
   );
 }

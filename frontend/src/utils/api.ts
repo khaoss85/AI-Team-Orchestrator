@@ -1,3 +1,5 @@
+// frontend/src/utils/api.ts - COMPLETE ENHANCED VERSION WITH ASSET MANAGEMENT
+
 import {
   Workspace,
   WorkspaceCreateData,
@@ -15,7 +17,68 @@ import {
   DeliverableFeedback,
   ProjectDeliverablesExtended,
   ProjectOutputExtended,
+  ExecutorStatus,
+  ExecutorDetailedStats,
+  CustomTool,
+  CustomToolCreate,
 } from '@/types';
+
+// 🆕 NEW: Asset Management Types
+export interface AssetRequirement {
+  asset_type: string;
+  asset_format: 'structured_data' | 'document' | 'spreadsheet';
+  actionability_level: 'ready_to_use' | 'needs_customization' | 'template';
+  business_impact: 'immediate' | 'short_term' | 'strategic';
+  priority: number;
+  validation_criteria: string[];
+}
+
+export interface AssetSchema {
+  asset_name: string;
+  schema_definition: Record<string, any>;
+  validation_rules: string[];
+  usage_instructions: string;
+  automation_ready: boolean;
+}
+
+export interface ActionableAsset {
+  asset_name: string;
+  asset_data: Record<string, any>;
+  source_task_id: string;
+  validation_score: number;
+  actionability_score: number;
+  ready_to_use: boolean;
+  usage_instructions?: string;
+  file_download_url?: string;
+}
+
+export interface AssetTrackingData {
+  workspace_id: string;
+  asset_summary: {
+    total_asset_tasks: number;
+    completed_asset_tasks: number;
+    pending_asset_tasks: number;
+    completion_rate: number;
+    deliverable_ready: boolean;
+  };
+  asset_types_breakdown: Record<string, {
+    total: number;
+    completed: number;
+  }>;
+  completed_assets: AssetTaskInfo[];
+  pending_assets: AssetTaskInfo[];
+  analysis_timestamp: string;
+}
+
+export interface AssetTaskInfo {
+  task_id: string;
+  task_name: string;
+  asset_type?: string;
+  status: string;
+  agent_role?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 // Determina l'URL base dell'API in base all'ambiente
 const getBaseUrl = () => {
@@ -42,7 +105,70 @@ const handleApiError = (error: unknown) => {
 export const api = {
   getBaseUrl,
   
-  // API Monitoring
+  // 🆕 NEW: Asset Management API
+  assetManagement: {
+    getRequirements: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      deliverable_category: string;
+      primary_assets_needed: AssetRequirement[];
+      deliverable_structure: Record<string, any>;
+      generated_at: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/requirements`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getSchemas: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      available_schemas: Record<string, AssetSchema>;
+      schema_count: number;
+      generated_at: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/schemas`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getExtractionStatus: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      extraction_summary: {
+        total_completed_tasks: number;
+        asset_production_tasks: number;
+        extraction_ready_tasks: number;
+        extraction_readiness_rate: number;
+      };
+      extraction_candidates: Array<{
+        task_id: string;
+        task_name: string;
+        asset_type?: string;
+        has_structured_output: boolean;
+        output_size: number;
+        extraction_ready: boolean;
+        completed_at: string;
+      }>;
+      next_steps: string[];
+      analyzed_at: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/extraction-status`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+  
+  // Enhanced Monitoring API with Asset Support
   monitoring: {
     getWorkspaceActivity: async (workspaceId: string, limit: number = 20): Promise<any[]> => {
       try {
@@ -63,7 +189,8 @@ export const api = {
         return handleApiError(error);
       }
     },
-     getAgentBudget: async (agentId: string): Promise<any> => {
+
+    getAgentBudget: async (agentId: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/agent/${agentId}/budget`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -95,6 +222,7 @@ export const api = {
       }
     },
     
+    // 🆕 ENHANCED: Project Deliverables with Asset Support
     getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverablesExtended> => {
       try {
         const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables`);
@@ -105,7 +233,7 @@ export const api = {
         
         const data = await response.json();
         
-        // VALIDAZIONE E TRASFORMAZIONE DEI DATI
+        // 🆕 Enhanced validation and transformation for assets
         const transformedData: ProjectDeliverablesExtended = {
           ...data,
           key_outputs: data.key_outputs.map((output: any) => ({
@@ -118,7 +246,11 @@ export const api = {
             metrics: output.metrics || {},
             title: output.title || output.task_name,
             description: output.description || '',
-            category: output.category || 'general'
+            category: output.category || 'general',
+            // 🆕 NEW: Asset-specific fields
+            actionable_assets: output.actionable_assets || {},
+            actionability_score: output.actionability_score || 0,
+            automation_ready: output.automation_ready || false,
           }))
         };
         
@@ -129,7 +261,7 @@ export const api = {
       }
     },
 
-    // NUOVO: Metodo specifico per recuperare solo deliverable finali
+    // Metodo specifico per recuperare solo deliverable finali
     getFinalDeliverables: async (workspaceId: string): Promise<ProjectOutputExtended[]> => {
       try {
         const deliverables = await api.monitoring.getProjectDeliverables(workspaceId);
@@ -142,7 +274,7 @@ export const api = {
       }
     },
 
-    // NUOVO: Metodo per verificare se ci sono deliverable finali pronti
+    // Metodo per verificare se ci sono deliverable finali pronti
     checkFinalDeliverablesStatus: async (workspaceId: string): Promise<{
       hasFinalDeliverables: boolean;
       count: number;
@@ -190,6 +322,7 @@ export const api = {
         return handleApiError(error);
       }
     },
+
     getTaskAnalysis: async (workspaceId: string): Promise<TaskAnalysisResponse> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/task-analysis`);
@@ -210,7 +343,8 @@ export const api = {
       } catch (error) {
         return handleApiError(error);
       }
-},
+    },
+
     pauseExecutor: async (): Promise<{ message: string }> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/executor/pause`, {
@@ -241,7 +375,7 @@ export const api = {
       }
     },
 
-    getExecutorStatus: async (): Promise<ExecutorStatus> => { // Assicurati che ExecutorStatus sia definito in @/types
+    getExecutorStatus: async (): Promise<ExecutorStatus> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/executor/status`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -251,7 +385,7 @@ export const api = {
       }
     },
 
-    getExecutorDetailedStats: async (): Promise<ExecutorDetailedStats> => { // Assicurati che ExecutorDetailedStats sia definito
+    getExecutorDetailedStats: async (): Promise<ExecutorDetailedStats> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/executor/detailed-stats`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -261,15 +395,15 @@ export const api = {
       }
     },
         
-        getRunawayProtectionStatus: async (): Promise<any> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/status`);
-    if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-    return await response.json();
-  } catch (error) {
-    return handleApiError(error);
-  }
-},
+    getRunawayProtectionStatus: async (): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/status`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
 
     triggerRunawayCheck: async (): Promise<any> => {
       try {
@@ -298,6 +432,43 @@ export const api = {
     getWorkspaceHealth: async (workspaceId: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/health`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🆕 NEW: Asset Tracking
+    getAssetTracking: async (workspaceId: string): Promise<AssetTrackingData> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/asset-tracking`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🆕 NEW: Deliverable Readiness
+    getDeliverableReadiness: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      is_ready_for_deliverable: boolean;
+      has_existing_deliverable: boolean;
+      readiness_details: {
+        total_tasks: number;
+        completed_tasks: number;
+        pending_tasks: number;
+        completion_rate: number;
+        asset_tasks: number;
+        completed_assets: number;
+        asset_completion_rate: number;
+      };
+      next_action: string;
+      checked_at: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/deliverable-readiness`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -374,20 +545,20 @@ export const api = {
       }
     },
     
-  delete: async (id: string): Promise<boolean> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data.success;
-  } catch (error) {
-    return handleApiError(error);
-  }
-},
+    delete: async (id: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.success;
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
     
     create: async (data: WorkspaceCreateData): Promise<Workspace> => {
       try {
@@ -408,14 +579,12 @@ export const api = {
     },
   },
       
-  // NUOVA SEZIONE PER GLI HANDOFF
+  // Handoffs API
   handoffs: {
     list: async (workspaceId: string): Promise<Handoff[]> => {
       try {
-        // Assicurati che il path corrisponda all'endpoint definito nel backend
         const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/handoffs`); 
         if (!response.ok) {
-          // Prova a leggere il corpo dell'errore per un messaggio più dettagliato
           let errorDetail = `API error: ${response.status}`;
           try {
             const errorData = await response.json();
@@ -429,7 +598,7 @@ export const api = {
         }
         return await response.json();
       } catch (error) {
-        return handleApiError(error); // handleApiError dovrebbe rilanciare l'errore
+        return handleApiError(error);
       }
     },
   },
@@ -478,9 +647,7 @@ export const api = {
           delete updateData.updated_at;
 
           // Assicurati che le strutture nidificate vengano serializzate correttamente se inviate come stringhe
-          // Nota: la trasformazione effettiva dipende da come l'API si aspetta i dati
           if (updateData.personality_traits && Array.isArray(updateData.personality_traits)) {
-            // Conserva solo i valori stringa dei personality_traits per evitare problemi di serializzazione
             updateData.personality_traits = updateData.personality_traits.map(trait => 
               typeof trait === 'object' ? trait.value || trait.toString() : trait);
           }
@@ -489,7 +656,6 @@ export const api = {
           if (updateData.hard_skills && Array.isArray(updateData.hard_skills)) {
             updateData.hard_skills = updateData.hard_skills.map(skill => {
               if (typeof skill === 'object' && skill.level) {
-                // Se il livello è un oggetto enum, prendi il suo valore stringa
                 if (typeof skill.level === 'object') {
                   return { ...skill, level: skill.level.value || skill.level.toString() };
                 }
@@ -501,7 +667,6 @@ export const api = {
           if (updateData.soft_skills && Array.isArray(updateData.soft_skills)) {
             updateData.soft_skills = updateData.soft_skills.map(skill => {
               if (typeof skill === 'object' && skill.level) {
-                // Se il livello è un oggetto enum, prendi il suo valore stringa
                 if (typeof skill.level === 'object') {
                   return { ...skill, level: skill.level.value || skill.level.toString() };
                 }
@@ -569,7 +734,7 @@ export const api = {
     },
   },
       
-       // API Tool personalizzati
+  // API Tool personalizzati
   tools: {
     listCustomTools: async (workspaceId: string): Promise<CustomTool[]> => {
       try {
