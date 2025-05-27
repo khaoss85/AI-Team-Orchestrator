@@ -244,6 +244,20 @@ class SpecialistAgent(Generic[T]):
     2. EVERY sub-task MUST have a "project_phase" field
     3. Use ONLY the exact phase values: ANALYSIS, IMPLEMENTATION, FINALIZATION
     4. You cannot skip phases - they must progress linearly
+    
+    MANDATORY JSON OUTPUT STRUCTURE:
+    Your `detailed_results_json` output field MUST be a VALID JSON STRING containing the following keys:
+    1.  `current_project_phase` (STRING, MANDATORY): This indicates the primary project phase you are currently planning tasks FOR or operating WITHIN. Example: "ANALYSIS", "IMPLEMENTATION", "FINALIZATION".
+    2.  `phase_rationale` (STRING): Your reasoning for the current phase and the sub-tasks defined.
+    3.  `defined_sub_tasks` (ARRAY of OBJECTS): A list of sub-tasks. Each sub-task object in this array MUST include:
+        * `name` (STRING): Specific name for the sub-task.
+        * `description` (STRING): Detailed description for the sub-task.
+        * `target_agent_role` (STRING): The EXACT agent NAME (obtained from `get_team_roles_and_status` tool) to assign this task to.
+        * `priority` (STRING: "low", "medium", or "high").
+        * `project_phase` (STRING, MANDATORY): The specific phase this sub-task belongs to (e.g., "ANALYSIS").
+        * `task_id` (STRING, OPTIONAL): If you ALREADY CALLED `create_and_assign_sub_task` for this conceptual task during your execution, include the `task_id` you received from the tool's JSON response (even if success was false due to duplication, use the `task_id` of the existing duplicate if provided by the tool). Otherwise, omit this field.
+    4.  `phase_completion_criteria` (ARRAY of STRINGS): Criteria for completing the current phase.
+    5.  `next_phase_trigger` (STRING): Trigger for moving to the next phase.
 
     WORKFLOW FOR TASK DELEGATION:
     1.  **FIRST: Call `get_team_roles_and_status` to get the EXACT names and roles of your active team members.** This is crucial for correct assignment.

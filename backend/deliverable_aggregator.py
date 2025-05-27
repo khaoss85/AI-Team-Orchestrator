@@ -1412,59 +1412,64 @@ class SmartAssetExtractor:
         return extracted_assets
     
     def _is_asset_production_task(self, task: Dict) -> bool:
-        """Determina se un task è di produzione asset - ENHANCED"""
+            """Determina se un task è di produzione asset - ENHANCED"""
 
-        if result.get("status") != "completed":
-            return False
+            # Ottieni lo stato del task principale
+            task_status = task.get("status")
 
-        # Metodo 1: Check context_data (esistente)
-        context_data = task.get("context_data", {}) or {}
-        if isinstance(context_data, dict):
-            if (context_data.get("asset_production") or 
-                context_data.get("asset_oriented_task")):
+            # Metodo 1: Check context_data
+            context_data = task.get("context_data", {}) or {}
+            if isinstance(context_data, dict):
+                if (context_data.get("asset_production") or 
+                    context_data.get("asset_oriented_task")):
+                    logger.debug(f"Task {task.get('id')} identificato come produzione asset da context_data.")
+                    return True
+
+            # Metodo 2: Check task name patterns
+            task_name = (task.get("name") or "").lower()
+            asset_indicators = [
+                "calendar", "database", "template", "framework", "strategy",
+                "contact", "content", "training", "financial", "model",
+                "analysis", "research", "plan", "workflow", "produce asset"
+            ]
+
+            if any(indicator in task_name for indicator in asset_indicators):
+                logger.debug(f"Task {task.get('id')} identificato come produzione asset da name pattern.")
                 return True
 
-        # Metodo 2: Check task name patterns (enhanced)
-        task_name = (task.get("name") or "").lower()
-        asset_indicators = [
-            "calendar", "database", "template", "framework", "strategy",
-            "contact", "content", "training", "financial", "model",
-            "analysis", "research", "plan", "workflow"
-        ]
+            # Metodo 3: Enhanced structured output analysis (SOLO SE IL TASK È COMPLETATO)
+            if task_status != "completed":
+                logger.debug(f"Task {task.get('id')} status is '{task_status}', not 'completed'. Skipping detailed JSON analysis for asset identification.")
+                return False # Non analizzare il risultato di un task non completato per identificare se è un asset task
 
-        if any(indicator in task_name for indicator in asset_indicators):
-            return True
+            # Ora che sappiamo che il task è 'completed', possiamo analizzare il suo 'result'
+            task_result_data = task.get("result", {}) or {}
+            detailed_json = task_result_data.get("detailed_results_json", "")
 
-        # Metodo 3: Enhanced structured output analysis
-        result = task.get("result", {}) or {}
-        detailed_json = result.get("detailed_results_json", "")
+            if detailed_json and len(detailed_json) > 100:
+                try:
+                    data = json.loads(detailed_json)
+                    if isinstance(data, dict):
+                        actionable_structures = [
+                            "contacts", "posts", "calendar", "exercises", "budget_categories",
+                            "recommendations", "action_plan", "strategy", "framework",
+                            "template", "workflow", "process", "database", "list"
+                        ]
+                        data_str = json.dumps(data).lower()
+                        structure_matches = sum(1 for struct in actionable_structures if struct in data_str)
 
-        if detailed_json and len(detailed_json) > 100:
-            try:
-                data = json.loads(detailed_json)
-                if isinstance(data, dict):
-                    # Check for actionable data structures
-                    actionable_structures = [
-                        "contacts", "posts", "calendar", "exercises", "budget_categories",
-                        "recommendations", "action_plan", "strategy", "framework",
-                        "template", "workflow", "process", "database", "list"
-                    ]
+                        if structure_matches >= 2:
+                            logger.debug(f"Task {task.get('id')} identificato come produzione asset da structure_matches ({structure_matches}).")
+                            return True
 
-                    data_str = json.dumps(data).lower()
-                    structure_matches = sum(1 for struct in actionable_structures if struct in data_str)
+                        if len(data) >= 5 and any(isinstance(v, (list, dict)) for v in data.values()):
+                            logger.debug(f"Task {task.get('id')} identificato come produzione asset da data density.")
+                            return True
+                except json.JSONDecodeError:
+                    logger.warning(f"JSONDecodeError per task {task.get('id')} durante l'analisi del detailed_json.")
+                    pass # Non è un asset task se il JSON non è valido
 
-                    # If has multiple actionable structures, likely an asset
-                    if structure_matches >= 2:
-                        return True
-
-                    # Check for data density (lots of structured content)
-                    if len(data) >= 5 and any(isinstance(v, (list, dict)) for v in data.values()):
-                        return True
-
-            except json.JSONDecodeError:
-                pass
-
-        return False
+            return False
     
     def _identify_asset_type(self, task: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
         """Identifica il tipo di asset prodotto dal task"""
