@@ -1,4 +1,4 @@
-// frontend/src/app/projects/[id]/asset-analysis/page.tsx - FIXED VERSION
+// frontend/src/app/projects/[id]/asset-analysis/page.tsx - FULLY FIXED VERSION WITH DEBUG
 
 'use client';
 
@@ -11,11 +11,29 @@ type Props = {
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
+// 🔧 DEBUG: Component to show raw data
+const DebugDataViewer: React.FC<{ data: any; title: string }> = ({ data, title }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  if (!data) return null;
+  
+  return (
+    <details className="mb-4 bg-gray-100 p-4 rounded-md">
+      <summary className="cursor-pointer font-medium text-sm">
+        🐛 DEBUG: {title} {typeof data === 'object' ? `(${Object.keys(data).length} keys)` : ''}
+      </summary>
+      <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto max-h-64">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </details>
+  );
+};
+
 export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
   const params = use(paramsPromise);
   const { id } = params;
 
-  // 🆕 FIXED: Use the enhanced hook properly
+  // 🆕 FIXED: Use the hook correctly with proper destructuring
   const {
     tracking,
     requirements,
@@ -23,6 +41,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
     extractionStatus,
     assets,
     assetDisplayData,
+    deliverableAssets,
     getAssetCompletionStats,
     triggerAssetAnalysis,
     loading,
@@ -31,6 +50,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
   } = useAssetManagement(id);
 
   const [triggeringAnalysis, setTriggeringAnalysis] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
 
   const assetStats = getAssetCompletionStats();
 
@@ -38,12 +58,31 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
     try {
       setTriggeringAnalysis(true);
       await triggerAssetAnalysis();
+      // Refresh after a brief delay
+      setTimeout(() => {
+        refresh();
+      }, 2000);
     } catch (error) {
       console.error('Error triggering analysis:', error);
+      alert('Errore durante l\'analisi. Controlla la console per dettagli.');
     } finally {
       setTriggeringAnalysis(false);
     }
   };
+
+  // 🔧 DEBUG: Log current state
+  console.log('🔍 AssetAnalysisPage Debug:', {
+    loading,
+    error,
+    hasTracking: !!tracking,
+    hasRequirements: !!requirements,
+    schemasCount: Object.keys(schemas || {}).length,
+    hasExtractionStatus: !!extractionStatus,
+    assetsCount: assets?.length || 0,
+    assetDisplayDataCount: assetDisplayData?.length || 0,
+    deliverableAssetsCount: Object.keys(deliverableAssets || {}).length,
+    assetStats
+  });
 
   if (loading) {
     return (
@@ -69,23 +108,75 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
             <h1 className="text-2xl font-semibold">Analisi Asset Avanzata</h1>
             <p className="text-gray-600">Analisi dettagliata di requirements, schemi e produzione asset</p>
           </div>
-          <button
-            onClick={handleTriggerAnalysis}
-            disabled={triggeringAnalysis}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
-          >
-            {triggeringAnalysis ? 'Analisi in corso...' : '🔄 Aggiorna Analisi'}
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
+            >
+              {debugMode ? '🐛 Hide Debug' : '🔍 Debug Mode'}
+            </button>
+            <button
+              onClick={handleTriggerAnalysis}
+              disabled={triggeringAnalysis}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:opacity-50"
+            >
+              {triggeringAnalysis ? 'Analisi in corso...' : '🔄 Aggiorna Analisi'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-          {error}
+      {/* 🔧 DEBUG Section */}
+      {debugMode && (
+        <div className="mb-8 border-2 border-yellow-300 bg-yellow-50 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-4">🐛 Debug Information</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="bg-white p-3 rounded border">
+              <h3 className="font-medium mb-2">Hook State</h3>
+              <div className="text-sm space-y-1">
+                <div>Loading: <span className={loading ? 'text-orange-600' : 'text-green-600'}>{String(loading)}</span></div>
+                <div>Error: <span className={error ? 'text-red-600' : 'text-green-600'}>{error || 'None'}</span></div>
+                <div>Assets Count: <span className="font-mono">{assets?.length || 0}</span></div>
+                <div>Display Data Count: <span className="font-mono">{assetDisplayData?.length || 0}</span></div>
+                <div>Deliverable Assets: <span className="font-mono">{Object.keys(deliverableAssets || {}).length}</span></div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-3 rounded border">
+              <h3 className="font-medium mb-2">API Data Status</h3>
+              <div className="text-sm space-y-1">
+                <div>Tracking: <span className={tracking ? 'text-green-600' : 'text-red-600'}>{tracking ? '✅' : '❌'}</span></div>
+                <div>Requirements: <span className={requirements ? 'text-green-600' : 'text-red-600'}>{requirements ? '✅' : '❌'}</span></div>
+                <div>Schemas: <span className={Object.keys(schemas || {}).length > 0 ? 'text-green-600' : 'text-red-600'}>
+                  {Object.keys(schemas || {}).length > 0 ? `✅ (${Object.keys(schemas).length})` : '❌'}
+                </span></div>
+                <div>Extraction: <span className={extractionStatus ? 'text-green-600' : 'text-red-600'}>{extractionStatus ? '✅' : '❌'}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <DebugDataViewer data={assetStats} title="Asset Stats" />
+          <DebugDataViewer data={tracking} title="Tracking Data" />
+          <DebugDataViewer data={requirements} title="Requirements Data" />
+          <DebugDataViewer data={schemas} title="Schemas Data" />
+          <DebugDataViewer data={extractionStatus} title="Extraction Status" />
+          <DebugDataViewer data={assetDisplayData} title="Asset Display Data" />
         </div>
       )}
 
-      {/* Asset Stats Overview */}
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
+          <div className="flex justify-between items-center">
+            <span>⚠️ {error}</span>
+            <button onClick={refresh} className="text-sm underline hover:no-underline">
+              Riprova
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Asset Stats Overview - ALWAYS SHOW if we have any data */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
@@ -100,8 +191,8 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm">Completati</p>
-              <p className="text-2xl font-bold text-green-600">{assetStats.completedAssets}</p>
+              <p className="text-gray-600 text-sm">Asset Pronti</p>
+              <p className="text-2xl font-bold text-green-600">{assets?.length || 0}</p>
             </div>
             <div className="text-green-500 text-2xl">✅</div>
           </div>
@@ -132,14 +223,14 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
         </div>
       </div>
 
-      {/* 🆕 NEW: Processed Assets Overview */}
-      {assetDisplayData.length > 0 && (
+      {/* 🆕 FIXED: Show Asset Display Data - Less restrictive condition */}
+      {(assetDisplayData && assetDisplayData.length > 0) && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
-          <h2 className="text-lg font-semibold mb-4">📦 Asset Azionabili Prodotti</h2>
+          <h2 className="text-lg font-semibold mb-4">📦 Asset Azionabili Prodotti ({assetDisplayData.length})</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {assetDisplayData.map((assetData, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
+              <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-medium capitalize">
                     {assetData.asset.asset_name.replace(/_/g, ' ')}
@@ -168,6 +259,12 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
                     <span className="font-medium">Task origine:</span>
                     <span className="ml-2 font-mono text-xs">{assetData.task_info.task_id.substring(0, 8)}...</span>
                   </div>
+                  {assetData.task_info.agent_role && (
+                    <div>
+                      <span className="font-medium">Agente:</span>
+                      <span className="ml-2">{assetData.task_info.agent_role}</span>
+                    </div>
+                  )}
                 </div>
 
                 {assetData.schema && (
@@ -177,14 +274,71 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
                     </span>
                   </div>
                 )}
+
+                {/* Asset Data Preview */}
+                {assetData.asset.asset_data && typeof assetData.asset.asset_data === 'object' && (
+                  <div className="mt-3 bg-gray-50 p-2 rounded text-xs">
+                    <div className="font-medium mb-1">Anteprima dati:</div>
+                    <div className="max-h-20 overflow-hidden">
+                      {Object.keys(assetData.asset.asset_data).slice(0, 3).map(key => (
+                        <div key={key} className="truncate">
+                          <span className="text-gray-600">{key}:</span> 
+                          <span className="ml-1">
+                            {typeof assetData.asset.asset_data[key] === 'object' 
+                              ? '[Object]' 
+                              : String(assetData.asset.asset_data[key]).substring(0, 30)
+                            }
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Requirements Analysis */}
-      {requirements && (
+      {/* 🆕 FIXED: Show Deliverable Assets separately if available */}
+      {(deliverableAssets && Object.keys(deliverableAssets).length > 0) && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
+          <h2 className="text-lg font-semibold mb-4">🎯 Asset da Deliverable Finali ({Object.keys(deliverableAssets).length})</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(deliverableAssets).map(([assetName, asset]) => (
+              <div key={assetName} className="border border-purple-200 rounded-lg p-4 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium capitalize text-purple-800">
+                    {assetName.replace(/_/g, ' ')}
+                  </h3>
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium">
+                    🎯 FINALE
+                  </span>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium text-purple-700">Azionabilità:</span>
+                    <span className="ml-2">{Math.round(asset.actionability_score * 100)}%</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-purple-700">Validazione:</span>
+                    <span className="ml-2">{Math.round(asset.validation_score * 100)}%</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-purple-700">Pronto all'uso:</span>
+                    <span className="ml-2">{asset.ready_to_use ? '✅ Sì' : '🔧 In preparazione'}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Requirements Analysis - FIXED condition */}
+      {requirements && requirements.primary_assets_needed && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
           <h2 className="text-lg font-semibold mb-4">📋 Analisi Requirements</h2>
           
@@ -230,7 +384,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
                   </div>
                 </div>
 
-                {req.validation_criteria.length > 0 && (
+                {req.validation_criteria && req.validation_criteria.length > 0 && (
                   <div className="mt-3">
                     <span className="text-xs font-medium text-gray-600">Criteri validazione:</span>
                     <ul className="mt-1 text-xs text-gray-600">
@@ -249,10 +403,10 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
         </div>
       )}
 
-      {/* Asset Schemas */}
-      {Object.keys(schemas).length > 0 && (
+      {/* Asset Schemas - FIXED condition */}
+      {schemas && Object.keys(schemas).length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
-          <h2 className="text-lg font-semibold mb-4">📐 Schemi Asset Disponibili</h2>
+          <h2 className="text-lg font-semibold mb-4">📐 Schemi Asset Disponibili ({Object.keys(schemas).length})</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Object.entries(schemas).map(([name, schema]) => (
@@ -276,7 +430,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
                     </div>
                   </div>
 
-                  {schema.validation_rules.length > 0 && (
+                  {schema.validation_rules && schema.validation_rules.length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 mb-1">Regole Validazione:</h4>
                       <ul className="text-xs text-gray-600">
@@ -290,10 +444,12 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
                     </div>
                   )}
 
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Istruzioni Uso:</h4>
-                    <p className="text-xs text-gray-600">{schema.usage_instructions}</p>
-                  </div>
+                  {schema.usage_instructions && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-1">Istruzioni Uso:</h4>
+                      <p className="text-xs text-gray-600">{schema.usage_instructions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -301,8 +457,8 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
         </div>
       )}
 
-      {/* Extraction Status */}
-      {extractionStatus && (
+      {/* Extraction Status - FIXED condition */}
+      {extractionStatus && extractionStatus.extraction_summary && (
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h2 className="text-lg font-semibold mb-4">🔬 Stato Estrazione Asset</h2>
           
@@ -327,9 +483,9 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
             </div>
           </div>
 
-          {extractionStatus.extraction_candidates.length > 0 && (
+          {extractionStatus.extraction_candidates && extractionStatus.extraction_candidates.length > 0 && (
             <div>
-              <h3 className="font-medium mb-3">Candidati per Estrazione:</h3>
+              <h3 className="font-medium mb-3">Candidati per Estrazione ({extractionStatus.extraction_candidates.length}):</h3>
               <div className="space-y-3">
                 {extractionStatus.extraction_candidates.map((candidate, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -358,7 +514,7 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
             </div>
           )}
 
-          {extractionStatus.next_steps.length > 0 && (
+          {extractionStatus.next_steps && extractionStatus.next_steps.length > 0 && (
             <div className="mt-6">
               <h3 className="font-medium mb-3">Prossimi Passi:</h3>
               <ul className="space-y-2">
@@ -374,13 +530,19 @@ export default function AssetAnalysisPage({ params: paramsPromise }: Props) {
         </div>
       )}
 
-      {/* No Data State */}
-      {!requirements && !Object.keys(schemas).length && !extractionStatus && assetDisplayData.length === 0 && (
+      {/* No Data State - MORE LENIENT CONDITIONS */}
+      {!loading && 
+       !requirements && 
+       (!schemas || Object.keys(schemas).length === 0) && 
+       !extractionStatus && 
+       (!assetDisplayData || assetDisplayData.length === 0) && 
+       (!deliverableAssets || Object.keys(deliverableAssets).length === 0) && (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
           <div className="text-6xl mb-4">🔬</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna Analisi Asset Disponibile</h3>
           <p className="text-gray-500 mb-6">
-            L'analisi degli asset viene generata automaticamente durante l'esecuzione del progetto
+            L'analisi degli asset viene generata automaticamente durante l'esecuzione del progetto.
+            Clicca il pulsante qui sotto per forzare una nuova analisi.
           </p>
           <button
             onClick={handleTriggerAnalysis}
