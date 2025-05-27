@@ -13,7 +13,7 @@ from collections import defaultdict
 from models import Task, TaskStatus, ProjectPhase, PHASE_SEQUENCE, PHASE_DESCRIPTIONS
 from database import (
     create_task, list_agents, list_tasks, get_workspace, get_task,
-    update_workspace_status, get_agent
+    update_workspace_status, get_agent, update_task_status
 )
 
 logger = logging.getLogger(__name__)
@@ -351,6 +351,39 @@ class EnhancedTaskExecutor:
         except Exception as e:
             logger.error(f"Unexpected error parsing JSON: {e}")
             return {}
+        
+    def _should_analyze_task_for_assets(self, task: Task, result: Dict[str, Any]) -> bool:
+        """
+        Determina se un task completato dovrebbe essere analizzato per asset extraction
+        """
+
+        if result.get("status") != "completed":
+            return False
+
+        # Controlla marker di asset production
+        context_data = task.context_data or {}
+        if isinstance(context_data, dict):
+            if (context_data.get("asset_production") or 
+                context_data.get("asset_oriented_task")):
+                return True
+
+        # Controlla nome del task
+        task_name = task.name.lower() if task.name else ""
+        if "produce asset:" in task_name or "asset production:" in task_name:
+            return True
+
+        # Controlla se ha structured output significativo
+        detailed_json = result.get("detailed_results_json", "")
+        if detailed_json and len(detailed_json) > 200:
+            try:
+                data = json.loads(detailed_json)
+                if isinstance(data, dict) and len(data) >= 3:
+                    # Ha structured data, potenzialmente asset
+                    return True
+            except json.JSONDecodeError:
+                pass
+
+        return False
 
     async def handle_task_completion(
         self,
@@ -454,7 +487,27 @@ class EnhancedTaskExecutor:
                                 await self._log_completion_analysis(
                                     completed_task, analysis.__dict__(), "analysis_complete_no_action"
                                 )
+            # === ASSET ANALYSIS ===
+            try:
+                if self._should_analyze_task_for_assets(completed_task, task_result):
+                    logger.info(f"🎯 ASSET ANALYSIS: Analyzing task {completed_task.id} for asset content")
 
+                    # Log asset task completion per monitoring
+                    await self._log_completion_analysis(
+                        completed_task, 
+                        task_result, 
+                        "asset_task_completed",
+                        f"Asset-oriented task completed with {len(task_result.get('detailed_results_json', ''))} chars output"
+                    )
+
+                    # Verifica se questo completa i requisiti per deliverable
+                    asset_completion_triggered = await self._check_asset_completion_trigger(workspace_id)
+                    if asset_completion_triggered:
+                        logger.info(f"🎯 ASSET TRIGGER: Asset completion may trigger deliverable for {workspace_id}")
+
+            except Exception as e:
+                logger.error(f"Error in asset analysis for task {completed_task.id}: {e}")           
+            
             # After every specialist task, check for final deliverable
             try:
                 from deliverable_aggregator import check_and_create_final_deliverable
@@ -931,9 +984,136 @@ class EnhancedTaskExecutor:
         }
 
         logger.info(f"PM_COMPLETION_SUMMARY: {json.dumps(completion_summary)}")
+        await self._post_pm_completion_asset_check(task, result, workspace_id)
 
         return created_by_analyzer_count > 0
 
+    async def _post_pm_completion_asset_check(
+        self, 
+        task: Task, 
+        result: Dict[str, Any], 
+        workspace_id: str
+    ):
+        """
+        Post-processing dopo PM completion per verificare necessità di asset-oriented tasks
+        """
+
+        try:
+            # Controlla se il PM ha creato task che potrebbero beneficiare di asset orientation
+            recent_tasks = await list_tasks(workspace_id)
+
+            # Filtra task creati dal PM recentemente
+            pm_created_tasks = [
+                t for t in recent_tasks 
+                if (t.get("created_by_task_id") == str(task.id) or 
+                    t.get("parent_task_id") == str(task.id)) and
+                    t.get("status") in ["pending", "in_progress"]
+            ]
+
+            if pm_created_tasks:
+                logger.info(f"🎯 POST-PM CHECK: Analyzing {len(pm_created_tasks)} PM-created tasks for asset potential")
+
+                # Analizza e marca task che dovrebbero produrre asset
+                for pm_task in pm_created_tasks:
+                    await self._enhance_task_for_asset_production(pm_task, workspace_id)
+
+        except Exception as e:
+            logger.warning(f"Post-PM asset check failed: {e}")
+
+    async def _enhance_task_for_asset_production(self, task_dict: Dict, workspace_id: str):
+        """
+        Analizza un task e lo marca per asset production se appropriato
+        """
+
+        task_name = (task_dict.get("name") or "").lower()
+        task_description = (task_dict.get("description") or "").lower()
+
+        # Pattern che indicano necessità di asset production
+        asset_patterns = {
+            "contact_database": [
+                r"find.*contact", r"generate.*lead", r"prospect.*list", 
+                r"contact.*database", r"lead.*generation"
+            ],
+            "content_calendar": [
+                r"content.*calendar", r"post.*schedule", r"social.*media.*plan",
+                r"content.*strategy", r"editorial.*calendar"
+            ],
+            "training_program": [
+                r"training.*program", r"workout.*plan", r"exercise.*routine",
+                r"fitness.*program", r"training.*schedule"
+            ],
+            "financial_model": [
+                r"financial.*model", r"budget.*plan", r"cost.*analysis",
+                r"revenue.*projection", r"financial.*planning"
+            ]
+        }
+
+        # Cerca pattern nei task
+        detected_asset_type = None
+        for asset_type, patterns in asset_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, task_name) or re.search(pattern, task_description):
+                    detected_asset_type = asset_type
+                    break
+            if detected_asset_type:
+                break
+
+        if detected_asset_type:
+            try:
+                # Aggiorna il task con asset orientation markers
+                enhanced_context = task_dict.get("context_data", {}) or {}
+                enhanced_context.update({
+                    "asset_oriented_task": True,
+                    "asset_production": True,
+                    "detected_asset_type": detected_asset_type,
+                    "asset_enhancement_timestamp": datetime.now().isoformat(),
+                    "enhanced_by": "asset_aware_analyzer"
+                })
+
+                # Update nel database
+                await update_task_status(
+                    task_dict["id"],
+                    task_dict.get("status", "pending"),
+                    {"context_data": enhanced_context}
+                )
+
+                logger.info(f"🎯 ENHANCED: Task {task_dict['id']} marked for {detected_asset_type} production")
+
+            except Exception as e:
+                logger.error(f"Failed to enhance task {task_dict['id']} for asset production: {e}")
+    
+    async def _check_asset_completion_trigger(self, workspace_id: str) -> bool:
+        """
+        Verifica se il completamento di asset task dovrebbe triggerare deliverable
+        """
+
+        try:
+            tasks = await list_tasks(workspace_id)
+
+            # Conta asset tasks
+            asset_tasks = []
+            completed_asset_tasks = []
+
+            for task in tasks:
+                context_data = task.get("context_data", {}) or {}
+                if isinstance(context_data, dict):
+                    if (context_data.get("asset_production") or 
+                        context_data.get("asset_oriented_task")):
+                        asset_tasks.append(task)
+                        if task.get("status") == "completed":
+                            completed_asset_tasks.append(task)
+
+            # Se ci sono asset tasks e la maggior parte è completata
+            if len(asset_tasks) >= 2 and len(completed_asset_tasks) >= len(asset_tasks) * 0.7:
+                logger.info(f"🎯 ASSET COMPLETION: {len(completed_asset_tasks)}/{len(asset_tasks)} asset tasks completed")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error checking asset completion trigger: {e}")
+            return False
+    
     async def _find_agent_by_role(self, workspace_id: str, role: str) -> Optional[Dict]:
         """Find agent by role with improved matching logic"""
         try:
@@ -1459,9 +1639,11 @@ If unclear, escalate to Project Manager immediately.
         logger.info("Manual cache cleanup completed")
 
     def get_status(self) -> Dict[str, Any]:
-        """Get enhanced status"""
-        return {
-            "enhanced_version": "2.0",
+        """Get enhanced status con asset tracking"""
+
+        # Ottieni status base esistente
+        base_status = {
+            "enhanced_version": "2.0_with_assets",
             "auto_generation_enabled": self.auto_generation_enabled,
             "phase_tracking_enabled": ENABLE_ENHANCED_PHASE_TRACKING,
             "tracking_state": {
@@ -1476,6 +1658,18 @@ If unclear, escalate to Project Manager immediately.
             },
             "uptime_hours": (datetime.now() - self.initialization_time).total_seconds() / 3600
         }
+
+        # Aggiungi asset tracking info
+        base_status["asset_support"] = {
+            "asset_analysis_enabled": True,
+            "asset_enhancement_active": True,
+            "supported_asset_types": [
+                "contact_database", "content_calendar", 
+                "training_program", "financial_model"
+            ]
+        }
+
+        return base_status
 
     async def cleanup_enhanced_tracking(self):
         """Enhanced cleanup"""

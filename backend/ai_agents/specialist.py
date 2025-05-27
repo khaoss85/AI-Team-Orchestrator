@@ -174,6 +174,10 @@ class SpecialistAgent(Generic[T]):
         self.agent = self._create_agent()
 
     def _create_agent(self) -> OpenAIAgent:
+        """
+        MODIFICATA: Usa prompt asset-oriented per specialist agents
+        Mantiene logica esistente per Project Manager
+        """
         llm_config = self.agent_data.llm_config or {}
         model_name = llm_config.get("model") or self.seniority_model_map.get(self.agent_data.seniority.value, "gpt-4.1-nano")
         temperature = llm_config.get("temperature", 0.3)
@@ -181,11 +185,13 @@ class SpecialistAgent(Generic[T]):
         is_manager_type_role = any(keyword in self.agent_data.role.lower() 
                                 for keyword in ['manager', 'coordinator', 'director', 'lead'])
 
-        # USA PROMPT SPECIFICO BASATO SUL RUOLO
+        # ENHANCED: Usa prompt appropriato basato sul ruolo
         if is_manager_type_role:
+            # Per i Project Manager: usa il prompt esistente
             instructions = self._create_project_manager_prompt()
         else:
-            instructions = self._create_specialist_anti_loop_prompt()
+            # Per i Specialist: usa il NUOVO prompt asset-oriented
+            instructions = self._create_asset_oriented_specialist_prompt()
 
         agent_config = {
             "name": self.agent_data.name,
@@ -200,9 +206,11 @@ class SpecialistAgent(Generic[T]):
             "output_type": AgentOutputSchema(TaskExecutionOutput, strict_json_schema=False),
         }
 
+        # Handoffs SDK per Project Manager (logica esistente)
         if SDK_AVAILABLE and is_manager_type_role and self.direct_sdk_handoffs:
             agent_config["handoffs"] = self.direct_sdk_handoffs
             logger.info(f"Agent {self.agent_data.name} (Manager type) configured with {len(self.direct_sdk_handoffs)} SDK handoffs.")
+
         return OpenAIAgent(**agent_config)
 
     def _create_project_manager_prompt(self) -> str:

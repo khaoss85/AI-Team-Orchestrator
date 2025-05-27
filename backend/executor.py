@@ -258,7 +258,7 @@ class BudgetTracker:
             return all_logs
 
 
-class TaskExecutor:
+class TaskExecutor(AssetCoordinationMixin):
     """Enhanced Task Executor with anti-loop protection and role-based task assignment"""
 
     def __init__(self):
@@ -795,8 +795,8 @@ class TaskExecutor:
         return False
 
     async def execution_loop(self):
-        """Main execution loop del TaskExecutor"""
-        logger.info("Main execution loop started")
+        """Main execution loop del TaskExecutor con asset coordination"""
+        logger.info("Main execution loop started with asset coordination")
         
         while self.running:
             try:
@@ -804,7 +804,7 @@ class TaskExecutor:
                 if not self.running:
                     break
                     
-                # Controllo circuit breaker prima di ogni ciclo
+                # Circuit breaker check (esistente)
                 if self.check_global_circuit_breaker():
                     logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused. Manual restart required.")
                     self.execution_log.append({
@@ -812,28 +812,33 @@ class TaskExecutor:
                         "event": "circuit_breaker_activated",
                         "reason": "Abnormal behavior detected"
                     })
-                    await asyncio.sleep(60)  # Attendi 60 secondi prima di tentare un nuovo check
+                    await asyncio.sleep(60)
                     continue
 
-                logger.debug("Main exec loop: processing pending tasks, checking workspaces, runaway status")
+                logger.debug("Main exec loop: processing pending tasks, asset coordination, checking workspaces")
                 
-                # Processa task pendenti
+                # Processa task pendenti (esistente)
                 await self.process_pending_tasks_anti_loop()
                 
-                # Controlla nuovi workspace (solo se auto-generation abilitata)
+                # === NUOVA: Asset coordination ===
+                try:
+                    active_workspaces = await get_active_workspaces()
+                    for ws_id in active_workspaces:
+                        await self.coordinate_asset_oriented_workflow(ws_id)
+                except Exception as e:
+                    logger.error(f"Error in asset coordination: {e}")
+                
+                # Controlla nuovi workspace (esistente)
                 if self.auto_generation_enabled:
                     await self.check_for_new_workspaces()
-                else:
-                    logger.debug("Skipping check_for_new_workspaces: global auto-gen disabled")
 
-                # Controllo runaway periodico
+                # Controllo runaway periodico (esistente)
                 if (self.last_runaway_check is None or
                     (datetime.now() - self.last_runaway_check).total_seconds() > self.runaway_check_interval):
-                    logger.info("Performing periodic runaway check...")
                     await self.periodic_runaway_check()
                     self.last_runaway_check = datetime.now()
 
-                # Cleanup periodico
+                # Cleanup periodico (esistente)
                 if datetime.now() - self.last_cleanup > timedelta(minutes=5):
                     await self._cleanup_tracking_data()
 
@@ -2023,6 +2028,80 @@ class TaskExecutor:
 
 # Istanza globale del TaskExecutor
 task_executor = TaskExecutor()
+
+class AssetCoordinationMixin:
+    """
+    Mixin per coordinamento asset-oriented nel TaskExecutor esistente
+    Estende funzionalità senza modificare l'architettura base
+    """
+    
+    async def coordinate_asset_oriented_workflow(self, workspace_id: str):
+        """
+        Coordina il workflow asset-oriented per un workspace
+        """
+        
+        try:
+            # Verifica se il workspace ha task asset-oriented in corso
+            asset_tasks = await self._get_asset_oriented_tasks(workspace_id)
+            
+            if asset_tasks:
+                logger.info(f"🎯 ASSET COORDINATION: {len(asset_tasks)} asset tasks in workspace {workspace_id}")
+                
+                # Prioritizza task asset-oriented
+                await self._prioritize_asset_tasks(asset_tasks)
+                
+                # Monitora completamento per deliverable triggering
+                completed_asset_tasks = [t for t in asset_tasks if t.get("status") == "completed"]
+                
+                if len(completed_asset_tasks) >= len(asset_tasks) * 0.8:  # 80% asset tasks completed
+                    logger.info(f"🎯 ASSET THRESHOLD: 80% asset tasks completed, checking deliverable readiness")
+                    
+                    # Trigger enhanced deliverable check
+                    from deliverable_aggregator import check_and_create_final_deliverable
+                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    
+                    if deliverable_id:
+                        logger.critical(f"🎯 ASSET-TRIGGERED DELIVERABLE: {deliverable_id} created for {workspace_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in asset-oriented workflow coordination: {e}")
+    
+    async def _get_asset_oriented_tasks(self, workspace_id: str) -> List[Dict]:
+        """Ottieni task asset-oriented per un workspace"""
+        
+        try:
+            all_tasks = await list_tasks(workspace_id)
+            
+            asset_tasks = []
+            for task in all_tasks:
+                context_data = task.get("context_data", {}) or {}
+                
+                if isinstance(context_data, dict):
+                    if (context_data.get("asset_production") or 
+                        context_data.get("asset_oriented_task") or
+                        "PRODUCE ASSET:" in task.get("name", "")):
+                        asset_tasks.append(task)
+            
+            return asset_tasks
+            
+        except Exception as e:
+            logger.error(f"Error getting asset-oriented tasks: {e}")
+            return []
+    
+    async def _prioritize_asset_tasks(self, asset_tasks: List[Dict]):
+        """Prioritizza task asset-oriented nel sistema"""
+        
+        for task in asset_tasks:
+            if task.get("status") == "pending":
+                # Boost priority per asset tasks
+                try:
+                    await update_task_status(
+                        task["id"], 
+                        "pending",
+                        {"priority_boost": "asset_oriented", "boosted_at": datetime.now().isoformat()}
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to boost priority for asset task {task['id']}: {e}")
 
 # Funzioni di controllo executor
 async def start_task_executor():
