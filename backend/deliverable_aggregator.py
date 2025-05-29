@@ -30,6 +30,9 @@ except ImportError as e:
     logger = logging.getLogger(__name__)
     logger.warning(f"⚠️ AI Quality Assurance not available: {e}")
     AI_QUALITY_ASSURANCE_AVAILABLE = False
+    # Definisci classi dummy per evitare errori
+    AssetEnhancementOrchestrator = None
+    AIQualityValidator = None
 
 # Enhanced configuration from environment
 DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
@@ -1004,15 +1007,15 @@ class EnhancedDeliverableAggregator:
             goal: str, 
             deliverable_type: DeliverableType,
             aggregated_data: Dict[str, Any]
-        ) -> str:
-            """Create comprehensive deliverable description with all aggregated data - ENHANCED"""
+    ) -> str:
+        """Create comprehensive deliverable description with all aggregated data - ENHANCED"""
 
-            # Enhanced base context with quality metrics
-            quality_score = aggregated_data.get("data_quality_score", 0)
-            total_tasks = aggregated_data.get("total_tasks", 0)
-            key_insights_count = len(aggregated_data.get("key_insights", []))
+        # Enhanced base context with quality metrics
+        quality_score = aggregated_data.get("data_quality_score", 0)
+        total_tasks = aggregated_data.get("total_tasks", 0)
+        key_insights_count = len(aggregated_data.get("key_insights", []))
 
-            base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
+        base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
 
     **PROJECT OBJECTIVE:** {goal}
 
@@ -1042,10 +1045,10 @@ class EnhancedDeliverableAggregator:
     **📋 DELIVERABLE TYPE:** {deliverable_type.value.replace('_', ' ').title()}
     """
 
-            # Enhanced type-specific instructions with foolproof JSON templates
-            type_specific = self._get_foolproof_output_schema(deliverable_type.value, aggregated_data, goal)
+        # Enhanced type-specific instructions with foolproof JSON templates
+        type_specific = self._get_foolproof_output_schema(deliverable_type.value, aggregated_data, goal)
 
-            return base_context + type_specific
+        return base_context + type_specific
     
     def _get_foolproof_output_schema(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
         """Get foolproof output schema with simple, reliable JSON templates"""
@@ -2098,9 +2101,9 @@ class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
     
     def __init__(self):
         super().__init__()
-        
+
         # Initialize AI Quality Assurance components if available
-        if AI_QUALITY_ASSURANCE_AVAILABLE:
+        if AI_QUALITY_ASSURANCE_AVAILABLE and AssetEnhancementOrchestrator is not None and AIQualityValidator is not None:
             try:
                 self.enhancement_orchestrator = AssetEnhancementOrchestrator()
                 self.quality_validator = AIQualityValidator()
@@ -2109,6 +2112,9 @@ class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
                 logger.error(f"Failed to initialize AI Quality Assurance: {e}")
                 self.enhancement_orchestrator = None
                 self.quality_validator = None
+                # Imposta flag come False se l'inizializzazione fallisce
+                global AI_QUALITY_ASSURANCE_AVAILABLE
+                AI_QUALITY_ASSURANCE_AVAILABLE = False
         else:
             self.enhancement_orchestrator = None
             self.quality_validator = None
