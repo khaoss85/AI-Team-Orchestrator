@@ -1,4 +1,4 @@
-# backend/deliverable_aggregator.py - COMPLETE ENHANCED VERSION
+# backend/deliverable_aggregator.py - COMPLETE ENHANCED VERSION WITH AI QUALITY ASSURANCE
 # Sostituisce completamente il file esistente
 
 import logging
@@ -19,13 +19,24 @@ from deliverable_system.requirements_analyzer import DeliverableRequirementsAnal
 from deliverable_system.schema_generator import AssetSchemaGenerator
 from models import ExtractedAsset, ActionableDeliverable, AssetSchema
 
-logger = logging.getLogger(__name__)
+# ENHANCED: AI Quality Assurance Integration with graceful fallback
+try:
+    from ai_quality_assurance.enhancement_orchestrator import AssetEnhancementOrchestrator
+    from ai_quality_assurance.quality_validator import AIQualityValidator
+    AI_QUALITY_ASSURANCE_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ AI Quality Assurance modules imported successfully")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.warning(f"⚠️ AI Quality Assurance not available: {e}")
+    AI_QUALITY_ASSURANCE_AVAILABLE = False
 
 # Enhanced configuration from environment
 DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
 ENABLE_AUTO_PROJECT_COMPLETION = os.getenv("ENABLE_AUTO_PROJECT_COMPLETION", "true").lower() == "true"
 MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
+ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
 
 class DeliverableType(str, Enum):
     """Enhanced deliverable types with broader coverage"""
@@ -259,83 +270,86 @@ class EnhancedDeliverableAggregator:
             return False
     
     async def _final_deliverable_exists_enhanced(self, workspace_id: str) -> bool:
-            """
-            ENHANCED: Check for existing deliverable with multiple detection methods
-            FIXED: Improved logic to avoid false positives from planning tasks
-            """
-            try:
-                tasks = await list_tasks(workspace_id)
+        """
+        ENHANCED: Check for existing deliverable with multiple detection methods
+        FIXED: Improved logic to avoid false positives from planning tasks
+        """
+        try:
+            tasks = await list_tasks(workspace_id)
 
-                for task in tasks:
-                    context_data = task.get("context_data", {}) or {}
-                    task_name = (task.get("name", "") or "").upper()
+            for task in tasks:
+                context_data = task.get("context_data", {}) or {}
+                task_name = (task.get("name", "") or "").upper()
 
-                    # PRIORITY 1: Explicit deliverable markers (most reliable)
-                    if isinstance(context_data, dict):
-                        # Check for explicit deliverable flags
-                        if (context_data.get("is_final_deliverable") or 
-                            context_data.get("deliverable_aggregation") or
-                            context_data.get("triggers_project_completion")):
-                            logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
-                            return True
-
-                        # Check for deliverable creation types
-                        creation_type = context_data.get("creation_type", "")
-                        if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", "project_completion"]:
-                            logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
-                            return True
-
-                        # CRITICAL FIX: Exclude planning tasks explicitly
-                        if (context_data.get("planning_task_marker") or 
-                            creation_type == "phase_transition" or
-                            context_data.get("is_finalization_planning") or
-                            context_data.get("phase_transition")):
-                            logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
-                            continue  # Skip this task, it's a planning task
-
-                    # PRIORITY 2: Specific name patterns (more restrictive than before)
-                    # Only look for complete phrases that clearly indicate final deliverables
-                    specific_deliverable_patterns = [
-                        "FINAL DELIVERABLE:", 
-                        "PROJECT DELIVERABLE:", 
-                        "COMPLETE DELIVERABLE:",
-                        "FINAL PROJECT DELIVERABLE",
-                        "DELIVERABLE AGGREGATION"
-                    ]
-
-                    # Check for specific patterns but exclude planning patterns
-                    planning_exclusion_patterns = [
-                        "CREATE FINAL DELIVERABLES",  # This is planning, not the actual deliverable
-                        "PLANNING",
-                        "SETUP", 
-                        "CRITICAL: CREATE"
-                    ]
-
-                    # If it matches a planning pattern, skip it
-                    if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
-                        logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
-                        continue
-
-                    # Now check for deliverable patterns
-                    if any(pattern in task_name for pattern in specific_deliverable_patterns):
-                        logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
+                # PRIORITY 1: Explicit deliverable markers (most reliable)
+                if isinstance(context_data, dict):
+                    # Check for explicit deliverable flags
+                    if (context_data.get("is_final_deliverable") or 
+                        context_data.get("deliverable_aggregation") or
+                        context_data.get("triggers_project_completion")):
+                        logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
                         return True
 
-                    # PRIORITY 3: Legacy emoji check (most restrictive)
-                    # Only if it's clearly a deliverable context AND has the emoji
-                    if ("🎯" in task_name and 
-                        isinstance(context_data, dict) and
-                        context_data.get("deliverable_aggregation") and
-                        not context_data.get("planning_task_marker")):
-                        logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
+                    # Check for deliverable creation types
+                    creation_type = context_data.get("creation_type", "")
+                    if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", 
+                                       "project_completion", "asset_oriented_deliverable", "quality_enhanced_deliverable"]:
+                        logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
                         return True
 
-                logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
-                return False
+                    # CRITICAL FIX: Exclude planning tasks explicitly
+                    if (context_data.get("planning_task_marker") or 
+                        creation_type == "phase_transition" or
+                        context_data.get("is_finalization_planning") or
+                        context_data.get("phase_transition")):
+                        logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
+                        continue  # Skip this task, it's a planning task
 
-            except Exception as e:
-                logger.error(f"Error checking existing deliverable: {e}")
-                return True  # Safe default to prevent duplicates
+                # PRIORITY 2: Specific name patterns (more restrictive than before)
+                # Only look for complete phrases that clearly indicate final deliverables
+                specific_deliverable_patterns = [
+                    "FINAL DELIVERABLE:", 
+                    "PROJECT DELIVERABLE:", 
+                    "COMPLETE DELIVERABLE:",
+                    "FINAL PROJECT DELIVERABLE",
+                    "DELIVERABLE AGGREGATION",
+                    "QUALITY-ASSURED FINAL DELIVERABLE",
+                    "ASSET-READY DELIVERABLE"
+                ]
+
+                # Check for specific patterns but exclude planning patterns
+                planning_exclusion_patterns = [
+                    "CREATE FINAL DELIVERABLES",  # This is planning, not the actual deliverable
+                    "PLANNING",
+                    "SETUP", 
+                    "CRITICAL: CREATE"
+                ]
+
+                # If it matches a planning pattern, skip it
+                if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
+                    logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
+                    continue
+
+                # Now check for deliverable patterns
+                if any(pattern in task_name for pattern in specific_deliverable_patterns):
+                    logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
+                    return True
+
+                # PRIORITY 3: Legacy emoji check (most restrictive)
+                # Only if it's clearly a deliverable context AND has the emoji
+                if ("🎯" in task_name and 
+                    isinstance(context_data, dict) and
+                    context_data.get("deliverable_aggregation") and
+                    not context_data.get("planning_task_marker")):
+                    logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
+                    return True
+
+            logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
+            return False
+
+        except Exception as e:
+            logger.error(f"Error checking existing deliverable: {e}")
+            return True  # Safe default to prevent duplicates
     
     def _determine_deliverable_type_enhanced(self, goal: str) -> DeliverableType:
         """
@@ -1133,161 +1147,6 @@ class EnhancedDeliverableAggregator:
     🚨 **THIS IS THE FINAL PROJECT DELIVERABLE - MAKE IT EXCEPTIONAL!**
     """
     
-    def _get_enhanced_output_schema_instructions(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
-        """Get enhanced output schema with actual data integration"""
-
-        import json
-
-        # Enhanced schemas with real data integration
-        if deliverable_type_value == "contact_list":
-            structured_data = aggregated_data.get('structured_data', {})
-            total_contacts = structured_data.get('total_contacts', 0)
-            collection_methods = structured_data.get('collection_methods', [])
-            contact_fields = structured_data.get('contact_fields', [])
-            quality_score = aggregated_data.get('data_quality_score', 0)
-
-            # Serialize lists properly for JSON
-            collection_methods_json = json.dumps(collection_methods)
-            contact_fields_json = json.dumps(contact_fields)
-
-            return f"""
-    **📞 CONTACT LIST DELIVERABLE REQUIREMENTS:**
-
-    **Available Data:**
-    - {total_contacts} contacts identified from project tasks
-    - Collection methods: {', '.join(collection_methods)}
-
-    **✅ REQUIRED OUTPUT in detailed_results_json:**
-    {{
-      "deliverable_type": "contact_list",
-      "executive_summary": "Professional summary of contact list generation and quality.",
-      "final_contact_list": [
-        {{
-          "name": "Contact Name",
-          "company": "Company Name", 
-          "email": "email@company.com",
-          "phone": "+1-555-000-0000",
-          "title": "Job Title",
-          "source": "Task/Method that found this contact",
-          "qualification_score": "8/10",
-          "notes": "Relevant notes about this contact"
-        }}
-      ],
-      "list_statistics": {{
-        "total_contacts_generated": {total_contacts},
-        "quality_score": "{quality_score}/100",
-        "primary_sources": {collection_methods_json},
-        "contact_fields_available": {contact_fields_json}
-      }},
-      "usage_recommendations": [
-        "Prioritize contacts with highest qualification scores",
-        "Segment by company size for targeted outreach",
-        "Use personalized messaging based on source context"
-      ]
-    }}
-
-    🎯 **CRITICAL:** Transform ALL contact data from aggregated_data into the final_contact_list!
-    """
-
-        elif deliverable_type_value == "content_strategy":
-            structured_data = aggregated_data.get('structured_data', {})
-            content_count = len(structured_data.get('content_ideas', []))
-            strategies_count = len(structured_data.get('strategies', []))
-            hashtags_count = len(structured_data.get('hashtags', []))
-            content_ideas = structured_data.get('content_ideas', [])[:5]  # First 5 ideas
-            hashtags = structured_data.get('hashtags', [])[:20]
-
-            # Serialize lists properly for JSON  
-            content_ideas_json = json.dumps(content_ideas)
-            hashtags_json = json.dumps(hashtags)
-
-            return f"""
-    **📝 CONTENT STRATEGY DELIVERABLE REQUIREMENTS:**
-
-    **Available Data:**
-    - {content_count} content ideas generated
-    - {strategies_count} strategy frameworks
-    - Hashtags: {hashtags_count} identified
-
-    **✅ REQUIRED OUTPUT in detailed_results_json:**
-    {{
-      "deliverable_type": "content_strategy",
-      "executive_summary": "Comprehensive content strategy overview and objectives.",
-      "content_pillars": ["Educational Content", "Brand Storytelling", "Community Engagement"],
-      "content_calendar": [
-        {{
-          "month": "Current Month",
-          "theme": "Monthly Theme",
-          "content_pieces": {content_ideas_json}
-        }}
-      ],
-      "platform_strategy": {{
-        "instagram": "Strategy for Instagram based on analysis",
-        "linkedin": "Professional content approach",
-        "blog": "In-depth thought leadership"
-      }},
-      "recommended_hashtags": {hashtags_json},
-      "performance_targets": {{
-        "engagement_rate": "Target %",
-        "reach_growth": "Monthly growth target",
-        "lead_generation": "Leads per month target"
-      }}
-    }}
-
-    🎯 **CRITICAL:** Integrate ALL content ideas and strategies from project analysis!
-    """
-
-        else:  # Generic report
-            # FIX: Serialize complex data properly for JSON
-            total_tasks = aggregated_data.get('total_tasks', 0)
-            key_insights_count = len(aggregated_data.get('key_insights', []))
-            quality_score = aggregated_data.get('data_quality_score', 0)
-            key_insights = aggregated_data.get('key_insights', [])
-            project_metrics = aggregated_data.get('project_metrics', {})
-            recommendations = aggregated_data.get('recommendations', [])
-
-            # Serialize complex data properly
-            key_insights_json = json.dumps(key_insights)
-            project_metrics_json = json.dumps(project_metrics)
-            recommendations_json = json.dumps(recommendations)
-
-            return f"""
-    **📊 COMPREHENSIVE PROJECT REPORT REQUIREMENTS:**
-
-    **Available Project Data:**
-    - {total_tasks} completed tasks
-    - {key_insights_count} key insights
-    - Quality score: {quality_score}/100
-
-    **✅ REQUIRED OUTPUT in detailed_results_json:**
-    {{
-      "deliverable_type": "project_report",
-      "executive_summary": "2-3 sentence overview of project accomplishments and outcomes.",
-      "project_goal_recap": "{goal}",
-      "key_findings": {key_insights_json},
-      "project_metrics": {project_metrics_json},
-      "deliverables_produced": [
-        {{
-          "deliverable_name": "Name from task analysis",
-          "description": "What was accomplished",
-          "value_delivered": "Business impact"
-        }}
-      ],
-      "final_recommendations": {recommendations_json},
-      "implementation_next_steps": [
-        "Immediate action item 1",
-        "Follow-up action item 2"
-      ],
-      "project_success_metrics": {{
-        "completion_rate": "X% of objectives achieved",
-        "quality_score": "{quality_score}/100",
-        "timeline_performance": "On schedule/Ahead/Behind"
-      }}
-    }}
-
-    🎯 **CRITICAL:** Synthesize ALL project data into comprehensive final report!
-    """
-    
     async def _trigger_project_completion_sequence(self, workspace_id: str, deliverable_task_id: str):
         """
         ENHANCED: Trigger project completion sequence after deliverable creation
@@ -1327,36 +1186,7 @@ class EnhancedDeliverableAggregator:
         except Exception as e:
             logger.error(f"Error in project completion sequence: {e}")
 
-# Global instance
-deliverable_aggregator = EnhancedDeliverableAggregator()
 
-# Helper function for integration
-async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
-    """
-    FIXED: Helper function che utilizza l'istanza globale dell'aggregator
-    """
-    try:
-        return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
-    except Exception as e:
-        logger.error(f"Error in check_and_create_final_deliverable helper: {e}", exc_info=True)
-        return None
-
-    
-async def verify_deliverable_completion(workspace_id: str, deliverable_task_id: str) -> bool:
-    """Verify that the deliverable task was completed successfully with valid data"""
-    try:
-        return await deliverable_aggregator._verify_deliverable_completion(workspace_id, deliverable_task_id)
-    except Exception as e:
-        logger.error(f"Error in verify_deliverable_completion helper: {e}")
-        return False
-    
-async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id: str):
-    """Monitor deliverable task completion and take action if it fails"""
-    try:
-        await deliverable_aggregator._monitor_deliverable_completion(workspace_id, deliverable_task_id)
-    except Exception as e:
-        logger.error(f"Error in monitor_deliverable_completion helper: {e}")
-        
 # === ENHANCED ASSET-ORIENTED DELIVERABLE SYSTEM ===
 
 class SmartAssetExtractor:
@@ -2259,15 +2089,244 @@ Your detailed_results_json must contain:
         return description.strip()
 
 
-# === GLOBAL INSTANCE REPLACEMENT ===
+# === AI QUALITY ASSURANCE INTEGRATION ===
 
-# Sostituisci l'istanza globale con la versione asset-oriented
-deliverable_aggregator = AssetOrientedDeliverableAggregator()
+class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
+    """
+    Estensione dell'aggregator esistente con AI Quality Assurance integrato
+    """
+    
+    def __init__(self):
+        super().__init__()
+        
+        # Initialize AI Quality Assurance components if available
+        if AI_QUALITY_ASSURANCE_AVAILABLE:
+            try:
+                self.enhancement_orchestrator = AssetEnhancementOrchestrator()
+                self.quality_validator = AIQualityValidator()
+                logger.info("✅ Quality Enhanced Deliverable Aggregator initialized with AI Quality Assurance")
+            except Exception as e:
+                logger.error(f"Failed to initialize AI Quality Assurance: {e}")
+                self.enhancement_orchestrator = None
+                self.quality_validator = None
+        else:
+            self.enhancement_orchestrator = None
+            self.quality_validator = None
+            logger.info("🔄 Quality Enhanced Deliverable Aggregator initialized without AI Quality Assurance")
+    
+    async def _create_asset_oriented_deliverable(self, workspace_id: str) -> Optional[str]:
+        """
+        ENHANCED VERSION: Crea deliverable con quality assurance integrato se disponibile
+        """
+        
+        # Se AI Quality Assurance non è disponibile, usa la versione standard
+        if not self.enhancement_orchestrator or not ENABLE_AI_QUALITY_ASSURANCE:
+            logger.info(f"🔄 STANDARD: Using standard asset-oriented deliverable for {workspace_id}")
+            return await super()._create_asset_oriented_deliverable(workspace_id)
+        
+        try:
+            logger.info(f"🎯 ENHANCED DELIVERABLE: Starting with AI Quality Assurance for {workspace_id}")
+            
+            # === FASE 1: Creazione deliverable standard ===
+            requirements = await self.requirements_analyzer.analyze_deliverable_requirements(workspace_id)
+            asset_schemas = await self.schema_generator.generate_asset_schemas(requirements)
+            
+            workspace = await get_workspace(workspace_id)
+            tasks = await list_tasks(workspace_id)
+            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+            
+            if len(completed_tasks) < 2:
+                logger.warning(f"Insufficient completed tasks for asset extraction: {len(completed_tasks)}")
+                raise ValueError("Insufficient completed tasks")
+            
+            extracted_assets = await self.asset_extractor.extract_actionable_assets(
+                completed_tasks, asset_schemas, workspace_id
+            )
+            
+            if not extracted_assets:
+                logger.warning(f"No actionable assets extracted from {len(completed_tasks)} tasks")
+                raise ValueError("No actionable assets extracted")
+            
+            initial_deliverable = await self.asset_packager.create_actionable_deliverable(
+                workspace_id,
+                workspace.get("goal", ""),
+                extracted_assets,
+                requirements.model_dump()
+            )
+            
+            logger.info(f"📦 INITIAL DELIVERABLE: Created with {len(extracted_assets)} assets")
+            
+            # === FASE 2: AI QUALITY ANALYSIS & ENHANCEMENT ===
+            logger.info(f"🔍 QUALITY ANALYSIS: Starting AI-powered quality assessment")
+            
+            try:
+                enhanced_deliverable = await self.enhancement_orchestrator.analyze_and_enhance_deliverable_assets(
+                    workspace_id, 
+                    initial_deliverable.model_dump()
+                )
+                
+                logger.info(f"🔍 QUALITY ANALYSIS: Completed successfully")
+                
+                # Crea task deliverable con quality enhancement
+                deliverable_task_id = await self._create_quality_enhanced_deliverable_task(
+                    workspace_id, workspace, enhanced_deliverable
+                )
+                
+            except Exception as e:
+                logger.error(f"Quality analysis failed: {e}, using standard deliverable")
+                # Fallback al deliverable standard
+                deliverable_task_id = await self._create_asset_deliverable_task(
+                    workspace_id, workspace, initial_deliverable
+                )
+            
+            if deliverable_task_id:
+                logger.critical(f"🎯 QUALITY-ENHANCED DELIVERABLE: {deliverable_task_id} created for {workspace_id}")
+            
+            return deliverable_task_id
+            
+        except Exception as e:
+            logger.error(f"Error in quality-enhanced deliverable creation: {e}", exc_info=True)
+            logger.warning(f"🔄 FALLBACK: Using standard deliverable creation for {workspace_id}")
+            return await super()._create_asset_oriented_deliverable(workspace_id)
 
-# Mantieni backward compatibility per la funzione helper esistente
+    async def _create_quality_enhanced_deliverable_task(
+        self,
+        workspace_id: str,
+        workspace: Dict,
+        enhanced_deliverable: Dict[str, Any]
+    ) -> Optional[str]:
+        """
+        Crea task deliverable con quality enhancement integrato
+        """
+        
+        try:
+            agents = await list_agents(workspace_id)
+            deliverable_agent = await self._find_best_deliverable_agent(
+                agents, DeliverableType.GENERIC_REPORT
+            )
+            
+            if not deliverable_agent:
+                logger.error(f"No suitable agent for quality-enhanced deliverable in {workspace_id}")
+                return None
+            
+            # Estrai statistiche qualità
+            quality_stats = enhanced_deliverable.get("meta", {}).get("quality_analysis", {})
+            total_assets = quality_stats.get("total_assets_analyzed", 0)
+            ready_assets = quality_stats.get("ready_to_use_assets", 0)
+            avg_quality = quality_stats.get("average_quality_score", 0.0)
+            enhancement_tasks = quality_stats.get("enhancement_tasks_created", 0)
+            
+            # Descrizione task arricchita con info qualità
+            description = f"""🎯 **FINAL QUALITY-ASSURED DELIVERABLE COMPILATION**
+
+**PROJECT OBJECTIVE:** {workspace.get("goal", "")}
+
+**📊 AI QUALITY ANALYSIS RESULTS:**
+- Total Assets: {total_assets}
+- Ready-to-Use: {ready_assets} ({ready_assets/total_assets*100:.0f}% if total_assets else 0)
+- Average Quality Score: {avg_quality:.1f}/1.0
+- Enhancement Tasks Created: {enhancement_tasks}
+
+**📦 ENHANCED DELIVERABLE PACKAGE:**
+This task contains a quality-analyzed deliverable package where AI has:
+1. ✅ Identified high-quality, ready-to-use assets
+2. 🔧 Flagged assets needing improvement
+3. 🚀 Created enhancement tasks for quality issues
+4. 📋 Provided specific improvement guidance
+
+**🎯 YOUR MISSION:**
+Create the FINAL, CLIENT-READY deliverable with quality indicators and enhancement guidance.
+
+**✅ REQUIRED OUTPUT FORMAT:**
+Your detailed_results_json must contain:
+```json
+{{
+  "deliverable_type": "quality_assured_package",
+  "executive_summary": "Comprehensive summary highlighting quality analysis results",
+  "quality_summary": {{
+    "total_assets": {total_assets},
+    "immediately_ready": {ready_assets},
+    "needs_enhancement": {total_assets - ready_assets},
+    "average_quality_score": {avg_quality}
+  }},
+  "ready_to_use_assets": "Assets ready for immediate implementation",
+  "assets_under_enhancement": "Assets being improved by enhancement tasks",
+  "implementation_roadmap": {{
+    "phase_1_immediate": ["Ready-to-use assets for immediate deployment"],
+    "phase_2_enhanced": ["Assets available after enhancement completion"],
+    "success_metrics": ["How to measure deliverable success"]
+  }}
+}}
+```
+
+**🚨 CRITICAL SUCCESS FACTORS:**
+- Clearly distinguish between ready-to-use and enhancement-needed assets
+- Provide actionable implementation guidance
+- Professional client presentation with quality transparency
+- Clear next steps for maximizing deliverable value
+"""
+            
+            # Context data arricchito
+            context_data = {
+                "is_final_deliverable": True,
+                "deliverable_aggregation": True,
+                "quality_enhanced_deliverable": True,
+                "deliverable_type": "quality_assured_package",
+                "project_phase": "FINALIZATION",
+                "quality_analysis_integrated": True,
+                "quality_statistics": quality_stats,
+                "workspace_goal": workspace.get("goal", ""),
+                "creation_timestamp": datetime.now().isoformat(),
+                "triggers_project_completion": True,
+                "enhanced_deliverable_version": "3.0_quality_assured",
+                "precomputed_deliverable": enhanced_deliverable
+            }
+            
+            # Nome task con indicatore qualità
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            task_name = f"🎯 QUALITY-ASSURED FINAL DELIVERABLE (Q:{avg_quality:.1f}) ({timestamp})"
+            
+            # Crea task
+            deliverable_task = await create_task(
+                workspace_id=workspace_id,
+                agent_id=deliverable_agent["id"],
+                name=task_name,
+                description=description,
+                status="pending",
+                priority="high",
+                creation_type="quality_enhanced_deliverable",
+                context_data=context_data
+            )
+            
+            if deliverable_task and deliverable_task.get("id"):
+                logger.critical(f"🎯 QUALITY-ENHANCED DELIVERABLE: {deliverable_task['id']} "
+                               f"(Quality: {avg_quality:.1f}/1.0, Ready: {ready_assets}/{total_assets})")
+                return deliverable_task["id"]
+            else:
+                logger.error(f"Failed to create quality-enhanced deliverable task")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating quality-enhanced deliverable task: {e}", exc_info=True)
+            return None
+
+
+# === GLOBAL INSTANCE WITH SMART SELECTION ===
+
+# Usa QualityEnhancedDeliverableAggregator se AI Quality Assurance è disponibile e abilitato
+if AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE:
+    deliverable_aggregator = QualityEnhancedDeliverableAggregator()
+    logger.info("🎯 Using Quality Enhanced Deliverable Aggregator with AI Quality Assurance")
+else:
+    deliverable_aggregator = AssetOrientedDeliverableAggregator()
+    logger.info("🎯 Using Asset Oriented Deliverable Aggregator (AI Quality Assurance disabled/unavailable)")
+
+
+# === HELPER FUNCTIONS FOR INTEGRATION ===
+
 async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
     """
-    ENHANCED: Helper function che usa il nuovo sistema asset-oriented
+    ENHANCED: Helper function che usa il nuovo sistema con AI Quality Assurance
     Mantiene backward compatibility completa
     """
     try:
@@ -2275,3 +2334,309 @@ async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]
     except Exception as e:
         logger.error(f"Error in enhanced check_and_create_final_deliverable: {e}", exc_info=True)
         return None
+
+async def create_quality_enhanced_deliverable(workspace_id: str) -> Optional[str]:
+    """
+    Helper function per forzare l'uso di quality enhancement
+    """
+    try:
+        if isinstance(deliverable_aggregator, QualityEnhancedDeliverableAggregator):
+            return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+        else:
+            logger.warning("Quality Enhanced Deliverable Aggregator not available, using standard approach")
+            return await check_and_create_final_deliverable(workspace_id)
+    except Exception as e:
+        logger.error(f"Error in quality-enhanced deliverable creation: {e}")
+        # Fallback al sistema standard
+        return await check_and_create_final_deliverable(workspace_id)
+
+async def verify_deliverable_completion(workspace_id: str, deliverable_task_id: str) -> bool:
+    """Verify that the deliverable task was completed successfully with valid data"""
+    try:
+        tasks = await list_tasks(workspace_id)
+        deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
+        
+        if not deliverable_task:
+            logger.error(f"Deliverable task {deliverable_task_id} not found")
+            return False
+        
+        if deliverable_task.get("status") != "completed":
+            logger.warning(f"Deliverable task {deliverable_task_id} not completed yet")
+            return False
+        
+        # Verifica che abbia risultati validi
+        result = deliverable_task.get("result", {})
+        if not result or not result.get("detailed_results_json"):
+            logger.error(f"Deliverable task {deliverable_task_id} has no valid results")
+            return False
+        
+        try:
+            json.loads(result["detailed_results_json"])
+            logger.info(f"✅ Deliverable task {deliverable_task_id} completed successfully with valid JSON")
+            return True
+        except json.JSONDecodeError:
+            logger.error(f"Deliverable task {deliverable_task_id} has invalid JSON results")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error verifying deliverable completion: {e}")
+        return False
+
+async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id: str):
+    """Monitor deliverable task completion and take action if it fails"""
+    try:
+        max_wait_minutes = 45
+        check_interval_seconds = 120  # Check every 2 minutes
+        
+        for attempt in range(max_wait_minutes // 2):
+            await asyncio.sleep(check_interval_seconds)
+            
+            tasks = await list_tasks(workspace_id)
+            deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
+            
+            if not deliverable_task:
+                logger.error(f"Deliverable task {deliverable_task_id} disappeared during monitoring")
+                break
+            
+            status = deliverable_task.get("status")
+            
+            if status == "completed":
+                if await verify_deliverable_completion(workspace_id, deliverable_task_id):
+                    logger.info(f"✅ Deliverable monitoring: Task {deliverable_task_id} completed successfully")
+                    return
+                else:
+                    logger.error(f"❌ Deliverable monitoring: Task {deliverable_task_id} completed but with invalid data")
+                    break
+            elif status == "failed":
+                logger.error(f"❌ Deliverable monitoring: Task {deliverable_task_id} failed")
+                break
+            elif status in ["pending", "in_progress"]:
+                logger.debug(f"🔄 Deliverable monitoring: Task {deliverable_task_id} still {status}")
+                continue
+        
+        logger.warning(f"⚠️ Deliverable monitoring timeout for task {deliverable_task_id}")
+        
+    except Exception as e:
+        logger.error(f"Error in monitor_deliverable_completion: {e}")
+
+
+# === MONITORING AND METRICS COLLECTION ===
+
+class QualityMetricsCollector:
+    """Colleziona metriche di qualità per monitoring"""
+    
+    def __init__(self):
+        self.quality_metrics = []
+        self.deliverable_stats = {
+            "total_deliverables_created": 0,
+            "quality_enhanced_deliverables": 0,
+            "standard_deliverables": 0,
+            "failed_deliverables": 0
+        }
+    
+    def record_quality_analysis(
+        self, 
+        workspace_id: str, 
+        assets_analyzed: int,
+        quality_scores: List[float],
+        enhancement_tasks_created: int
+    ):
+        """Registra metriche di un'analisi qualità"""
+        
+        self.quality_metrics.append({
+            "timestamp": datetime.now().isoformat(),
+            "workspace_id": workspace_id,
+            "assets_analyzed": assets_analyzed,
+            "avg_quality_score": sum(quality_scores) / len(quality_scores) if quality_scores else 0,
+            "min_quality_score": min(quality_scores) if quality_scores else 0,
+            "max_quality_score": max(quality_scores) if quality_scores else 0,
+            "enhancement_tasks_created": enhancement_tasks_created,
+            "quality_pass_rate": len([s for s in quality_scores if s >= 0.8]) / len(quality_scores) if quality_scores else 0
+        })
+    
+    def record_deliverable_creation(self, workspace_id: str, deliverable_type: str, success: bool):
+        """Registra creazione di deliverable"""
+        
+        self.deliverable_stats["total_deliverables_created"] += 1
+        
+        if success:
+            if deliverable_type == "quality_enhanced":
+                self.deliverable_stats["quality_enhanced_deliverables"] += 1
+            else:
+                self.deliverable_stats["standard_deliverables"] += 1
+        else:
+            self.deliverable_stats["failed_deliverables"] += 1
+    
+    def get_quality_trends(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        """Ottieni trend di qualità"""
+        
+        metrics = self.quality_metrics
+        if workspace_id:
+            metrics = [m for m in metrics if m["workspace_id"] == workspace_id]
+        
+        if not metrics:
+            return {"message": "No quality metrics available"}
+        
+        return {
+            "total_analyses": len(metrics),
+            "average_quality_score": sum(m["avg_quality_score"] for m in metrics) / len(metrics),
+            "average_enhancement_rate": sum(m["enhancement_tasks_created"] for m in metrics) / len(metrics),
+            "quality_improvement_trend": "improving" if len(metrics) > 1 and metrics[-1]["avg_quality_score"] > metrics[0]["avg_quality_score"] else "stable",
+            "latest_analysis": metrics[-1] if metrics else None
+        }
+    
+    def get_deliverable_stats(self) -> Dict[str, Any]:
+        """Ottieni statistiche deliverable"""
+        
+        total = self.deliverable_stats["total_deliverables_created"]
+        
+        stats = dict(self.deliverable_stats)
+        
+        if total > 0:
+            stats["success_rate"] = (total - stats["failed_deliverables"]) / total
+            stats["quality_enhancement_rate"] = stats["quality_enhanced_deliverables"] / total
+        else:
+            stats["success_rate"] = 0.0
+            stats["quality_enhancement_rate"] = 0.0
+        
+        return stats
+
+# Global instances
+quality_metrics_collector = QualityMetricsCollector()
+
+
+# === DYNAMIC PROMPT ENHANCEMENT ===
+
+class DynamicPromptEnhancer:
+    """
+    Migliora i prompt degli agent per generare contenuto di qualità superiore
+    """
+    
+    @staticmethod
+    def enhance_specialist_prompt_for_quality(base_prompt: str, asset_type: Optional[str] = None) -> str:
+        """
+        Migliora prompt per ridurre fake content e aumentare actionability
+        """
+        
+        quality_enhancement = f"""
+
+🔧 **ENHANCED QUALITY REQUIREMENTS (AI Quality Assurance Active)**
+
+**CRITICAL: ZERO FAKE CONTENT POLICY**
+- NEVER use placeholder data like "John Doe", "example.com", "555-1234"
+- NEVER generate fake emails, phone numbers, or addresses
+- NEVER use "Lorem ipsum" or template text
+- If you lack specific data, state "Research needed for [specific data point]"
+
+**ACTIONABILITY STANDARDS**
+- Every output must be immediately implementable by the client
+- Provide specific, concrete data derived from actual research or analysis
+- Include real business metrics, authentic contact information, actual market data
+- Replace ALL generic examples with domain-specific, actionable content
+
+**QUALITY VALIDATION CHECKLIST**
+✅ All data points are specific and realistic
+✅ No placeholder or example content present
+✅ Asset follows domain best practices for {asset_type or 'business assets'}
+✅ Ready for immediate business implementation
+✅ Includes concrete next steps and success criteria
+
+**AI QUALITY ASSESSMENT NOTE**
+Your output will be automatically analyzed for:
+- Content authenticity (fake content detection)
+- Actionability level (immediate usability)
+- Completeness (missing information detection)
+- Professional readiness (business standard compliance)
+
+Outputs scoring below 0.8/1.0 will trigger enhancement tasks. Aim for 0.9+ quality score.
+"""
+        
+        return base_prompt + quality_enhancement
+    
+    @staticmethod
+    def create_quality_focused_task_description(base_description: str, quality_target: float = 0.8) -> str:
+        """
+        Crea descrizione task con focus su qualità
+        """
+        
+        quality_addendum = f"""
+
+📊 **AI QUALITY TARGET: {quality_target}/1.0**
+
+This task will be automatically evaluated for quality. Ensure your output meets these standards:
+- **Authenticity**: Real data, no fake/placeholder content
+- **Actionability**: Immediately usable for business purposes  
+- **Completeness**: All necessary information included
+- **Professional**: Business-ready format and presentation
+
+Low-quality outputs will automatically trigger enhancement tasks."""
+        
+        return base_description + quality_addendum
+
+
+# === SYSTEM STATUS AND HEALTH CHECK ===
+
+def get_deliverable_system_status() -> Dict[str, Any]:
+    """Ottieni stato del sistema deliverable"""
+    
+    return {
+        "system_version": "3.0_enhanced_with_ai_quality",
+        "ai_quality_assurance": {
+            "available": AI_QUALITY_ASSURANCE_AVAILABLE,
+            "enabled": ENABLE_AI_QUALITY_ASSURANCE,
+            "active": AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE
+        },
+        "aggregator_type": type(deliverable_aggregator).__name__,
+        "configuration": {
+            "readiness_threshold": DELIVERABLE_READINESS_THRESHOLD,
+            "auto_completion": ENABLE_AUTO_PROJECT_COMPLETION,
+            "min_completed_tasks": MIN_COMPLETED_TASKS_FOR_DELIVERABLE,
+            "enhanced_logic": ENABLE_ENHANCED_DELIVERABLE_LOGIC
+        },
+        "metrics": quality_metrics_collector.get_deliverable_stats(),
+        "components": {
+            "enhanced_aggregator": True,
+            "asset_extractor": True,
+            "asset_packager": True,
+            "quality_validator": AI_QUALITY_ASSURANCE_AVAILABLE,
+            "enhancement_orchestrator": AI_QUALITY_ASSURANCE_AVAILABLE
+        }
+    }
+
+def reset_deliverable_system_stats():
+    """Reset delle statistiche del sistema"""
+    
+    quality_metrics_collector.quality_metrics.clear()
+    quality_metrics_collector.deliverable_stats = {
+        "total_deliverables_created": 0,
+        "quality_enhanced_deliverables": 0,
+        "standard_deliverables": 0,
+        "failed_deliverables": 0
+    }
+    
+    # Reset stats degli orchestrator se disponibili
+    if hasattr(deliverable_aggregator, 'enhancement_orchestrator') and deliverable_aggregator.enhancement_orchestrator:
+        try:
+            deliverable_aggregator.enhancement_orchestrator.reset_stats()
+        except:
+            pass
+    
+    if hasattr(deliverable_aggregator, 'quality_validator') and deliverable_aggregator.quality_validator:
+        try:
+            deliverable_aggregator.quality_validator.reset_stats()
+        except:
+            pass
+    
+    logger.info("🔄 Deliverable system stats reset completed")
+
+
+# === LOGGING AND INITIALIZATION ===
+
+logger.info("=" * 60)
+logger.info("🎯 DELIVERABLE AGGREGATOR SYSTEM INITIALIZED")
+logger.info("=" * 60)
+logger.info(f"Version: 3.0 Enhanced with AI Quality Assurance")
+logger.info(f"Aggregator: {type(deliverable_aggregator).__name__}")
+logger.info(f"AI Quality Assurance: {'✅ Active' if (AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE) else '❌ Inactive'}")
+logger.info(f"Configuration: Threshold={DELIVERABLE_READINESS_THRESHOLD}%, MinTasks={MIN_COMPLETED_TASKS_FOR_DELIVERABLE}")
+logger.info("=" * 60)
