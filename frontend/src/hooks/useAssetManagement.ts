@@ -1,197 +1,140 @@
-// frontend/src/hooks/useAssetManagement.ts - DEEP ASSET EXTRACTION VERSION
+// frontend/src/hooks/useAssetManagement.ts - COMPLETE FIXED VERSION
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/utils/api';
+import type { WorkspaceTasksResponse } from '@/utils/api';
 import type { 
   AssetTrackingData, 
   ActionableAsset, 
   AssetTaskInfo,
   AssetRequirement,
   AssetSchema,
-  ProjectDeliverablesExtended
+  ProjectDeliverablesExtended,
+  Task,
+  UseAssetManagementReturn,
+  AssetManagementState,
+  AssetDisplayData,
+  AssetCompletionStats,
+  AssetProgress,
+  EnhancedTaskContextData
 } from '@/types';
 
-export interface AssetDisplayData {
-  asset: ActionableAsset;
-  task_info: AssetTaskInfo;
-  schema?: AssetSchema;
-}
-
-export interface AssetManagementState {
-  // Raw API data
-  tracking: AssetTrackingData | null;
-  requirements: {
-    workspace_id: string;
-    deliverable_category: string;
-    primary_assets_needed: AssetRequirement[];
-    deliverable_structure: Record<string, any>;
-    generated_at: string;
-  } | null;
-  schemas: Record<string, AssetSchema>;
-  extractionStatus: {
-    extraction_summary: {
-      total_completed_tasks: number;
-      asset_production_tasks: number;
-      extraction_ready_tasks: number;
-      extraction_readiness_rate: number;
-    };
-    extraction_candidates: Array<{
-      task_id: string;
-      task_name: string;
-      asset_type?: string;
-      has_structured_output: boolean;
-      extraction_ready: boolean;
-      completed_at: string;
-    }>;
-    next_steps: string[];
-  } | null;
-  
-  // Processed deliverable assets
-  deliverableAssets: Record<string, ActionableAsset>;
-  processedAssets: AssetDisplayData[];
-  
-  // States
-  loading: boolean;
-  error: string | null;
-}
-
-
-// 🔍 DEEP ASSET EXTRACTOR - Ispeziona ogni possibile location
-const extractActionableAssets = (deliverables: ProjectDeliverablesExtended): Record<string, ActionableAsset> => {
+// 🔍 Enhanced Asset Extraction from Raw Tasks
+const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsset> => {
   const extractedAssets: Record<string, ActionableAsset> = {};
   
-  console.log('🔍 [DEEP EXTRACTION] Starting deep asset extraction...');
-  console.log('🔍 [DEEP EXTRACTION] Total outputs to inspect:', deliverables.key_outputs?.length || 0);
+  console.log('🔍 [RAW TASK EXTRACTION] Starting extraction from', tasks.length, 'tasks');
   
-  if (!deliverables.key_outputs) {
-    console.log('🔍 [DEEP EXTRACTION] No key_outputs found');
-    return extractedAssets;
-  }
-
-  deliverables.key_outputs.forEach((output, index) => {
-    console.log(`🔍 [DEEP EXTRACTION] === Inspecting Output ${index + 1} ===`);
-    console.log(`🔍 [DEEP EXTRACTION] Task ID: ${output.task_id}`);
-    console.log(`🔍 [DEEP EXTRACTION] Type: ${output.type}`);
-    console.log(`🔍 [DEEP EXTRACTION] Task Name: ${output.task_name}`);
+  tasks.forEach((task, index) => {
+    console.log(`🔍 [RAW TASK EXTRACTION] === Task ${index + 1}: ${task.name} ===`);
     
-    // 🎯 Location 1: Direct actionable_assets property
-    if (output.actionable_assets) {
-      console.log('🔍 [DEEP EXTRACTION] Found direct actionable_assets:', typeof output.actionable_assets);
-      console.log('🔍 [DEEP EXTRACTION] Direct assets keys:', Object.keys(output.actionable_assets));
-      Object.assign(extractedAssets, output.actionable_assets);
+    const contextData = task.context_data as EnhancedTaskContextData;
+    
+    if (!contextData) {
+      console.log('🔍 [RAW TASK EXTRACTION] No context_data found');
+      return;
     }
     
-    // 🎯 Location 2: result.actionable_assets
-    if (output.result?.actionable_assets) {
-      console.log('🔍 [DEEP EXTRACTION] Found result.actionable_assets:', typeof output.result.actionable_assets);
-      console.log('🔍 [DEEP EXTRACTION] Result assets keys:', Object.keys(output.result.actionable_assets));
-      Object.assign(extractedAssets, output.result.actionable_assets);
-    }
-
-    // 🎯 NEW Location 2.5: Check for context_data with precomputed_deliverable (THIS IS THE KEY!)
-    if ((output as any).context_data?.precomputed_deliverable?.actionable_assets) {
-      console.log('🔍 [DEEP EXTRACTION] Found context_data.precomputed_deliverable.actionable_assets!');
-      const contextAssets = (output as any).context_data.precomputed_deliverable.actionable_assets;
-      console.log('🔍 [DEEP EXTRACTION] Context assets keys:', Object.keys(contextAssets));
-      Object.assign(extractedAssets, contextAssets);
-    }
-    
-    // 🎯 Location 3: detailed_results_json parsing
-    if (output.result?.detailed_results_json) {
-      console.log('🔍 [DEEP EXTRACTION] Found detailed_results_json, attempting to parse...');
-      try {
-        let detailed;
-        if (typeof output.result.detailed_results_json === 'string') {
-          console.log('🔍 [DEEP EXTRACTION] Parsing JSON string of length:', output.result.detailed_results_json.length);
-          detailed = JSON.parse(output.result.detailed_results_json);
-        } else {
-          console.log('🔍 [DEEP EXTRACTION] Using object directly');
-          detailed = output.result.detailed_results_json;
-        }
-        
-        console.log('🔍 [DEEP EXTRACTION] Parsed detailed keys:', Object.keys(detailed));
-        
-        if (detailed.actionable_assets) {
-          console.log('🔍 [DEEP EXTRACTION] Found detailed.actionable_assets:', Object.keys(detailed.actionable_assets));
-          Object.assign(extractedAssets, detailed.actionable_assets);
-        }
-        
-        // Check for other possible asset locations
-        if (detailed.assets) {
-          console.log('🔍 [DEEP EXTRACTION] Found detailed.assets:', Object.keys(detailed.assets));
-          Object.assign(extractedAssets, detailed.assets);
-        }
-        
-        if (detailed.business_assets) {
-          console.log('🔍 [DEEP EXTRACTION] Found detailed.business_assets:', Object.keys(detailed.business_assets));
-          Object.assign(extractedAssets, detailed.business_assets);
-        }
-        
-      } catch (e) {
-        console.log('🔍 [DEEP EXTRACTION] JSON parse failed:', e);
-      }
-    }
-    
-    // 🎯 Location 4: Check if the entire result contains asset-like data
-    if (output.result && typeof output.result === 'object') {
-      console.log('🔍 [DEEP EXTRACTION] Inspecting result object keys:', Object.keys(output.result));
+    // 🎯 PRIMARY LOCATION: context_data.precomputed_deliverable.actionable_assets
+    if (contextData.precomputed_deliverable?.actionable_assets) {
+      console.log('🔍 [RAW TASK EXTRACTION] ✅ Found precomputed_deliverable.actionable_assets!');
+      console.log('🔍 [RAW TASK EXTRACTION] Asset keys:', Object.keys(contextData.precomputed_deliverable.actionable_assets));
       
-      // Look for asset-like structures in the result
-      Object.entries(output.result).forEach(([key, value]) => {
-        if (key.toLowerCase().includes('asset') && typeof value === 'object' && value !== null) {
-          console.log(`🔍 [DEEP EXTRACTION] Found potential asset in result.${key}:`, typeof value);
-          
-          if (Array.isArray(value)) {
-            console.log(`🔍 [DEEP EXTRACTION] Asset array with ${value.length} items`);
-          } else {
-            console.log(`🔍 [DEEP EXTRACTION] Asset object with keys:`, Object.keys(value));
-            
-            // If it looks like a single asset, wrap it
-            if (value.asset_name || value.source_task_id || value.actionability_score) {
-              const assetName = value.asset_name || key;
-              extractedAssets[assetName] = value as ActionableAsset;
-              console.log(`🔍 [DEEP EXTRACTION] Added single asset: ${assetName}`);
-            }
-          }
+      Object.entries(contextData.precomputed_deliverable.actionable_assets).forEach(([key, asset]) => {
+        if (asset && typeof asset === 'object') {
+          extractedAssets[key] = {
+            ...asset,
+            source_task_id: task.id,
+            extraction_method: 'precomputed_deliverable'
+          } as ActionableAsset;
+          console.log(`🔍 [RAW TASK EXTRACTION] ✅ Added asset: ${key}`);
         }
       });
     }
-
-    // 🎯 Location 5: Check for structured data that could be assets
-    if (output.result?.summary && output.type === 'final_deliverable') {
-      console.log('🔍 [DEEP EXTRACTION] Creating synthetic asset from final deliverable summary...');
+    
+    // 🎯 SECONDARY LOCATION: Direct context_data assets
+    if (contextData.actionable_assets) {
+      console.log('🔍 [RAW TASK EXTRACTION] Found direct context_data.actionable_assets');
+      Object.assign(extractedAssets, contextData.actionable_assets);
+    }
+    
+    // 🎯 TERTIARY: Final deliverable task results
+    if ((contextData.is_final_deliverable || contextData.deliverable_aggregation) && task.result) {
+      console.log('🔍 [RAW TASK EXTRACTION] Processing final deliverable task result');
       
-      // Create a synthetic asset from the final deliverable
-      const syntheticAsset: ActionableAsset = {
-        asset_name: 'final_deliverable_summary',
-        asset_data: {
-          executive_summary: output.result.summary,
-          key_outputs: output.result.key_points || [],
-          recommendations: output.result.next_steps || [],
-          full_content: output.result,
-          generated_from: 'final_deliverable'
-        },
-        source_task_id: output.task_id,
-        extraction_method: 'synthetic',
-        validation_score: 0.9,
-        actionability_score: 0.8,
-        ready_to_use: true,
-        usage_instructions: 'Summary completo del progetto con raccomandazioni azionabili',
-      };
+      if (task.result.actionable_assets) {
+        Object.assign(extractedAssets, task.result.actionable_assets);
+      }
       
-      extractedAssets['final_deliverable_summary'] = syntheticAsset;
-      console.log('🔍 [DEEP EXTRACTION] Added synthetic final deliverable asset');
+      // Check for nested asset structures
+      if (task.result.detailed_results_json) {
+        try {
+          const detailed = typeof task.result.detailed_results_json === 'string' 
+            ? JSON.parse(task.result.detailed_results_json)
+            : task.result.detailed_results_json;
+            
+          if (detailed.actionable_assets) {
+            Object.assign(extractedAssets, detailed.actionable_assets);
+          }
+        } catch (e) {
+          console.log('🔍 [RAW TASK EXTRACTION] Failed to parse detailed_results_json:', e);
+        }
+      }
     }
   });
   
-  console.log(`🔍 [DEEP EXTRACTION] === EXTRACTION COMPLETE ===`);
-  console.log(`🔍 [DEEP EXTRACTION] Total assets extracted: ${Object.keys(extractedAssets).length}`);
-  console.log(`🔍 [DEEP EXTRACTION] Asset names: ${Object.keys(extractedAssets).join(', ')}`);
+  console.log(`🔍 [RAW TASK EXTRACTION] === EXTRACTION COMPLETE ===`);
+  console.log(`🔍 [RAW TASK EXTRACTION] Total assets extracted: ${Object.keys(extractedAssets).length}`);
+  console.log(`🔍 [RAW TASK EXTRACTION] Asset names:`, Object.keys(extractedAssets));
   
   return extractedAssets;
 };
 
-export const useAssetManagement = (workspaceId: string) => {
+// 🔍 Deliverable Assets Extraction (fallback method)
+const extractDeliverablesAssets = (deliverables: ProjectDeliverablesExtended): Record<string, ActionableAsset> => {
+  const extractedAssets: Record<string, ActionableAsset> = {};
+  
+  if (!deliverables.key_outputs) return extractedAssets;
+  
+  deliverables.key_outputs.forEach((output) => {
+    // Direct actionable_assets
+    if (output.actionable_assets && Object.keys(output.actionable_assets).length > 0) {
+      Object.assign(extractedAssets, output.actionable_assets);
+    }
+    
+    // Result actionable_assets
+    if (output.result?.actionable_assets && Object.keys(output.result.actionable_assets).length > 0) {
+      Object.assign(extractedAssets, output.result.actionable_assets);
+    }
+    
+    // For final deliverables, create synthetic assets from structured content
+    if (output.type === 'final_deliverable' && output.summary) {
+      const syntheticAsset: ActionableAsset = {
+        asset_name: `executive_summary_${output.task_id}`,
+        asset_data: {
+          executive_summary: output.summary,
+          key_insights: output.key_insights || [],
+          metrics: output.metrics || {},
+          recommendations: output.next_steps || [],
+          full_output: output.output
+        },
+        source_task_id: output.task_id,
+        extraction_method: 'synthetic_deliverable',
+        validation_score: 0.9,
+        actionability_score: 0.8,
+        ready_to_use: true,
+        usage_instructions: 'Executive summary with actionable insights from final deliverable'
+      };
+      
+      extractedAssets[syntheticAsset.asset_name] = syntheticAsset;
+    }
+  });
+  
+  return extractedAssets;
+};
+
+// Main Hook Implementation
+export const useAssetManagement = (workspaceId: string): UseAssetManagementReturn => {
   const [state, setState] = useState<AssetManagementState>({
     tracking: null,
     requirements: null,
@@ -203,9 +146,9 @@ export const useAssetManagement = (workspaceId: string) => {
     error: null,
   });
 
-  const debugLog = (message: string, data?: any) => {
+  const debugLog = useCallback((message: string, data?: any) => {
     console.log(`🔍 [useAssetManagement] ${message}`, data || '');
-  };
+  }, []);
 
   const fetchAssetData = useCallback(async () => {
     if (!workspaceId) {
@@ -215,163 +158,160 @@ export const useAssetManagement = (workspaceId: string) => {
 
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
-      debugLog(`Starting fetch for workspace: ${workspaceId}`);
+      debugLog(`Starting comprehensive fetch for workspace: ${workspaceId}`);
 
-      // Fetch all asset-related data with individual error handling
-      const fetchPromises = [
-        api.monitoring.getAssetTracking(workspaceId).catch(err => {
-          debugLog('Asset tracking failed:', err.message);
-          return null;
-        }),
-        
-        api.assetManagement.getRequirements(workspaceId).catch(err => {
-          debugLog('Requirements failed:', err.message);
-          return null;
-        }),
-        
-        api.assetManagement.getSchemas(workspaceId).catch(err => {
-          debugLog('Schemas failed:', err.message);
-          return { available_schemas: {} };
-        }),
-        
-        api.assetManagement.getExtractionStatus(workspaceId).catch(err => {
-          debugLog('Extraction status failed:', err.message);
-          return null;
-        }),
-        
-        api.monitoring.getProjectDeliverables(workspaceId).catch(err => {
-          debugLog('Deliverables failed:', err.message);
-          return null;
-        })
-      ];
+      // 🚀 Parallel fetch of all required data
+      const [
+        trackingResult,
+        requirementsResult, 
+        schemasResult,
+        extractionResult,
+        deliverablesResult,
+        rawTasksResult
+      ] = await Promise.allSettled([
+        api.monitoring.getAssetTracking(workspaceId),
+        api.assetManagement.getRequirements(workspaceId),
+        api.assetManagement.getSchemas(workspaceId),
+        api.assetManagement.getExtractionStatus(workspaceId),
+        api.monitoring.getProjectDeliverables(workspaceId),
+        // 🔧 FIXED: Call with no options to get all tasks
+        api.monitoring.getWorkspaceTasks(workspaceId, { limit: 100 })
+      ]);
 
-      const results = await Promise.all(fetchPromises);
+      // Extract successful results
+      const tracking = trackingResult.status === 'fulfilled' ? trackingResult.value : null;
+      const requirements = requirementsResult.status === 'fulfilled' ? requirementsResult.value : null;
+      const schemasResponse = schemasResult.status === 'fulfilled' ? schemasResult.value : null;
+      const extractionStatus = extractionResult.status === 'fulfilled' ? extractionResult.value : null;
+      const deliverables = deliverablesResult.status === 'fulfilled' ? deliverablesResult.value : null;
+      const rawTasksResponse = rawTasksResult.status === 'fulfilled' ? rawTasksResult.value : null;
+
+      const schemas = schemasResponse?.available_schemas || {};
       
-      const [trackingResult, requirementsResult, schemasResult, extractionResult, deliverablesResult] = results;
-
       debugLog('API Results received:', {
-        hasTracking: !!trackingResult,
-        hasRequirements: !!requirementsResult,
-        schemasCount: Object.keys(schemasResult?.available_schemas || {}).length,
-        hasExtraction: !!extractionResult,
-        hasDeliverables: !!deliverablesResult
+        hasTracking: !!tracking,
+        hasRequirements: !!requirements,
+        schemasCount: Object.keys(schemas).length,
+        hasExtraction: !!extractionStatus,
+        hasDeliverables: !!deliverables,
+        hasRawTasksResponse: !!rawTasksResponse,
+        rawTasksStructure: rawTasksResponse ? Object.keys(rawTasksResponse) : []
       });
 
-      const tracking = trackingResult as AssetTrackingData | null;
-      const requirements = requirementsResult;
-      const schemas = schemasResult?.available_schemas || {};
-      const extractionStatus = extractionResult;
-      const deliverables = deliverablesResult as ProjectDeliverablesExtended | null;
-
-      // 🆕 ENHANCED: Use deep extraction
-      let deliverableAssets: Record<string, ActionableAsset> = {};
+      // 🎯 PRIMARY ASSET EXTRACTION: From Raw Tasks
+      let extractedAssets: Record<string, ActionableAsset> = {};
       
-      if (deliverables) {
-        debugLog(`Processing ${deliverables.key_outputs?.length || 0} deliverable outputs`);
-        deliverableAssets = extractActionableAssets(deliverables);
+      if (rawTasksResponse) {
+        debugLog('Raw tasks response received');
+        debugLog('Raw tasks keys:', Object.keys(rawTasksResponse));
+        debugLog('Raw tasks structure:', rawTasksResponse);
+        
+        // 🔧 FIXED: Based on actual logs - rawTasks is DIRECTLY an array, not an object with .tasks
+        let tasksArray: Task[] = [];
+        
+        if (Array.isArray(rawTasksResponse)) {
+          tasksArray = rawTasksResponse;
+          debugLog('✅ Raw tasks is direct array');
+        } else if (rawTasksResponse.tasks && Array.isArray(rawTasksResponse.tasks)) {
+          tasksArray = rawTasksResponse.tasks;
+          debugLog('✅ Raw tasks has .tasks property');
+        } else {
+          debugLog('❌ Raw tasks structure unknown');
+          debugLog('rawTasks exists:', !!rawTasksResponse);
+          debugLog('rawTasks.tasks exists:', rawTasksResponse.tasks);
+        }
+          
+        if (tasksArray.length > 0) {
+          debugLog(`✅ Processing ${tasksArray.length} raw tasks for context_data assets`);
+          extractedAssets = extractAssetsFromRawTasks(tasksArray);
+        } else {
+          debugLog('❌ No tasks found in response or tasks array missing');
+        }
+      } else {
+        debugLog('❌ No raw tasks response received');
+      }
+      
+      // 🎯 SECONDARY EXTRACTION: From Deliverables (if raw tasks failed)
+      if (Object.keys(extractedAssets).length === 0 && deliverables) {
+        debugLog('No assets from raw tasks, trying deliverables extraction');
+        const deliverableAssets = extractDeliverablesAssets(deliverables);
+        Object.assign(extractedAssets, deliverableAssets);
       }
 
-      debugLog(`Total deliverable assets extracted: ${Object.keys(deliverableAssets).length}`);
+      debugLog(`Total assets extracted: ${Object.keys(extractedAssets).length}`);
 
-      // Create processed assets list
+      // 🔄 Process assets into display format
       const processedAssets: AssetDisplayData[] = [];
       
-      // Add assets from tracking data
+      Object.entries(extractedAssets).forEach(([assetName, asset]) => {
+        // Find corresponding task info from tracking
+        const taskInfo: AssetTaskInfo = tracking?.completed_assets?.find(
+          t => t.task_id === asset.source_task_id
+        ) || {
+          task_id: asset.source_task_id,
+          task_name: asset.asset_name,
+          asset_type: assetName,
+          status: 'completed',
+          agent_role: 'System'
+        };
+
+        processedAssets.push({
+          asset,
+          task_info: taskInfo,
+          schema: schemas[assetName] || schemas[asset.asset_name]
+        });
+      });
+
+      // 🔄 Add tracking assets that weren't found in extraction
       if (tracking?.completed_assets) {
-        debugLog(`Processing ${tracking.completed_assets.length} completed asset tasks from tracking`);
-        
-        for (const completedAsset of tracking.completed_assets) {
-          const assetName = completedAsset.asset_type || `asset_${completedAsset.task_id.substring(0, 8)}`;
+        tracking.completed_assets.forEach(completedAsset => {
+          const alreadyExists = processedAssets.some(
+            p => p.task_info.task_id === completedAsset.task_id
+          );
           
-          const actionableAsset = deliverableAssets[assetName] || deliverableAssets[completedAsset.asset_type || ''];
-          
-          if (actionableAsset) {
-            processedAssets.push({
-              asset: actionableAsset,
-              task_info: completedAsset,
-              schema: schemas[assetName] || schemas[completedAsset.asset_type || '']
-            });
-            debugLog(`Added real asset from deliverable: ${assetName}`);
-          } else {
-            // Create more detailed placeholder
-            const mockAsset: ActionableAsset = {
-              asset_name: assetName,
-              asset_data: { 
-                status: 'Asset completato - In processamento per deliverable finale',
+          if (!alreadyExists) {
+            // Create placeholder asset
+            const placeholderAsset: ActionableAsset = {
+              asset_name: completedAsset.asset_type || `asset_${completedAsset.task_id.substring(0, 8)}`,
+              asset_data: {
+                status: 'Asset completed - awaiting final extraction',
                 task_name: completedAsset.task_name,
-                task_id: completedAsset.task_id,
-                agent_role: completedAsset.agent_role || 'Unknown',
-                completion_note: 'Questo asset sarà incluso nel deliverable finale',
-                raw_tracking_data: completedAsset
+                note: 'This asset will be available in the final deliverable'
               },
               source_task_id: completedAsset.task_id,
               extraction_method: 'tracking_placeholder',
               validation_score: 0.7,
               actionability_score: 0.5,
               ready_to_use: false,
-              usage_instructions: 'Asset completato ma in attesa di estrazione finale. Controlla i deliverable per la versione finale.',
+              usage_instructions: 'Asset completed but pending final extraction'
             };
 
             processedAssets.push({
-              asset: mockAsset,
+              asset: placeholderAsset,
               task_info: completedAsset,
-              schema: schemas[assetName] || schemas[completedAsset.asset_type || '']
+              schema: schemas[completedAsset.asset_type || '']
             });
-            debugLog(`Added detailed placeholder asset: ${assetName}`);
           }
-        }
+        });
       }
 
-      // Add standalone deliverable assets
-      Object.entries(deliverableAssets).forEach(([assetName, asset]) => {
-        const alreadyExists = processedAssets.some(p => 
-          p.asset.asset_name === assetName || 
-          p.asset.source_task_id === asset.source_task_id
-        );
-        
-        if (!alreadyExists) {
-          processedAssets.push({
-            asset,
-            task_info: {
-              task_id: asset.source_task_id,
-              task_name: `Deliverable Asset: ${assetName}`,
-              asset_type: assetName,
-              status: 'completed',
-              agent_role: 'System',
-            },
-            schema: schemas[assetName]
-          });
-          debugLog(`Added standalone deliverable asset: ${assetName}`);
-        }
-      });
+      debugLog(`Final processed assets: ${processedAssets.length}`);
 
-      debugLog(`Total processed assets: ${processedAssets.length}`);
-
-      const newState = {
+      // 🎯 Update state
+      setState({
         tracking,
         requirements,
         schemas,
         extractionStatus,
-        deliverableAssets,
+        deliverableAssets: extractedAssets,
         processedAssets,
         loading: false,
         error: null,
-      };
-
-      debugLog('Setting final state:', {
-        hasTracking: !!newState.tracking,
-        hasRequirements: !!newState.requirements,
-        schemasCount: Object.keys(newState.schemas).length,
-        hasExtractionStatus: !!newState.extractionStatus,
-        deliverableAssetsCount: Object.keys(newState.deliverableAssets).length,
-        processedAssetsCount: newState.processedAssets.length
       });
 
-      setState(prev => ({ ...prev, ...newState }));
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Errore nel caricamento asset';
-      debugLog('Fatal error in fetchAssetData:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load asset data';
+      debugLog('Fatal error:', err);
       
       setState(prev => ({
         ...prev,
@@ -379,14 +319,15 @@ export const useAssetManagement = (workspaceId: string) => {
         error: errorMessage,
       }));
     }
-  }, [workspaceId]);
+  }, [workspaceId, debugLog]);
 
+  // 🚀 Trigger asset analysis
   const triggerAssetAnalysis = useCallback(async () => {
     try {
       debugLog('Triggering asset analysis...');
       await api.projects.triggerAssetAnalysis(workspaceId);
-      debugLog('Asset analysis triggered successfully');
       
+      // Refresh data after analysis
       setTimeout(() => {
         debugLog('Refreshing data after analysis...');
         fetchAssetData();
@@ -399,10 +340,10 @@ export const useAssetManagement = (workspaceId: string) => {
     }
   }, [workspaceId, fetchAssetData]);
 
+  // 🔍 Check deliverable readiness
   const checkDeliverableReadiness = useCallback(async () => {
     try {
       const readiness = await api.monitoring.getDeliverableReadiness(workspaceId);
-      debugLog('Deliverable readiness checked:', readiness.is_ready_for_deliverable);
       return readiness.is_ready_for_deliverable;
     } catch (error) {
       debugLog('Could not check deliverable readiness:', error);
@@ -410,25 +351,18 @@ export const useAssetManagement = (workspaceId: string) => {
     }
   }, [workspaceId]);
 
-  useEffect(() => {
-    debugLog('Hook initialized, starting initial fetch');
-    fetchAssetData();
-  }, [fetchAssetData]);
-
-  // Helper methods (keeping the same as before)
-  const getAssetProgress = useCallback(() => {
+  // 📊 Computed values and helpers
+  const getAssetProgress = useCallback((): AssetProgress => {
     if (!state.tracking?.asset_summary) {
       return { completed: 0, total: 0, percentage: 0 };
     }
     
-    const assetSummary = state.tracking.asset_summary;
-    const completedTasks = assetSummary.completed_asset_tasks || 0;
-    const totalTasks = assetSummary.total_asset_tasks || 0;
+    const { completed_asset_tasks = 0, total_asset_tasks = 0 } = state.tracking.asset_summary;
     
     return {
-      completed: completedTasks,
-      total: totalTasks,
-      percentage: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+      completed: completed_asset_tasks,
+      total: total_asset_tasks,
+      percentage: total_asset_tasks > 0 ? (completed_asset_tasks / total_asset_tasks) * 100 : 0,
     };
   }, [state.tracking]);
 
@@ -439,7 +373,7 @@ export const useAssetManagement = (workspaceId: string) => {
     );
   }, [state.processedAssets]);
 
-  const isDeliverableReady = useCallback(() => {
+  const isDeliverableReady = useCallback((): boolean => {
     return state.tracking?.asset_summary?.deliverable_ready || false;
   }, [state.tracking]);
 
@@ -459,16 +393,15 @@ export const useAssetManagement = (workspaceId: string) => {
     return required.filter(type => !completed.includes(type));
   }, [getRequiredAssetTypes, getCompletedAssetTypes]);
 
-  const getAssetTypeProgress = useCallback((assetType: string) => {
-    if (!state.tracking) return { completed: 0, total: 0, percentage: 0 };
+  const getAssetTypeProgress = useCallback((assetType: string): AssetProgress => {
+    if (!state.tracking?.asset_types_breakdown) {
+      return { completed: 0, total: 0, percentage: 0 };
+    }
     
-    const assetTypesBreakdown = state.tracking.asset_types_breakdown || {};
-    const typeData = assetTypesBreakdown[assetType];
-    
+    const typeData = state.tracking.asset_types_breakdown[assetType];
     if (!typeData) return { completed: 0, total: 0, percentage: 0 };
     
-    const completed = typeData.completed || 0;
-    const total = typeData.total || 0;
+    const { completed = 0, total = 0 } = typeData;
     
     return {
       completed,
@@ -496,20 +429,23 @@ export const useAssetManagement = (workspaceId: string) => {
   const isAssetTask = useCallback((task: any): boolean => {
     if (!task) return false;
     
-    const contextData = task.context_data || {};
-    if (contextData.asset_production || contextData.asset_oriented_task) {
+    const contextData = task.context_data as EnhancedTaskContextData;
+    if (contextData?.asset_production || contextData?.asset_oriented_task) {
       return true;
     }
     
+    // Check task name patterns
     const taskName = task.name || '';
-    if (taskName.toUpperCase().includes('PRODUCE ASSET:')) {
+    if (taskName.includes('PRODUCE ASSET:') || taskName.includes('Create Final')) {
       return true;
     }
     
+    // Check if task is in tracking data
     if (state.tracking) {
-      const completedAssets = state.tracking.completed_assets || [];
-      const pendingAssets = state.tracking.pending_assets || [];
-      const allAssetTasks = [...completedAssets, ...pendingAssets];
+      const allAssetTasks = [
+        ...(state.tracking.completed_assets || []),
+        ...(state.tracking.pending_assets || [])
+      ];
       return allAssetTasks.some(assetTask => assetTask.task_id === task.id);
     }
     
@@ -519,15 +455,17 @@ export const useAssetManagement = (workspaceId: string) => {
   const getAssetTypeFromTask = useCallback((task: any): string | null => {
     if (!task) return null;
     
-    const contextData = task.context_data || {};
-    if (contextData.asset_type || contextData.detected_asset_type) {
+    const contextData = task.context_data as EnhancedTaskContextData;
+    if (contextData?.asset_type || contextData?.detected_asset_type) {
       return contextData.asset_type || contextData.detected_asset_type;
     }
     
+    // Check tracking data for asset type
     if (state.tracking) {
-      const completedAssets = state.tracking.completed_assets || [];
-      const pendingAssets = state.tracking.pending_assets || [];
-      const allAssetTasks = [...completedAssets, ...pendingAssets];
+      const allAssetTasks = [
+        ...(state.tracking.completed_assets || []),
+        ...(state.tracking.pending_assets || [])
+      ];
       
       const assetTask = allAssetTasks.find(assetTask => assetTask.task_id === task.id);
       if (assetTask?.asset_type) {
@@ -535,6 +473,7 @@ export const useAssetManagement = (workspaceId: string) => {
       }
     }
     
+    // Infer from task name
     const taskName = task.name?.toLowerCase() || '';
     if (taskName.includes('calendar')) return 'content_calendar';
     if (taskName.includes('contact') || taskName.includes('database')) return 'contact_database';
@@ -544,7 +483,7 @@ export const useAssetManagement = (workspaceId: string) => {
     return null;
   }, [state.tracking]);
 
-  const getAssetCompletionStats = useCallback(() => {
+  const getAssetCompletionStats = useCallback((): AssetCompletionStats => {
     if (!state.tracking?.asset_summary) {
       return {
         totalAssets: 0,
@@ -555,49 +494,55 @@ export const useAssetManagement = (workspaceId: string) => {
       };
     }
     
-    const assetSummary = state.tracking.asset_summary;
+    const {
+      total_asset_tasks = 0,
+      completed_asset_tasks = 0,
+      pending_asset_tasks = 0,
+      completion_rate = 0,
+      deliverable_ready = false
+    } = state.tracking.asset_summary;
     
     return {
-      totalAssets: assetSummary.total_asset_tasks || 0,
-      completedAssets: assetSummary.completed_asset_tasks || 0,
-      pendingAssets: assetSummary.pending_asset_tasks || 0,
-      completionRate: assetSummary.completion_rate || 0,
-      isDeliverableReady: assetSummary.deliverable_ready || false,
+      totalAssets: total_asset_tasks,
+      completedAssets: completed_asset_tasks,
+      pendingAssets: pending_asset_tasks,
+      completionRate: completion_rate,
+      isDeliverableReady: deliverable_ready,
     };
   }, [state.tracking]);
 
+  // 🎯 Initialize data fetching
+  useEffect(() => {
+    debugLog('Hook initialized, starting initial fetch');
+    fetchAssetData();
+  }, [fetchAssetData]);
+
+  // 🔄 Extracted arrays for easy access
   const assets = state.processedAssets.map(p => p.asset);
   const assetDisplayData = state.processedAssets;
 
-  debugLog('Hook returning state:', {
-    hasTracking: !!state.tracking,
-    hasRequirements: !!state.requirements,
-    schemasCount: Object.keys(state.schemas).length,
-    hasExtractionStatus: !!state.extractionStatus,
-    assetsCount: assets.length,
-    assetDisplayDataCount: assetDisplayData.length,
-    deliverableAssetsCount: Object.keys(state.deliverableAssets).length,
-    loading: state.loading,
-    error: state.error
-  });
-
   return {
+    // Direct access to structured data
     tracking: state.tracking,
     requirements: state.requirements,
     schemas: state.schemas,
     extractionStatus: state.extractionStatus,
     
+    // Direct access to processed assets
     assets,
     assetDisplayData,
     deliverableAssets: state.deliverableAssets,
     
+    // States
     loading: state.loading,
     error: state.error,
     
+    // Actions
     refresh: fetchAssetData,
     triggerAssetAnalysis,
     checkDeliverableReadiness,
     
+    // Computed values and helpers
     getAssetProgress,
     getAssetsByType,
     isDeliverableReady,
