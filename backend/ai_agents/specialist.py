@@ -71,6 +71,17 @@ from database import (
     list_tasks as db_list_tasks,
 )
 
+try:
+    from backend.config.quality_system_config import QualitySystemConfig
+    from backend.ai_quality_assurance.quality_integration import DynamicPromptEnhancer
+    QUALITY_SYSTEM_AVAILABLE = True
+    logger.info("✅ Quality System integration available for SpecialistAgent")
+except ImportError as e:
+    logger.warning(f"⚠️ Quality System not available: {e}")
+    QUALITY_SYSTEM_AVAILABLE = False
+    QualitySystemConfig = None
+    DynamicPromptEnhancer = None
+
 # Dummy async context manager per il fallback di 'trace'
 @contextlib.asynccontextmanager
 async def _dummy_async_context_manager():
@@ -172,6 +183,38 @@ class SpecialistAgent(Generic[T]):
         self.tools = self._initialize_tools()
         self.direct_sdk_handoffs = self._create_sdk_handoffs() if SDK_AVAILABLE else []
         self.agent = self._create_agent()
+        
+    def _determine_asset_type_from_task(self, task: Task) -> Optional[str]:
+        """Determina il tipo di asset dal task corrente"""
+        
+        if not task:
+            return None
+        
+        # Metodo 1: Context data esplicito
+        if isinstance(task.context_data, dict):
+            asset_type = task.context_data.get('asset_type') or task.context_data.get('target_schema')
+            if asset_type:
+                return asset_type
+        
+        # Metodo 2: Analisi nome task
+        task_name = (task.name or "").lower()
+        asset_type_mapping = {
+            "contact": "contact_database",
+            "content": "content_calendar", 
+            "calendar": "content_calendar",
+            "training": "training_program",
+            "workout": "training_program",
+            "financial": "financial_model",
+            "budget": "financial_model",
+            "research": "research_database",
+            "strategy": "strategy_framework"
+        }
+        
+        for keyword, asset_type in asset_type_mapping.items():
+            if keyword in task_name:
+                return asset_type
+        
+        return None
 
     def _create_agent(self) -> OpenAIAgent:
         """
@@ -441,12 +484,12 @@ class SpecialistAgent(Generic[T]):
     def _create_asset_oriented_specialist_prompt(self) -> str:
         """
         Prompt enhancer per specialist agents quando devono produrre asset azionabili
-        Mantiene il prompt base ma aggiunge focus su asset production
+        ENHANCED: Con integrazione AI Quality Assurance
         """
 
         base_prompt = self._create_specialist_anti_loop_prompt()
 
-        # Asset-oriented enhancement
+        # Asset-oriented enhancement (codice esistente)
         asset_enhancement = """
 
     🎯 **ENHANCED ASSET PRODUCTION MODE**
@@ -454,13 +497,13 @@ class SpecialistAgent(Generic[T]):
     When your task is marked as "asset production" (check context_data.asset_production or task name contains "PRODUCE ASSET:"), 
     you must focus on creating IMMEDIATELY ACTIONABLE business assets instead of strategic reports.
 
-    **ASSET PRODUCTION REQUIREMENTS:**
+    **ASSET PRODUCTION REQUIREMENTS**:
     1. **Structured Output**: Your detailed_results_json MUST contain structured, ready-to-use data
     2. **No Placeholders**: Replace ALL placeholder text with real, actionable content
     3. **Business Ready**: Output should be copy-paste ready for business use
     4. **Validation Ready**: Follow exact schema if provided in task description
 
-    **EXAMPLES OF ASSET-ORIENTED OUTPUT:**
+    **EXAMPLES OF ASSET-ORIENTED OUTPUT**:
 
     For Contact Database Task:
     ```json
@@ -481,34 +524,46 @@ class SpecialistAgent(Generic[T]):
       "data_sources": ["LinkedIn Sales Navigator", "Industry Events"],
       "quality_metrics": {"email_verified": 0.95, "phone_verified": 0.80}
     }
-    For Content Calendar Task:
-    json{
-      "posts": [
-        {
-          "date": "2024-12-20",
-          "platform": "Instagram",
-          "caption": "💪 Transform your workout with these 5 essential exercises...",
-          "hashtags": ["#fitness", "#bodybuilding", "#workout"],
-          "visual_type": "carousel",
-          "call_to_action": "Save this post for your next gym session!",
-          "posting_time": "18:00"
-        }
-      ],
-      "content_themes": ["Monday Motivation", "Workout Wednesday", "Form Friday"],
-      "total_posts": 30,
-      "automation_ready": true
-    }
-    🚨 CRITICAL FOR ASSET PRODUCTION:
+    ```
 
-    Replace generic examples with specific, real content
-    Ensure data is structured for immediate business use
-    Include usage instructions and implementation guidance
-    Validate output against provided schema if available
-    Focus on business value and actionability over strategic insights
+    🚨 CRITICAL FOR ASSET PRODUCTION:
+    - Replace generic examples with specific, real content
+    - Ensure data is structured for immediate business use
+    - Include usage instructions and implementation guidance
+    - Validate output against provided schema if available
+    - Focus on business value and actionability over strategic insights
 
     If your task is NOT asset production, continue with standard analytical/strategic approach.
     """
-        return base_prompt + asset_enhancement
+
+        enhanced_prompt = base_prompt + asset_enhancement
+
+        # === NUOVA INTEGRAZIONE AI QUALITY ASSURANCE ===
+        if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig.ENABLE_AI_QUALITY_EVALUATION:
+            try:
+                # Determina asset type dal task corrente se possibile
+                asset_type = None
+                if (self._current_task_being_processed_id and 
+                    hasattr(self, '_current_task_context')):
+                    task_context = getattr(self, '_current_task_context', {})
+                    if isinstance(task_context, dict):
+                        asset_type = task_context.get('asset_type') or task_context.get('target_schema')
+
+                # Applica enhancement per qualità
+                quality_enhanced_prompt = DynamicPromptEnhancer.enhance_specialist_prompt_for_quality(
+                    enhanced_prompt,
+                    asset_type=asset_type
+                )
+
+                logger.info(f"🔧 QUALITY: Agent {self.agent_data.name} using quality-enhanced prompt (target: {QualitySystemConfig.QUALITY_SCORE_THRESHOLD})")
+                return quality_enhanced_prompt
+
+            except Exception as e:
+                logger.warning(f"Quality prompt enhancement failed for {self.agent_data.name}: {e}")
+                return enhanced_prompt
+
+        return enhanced_prompt
+
 
     def _create_sdk_handoffs(self) -> List[Any]:
         if not SDK_AVAILABLE or not handoff_filters:
@@ -1170,6 +1225,42 @@ class SpecialistAgent(Generic[T]):
                     final_db_status = TaskStatus.COMPLETED.value 
                     logger.info(f"Task {task.id} by {self.agent_data.name} resulted in 'requires_handoff' to role '{execution_result_obj.suggested_handoff_target_role}'. This task is marked COMPLETED.")
                 
+                # === INTEGRAZIONE AI QUALITY ASSURANCE ===
+                if (QUALITY_SYSTEM_AVAILABLE and 
+                    QualitySystemConfig.ENABLE_AI_QUALITY_EVALUATION):
+                    try:
+                        # Verifica se è un task di produzione asset
+                        task_context = task.context_data if isinstance(task.context_data, dict) else {}
+                        is_asset_task = (
+                            task_context.get("asset_production") or 
+                            task_context.get("asset_oriented_task") or
+                            "PRODUCE ASSET:" in task.name.upper()
+                        )
+                        
+                        if is_asset_task and execution_result_obj.status == "completed":
+                            # Aggiungi nota qualità al risultato
+                            quality_note = (
+                                f"🔧 QUALITY ASSURANCE: This asset will be automatically evaluated "
+                                f"(target: {QualitySystemConfig.QUALITY_SCORE_THRESHOLD}/1.0). "
+                                f"Outputs below threshold will trigger enhancement tasks."
+                            )
+                            
+                            # Aggiungi la nota al payload del database
+                            if "status_detail" not in result_dict_to_save:
+                                result_dict_to_save["status_detail"] = quality_note
+                            else:
+                                result_dict_to_save["status_detail"] += f" | {quality_note}"
+                            
+                            # Aggiungi flag per identificare asset tasks nel DB
+                            result_dict_to_save["ai_quality_evaluation_pending"] = True
+                            result_dict_to_save["asset_production_task"] = True
+                            
+                            logger.info(f"🔧 QUALITY: Added quality evaluation note to task {task.id}")
+                    
+                    except Exception as e:
+                        logger.debug(f"Error adding quality note to task {task.id}: {e}")
+
+                # Continua con update_task_status come nel codice originale...
                 await update_task_status(task_id=str(task.id), status=final_db_status, result_payload=result_dict_to_save)
                 
                 logger.info(f"TASK OUTPUT for {task.id}:")

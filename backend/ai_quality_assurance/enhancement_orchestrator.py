@@ -1,17 +1,18 @@
 # backend/ai_quality_assurance/enhancement_orchestrator.py
-
 import logging
 import json
-import os
+import osimport asyncio 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from uuid import uuid4
+import asyncio 
 
 # FIXED: Aggiunti import mancanti
 from pydantic import BaseModel, Field
 
 # FIXED: Import corretto per il codebase
-from ai_quality_assurance.quality_validator import AIQualityValidator, QualityAssessment, QualityIssueType
+from ai_quality_assurance.quality_validator import QualityAssessment, QualityIssueType
+from ai_quality_assurance.ai_evaluator import EnhancedAIQualityValidator
 from database import create_task, list_agents, list_tasks, update_task_status
 from models import TaskStatus
 
@@ -62,18 +63,20 @@ class AssetEnhancementOrchestrator:
     """
     
     def __init__(self):
-        self.validator = AIQualityValidator()
+        self.validator = EnhancedAIQualityValidator()
         self.enhancement_plans: Dict[str, EnhancementPlan] = {}
         
         # ENHANCED: Asset expertise mapping più completo e configurabile
         self.asset_expertise_mapping = self._load_asset_expertise_mapping()
+        self._tracking_lock = asyncio.Lock()
+        self.phase_planning_tracker: Dict[str, Set[str]] = defaultdict(set)
         
         # ENHANCED: Tracking per monitoring
         self.orchestration_count = 0
         self.total_assets_analyzed = 0
         self.total_enhancements_created = 0
         
-        logger.info("🔧 AssetEnhancementOrchestrator initialized (Production Version)")
+        logger.info("🔧 AssetEnhancementOrchestrator initialized with Enhanced AI Quality Validator")
         
     def _load_asset_expertise_mapping(self) -> Dict[str, Dict[str, Any]]:
         """ENHANCED: Carica mapping expertise dinamico"""

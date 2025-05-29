@@ -25,8 +25,18 @@ from database import (
 )
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
-
 logger = logging.getLogger(__name__)
+
+try:
+    from backend.config.quality_system_config import QualitySystemConfig
+    from backend.deliverable_aggregator import create_quality_enhanced_deliverable
+    QUALITY_SYSTEM_AVAILABLE = True
+    logger.info("✅ Quality System integration available for TaskExecutor")
+except ImportError as e:
+    logger.warning(f"⚠️ Quality System not available in TaskExecutor: {e}")
+    QUALITY_SYSTEM_AVAILABLE = False
+    QualitySystemConfig = None
+
 
 # === ENHANCED FINALIZATION PRIORITY CONFIGURATIONS ===
 FINALIZATION_TASK_PRIORITY_BOOST = int(os.getenv("FINALIZATION_TASK_PRIORITY_BOOST", "1000"))
@@ -2101,6 +2111,172 @@ class TaskExecutor(AssetCoordinationMixin):
 
 # Istanza globale del TaskExecutor
 task_executor = TaskExecutor()
+
+
+class QualityEnhancedTaskExecutor(TaskExecutor):
+    """
+    Enhanced TaskExecutor con integrazione AI Quality Assurance
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.quality_integration_enabled = (
+            QUALITY_SYSTEM_AVAILABLE and 
+            QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM
+        )
+        
+        if self.quality_integration_enabled:
+            logger.info("🔍 EXECUTOR: Quality assurance integration enabled")
+            self.last_quality_check = {}  # workspace_id -> datetime
+            self.quality_check_interval = 300  # 5 minuti
+        else:
+            logger.info("🔄 EXECUTOR: Standard mode without quality integration")
+    
+    async def execution_loop(self):
+        """Enhanced execution loop con quality assurance"""
+        
+        logger.info("Enhanced execution loop started with quality assurance integration")
+        
+        while self.running:
+            try:
+                await self.pause_event.wait()
+                if not self.running:
+                    break
+                
+                # Circuit breaker check (mantieni logica esistente)
+                if self.check_global_circuit_breaker():
+                    logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused")
+                    await asyncio.sleep(60)
+                    continue
+                
+                # Process pending tasks (mantieni logica esistente)
+                await self.process_pending_tasks_anti_loop()
+                
+                # Asset coordination (mantieni logica esistente)
+                try:
+                    active_workspaces = await get_active_workspaces()
+                    for ws_id in active_workspaces:
+                        await self.coordinate_asset_oriented_workflow(ws_id)
+                except Exception as e:
+                    logger.error(f"Error in asset coordination: {e}")
+                
+                # === NUOVA: Quality-enhanced deliverable check ===
+                if self.quality_integration_enabled:
+                    try:
+                        await self._check_quality_enhanced_deliverables()
+                    except Exception as e:
+                        logger.error(f"Error in quality deliverable check: {e}")
+                
+                # Controlla nuovi workspace (mantieni logica esistente)
+                if self.auto_generation_enabled:
+                    await self.check_for_new_workspaces()
+                
+                # Controllo runaway periodico (mantieni logica esistente)  
+                if (self.last_runaway_check is None or
+                    (datetime.now() - self.last_runaway_check).total_seconds() > self.runaway_check_interval):
+                    await self.periodic_runaway_check()
+                    self.last_runaway_check = datetime.now()
+                
+                # Cleanup periodico (mantieni logica esistente)
+                if datetime.now() - self.last_cleanup > timedelta(minutes=5):
+                    await self._cleanup_tracking_data()
+                
+                await asyncio.sleep(10)
+                
+            except asyncio.CancelledError:
+                logger.info("Enhanced execution loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Error in enhanced execution loop: {e}", exc_info=True)
+                await asyncio.sleep(30)
+        
+        logger.info("Enhanced execution loop finished")
+    
+    async def _check_quality_enhanced_deliverables(self):
+        """
+        Controlla workspace pronti per deliverable con quality assurance
+        """
+        
+        try:
+            # Ottieni workspace attivi che potrebbero aver bisogno di deliverable
+            active_workspaces = await get_active_workspaces()
+            
+            for workspace_id in active_workspaces:
+                try:
+                    # Controlla se è tempo di verificare questo workspace
+                    if not self._should_check_workspace_for_quality(workspace_id):
+                        continue
+                    
+                    # Tentativo di creare deliverable quality-enhanced
+                    deliverable_id = await create_quality_enhanced_deliverable(workspace_id)
+                    
+                    if deliverable_id:
+                        logger.info(f"🔍 QUALITY DELIVERABLE: Created {deliverable_id} for {workspace_id}")
+                        
+                        # Registra metriche se abilitato
+                        if QualitySystemConfig.ENABLE_QUALITY_METRICS_COLLECTION:
+                            try:
+                                from backend.ai_quality_assurance.quality_integration import quality_metrics_collector
+                                quality_metrics_collector.record_enhancement_activity(
+                                    workspace_id, 
+                                    deliverable_id, 
+                                    "quality_enhanced_deliverable_creation", 
+                                    True
+                                )
+                            except Exception as e:
+                                logger.debug(f"Error recording quality metrics: {e}")
+                        
+                        # Aggiorna timestamp ultimo check
+                        self.last_quality_check[workspace_id] = datetime.now()
+                    
+                except Exception as e_ws:
+                    logger.error(f"Error creating quality deliverable for {workspace_id}: {e_ws}")
+                    
+                    # Fallback al sistema standard se abilitato
+                    if QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
+                        try:
+                            from backend.deliverable_aggregator import check_and_create_final_deliverable
+                            fallback_id = await check_and_create_final_deliverable(workspace_id)
+                            
+                            if fallback_id:
+                                logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")
+                                
+                        except Exception as fallback_error:
+                            logger.error(f"Fallback deliverable also failed for {workspace_id}: {fallback_error}")
+                    
+        except Exception as e:
+            logger.error(f"Error in _check_quality_enhanced_deliverables: {e}")
+    
+    def _should_check_workspace_for_quality(self, workspace_id: str) -> bool:
+        """Determina se è tempo di controllare un workspace per deliverable di qualità"""
+        
+        last_check = self.last_quality_check.get(workspace_id)
+        if not last_check:
+            return True  # Mai controllato prima
+        
+        # Controlla solo ogni X minuti
+        time_since_check = (datetime.now() - last_check).total_seconds()
+        return time_since_check >= self.quality_check_interval
+    
+    def get_detailed_stats(self) -> Dict[str, Any]:
+        """Override per includere statistiche quality integration"""
+        
+        base_stats = super().get_detailed_stats()
+        
+        if self.quality_integration_enabled:
+            base_stats["quality_integration"] = {
+                "enabled": True,
+                "workspaces_monitored": len(self.last_quality_check),
+                "last_quality_checks": {
+                    ws_id: timestamp.isoformat() 
+                    for ws_id, timestamp in self.last_quality_check.items()
+                },
+                "check_interval_seconds": self.quality_check_interval
+            }
+        else:
+            base_stats["quality_integration"] = {"enabled": False}
+        
+        return base_stats
 
 # Funzioni di controllo executor
 async def start_task_executor():
