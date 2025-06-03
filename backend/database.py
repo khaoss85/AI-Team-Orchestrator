@@ -39,13 +39,14 @@ except Exception as e:
 
 def sanitize_unicode_for_postgres(data: Any) -> Any:
     """
-    Sanitizza ricorsivamente i dati rimuovendo caratteri Unicode problematici per PostgreSQL
+    ENHANCED: Sanitizza ricorsivamente i dati rimuovendo caratteri Unicode problematici per PostgreSQL
+    e convertendo datetime objects in stringhe ISO
     
     Args:
-        data: Dati da sanitizzare (dict, list, str, o altro)
+        data: Dati da sanitizzare (dict, list, str, datetime, o altro)
     
     Returns:
-        Dati sanitizzati senza caratteri problematici
+        Dati sanitizzati senza caratteri problematici e datetime serializzati
     """
     if isinstance(data, str):
         # Rimuovi caratteri nulli e altri caratteri di controllo problematici
@@ -58,6 +59,10 @@ def sanitize_unicode_for_postgres(data: Any) -> Any:
         sanitized = sanitized.replace('\ufeff', '')  # Rimuovi BOM
         
         return sanitized
+    
+    elif isinstance(data, datetime):
+        # FIXED: Converti datetime in stringa ISO
+        return data.isoformat()
     
     elif isinstance(data, dict):
         return {key: sanitize_unicode_for_postgres(value) for key, value in data.items()}
@@ -74,7 +79,7 @@ def sanitize_unicode_for_postgres(data: Any) -> Any:
 
 def safe_json_serialize(data: Any) -> str:
     """
-    Serializza dati in JSON gestendo caratteri Unicode problematici
+    ENHANCED: Serializza dati in JSON gestendo caratteri Unicode problematici e datetime objects
     
     Args:
         data: Dati da serializzare
@@ -83,7 +88,7 @@ def safe_json_serialize(data: Any) -> str:
         Stringa JSON sicura per PostgreSQL
     """
     try:
-        # Prima sanitizza i dati
+        # Prima sanitizza i dati (include datetime serialization)
         clean_data = sanitize_unicode_for_postgres(data)
         
         # Poi serializza con ensure_ascii=False per preservare Unicode valido

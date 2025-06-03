@@ -72,8 +72,8 @@ from database import (
 )
 
 try:
-    from backend.config.quality_system_config import QualitySystemConfig
-    from backend.ai_quality_assurance.quality_integration import DynamicPromptEnhancer
+    from config.quality_system_config import QualitySystemConfig
+    from ai_quality_assurance.quality_integration import DynamicPromptEnhancer
     QUALITY_SYSTEM_AVAILABLE = True
     logger.info("✅ Quality System integration available for SpecialistAgent")
 except ImportError as e:

@@ -44,13 +44,13 @@ class EnhancementPlan(BaseModel):
     
     enhancement_tasks: List[Dict[str, Any]] = Field(default_factory=list)
     estimated_effort_hours: float = Field(default=2.5, ge=0.5, le=10.0)
-    priority: str = Field(default="medium", regex="^(low|medium|high|critical)$")
+    priority: str = Field(default="medium", pattern="^(low|medium|high|critical)$")  # FIXED: regex -> pattern
     
     quality_issues: List[QualityIssueType]
     improvement_actions: List[str]
     
     created_at: datetime = Field(default_factory=datetime.now)
-    status: str = Field(default="pending", regex="^(pending|in_progress|completed|failed)$")
+    status: str = Field(default="pending", pattern="^(pending|in_progress|completed|failed)$")  # FIXED: regex -> pattern
     
     # ENHANCED: Tracking per production
     workspace_id: Optional[str] = None

@@ -28,8 +28,8 @@ from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 logger = logging.getLogger(__name__)
 
 try:
-    from backend.config.quality_system_config import QualitySystemConfig
-    from backend.deliverable_aggregator import create_quality_enhanced_deliverable
+    from config.quality_system_config import QualitySystemConfig
+    from deliverable_aggregator import create_quality_enhanced_deliverable
     QUALITY_SYSTEM_AVAILABLE = True
     logger.info("✅ Quality System integration available for TaskExecutor")
 except ImportError as e:
@@ -2110,8 +2110,56 @@ class TaskExecutor(AssetCoordinationMixin):
 
 
 # Istanza globale del TaskExecutor
-task_executor = TaskExecutor()
 
+if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM:
+    task_executor = QualityEnhancedTaskExecutor()
+    logger.info("🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version")
+else:
+    task_executor = TaskExecutor()
+    logger.info("📦 TASK EXECUTOR INITIALIZED: Standard version")
+
+# Aggiungi queste funzioni helper:
+
+async def enable_quality_integration() -> Dict[str, Any]:
+    """Abilita quality integration runtime"""
+    
+    if not QUALITY_SYSTEM_AVAILABLE:
+        return {"success": False, "message": "Quality system not available"}
+    
+    if isinstance(task_executor, QualityEnhancedTaskExecutor):
+        task_executor.quality_integration_enabled = True
+        return {
+            "success": True, 
+            "message": "Quality integration enabled",
+            "executor_type": "QualityEnhancedTaskExecutor"
+        }
+    else:
+        return {
+            "success": False, 
+            "message": "Standard TaskExecutor in use, restart required for quality integration"
+        }
+
+async def disable_quality_integration() -> Dict[str, Any]:
+    """Disabilita quality integration runtime"""
+    
+    if isinstance(task_executor, QualityEnhancedTaskExecutor):
+        task_executor.quality_integration_enabled = False
+        return {"success": True, "message": "Quality integration disabled"}
+    else:
+        return {"success": True, "message": "Quality integration not active"}
+
+def get_quality_integration_status() -> Dict[str, Any]:
+    """Ottieni stato quality integration"""
+    
+    return {
+        "quality_system_available": QUALITY_SYSTEM_AVAILABLE,
+        "executor_type": type(task_executor).__name__,
+        "integration_enabled": (
+            isinstance(task_executor, QualityEnhancedTaskExecutor) and 
+            getattr(task_executor, 'quality_integration_enabled', False)
+        ),
+        "configuration": QualitySystemConfig.get_all_settings() if QUALITY_SYSTEM_AVAILABLE else None
+    }
 
 class QualityEnhancedTaskExecutor(TaskExecutor):
     """

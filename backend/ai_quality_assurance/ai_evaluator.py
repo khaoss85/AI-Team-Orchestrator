@@ -5,6 +5,7 @@ import json
 import re
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
+from ai_quality_assurance.quality_validator import AIQualityValidator
 
 # Import per LLM calls - adatta in base al tuo setup
 try:

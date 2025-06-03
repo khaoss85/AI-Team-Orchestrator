@@ -4,6 +4,8 @@ import React, { useState, useEffect, use } from 'react'; // Importa 'use' da Rea
 import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace, DirectorTeamProposal, AgentSeniority } from '@/types';
+import TeamExplanationAnimation from '@/components/TeamExplanationAnimation';
+
 
 type Props = {
   params: Promise<{ id: string }>; // Indica che params è una Promise che risolverà in un oggetto { id: string }
@@ -271,6 +273,24 @@ export default function ConfigureProjectPage({ params: paramsPromise, searchPara
               </p>
             </div>
           )}
+        </div>
+      )}
+          
+    {/* 🎯 AGGIUNGI QUI - Team Explanation Animation */}
+      {proposalLoading && (
+        <div className="mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-4 w-4 border-2 border-indigo-600 border-r-transparent rounded-full animate-spin mr-3"></div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Il Director sta analizzando il progetto...
+              </h2>
+            </div>
+            <p className="text-center text-gray-600 mb-6">
+              Stiamo creando il team perfetto per i tuoi obiettivi. Nel frattempo, scopri come funziona il nostro sistema:
+            </p>
+          </div>
+          <TeamExplanationAnimation />
         </div>
       )}
 

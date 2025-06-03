@@ -52,6 +52,21 @@ def is_quality_assurance_available():
         return False
 
 
+def serialize_datetime_objects(data: Any) -> Any:
+    """
+    HELPER: Recursively serialize datetime objects to ISO strings
+    """
+    if isinstance(data, datetime):
+        return data.isoformat()
+    elif isinstance(data, dict):
+        return {key: serialize_datetime_objects(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [serialize_datetime_objects(item) for item in data]
+    elif isinstance(data, tuple):
+        return tuple(serialize_datetime_objects(item) for item in data)
+    else:
+        return data
+    
 # === DYNAMIC AI ANALYSIS SYSTEM ===
 
 class AIDeliverableAnalyzer:
@@ -1517,6 +1532,9 @@ class IntelligentDeliverableAggregator:
             
             task_name = f"🎯 {ai_indicator} INTELLIGENT DELIVERABLE: {deliverable_type} (C:{confidence:.1f}) ({timestamp})"
             
+            precomputed_deliverable_serialized = serialize_datetime_objects(intelligent_deliverable.model_dump())
+            quality_enhanced_data_serialized = serialize_datetime_objects(quality_enhanced_data) if quality_enhanced_data else None
+            
             # Context data ricco e intelligente
             context_data = {
                 "is_final_deliverable": True,
@@ -1538,8 +1556,8 @@ class IntelligentDeliverableAggregator:
                 "quality_assurance_available": self.enhancement_orchestrator is not None,
                 "business_value_focus": deliverable_analysis.get('business_value_focus', ''),
                 "implementation_priority": deliverable_analysis.get('implementation_priority', ''),
-                "precomputed_deliverable": intelligent_deliverable.model_dump(),
-                "quality_enhanced_data": quality_enhanced_data
+                "precomputed_deliverable": precomputed_deliverable_serialized,
+                "quality_enhanced_data": quality_enhanced_data_serialized
             }
             
             # Crea task con priorità appropriata
