@@ -21,7 +21,7 @@ class QualitySystemConfig:
     
     # === ENHANCEMENT SETTINGS ===
     AUTO_CREATE_ENHANCEMENT_TASKS: bool = os.getenv("AUTO_CREATE_ENHANCEMENT_TASKS", "true").lower() == "true"
-    MAX_ENHANCEMENT_ATTEMPTS: int = int(os.getenv("MAX_ENHANCEMENT_ATTEMPTS", "3"))
+    MAX_ENHANCEMENT_ATTEMPTS: int = int(os.getenv("MAX_ENHANCEMENT_ATTEMPTS", "5"))
     ENHANCEMENT_TASK_PRIORITY: str = os.getenv("ENHANCEMENT_TASK_PRIORITY", "high")
     
     # === MONITORING ===

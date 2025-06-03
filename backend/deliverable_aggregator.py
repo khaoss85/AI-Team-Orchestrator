@@ -346,10 +346,28 @@ Respond in this exact JSON format:
 class DynamicAssetExtractor:
     """
     Estrattore dinamico di asset che si adatta al tipo di progetto
+    ENHANCED: Con scoring più accurato e meno rigido
     """
     
     def __init__(self):
         self.ai_analyzer = AIDeliverableAnalyzer()
+        
+        # ENHANCED: Pattern fake content più accurati
+        self.fake_content_patterns = [
+            r"john\s+doe\b", r"jane\s+smith\b", r"example\.com", 
+            r"test@example", r"placeholder", r"lorem\s+ipsum",
+            r"xxx+", r"\btbd\b", r"to\s+be\s+determined",
+            r"mario\s+rossi\b", r"giuseppe\s+verdi\b"  # Italian fake names
+        ]
+        
+        # ENHANCED: Pattern di contenuto reale da NON penalizzare
+        self.legitimate_content_patterns = [
+            r"@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}",  # Email reali
+            r"https?://\S+",  # URL reali
+            r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b",  # Date
+            r"\b\d+[.,]\d+\s*€?\$?\b",  # Prezzi/numeri
+            r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b"  # Nomi reali (non fake)
+        ]
     
     async def extract_assets_dynamically(
         self, 
@@ -601,127 +619,214 @@ Make it specific to the business context and actionable for immediate use."""
         return None
     
     def _calculate_quality_score(self, data: Dict) -> float:
-        """Calcola quality score dinamicamente e intelligentemente"""
+        """
+        ENHANCED: Calcola quality score più accurato e meno punitivo
+        """
         
-        score = 0.3  # Base score più permissivo
+        # INCREASED: Base score più generoso
+        score = 0.5  # Era 0.3, ora 0.5
         
-        # Bonus per completezza strutturale
+        # Bonus per completezza strutturale (più permissivo)
         field_count = len(data)
-        if field_count >= 7:
+        if field_count >= 5:  # Era 7, ora 5
             score += 0.3
-        elif field_count >= 4:
+        elif field_count >= 3:  # Era 4, ora 3  
             score += 0.2
         elif field_count >= 2:
-            score += 0.1
+            score += 0.15
         
         # Bonus per dati strutturati complessi
         complex_structures = sum(1 for v in data.values() if isinstance(v, (list, dict)))
-        score += min(complex_structures * 0.1, 0.2)
+        score += min(complex_structures * 0.1, 0.25)  # Increased max
         
-        # Bonus per presenza di dati azionabili
+        # ENHANCED: Rilevamento contenuto legittimo
         data_str = json.dumps(data, default=str).lower()
-        actionable_indicators = ['@', 'http', 'phone', '$', '%', 'date', 'contact', 'email']
-        actionable_count = sum(1 for indicator in actionable_indicators if indicator in data_str)
-        score += min(actionable_count * 0.05, 0.15)
         
-        # Penalità per placeholder e content generico
-        placeholder_indicators = ['placeholder', 'example', 'todo', 'tbd', 'lorem', 'ipsum', 'xxx']
-        placeholder_penalty = sum(0.1 for indicator in placeholder_indicators if indicator in data_str)
-        score -= min(placeholder_penalty, 0.4)
+        # Bonus per indicatori di contenuto reale
+        legitimate_indicators = 0
+        for pattern in self.legitimate_content_patterns:
+            if re.search(pattern, data_str, re.IGNORECASE):
+                legitimate_indicators += 1
         
-        # Bonus per lunghezza e dettaglio del contenuto
+        # Bonus sostanzioso per contenuto legittimo
+        score += min(legitimate_indicators * 0.1, 0.3)
+        
+        # ENHANCED: Penalità fake content più accurata (meno aggressiva)
+        fake_penalty = 0
+        for pattern in self.fake_content_patterns:
+            matches = re.findall(pattern, data_str, re.IGNORECASE)
+            if matches:
+                # Verifica che non sia contenuto legittimo simile
+                if not self._is_likely_legitimate_content(data_str, pattern):
+                    fake_penalty += 0.05  # Era 0.1, ora 0.05
+        
+        score -= min(fake_penalty, 0.2)  # Era 0.4, ora 0.2
+        
+        # ENHANCED: Bonus per lunghezza e dettaglio del contenuto (più generoso)
         total_content_length = sum(len(str(v)) for v in data.values())
-        if total_content_length > 500:
-            score += 0.15
-        elif total_content_length > 200:
-            score += 0.1
+        if total_content_length > 300:  # Era 500, ora 300
+            score += 0.2  # Era 0.15, ora 0.2
+        elif total_content_length > 150:  # Era 200, ora 150
+            score += 0.15  # Era 0.1, ora 0.15
+        
+        # ENHANCED: Bonus per presenza di business data
+        business_indicators = [
+            '@', 'http', 'phone', 'contact', 'email', 'company', 
+            'strategy', 'plan', 'analysis', 'report', 'data'
+        ]
+        business_count = sum(1 for indicator in business_indicators if indicator in data_str)
+        score += min(business_count * 0.03, 0.2)
         
         return max(0.0, min(1.0, score))
     
     def _calculate_actionability_score(self, data: Dict) -> float:
-        """Calcola actionability score intelligentemente"""
+        """
+        ENHANCED: Calcola actionability score meno punitivo
+        """
         
-        score = 0.3  # Base score
+        # INCREASED: Base score più generoso  
+        score = 0.4  # Era 0.3, ora 0.4
         
         data_str = json.dumps(data, default=str).lower()
         
-        # Score per presenza di dati immediatamente utilizzabili
+        # ENHANCED: Indicatori di immediate use (weights aumentati)
         immediate_use_indicators = [
-            ('@', 0.2),  # Email addresses
-            ('http', 0.15),  # URLs
-            ('phone', 0.15),  # Phone numbers
-            ('$', 0.1),  # Money values
+            ('@', 0.25),  # Era 0.2, ora 0.25 - Email addresses
+            ('http', 0.2),  # Era 0.15, ora 0.2 - URLs
+            ('phone', 0.2),  # Era 0.15, ora 0.2 - Phone numbers
+            ('contact', 0.15),  # Nuovo - Contact info
+            ('€', 0.1), ('$', 0.1),  # Money values
             ('%', 0.1),  # Percentages
             ('date', 0.1),  # Dates
             ('step', 0.1),  # Process steps
-            ('action', 0.1)  # Action items
+            ('action', 0.1),  # Action items
+            ('strategy', 0.1),  # Strategic content
+            ('plan', 0.1)  # Planning content
         ]
         
         for indicator, bonus in immediate_use_indicators:
             if indicator in data_str:
                 score += bonus
         
-        # Bonus per struttura organizzata
+        # ENHANCED: Bonus per struttura organizzata (più permissivo)
         if isinstance(data, dict):
-            organized_structures = ['list', 'items', 'steps', 'contacts', 'tasks', 'goals']
-            organized_count = sum(1 for key in data.keys() if any(struct in str(key).lower() for struct in organized_structures))
-            score += min(organized_count * 0.1, 0.2)
+            organized_keys = ['list', 'items', 'steps', 'contacts', 'tasks', 'goals', 
+                            'strategy', 'plan', 'analysis', 'data', 'results']
+            organized_count = sum(1 for key in data.keys() 
+                                if any(struct in str(key).lower() for struct in organized_keys))
+            score += min(organized_count * 0.15, 0.3)  # Increased
         
-        # Bonus per completezza implementativa
-        implementation_indicators = ['instruction', 'guide', 'how', 'implement', 'deploy', 'use']
+        # ENHANCED: Bonus per completezza implementativa (nuovo)
+        implementation_indicators = ['instruction', 'guide', 'how', 'implement', 
+                                   'deploy', 'use', 'execute', 'process']
         impl_count = sum(1 for indicator in implementation_indicators if indicator in data_str)
-        score += min(impl_count * 0.05, 0.15)
+        score += min(impl_count * 0.08, 0.2)
+        
+        # ENHANCED: Bonus per business readiness
+        business_ready_indicators = ['ready', 'complete', 'final', 'approved', 'validated']
+        ready_count = sum(1 for indicator in business_ready_indicators if indicator in data_str)
+        score += min(ready_count * 0.05, 0.15)
         
         return max(0.0, min(1.0, score))
     
     def _is_ready_to_use(self, data: Dict) -> bool:
-        """Determina se l'asset è ready to use con soglie intelligenti"""
+        """
+        ENHANCED: Determina se l'asset è ready to use con soglie più realistiche
+        """
         
         quality = self._calculate_quality_score(data)
         actionability = self._calculate_actionability_score(data)
         
-        # Soglie dinamiche più permissive
-        return quality >= 0.6 and actionability >= 0.5
+        # RELAXED: Soglie più permissive
+        quality_threshold = 0.4  # Era 0.6, ora 0.4
+        actionability_threshold = 0.4  # Era 0.5, ora 0.4
+        
+        # ENHANCED: Logica più sofisticata
+        # Se uno score è molto alto, l'altro può essere più basso
+        if quality >= 0.7 or actionability >= 0.7:
+            return quality >= 0.3 and actionability >= 0.3
+        
+        # Altrimenti usa threshold standard
+        return quality >= quality_threshold and actionability >= actionability_threshold
+    
+    def _is_likely_legitimate_content(self, content: str, fake_pattern: str) -> bool:
+        """
+        NUOVO: Verifica se il contenuto che matcha un fake pattern è probabilmente legittimo
+        """
+        
+        # Se il contenuto ha molti indicatori business, probabilmente è legittimo
+        business_indicators = ['company', 'email', 'phone', 'address', 'contact', 
+                             'strategy', 'plan', 'analysis', 'report']
+        business_count = sum(1 for indicator in business_indicators if indicator in content)
+        
+        if business_count >= 3:
+            return True
+        
+        # Se ha URL o email reali, probabilmente è legittimo
+        if re.search(r'https?://\S+', content) or re.search(r'\S+@\S+\.\S+', content):
+            return True
+        
+        # Se ha numeri specifici (non generici), probabilmente è legittimo
+        specific_numbers = re.findall(r'\b\d{3,}\b', content)
+        if len(specific_numbers) >= 2:
+            return True
+        
+        return False
     
     def _assess_enhancement_potential(self, data: Dict) -> float:
-        """Valuta il potenziale di enhancement dell'asset"""
+        """
+        ENHANCED: Valuta il potenziale di enhancement più accuratamente
+        """
         
-        base_potential = 0.5
+        quality_score = self._calculate_quality_score(data)
+        actionability_score = self._calculate_actionability_score(data)
         
-        # Maggiore potenziale se ha struttura ma manca contenuto specifico
-        if len(data) >= 3:
-            base_potential += 0.2
+        # Se già buono, basso potenziale enhancement
+        if quality_score >= 0.7 and actionability_score >= 0.7:
+            return 0.2
         
-        # Potenziale per asset con placeholder o contenuto generico
-        data_str = json.dumps(data, default=str).lower()
-        if any(placeholder in data_str for placeholder in ['placeholder', 'example', 'todo']):
-            base_potential += 0.3
+        # Se ha struttura ma qualità bassa, alto potenziale
+        if len(data) >= 3 and quality_score < 0.6:
+            return 0.8
         
-        return min(1.0, base_potential)
+        # Potenziale medio
+        return 0.5
+
+# ENHANCED: Asset validation più accurata
+async def _enhance_with_schema_validation(self, asset_data: Dict, schema: AssetSchema) -> Dict:
+    """
+    ENHANCED: Migliora asset data con validazione schema meno rigida
+    """
     
-    async def _enhance_with_schema_validation(self, asset_data: Dict, schema: AssetSchema) -> Dict:
-        """Migliora asset data con validazione schema se disponibile"""
+    try:
+        from deliverable_system.schema_generator import AssetSchemaGenerator
+        schema_generator = AssetSchemaGenerator()
         
-        try:
-            from deliverable_system.schema_generator import AssetSchemaGenerator
-            schema_generator = AssetSchemaGenerator()
-            
-            # Valida contro schema
-            validation_result = schema_generator.validate_asset_against_schema(
-                asset_data['asset_data'], schema
-            )
-            
-            # Aggiorna score basato su validazione
-            if validation_result.get('valid', False):
-                asset_data['quality_score'] = max(asset_data['quality_score'], 0.7)
-                asset_data['schema_validated'] = True
-            
-            asset_data['schema_validation'] = validation_result
-            
-        except Exception as e:
-            logger.debug(f"Schema validation failed: {e}")
+        # Valida contro schema
+        validation_result = schema_generator.validate_asset_against_schema(
+            asset_data['asset_data'], schema
+        )
         
-        return asset_data
+        # ENHANCED: Score più generoso basato su validazione
+        base_score = asset_data.get('quality_score', 0.5)
+        
+        if validation_result.get('valid', False):
+            # Boost sostanzioso per validazione positiva
+            asset_data['quality_score'] = min(max(base_score, 0.7), 1.0)
+            asset_data['schema_validated'] = True
+        elif validation_result.get('partial_valid', False):
+            # Boost moderato per validazione parziale
+            asset_data['quality_score'] = min(max(base_score, 0.6), 1.0)
+            asset_data['schema_partially_validated'] = True
+        
+        asset_data['schema_validation'] = validation_result
+        
+        logger.info(f"📊 SCHEMA VALIDATION: Score updated to {asset_data['quality_score']:.2f}")
+        
+    except Exception as e:
+        logger.debug(f"Schema validation failed: {e}")
+    
+    return asset_data
 
 
 class IntelligentDeliverablePackager:

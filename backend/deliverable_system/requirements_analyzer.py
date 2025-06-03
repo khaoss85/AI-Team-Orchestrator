@@ -10,13 +10,49 @@ from datetime import datetime
 from models import DeliverableRequirements, AssetRequirement, AssetSchema
 from database import get_workspace, list_tasks, list_agents
 
+# FIXED: Import corretto per QualitySystemConfig
+try:
+    from config.quality_system_config import QualitySystemConfig
+    QUALITY_CONFIG_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ QualitySystemConfig imported successfully")
+except ImportError:
+    try:
+        # Fallback path
+        from backend.config.quality_system_config import QualitySystemConfig
+        QUALITY_CONFIG_AVAILABLE = True
+        logger = logging.getLogger(__name__)
+        logger.info("✅ QualitySystemConfig imported successfully (fallback path)")
+    except ImportError:
+        logger = logging.getLogger(__name__)
+        logger.warning("⚠️ QualitySystemConfig not available, using default settings")
+        QUALITY_CONFIG_AVAILABLE = False
+        
+        # Classe fallback con valori di default
+        class QualitySystemConfig:
+            QUALITY_SCORE_THRESHOLD = 0.8
+            ACTIONABILITY_THRESHOLD = 0.7
+            AUTHENTICITY_THRESHOLD = 0.8
+            COMPLETENESS_THRESHOLD = 0.7
+            ENABLE_AI_QUALITY_EVALUATION = True
+
 logger = logging.getLogger(__name__)
 
 class DeliverableRequirementsAnalyzer:
     """Analizza dinamicamente i requirements per deliverable azionabili"""
     
     def __init__(self):
-        self.cache = {}  # Cache per analisi ripetute
+        self.cache = {}
+        
+        # ENHANCED: Usa configurazione qualità se disponibile
+        if QUALITY_CONFIG_AVAILABLE:
+            self.quality_threshold = QualitySystemConfig.QUALITY_SCORE_THRESHOLD
+            self.actionability_threshold = QualitySystemConfig.ACTIONABILITY_THRESHOLD
+            logger.info(f"🔍 Using Quality Config: threshold={self.quality_threshold}")
+        else:
+            self.quality_threshold = 0.8
+            self.actionability_threshold = 0.7
+            logger.warning(f"🔄 Using default thresholds: quality={self.quality_threshold}")
         
     async def analyze_deliverable_requirements(
         self, 
