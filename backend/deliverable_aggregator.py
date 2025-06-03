@@ -1,5 +1,5 @@
-# backend/deliverable_aggregator.py - COMPLETE ENHANCED VERSION WITH AI QUALITY ASSURANCE
-# Sostituisce completamente il file esistente
+# backend/deliverable_aggregator.py - ENHANCED HYBRID VERSION
+# Combina AI Quality Assurance + Dynamic AI Analysis - Zero Hard-coded Dependencies
 
 import logging
 import json
@@ -7,7 +7,7 @@ import re
 import os
 import asyncio
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from enum import Enum
 
 from database import (
@@ -19,9 +19,8 @@ from deliverable_system.requirements_analyzer import DeliverableRequirementsAnal
 from deliverable_system.schema_generator import AssetSchemaGenerator
 from models import ExtractedAsset, ActionableDeliverable, AssetSchema
 
-# ENHANCED: AI Quality Assurance Integration with graceful fallback and robust error handling
-AI_QUALITY_ASSURANCE_AVAILABLE = False  # Inizializza sempre la variabile
-
+# ENHANCED: AI Quality Assurance Integration with graceful fallback
+AI_QUALITY_ASSURANCE_AVAILABLE = False
 try:
     from ai_quality_assurance.enhancement_orchestrator import AssetEnhancementOrchestrator
     from ai_quality_assurance.quality_validator import AIQualityValidator
@@ -39,7 +38,7 @@ ENABLE_AUTO_PROJECT_COMPLETION = os.getenv("ENABLE_AUTO_PROJECT_COMPLETION", "tr
 MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
 ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
-
+ENABLE_DYNAMIC_AI_ANALYSIS = os.getenv("ENABLE_DYNAMIC_AI_ANALYSIS", "true").lower() == "true"
 
 def is_quality_assurance_available():
     """Controllo sicuro per la disponibilità del sistema di quality assurance"""
@@ -52,2322 +51,1909 @@ def is_quality_assurance_available():
     except NameError:
         return False
 
-class DeliverableType(str, Enum):
-    """Enhanced deliverable types with broader coverage"""
-    CONTACT_LIST = "contact_list"
-    CONTENT_STRATEGY = "content_strategy"
-    COMPETITOR_ANALYSIS = "competitor_analysis"  
-    MARKET_RESEARCH = "market_research"
-    BUSINESS_PLAN = "business_plan"
-    LEAD_GENERATION = "lead_generation"
-    SOCIAL_MEDIA_PLAN = "social_media_plan"
-    CAMPAIGN_STRATEGY = "campaign_strategy"
-    MARKETING_AUDIT = "marketing_audit"
-    WEBSITE_ANALYSIS = "website_analysis"
-    BRAND_STRATEGY = "brand_strategy"
-    GENERIC_REPORT = "generic_report"
 
+# === DYNAMIC AI ANALYSIS SYSTEM ===
 
-class EnhancedDeliverableAggregator:
-    """Enhanced deliverable aggregator with improved detection and creation logic"""
+class AIDeliverableAnalyzer:
+    """
+    Analizzatore AI-driven per determinare dinamicamente il tipo di deliverable 
+    e le strategie di aggregazione senza mappature hard-coded
+    """
     
     def __init__(self):
-        self.goal_patterns = {
-            DeliverableType.CONTACT_LIST: [
-                r"find.*contact", r"lead.*generation", r"prospect", 
-                r"cold.*call", r"email.*list", r"outreach", r"lead.*list"
-            ],
-            DeliverableType.CONTENT_STRATEGY: [
-                r"content.*strategy", r"editorial.*plan", r"content.*plan",
-                r"social.*media.*strategy", r"instagram.*strategy", r"content.*marketing"
-            ],
-            DeliverableType.COMPETITOR_ANALYSIS: [
-                r"competitor.*analy", r"competitive.*landscap", 
-                r"competitor.*research", r"market.*position", r"competitive.*intelligence"
-            ],
-            DeliverableType.MARKET_RESEARCH: [
-                r"market.*research", r"market.*analysis", r"industry.*analysis",
-                r"target.*audience", r"customer.*research", r"market.*study"
-            ],
-            DeliverableType.SOCIAL_MEDIA_PLAN: [
-                r"social.*media", r"instagram.*plan", r"facebook.*strategy",
-                r"twitter.*strategy", r"linkedin.*strategy", r"social.*campaign"
-            ],
-            DeliverableType.LEAD_GENERATION: [
-                r"lead.*generation", r"sales.*funnel", r"conversion.*strategy",
-                r"lead.*qualification", r"lead.*nurturing"
-            ],
-            DeliverableType.CAMPAIGN_STRATEGY: [
-                r"campaign.*strategy", r"marketing.*campaign", r"advertising.*campaign",
-                r"promotion.*strategy", r"campaign.*plan"
-            ],
-            DeliverableType.MARKETING_AUDIT: [
-                r"marketing.*audit", r"marketing.*analysis", r"marketing.*review",
-                r"digital.*audit", r"marketing.*assessment"
-            ]
+        self.analysis_cache = {}
+        self.ai_client = self._initialize_ai_client()
+        logger.info(f"🤖 AI Deliverable Analyzer: {'✅ Active' if self.ai_client else '❌ Fallback mode'}")
+    
+    def _initialize_ai_client(self):
+        """Inizializza client AI con fallback sicuro"""
+        try:
+            if not ENABLE_DYNAMIC_AI_ANALYSIS:
+                return None
+                
+            import openai
+            from openai import AsyncOpenAI
+            if os.getenv("OPENAI_API_KEY"):
+                return AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        except ImportError:
+            logger.warning("OpenAI not available for dynamic AI analysis")
+        return None
+    
+    async def analyze_project_deliverable_type(self, workspace_goal: str, completed_tasks: List[Dict]) -> Dict[str, Any]:
+        """
+        Analizza dinamicamente il tipo di deliverable utilizzando AI
+        """
+        
+        cache_key = f"{hash(workspace_goal)}_{len(completed_tasks)}"
+        if cache_key in self.analysis_cache:
+            return self.analysis_cache[cache_key]
+        
+        # Estrai contesto dai task completati
+        task_context = self._extract_task_context(completed_tasks)
+        
+        analysis_result = None
+        
+        # Tentativo AI-driven analysis
+        if self.ai_client:
+            try:
+                analysis_result = await self._ai_analyze_deliverable_type(workspace_goal, task_context)
+                logger.info(f"🤖 AI ANALYSIS: {analysis_result.get('deliverable_type')} (confidence: {analysis_result.get('confidence_score', 0):.2f})")
+            except Exception as e:
+                logger.warning(f"AI analysis failed: {e}, using fallback")
+        
+        # Fallback a analisi rule-based dinamica
+        if not analysis_result:
+            analysis_result = self._fallback_analyze_deliverable_type(workspace_goal, task_context)
+            logger.info(f"🔄 FALLBACK ANALYSIS: {analysis_result.get('deliverable_type')}")
+        
+        self.analysis_cache[cache_key] = analysis_result
+        return analysis_result
+    
+    async def _ai_analyze_deliverable_type(self, workspace_goal: str, task_context: Dict) -> Dict[str, Any]:
+        """Analisi AI per determinare tipo deliverable e strategia"""
+        
+        prompt = f"""Analyze this business project to determine the optimal deliverable structure and aggregation strategy.
+
+PROJECT GOAL: {workspace_goal}
+
+COMPLETED WORK CONTEXT:
+- Total tasks completed: {task_context.get('total_tasks', 0)}
+- Task types: {', '.join(task_context.get('task_types', [])[:5])}
+- Key outputs: {', '.join(task_context.get('key_outputs', [])[:3])}
+- Data richness: {task_context.get('data_richness_score', 0)}/10
+
+Based on this project, determine:
+1. The most appropriate deliverable format and structure
+2. Key asset types that should be extracted and highlighted
+3. Presentation approach that maximizes business value
+4. Implementation readiness and business impact focus
+
+Respond in this exact JSON format:
+{{
+    "deliverable_type": "primary_deliverable_category",
+    "deliverable_description": "Clear description of what this deliverable should be",
+    "key_asset_types": ["asset_type_1", "asset_type_2", "asset_type_3"],
+    "presentation_format": "recommended_format_for_client_presentation",
+    "business_value_focus": "primary_business_value_this_delivers",
+    "implementation_priority": "immediate|short_term|strategic",
+    "aggregation_strategy": "how_to_combine_and_present_the_work_done",
+    "success_metrics": ["metric1", "metric2", "metric3"],
+    "confidence_score": 0.85
+}}"""
+
+        response = await self.ai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=800,
+            response_format={"type": "json_object"}
+        )
+        
+        return json.loads(response.choices[0].message.content)
+    
+    def _fallback_analyze_deliverable_type(self, workspace_goal: str, task_context: Dict) -> Dict[str, Any]:
+        """Analisi fallback rule-based dinamica"""
+        
+        goal_lower = workspace_goal.lower()
+        task_types = task_context.get('task_types', [])
+        key_outputs = task_context.get('key_outputs', [])
+        
+        # Analisi dinamica delle keyword nei contenuti
+        all_content = f"{workspace_goal} {' '.join(task_types)} {' '.join(key_outputs)}".lower()
+        
+        # Pattern detection dinamico e ampliato
+        business_patterns = {
+            'data_focused': ['contact', 'lead', 'database', 'list', 'email', 'phone', 'crm', 'prospect'],
+            'strategy_focused': ['strategy', 'plan', 'framework', 'approach', 'method', 'roadmap', 'vision'],
+            'content_focused': ['content', 'social', 'marketing', 'campaign', 'creative', 'post', 'media'],
+            'analysis_focused': ['analysis', 'research', 'insight', 'study', 'competitive', 'market', 'data'],
+            'implementation_focused': ['implementation', 'execution', 'action', 'workflow', 'process', 'deploy'],
+            'financial_focused': ['budget', 'financial', 'cost', 'revenue', 'profit', 'investment', 'funding'],
+            'training_focused': ['training', 'education', 'learning', 'skill', 'development', 'course'],
+            'operational_focused': ['operation', 'management', 'admin', 'system', 'infrastructure']
         }
         
-        # Enhanced readiness criteria
+        # Calcola score per ogni pattern con pesi
+        pattern_scores = {}
+        for pattern_type, keywords in business_patterns.items():
+            score = 0
+            for keyword in keywords:
+                # Score base per presenza
+                if keyword in all_content:
+                    score += 1
+                
+                # Bonus per presenza nel goal (più importante)
+                if keyword in goal_lower:
+                    score += 2
+                
+                # Bonus per frequenza
+                score += all_content.count(keyword) * 0.5
+            
+            pattern_scores[pattern_type] = score
+        
+        # Determina il pattern dominante
+        dominant_pattern = max(pattern_scores, key=pattern_scores.get) if pattern_scores else 'analysis_focused'
+        max_score = pattern_scores.get(dominant_pattern, 0)
+        
+        # Calcola confidence score
+        total_score = sum(pattern_scores.values())
+        confidence = min(max_score / max(total_score, 1) * 1.5, 1.0) if total_score > 0 else 0.5
+        
+        # Genera deliverable config dinamicamente
+        deliverable_configs = {
+            'data_focused': {
+                'type': 'actionable_database_package',
+                'description': 'Actionable database with contacts, leads, and implementation-ready data assets',
+                'assets': ['contact_database', 'qualified_leads', 'outreach_templates', 'crm_integration_guide'],
+                'format': 'structured_data_package',
+                'value': 'immediate lead generation and sales pipeline development',
+                'priority': 'immediate'
+            },
+            'strategy_focused': {
+                'type': 'strategic_framework_suite',
+                'description': 'Strategic framework with actionable recommendations and implementation roadmap',
+                'assets': ['strategy_framework', 'action_plans', 'success_metrics', 'implementation_timeline'],
+                'format': 'strategic_document_package',
+                'value': 'strategic decision making and long-term business direction',
+                'priority': 'strategic'
+            },
+            'content_focused': {
+                'type': 'content_strategy_package',
+                'description': 'Complete content strategy with calendar, templates, and execution guidelines',
+                'assets': ['content_calendar', 'content_templates', 'social_strategy', 'brand_guidelines'],
+                'format': 'creative_execution_package',
+                'value': 'marketing campaign execution and brand visibility',
+                'priority': 'immediate'
+            },
+            'analysis_focused': {
+                'type': 'research_insights_report',
+                'description': 'Comprehensive research report with insights, data, and strategic recommendations',
+                'assets': ['research_findings', 'competitive_analysis', 'market_insights', 'trend_analysis'],
+                'format': 'analytical_intelligence_report',
+                'value': 'data-driven decision making and market intelligence',
+                'priority': 'short_term'
+            },
+            'implementation_focused': {
+                'type': 'implementation_blueprint',
+                'description': 'Implementation-ready blueprint with workflows, processes, and execution guides',
+                'assets': ['workflow_templates', 'process_guides', 'implementation_roadmap', 'training_materials'],
+                'format': 'operational_execution_package',
+                'value': 'operational efficiency and process optimization',
+                'priority': 'immediate'
+            },
+            'financial_focused': {
+                'type': 'financial_strategy_package',
+                'description': 'Financial planning suite with budgets, forecasts, and investment strategies',
+                'assets': ['financial_model', 'budget_templates', 'investment_analysis', 'cost_optimization'],
+                'format': 'financial_planning_suite',
+                'value': 'financial planning and resource optimization',
+                'priority': 'strategic'
+            },
+            'training_focused': {
+                'type': 'training_program_suite',
+                'description': 'Complete training program with materials, schedules, and assessment tools',
+                'assets': ['training_curriculum', 'learning_materials', 'assessment_tools', 'progress_tracking'],
+                'format': 'educational_program_package',
+                'value': 'skill development and performance improvement',
+                'priority': 'short_term'
+            },
+            'operational_focused': {
+                'type': 'operational_management_system',
+                'description': 'Operational management system with processes, tools, and performance metrics',
+                'assets': ['management_framework', 'operational_procedures', 'performance_metrics', 'monitoring_tools'],
+                'format': 'management_system_package',
+                'value': 'operational excellence and management efficiency',
+                'priority': 'short_term'
+            }
+        }
+        
+        config = deliverable_configs.get(dominant_pattern, deliverable_configs['analysis_focused'])
+        
+        return {
+            'deliverable_type': config['type'],
+            'deliverable_description': config['description'],
+            'key_asset_types': config['assets'],
+            'presentation_format': config['format'],
+            'business_value_focus': config['value'],
+            'implementation_priority': config['priority'],
+            'aggregation_strategy': f"Combine all work into {config['format']} highlighting {dominant_pattern.replace('_', ' ')} capabilities",
+            'success_metrics': ['client_satisfaction', 'implementation_success', 'business_impact', 'roi_achievement'],
+            'pattern_analysis': pattern_scores,
+            'confidence_score': confidence,
+            'dominant_pattern': dominant_pattern,
+            'analysis_method': 'rule_based_dynamic'
+        }
+    
+    def _extract_task_context(self, completed_tasks: List[Dict]) -> Dict[str, Any]:
+        """Estrae contesto dinamicamente dai task completati"""
+        
+        task_types = []
+        key_outputs = []
+        data_richness_indicators = 0
+        
+        for task in completed_tasks:
+            # Estrai tipo task
+            task_name = task.get('name', '').lower()
+            task_types.append(task_name)
+            
+            # Estrai output chiave
+            result = task.get('result', {}) or {}
+            summary = result.get('summary', '')
+            if summary and len(summary) > 20:
+                # Estrai prime frasi significative
+                sentences = summary.split('.')[:2]
+                key_outputs.extend([s.strip() for s in sentences if len(s.strip()) > 10])
+            
+            # Calcola data richness
+            detailed_json = result.get('detailed_results_json', '')
+            if detailed_json:
+                try:
+                    data = json.loads(detailed_json)
+                    if isinstance(data, dict):
+                        if len(data) > 5:
+                            data_richness_indicators += 3
+                        elif len(data) > 2:
+                            data_richness_indicators += 2
+                        else:
+                            data_richness_indicators += 1
+                except:
+                    # Anche se non è JSON valido, ha tentato di strutturare
+                    data_richness_indicators += 1
+        
+        return {
+            'total_tasks': len(completed_tasks),
+            'task_types': task_types,
+            'key_outputs': key_outputs,
+            'data_richness_score': min(data_richness_indicators, 10)
+        }
+
+
+class DynamicAssetExtractor:
+    """
+    Estrattore dinamico di asset che si adatta al tipo di progetto
+    """
+    
+    def __init__(self):
+        self.ai_analyzer = AIDeliverableAnalyzer()
+    
+    async def extract_assets_dynamically(
+        self, 
+        completed_tasks: List[Dict], 
+        deliverable_analysis: Dict[str, Any],
+        existing_schemas: Optional[Dict[str, AssetSchema]] = None
+    ) -> Dict[str, Any]:
+        """
+        Estrae asset dinamicamente basandosi sull'analisi del deliverable
+        """
+        
+        extracted_assets = {}
+        target_asset_types = deliverable_analysis.get('key_asset_types', [])
+        
+        logger.info(f"🔍 DYNAMIC EXTRACTION: Targeting {len(target_asset_types)} asset types")
+        
+        for task in completed_tasks:
+            try:
+                # Determina se questo task ha prodotto asset azionabili
+                asset_data = await self._extract_asset_from_task(task, target_asset_types, deliverable_analysis)
+                
+                if asset_data:
+                    asset_id = f"asset_{task.get('id', '')}"
+                    
+                    # Se abbiamo schema esistenti, prova validazione
+                    if existing_schemas and asset_data.get('asset_type') in existing_schemas:
+                        schema = existing_schemas[asset_data['asset_type']]
+                        asset_data = await self._enhance_with_schema_validation(asset_data, schema)
+                    
+                    extracted_assets[asset_id] = asset_data
+                    logger.info(f"✅ EXTRACTED: {asset_data.get('asset_type', 'generic')} from task {task.get('id', '')}")
+                    
+            except Exception as e:
+                logger.warning(f"Error extracting from task {task.get('id', '')}: {e}")
+                continue
+        
+        logger.info(f"🔍 EXTRACTION COMPLETE: {len(extracted_assets)} assets extracted")
+        return extracted_assets
+    
+    async def _extract_asset_from_task(self, task: Dict, target_asset_types: List[str], deliverable_analysis: Dict) -> Optional[Dict[str, Any]]:
+        """Estrae asset da un singolo task con AI enhancement"""
+        
+        result = task.get('result', {}) or {}
+        detailed_json = result.get('detailed_results_json', '')
+        summary = result.get('summary', '')
+        
+        # Prova estrazione da JSON strutturato
+        if detailed_json:
+            try:
+                data = json.loads(detailed_json)
+                if isinstance(data, dict) and len(data) >= 2:  # Soglia più permissiva
+                    asset_type = await self._determine_asset_type_ai(data, target_asset_types, task.get('name', ''), deliverable_analysis)
+                    
+                    return {
+                        'asset_type': asset_type,
+                        'asset_data': data,
+                        'source_task_id': task.get('id', ''),
+                        'extraction_method': 'structured_json',
+                        'quality_score': self._calculate_quality_score(data),
+                        'actionability_score': self._calculate_actionability_score(data),
+                        'ready_to_use': self._is_ready_to_use(data),
+                        'task_context': {
+                            'task_name': task.get('name', ''),
+                            'task_summary': summary[:200] if summary else '',
+                            'creation_context': task.get('context_data', {})
+                        },
+                        'enhancement_potential': self._assess_enhancement_potential(data)
+                    }
+            except json.JSONDecodeError:
+                pass
+        
+        # Fallback: estrazione da summary se contiene dati strutturati
+        if summary and len(summary) > 50:  # Soglia più permissiva
+            structured_data = self._extract_structured_data_from_text(summary)
+            if structured_data:
+                asset_type = await self._determine_asset_type_ai(structured_data, target_asset_types, task.get('name', ''), deliverable_analysis)
+                
+                return {
+                    'asset_type': asset_type,
+                    'asset_data': structured_data,
+                    'source_task_id': task.get('id', ''),
+                    'extraction_method': 'text_extraction',
+                    'quality_score': 0.5,  # Lower score for text extraction
+                    'actionability_score': 0.4,
+                    'ready_to_use': False,
+                    'task_context': {
+                        'task_name': task.get('name', ''),
+                        'task_summary': summary[:200]
+                    },
+                    'enhancement_potential': 0.8  # High potential for text-extracted data
+                }
+        
+        return None
+    
+    async def _determine_asset_type_ai(self, data: Dict, target_types: List[str], task_name: str, deliverable_analysis: Dict) -> str:
+        """Determina il tipo di asset usando AI con context awareness"""
+        
+        # Se abbiamo AI disponibile, usala con context del deliverable
+        if self.ai_analyzer.ai_client:
+            try:
+                data_sample = json.dumps(data, default=str)[:500]
+                business_focus = deliverable_analysis.get('business_value_focus', '')
+                deliverable_type = deliverable_analysis.get('deliverable_type', '')
+                
+                prompt = f"""Analyze this data to determine the most appropriate asset type for a {deliverable_type} focused on {business_focus}.
+
+TASK NAME: {task_name}
+SUGGESTED ASSET TYPES: {', '.join(target_types)}
+DELIVERABLE CONTEXT: {deliverable_type} - {business_focus}
+DATA SAMPLE: {data_sample}
+
+Based on the data structure, content, and business context, determine the most specific and actionable asset type.
+Choose from the suggested types if they fit, or propose a better alternative that aligns with the deliverable focus.
+
+Respond with just the asset type name (e.g., "contact_database", "content_calendar", "strategic_framework").
+Make it specific to the business context and actionable for immediate use."""
+
+                response = await self.ai_analyzer.ai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    max_tokens=50
+                )
+                
+                ai_type = response.choices[0].message.content.strip().lower().replace(' ', '_')
+                if ai_type and len(ai_type) < 50:  # Sanity check
+                    return ai_type
+                    
+            except Exception as e:
+                logger.debug(f"AI asset type determination failed: {e}")
+        
+        # Fallback rule-based migliorato
+        return self._determine_asset_type_fallback(data, target_types, task_name, deliverable_analysis)
+    
+    def _determine_asset_type_fallback(self, data: Dict, target_types: List[str], task_name: str, deliverable_analysis: Dict) -> str:
+        """Fallback rule-based avanzato per determinare asset type"""
+        
+        data_str = json.dumps(data, default=str).lower()
+        task_name_lower = task_name.lower()
+        business_focus = deliverable_analysis.get('business_value_focus', '').lower()
+        
+        # Pattern dinamici espansi e context-aware
+        content_patterns = {
+            'contact_database': ['email', 'phone', 'company', 'name', 'contact', 'lead', 'prospect'],
+            'content_calendar': ['post', 'caption', 'hashtag', 'content', 'social', 'schedule', 'publish'],
+            'strategy_framework': ['strategy', 'plan', 'framework', 'approach', 'objective', 'goal'],
+            'competitive_analysis': ['competitor', 'analysis', 'comparison', 'market', 'rival'],
+            'financial_model': ['budget', 'cost', 'revenue', 'financial', 'profit', 'investment'],
+            'training_program': ['training', 'course', 'education', 'skill', 'learning', 'development'],
+            'workflow_template': ['step', 'process', 'workflow', 'procedure', 'guideline', 'protocol'],
+            'research_report': ['research', 'study', 'finding', 'insight', 'data', 'analysis'],
+            'implementation_guide': ['implementation', 'deploy', 'execute', 'action', 'instruction'],
+            'performance_metrics': ['metric', 'kpi', 'measurement', 'tracking', 'performance']
+        }
+        
+        # Calcola score per ogni pattern con context awareness
+        pattern_scores = {}
+        for pattern_name, keywords in content_patterns.items():
+            score = 0
+            
+            for keyword in keywords:
+                # Score base per presenza nei dati
+                if keyword in data_str:
+                    score += 2
+                
+                # Score per presenza nel task name
+                if keyword in task_name_lower:
+                    score += 3
+                
+                # Score per allineamento con business focus
+                if keyword in business_focus:
+                    score += 4
+                
+                # Score per target types
+                if any(keyword in target_type for target_type in target_types):
+                    score += 5
+            
+            pattern_scores[pattern_name] = score
+        
+        # Trova il pattern dominante
+        if pattern_scores:
+            best_match = max(pattern_scores, key=pattern_scores.get)
+            if pattern_scores[best_match] > 2:  # Soglia minima
+                return best_match
+        
+        # Fallback basato su business focus
+        focus_mapping = {
+            'lead generation': 'contact_database',
+            'content': 'content_calendar',
+            'strategy': 'strategy_framework',
+            'analysis': 'research_report',
+            'training': 'training_program',
+            'financial': 'financial_model',
+            'implementation': 'implementation_guide'
+        }
+        
+        for focus_keyword, asset_type in focus_mapping.items():
+            if focus_keyword in business_focus:
+                return asset_type
+        
+        # Default generico ma specifico
+        return "business_asset"
+    
+    def _extract_structured_data_from_text(self, text: str) -> Optional[Dict[str, Any]]:
+        """Estrae dati strutturati da testo con AI enhancement"""
+        
+        structured_data = {}
+        
+        # Pattern extraction migliorati
+        patterns = {
+            'emails': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            'urls': r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+            'phones': r'\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b',
+            'percentages': r'\b\d+(?:\.\d+)?%',
+            'money_values': r'[$€£¥]\s?\d+(?:,\d{3})*(?:\.\d{2})?',
+            'dates': r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
+            'numbers': r'\b\d+(?:,\d{3})*(?:\.\d+)?\b'
+        }
+        
+        for key, pattern in patterns.items():
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            if matches:
+                structured_data[key] = matches
+        
+        # Estrai liste strutturate
+        list_patterns = [
+            r'(?:^|\n)\s*[\-\*\•]\s*(.+)',  # Bullet points
+            r'(?:^|\n)\s*\d+[\.\)]\s*(.+)',  # Numbered lists
+        ]
+        
+        for pattern in list_patterns:
+            matches = re.findall(pattern, text, re.MULTILINE)
+            if matches and len(matches) >= 2:
+                structured_data['extracted_list_items'] = matches
+                break
+        
+        # Estrai key-value pairs
+        kv_pattern = r'([A-Za-z\s]+):\s*([^\n]+)'
+        kv_matches = re.findall(kv_pattern, text)
+        if kv_matches:
+            structured_data['key_value_pairs'] = {k.strip(): v.strip() for k, v in kv_matches}
+        
+        # Se abbiamo estratto dati, aggiungi metadati
+        if structured_data:
+            structured_data['original_text_sample'] = text[:300]
+            structured_data['extraction_confidence'] = len(structured_data) / 10  # Normalized confidence
+            return structured_data
+        
+        return None
+    
+    def _calculate_quality_score(self, data: Dict) -> float:
+        """Calcola quality score dinamicamente e intelligentemente"""
+        
+        score = 0.3  # Base score più permissivo
+        
+        # Bonus per completezza strutturale
+        field_count = len(data)
+        if field_count >= 7:
+            score += 0.3
+        elif field_count >= 4:
+            score += 0.2
+        elif field_count >= 2:
+            score += 0.1
+        
+        # Bonus per dati strutturati complessi
+        complex_structures = sum(1 for v in data.values() if isinstance(v, (list, dict)))
+        score += min(complex_structures * 0.1, 0.2)
+        
+        # Bonus per presenza di dati azionabili
+        data_str = json.dumps(data, default=str).lower()
+        actionable_indicators = ['@', 'http', 'phone', '$', '%', 'date', 'contact', 'email']
+        actionable_count = sum(1 for indicator in actionable_indicators if indicator in data_str)
+        score += min(actionable_count * 0.05, 0.15)
+        
+        # Penalità per placeholder e content generico
+        placeholder_indicators = ['placeholder', 'example', 'todo', 'tbd', 'lorem', 'ipsum', 'xxx']
+        placeholder_penalty = sum(0.1 for indicator in placeholder_indicators if indicator in data_str)
+        score -= min(placeholder_penalty, 0.4)
+        
+        # Bonus per lunghezza e dettaglio del contenuto
+        total_content_length = sum(len(str(v)) for v in data.values())
+        if total_content_length > 500:
+            score += 0.15
+        elif total_content_length > 200:
+            score += 0.1
+        
+        return max(0.0, min(1.0, score))
+    
+    def _calculate_actionability_score(self, data: Dict) -> float:
+        """Calcola actionability score intelligentemente"""
+        
+        score = 0.3  # Base score
+        
+        data_str = json.dumps(data, default=str).lower()
+        
+        # Score per presenza di dati immediatamente utilizzabili
+        immediate_use_indicators = [
+            ('@', 0.2),  # Email addresses
+            ('http', 0.15),  # URLs
+            ('phone', 0.15),  # Phone numbers
+            ('$', 0.1),  # Money values
+            ('%', 0.1),  # Percentages
+            ('date', 0.1),  # Dates
+            ('step', 0.1),  # Process steps
+            ('action', 0.1)  # Action items
+        ]
+        
+        for indicator, bonus in immediate_use_indicators:
+            if indicator in data_str:
+                score += bonus
+        
+        # Bonus per struttura organizzata
+        if isinstance(data, dict):
+            organized_structures = ['list', 'items', 'steps', 'contacts', 'tasks', 'goals']
+            organized_count = sum(1 for key in data.keys() if any(struct in str(key).lower() for struct in organized_structures))
+            score += min(organized_count * 0.1, 0.2)
+        
+        # Bonus per completezza implementativa
+        implementation_indicators = ['instruction', 'guide', 'how', 'implement', 'deploy', 'use']
+        impl_count = sum(1 for indicator in implementation_indicators if indicator in data_str)
+        score += min(impl_count * 0.05, 0.15)
+        
+        return max(0.0, min(1.0, score))
+    
+    def _is_ready_to_use(self, data: Dict) -> bool:
+        """Determina se l'asset è ready to use con soglie intelligenti"""
+        
+        quality = self._calculate_quality_score(data)
+        actionability = self._calculate_actionability_score(data)
+        
+        # Soglie dinamiche più permissive
+        return quality >= 0.6 and actionability >= 0.5
+    
+    def _assess_enhancement_potential(self, data: Dict) -> float:
+        """Valuta il potenziale di enhancement dell'asset"""
+        
+        base_potential = 0.5
+        
+        # Maggiore potenziale se ha struttura ma manca contenuto specifico
+        if len(data) >= 3:
+            base_potential += 0.2
+        
+        # Potenziale per asset con placeholder o contenuto generico
+        data_str = json.dumps(data, default=str).lower()
+        if any(placeholder in data_str for placeholder in ['placeholder', 'example', 'todo']):
+            base_potential += 0.3
+        
+        return min(1.0, base_potential)
+    
+    async def _enhance_with_schema_validation(self, asset_data: Dict, schema: AssetSchema) -> Dict:
+        """Migliora asset data con validazione schema se disponibile"""
+        
+        try:
+            from deliverable_system.schema_generator import AssetSchemaGenerator
+            schema_generator = AssetSchemaGenerator()
+            
+            # Valida contro schema
+            validation_result = schema_generator.validate_asset_against_schema(
+                asset_data['asset_data'], schema
+            )
+            
+            # Aggiorna score basato su validazione
+            if validation_result.get('valid', False):
+                asset_data['quality_score'] = max(asset_data['quality_score'], 0.7)
+                asset_data['schema_validated'] = True
+            
+            asset_data['schema_validation'] = validation_result
+            
+        except Exception as e:
+            logger.debug(f"Schema validation failed: {e}")
+        
+        return asset_data
+
+
+class IntelligentDeliverablePackager:
+    """
+    Packager intelligente che crea deliverable personalizzati usando AI
+    """
+    
+    def __init__(self):
+        self.ai_analyzer = AIDeliverableAnalyzer()
+    
+    async def create_intelligent_deliverable(
+        self,
+        workspace_id: str,
+        workspace_goal: str,
+        deliverable_analysis: Dict[str, Any],
+        extracted_assets: Dict[str, Any],
+        completed_tasks: List[Dict],
+        quality_analysis: Optional[Dict] = None
+    ) -> ActionableDeliverable:
+        """
+        Crea deliverable intelligente usando analisi AI e quality assurance
+        """
+        
+        # Genera executive summary con AI awareness
+        executive_summary = await self._generate_intelligent_executive_summary(
+            workspace_goal, deliverable_analysis, extracted_assets, completed_tasks, quality_analysis
+        )
+        
+        # Organizza asset intelligentemente
+        organized_assets = await self._organize_assets_intelligently(extracted_assets, deliverable_analysis)
+        
+        # Genera usage guide dinamico e dettagliato
+        usage_guide = await self._generate_intelligent_usage_guide(organized_assets, deliverable_analysis)
+        
+        # Genera next steps con AI guidance
+        next_steps = await self._generate_intelligent_next_steps(deliverable_analysis, organized_assets, quality_analysis)
+        
+        # Calcola metriche avanzate
+        business_metrics = self._calculate_advanced_business_metrics(extracted_assets, completed_tasks, deliverable_analysis)
+        
+        # Prepara asset data per ActionableDeliverable
+        actionable_assets_dict = {}
+        for asset_id, asset_info in organized_assets.items():
+            actionable_assets_dict[asset_id] = ExtractedAsset(
+                asset_name=asset_info.get('asset_type', 'business_asset'),
+                asset_data=asset_info.get('asset_data', {}),
+                source_task_id=asset_info.get('source_task_id', ''),
+                extraction_method=asset_info.get('extraction_method', 'intelligent'),
+                validation_score=asset_info.get('quality_score', 0.5),
+                actionability_score=asset_info.get('actionability_score', 0.5),
+                ready_to_use=asset_info.get('ready_to_use', False)
+            )
+        
+        deliverable = ActionableDeliverable(
+            workspace_id=workspace_id,
+            deliverable_id=f"intelligent_{workspace_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            meta={
+                'project_goal': workspace_goal,
+                'deliverable_type': deliverable_analysis.get('deliverable_type', 'intelligent_package'),
+                'ai_analysis_confidence': deliverable_analysis.get('confidence_score', 0.8),
+                'total_assets': len(extracted_assets),
+                'ready_to_use_assets': sum(1 for asset in extracted_assets.values() if asset.get('ready_to_use', False)),
+                'generation_method': 'ai_intelligent_hybrid',
+                'business_value_focus': deliverable_analysis.get('business_value_focus', ''),
+                'implementation_priority': deliverable_analysis.get('implementation_priority', 'short_term'),
+                'quality_enhanced': quality_analysis is not None,
+                'system_version': '3.0_intelligent_hybrid'
+            },
+            executive_summary=executive_summary,
+            actionable_assets=actionable_assets_dict,
+            usage_guide=usage_guide,
+            next_steps=next_steps,
+            automation_ready=self._calculate_automation_readiness(organized_assets),
+            actionability_score=self._calculate_overall_actionability_score(organized_assets)
+        )
+        
+        logger.info(f"🤖 INTELLIGENT DELIVERABLE: Created {deliverable_analysis.get('deliverable_type')} "
+                   f"with {len(extracted_assets)} assets (AI confidence: {deliverable_analysis.get('confidence_score', 0):.2f})")
+        
+        return deliverable
+    
+    async def _generate_intelligent_executive_summary(
+        self,
+        workspace_goal: str,
+        deliverable_analysis: Dict[str, Any],
+        extracted_assets: Dict[str, Any],
+        completed_tasks: List[Dict],
+        quality_analysis: Optional[Dict] = None
+    ) -> str:
+        """Genera executive summary intelligente con AI"""
+        
+        if self.ai_analyzer.ai_client:
+            try:
+                # Prepara context per AI
+                assets_summary = []
+                for asset_id, asset in extracted_assets.items():
+                    quality_score = asset.get('quality_score', 0)
+                    actionability = asset.get('actionability_score', 0)
+                    ready_status = "✅ Ready" if asset.get('ready_to_use', False) else "🔧 Needs work"
+                    assets_summary.append(f"- {asset.get('asset_type', 'Unknown')}: {ready_status} (Q:{quality_score:.1f}, A:{actionability:.1f})")
+                
+                quality_info = ""
+                if quality_analysis:
+                    quality_stats = quality_analysis.get('quality_analysis', {})
+                    quality_info = f"""
+QUALITY ASSURANCE RESULTS:
+- Average Quality Score: {quality_stats.get('average_quality_score', 0):.1f}/1.0
+- Ready-to-use Assets: {quality_stats.get('ready_to_use_assets', 0)}/{quality_stats.get('total_assets_analyzed', 0)}
+- Enhancement Tasks: {quality_stats.get('enhancement_tasks_created', 0)} created"""
+                
+                prompt = f"""Write a compelling executive summary for this business deliverable that showcases the intelligent analysis and results.
+
+PROJECT GOAL: {workspace_goal}
+DELIVERABLE TYPE: {deliverable_analysis.get('deliverable_type', '')}
+AI ANALYSIS CONFIDENCE: {deliverable_analysis.get('confidence_score', 0):.1f}/1.0
+BUSINESS VALUE FOCUS: {deliverable_analysis.get('business_value_focus', '')}
+
+PROJECT COMPLETION METRICS:
+- Tasks completed: {len(completed_tasks)}
+- Assets extracted: {len(extracted_assets)}
+- Implementation priority: {deliverable_analysis.get('implementation_priority', '')}
+
+INTELLIGENT ASSET ANALYSIS:
+{chr(10).join(assets_summary)}
+{quality_info}
+
+Write a professional 2-3 paragraph executive summary that:
+1. Clearly states what was accomplished with intelligent analysis
+2. Highlights the AI-driven approach and quality assurance
+3. Emphasizes immediate business value and implementation readiness
+4. Shows confidence in the intelligent system's analysis
+5. Uses professional language suitable for C-level presentation
+
+Focus on outcomes, business impact, and the intelligent approach used."""
+
+                response = await self.ai_analyzer.ai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.4,
+                    max_tokens=700
+                )
+                
+                return response.choices[0].message.content.strip()
+                
+            except Exception as e:
+                logger.warning(f"AI executive summary generation failed: {e}")
+        
+        # Fallback summary intelligente
+        return self._generate_intelligent_fallback_summary(workspace_goal, deliverable_analysis, extracted_assets, quality_analysis)
+    
+    def _generate_intelligent_fallback_summary(
+        self,
+        workspace_goal: str,
+        deliverable_analysis: Dict[str, Any],
+        extracted_assets: Dict[str, Any],
+        quality_analysis: Optional[Dict] = None
+    ) -> str:
+        """Genera executive summary fallback intelligente"""
+        
+        total_assets = len(extracted_assets)
+        ready_assets = sum(1 for asset in extracted_assets.values() if asset.get('ready_to_use', False))
+        deliverable_type = deliverable_analysis.get('deliverable_type', 'intelligent business deliverable')
+        confidence = deliverable_analysis.get('confidence_score', 0.8)
+        business_focus = deliverable_analysis.get('business_value_focus', 'strategic business value')
+        
+        quality_section = ""
+        if quality_analysis:
+            quality_stats = quality_analysis.get('quality_analysis', {})
+            avg_quality = quality_stats.get('average_quality_score', 0)
+            enhancement_tasks = quality_stats.get('enhancement_tasks_created', 0)
+            quality_section = f" Our intelligent quality assurance system analyzed all assets with an average quality score of {avg_quality:.1f}/1.0 and created {enhancement_tasks} enhancement tasks to optimize deliverable value."
+        
+        return f"""**Intelligent Project Delivery Summary**
+
+**Objective Achieved:** {workspace_goal}
+
+This project has been completed using our intelligent, AI-driven delivery system with {confidence:.0%} confidence in the analysis and approach. The system has produced a comprehensive {deliverable_type} containing {total_assets} strategically analyzed business assets. {ready_assets} assets have been identified as immediately ready for implementation, enabling rapid deployment and time-to-value acceleration.
+
+**Intelligent Analysis Results:** Our AI system identified the optimal focus on {business_focus}, structuring all deliverables for maximum business impact. Each asset has been intelligently categorized, quality-assessed, and prepared with specific implementation guidance.{quality_section}
+
+**Business Impact & Implementation:** These intelligently curated deliverables enable immediate implementation of {workspace_goal.lower()}, with clear pathways to measurable business outcomes. The intelligent system has optimized asset organization and presentation for maximum usability, ensuring long-term value creation and successful business deployment."""
+    
+    async def _organize_assets_intelligently(self, extracted_assets: Dict[str, Any], deliverable_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Organizza asset usando logica intelligente"""
+        
+        organized = {}
+        implementation_priority = deliverable_analysis.get('implementation_priority', 'short_term')
+        
+        # Organizza per priorità e qualità
+        for asset_id, asset in extracted_assets.items():
+            quality_score = asset.get('quality_score', 0)
+            actionability_score = asset.get('actionability_score', 0)
+            ready_to_use = asset.get('ready_to_use', False)
+            
+            # Calcola priority score intelligente
+            priority_score = (quality_score * 0.4) + (actionability_score * 0.4) + (0.2 if ready_to_use else 0)
+            
+            # Aggiungi priority boost basato su implementation_priority
+            if implementation_priority == 'immediate' and ready_to_use:
+                priority_score += 0.2
+            elif implementation_priority == 'strategic' and quality_score > 0.7:
+                priority_score += 0.15
+            
+            asset['priority_score'] = priority_score
+            asset['implementation_tier'] = self._determine_implementation_tier(asset, implementation_priority)
+            
+            organized[asset_id] = asset
+        
+        # Ordina per priority score
+        organized = dict(sorted(organized.items(), key=lambda x: x[1].get('priority_score', 0), reverse=True))
+        
+        return organized
+    
+    def _determine_implementation_tier(self, asset: Dict, implementation_priority: str) -> str:
+        """Determina tier di implementazione intelligente"""
+        
+        quality = asset.get('quality_score', 0)
+        actionability = asset.get('actionability_score', 0)
+        ready = asset.get('ready_to_use', False)
+        
+        if ready and quality >= 0.7 and actionability >= 0.6:
+            return 'tier_1_immediate'
+        elif quality >= 0.6 and actionability >= 0.5:
+            return 'tier_2_short_term'
+        elif quality >= 0.4:
+            return 'tier_3_development'
+        else:
+            return 'tier_4_reference'
+    
+    async def _generate_intelligent_usage_guide(self, organized_assets: Dict[str, Any], deliverable_analysis: Dict[str, Any]) -> Dict[str, str]:
+        """Genera usage guide intelligente e dettagliato"""
+        
+        usage_guide = {}
+        business_focus = deliverable_analysis.get('business_value_focus', '')
+        
+        for asset_id, asset in organized_assets.items():
+            asset_type = asset.get('asset_type', 'business_asset')
+            tier = asset.get('implementation_tier', 'tier_2_short_term')
+            quality_score = asset.get('quality_score', 0)
+            actionability_score = asset.get('actionability_score', 0)
+            
+            # Generate tier-specific guidance
+            tier_guidance = {
+                'tier_1_immediate': f"🚀 **IMMEDIATE DEPLOYMENT READY**: This {asset_type} is optimized and ready for immediate business implementation.",
+                'tier_2_short_term': f"📋 **SHORT-TERM IMPLEMENTATION**: This {asset_type} requires minimal customization before deployment.",
+                'tier_3_development': f"🔧 **DEVELOPMENT PHASE**: This {asset_type} needs enhancement but provides a solid foundation.",
+                'tier_4_reference': f"📚 **REFERENCE MATERIAL**: Use this {asset_type} as supporting information and insights."
+            }
+            
+            base_guidance = tier_guidance.get(tier, f"📋 Review and adapt this {asset_type}")
+            
+            # Add quality and actionability context
+            quality_context = f" Quality Score: {quality_score:.1f}/1.0, Actionability: {actionability_score:.1f}/1.0."
+            
+            # Add business context
+            business_context = f" Aligned with {business_focus} strategy for maximum business impact."
+            
+            # Add specific implementation guidance based on asset type
+            implementation_guidance = self._get_asset_specific_guidance(asset_type, tier, business_focus)
+            
+            usage_guide[asset_id] = base_guidance + quality_context + business_context + implementation_guidance
+        
+        return usage_guide
+    
+    def _get_asset_specific_guidance(self, asset_type: str, tier: str, business_focus: str) -> str:
+        """Ottieni guidance specifico per tipo di asset"""
+        
+        guidance_map = {
+            'contact_database': " Import into CRM, segment by qualification scores, and begin targeted outreach campaigns.",
+            'content_calendar': " Load into content management system, schedule posts, and track engagement metrics.",
+            'strategy_framework': " Review with leadership team, customize for organizational context, and begin implementation planning.",
+            'financial_model': " Validate assumptions, customize for business model, and use for budget planning and investor presentations.",
+            'training_program': " Deploy following structured timeline, track participant progress, and measure skill improvement.",
+            'research_report': " Review findings with stakeholders, extract actionable insights, and integrate into strategic planning.",
+            'implementation_guide': " Follow step-by-step procedures, assign responsible teams, and establish progress checkpoints.",
+            'workflow_template': " Customize for organizational processes, train team members, and implement monitoring systems."
+        }
+        
+        specific = guidance_map.get(asset_type, " Follow best practices for your industry and organizational context.")
+        
+        # Add tier-specific enhancements
+        if tier == 'tier_1_immediate':
+            specific += " Begin implementation within 24-48 hours for optimal results."
+        elif tier == 'tier_2_short_term':
+            specific += " Plan implementation within 1-2 weeks after customization."
+        
+        return specific
+    
+    async def _generate_intelligent_next_steps(
+        self, 
+        deliverable_analysis: Dict[str, Any], 
+        organized_assets: Dict[str, Any],
+        quality_analysis: Optional[Dict] = None
+    ) -> List[str]:
+        """Genera next steps intelligenti e personalizzati"""
+        
+        next_steps = []
+        
+        # Analizza tier distribution
+        tier_counts = {}
+        for asset in organized_assets.values():
+            tier = asset.get('implementation_tier', 'tier_2_short_term')
+            tier_counts[tier] = tier_counts.get(tier, 0) + 1
+        
+        # Steps basati su tier 1 (immediate)
+        tier_1_count = tier_counts.get('tier_1_immediate', 0)
+        if tier_1_count > 0:
+            next_steps.append(f"🚀 IMMEDIATE (Week 1): Deploy {tier_1_count} ready-to-use assets for instant business value")
+        
+        # Steps basati su tier 2 (short-term)
+        tier_2_count = tier_counts.get('tier_2_short_term', 0)
+        if tier_2_count > 0:
+            next_steps.append(f"📋 SHORT-TERM (Week 2-3): Customize and deploy {tier_2_count} high-quality assets")
+        
+        # Steps basati su tier 3 (development)
+        tier_3_count = tier_counts.get('tier_3_development', 0)
+        if tier_3_count > 0:
+            next_steps.append(f"🔧 DEVELOPMENT (Month 1): Enhance {tier_3_count} foundational assets for extended value")
+        
+        # Quality-based steps
+        if quality_analysis:
+            quality_stats = quality_analysis.get('quality_analysis', {})
+            enhancement_tasks = quality_stats.get('enhancement_tasks_created', 0)
+            if enhancement_tasks > 0:
+                next_steps.append(f"🔍 QUALITY ENHANCEMENT: Monitor and complete {enhancement_tasks} AI-identified improvement tasks")
+        
+        # Implementation priority specific steps
+        implementation_priority = deliverable_analysis.get('implementation_priority', 'short_term')
+        if implementation_priority == 'immediate':
+            next_steps.insert(0, "⚡ URGENT: Begin immediate implementation to capitalize on time-sensitive opportunities")
+        elif implementation_priority == 'strategic':
+            next_steps.append("🎯 STRATEGIC: Integrate deliverables into long-term strategic planning and execution roadmap")
+        
+        # Generic ongoing steps
+        next_steps.extend([
+            "📊 MONITORING (Ongoing): Track implementation progress and measure business impact using provided success metrics",
+            "🔄 OPTIMIZATION (Month 1+): Iterate and improve based on performance data and business feedback",
+            "📈 SCALING (Quarter 1+): Scale successful implementations and expand to additional business areas"
+        ])
+        
+        return next_steps
+    
+    def _calculate_advanced_business_metrics(
+        self, 
+        extracted_assets: Dict[str, Any], 
+        completed_tasks: List[Dict],
+        deliverable_analysis: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Calcola metriche business avanzate e intelligenti"""
+        
+        total_assets = len(extracted_assets)
+        ready_assets = sum(1 for asset in extracted_assets.values() if asset.get('ready_to_use', False))
+        
+        # Calcola score medi con pesatura intelligente
+        quality_scores = [asset.get('quality_score', 0) for asset in extracted_assets.values()]
+        actionability_scores = [asset.get('actionability_score', 0) for asset in extracted_assets.values()]
+        
+        weighted_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
+        weighted_actionability = sum(actionability_scores) / len(actionability_scores) if actionability_scores else 0
+        
+        # Analizza tier distribution
+        tier_distribution = {}
+        for asset in extracted_assets.values():
+            tier = asset.get('implementation_tier', 'tier_2_short_term')
+            tier_distribution[tier] = tier_distribution.get(tier, 0) + 1
+        
+        # Calcola business value score
+        business_value_score = (
+            (weighted_quality * 0.3) +
+            (weighted_actionability * 0.3) +
+            (ready_assets / total_assets * 0.4) if total_assets > 0 else 0
+        )
+        
+        # Determina time to value
+        immediate_ratio = tier_distribution.get('tier_1_immediate', 0) / total_assets if total_assets > 0 else 0
+        if immediate_ratio >= 0.5:
+            time_to_value = "Immediate (1-3 days)"
+        elif immediate_ratio >= 0.3:
+            time_to_value = "Very Fast (1 week)"
+        elif ready_assets >= total_assets * 0.6:
+            time_to_value = "Fast (1-2 weeks)"
+        else:
+            time_to_value = "Standard (2-4 weeks)"
+        
+        return {
+            'total_assets_delivered': total_assets,
+            'immediately_actionable': ready_assets,
+            'weighted_quality_score': round(weighted_quality, 2),
+            'weighted_actionability_score': round(weighted_actionability, 2),
+            'business_value_score': round(business_value_score, 2),
+            'implementation_readiness': f"{ready_assets}/{total_assets} assets ready",
+            'time_to_value': time_to_value,
+            'tier_distribution': tier_distribution,
+            'ai_analysis_confidence': deliverable_analysis.get('confidence_score', 0.8),
+            'business_value_category': self._categorize_business_value(business_value_score),
+            'implementation_complexity': self._assess_implementation_complexity(tier_distribution),
+            'total_tasks_completed': len(completed_tasks),
+            'intelligence_level': 'AI-Enhanced' if deliverable_analysis.get('confidence_score', 0) > 0.7 else 'Standard'
+        }
+    
+    def _categorize_business_value(self, score: float) -> str:
+        """Categorizza business value intelligentemente"""
+        if score >= 0.8:
+            return "Exceptional"
+        elif score >= 0.7:
+            return "High"
+        elif score >= 0.6:
+            return "Good"
+        elif score >= 0.4:
+            return "Moderate"
+        else:
+            return "Developing"
+    
+    def _assess_implementation_complexity(self, tier_distribution: Dict[str, int]) -> str:
+        """Valuta complessità di implementazione"""
+        immediate = tier_distribution.get('tier_1_immediate', 0)
+        total = sum(tier_distribution.values())
+        
+        if total == 0:
+            return "Unknown"
+        
+        immediate_ratio = immediate / total
+        
+        if immediate_ratio >= 0.7:
+            return "Low - Most assets ready for immediate use"
+        elif immediate_ratio >= 0.4:
+            return "Moderate - Mix of ready and customizable assets"
+        else:
+            return "High - Requires significant customization effort"
+    
+    def _calculate_automation_readiness(self, organized_assets: Dict[str, Any]) -> bool:
+        """Calcola automation readiness intelligente"""
+        
+        if not organized_assets:
+            return False
+        
+        automation_scores = []
+        for asset in organized_assets.values():
+            score = 0
+            
+            # Score basato su qualità e actionability
+            if asset.get('quality_score', 0) >= 0.7:
+                score += 0.4
+            if asset.get('actionability_score', 0) >= 0.6:
+                score += 0.3
+            if asset.get('ready_to_use', False):
+                score += 0.3
+            
+            automation_scores.append(score)
+        
+        avg_automation_score = sum(automation_scores) / len(automation_scores)
+        return avg_automation_score >= 0.6
+    
+    def _calculate_overall_actionability_score(self, organized_assets: Dict[str, Any]) -> int:
+        """Calcola actionability score complessivo intelligente (0-100)"""
+        
+        if not organized_assets:
+            return 0
+        
+        # Media pesata degli score individuali
+        total_score = 0
+        total_weight = 0
+        
+        for asset in organized_assets.values():
+            actionability = asset.get('actionability_score', 0)
+            quality = asset.get('quality_score', 0)
+            ready = asset.get('ready_to_use', False)
+            
+            # Peso basato su priority score
+            weight = asset.get('priority_score', 0.5)
+            
+            # Score combinato
+            combined_score = (actionability * 0.5) + (quality * 0.3) + (0.2 if ready else 0)
+            
+            total_score += combined_score * weight
+            total_weight += weight
+        
+        base_score = total_score / total_weight if total_weight > 0 else 0
+        
+        # Bonus per diversità di asset
+        diversity_bonus = min(len(organized_assets) * 0.02, 0.15)
+        
+        # Bonus per tier 1 assets
+        tier_1_count = sum(1 for asset in organized_assets.values() 
+                          if asset.get('implementation_tier') == 'tier_1_immediate')
+        tier_1_bonus = min(tier_1_count * 0.05, 0.15)
+        
+        final_score = (base_score + diversity_bonus + tier_1_bonus) * 100
+        return min(100, int(final_score))
+
+
+# === ENHANCED DELIVERABLE AGGREGATOR WITH INTELLIGENCE ===
+
+class IntelligentDeliverableAggregator:
+    """
+    Aggregatore intelligente che combina il meglio di AI Quality Assurance + Dynamic AI Analysis
+    """
+    
+    def __init__(self):
+        # Core components
+        self.ai_analyzer = AIDeliverableAnalyzer()
+        self.asset_extractor = DynamicAssetExtractor()
+        self.packager = IntelligentDeliverablePackager()
+        
+        # Quality Assurance components se disponibili
+        self.enhancement_orchestrator = None
+        self.quality_validator = None
+        
+        if is_quality_assurance_available():
+            try:
+                self.enhancement_orchestrator = AssetEnhancementOrchestrator()
+                self.quality_validator = AIQualityValidator()
+                logger.info("✅ Intelligent Deliverable Aggregator with full AI Quality Assurance")
+            except Exception as e:
+                logger.error(f"Failed to initialize AI Quality Assurance: {e}")
+        else:
+            logger.info("🔄 Intelligent Deliverable Aggregator without AI Quality Assurance")
+        
+        # Schema system components se disponibili
+        try:
+            self.requirements_analyzer = DeliverableRequirementsAnalyzer()
+            self.schema_generator = AssetSchemaGenerator()
+            logger.info("✅ Schema system available")
+        except Exception as e:
+            logger.warning(f"Schema system not available: {e}")
+            self.requirements_analyzer = None
+            self.schema_generator = None
+        
+        # Configurazioni
         self.readiness_threshold = DELIVERABLE_READINESS_THRESHOLD / 100.0
         self.min_completed_tasks = MIN_COMPLETED_TASKS_FOR_DELIVERABLE
         
-        logger.info(f"Enhanced Deliverable Aggregator initialized: "
-                   f"threshold={self.readiness_threshold}, min_tasks={self.min_completed_tasks}")
+        logger.info("🤖 Intelligent Deliverable Aggregator initialized successfully")
     
     async def check_and_create_final_deliverable(self, workspace_id: str) -> Optional[str]:
         """
-        ENHANCED: Check if ready for final deliverable with improved logic
+        Controlla e crea deliverable finale usando approccio intelligente ibrido
         """
+        
         try:
-            logger.info(f"🎯 DELIVERABLE CHECK: Starting for workspace {workspace_id}")
+            logger.info(f"🤖 INTELLIGENT DELIVERABLE: Starting analysis for workspace {workspace_id}")
             
-            # Enhanced readiness check with multiple criteria
-            if not await self._is_ready_for_final_deliverable_enhanced(workspace_id):
-                logger.debug(f"🎯 NOT READY: Workspace {workspace_id}")
+            # Fase 1: Controlli preliminari
+            if not await self._is_ready_for_deliverable(workspace_id):
+                logger.debug(f"🤖 NOT READY: Workspace {workspace_id}")
                 return None
             
-            # Check if deliverable already exists
-            if await self._final_deliverable_exists_enhanced(workspace_id):
-                logger.info(f"🎯 EXISTS: Final deliverable already exists for {workspace_id}")
+            if await self._deliverable_exists(workspace_id):
+                logger.info(f"🤖 EXISTS: Final deliverable already exists for {workspace_id}")
                 return None
             
-            # Gather comprehensive project data
+            # Fase 2: Raccolta dati del progetto
             workspace = await get_workspace(workspace_id)
             tasks = await list_tasks(workspace_id)
             completed_tasks = [t for t in tasks if t.get("status") == "completed"]
             
-            if not workspace:
-                logger.error(f"🎯 ERROR: Workspace {workspace_id} not found")
+            if not workspace or len(completed_tasks) < self.min_completed_tasks:
+                logger.info(f"🤖 INSUFFICIENT DATA: {len(completed_tasks)} completed tasks")
                 return None
             
-            if len(completed_tasks) < self.min_completed_tasks:
-                logger.info(f"🎯 INSUFFICIENT: Only {len(completed_tasks)} completed tasks "
-                           f"(need {self.min_completed_tasks})")
-                return None
+            workspace_goal = workspace.get("goal", "")
             
-            # Enhanced deliverable type detection
-            deliverable_type = self._determine_deliverable_type_enhanced(workspace.get("goal", ""))
-            logger.info(f"🎯 TYPE: Detected deliverable type: {deliverable_type.value}")
+            # Fase 3: Analisi AI dinamica del tipo di deliverable
+            deliverable_analysis = await self.ai_analyzer.analyze_project_deliverable_type(
+                workspace_goal, completed_tasks
+            )
             
-            # Enhanced data aggregation
-            aggregated_data = await self._aggregate_task_results_enhanced(completed_tasks, deliverable_type)
+            logger.info(f"🤖 AI ANALYSIS: {deliverable_analysis.get('deliverable_type')} "
+                       f"(confidence: {deliverable_analysis.get('confidence_score', 0):.2f})")
             
-            # Create final deliverable with enhanced features
-            deliverable_task_id = await self._create_final_deliverable_task_enhanced(
-                workspace_id, workspace, deliverable_type, aggregated_data
+            # Fase 4: Analisi requirements e schema se disponibili
+            asset_schemas = {}
+            if self.requirements_analyzer and self.schema_generator:
+                try:
+                    requirements = await self.requirements_analyzer.analyze_deliverable_requirements(workspace_id)
+                    asset_schemas = await self.schema_generator.generate_asset_schemas(requirements)
+                    logger.info(f"🤖 SCHEMA SYSTEM: Generated {len(asset_schemas)} schemas")
+                except Exception as e:
+                    logger.warning(f"Schema generation failed: {e}")
+            
+            # Fase 5: Estrazione intelligente degli asset
+            extracted_assets = await self.asset_extractor.extract_assets_dynamically(
+                completed_tasks, deliverable_analysis, asset_schemas
+            )
+            
+            if not extracted_assets:
+                logger.warning(f"🤖 NO ASSETS: No actionable assets extracted from {len(completed_tasks)} tasks")
+                # Continua comunque con deliverable vuoto ma informativo
+            
+            # Fase 6: Creazione deliverable intelligente
+            intelligent_deliverable = await self.packager.create_intelligent_deliverable(
+                workspace_id, workspace_goal, deliverable_analysis, extracted_assets, completed_tasks
+            )
+            
+            # Fase 7: Quality Enhancement se disponibile
+            quality_enhanced_deliverable = None
+            if self.enhancement_orchestrator and ENABLE_AI_QUALITY_ASSURANCE:
+                try:
+                    logger.info(f"🤖 QUALITY ENHANCEMENT: Starting AI quality analysis")
+                    enhanced_data = await self.enhancement_orchestrator.analyze_and_enhance_deliverable_assets(
+                        workspace_id, intelligent_deliverable.model_dump()
+                    )
+                    quality_enhanced_deliverable = enhanced_data
+                    logger.info(f"🤖 QUALITY ENHANCEMENT: Completed successfully")
+                except Exception as e:
+                    logger.error(f"Quality enhancement failed: {e}, continuing with standard deliverable")
+            
+            # Fase 8: Creazione task deliverable nel database
+            deliverable_task_id = await self._create_intelligent_deliverable_task(
+                workspace_id, workspace, intelligent_deliverable, deliverable_analysis, quality_enhanced_deliverable
             )
             
             if deliverable_task_id:
-                logger.critical(f"🎯 SUCCESS: Created final deliverable {deliverable_task_id} "
-                               f"for workspace {workspace_id} (type: {deliverable_type.value})")
+                logger.critical(f"🤖 SUCCESS: Intelligent deliverable created: {deliverable_task_id}")
                 
-                # Enhanced: Trigger auto-completion if enabled
+                # Trigger auto-completion se abilitato
                 if ENABLE_AUTO_PROJECT_COMPLETION:
-                    try:
-                        await self._trigger_project_completion_sequence(workspace_id, deliverable_task_id)
-                    except Exception as e:
-                        logger.error(f"Error in project completion sequence: {e}")
+                    asyncio.create_task(self._trigger_intelligent_completion_sequence(workspace_id, deliverable_task_id))
                 
                 return deliverable_task_id
             else:
-                logger.error(f"🎯 FAILED: Could not create deliverable for {workspace_id}")
+                logger.error(f"🤖 FAILED: Could not create deliverable task")
                 return None
-            
+                
         except Exception as e:
-            logger.error(f"🎯 ERROR: Exception in deliverable check for {workspace_id}: {e}", exc_info=True)
+            logger.error(f"🤖 ERROR: Exception in intelligent deliverable creation for {workspace_id}: {e}", exc_info=True)
             return None
     
-    async def _is_ready_for_final_deliverable_enhanced(self, workspace_id: str) -> bool:
-        """
-        ENHANCED: Multi-criteria readiness check with improved logic
-        """
+    async def _is_ready_for_deliverable(self, workspace_id: str) -> bool:
+        """Controlla readiness con criteri intelligenti"""
+        
         try:
             tasks = await list_tasks(workspace_id)
             
             if not tasks:
-                logger.debug(f"🎯 READINESS: No tasks in {workspace_id}")
                 return False
             
             completed = [t for t in tasks if t.get("status") == "completed"]
+            in_progress = [t for t in tasks if t.get("status") == "in_progress"]
             pending = [t for t in tasks if t.get("status") == "pending"]
             failed = [t for t in tasks if t.get("status") == "failed"]
             
             total_tasks = len(tasks)
             completed_count = len(completed)
-            pending_count = len(pending)
             
-            # === CRITERION 1: Completion Rate ===
+            # Criteri intelligenti multi-path
             completion_rate = completed_count / total_tasks if total_tasks > 0 else 0
-            completion_threshold_met = completion_rate >= self.readiness_threshold
             
-            logger.info(f"🎯 READINESS: Completion rate: {completion_rate:.2f} "
-                       f"(threshold: {self.readiness_threshold})")
+            # Path 1: Alta completion rate
+            high_completion = completion_rate >= self.readiness_threshold and completed_count >= self.min_completed_tasks
             
-            # === CRITERION 2: Minimum Completed Tasks ===
-            min_tasks_met = completed_count >= self.min_completed_tasks
+            # Path 2: Sufficiente progresso con buona distribuzione
+            good_progress = completed_count >= 4 and completion_rate >= 0.6 and len(pending) <= 5
             
-            # === CRITERION 3: Low Pending Count ===
-            # More permissive: allow up to 5 pending tasks (was 2)
-            low_pending = pending_count <= 5
+            # Path 3: Progetti lunghi con sostanziale completamento
+            substantial_work = completed_count >= 8 and completion_rate >= 0.5
             
-            # === CRITERION 4: FINALIZATION Phase Progress ===
-            finalization_progress = False
-            finalization_completed = 0
+            # Path 4: Analisi qualitativa dei task completati
+            quality_threshold = await self._qualitative_readiness_check(completed, workspace_id)
             
-            for task in completed:
-                context_data = task.get("context_data", {}) or {}
-                if isinstance(context_data, dict):
-                    project_phase = context_data.get("project_phase", "").upper()
-                    if project_phase == "FINALIZATION":
-                        finalization_completed += 1
+            # Path 5: Time-based per progetti running
+            time_based = await self._time_based_readiness_check(workspace_id, completed_count)
             
-            # More permissive: 1 FINALIZATION task completed (was 2)
-            finalization_progress = finalization_completed >= 1
+            is_ready = any([high_completion, good_progress, substantial_work, quality_threshold, time_based])
             
-            # === CRITERION 5: Quality Check - No Excessive Failures ===
-            failure_rate = len(failed) / total_tasks if total_tasks > 0 else 0
-            quality_threshold_met = failure_rate <= 0.3  # Allow up to 30% failures
-            
-            # === CRITERION 6: Time-based Check ===
-            # Allow deliverable creation if project has been running for sufficient time
-            workspace = await get_workspace(workspace_id)
-            time_based_ready = False
-            
-            if workspace and workspace.get("created_at"):
-                try:
-                    created_at = datetime.fromisoformat(workspace["created_at"].replace('Z', '+00:00'))
-                    project_age_hours = (datetime.now(created_at.tzinfo) - created_at).total_seconds() / 3600
-                    
-                    # If project is over 2 hours old and has reasonable progress, allow deliverable
-                    if project_age_hours > 2 and completed_count >= 3:
-                        time_based_ready = True
-                        
-                except Exception as e:
-                    logger.debug(f"Error calculating project age: {e}")
-            
-            # === ENHANCED DECISION LOGIC ===
-            # Multiple paths to readiness for improved deliverable generation
-            
-            # Path 1: Standard criteria (most restrictive)
-            standard_ready = (completion_threshold_met and min_tasks_met and 
-                            low_pending and finalization_progress and quality_threshold_met)
-            
-            # Path 2: High completion rate with some flexibility
-            high_completion_ready = (completion_rate >= 0.8 and completed_count >= 5 and 
-                                   pending_count <= 8 and quality_threshold_met)
-            
-            # Path 3: FINALIZATION phase focus
-            finalization_ready = (finalization_completed >= 2 and completed_count >= 4 and
-                                pending_count <= 6)
-            
-            # Path 4: Time-based with reasonable progress
-            time_ready = (time_based_ready and completion_rate >= 0.6 and 
-                         completed_count >= 4 and pending_count <= 7)
-            
-            is_ready = standard_ready or high_completion_ready or finalization_ready or time_ready
-            
-            # Detailed logging for analysis
-            logger.info(f"🎯 READINESS ANALYSIS for {workspace_id}:")
-            logger.info(f"  ├─ Tasks: {completed_count}/{total_tasks} completed ({completion_rate:.2f}), "
-                       f"{pending_count} pending, {len(failed)} failed")
-            logger.info(f"  ├─ FINALIZATION: {finalization_completed} tasks completed")
-            logger.info(f"  ├─ Standard Ready: {standard_ready}")
-            logger.info(f"  ├─ High Completion Ready: {high_completion_ready}")
-            logger.info(f"  ├─ Finalization Ready: {finalization_ready}")
-            logger.info(f"  ├─ Time Ready: {time_ready}")
-            logger.info(f"  └─ FINAL DECISION: {is_ready}")
+            logger.info(f"🤖 READINESS: {completed_count}/{total_tasks} completed ({completion_rate:.2f}), "
+                       f"Paths: [HiComp:{high_completion}, GoodProg:{good_progress}, Subst:{substantial_work}, "
+                       f"Qual:{quality_threshold}, Time:{time_based}] = {is_ready}")
             
             return is_ready
             
         except Exception as e:
-            logger.error(f"Error checking enhanced deliverable readiness: {e}")
+            logger.error(f"Error in intelligent readiness check: {e}")
             return False
     
-    async def _final_deliverable_exists_enhanced(self, workspace_id: str) -> bool:
-        """
-        ENHANCED: Check for existing deliverable with multiple detection methods
-        FIXED: Improved logic to avoid false positives from planning tasks
-        """
+    async def _qualitative_readiness_check(self, completed_tasks: List[Dict], workspace_id: str) -> bool:
+        """Analisi qualitativa della readiness"""
+        
+        if len(completed_tasks) < 3:
+            return False
+        
+        # Analizza la sostanza dei task completati
+        substantial_tasks = 0
+        for task in completed_tasks:
+            result = task.get('result', {}) or {}
+            summary = result.get('summary', '')
+            detailed_json = result.get('detailed_results_json', '')
+            
+            # Task è sostanziale se ha buon contenuto
+            if (len(summary) > 100 or 
+                (detailed_json and len(detailed_json) > 200)):
+                substantial_tasks += 1
+        
+        # Se almeno 60% dei task sono sostanziali
+        substantial_ratio = substantial_tasks / len(completed_tasks)
+        return substantial_ratio >= 0.6 and substantial_tasks >= 3
+    
+    async def _time_based_readiness_check(self, workspace_id: str, completed_count: int) -> bool:
+        """Controllo readiness basato su tempo con logica intelligente"""
+        
+        try:
+            workspace = await get_workspace(workspace_id)
+            if not workspace or not workspace.get("created_at"):
+                return False
+            
+            created_at = datetime.fromisoformat(workspace["created_at"].replace('Z', '+00:00'))
+            project_age_hours = (datetime.now(created_at.tzinfo) - created_at).total_seconds() / 3600
+            
+            # Logica intelligente time-based
+            if project_age_hours > 6 and completed_count >= 4:  # Progetto lungo con buon progress
+                return True
+            elif project_age_hours > 12 and completed_count >= 3:  # Progetto molto lungo
+                return True
+            
+            return False
+            
+        except Exception:
+            return False
+    
+    async def _deliverable_exists(self, workspace_id: str) -> bool:
+        """Controlla esistenza deliverable con detection intelligente"""
+        
         try:
             tasks = await list_tasks(workspace_id)
-
+            
             for task in tasks:
                 context_data = task.get("context_data", {}) or {}
                 task_name = (task.get("name", "") or "").upper()
-
-                # PRIORITY 1: Explicit deliverable markers (most reliable)
+                
+                # Check per marker espliciti di deliverable
                 if isinstance(context_data, dict):
-                    # Check for explicit deliverable flags
-                    if (context_data.get("is_final_deliverable") or 
-                        context_data.get("deliverable_aggregation") or
-                        context_data.get("triggers_project_completion")):
-                        logger.info(f"🎯 EXISTING: Found deliverable by explicit marker: {task['id']}")
+                    deliverable_markers = [
+                        "is_final_deliverable",
+                        "deliverable_aggregation", 
+                        "triggers_project_completion",
+                        "intelligent_deliverable",
+                        "quality_enhanced_deliverable",
+                        "dynamic_deliverable"
+                    ]
+                    
+                    if any(context_data.get(marker) for marker in deliverable_markers):
+                        logger.info(f"🤖 EXISTING DELIVERABLE: Found by context marker: {task['id']}")
                         return True
-
-                    # Check for deliverable creation types
-                    creation_type = context_data.get("creation_type", "")
-                    if creation_type in ["final_deliverable_aggregation", "final_deliverable_aggregation_enhanced", 
-                                       "project_completion", "asset_oriented_deliverable", "quality_enhanced_deliverable"]:
-                        logger.info(f"🎯 EXISTING: Found deliverable by creation type: {task['id']}")
-                        return True
-
-                    # CRITICAL FIX: Exclude planning tasks explicitly
-                    if (context_data.get("planning_task_marker") or 
-                        creation_type == "phase_transition" or
-                        context_data.get("is_finalization_planning") or
-                        context_data.get("phase_transition")):
-                        logger.debug(f"🎯 SKIPPING: Planning task excluded from deliverable check: {task['id']}")
-                        continue  # Skip this task, it's a planning task
-
-                # PRIORITY 2: Specific name patterns (more restrictive than before)
-                # Only look for complete phrases that clearly indicate final deliverables
-                specific_deliverable_patterns = [
-                    "FINAL DELIVERABLE:", 
-                    "PROJECT DELIVERABLE:", 
-                    "COMPLETE DELIVERABLE:",
-                    "FINAL PROJECT DELIVERABLE",
-                    "DELIVERABLE AGGREGATION",
-                    "QUALITY-ASSURED FINAL DELIVERABLE",
-                    "ASSET-READY DELIVERABLE"
+                
+                # Check per pattern specifici nel nome (escludendo planning)
+                deliverable_patterns = [
+                    "🎯 FINAL DELIVERABLE:",
+                    "🎯 INTELLIGENT DELIVERABLE:",
+                    "🎯 DYNAMIC DELIVERABLE:",
+                    "🎯 QUALITY-ASSURED FINAL DELIVERABLE",
+                    "🎯 FINAL ASSET-READY DELIVERABLE"
                 ]
-
-                # Check for specific patterns but exclude planning patterns
-                planning_exclusion_patterns = [
-                    "CREATE FINAL DELIVERABLES",  # This is planning, not the actual deliverable
+                
+                # Escludi pattern di planning
+                planning_exclusions = [
                     "PLANNING",
                     "SETUP", 
+                    "CREATE FINAL DELIVERABLES",
                     "CRITICAL: CREATE"
                 ]
-
-                # If it matches a planning pattern, skip it
-                if any(exclusion in task_name for exclusion in planning_exclusion_patterns):
-                    logger.debug(f"🎯 SKIPPING: Planning pattern detected in task name: {task['id']}")
+                
+                # Se contiene pattern di exclusion, skip
+                if any(exclusion in task_name for exclusion in planning_exclusions):
                     continue
-
-                # Now check for deliverable patterns
-                if any(pattern in task_name for pattern in specific_deliverable_patterns):
-                    logger.info(f"🎯 EXISTING: Found deliverable by specific name pattern: {task['id']}")
+                
+                # Se contiene pattern di deliverable, è un deliverable
+                if any(pattern in task_name for pattern in deliverable_patterns):
+                    logger.info(f"🤖 EXISTING DELIVERABLE: Found by name pattern: {task['id']}")
                     return True
-
-                # PRIORITY 3: Legacy emoji check (most restrictive)
-                # Only if it's clearly a deliverable context AND has the emoji
-                if ("🎯" in task_name and 
-                    isinstance(context_data, dict) and
-                    context_data.get("deliverable_aggregation") and
-                    not context_data.get("planning_task_marker")):
-                    logger.info(f"🎯 EXISTING: Found deliverable by emoji + context validation: {task['id']}")
-                    return True
-
-            logger.debug(f"🎯 NOT EXISTS: No final deliverable found for {workspace_id}")
+            
             return False
-
+            
         except Exception as e:
             logger.error(f"Error checking existing deliverable: {e}")
-            return True  # Safe default to prevent duplicates
+            return True  # Safe default
     
-    def _determine_deliverable_type_enhanced(self, goal: str) -> DeliverableType:
-        """
-        ENHANCED: Determine deliverable type with improved pattern matching
-        """
-        if not goal:
-            return DeliverableType.GENERIC_REPORT
-        
-        goal_lower = goal.lower()
-        
-        # Enhanced scoring system for better type detection
-        type_scores = {}
-        
-        for deliverable_type, patterns in self.goal_patterns.items():
-            score = 0
-            for pattern in patterns:
-                matches = len(re.findall(pattern, goal_lower))
-                score += matches * 10  # Weight each match
-                
-                # Bonus for exact phrase matches
-                if pattern.replace(r"\.", ".").replace(r"\*", "") in goal_lower:
-                    score += 5
-            
-            if score > 0:
-                type_scores[deliverable_type] = score
-        
-        if type_scores:
-            best_type = max(type_scores, key=type_scores.get)
-            logger.info(f"🎯 TYPE DETECTION: '{goal[:100]}' -> {best_type.value} "
-                       f"(score: {type_scores[best_type]})")
-            return best_type
-        
-        # Fallback: try keyword matching
-        keyword_mapping = {
-            "instagram": DeliverableType.SOCIAL_MEDIA_PLAN,
-            "marketing": DeliverableType.MARKETING_AUDIT,
-            "content": DeliverableType.CONTENT_STRATEGY,
-            "leads": DeliverableType.LEAD_GENERATION,
-            "contacts": DeliverableType.CONTACT_LIST,
-            "research": DeliverableType.MARKET_RESEARCH,
-            "competition": DeliverableType.COMPETITOR_ANALYSIS,
-            "strategy": DeliverableType.BUSINESS_PLAN
-        }
-        
-        for keyword, deliverable_type in keyword_mapping.items():
-            if keyword in goal_lower:
-                logger.info(f"🎯 TYPE FALLBACK: '{goal[:100]}' -> {deliverable_type.value} "
-                           f"(keyword: {keyword})")
-                return deliverable_type
-        
-        logger.info(f"🎯 TYPE DEFAULT: '{goal[:100]}' -> {DeliverableType.GENERIC_REPORT.value}")
-        return DeliverableType.GENERIC_REPORT
-    
-    async def _aggregate_task_results_enhanced(
-        self, 
-        completed_tasks: List[Dict], 
-        deliverable_type: DeliverableType
-    ) -> Dict[str, Any]:
-        """
-        ENHANCED: Aggregate task results with improved data extraction and fallback handling
-        """
-        
-        aggregated = {
-            "total_tasks": len(completed_tasks),
-            "task_summaries": [],
-            "structured_data": {},
-            "key_insights": [],
-            "recommendations": [],
-            "project_metrics": {},
-            "data_quality_score": 0
-        }
-        
-        all_structured_data = []
-        quality_indicators = {
-            "tasks_with_summaries": 0,
-            "tasks_with_structured_data": 0,
-            "tasks_with_recommendations": 0,
-            "total_content_length": 0
-        }
-        
-        # Enhanced task processing with better error handling
-        for task in completed_tasks:
-            try:
-                result = task.get("result", {}) or {}
-                summary = result.get("summary", "")
-                
-                # Process task summary
-                if summary and len(summary.strip()) > 10:
-                    task_summary = {
-                        "task_name": task.get("name", ""),
-                        "summary": summary,
-                        "agent_role": task.get("assigned_to_role", "Unknown"),
-                        "completed_at": task.get("updated_at", ""),
-                        "task_id": task.get("id", "")
-                    }
-                    aggregated["task_summaries"].append(task_summary)
-                    quality_indicators["tasks_with_summaries"] += 1
-                    quality_indicators["total_content_length"] += len(summary)
-                
-                # Process structured data
-                detailed_json = result.get("detailed_results_json")
-                if detailed_json and isinstance(detailed_json, str) and detailed_json.strip():
-                    try:
-                        structured = json.loads(detailed_json)
-                        if isinstance(structured, dict) and structured:
-                            structured_item = {
-                                "task_id": task.get("id"),
-                                "task_name": task.get("name", ""),
-                                "data": structured,
-                                "data_size": len(str(structured))
-                            }
-                            all_structured_data.append(structured_item)
-                            quality_indicators["tasks_with_structured_data"] += 1
-                    except json.JSONDecodeError as e:
-                        logger.debug(f"JSON decode error for task {task.get('id')}: {e}")
-                        # Fallback: try to extract partial data
-                        partial_data = self._extract_partial_json_data(detailed_json)
-                        if partial_data:
-                            all_structured_data.append({
-                                "task_id": task.get("id"),
-                                "task_name": task.get("name", ""),
-                                "data": partial_data,
-                                "data_source": "partial_extraction"
-                            })
-                
-                # Process recommendations
-                next_steps = result.get("next_steps", [])
-                if isinstance(next_steps, list) and next_steps:
-                    aggregated["recommendations"].extend(next_steps)
-                    quality_indicators["tasks_with_recommendations"] += 1
-                    
-            except Exception as e:
-                logger.warning(f"Error processing task {task.get('id', 'unknown')}: {e}")
-                continue
-        
-        # Calculate data quality score
-        total_tasks = len(completed_tasks)
-        if total_tasks > 0:
-            quality_score = (
-                (quality_indicators["tasks_with_summaries"] / total_tasks * 40) +
-                (quality_indicators["tasks_with_structured_data"] / total_tasks * 30) +
-                (quality_indicators["tasks_with_recommendations"] / total_tasks * 20) +
-                (min(quality_indicators["total_content_length"] / 2000, 1) * 10)
-            )
-            aggregated["data_quality_score"] = round(quality_score, 1)
-        
-        # Enhanced structured data processing
-        aggregated["structured_data"] = await self._process_structured_data_by_type(
-            all_structured_data, deliverable_type
-        )
-        
-        # Enhanced key insights extraction
-        aggregated["key_insights"] = self._extract_key_insights_enhanced(
-            aggregated["task_summaries"], deliverable_type
-        )
-        
-        # Project metrics calculation
-        aggregated["project_metrics"] = self._calculate_project_metrics(completed_tasks)
-        
-        logger.info(f"🎯 AGGREGATION: {total_tasks} tasks processed, "
-                   f"quality score: {aggregated['data_quality_score']}, "
-                   f"structured data: {len(all_structured_data)}")
-        
-        return aggregated
-    
-    def _extract_partial_json_data(self, json_str: str) -> Dict[str, Any]:
-        """Extract partial data from malformed JSON"""
-        try:
-            # Try to find JSON objects in the string
-            json_matches = re.finditer(r'\{[^{}]*\}', json_str)
-            partial_data = {}
-            
-            for match in json_matches:
-                try:
-                    obj = json.loads(match.group())
-                    if isinstance(obj, dict):
-                        partial_data.update(obj)
-                except:
-                    continue
-            
-            return partial_data if partial_data else {}
-            
-        except Exception:
-            return {}
-    
-    async def _process_structured_data_by_type(
-        self, 
-        structured_data: List[Dict], 
-        deliverable_type: DeliverableType
-    ) -> Dict[str, Any]:
-        """
-        ENHANCED: Process structured data based on deliverable type with better extraction
-        """
-        
-        if deliverable_type == DeliverableType.CONTACT_LIST:
-            return self._extract_contact_data_enhanced(structured_data)
-        elif deliverable_type == DeliverableType.CONTENT_STRATEGY:
-            return self._extract_content_strategy_data_enhanced(structured_data)
-        elif deliverable_type == DeliverableType.COMPETITOR_ANALYSIS:
-            return self._extract_competitor_data_enhanced(structured_data)
-        elif deliverable_type == DeliverableType.MARKET_RESEARCH:
-            return self._extract_market_research_data(structured_data)
-        elif deliverable_type == DeliverableType.SOCIAL_MEDIA_PLAN:
-            return self._extract_social_media_data(structured_data)
-        else:
-            # Enhanced generic aggregation
-            return self._extract_generic_data_enhanced(structured_data)
-    
-    def _extract_contact_data_enhanced(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Enhanced contact data extraction with better field detection"""
-        contacts = []
-        sources = []
-        contact_fields = set()
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            # Enhanced field detection
-            potential_contact_keys = [
-                key for key in data.keys() 
-                if any(term in key.lower() for term in 
-                      ["contact", "lead", "prospect", "company", "business", "client", "email", "phone"])
-            ]
-            
-            for key in potential_contact_keys:
-                value = data[key]
-                if isinstance(value, list):
-                    for contact in value:
-                        if isinstance(contact, dict):
-                            contacts.append(contact)
-                            contact_fields.update(contact.keys())
-                        elif isinstance(contact, str) and "@" in contact:
-                            contacts.append({"email": contact, "source": item.get("task_name", "")})
-                elif isinstance(value, dict):
-                    contacts.append(value)
-                    contact_fields.update(value.keys())
-            
-            sources.append(item.get("task_name", ""))
-        
-        return {
-            "total_contacts": len(contacts),
-            "contacts": contacts[:1000],  # Limit for performance
-            "data_sources": sources,
-            "contact_fields": list(contact_fields),
-            "collection_methods": list(set(sources))
-        }
-    
-    def _extract_content_strategy_data_enhanced(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Enhanced content strategy data extraction"""
-        content_ideas = []
-        strategies = []
-        calendars = []
-        hashtags = set()
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            # Enhanced content detection
-            for key, value in data.items():
-                key_lower = key.lower()
-                
-                if any(term in key_lower for term in ["content", "post", "idea", "topic"]):
-                    if isinstance(value, list):
-                        content_ideas.extend(value)
-                    elif isinstance(value, str) and len(value) > 10:
-                        content_ideas.append(value)
-                        
-                elif any(term in key_lower for term in ["strategy", "plan", "framework"]):
-                    strategies.append(value)
-                    
-                elif any(term in key_lower for term in ["calendar", "schedule", "timeline"]):
-                    calendars.append(value)
-                    
-                elif "hashtag" in key_lower and isinstance(value, list):
-                    hashtags.update(value)
-        
-        return {
-            "content_ideas": content_ideas,
-            "strategies": strategies,
-            "calendars": calendars,
-            "hashtags": list(hashtags),
-            "total_content_pieces": len(content_ideas)
-        }
-    
-    def _extract_competitor_data_enhanced(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Enhanced competitor data extraction"""
-        competitors = []
-        analyses = []
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            for key, value in data.items():
-                if "competitor" in key.lower():
-                    if isinstance(value, list):
-                        competitors.extend(value)
-                    else:
-                        competitors.append(value)
-                elif "analysis" in key.lower():
-                    analyses.append(value)
-        
-        return {
-            "competitors_analyzed": len(competitors),
-            "competitor_profiles": competitors,
-            "analysis_results": analyses
-        }
-    
-    def _extract_market_research_data(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Extract market research specific data"""
-        market_data = []
-        audience_data = []
-        trends = []
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            for key, value in data.items():
-                key_lower = key.lower()
-                if any(term in key_lower for term in ["market", "industry", "sector"]):
-                    market_data.append(value)
-                elif any(term in key_lower for term in ["audience", "demographic", "customer"]):
-                    audience_data.append(value)
-                elif any(term in key_lower for term in ["trend", "pattern", "behavior"]):
-                    trends.append(value)
-        
-        return {
-            "market_insights": market_data,
-            "audience_profiles": audience_data,
-            "trends_identified": trends,
-            "research_depth": len(market_data) + len(audience_data) + len(trends)
-        }
-    
-    def _extract_social_media_data(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Extract social media specific data"""
-        platforms = {}
-        campaigns = []
-        metrics = {}
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            for key, value in data.items():
-                key_lower = key.lower()
-                if any(platform in key_lower for platform in ["instagram", "facebook", "twitter", "linkedin"]):
-                    platform_name = next((p for p in ["instagram", "facebook", "twitter", "linkedin"] if p in key_lower), "unknown")
-                    if platform_name not in platforms:
-                        platforms[platform_name] = []
-                    platforms[platform_name].append(value)
-                elif "campaign" in key_lower:
-                    campaigns.append(value)
-                elif any(term in key_lower for term in ["metric", "analytics", "performance"]):
-                    metrics[key] = value
-        
-        return {
-            "platforms": platforms,
-            "campaigns": campaigns,
-            "metrics": metrics,
-            "platform_count": len(platforms)
-        }
-    
-    def _extract_generic_data_enhanced(self, structured_data: List[Dict]) -> Dict[str, Any]:
-        """Enhanced generic data extraction with intelligent categorization"""
-        categories = {
-            "analysis_results": [],
-            "recommendations": [],
-            "data_points": [],
-            "metrics": {},
-            "insights": []
-        }
-        
-        for item in structured_data:
-            data = item.get("data", {})
-            
-            for key, value in data.items():
-                key_lower = key.lower()
-                
-                if any(term in key_lower for term in ["analysis", "result", "finding"]):
-                    categories["analysis_results"].append({"key": key, "value": value})
-                elif any(term in key_lower for term in ["recommend", "suggest", "action"]):
-                    categories["recommendations"].append(value)
-                elif any(term in key_lower for term in ["metric", "number", "count", "rate"]):
-                    categories["metrics"][key] = value
-                elif any(term in key_lower for term in ["insight", "observation", "conclusion"]):
-                    categories["insights"].append(value)
-                else:
-                    categories["data_points"].append({"key": key, "value": value})
-        
-        categories["data_sources"] = [item.get("task_name", "Unknown") for item in structured_data]
-        categories["num_data_sources"] = len(structured_data)
-        
-        return categories
-    
-    def _extract_key_insights_enhanced(
-        self, 
-        task_summaries: List[Dict], 
-        deliverable_type: DeliverableType
-    ) -> List[str]:
-        """Enhanced key insights extraction with better NLP"""
-        insights = []
-        
-        # Enhanced keyword patterns for different deliverable types
-        insight_patterns = {
-            DeliverableType.CONTACT_LIST: [
-                r"identified (\d+) (?:contacts?|leads?|prospects?)",
-                r"found (\d+) (?:qualified|potential) (?:contacts?|leads?)",
-                r"generated (?:a )?(?:list of )?(\d+) (?:contacts?|leads?)"
-            ],
-            DeliverableType.CONTENT_STRATEGY: [
-                r"(?:created?|developed?) (\d+) content (?:ideas?|concepts?)",
-                r"identified (\d+) (?:themes?|pillars?|topics?)",
-                r"engagement rate of ([\d.]+)%"
-            ],
-            DeliverableType.COMPETITOR_ANALYSIS: [
-                r"analyzed (\d+) (?:competitors?|rival companies?)",
-                r"identified (\d+) (?:competitive advantages?|weaknesses?|opportunities?)",
-                r"market share of ([\d.]+)%"
-            ]
-        }
-        
-        # Default patterns for any deliverable type
-        default_patterns = [
-            r"achieved (\d+)% (?:improvement|increase|growth)",
-            r"identified (\d+) (?:key|main|primary|important) (?:factors?|elements?|points?)",
-            r"recommended (\d+) (?:actions?|steps?|strategies?)",
-            r"found (\d+) (?:opportunities?|issues?|solutions?)"
-        ]
-        
-        patterns_to_use = insight_patterns.get(deliverable_type, default_patterns)
-        
-        for summary_item in task_summaries:
-            summary = summary_item.get("summary", "")
-            
-            # Extract quantified insights
-            for pattern in patterns_to_use:
-                matches = re.finditer(pattern, summary, re.IGNORECASE)
-                for match in matches:
-                    # Extract the full sentence containing the match
-                    sentences = re.split(r'[.!?]+', summary)
-                    for sentence in sentences:
-                        if match.group() in sentence:
-                            clean_sentence = sentence.strip()
-                            if len(clean_sentence) > 20 and clean_sentence not in insights:
-                                insights.append(clean_sentence)
-                            break
-            
-            # Extract sentences with insight keywords
-            insight_keywords = ["discovered", "revealed", "found", "identified", "concluded", 
-                              "determined", "observed", "noted", "realized", "established"]
-            
-            sentences = re.split(r'[.!?]+', summary)
-            for sentence in sentences:
-                sentence = sentence.strip()
-                if (len(sentence) > 25 and 
-                    any(keyword in sentence.lower() for keyword in insight_keywords) and
-                    sentence not in insights):
-                    insights.append(sentence)
-        
-        return insights[:15]  # Limit to top 15 insights
-    
-    def _calculate_project_metrics(self, completed_tasks: List[Dict]) -> Dict[str, Any]:
-        """Calculate comprehensive project metrics"""
-        
-        total_tasks = len(completed_tasks)
-        
-        # Time analysis
-        task_durations = []
-        for task in completed_tasks:
-            try:
-                created_at = task.get("created_at")
-                updated_at = task.get("updated_at")
-                
-                if created_at and updated_at:
-                    created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
-                    duration_hours = (updated - created).total_seconds() / 3600
-                    task_durations.append(duration_hours)
-            except:
-                continue
-        
-        # Phase distribution
-        phase_distribution = {}
-        for task in completed_tasks:
-            context_data = task.get("context_data", {}) or {}
-            if isinstance(context_data, dict):
-                phase = context_data.get("project_phase", "UNKNOWN")
-                phase_distribution[phase] = phase_distribution.get(phase, 0) + 1
-        
-        # Agent activity
-        agent_activity = {}
-        for task in completed_tasks:
-            agent_role = task.get("assigned_to_role", "Unknown")
-            agent_activity[agent_role] = agent_activity.get(agent_role, 0) + 1
-        
-        metrics = {
-            "total_completed_tasks": total_tasks,
-            "average_task_duration_hours": round(sum(task_durations) / len(task_durations), 2) if task_durations else 0,
-            "phase_distribution": phase_distribution,
-            "agent_activity": agent_activity,
-            "tasks_with_structured_data": sum(1 for t in completed_tasks if t.get("result", {}).get("detailed_results_json")),
-            "completion_rate_estimate": "85-95%" if total_tasks >= 8 else "70-85%"
-        }
-        
-        return metrics
-    
-    async def _create_final_deliverable_task_enhanced(
-        self, 
-        workspace_id: str, 
-        workspace: Dict, 
-        deliverable_type: DeliverableType,
-        aggregated_data: Dict[str, Any]
+    async def _create_intelligent_deliverable_task(
+        self,
+        workspace_id: str,
+        workspace: Dict,
+        intelligent_deliverable: ActionableDeliverable,
+        deliverable_analysis: Dict[str, Any],
+        quality_enhanced_data: Optional[Dict] = None
     ) -> Optional[str]:
-        """
-        ENHANCED: Create final deliverable task with comprehensive data and smart assignment
-        """
-
+        """Crea task deliverable intelligente nel database"""
+        
         try:
-            # Find the best agent for deliverable creation
+            # Trova agente ottimale con AI guidance
             agents = await list_agents(workspace_id)
-            deliverable_agent = await self._find_best_deliverable_agent(agents, deliverable_type)
-
-            if not deliverable_agent:
-                logger.error(f"🎯 ERROR: No suitable agent for deliverable in workspace {workspace_id}")
-                return None
-
-            # Generate comprehensive task description
-            description = self._create_enhanced_deliverable_description(
-                workspace.get("goal", ""), deliverable_type, aggregated_data
+            deliverable_agent = await self._find_optimal_deliverable_agent(
+                agents, deliverable_analysis, intelligent_deliverable
             )
-
-            # FIXED: Enhanced task name WITHOUT "CRITICAL" to avoid priority validation issues
+            
+            if not deliverable_agent:
+                logger.error(f"No suitable agent for intelligent deliverable in workspace {workspace_id}")
+                return None
+            
+            # Crea descrizione intelligente
+            description = await self._create_intelligent_task_description(
+                workspace.get("goal", ""), intelligent_deliverable, deliverable_analysis, quality_enhanced_data
+            )
+            
+            # Nome task intelligente
             timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-            task_name = f"🎯 FINAL DELIVERABLE: {deliverable_type.value.replace('_', ' ').title()} ({timestamp})"
-
-            # FIXED: Explicitly ensure priority is valid
-            task_priority = "high"  # Must be one of: "low", "medium", "high"
-
-            # Create the deliverable task
+            deliverable_type = deliverable_analysis.get('deliverable_type', 'intelligent_package')
+            confidence = deliverable_analysis.get('confidence_score', 0.8)
+            ai_indicator = "🤖 AI" if confidence > 0.7 else "🔄"
+            
+            task_name = f"🎯 {ai_indicator} INTELLIGENT DELIVERABLE: {deliverable_type} (C:{confidence:.1f}) ({timestamp})"
+            
+            # Context data ricco e intelligente
+            context_data = {
+                "is_final_deliverable": True,
+                "deliverable_aggregation": True,
+                "intelligent_deliverable": True,
+                "deliverable_type": deliverable_type,
+                "project_phase": "FINALIZATION",
+                "ai_analysis_confidence": confidence,
+                "ai_enhanced": True,
+                "quality_enhanced": quality_enhanced_data is not None,
+                "total_assets": len(intelligent_deliverable.actionable_assets),
+                "actionability_score": intelligent_deliverable.actionability_score,
+                "automation_ready": intelligent_deliverable.automation_ready,
+                "workspace_goal": workspace.get("goal", ""),
+                "creation_timestamp": datetime.now().isoformat(),
+                "triggers_project_completion": True,
+                "system_version": "intelligent_hybrid_v3.0",
+                "ai_analyzer_used": self.ai_analyzer.ai_client is not None,
+                "quality_assurance_available": self.enhancement_orchestrator is not None,
+                "business_value_focus": deliverable_analysis.get('business_value_focus', ''),
+                "implementation_priority": deliverable_analysis.get('implementation_priority', ''),
+                "precomputed_deliverable": intelligent_deliverable.model_dump(),
+                "quality_enhanced_data": quality_enhanced_data
+            }
+            
+            # Crea task con priorità appropriata
+            task_priority = self._determine_intelligent_task_priority(deliverable_analysis, intelligent_deliverable)
+            
             deliverable_task = await create_task(
                 workspace_id=workspace_id,
                 agent_id=deliverable_agent["id"],
                 name=task_name,
                 description=description,
                 status="pending",
-                priority=task_priority,  # FIXED: Use explicit valid priority
-                creation_type="final_deliverable_aggregation_enhanced",
-                context_data={
-                    "is_final_deliverable": True,
-                    "deliverable_aggregation": True,
-                    "deliverable_type": deliverable_type.value,
-                    "project_phase": "FINALIZATION",
-                    "aggregated_data_summary": {
-                        "total_tasks": aggregated_data.get("total_tasks", 0),
-                        "data_quality_score": aggregated_data.get("data_quality_score", 0),
-                        "key_insights_count": len(aggregated_data.get("key_insights", [])),
-                        "structured_data_sources": aggregated_data.get("structured_data", {}).get("num_data_sources", 0)
-                    },
-                    "workspace_goal": workspace.get("goal", ""),
-                    "creation_timestamp": datetime.now().isoformat(),
-                    "triggers_project_completion": True,
-                    "enhanced_deliverable_version": "2.0",
-                    "data_quality_score": aggregated_data.get("data_quality_score", 0),
-                    "agent_selection_reason": f"Selected {deliverable_agent['name']} for {deliverable_type.value}",
-                    "is_high_priority_deliverable": True
-                }
+                priority=task_priority,
+                creation_type="intelligent_ai_deliverable",
+                context_data=context_data
             )
-
+            
             if deliverable_task and deliverable_task.get("id"):
-                logger.critical(f"🎯 DELIVERABLE CREATED: {deliverable_task['id']} "
-                               f"assigned to {deliverable_agent['name']} "
-                               f"for type {deliverable_type.value} with priority '{task_priority}'")
+                logger.critical(f"🤖 INTELLIGENT DELIVERABLE TASK: {deliverable_task['id']} "
+                               f"assigned to {deliverable_agent['name']} (Priority: {task_priority})")
                 return deliverable_task["id"]
             else:
-                logger.error(f"🎯 DELIVERABLE FAILED: Database creation failed")
+                logger.error(f"Failed to create intelligent deliverable task in database")
                 return None
-
+                
         except Exception as e:
-            logger.error(f"Error creating enhanced deliverable task: {e}", exc_info=True)
+            logger.error(f"Error creating intelligent deliverable task: {e}", exc_info=True)
             return None
     
-    async def _find_best_deliverable_agent(self, agents: List[Dict], deliverable_type: DeliverableType) -> Optional[Dict]:
-        """Find the best agent for creating the deliverable"""
+    async def _find_optimal_deliverable_agent(
+        self, 
+        agents: List[Dict], 
+        deliverable_analysis: Dict[str, Any],
+        intelligent_deliverable: ActionableDeliverable
+    ) -> Optional[Dict]:
+        """Trova agente ottimale con AI guidance"""
         
         if not agents:
             return None
         
-        # Agent role preferences for different deliverable types
-        role_preferences = {
-            DeliverableType.CONTACT_LIST: ["analysis", "research", "data", "lead"],
-            DeliverableType.CONTENT_STRATEGY: ["content", "marketing", "strategy", "social"],
-            DeliverableType.COMPETITOR_ANALYSIS: ["analysis", "research", "competitive", "market"],
-            DeliverableType.MARKET_RESEARCH: ["research", "analysis", "market", "data"],
-            DeliverableType.SOCIAL_MEDIA_PLAN: ["social", "marketing", "content", "digital"],
-            DeliverableType.LEAD_GENERATION: ["sales", "marketing", "lead", "business"],
-            DeliverableType.CAMPAIGN_STRATEGY: ["marketing", "campaign", "strategy", "advertising"],
-            DeliverableType.MARKETING_AUDIT: ["marketing", "analysis", "audit", "strategy"],
-            DeliverableType.GENERIC_REPORT: ["manager", "coordinator", "analysis", "specialist"]
-        }
+        active_agents = [a for a in agents if a.get("status") == "active"]
+        if not active_agents:
+            return None
         
-        preferred_keywords = role_preferences.get(deliverable_type, ["manager", "specialist"])
+        # Analisi intelligente delle requirements
+        deliverable_type = deliverable_analysis.get('deliverable_type', '')
+        business_focus = deliverable_analysis.get('business_value_focus', '')
+        implementation_priority = deliverable_analysis.get('implementation_priority', '')
+        actionability_score = intelligent_deliverable.actionability_score
         
-        # Score agents based on role match
+        # Scoring intelligente e context-aware
         scored_agents = []
         
-        for agent in agents:
-            if agent.get("status") != "active":
-                continue
-                
+        for agent in active_agents:
             role = (agent.get("role", "") or "").lower()
             name = (agent.get("name", "") or "").lower()
             seniority = agent.get("seniority", "junior")
             
             score = 0
             
-            # Role matching score
-            for keyword in preferred_keywords:
+            # Base score per ruoli manageriali (ottimi per deliverable)
+            if any(keyword in role for keyword in ['manager', 'coordinator', 'director', 'lead']):
+                score += 20
+            
+            # Score per allineamento con deliverable type
+            type_keywords = deliverable_type.lower().replace('_', ' ').split()
+            for keyword in type_keywords:
+                if keyword in role or keyword in name:
+                    score += 12
+            
+            # Score per business focus alignment
+            focus_keywords = business_focus.lower().split()
+            for keyword in focus_keywords:
                 if keyword in role or keyword in name:
                     score += 10
             
-            # Seniority bonus
-            seniority_bonus = {"expert": 15, "senior": 10, "junior": 5}
-            score += seniority_bonus.get(seniority, 0)
+            # Score per implementation priority
+            if implementation_priority == 'immediate' and 'senior' in seniority.lower():
+                score += 8
+            elif implementation_priority == 'strategic' and any(kw in role for kw in ['strategy', 'manager', 'director']):
+                score += 10
             
-            # Special case: prefer Project Manager for generic reports
-            if deliverable_type == DeliverableType.GENERIC_REPORT:
-                if "project" in role and "manager" in role:
-                    score += 20
-                elif "manager" in role or "coordinator" in role:
-                    score += 15
+            # Score per seniority (importante per deliverable quality)
+            seniority_scores = {"expert": 15, "senior": 12, "junior": 6}
+            score += seniority_scores.get(seniority, 0)
+            
+            # Bonus per high actionability deliverable
+            if actionability_score >= 80 and any(kw in role for kw in ['manager', 'coordinator']):
+                score += 8
+            
+            # Penalty per mismatch totale
+            if score < 10:
+                score = max(score, 5)  # Minimum viable score
             
             if score > 0:
-                scored_agents.append((agent, score))
+                scored_agents.append((agent, score, role))
         
         if scored_agents:
-            # Sort by score and return the best match
+            # Ordina per score e prendi il migliore
             scored_agents.sort(key=lambda x: x[1], reverse=True)
-            best_agent = scored_agents[0][0]
-            logger.info(f"🎯 AGENT SELECTION: {best_agent['name']} ({best_agent['role']}) "
-                       f"selected for {deliverable_type.value} (score: {scored_agents[0][1]})")
+            best_agent, best_score, best_role = scored_agents[0]
+            
+            logger.info(f"🤖 OPTIMAL AGENT: {best_agent['name']} ({best_role}) "
+                       f"selected for {deliverable_type} (score: {best_score})")
             return best_agent
         
-        # Fallback: return any active agent
-        active_agents = [a for a in agents if a.get("status") == "active"]
-        if active_agents:
-            fallback_agent = active_agents[0]
-            logger.warning(f"🎯 AGENT FALLBACK: {fallback_agent['name']} selected as fallback")
-            return fallback_agent
-        
-        return None
+        # Fallback: primo agente attivo
+        fallback = active_agents[0]
+        logger.warning(f"🤖 FALLBACK AGENT: {fallback['name']} selected")
+        return fallback
     
-    def _create_enhanced_deliverable_description(
-            self, 
-            goal: str, 
-            deliverable_type: DeliverableType,
-            aggregated_data: Dict[str, Any]
+    def _determine_intelligent_task_priority(
+        self, 
+        deliverable_analysis: Dict[str, Any],
+        intelligent_deliverable: ActionableDeliverable
     ) -> str:
-        """Create comprehensive deliverable description with all aggregated data - ENHANCED"""
-
-        # Enhanced base context with quality metrics
-        quality_score = aggregated_data.get("data_quality_score", 0)
-        total_tasks = aggregated_data.get("total_tasks", 0)
-        key_insights_count = len(aggregated_data.get("key_insights", []))
-
-        base_context = f"""🎯 **FINAL PROJECT DELIVERABLE CREATION**
-
-    **PROJECT OBJECTIVE:** {goal}
-
-    **📊 AGGREGATED PROJECT DATA SUMMARY:**
-    - Total completed tasks analyzed: {total_tasks}
-    - Data quality score: {quality_score}/100
-    - Task summaries: {len(aggregated_data.get('task_summaries', []))}
-    - Key insights extracted: {key_insights_count}
-    - Structured data sources: {aggregated_data.get('structured_data', {}).get('num_data_sources', 0)}
-
-    **🎯 YOUR CRITICAL MISSION:** 
-    Create the FINAL, CLIENT-READY deliverable that comprehensively addresses the project objective. 
-
-    **🚨 MANDATORY OUTPUT FORMAT:**
-    Your response MUST be a valid JSON object in the detailed_results_json field that includes:
-    1. "executive_summary" - A compelling 2-3 paragraph project overview
-    2. "deliverable_type" - The type of deliverable created  
-    3. "key_findings" - Array of key insights from the project
-    4. "project_metrics" - Object with project statistics and metrics
-
-    **⚠️ CRITICAL REQUIREMENTS:**
-    - The detailed_results_json MUST be valid JSON (no trailing commas, proper escaping)
-    - The executive_summary MUST be comprehensive and client-ready
-    - Include ALL available data from the aggregated results provided
-    - This deliverable represents the culmination of the entire project
-
-    **📋 DELIVERABLE TYPE:** {deliverable_type.value.replace('_', ' ').title()}
-    """
-
-        # Enhanced type-specific instructions with foolproof JSON templates
-        type_specific = self._get_foolproof_output_schema(deliverable_type.value, aggregated_data, goal)
-
-        return base_context + type_specific
-    
-    def _get_foolproof_output_schema(self, deliverable_type_value: str, aggregated_data: Dict, goal: str) -> str:
-        """Get foolproof output schema with simple, reliable JSON templates"""
-
-        # Simplified, reliable JSON templates to prevent parsing errors
-        if deliverable_type_value == "contact_list":
-            return f"""
-    **📞 CONTACT LIST DELIVERABLE - EXACT JSON TEMPLATE:**
-
-    Copy this EXACT template and fill in the data:
-
-    {{
-      "deliverable_type": "contact_list",
-      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the contact list generation project. Include the business objective, methodology used, and key results achieved. This should be client-ready and professional.",
-      "key_findings": [
-        "Key insight 1 from contact research",
-        "Key insight 2 from lead generation", 
-        "Key insight 3 from data analysis"
-      ],
-      "project_metrics": {{
-        "total_contacts_generated": 0,
-        "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
-        "tasks_completed": {aggregated_data.get('total_tasks', 0)}
-      }},
-      "final_deliverable": {{
-        "contact_count": 0,
-        "primary_sources": ["List your data sources here"],
-        "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"]
-      }}
-    }}
-
-    🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
-    """
-
-        elif deliverable_type_value == "content_strategy":
-            return f"""
-    **📝 CONTENT STRATEGY DELIVERABLE - EXACT JSON TEMPLATE:**
-
-    Copy this EXACT template and fill in the data:
-
-    {{
-      "deliverable_type": "content_strategy",
-      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the content strategy development. Include the business objective, strategic approach, and expected outcomes. This should be client-ready and professional.",
-      "key_findings": [
-        "Strategic insight 1",
-        "Content opportunity 2",
-        "Audience insight 3"
-      ],
-      "project_metrics": {{
-        "content_ideas_generated": 0,
-        "strategy_frameworks_created": 0,
-        "tasks_completed": {aggregated_data.get('total_tasks', 0)}
-      }},
-      "final_deliverable": {{
-        "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
-        "platform_strategy": "Your platform recommendations",
-        "implementation_timeline": "Your recommended timeline"
-      }}
-    }}
-
-    🎯 **REPLACE THE PLACEHOLDER VALUES** with actual data from your analysis!
-    """
-
-        else:  # Generic report - MOST RELIABLE template
-            return f"""
-    **📊 COMPREHENSIVE PROJECT REPORT - EXACT JSON TEMPLATE:**
-
-    Copy this EXACT template and fill in the data:
-
-    {{
-      "deliverable_type": "project_report",
-      "executive_summary": "Write a comprehensive 2-3 paragraph summary of the entire project. Start with the business objective: '{goal}'. Describe the methodology, key activities completed, main findings, and business value delivered. This should be professional and client-ready.",
-      "key_findings": [
-        "Major finding or insight 1 from project analysis",
-        "Important discovery or result 2 from completed tasks",
-        "Key outcome or recommendation 3 from project work"
-      ],
-      "project_metrics": {{
-        "total_tasks_completed": {aggregated_data.get('total_tasks', 0)},
-        "data_quality_score": "{aggregated_data.get('data_quality_score', 0)}",
-        "key_insights_generated": {len(aggregated_data.get('key_insights', []))},
-        "completion_timeline": "X weeks/days"
-      }},
-      "final_deliverable": {{
-        "business_value": "Describe the main business value delivered",
-        "deliverables_produced": ["List main outputs created"],
-        "recommended_next_steps": ["Immediate action 1", "Follow-up action 2"],
-        "success_metrics": "How to measure success of this project"
-      }}
-    }}
-
-    🎯 **CRITICAL INSTRUCTIONS:**
-    1. Copy the template EXACTLY as shown above
-    2. Replace ALL placeholder text with real data from your project analysis
-    3. Ensure the executive_summary is compelling and comprehensive
-    4. Include specific, actionable findings and recommendations
-    5. Double-check that your JSON is valid (no syntax errors)
-
-    🚨 **THIS IS THE FINAL PROJECT DELIVERABLE - MAKE IT EXCEPTIONAL!**
-    """
-    
-    async def _trigger_project_completion_sequence(self, workspace_id: str, deliverable_task_id: str):
-        """
-        ENHANCED: Trigger project completion sequence after deliverable creation
-        """
-        try:
-            logger.info(f"🎯 COMPLETION SEQUENCE: Starting for workspace {workspace_id}")
-            
-            # Wait for deliverable task to complete (check periodically)
-            max_wait_minutes = 30
-            check_interval_seconds = 60
-            
-            for attempt in range(max_wait_minutes):
-                await asyncio.sleep(check_interval_seconds)
-                
-                # Check if deliverable task is completed
-                tasks = await list_tasks(workspace_id)
-                deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
-                
-                if not deliverable_task:
-                    logger.warning(f"🎯 COMPLETION: Deliverable task {deliverable_task_id} not found")
-                    break
-                
-                if deliverable_task.get("status") == "completed":
-                    logger.info(f"🎯 COMPLETION: Deliverable task completed, triggering project completion")
-                    
-                    # Update workspace status to completed
-                    await update_workspace_status(workspace_id, "completed")
-                    
-                    # Log completion
-                    logger.critical(f"🎯 PROJECT COMPLETED: Workspace {workspace_id} automatically marked as completed")
-                    break
-                    
-                elif deliverable_task.get("status") == "failed":
-                    logger.error(f"🎯 COMPLETION: Deliverable task failed, not completing project")
-                    break
-            
-        except Exception as e:
-            logger.error(f"Error in project completion sequence: {e}")
-
-
-# === ENHANCED ASSET-ORIENTED DELIVERABLE SYSTEM ===
-
-class SmartAssetExtractor:
-    """Estrattore intelligente di asset azionabili dai task results"""
-    
-    def __init__(self):
-        self.schema_generator = AssetSchemaGenerator()
+        """Determina priorità task intelligentemente"""
         
-    async def extract_actionable_assets(
-        self, 
-        completed_tasks: List[Dict], 
-        asset_schemas: Dict[str, AssetSchema],
-        workspace_id: str
-    ) -> Dict[str, ExtractedAsset]:
-        """
-        Estrae asset azionabili validandoli contro gli schemi dinamici
-        """
+        implementation_priority = deliverable_analysis.get('implementation_priority', 'short_term')
+        actionability_score = intelligent_deliverable.actionability_score
+        confidence = deliverable_analysis.get('confidence_score', 0.8)
         
-        extracted_assets = {}
-        
-        logger.info(f"🔍 ASSET EXTRACTION: Processing {len(completed_tasks)} completed tasks")
-        
-        # Identifica task di produzione asset
-        asset_tasks = [
-            task for task in completed_tasks 
-            if self._is_asset_production_task(task)
-        ]
-        
-        logger.info(f"🔍 ASSET TASKS: Found {len(asset_tasks)} asset production tasks")
-        
-        # Processa ogni task di asset production
-        for task in asset_tasks:
-            asset_type = self._identify_asset_type(task, asset_schemas)
-            
-            if asset_type and asset_type in asset_schemas:
-                # Estrazione con validazione contro schema
-                asset_data = await self._extract_and_validate_asset(
-                    task, asset_schemas[asset_type]
-                )
-                
-                if asset_data:
-                    extracted_assets[asset_type] = asset_data
-                    logger.info(f"✅ EXTRACTED: {asset_type} from task {task.get('id')}")
-            else:
-                # Tentativo di estrazione generica
-                generic_asset = await self._extract_generic_asset(task)
-                if generic_asset:
-                    generic_name = f"generic_asset_{task.get('id', '')}"
-                    extracted_assets[generic_name] = generic_asset
-                    logger.info(f"✅ EXTRACTED GENERIC: {generic_name}")
-        
-        logger.info(f"🔍 EXTRACTION COMPLETE: {len(extracted_assets)} assets extracted")
-        return extracted_assets
-    
-    def _is_asset_production_task(self, task: Dict) -> bool:
-            """Determina se un task è di produzione asset - ENHANCED"""
-
-            # Ottieni lo stato del task principale
-            task_status = task.get("status")
-
-            # Metodo 1: Check context_data
-            context_data = task.get("context_data", {}) or {}
-            if isinstance(context_data, dict):
-                if (context_data.get("asset_production") or 
-                    context_data.get("asset_oriented_task")):
-                    logger.debug(f"Task {task.get('id')} identificato come produzione asset da context_data.")
-                    return True
-
-            # Metodo 2: Check task name patterns
-            task_name = (task.get("name") or "").lower()
-            asset_indicators = [
-                "calendar", "database", "template", "framework", "strategy",
-                "contact", "content", "training", "financial", "model",
-                "analysis", "research", "plan", "workflow", "produce asset"
-            ]
-
-            if any(indicator in task_name for indicator in asset_indicators):
-                logger.debug(f"Task {task.get('id')} identificato come produzione asset da name pattern.")
-                return True
-
-            # Metodo 3: Enhanced structured output analysis (SOLO SE IL TASK È COMPLETATO)
-            if task_status != "completed":
-                logger.debug(f"Task {task.get('id')} status is '{task_status}', not 'completed'. Skipping detailed JSON analysis for asset identification.")
-                return False # Non analizzare il risultato di un task non completato per identificare se è un asset task
-
-            # Ora che sappiamo che il task è 'completed', possiamo analizzare il suo 'result'
-            task_result_data = task.get("result", {}) or {}
-            detailed_json = task_result_data.get("detailed_results_json", "")
-
-            if detailed_json and len(detailed_json) > 100:
-                try:
-                    data = json.loads(detailed_json)
-                    if isinstance(data, dict):
-                        actionable_structures = [
-                            "contacts", "posts", "calendar", "exercises", "budget_categories",
-                            "recommendations", "action_plan", "strategy", "framework",
-                            "template", "workflow", "process", "database", "list"
-                        ]
-                        data_str = json.dumps(data).lower()
-                        structure_matches = sum(1 for struct in actionable_structures if struct in data_str)
-
-                        if structure_matches >= 2:
-                            logger.debug(f"Task {task.get('id')} identificato come produzione asset da structure_matches ({structure_matches}).")
-                            return True
-
-                        if len(data) >= 5 and any(isinstance(v, (list, dict)) for v in data.values()):
-                            logger.debug(f"Task {task.get('id')} identificato come produzione asset da data density.")
-                            return True
-                except json.JSONDecodeError:
-                    logger.warning(f"JSONDecodeError per task {task.get('id')} durante l'analisi del detailed_json.")
-                    pass # Non è un asset task se il JSON non è valido
-
-            return False
-    
-    def _identify_asset_type(self, task: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
-        """Identifica il tipo di asset prodotto dal task"""
-        
-        # Metodo 1: Esplicito dal context_data
-        context_data = task.get("context_data", {}) or {}
-        if isinstance(context_data, dict):
-            asset_type = context_data.get("asset_type") or context_data.get("target_schema")
-            if asset_type and asset_type in asset_schemas:
-                return asset_type
-        
-        # Metodo 2: Deduzione dal nome del task
-        task_name = (task.get("name") or "").lower()
-        for asset_type in asset_schemas.keys():
-            asset_type_clean = asset_type.replace("_", " ")
-            if asset_type_clean in task_name or asset_type in task_name:
-                return asset_type
-        
-        # Metodo 3: Analisi del contenuto dell'output
-        result = task.get("result", {}) or {}
-        detailed_json = result.get("detailed_results_json", "")
-        
-        if detailed_json:
-            try:
-                data = json.loads(detailed_json)
-                return self._infer_asset_type_from_content(data, asset_schemas)
-            except json.JSONDecodeError:
-                pass
-        
-        return None
-    
-    def _infer_asset_type_from_content(self, data: Dict, asset_schemas: Dict[str, AssetSchema]) -> Optional[str]:
-        """Inferisce il tipo di asset dal contenuto"""
-        
-        if not isinstance(data, dict):
-            return None
-        
-        data_keys = set(str(k).lower() for k in data.keys())
-        content_indicators = {
-            "content_calendar": ["posts", "calendar", "content", "schedule", "hashtags"],
-            "qualified_contact_database": ["contacts", "leads", "email", "phone", "company"],
-            "training_program": ["exercises", "workout", "training", "program", "sets", "reps"],
-            "financial_model": ["revenue", "costs", "budget", "financial", "cash_flow"],
-            "research_database": ["findings", "sources", "research", "data", "analysis"],
-            "action_plan": ["tasks", "objectives", "plan", "milestones", "actions"]
-        }
-        
-        best_match = None
-        max_matches = 0
-        
-        for asset_type, indicators in content_indicators.items():
-            if asset_type in asset_schemas:
-                matches = sum(1 for indicator in indicators if indicator in " ".join(data_keys))
-                if matches > max_matches:
-                    max_matches = matches
-                    best_match = asset_type
-        
-        return best_match if max_matches >= 2 else None
-    
-    async def _extract_and_validate_asset(self, task: Dict, schema: AssetSchema) -> Optional[ExtractedAsset]:
-        """
-        Estrae asset dal task result e lo valida contro lo schema
-        """
-        
-        result = task.get("result", {}) or {}
-        detailed_json = result.get("detailed_results_json", "")
-        
-        if not detailed_json:
-            logger.warning(f"No detailed_results_json in task {task.get('id')}")
-            return None
-        
-        try:
-            # Parse JSON
-            data = json.loads(detailed_json)
-            
-            if not isinstance(data, dict):
-                logger.warning(f"Invalid data format in task {task.get('id')}")
-                return None
-            
-            # Validazione contro schema
-            validation_result = self.schema_generator.validate_asset_against_schema(data, schema)
-            
-            # Calcola actionability score
-            actionability_score = self._calculate_actionability_score(data, schema, validation_result)
-            
-            # Determina se è ready to use
-            ready_to_use = (
-                validation_result.get("valid", False) and
-                validation_result.get("completeness_score", 0) >= 0.8 and
-                actionability_score >= 0.7
-            )
-            
-            extracted_asset = ExtractedAsset(
-                asset_name=schema.asset_name,
-                asset_data=data,
-                source_task_id=task.get("id", ""),
-                extraction_method="schema_validation",
-                validation_score=validation_result.get("completeness_score", 0),
-                actionability_score=actionability_score,
-                ready_to_use=ready_to_use
-            )
-            
-            return extracted_asset
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in task {task.get('id')}: {e}")
-            # Tentativo di estrazione da testo non strutturato
-            return await self._extract_from_unstructured_text(
-                result.get("summary", ""), schema, task.get("id", "")
-            )
-        except Exception as e:
-            logger.error(f"Error extracting asset from task {task.get('id')}: {e}")
-            return None
-    
-    async def _extract_from_unstructured_text(self, text: str, schema: AssetSchema, task_id: str) -> Optional[ExtractedAsset]:
-        """
-        Estrae asset da testo non strutturato (fallback)
-        """
-        
-        if not text or len(text) < 50:
-            return None
-        
-        # Extraction pattern molto semplice per ora
-        # In implementazione completa, userebbe NLP o LLM per estrazione
-        extracted_data = {
-            "extracted_from_text": True,
-            "original_text": text[:1000],  # Primi 1000 caratteri
-            "extraction_method": "text_fallback",
-            "confidence": "low"
-        }
-        
-        # Cerca pattern specifici nel testo
-        if "contact" in text.lower() or "email" in text.lower():
-            emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-            if emails:
-                extracted_data["extracted_emails"] = emails
-        
-        if "http" in text.lower():
-            urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
-            if urls:
-                extracted_data["extracted_urls"] = urls
-        
-        return ExtractedAsset(
-            asset_name=schema.asset_name,
-            asset_data=extracted_data,
-            source_task_id=task_id,
-            extraction_method="text_fallback",
-            validation_score=0.3,  # Basso per text extraction
-            actionability_score=0.3,
-            ready_to_use=False
-        )
-    
-    async def _extract_generic_asset(self, task: Dict) -> Optional[ExtractedAsset]:
-        """
-        Estrazione generica per task non identificati come asset specifici
-        """
-        
-        result = task.get("result", {}) or {}
-        detailed_json = result.get("detailed_results_json", "")
-        summary = result.get("summary", "")
-        
-        if not detailed_json and not summary:
-            return None
-        
-        asset_data = {}
-        
-        # Estrai da detailed_results_json se disponibile
-        if detailed_json:
-            try:
-                parsed_data = json.loads(detailed_json)
-                if isinstance(parsed_data, dict):
-                    asset_data.update(parsed_data)
-            except json.JSONDecodeError:
-                asset_data["unparsed_json"] = detailed_json
-        
-        # Aggiungi summary
-        if summary:
-            asset_data["task_summary"] = summary
-        
-        # Metadati del task
-        asset_data["task_metadata"] = {
-            "task_name": task.get("name", ""),
-            "task_id": task.get("id", ""),
-            "assigned_to_role": task.get("assigned_to_role", ""),
-            "completed_at": task.get("updated_at", "")
-        }
-        
-        if not asset_data:
-            return None
-        
-        return ExtractedAsset(
-            asset_name="generic_output",
-            asset_data=asset_data,
-            source_task_id=task.get("id", ""),
-            extraction_method="generic_fallback",
-            validation_score=0.5,
-            actionability_score=0.4,
-            ready_to_use=False
-        )
-    
-    def _calculate_actionability_score(
-        self, 
-        data: Dict, 
-        schema: AssetSchema, 
-        validation_result: Dict
-    ) -> float:
-        """
-        Calcola score di azionabilità (0.0 - 1.0)
-        """
-        
-        score = 0.0
-        
-        # Base score dalla completeness
-        completeness = validation_result.get("completeness_score", 0)
-        score += completeness * 0.4
-        
-        # Bonus per assenza di placeholder
-        if not self._has_placeholders(data):
-            score += 0.2
-        
-        # Bonus per presenza di dati azionabili
-        if self._has_actionable_data(data):
-            score += 0.2
-        
-        # Bonus per automation readiness
-        if schema.automation_ready and self._is_automation_compatible(data):
-            score += 0.2
-        
-        return min(1.0, score)
-    
-    def _has_placeholders(self, data: Dict, depth: int = 0) -> bool:
-        """Verifica presenza di placeholder nei dati"""
-        
-        if depth > 3:  # Limite ricorsione
-            return False
-        
-        placeholders = ["string", "number", "tbd", "todo", "placeholder", "example", "sample"]
-        
-        for key, value in data.items():
-            if isinstance(value, str):
-                value_lower = value.lower()
-                if any(placeholder in value_lower for placeholder in placeholders):
-                    return True
-            elif isinstance(value, dict):
-                if self._has_placeholders(value, depth + 1):
-                    return True
-            elif isinstance(value, list) and value and isinstance(value[0], dict):
-                if self._has_placeholders(value[0], depth + 1):
-                    return True
-        
-        return False
-    
-    def _has_actionable_data(self, data: Dict) -> bool:
-        """Verifica presenza di dati azionabili"""
-        
-        # Indicatori di dati azionabili
-        actionable_indicators = [
-            "@",  # Email
-            "http",  # URL
-            "phone",  # Telefono
-            "date",  # Date
-            "$",  # Valori monetari
-            "%"   # Percentuali
-        ]
-        
-        data_str = json.dumps(data).lower()
-        return any(indicator in data_str for indicator in actionable_indicators)
-    
-    def _is_automation_compatible(self, data: Dict) -> bool:
-        """Verifica compatibilità con automazione"""
-        
-        # Criteri per automation compatibility
-        has_structured_lists = any(isinstance(v, list) and v for v in data.values())
-        has_consistent_fields = len(data) >= 3  # Almeno 3 campi
-        has_identifiers = any(key in str(data).lower() for key in ["id", "email", "name", "date"])
-        
-        return has_structured_lists and has_consistent_fields and has_identifiers
-
-
-class EnhancedDeliverablePackager:
-    """Assembla deliverable finali con asset azionabili"""
-    
-    def __init__(self):
-        self.requirements_analyzer = DeliverableRequirementsAnalyzer()
-    
-    async def create_actionable_deliverable(
-        self,
-        workspace_id: str,
-        workspace_goal: str,
-        extracted_assets: Dict[str, ExtractedAsset],
-        requirements: Optional[Dict] = None
-    ) -> ActionableDeliverable:
-        """
-        Crea deliverable finale con asset azionabili integrato
-        """
-        
-        # Genera executive summary dinamico
-        executive_summary = await self._generate_dynamic_executive_summary(
-            workspace_goal, extracted_assets
-        )
-        
-        # Genera usage guide
-        usage_guide = self._generate_comprehensive_usage_guide(extracted_assets)
-        
-        # Genera next steps azionabili
-        next_steps = self._generate_actionable_next_steps(extracted_assets)
-        
-        # Calcola automation readiness complessiva
-        automation_ready = self._calculate_overall_automation_readiness(extracted_assets)
-        
-        # Calcola actionability score complessivo
-        actionability_score = self._calculate_overall_actionability_score(extracted_assets)
-        
-        deliverable = ActionableDeliverable(
-            workspace_id=workspace_id,
-            deliverable_id=f"deliverable_{workspace_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            meta={
-                "project_goal": workspace_goal,
-                "total_assets": len(extracted_assets),
-                "ready_to_use_assets": sum(1 for asset in extracted_assets.values() if asset.ready_to_use),
-                "generation_method": "enhanced_asset_oriented",
-                "requirements_used": requirements is not None
-            },
-            executive_summary=executive_summary,
-            actionable_assets=extracted_assets,
-            usage_guide=usage_guide,
-            next_steps=next_steps,
-            automation_ready=automation_ready,
-            actionability_score=actionability_score
-        )
-        
-        logger.info(f"🎯 DELIVERABLE CREATED: {actionability_score}/100 actionability score, "
-                   f"{len(extracted_assets)} assets, automation: {automation_ready}")
-        
-        return deliverable
-    
-    async def _generate_dynamic_executive_summary(
-        self, 
-        workspace_goal: str, 
-        extracted_assets: Dict[str, ExtractedAsset]
-    ) -> str:
-        """
-        Genera executive summary dinamico basato sugli asset estratti
-        """
-        
-        total_assets = len(extracted_assets)
-        ready_assets = sum(1 for asset in extracted_assets.values() if asset.ready_to_use)
-        avg_actionability = sum(asset.actionability_score for asset in extracted_assets.values()) / total_assets if total_assets > 0 else 0
-        
-        # Asset breakdown
-        asset_types = list(extracted_assets.keys())
-        
-        summary = f"""**Project Objective Achievement Summary**
-
-**Goal:** {workspace_goal}
-
-**Deliverable Overview:**
-This project has successfully produced {total_assets} actionable business assets, with {ready_assets} assets ready for immediate implementation. The overall actionability score is {avg_actionability:.1%}, indicating {self._get_actionability_rating(avg_actionability)} business readiness.
-
-**Key Assets Delivered:**
-{self._format_asset_list(extracted_assets)}
-
-**Business Impact:**
-The delivered assets provide immediate value through {self._describe_business_impact(extracted_assets)}. These deliverables are designed for direct implementation and can generate measurable business outcomes within the first 30 days of deployment.
-
-**Implementation Readiness:**
-{ready_assets}/{total_assets} assets are ready for immediate use without modification. The remaining assets require minimal customization and can be implemented with standard business processes.
-"""
-        
-        return summary.strip()
-    
-    def _get_actionability_rating(self, score: float) -> str:
-        """Converte score in rating testuale"""
-        if score >= 0.8:
-            return "excellent"
-        elif score >= 0.6:
-            return "good"
-        elif score >= 0.4:
-            return "moderate"
+        # Logic intelligente per priority
+        if implementation_priority == 'immediate' or actionability_score >= 85:
+            return "high"
+        elif implementation_priority == 'strategic' and confidence >= 0.8:
+            return "high"
+        elif actionability_score >= 70:
+            return "medium"
         else:
-            return "basic"
+            return "medium"  # Default sicuro
     
-    def _format_asset_list(self, assets: Dict[str, ExtractedAsset]) -> str:
-        """Formatta lista asset per executive summary"""
-        
-        asset_lines = []
-        for name, asset in assets.items():
-            status = "✅ Ready to use" if asset.ready_to_use else "🔧 Needs customization"
-            asset_lines.append(f"- **{name.replace('_', ' ').title()}**: {status} (Actionability: {asset.actionability_score:.0%})")
-        
-        return "\n".join(asset_lines)
-    
-    def _describe_business_impact(self, assets: Dict[str, ExtractedAsset]) -> str:
-        """Descrive l'impatto business degli asset"""
-        
-        impact_areas = []
-        
-        for name, asset in assets.items():
-            if "contact" in name or "lead" in name:
-                impact_areas.append("lead generation and sales pipeline development")
-            elif "content" in name or "calendar" in name:
-                impact_areas.append("marketing campaign execution and content strategy")
-            elif "training" in name or "program" in name:
-                impact_areas.append("performance improvement and skill development")
-            elif "financial" in name or "budget" in name:
-                impact_areas.append("financial planning and resource optimization")
-            elif "research" in name or "analysis" in name:
-                impact_areas.append("data-driven decision making and strategic insights")
-        
-        if not impact_areas:
-            impact_areas.append("operational efficiency and strategic execution")
-        
-        return ", ".join(set(impact_areas))
-    
-    def _generate_comprehensive_usage_guide(self, assets: Dict[str, ExtractedAsset]) -> Dict[str, str]:
-        """Genera usage guide completa per tutti gli asset"""
-        
-        usage_guide = {}
-        
-        for name, asset in assets.items():
-            if asset.ready_to_use:
-                guide = f"✅ **Ready for immediate use**: This {name.replace('_', ' ')} can be implemented directly. "
-            else:
-                guide = f"🔧 **Requires customization**: Review and adapt this {name.replace('_', ' ')} to your specific context. "
-            
-            # Aggiungi istruzioni specifiche basate sul tipo
-            if "contact" in name:
-                guide += "Import into your CRM system and begin outreach campaigns. Prioritize contacts with highest qualification scores."
-            elif "content" in name:
-                guide += "Load into your content management tool and schedule posts according to the recommended timeline."
-            elif "calendar" in name:
-                guide += "Import into your scheduling system and set up automated posting if available."
-            elif "training" in name:
-                guide += "Begin implementation following the structured program timeline. Track progress using provided metrics."
-            elif "financial" in name:
-                guide += "Review assumptions, customize for your business model, and use for budget planning and investor presentations."
-            else:
-                guide += "Follow the structured format and adapt content to your specific business requirements."
-            
-            usage_guide[name] = guide
-        
-        return usage_guide
-    
-    def _generate_actionable_next_steps(self, assets: Dict[str, ExtractedAsset]) -> List[str]:
-        """Genera next steps azionabili"""
-        
-        next_steps = []
-        
-        # Step 1: Immediate actions
-        ready_assets = [name for name, asset in assets.items() if asset.ready_to_use]
-        if ready_assets:
-            next_steps.append(f"IMMEDIATE (Week 1): Implement ready-to-use assets: {', '.join(ready_assets[:3])}")
-        
-        # Step 2: Customization needed
-        custom_assets = [name for name, asset in assets.items() if not asset.ready_to_use]
-        if custom_assets:
-            next_steps.append(f"SHORT-TERM (Week 2-3): Customize and deploy: {', '.join(custom_assets[:3])}")
-        
-        # Step 3: Monitoring and optimization
-        if len(assets) > 0:
-            next_steps.append("ONGOING (Month 1+): Monitor performance metrics and optimize based on results")
-        
-        # Step 4: Asset-specific recommendations
-        for name, asset in assets.items():
-            if "contact" in name and asset.ready_to_use:
-                next_steps.append(f"Contact Strategy: Begin outreach to top-qualified leads from {name}")
-            elif "content" in name and asset.ready_to_use:
-                next_steps.append(f"Content Execution: Schedule first month of posts from {name}")
-        
-        return next_steps
-    
-    def _calculate_overall_automation_readiness(self, assets: Dict[str, ExtractedAsset]) -> bool:
-        """Calcola automation readiness complessiva"""
-        
-        if not assets:
-            return False
-        
-        automation_scores = []
-        for asset in assets.values():
-            # Considera automation ready se ha score alto e structured data
-            score = 0
-            if asset.actionability_score >= 0.7:
-                score += 0.5
-            if asset.ready_to_use:
-                score += 0.3
-            if isinstance(asset.asset_data, dict) and len(asset.asset_data) >= 3:
-                score += 0.2
-            
-            automation_scores.append(score)
-        
-        avg_automation_score = sum(automation_scores) / len(automation_scores)
-        return avg_automation_score >= 0.6  # 60% threshold
-    
-    def _calculate_overall_actionability_score(self, assets: Dict[str, ExtractedAsset]) -> int:
-        """Calcola actionability score complessivo (0-100)"""
-        
-        if not assets:
-            return 0
-        
-        # Media ponderata degli score individuali
-        total_score = sum(asset.actionability_score for asset in assets.values())
-        avg_score = total_score / len(assets)
-        
-        # Bonus per diversità di asset
-        diversity_bonus = min(len(assets) * 0.05, 0.2)  # Max 20% bonus
-        
-        # Bonus per asset ready-to-use
-        ready_ratio = sum(1 for asset in assets.values() if asset.ready_to_use) / len(assets)
-        ready_bonus = ready_ratio * 0.15  # Max 15% bonus
-        
-        final_score = (avg_score + diversity_bonus + ready_bonus) * 100
-        return min(100, int(final_score))
-
-
-# === INTEGRATION WITH EXISTING ENHANCED DELIVERABLE AGGREGATOR ===
-
-# Estendi la classe esistente EnhancedDeliverableAggregator
-class AssetOrientedDeliverableAggregator(EnhancedDeliverableAggregator):
-    """
-    Estensione della classe esistente per supportare asset-oriented deliverables
-    Mantiene backward compatibility completa
-    """
-    
-    def __init__(self):
-        super().__init__()
-        self.asset_extractor = SmartAssetExtractor()
-        self.asset_packager = EnhancedDeliverablePackager()
-        self.requirements_analyzer = DeliverableRequirementsAnalyzer()
-        self.schema_generator = AssetSchemaGenerator()
-        
-        logger.info("Asset-oriented deliverable aggregator initialized")
-    
-    async def check_and_create_final_deliverable(self, workspace_id: str) -> Optional[str]:
-        """
-        ENHANCED VERSION: Controlla e crea deliverable con asset azionabili
-        Fallback alla versione originale se asset-oriented approach fallisce
-        """
-        
-        try:
-            logger.info(f"🎯 ENHANCED DELIVERABLE CHECK: Starting asset-oriented approach for {workspace_id}")
-            
-            # Prima controlla readiness con logica esistente (mantiene compatibilità)
-            if not await self._is_ready_for_final_deliverable_enhanced(workspace_id):
-                logger.debug(f"🎯 NOT READY: Workspace {workspace_id} (using enhanced criteria)")
-                return None
-            
-            # Controlla se deliverable esiste già
-            if await self._final_deliverable_exists_enhanced(workspace_id):
-                logger.info(f"🎯 EXISTS: Final deliverable already exists for {workspace_id}")
-                return None
-            
-            # Tentativo asset-oriented approach
-            try:
-                asset_deliverable_id = await self._create_asset_oriented_deliverable(workspace_id)
-                if asset_deliverable_id:
-                    logger.critical(f"🎯 SUCCESS: Asset-oriented deliverable created: {asset_deliverable_id}")
-                    return asset_deliverable_id
-            except Exception as e:
-                logger.warning(f"Asset-oriented approach failed: {e}, falling back to original method")
-            
-            # Fallback alla versione originale
-            logger.info(f"🎯 FALLBACK: Using original deliverable approach for {workspace_id}")
-            return await super().check_and_create_final_deliverable(workspace_id)
-            
-        except Exception as e:
-            logger.error(f"Error in enhanced deliverable check: {e}", exc_info=True)
-            return None
-    
-    async def _create_asset_oriented_deliverable(self, workspace_id: str) -> Optional[str]:
-        """
-        Crea deliverable usando il nuovo approccio asset-oriented
-        """
-        
-        # 1. Analizza requirements dinamicamente
-        requirements = await self.requirements_analyzer.analyze_deliverable_requirements(workspace_id)
-        
-        # 2. Genera schemi per asset
-        asset_schemas = await self.schema_generator.generate_asset_schemas(requirements)
-        
-        # 3. Raccogli task completati
-        workspace = await get_workspace(workspace_id)
-        tasks = await list_tasks(workspace_id)
-        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
-        
-        if len(completed_tasks) < 2:
-            logger.warning(f"Insufficient completed tasks for asset extraction: {len(completed_tasks)}")
-            raise ValueError("Insufficient completed tasks")
-        
-        # 4. Estrai asset azionabili
-        extracted_assets = await self.asset_extractor.extract_actionable_assets(
-            completed_tasks, asset_schemas, workspace_id
-        )
-        
-        if not extracted_assets:
-            logger.warning(f"No actionable assets extracted from {len(completed_tasks)} tasks")
-            raise ValueError("No actionable assets extracted")
-        
-        # 5. Crea deliverable finale
-        actionable_deliverable = await self.asset_packager.create_actionable_deliverable(
-            workspace_id,
-            workspace.get("goal", ""),
-            extracted_assets,
-            requirements.model_dump()
-        )
-        
-        # 6. Crea task deliverable nel database
-        deliverable_task_id = await self._create_asset_deliverable_task(
-            workspace_id, workspace, actionable_deliverable
-        )
-        
-        return deliverable_task_id
-    
-    def _serialize_deliverable_for_context(self, actionable_deliverable: ActionableDeliverable) -> Dict:
-        """Serializza deliverable per context_data con gestione datetime"""
-        try:
-            # Usa model_dump con mode='json' per serializzare datetime
-            deliverable_dict = actionable_deliverable.model_dump(mode='json')
-
-            # Assicurati che tutti i datetime siano stringhe ISO
-            def convert_datetime_recursive(obj):
-                if isinstance(obj, dict):
-                    return {k: convert_datetime_recursive(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_datetime_recursive(item) for item in obj]
-                elif isinstance(obj, datetime):
-                    return obj.isoformat()
-                else:
-                    return obj
-
-            return convert_datetime_recursive(deliverable_dict)
-        except Exception as e:
-            logger.error(f"Error serializing deliverable: {e}")
-            return {}
-    
-    async def _create_asset_deliverable_task(
-        self,
-        workspace_id: str,
-        workspace: Dict,
-        actionable_deliverable: ActionableDeliverable
-    ) -> Optional[str]:
-        """
-        Crea task deliverable con asset azionabili
-        """
-        
-        try:
-            # Trova agente per deliverable (usa logica esistente)
-            agents = await list_agents(workspace_id)
-            deliverable_agent = await self._find_best_deliverable_agent(
-                agents, DeliverableType.GENERIC_REPORT  # Fallback type
-            )
-            
-            if not deliverable_agent:
-                logger.error(f"No suitable agent for asset deliverable in {workspace_id}")
-                return None
-            
-            # Crea descrizione arricchita
-            description = self._create_asset_deliverable_description(
-                workspace.get("goal", ""), actionable_deliverable
-            )
-            
-            # Nome task con timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-            task_name = f"🎯 FINAL ASSET-READY DELIVERABLE ({timestamp})"
-            
-            # Context data arricchito
-            context_data = {
-                "is_final_deliverable": True,
-                "deliverable_aggregation": True,
-                "asset_oriented_deliverable": True,
-                "deliverable_type": "asset_ready_package",
-                "project_phase": "FINALIZATION",
-                "actionability_score": actionable_deliverable.actionability_score,
-                "automation_ready": actionable_deliverable.automation_ready,
-                "total_assets": len(actionable_deliverable.actionable_assets),
-                "ready_to_use_assets": sum(1 for asset in actionable_deliverable.actionable_assets.values() if asset.ready_to_use),
-                "workspace_goal": workspace.get("goal", ""),
-                "creation_timestamp": datetime.now().isoformat(),
-                "triggers_project_completion": True,
-                "enhanced_deliverable_version": "3.0_asset_oriented"
-            }
-            
-            # Serializza actionable_deliverable per il task
-            deliverable_json = self._serialize_deliverable_for_context(actionable_deliverable)
-            
-            # Crea task con FIXED priority
-            deliverable_task = await create_task(
-                workspace_id=workspace_id,
-                agent_id=deliverable_agent["id"],
-                name=task_name,
-                description=description,
-                status="pending",
-                priority="high",  # FIXED: Use valid priority value
-                creation_type="asset_oriented_deliverable",
-                context_data={
-                    **context_data,
-                    "precomputed_deliverable": deliverable_json  # Include pre-computed deliverable
-                }
-            )
-            
-            if deliverable_task and deliverable_task.get("id"):
-                logger.critical(f"🎯 ASSET DELIVERABLE CREATED: {deliverable_task['id']} "
-                               f"with {actionable_deliverable.actionability_score}/100 actionability")
-                return deliverable_task["id"]
-            else:
-                logger.error(f"Failed to create asset deliverable task in database")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error creating asset deliverable task: {e}", exc_info=True)
-            return None
-    
-    def _create_asset_deliverable_description(
+    async def _create_intelligent_task_description(
         self,
         goal: str,
-        actionable_deliverable: ActionableDeliverable
+        intelligent_deliverable: ActionableDeliverable,
+        deliverable_analysis: Dict[str, Any],
+        quality_enhanced_data: Optional[Dict] = None
     ) -> str:
-        """
-        Crea descrizione per il task deliverable con asset azionabili
-        """
+        """Crea descrizione task intelligente e completa"""
         
-        total_assets = len(actionable_deliverable.actionable_assets)
-        ready_assets = sum(1 for asset in actionable_deliverable.actionable_assets.values() if asset.ready_to_use)
+        # Estrai dati chiave
+        deliverable_type = deliverable_analysis.get('deliverable_type', 'intelligent_package')
+        confidence = deliverable_analysis.get('confidence_score', 0.8)
+        business_focus = deliverable_analysis.get('business_value_focus', '')
+        total_assets = len(intelligent_deliverable.actionable_assets)
+        actionability_score = intelligent_deliverable.actionability_score
+        automation_ready = intelligent_deliverable.automation_ready
         
-        description = f"""🎯 **FINAL ASSET-READY DELIVERABLE COMPILATION**
+        # Quality enhancement info
+        quality_info = ""
+        if quality_enhanced_data:
+            quality_stats = quality_enhanced_data.get('meta', {}).get('quality_analysis', {})
+            if quality_stats:
+                avg_quality = quality_stats.get('average_quality_score', 0)
+                enhancement_tasks = quality_stats.get('enhancement_tasks_created', 0)
+                quality_info = f"""
+📊 **AI QUALITY ENHANCEMENT RESULTS:**
+- Average Asset Quality: {avg_quality:.1f}/1.0
+- Enhancement Tasks Created: {enhancement_tasks}
+- Quality-Assured Processing: ✅ Active"""
+        
+        description = f"""🤖 **INTELLIGENT AI-DRIVEN DELIVERABLE CREATION**
 
 **PROJECT OBJECTIVE:** {goal}
 
-**📦 PRE-COMPUTED DELIVERABLE PACKAGE:**
-This task contains a pre-computed deliverable package with {total_assets} actionable business assets.
-Your job is to format and present this package as the final project deliverable.
+**🧠 AI ANALYSIS SUMMARY:**
+- Deliverable Type: {deliverable_type.replace('_', ' ').title()}
+- AI Confidence Level: {confidence:.1f}/1.0 ({self._get_confidence_description(confidence)})
+- Business Value Focus: {business_focus}
+- Implementation Strategy: {deliverable_analysis.get('implementation_priority', '').title()}
 
-**📊 ASSET INVENTORY:**
-- Total Assets: {total_assets}
-- Ready-to-Use: {ready_assets}
-- Actionability Score: {actionable_deliverable.actionability_score}/100
-- Automation Ready: {"Yes" if actionable_deliverable.automation_ready else "No"}
+**📦 INTELLIGENT DELIVERABLE PACKAGE:**
+- Total Analyzed Assets: {total_assets}
+- Overall Actionability Score: {actionability_score}/100
+- Automation Ready: {'✅ Yes' if automation_ready else '❌ No'}
+- System Intelligence Level: {'🤖 AI-Enhanced' if confidence > 0.7 else '🔄 Standard'}
+{quality_info}
 
-**🎯 YOUR TASK:**
-1. Review the pre-computed deliverable data in your context
-2. Format it into a professional, client-ready presentation
-3. Ensure all assets are properly documented with usage instructions
-4. Create an executive summary that highlights business value
-5. Package everything into a comprehensive final deliverable
-
-**✅ REQUIRED OUTPUT FORMAT:**
-Your detailed_results_json must contain:
-```json
-{{
-  "deliverable_type": "asset_ready_package",
-  "executive_summary": "Professional 2-3 paragraph summary of deliverable value",
-  "actionable_assets": {{
-    "asset_name": {{
-      "data": "Complete asset data ready for use",
-      "usage_instructions": "How to implement this asset",
-      "business_value": "Expected impact and ROI",
-      "automation_potential": "How this can be automated"
-    }}
-  }},
-  "implementation_guide": {{
-    "immediate_actions": ["Week 1 actions"],
-    "short_term_goals": ["Month 1 goals"], 
-    "success_metrics": ["How to measure success"]
-  }},
-  "business_impact_projection": {{
-    "time_to_value": "Expected timeline for ROI",
-    "estimated_impact": "Projected business outcomes",
-    "automation_savings": "Efficiency gains from automation"
-  }}
-}}
-```
-
-**🚨 CRITICAL REQUIREMENTS:**
-- All assets must be immediately actionable (ready-to-copy-paste)
-- Include specific implementation steps for each asset
-- Provide clear ROI projections and success metrics
-- Ensure professional presentation suitable for client delivery
-- This is the FINAL deliverable - make it exceptional
-
-**📋 SUCCESS CRITERIA:**
-✅ Professional executive summary highlighting business value
-✅ All assets formatted for immediate business use  
-✅ Clear implementation roadmap with timelines
-✅ Measurable success criteria and ROI projections
-✅ Ready for client presentation and implementation
-"""
-        
-        return description.strip()
-
-
-# === AI QUALITY ASSURANCE INTEGRATION ===
-
-class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
-    """
-    Estensione dell'aggregator esistente con AI Quality Assurance integrato
-    """
-    
-    def __init__(self):
-        super().__init__()
-        
-        # Initialize AI Quality Assurance components if available
-        self.enhancement_orchestrator = None
-        self.quality_validator = None
-        
-        # Controllo sicuro per l'inizializzazione
-        if is_quality_assurance_available():
-            try:
-                self.enhancement_orchestrator = AssetEnhancementOrchestrator()
-                self.quality_validator = AIQualityValidator()
-                logger.info("✅ Quality Enhanced Deliverable Aggregator initialized with AI Quality Assurance")
-            except Exception as e:
-                logger.error(f"Failed to initialize AI Quality Assurance: {e}")
-                self.enhancement_orchestrator = None
-                self.quality_validator = None
-        else:
-            logger.info("🔄 Quality Enhanced Deliverable Aggregator initialized without AI Quality Assurance")
-    
-    async def _create_asset_oriented_deliverable(self, workspace_id: str) -> Optional[str]:
-        """
-        ENHANCED VERSION: Crea deliverable con quality assurance integrato se disponibile
-        """
-        
-        # Se AI Quality Assurance non è disponibile, usa la versione standard
-        if not self.enhancement_orchestrator or not ENABLE_AI_QUALITY_ASSURANCE:
-            logger.info(f"🔄 STANDARD: Using standard asset-oriented deliverable for {workspace_id}")
-            return await super()._create_asset_oriented_deliverable(workspace_id)
-        
-        try:
-            logger.info(f"🎯 ENHANCED DELIVERABLE: Starting with AI Quality Assurance for {workspace_id}")
-            
-            # === FASE 1: Creazione deliverable standard ===
-            requirements = await self.requirements_analyzer.analyze_deliverable_requirements(workspace_id)
-            asset_schemas = await self.schema_generator.generate_asset_schemas(requirements)
-            
-            workspace = await get_workspace(workspace_id)
-            tasks = await list_tasks(workspace_id)
-            completed_tasks = [t for t in tasks if t.get("status") == "completed"]
-            
-            if len(completed_tasks) < 2:
-                logger.warning(f"Insufficient completed tasks for asset extraction: {len(completed_tasks)}")
-                raise ValueError("Insufficient completed tasks")
-            
-            extracted_assets = await self.asset_extractor.extract_actionable_assets(
-                completed_tasks, asset_schemas, workspace_id
-            )
-            
-            if not extracted_assets:
-                logger.warning(f"No actionable assets extracted from {len(completed_tasks)} tasks")
-                raise ValueError("No actionable assets extracted")
-            
-            initial_deliverable = await self.asset_packager.create_actionable_deliverable(
-                workspace_id,
-                workspace.get("goal", ""),
-                extracted_assets,
-                requirements.model_dump()
-            )
-            
-            logger.info(f"📦 INITIAL DELIVERABLE: Created with {len(extracted_assets)} assets")
-            
-            # === FASE 2: AI QUALITY ANALYSIS & ENHANCEMENT ===
-            logger.info(f"🔍 QUALITY ANALYSIS: Starting AI-powered quality assessment")
-            
-            try:
-                enhanced_deliverable = await self.enhancement_orchestrator.analyze_and_enhance_deliverable_assets(
-                    workspace_id, 
-                    initial_deliverable.model_dump()
-                )
-                
-                logger.info(f"🔍 QUALITY ANALYSIS: Completed successfully")
-                
-                # Crea task deliverable con quality enhancement
-                deliverable_task_id = await self._create_quality_enhanced_deliverable_task(
-                    workspace_id, workspace, enhanced_deliverable
-                )
-                
-            except Exception as e:
-                logger.error(f"Quality analysis failed: {e}, using standard deliverable")
-                # Fallback al deliverable standard
-                deliverable_task_id = await self._create_asset_deliverable_task(
-                    workspace_id, workspace, initial_deliverable
-                )
-            
-            if deliverable_task_id:
-                logger.critical(f"🎯 QUALITY-ENHANCED DELIVERABLE: {deliverable_task_id} created for {workspace_id}")
-            
-            return deliverable_task_id
-            
-        except Exception as e:
-            logger.error(f"Error in quality-enhanced deliverable creation: {e}", exc_info=True)
-            logger.warning(f"🔄 FALLBACK: Using standard deliverable creation for {workspace_id}")
-            return await super()._create_asset_oriented_deliverable(workspace_id)
-
-    async def _create_quality_enhanced_deliverable_task(
-        self,
-        workspace_id: str,
-        workspace: Dict,
-        enhanced_deliverable: Dict[str, Any]
-    ) -> Optional[str]:
-        """
-        Crea task deliverable con quality enhancement integrato
-        """
-        
-        try:
-            agents = await list_agents(workspace_id)
-            deliverable_agent = await self._find_best_deliverable_agent(
-                agents, DeliverableType.GENERIC_REPORT
-            )
-            
-            if not deliverable_agent:
-                logger.error(f"No suitable agent for quality-enhanced deliverable in {workspace_id}")
-                return None
-            
-            # Estrai statistiche qualità
-            quality_stats = enhanced_deliverable.get("meta", {}).get("quality_analysis", {})
-            total_assets = quality_stats.get("total_assets_analyzed", 0)
-            ready_assets = quality_stats.get("ready_to_use_assets", 0)
-            avg_quality = quality_stats.get("average_quality_score", 0.0)
-            enhancement_tasks = quality_stats.get("enhancement_tasks_created", 0)
-            
-            # Descrizione task arricchita con info qualità
-            description = f"""🎯 **FINAL QUALITY-ASSURED DELIVERABLE COMPILATION**
-
-**PROJECT OBJECTIVE:** {workspace.get("goal", "")}
-
-**📊 AI QUALITY ANALYSIS RESULTS:**
-- Total Assets: {total_assets}
-- Ready-to-Use: {ready_assets} ({ready_assets/total_assets*100:.0f}% if total_assets else 0)
-- Average Quality Score: {avg_quality:.1f}/1.0
-- Enhancement Tasks Created: {enhancement_tasks}
-
-**📦 ENHANCED DELIVERABLE PACKAGE:**
-This task contains a quality-analyzed deliverable package where AI has:
-1. ✅ Identified high-quality, ready-to-use assets
-2. 🔧 Flagged assets needing improvement
-3. 🚀 Created enhancement tasks for quality issues
-4. 📋 Provided specific improvement guidance
-
-**🎯 YOUR MISSION:**
-Create the FINAL, CLIENT-READY deliverable with quality indicators and enhancement guidance.
+**🎯 YOUR INTELLIGENT MISSION:**
+You are receiving a pre-computed, AI-analyzed deliverable package that has been intelligently structured for maximum business impact. Your task is to present this analysis in a professional, client-ready format that showcases the intelligent approach used.
 
 **✅ REQUIRED OUTPUT FORMAT:**
 Your detailed_results_json must contain:
 ```json
 {{
-  "deliverable_type": "quality_assured_package",
-  "executive_summary": "Comprehensive summary highlighting quality analysis results",
-  "quality_summary": {{
+  "deliverable_type": "{deliverable_type}",
+  "executive_summary": "Professional summary highlighting the intelligent AI-driven approach and business value",
+  "ai_analysis_confidence": {confidence},
+  "business_value_focus": "{business_focus}",
+  "intelligent_asset_summary": {{
     "total_assets": {total_assets},
-    "immediately_ready": {ready_assets},
-    "needs_enhancement": {total_assets - ready_assets},
-    "average_quality_score": {avg_quality}
+    "actionability_score": {actionability_score},
+    "automation_ready": {str(automation_ready).lower()},
+    "implementation_tiers": "Breakdown of assets by implementation readiness"
   }},
-  "ready_to_use_assets": "Assets ready for immediate implementation",
-  "assets_under_enhancement": "Assets being improved by enhancement tasks",
-  "implementation_roadmap": {{
-    "phase_1_immediate": ["Ready-to-use assets for immediate deployment"],
-    "phase_2_enhanced": ["Assets available after enhancement completion"],
-    "success_metrics": ["How to measure deliverable success"]
+  "intelligent_recommendations": {{
+    "immediate_actions": ["AI-identified immediate steps"],
+    "strategic_initiatives": ["Long-term value maximization steps"],
+    "success_metrics": ["Intelligent KPIs for measuring deliverable success"]
+  }},
+  "ai_system_insights": {{
+    "analysis_method": "Dynamic AI analysis with {self._get_confidence_description(confidence)} confidence",
+    "quality_assurance": "{'AI Quality Enhancement Applied' if quality_enhanced_data else 'Standard Processing'}",
+    "automation_potential": "Assessment of automation opportunities"
   }}
 }}
 ```
 
 **🚨 CRITICAL SUCCESS FACTORS:**
-- Clearly distinguish between ready-to-use and enhancement-needed assets
-- Provide actionable implementation guidance
-- Professional client presentation with quality transparency
-- Clear next steps for maximizing deliverable value
-"""
+- Leverage the AI's intelligent analysis and present it professionally
+- Highlight the sophisticated approach used in asset analysis and organization
+- Emphasize business value and implementation readiness
+- Show confidence in the intelligent system's recommendations
+- Create a deliverable worthy of the advanced AI analysis performed
+
+**🤖 INTELLIGENCE AMPLIFICATION:**
+This deliverable represents the culmination of advanced AI analysis including:
+{self._format_intelligence_features(confidence, quality_enhanced_data)}
+
+**📋 FINAL DELIVERABLE STANDARDS:**
+✅ Professional presentation of AI-driven insights and recommendations
+✅ Clear categorization of assets by intelligence-assessed implementation readiness  
+✅ Specific, actionable guidance based on intelligent analysis
+✅ Confidence in AI recommendations while maintaining professional oversight
+✅ Ready for C-level presentation and immediate business deployment
+
+The intelligent system has performed sophisticated analysis - trust the recommendations while adding your professional presentation expertise."""
+        
+        return description.strip()
+    
+    def _get_confidence_description(self, confidence: float) -> str:
+        """Ottieni descrizione textuale della confidence"""
+        if confidence >= 0.9:
+            return "Very High"
+        elif confidence >= 0.8:
+            return "High" 
+        elif confidence >= 0.7:
+            return "Good"
+        elif confidence >= 0.6:
+            return "Moderate"
+        else:
+            return "Standard"
+    
+    def _format_intelligence_features(self, confidence: float, quality_enhanced_data: Optional[Dict]) -> str:
+        """Formatta features di intelligence per descrizione"""
+        
+        features = []
+        
+        if confidence > 0.7:
+            features.append("- 🤖 Dynamic AI deliverable type analysis and optimization")
+        
+        if self.ai_analyzer.ai_client:
+            features.append("- 🧠 GPT-4o-mini powered content analysis and asset categorization")
+        
+        if quality_enhanced_data:
+            features.append("- 🔍 AI Quality Assurance with automated enhancement task generation")
+        
+        if self.requirements_analyzer:
+            features.append("- 📋 Dynamic requirements analysis and schema generation")
+        
+        features.append("- 📊 Intelligent asset scoring and implementation tier classification")
+        features.append("- 🎯 Business value optimization and actionability enhancement")
+        
+        return "\n".join(features)
+    
+    async def _trigger_intelligent_completion_sequence(self, workspace_id: str, deliverable_task_id: str):
+        """Trigger sequenza di completamento intelligente"""
+        
+        try:
+            logger.info(f"🤖 INTELLIGENT COMPLETION: Starting for workspace {workspace_id}")
             
-            # Context data arricchito
-            context_data = {
-                "is_final_deliverable": True,
-                "deliverable_aggregation": True,
-                "quality_enhanced_deliverable": True,
-                "deliverable_type": "quality_assured_package",
-                "project_phase": "FINALIZATION",
-                "quality_analysis_integrated": True,
-                "quality_statistics": quality_stats,
-                "workspace_goal": workspace.get("goal", ""),
-                "creation_timestamp": datetime.now().isoformat(),
-                "triggers_project_completion": True,
-                "enhanced_deliverable_version": "3.0_quality_assured",
-                "precomputed_deliverable": enhanced_deliverable
-            }
+            # Monitoring intelligente con timeout adattivo
+            max_wait_minutes = 45
+            check_interval_seconds = 90  # Check meno frequenti ma più intelligenti
             
-            # Nome task con indicatore qualità
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-            task_name = f"🎯 QUALITY-ASSURED FINAL DELIVERABLE (Q:{avg_quality:.1f}) ({timestamp})"
-            
-            # Crea task
-            deliverable_task = await create_task(
-                workspace_id=workspace_id,
-                agent_id=deliverable_agent["id"],
-                name=task_name,
-                description=description,
-                status="pending",
-                priority="high",
-                creation_type="quality_enhanced_deliverable",
-                context_data=context_data
-            )
-            
-            if deliverable_task and deliverable_task.get("id"):
-                logger.critical(f"🎯 QUALITY-ENHANCED DELIVERABLE: {deliverable_task['id']} "
-                               f"(Quality: {avg_quality:.1f}/1.0, Ready: {ready_assets}/{total_assets})")
-                return deliverable_task["id"]
-            else:
-                logger.error(f"Failed to create quality-enhanced deliverable task")
-                return None
+            for attempt in range(max_wait_minutes // 2):
+                await asyncio.sleep(check_interval_seconds)
                 
+                tasks = await list_tasks(workspace_id)
+                deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
+                
+                if not deliverable_task:
+                    logger.warning(f"🤖 COMPLETION: Deliverable task {deliverable_task_id} not found")
+                    break
+                
+                status = deliverable_task.get("status")
+                
+                if status == "completed":
+                    # Verifica qualità del completamento
+                    if await self._verify_intelligent_completion(deliverable_task):
+                        logger.info(f"🤖 COMPLETION: High-quality completion verified")
+                        await update_workspace_status(workspace_id, "completed")
+                        logger.critical(f"🤖 PROJECT COMPLETED: Workspace {workspace_id} marked as completed with intelligent verification")
+                        break
+                    else:
+                        logger.warning(f"🤖 COMPLETION: Task completed but quality verification failed")
+                        break
+                        
+                elif status == "failed":
+                    logger.error(f"🤖 COMPLETION: Deliverable task failed")
+                    break
+                elif status in ["pending", "in_progress"]:
+                    logger.debug(f"🤖 COMPLETION: Task {deliverable_task_id} still {status} (attempt {attempt + 1})")
+                    continue
+            
         except Exception as e:
-            logger.error(f"Error creating quality-enhanced deliverable task: {e}", exc_info=True)
-            return None
+            logger.error(f"Error in intelligent completion sequence: {e}")
+    
+    async def _verify_intelligent_completion(self, deliverable_task: Dict) -> bool:
+        """Verifica intelligente della qualità del completamento"""
+        
+        try:
+            result = deliverable_task.get("result", {})
+            if not result:
+                return False
+            
+            detailed_json = result.get("detailed_results_json", "")
+            if not detailed_json:
+                return False
+            
+            # Prova parsing JSON
+            try:
+                data = json.loads(detailed_json)
+                if not isinstance(data, dict):
+                    return False
+                
+                # Verifica campi intelligenti chiave
+                required_fields = ["deliverable_type", "executive_summary"]
+                if not all(field in data for field in required_fields):
+                    return False
+                
+                # Verifica qualità contenuto
+                executive_summary = data.get("executive_summary", "")
+                if len(executive_summary) < 100:  # Minimum substantial content
+                    return False
+                
+                logger.info(f"✅ Intelligent completion verification passed")
+                return True
+                
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON in deliverable task completion")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Error in intelligent completion verification: {e}")
+            return False
 
 
-# === GLOBAL INSTANCE WITH SMART SELECTION ===
+# === GLOBAL INSTANCE CON SELEZIONE INTELLIGENTE ===
 
-# Usa QualityEnhancedDeliverableAggregator se AI Quality Assurance è disponibile e abilitato
-if is_quality_assurance_available():
-    deliverable_aggregator = QualityEnhancedDeliverableAggregator()
-    logger.info("🎯 Using Quality Enhanced Deliverable Aggregator with AI Quality Assurance")
-else:
-    deliverable_aggregator = AssetOrientedDeliverableAggregator()
-    logger.info("🎯 Using Asset Oriented Deliverable Aggregator (AI Quality Assurance disabled/unavailable)")
+# Usa IntelligentDeliverableAggregator come istanza principale
+deliverable_aggregator = IntelligentDeliverableAggregator()
 
-
-# === HELPER FUNCTIONS FOR INTEGRATION ===
+# === HELPER FUNCTIONS ===
 
 async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
-    """
-    ENHANCED: Helper function che usa il nuovo sistema con AI Quality Assurance
-    Mantiene backward compatibility completa
-    """
+    """Helper function principale che usa il sistema intelligente"""
     try:
         return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
     except Exception as e:
-        logger.error(f"Error in enhanced check_and_create_final_deliverable: {e}", exc_info=True)
+        logger.error(f"Error in intelligent deliverable creation: {e}", exc_info=True)
         return None
 
-async def create_quality_enhanced_deliverable(workspace_id: str) -> Optional[str]:
-    """
-    Helper function per forzare l'uso di quality enhancement
-    """
+async def create_intelligent_deliverable(workspace_id: str) -> Optional[str]:
+    """Helper per forzare creazione deliverable intelligente"""
     try:
-        if isinstance(deliverable_aggregator, QualityEnhancedDeliverableAggregator):
-            return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
-        else:
-            logger.warning("Quality Enhanced Deliverable Aggregator not available, using standard approach")
-            return await check_and_create_final_deliverable(workspace_id)
+        return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
     except Exception as e:
-        logger.error(f"Error in quality-enhanced deliverable creation: {e}")
-        # Fallback al sistema standard
-        return await check_and_create_final_deliverable(workspace_id)
+        logger.error(f"Error in forced intelligent deliverable creation: {e}")
+        return None
 
-async def verify_deliverable_completion(workspace_id: str, deliverable_task_id: str) -> bool:
-    """Verify that the deliverable task was completed successfully with valid data"""
+def get_deliverable_system_status() -> Dict[str, Any]:
+    """Ottieni stato completo del sistema deliverable intelligente"""
+    
+    return {
+        "system_version": "3.0_intelligent_hybrid_ai_driven",
+        "approach": "Intelligent AI-driven with Quality Assurance integration",
+        "ai_components": {
+            "dynamic_ai_analysis": deliverable_aggregator.ai_analyzer.ai_client is not None,
+            "quality_assurance_available": deliverable_aggregator.enhancement_orchestrator is not None,
+            "schema_system_available": deliverable_aggregator.requirements_analyzer is not None,
+            "intelligent_packaging": True
+        },
+        "configuration": {
+            "readiness_threshold": DELIVERABLE_READINESS_THRESHOLD,
+            "auto_completion": ENABLE_AUTO_PROJECT_COMPLETION,
+            "min_completed_tasks": MIN_COMPLETED_TASKS_FOR_DELIVERABLE,
+            "enhanced_logic": ENABLE_ENHANCED_DELIVERABLE_LOGIC,
+            "ai_quality_assurance": ENABLE_AI_QUALITY_ASSURANCE,
+            "dynamic_ai_analysis": ENABLE_DYNAMIC_AI_ANALYSIS
+        },
+        "components": {
+            "intelligent_aggregator": True,
+            "dynamic_ai_analyzer": True,
+            "intelligent_asset_extractor": True,
+            "intelligent_packager": True,
+            "quality_validator": deliverable_aggregator.quality_validator is not None,
+            "enhancement_orchestrator": deliverable_aggregator.enhancement_orchestrator is not None,
+            "requirements_analyzer": deliverable_aggregator.requirements_analyzer is not None,
+            "schema_generator": deliverable_aggregator.schema_generator is not None
+        },
+        "intelligence_features": {
+            "ai_powered_deliverable_analysis": deliverable_aggregator.ai_analyzer.ai_client is not None,
+            "dynamic_asset_type_detection": True,
+            "intelligent_agent_selection": True,
+            "quality_enhancement_integration": deliverable_aggregator.enhancement_orchestrator is not None,
+            "schema_based_validation": deliverable_aggregator.schema_generator is not None,
+            "multi_tier_implementation_planning": True,
+            "business_value_optimization": True
+        }
+    }
+
+async def verify_intelligent_deliverable_completion(workspace_id: str, deliverable_task_id: str) -> bool:
+    """Verifica completion con criteri intelligenti"""
     try:
         tasks = await list_tasks(workspace_id)
         deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
@@ -2380,29 +1966,43 @@ async def verify_deliverable_completion(workspace_id: str, deliverable_task_id: 
             logger.warning(f"Deliverable task {deliverable_task_id} not completed yet")
             return False
         
-        # Verifica che abbia risultati validi
+        # Verifica intelligente dei risultati
         result = deliverable_task.get("result", {})
         if not result or not result.get("detailed_results_json"):
             logger.error(f"Deliverable task {deliverable_task_id} has no valid results")
             return False
         
         try:
-            json.loads(result["detailed_results_json"])
-            logger.info(f"✅ Deliverable task {deliverable_task_id} completed successfully with valid JSON")
+            data = json.loads(result["detailed_results_json"])
+            
+            # Verifica campi intelligenti essenziali
+            essential_fields = ["deliverable_type", "executive_summary"]
+            if not all(field in data for field in essential_fields):
+                logger.error(f"Deliverable task {deliverable_task_id} missing essential fields")
+                return False
+            
+            # Verifica qualità contenuto
+            executive_summary = data.get("executive_summary", "")
+            if len(executive_summary) < 150:
+                logger.error(f"Deliverable task {deliverable_task_id} has insufficient content quality")
+                return False
+            
+            logger.info(f"✅ Intelligent deliverable task {deliverable_task_id} completed successfully")
             return True
+            
         except json.JSONDecodeError:
             logger.error(f"Deliverable task {deliverable_task_id} has invalid JSON results")
             return False
             
     except Exception as e:
-        logger.error(f"Error verifying deliverable completion: {e}")
+        logger.error(f"Error verifying intelligent deliverable completion: {e}")
         return False
 
-async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id: str):
-    """Monitor deliverable task completion and take action if it fails"""
+async def monitor_intelligent_deliverable_completion(workspace_id: str, deliverable_task_id: str):
+    """Monitor intelligent deliverable con retry e fallback"""
     try:
-        max_wait_minutes = 45
-        check_interval_seconds = 120  # Check every 2 minutes
+        max_wait_minutes = 60  # Tempo maggiore per deliverable intelligenti
+        check_interval_seconds = 120
         
         for attempt in range(max_wait_minutes // 2):
             await asyncio.sleep(check_interval_seconds)
@@ -2411,248 +2011,513 @@ async def monitor_deliverable_completion(workspace_id: str, deliverable_task_id:
             deliverable_task = next((t for t in tasks if t.get("id") == deliverable_task_id), None)
             
             if not deliverable_task:
-                logger.error(f"Deliverable task {deliverable_task_id} disappeared during monitoring")
+                logger.error(f"Intelligent deliverable task {deliverable_task_id} disappeared during monitoring")
                 break
             
             status = deliverable_task.get("status")
             
             if status == "completed":
-                if await verify_deliverable_completion(workspace_id, deliverable_task_id):
-                    logger.info(f"✅ Deliverable monitoring: Task {deliverable_task_id} completed successfully")
+                if await verify_intelligent_deliverable_completion(workspace_id, deliverable_task_id):
+                    logger.info(f"✅ Intelligent deliverable monitoring: Task {deliverable_task_id} completed successfully")
                     return
                 else:
-                    logger.error(f"❌ Deliverable monitoring: Task {deliverable_task_id} completed but with invalid data")
+                    logger.error(f"❌ Intelligent deliverable monitoring: Task {deliverable_task_id} completed but failed quality verification")
                     break
             elif status == "failed":
-                logger.error(f"❌ Deliverable monitoring: Task {deliverable_task_id} failed")
+                logger.error(f"❌ Intelligent deliverable monitoring: Task {deliverable_task_id} failed")
                 break
             elif status in ["pending", "in_progress"]:
-                logger.debug(f"🔄 Deliverable monitoring: Task {deliverable_task_id} still {status}")
+                logger.debug(f"🤖 Intelligent deliverable monitoring: Task {deliverable_task_id} still {status}")
                 continue
         
-        logger.warning(f"⚠️ Deliverable monitoring timeout for task {deliverable_task_id}")
+        logger.warning(f"⚠️ Intelligent deliverable monitoring timeout for task {deliverable_task_id}")
         
     except Exception as e:
-        logger.error(f"Error in monitor_deliverable_completion: {e}")
+        logger.error(f"Error in monitor_intelligent_deliverable_completion: {e}")
 
 
-# === MONITORING AND METRICS COLLECTION ===
+# === MONITORING E METRICS AVANZATI ===
 
-class QualityMetricsCollector:
-    """Colleziona metriche di qualità per monitoring"""
+class IntelligentQualityMetricsCollector:
+    """Collector avanzato per metriche di qualità intelligenti"""
     
     def __init__(self):
         self.quality_metrics = []
         self.deliverable_stats = {
             "total_deliverables_created": 0,
+            "intelligent_deliverables": 0,
             "quality_enhanced_deliverables": 0,
-            "standard_deliverables": 0,
-            "failed_deliverables": 0
+            "ai_analyzed_deliverables": 0,
+            "failed_deliverables": 0,
+            "average_ai_confidence": 0.0,
+            "average_actionability_score": 0.0
         }
+        self.ai_analysis_metrics = []
     
-    def record_quality_analysis(
+    def record_intelligent_deliverable_creation(
         self, 
         workspace_id: str, 
-        assets_analyzed: int,
-        quality_scores: List[float],
-        enhancement_tasks_created: int
+        deliverable_type: str,
+        ai_confidence: float,
+        actionability_score: int,
+        quality_enhanced: bool,
+        success: bool
     ):
-        """Registra metriche di un'analisi qualità"""
-        
-        self.quality_metrics.append({
-            "timestamp": datetime.now().isoformat(),
-            "workspace_id": workspace_id,
-            "assets_analyzed": assets_analyzed,
-            "avg_quality_score": sum(quality_scores) / len(quality_scores) if quality_scores else 0,
-            "min_quality_score": min(quality_scores) if quality_scores else 0,
-            "max_quality_score": max(quality_scores) if quality_scores else 0,
-            "enhancement_tasks_created": enhancement_tasks_created,
-            "quality_pass_rate": len([s for s in quality_scores if s >= 0.8]) / len(quality_scores) if quality_scores else 0
-        })
-    
-    def record_deliverable_creation(self, workspace_id: str, deliverable_type: str, success: bool):
-        """Registra creazione di deliverable"""
+        """Registra creazione deliverable intelligente"""
         
         self.deliverable_stats["total_deliverables_created"] += 1
         
         if success:
-            if deliverable_type == "quality_enhanced":
+            self.deliverable_stats["intelligent_deliverables"] += 1
+            
+            if quality_enhanced:
                 self.deliverable_stats["quality_enhanced_deliverables"] += 1
-            else:
-                self.deliverable_stats["standard_deliverables"] += 1
+            
+            if ai_confidence > 0.6:
+                self.deliverable_stats["ai_analyzed_deliverables"] += 1
         else:
             self.deliverable_stats["failed_deliverables"] += 1
-    
-    def get_quality_trends(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
-        """Ottieni trend di qualità"""
         
-        metrics = self.quality_metrics
+        # Aggiorna medie
+        total_successful = self.deliverable_stats["intelligent_deliverables"]
+        if total_successful > 0:
+            current_avg_confidence = self.deliverable_stats["average_ai_confidence"]
+            current_avg_actionability = self.deliverable_stats["average_actionability_score"]
+            
+            self.deliverable_stats["average_ai_confidence"] = (
+                (current_avg_confidence * (total_successful - 1) + ai_confidence) / total_successful
+            )
+            self.deliverable_stats["average_actionability_score"] = (
+                (current_avg_actionability * (total_successful - 1) + actionability_score) / total_successful
+            )
+    
+    def record_ai_analysis_metrics(
+        self,
+        workspace_id: str,
+        analysis_type: str,
+        confidence_score: float,
+        processing_time: float,
+        assets_analyzed: int
+    ):
+        """Registra metriche di analisi AI"""
+        
+        self.ai_analysis_metrics.append({
+            "timestamp": datetime.now().isoformat(),
+            "workspace_id": workspace_id,
+            "analysis_type": analysis_type,
+            "confidence_score": confidence_score,
+            "processing_time_seconds": processing_time,
+            "assets_analyzed": assets_analyzed
+        })
+    
+    def get_intelligent_deliverable_trends(self, workspace_id: Optional[str] = None) -> Dict[str, Any]:
+        """Ottieni trend per deliverable intelligenti"""
+        
+        metrics = self.ai_analysis_metrics
         if workspace_id:
             metrics = [m for m in metrics if m["workspace_id"] == workspace_id]
         
         if not metrics:
-            return {"message": "No quality metrics available"}
+            return {"message": "No intelligent deliverable metrics available"}
+        
+        avg_confidence = sum(m["confidence_score"] for m in metrics) / len(metrics)
+        avg_processing_time = sum(m["processing_time_seconds"] for m in metrics) / len(metrics)
         
         return {
-            "total_analyses": len(metrics),
-            "average_quality_score": sum(m["avg_quality_score"] for m in metrics) / len(metrics),
-            "average_enhancement_rate": sum(m["enhancement_tasks_created"] for m in metrics) / len(metrics),
-            "quality_improvement_trend": "improving" if len(metrics) > 1 and metrics[-1]["avg_quality_score"] > metrics[0]["avg_quality_score"] else "stable",
-            "latest_analysis": metrics[-1] if metrics else None
+            "total_intelligent_analyses": len(metrics),
+            "average_ai_confidence": round(avg_confidence, 3),
+            "average_processing_time": round(avg_processing_time, 2),
+            "confidence_trend": "improving" if len(metrics) > 1 and metrics[-1]["confidence_score"] > metrics[0]["confidence_score"] else "stable",
+            "latest_analysis": metrics[-1] if metrics else None,
+            "deliverable_success_rate": self._calculate_success_rate()
         }
     
-    def get_deliverable_stats(self) -> Dict[str, Any]:
-        """Ottieni statistiche deliverable"""
-        
+    def _calculate_success_rate(self) -> float:
+        """Calcola success rate dei deliverable"""
         total = self.deliverable_stats["total_deliverables_created"]
+        failed = self.deliverable_stats["failed_deliverables"]
+        
+        if total == 0:
+            return 0.0
+        
+        return round((total - failed) / total, 3)
+    
+    def get_comprehensive_stats(self) -> Dict[str, Any]:
+        """Ottieni statistiche complete del sistema"""
         
         stats = dict(self.deliverable_stats)
         
+        # Calcola percentuali
+        total = stats["total_deliverables_created"]
         if total > 0:
-            stats["success_rate"] = (total - stats["failed_deliverables"]) / total
-            stats["quality_enhancement_rate"] = stats["quality_enhanced_deliverables"] / total
+            stats["intelligence_rate"] = round(stats["intelligent_deliverables"] / total, 3)
+            stats["quality_enhancement_rate"] = round(stats["quality_enhanced_deliverables"] / total, 3)
+            stats["ai_analysis_rate"] = round(stats["ai_analyzed_deliverables"] / total, 3)
+            stats["success_rate"] = self._calculate_success_rate()
         else:
-            stats["success_rate"] = 0.0
-            stats["quality_enhancement_rate"] = 0.0
+            stats.update({
+                "intelligence_rate": 0.0,
+                "quality_enhancement_rate": 0.0,
+                "ai_analysis_rate": 0.0,
+                "success_rate": 0.0
+            })
         
         return stats
-
-# Global instances
-quality_metrics_collector = QualityMetricsCollector()
-
-
-# === DYNAMIC PROMPT ENHANCEMENT ===
-
-class DynamicPromptEnhancer:
-    """
-    Migliora i prompt degli agent per generare contenuto di qualità superiore
-    """
     
-    @staticmethod
-    def enhance_specialist_prompt_for_quality(base_prompt: str, asset_type: Optional[str] = None) -> str:
-        """
-        Migliora prompt per ridurre fake content e aumentare actionability
-        """
-        
-        quality_enhancement = f"""
-
-🔧 **ENHANCED QUALITY REQUIREMENTS (AI Quality Assurance Active)**
-
-**CRITICAL: ZERO FAKE CONTENT POLICY**
-- NEVER use placeholder data like "John Doe", "example.com", "555-1234"
-- NEVER generate fake emails, phone numbers, or addresses
-- NEVER use "Lorem ipsum" or template text
-- If you lack specific data, state "Research needed for [specific data point]"
-
-**ACTIONABILITY STANDARDS**
-- Every output must be immediately implementable by the client
-- Provide specific, concrete data derived from actual research or analysis
-- Include real business metrics, authentic contact information, actual market data
-- Replace ALL generic examples with domain-specific, actionable content
-
-**QUALITY VALIDATION CHECKLIST**
-✅ All data points are specific and realistic
-✅ No placeholder or example content present
-✅ Asset follows domain best practices for {asset_type or 'business assets'}
-✅ Ready for immediate business implementation
-✅ Includes concrete next steps and success criteria
-
-**AI QUALITY ASSESSMENT NOTE**
-Your output will be automatically analyzed for:
-- Content authenticity (fake content detection)
-- Actionability level (immediate usability)
-- Completeness (missing information detection)
-- Professional readiness (business standard compliance)
-
-Outputs scoring below 0.8/1.0 will trigger enhancement tasks. Aim for 0.9+ quality score.
-"""
-        
-        return base_prompt + quality_enhancement
-    
-    @staticmethod
-    def create_quality_focused_task_description(base_description: str, quality_target: float = 0.8) -> str:
-        """
-        Crea descrizione task con focus su qualità
-        """
-        
-        quality_addendum = f"""
-
-📊 **AI QUALITY TARGET: {quality_target}/1.0**
-
-This task will be automatically evaluated for quality. Ensure your output meets these standards:
-- **Authenticity**: Real data, no fake/placeholder content
-- **Actionability**: Immediately usable for business purposes  
-- **Completeness**: All necessary information included
-- **Professional**: Business-ready format and presentation
-
-Low-quality outputs will automatically trigger enhancement tasks."""
-        
-        return base_description + quality_addendum
-
-
-# === SYSTEM STATUS AND HEALTH CHECK ===
-
-def get_deliverable_system_status() -> Dict[str, Any]:
-    """Ottieni stato del sistema deliverable"""
-    
-    return {
-        "system_version": "3.0_enhanced_with_ai_quality",
-        "ai_quality_assurance": {
-            "available": AI_QUALITY_ASSURANCE_AVAILABLE,
-            "enabled": ENABLE_AI_QUALITY_ASSURANCE,
-            "active": AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE
-        },
-        "aggregator_type": type(deliverable_aggregator).__name__,
-        "configuration": {
-            "readiness_threshold": DELIVERABLE_READINESS_THRESHOLD,
-            "auto_completion": ENABLE_AUTO_PROJECT_COMPLETION,
-            "min_completed_tasks": MIN_COMPLETED_TASKS_FOR_DELIVERABLE,
-            "enhanced_logic": ENABLE_ENHANCED_DELIVERABLE_LOGIC
-        },
-        "metrics": quality_metrics_collector.get_deliverable_stats(),
-        "components": {
-            "enhanced_aggregator": True,
-            "asset_extractor": True,
-            "asset_packager": True,
-            "quality_validator": AI_QUALITY_ASSURANCE_AVAILABLE,
-            "enhancement_orchestrator": AI_QUALITY_ASSURANCE_AVAILABLE
+    def reset_metrics(self):
+        """Reset di tutte le metriche"""
+        self.quality_metrics.clear()
+        self.ai_analysis_metrics.clear()
+        self.deliverable_stats = {
+            "total_deliverables_created": 0,
+            "intelligent_deliverables": 0,
+            "quality_enhanced_deliverables": 0,
+            "ai_analyzed_deliverables": 0,
+            "failed_deliverables": 0,
+            "average_ai_confidence": 0.0,
+            "average_actionability_score": 0.0
         }
-    }
 
-def reset_deliverable_system_stats():
-    """Reset delle statistiche del sistema"""
+# Istanza globale del collector
+intelligent_metrics_collector = IntelligentQualityMetricsCollector()
+
+
+# === SYSTEM HEALTH E DIAGNOSTICS ===
+
+async def run_intelligent_system_diagnostics() -> Dict[str, Any]:
+    """Esegui diagnostici completi del sistema intelligente"""
     
-    quality_metrics_collector.quality_metrics.clear()
-    quality_metrics_collector.deliverable_stats = {
-        "total_deliverables_created": 0,
-        "quality_enhanced_deliverables": 0,
-        "standard_deliverables": 0,
-        "failed_deliverables": 0
+    diagnostics = {
+        "timestamp": datetime.now().isoformat(),
+        "system_health": "unknown",
+        "components": {},
+        "ai_services": {},
+        "recommendations": []
     }
     
-    # Reset stats degli orchestrator se disponibili
+    try:
+        # Test AI Analyzer
+        ai_analyzer_status = "healthy"
+        try:
+            test_analyzer = AIDeliverableAnalyzer()
+            if test_analyzer.ai_client:
+                diagnostics["ai_services"]["openai_available"] = True
+                diagnostics["ai_services"]["dynamic_analysis"] = "available"
+            else:
+                diagnostics["ai_services"]["openai_available"] = False
+                diagnostics["ai_services"]["dynamic_analysis"] = "fallback_mode"
+                diagnostics["recommendations"].append("Consider enabling OpenAI API for enhanced AI analysis")
+        except Exception as e:
+            ai_analyzer_status = "degraded"
+            diagnostics["ai_services"]["dynamic_analysis"] = f"error: {str(e)}"
+        
+        diagnostics["components"]["ai_analyzer"] = ai_analyzer_status
+        
+        # Test Quality Assurance
+        quality_status = "not_available"
+        if is_quality_assurance_available():
+            try:
+                test_orchestrator = AssetEnhancementOrchestrator()
+                quality_status = "healthy"
+                diagnostics["ai_services"]["quality_assurance"] = "available"
+            except Exception as e:
+                quality_status = "degraded"
+                diagnostics["ai_services"]["quality_assurance"] = f"error: {str(e)}"
+        else:
+            diagnostics["ai_services"]["quality_assurance"] = "not_available"
+            diagnostics["recommendations"].append("Enable AI Quality Assurance for enhanced deliverable quality")
+        
+        diagnostics["components"]["quality_assurance"] = quality_status
+        
+        # Test Database Connectivity
+        db_status = "unknown"
+        try:
+            # Test basic database operations
+            test_workspaces = await list_tasks("test")  # This will test DB connectivity
+            db_status = "healthy"
+        except Exception as e:
+            db_status = "error"
+            diagnostics["recommendations"].append(f"Database connectivity issue: {str(e)}")
+        
+        diagnostics["components"]["database"] = db_status
+        
+        # Test Schema System
+        schema_status = "not_available"
+        try:
+            if deliverable_aggregator.requirements_analyzer and deliverable_aggregator.schema_generator:
+                schema_status = "healthy"
+                diagnostics["ai_services"]["schema_system"] = "available"
+            else:
+                diagnostics["ai_services"]["schema_system"] = "not_available"
+        except Exception as e:
+            schema_status = "degraded"
+            diagnostics["ai_services"]["schema_system"] = f"error: {str(e)}"
+        
+        diagnostics["components"]["schema_system"] = schema_status
+        
+        # Overall system health
+        component_statuses = [
+            diagnostics["components"]["ai_analyzer"],
+            diagnostics["components"]["database"]
+        ]
+        
+        if all(status == "healthy" for status in component_statuses):
+            diagnostics["system_health"] = "healthy"
+        elif any(status == "error" for status in component_statuses):
+            diagnostics["system_health"] = "degraded"
+        else:
+            diagnostics["system_health"] = "functional"
+        
+        # Performance metrics
+        diagnostics["performance"] = intelligent_metrics_collector.get_comprehensive_stats()
+        
+        # Configuration status
+        diagnostics["configuration_status"] = {
+            "ai_quality_assurance_enabled": ENABLE_AI_QUALITY_ASSURANCE,
+            "dynamic_ai_analysis_enabled": ENABLE_DYNAMIC_AI_ANALYSIS,
+            "auto_completion_enabled": ENABLE_AUTO_PROJECT_COMPLETION,
+            "readiness_threshold": DELIVERABLE_READINESS_THRESHOLD
+        }
+        
+    except Exception as e:
+        diagnostics["system_health"] = "error"
+        diagnostics["error"] = str(e)
+        diagnostics["recommendations"].append("System diagnostics failed - manual investigation required")
+    
+    return diagnostics
+
+def reset_intelligent_system_stats():
+    """Reset completo delle statistiche del sistema intelligente"""
+    
+    # Reset metrics collector
+    intelligent_metrics_collector.reset_metrics()
+    
+    # Reset orchestrator stats se disponibili
     if hasattr(deliverable_aggregator, 'enhancement_orchestrator') and deliverable_aggregator.enhancement_orchestrator:
         try:
             deliverable_aggregator.enhancement_orchestrator.reset_stats()
         except:
             pass
     
+    # Reset quality validator stats se disponibili
     if hasattr(deliverable_aggregator, 'quality_validator') and deliverable_aggregator.quality_validator:
         try:
             deliverable_aggregator.quality_validator.reset_stats()
         except:
             pass
     
-    logger.info("🔄 Deliverable system stats reset completed")
+    # Reset AI analyzer cache
+    if hasattr(deliverable_aggregator, 'ai_analyzer'):
+        deliverable_aggregator.ai_analyzer.analysis_cache.clear()
+    
+    logger.info("🔄 Intelligent system stats reset completed")
 
 
-# === LOGGING AND INITIALIZATION ===
+# === CONFIGURATION HELPERS ===
 
-logger.info("=" * 60)
-logger.info("🎯 DELIVERABLE AGGREGATOR SYSTEM INITIALIZED")
-logger.info("=" * 60)
-logger.info(f"Version: 3.0 Enhanced with AI Quality Assurance")
+def update_intelligent_system_config(**kwargs):
+    """Aggiorna configurazione sistema intelligente runtime"""
+    
+    global ENABLE_AI_QUALITY_ASSURANCE, ENABLE_DYNAMIC_AI_ANALYSIS
+    global DELIVERABLE_READINESS_THRESHOLD, MIN_COMPLETED_TASKS_FOR_DELIVERABLE
+    
+    updated = []
+    
+    if 'enable_ai_quality' in kwargs:
+        ENABLE_AI_QUALITY_ASSURANCE = bool(kwargs['enable_ai_quality'])
+        updated.append(f"AI Quality Assurance: {ENABLE_AI_QUALITY_ASSURANCE}")
+    
+    if 'enable_dynamic_ai' in kwargs:
+        ENABLE_DYNAMIC_AI_ANALYSIS = bool(kwargs['enable_dynamic_ai'])
+        updated.append(f"Dynamic AI Analysis: {ENABLE_DYNAMIC_AI_ANALYSIS}")
+    
+    if 'readiness_threshold' in kwargs:
+        DELIVERABLE_READINESS_THRESHOLD = int(kwargs['readiness_threshold'])
+        deliverable_aggregator.readiness_threshold = DELIVERABLE_READINESS_THRESHOLD / 100.0
+        updated.append(f"Readiness Threshold: {DELIVERABLE_READINESS_THRESHOLD}%")
+    
+    if 'min_completed_tasks' in kwargs:
+        MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(kwargs['min_completed_tasks'])
+        deliverable_aggregator.min_completed_tasks = MIN_COMPLETED_TASKS_FOR_DELIVERABLE
+        updated.append(f"Min Completed Tasks: {MIN_COMPLETED_TASKS_FOR_DELIVERABLE}")
+    
+    if updated:
+        logger.info(f"🔧 Intelligent system configuration updated: {', '.join(updated)}")
+    
+    return {"updated": updated, "current_config": get_deliverable_system_status()["configuration"]}
+
+
+# === ADVANCED HELPER FUNCTIONS ===
+
+async def force_create_intelligent_deliverable_with_analysis(workspace_id: str, analysis_override: Optional[Dict] = None) -> Optional[str]:
+    """Force creation con analisi specifica (per testing/admin)"""
+    try:
+        logger.info(f"🤖 FORCE CREATE: Starting intelligent deliverable for {workspace_id}")
+        
+        # Bypass readiness check
+        workspace = await get_workspace(workspace_id)
+        tasks = await list_tasks(workspace_id)
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        if not workspace:
+            logger.error(f"Workspace {workspace_id} not found")
+            return None
+        
+        workspace_goal = workspace.get("goal", "")
+        
+        # Use provided analysis or generate new one
+        if analysis_override:
+            deliverable_analysis = analysis_override
+            logger.info(f"🤖 FORCE CREATE: Using provided analysis override")
+        else:
+            deliverable_analysis = await deliverable_aggregator.ai_analyzer.analyze_project_deliverable_type(
+                workspace_goal, completed_tasks
+            )
+            logger.info(f"🤖 FORCE CREATE: Generated new analysis")
+        
+        # Continue with normal flow
+        extracted_assets = await deliverable_aggregator.asset_extractor.extract_assets_dynamically(
+            completed_tasks, deliverable_analysis
+        )
+        
+        intelligent_deliverable = await deliverable_aggregator.packager.create_intelligent_deliverable(
+            workspace_id, workspace_goal, deliverable_analysis, extracted_assets, completed_tasks
+        )
+        
+        deliverable_task_id = await deliverable_aggregator._create_intelligent_deliverable_task(
+            workspace_id, workspace, intelligent_deliverable, deliverable_analysis
+        )
+        
+        if deliverable_task_id:
+            logger.critical(f"🤖 FORCE CREATE SUCCESS: {deliverable_task_id}")
+        
+        return deliverable_task_id
+        
+    except Exception as e:
+        logger.error(f"Error in force create intelligent deliverable: {e}", exc_info=True)
+        return None
+
+async def analyze_workspace_deliverable_potential(workspace_id: str) -> Dict[str, Any]:
+    """Analizza potenziale di deliverable per workspace"""
+    try:
+        workspace = await get_workspace(workspace_id)
+        tasks = await list_tasks(workspace_id)
+        
+        if not workspace:
+            return {"error": "Workspace not found"}
+        
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        
+        # Analisi AI se disponibile
+        analysis = {}
+        if deliverable_aggregator.ai_analyzer.ai_client and completed_tasks:
+            try:
+                analysis = await deliverable_aggregator.ai_analyzer.analyze_project_deliverable_type(
+                    workspace.get("goal", ""), completed_tasks
+                )
+            except Exception as e:
+                logger.warning(f"AI analysis failed: {e}")
+        
+        # Analisi readiness
+        readiness_result = await deliverable_aggregator._is_ready_for_deliverable(workspace_id)
+        
+        # Analisi asset potential
+        asset_potential = {}
+        if completed_tasks:
+            try:
+                test_extraction = await deliverable_aggregator.asset_extractor.extract_assets_dynamically(
+                    completed_tasks, analysis or {}
+                )
+                asset_potential = {
+                    "extractable_assets": len(test_extraction),
+                    "ready_to_use": sum(1 for asset in test_extraction.values() if asset.get('ready_to_use', False)),
+                    "average_quality": sum(asset.get('quality_score', 0) for asset in test_extraction.values()) / len(test_extraction) if test_extraction else 0
+                }
+            except Exception as e:
+                logger.warning(f"Asset potential analysis failed: {e}")
+        
+        return {
+            "workspace_id": workspace_id,
+            "workspace_goal": workspace.get("goal", ""),
+            "task_summary": {
+                "total_tasks": len(tasks),
+                "completed_tasks": len(completed_tasks),
+                "completion_rate": len(completed_tasks) / len(tasks) if tasks else 0
+            },
+            "readiness_assessment": {
+                "is_ready": readiness_result,
+                "readiness_threshold": deliverable_aggregator.readiness_threshold,
+                "min_tasks_met": len(completed_tasks) >= deliverable_aggregator.min_completed_tasks
+            },
+            "ai_analysis": analysis,
+            "asset_potential": asset_potential,
+            "recommendations": deliverable_aggregator._generate_recommendations(readiness_result, len(completed_tasks), analysis)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing workspace deliverable potential: {e}")
+        return {"error": str(e)}
+
+def _generate_recommendations(self, is_ready: bool, completed_count: int, analysis: Dict) -> List[str]:
+    """Genera raccomandazioni per migliorare il deliverable potential"""
+    recommendations = []
+    
+    if not is_ready:
+        if completed_count < self.min_completed_tasks:
+            recommendations.append(f"Complete at least {self.min_completed_tasks - completed_count} more tasks")
+        
+        if completed_count > 0:
+            recommendations.append("Focus on completing high-quality tasks with substantial outputs")
+        
+        recommendations.append("Ensure tasks produce detailed results with structured data")
+    
+    if analysis:
+        confidence = analysis.get('confidence_score', 0)
+        if confidence < 0.7:
+            recommendations.append("Add more specific, domain-focused tasks to improve AI analysis confidence")
+    
+    if is_ready:
+        recommendations.append("✅ Ready for deliverable creation - consider running the intelligent deliverable process")
+    
+    return recommendations
+
+# Aggiungi il metodo alla classe
+IntelligentDeliverableAggregator._generate_recommendations = _generate_recommendations
+
+
+# === LOGGING E INITIALIZATION ===
+
+logger.info("=" * 80)
+logger.info("🤖 INTELLIGENT DELIVERABLE AGGREGATOR SYSTEM INITIALIZED")
+logger.info("=" * 80)
+logger.info(f"Version: 3.0 Intelligent Hybrid (AI-Driven + Quality Assurance)")
 logger.info(f"Aggregator: {type(deliverable_aggregator).__name__}")
-logger.info(f"AI Quality Assurance: {'✅ Active' if is_quality_assurance_available() else '❌ Inactive'}")
+logger.info(f"AI Analysis: {'✅ GPT-4o-mini Active' if deliverable_aggregator.ai_analyzer.ai_client else '🔄 Fallback Mode'}")
+logger.info(f"Quality Assurance: {'✅ Active' if is_quality_assurance_available() else '❌ Inactive'}")
+logger.info(f"Schema System: {'✅ Active' if deliverable_aggregator.requirements_analyzer else '❌ Inactive'}")
 logger.info(f"Configuration: Threshold={DELIVERABLE_READINESS_THRESHOLD}%, MinTasks={MIN_COMPLETED_TASKS_FOR_DELIVERABLE}")
-logger.info("=" * 60)
+logger.info(f"Intelligence Features: Dynamic Analysis, Smart Asset Extraction, Intelligent Packaging")
+logger.info("=" * 80)
+
+# Log startup diagnostics
+startup_diagnostics = {
+    "ai_client_available": deliverable_aggregator.ai_analyzer.ai_client is not None,
+    "quality_orchestrator_available": deliverable_aggregator.enhancement_orchestrator is not None,
+    "schema_system_available": deliverable_aggregator.requirements_analyzer is not None,
+    "configuration_valid": all([
+        DELIVERABLE_READINESS_THRESHOLD > 0,
+        MIN_COMPLETED_TASKS_FOR_DELIVERABLE > 0,
+        isinstance(ENABLE_AUTO_PROJECT_COMPLETION, bool)
+    ])
+}
+
+logger.info(f"🔧 Startup Diagnostics: {startup_diagnostics}")
+
+if not startup_diagnostics["ai_client_available"]:
+    logger.warning("⚠️ OpenAI API not available - system will use fallback analysis methods")
+
+if not startup_diagnostics["quality_orchestrator_available"]:
+    logger.warning("⚠️ Quality Assurance not available - deliverables will not have automated quality enhancement")
+
+logger.info("🚀 System ready for intelligent deliverable creation")
+logger.info("=" * 80)
