@@ -967,50 +967,115 @@ async def get_workspace_asset_tracking(workspace_id: UUID):
 
 @router.get("/workspace/{workspace_id}/deliverable-readiness", response_model=Dict[str, Any])
 async def get_deliverable_readiness_status(workspace_id: UUID):
-    """Check if workspace is ready for deliverable creation"""
+    """Check if workspace is ready for deliverable creation - FIXED VERSION"""
     try:
-        from deliverable_aggregator import deliverable_aggregator
-        
-        # Check using enhanced deliverable aggregator
-        is_ready = await deliverable_aggregator._is_ready_for_final_deliverable_enhanced(str(workspace_id))
-        has_existing = await deliverable_aggregator._final_deliverable_exists_enhanced(str(workspace_id))
-        
-        # Get detailed status
+        # Get basic data
         tasks = await list_tasks(str(workspace_id))
-        completed = [t for t in tasks if t.get("status") == "completed"]
-        pending = [t for t in tasks if t.get("status") == "pending"]
+        agents = await db_list_agents(str(workspace_id))
         
-        # Asset completion analysis
-        asset_tasks = [
-            t for t in tasks 
-            if (isinstance(t.get("context_data"), dict) and 
-                (t.get("context_data", {}).get("asset_production") or 
-                 t.get("context_data", {}).get("asset_oriented_task")))
+        if not tasks:
+            return {
+                "workspace_id": str(workspace_id),
+                "is_ready_for_deliverable": False,
+                "has_existing_deliverable": False,
+                "readiness_details": {
+                    "total_tasks": 0,
+                    "completed_tasks": 0,
+                    "pending_tasks": 0,
+                    "completion_rate": 0,
+                    "asset_tasks": 0,
+                    "completed_assets": 0,
+                    "asset_completion_rate": 0
+                },
+                "next_action": "create_tasks",
+                "checked_at": datetime.now().isoformat()
+            }
+        
+        # Calculate task completion statistics
+        completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+        pending_tasks = [t for t in tasks if t.get("status") == "pending"]
+        completion_rate = len(completed_tasks) / len(tasks) if tasks else 0
+        
+        # Identify asset tasks
+        asset_tasks = []
+        completed_asset_tasks = []
+        
+        for task in tasks:
+            context_data = task.get("context_data", {}) or {}
+            if isinstance(context_data, dict):
+                if (context_data.get("asset_production") or 
+                    context_data.get("asset_oriented_task") or
+                    "PRODUCE ASSET:" in task.get("name", "").upper()):
+                    
+                    asset_tasks.append(task)
+                    if task.get("status") == "completed":
+                        completed_asset_tasks.append(task)
+        
+        asset_completion_rate = len(completed_asset_tasks) / len(asset_tasks) if asset_tasks else 0
+        
+        # Check for existing final deliverables
+        final_deliverable_tasks = [
+            task for task in completed_tasks
+            if (isinstance(task.get("context_data"), dict) and 
+                (task.get("context_data", {}).get("is_final_deliverable") or
+                 task.get("context_data", {}).get("deliverable_aggregation") or
+                 "🎯" in task.get("name", "")))
         ]
         
-        completed_assets = [t for t in asset_tasks if t.get("status") == "completed"]
+        has_existing_deliverable = len(final_deliverable_tasks) > 0
+        
+        # SIMPLIFIED readiness logic - no complex aggregator calls
+        is_ready_for_deliverable = (
+            len(completed_tasks) >= 3 and  # At least 3 completed tasks
+            completion_rate >= 0.6 and    # At least 60% completion
+            (len(completed_asset_tasks) >= 2 or asset_completion_rate >= 0.7)  # Good asset progress
+        )
+        
+        # Determine next action
+        if has_existing_deliverable:
+            next_action = "deliverable_exists"
+        elif is_ready_for_deliverable:
+            next_action = "create_deliverable"
+        elif len(pending_tasks) > len(completed_tasks):
+            next_action = "continue_tasks"
+        else:
+            next_action = "wait_for_completion"
         
         return {
             "workspace_id": str(workspace_id),
-            "is_ready_for_deliverable": is_ready,
-            "has_existing_deliverable": has_existing,
+            "is_ready_for_deliverable": is_ready_for_deliverable,
+            "has_existing_deliverable": has_existing_deliverable,
             "readiness_details": {
                 "total_tasks": len(tasks),
-                "completed_tasks": len(completed),
-                "pending_tasks": len(pending),
-                "completion_rate": len(completed) / len(tasks) if tasks else 0,
+                "completed_tasks": len(completed_tasks),
+                "pending_tasks": len(pending_tasks),
+                "completion_rate": round(completion_rate, 3),
                 "asset_tasks": len(asset_tasks),
-                "completed_assets": len(completed_assets),
-                "asset_completion_rate": len(completed_assets) / len(asset_tasks) if asset_tasks else 0
+                "completed_assets": len(completed_asset_tasks),
+                "asset_completion_rate": round(asset_completion_rate, 3)
             },
-            "next_action": "create_deliverable" if is_ready and not has_existing else 
-                          "deliverable_exists" if has_existing else "continue_tasks",
+            "next_action": next_action,
             "checked_at": datetime.now().isoformat()
         }
         
     except Exception as e:
         logger.error(f"Error checking deliverable readiness: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to check deliverable readiness: {str(e)}"
-        )
+        
+        # Return safe fallback instead of raising exception
+        return {
+            "workspace_id": str(workspace_id),
+            "is_ready_for_deliverable": False,
+            "has_existing_deliverable": False,
+            "readiness_details": {
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "pending_tasks": 0,
+                "completion_rate": 0,
+                "asset_tasks": 0,
+                "completed_assets": 0,
+                "asset_completion_rate": 0
+            },
+            "next_action": "error_occurred",
+            "error": str(e),
+            "checked_at": datetime.now().isoformat()
+        }
