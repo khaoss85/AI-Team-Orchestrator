@@ -19,7 +19,9 @@ from deliverable_system.requirements_analyzer import DeliverableRequirementsAnal
 from deliverable_system.schema_generator import AssetSchemaGenerator
 from models import ExtractedAsset, ActionableDeliverable, AssetSchema
 
-# ENHANCED: AI Quality Assurance Integration with graceful fallback
+# ENHANCED: AI Quality Assurance Integration with graceful fallback and robust error handling
+AI_QUALITY_ASSURANCE_AVAILABLE = False  # Inizializza sempre la variabile
+
 try:
     from ai_quality_assurance.enhancement_orchestrator import AssetEnhancementOrchestrator
     from ai_quality_assurance.quality_validator import AIQualityValidator
@@ -30,9 +32,6 @@ except ImportError as e:
     logger = logging.getLogger(__name__)
     logger.warning(f"⚠️ AI Quality Assurance not available: {e}")
     AI_QUALITY_ASSURANCE_AVAILABLE = False
-    # Definisci classi dummy per evitare errori
-    AssetEnhancementOrchestrator = None
-    AIQualityValidator = None
 
 # Enhanced configuration from environment
 DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
@@ -40,6 +39,18 @@ ENABLE_AUTO_PROJECT_COMPLETION = os.getenv("ENABLE_AUTO_PROJECT_COMPLETION", "tr
 MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
 ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
+
+
+def is_quality_assurance_available():
+    """Controllo sicuro per la disponibilità del sistema di quality assurance"""
+    global AI_QUALITY_ASSURANCE_AVAILABLE
+    try:
+        return (AI_QUALITY_ASSURANCE_AVAILABLE and 
+                ENABLE_AI_QUALITY_ASSURANCE and
+                'AssetEnhancementOrchestrator' in globals() and
+                'AIQualityValidator' in globals())
+    except NameError:
+        return False
 
 class DeliverableType(str, Enum):
     """Enhanced deliverable types with broader coverage"""
@@ -2101,9 +2112,13 @@ class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
     
     def __init__(self):
         super().__init__()
-
+        
         # Initialize AI Quality Assurance components if available
-        if AI_QUALITY_ASSURANCE_AVAILABLE and AssetEnhancementOrchestrator is not None and AIQualityValidator is not None:
+        self.enhancement_orchestrator = None
+        self.quality_validator = None
+        
+        # Controllo sicuro per l'inizializzazione
+        if is_quality_assurance_available():
             try:
                 self.enhancement_orchestrator = AssetEnhancementOrchestrator()
                 self.quality_validator = AIQualityValidator()
@@ -2112,12 +2127,7 @@ class QualityEnhancedDeliverableAggregator(AssetOrientedDeliverableAggregator):
                 logger.error(f"Failed to initialize AI Quality Assurance: {e}")
                 self.enhancement_orchestrator = None
                 self.quality_validator = None
-                # Imposta flag come False se l'inizializzazione fallisce
-                global AI_QUALITY_ASSURANCE_AVAILABLE
-                AI_QUALITY_ASSURANCE_AVAILABLE = False
         else:
-            self.enhancement_orchestrator = None
-            self.quality_validator = None
             logger.info("🔄 Quality Enhanced Deliverable Aggregator initialized without AI Quality Assurance")
     
     async def _create_asset_oriented_deliverable(self, workspace_id: str) -> Optional[str]:
@@ -2320,7 +2330,7 @@ Your detailed_results_json must contain:
 # === GLOBAL INSTANCE WITH SMART SELECTION ===
 
 # Usa QualityEnhancedDeliverableAggregator se AI Quality Assurance è disponibile e abilitato
-if AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE:
+if is_quality_assurance_available():
     deliverable_aggregator = QualityEnhancedDeliverableAggregator()
     logger.info("🎯 Using Quality Enhanced Deliverable Aggregator with AI Quality Assurance")
 else:
@@ -2643,6 +2653,6 @@ logger.info("🎯 DELIVERABLE AGGREGATOR SYSTEM INITIALIZED")
 logger.info("=" * 60)
 logger.info(f"Version: 3.0 Enhanced with AI Quality Assurance")
 logger.info(f"Aggregator: {type(deliverable_aggregator).__name__}")
-logger.info(f"AI Quality Assurance: {'✅ Active' if (AI_QUALITY_ASSURANCE_AVAILABLE and ENABLE_AI_QUALITY_ASSURANCE) else '❌ Inactive'}")
+logger.info(f"AI Quality Assurance: {'✅ Active' if is_quality_assurance_available() else '❌ Inactive'}")
 logger.info(f"Configuration: Threshold={DELIVERABLE_READINESS_THRESHOLD}%, MinTasks={MIN_COMPLETED_TASKS_FOR_DELIVERABLE}")
 logger.info("=" * 60)
