@@ -13,7 +13,13 @@ export default function TaskResultDetails({ result }) {
     detailed_results_json,
     execution_time_seconds,
     cost_estimated,
-    tokens_used
+    tokens_used,
+    model_used,
+    agent_name,
+    agent_role,
+    assigned_agent_name,
+    assigned_agent_role,
+    rationale
   } = result;
 
   // Use only one source for the main content - prefer summary, then output
@@ -61,6 +67,13 @@ export default function TaskResultDetails({ result }) {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
             </svg>
             Completato in {execution_time_seconds.toFixed(1)}s
+          </div>
+        )}
+
+        {rationale && (
+          <div className="mt-4 bg-white bg-opacity-60 p-4 rounded-lg">
+            <h4 className="font-medium text-indigo-700 mb-1">Rationale</h4>
+            <p className="text-indigo-900 whitespace-pre-line">{rationale}</p>
           </div>
         )}
       </div>
@@ -174,6 +187,15 @@ export default function TaskResultDetails({ result }) {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Modello:</span>
                     <span className="font-medium bg-indigo-50 px-3 py-1 rounded-full text-indigo-700">{result.model_used}</span>
+                  </div>
+                )}
+                {(agent_name || assigned_agent_name) && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Agente:</span>
+                    <span className="font-medium bg-teal-50 px-3 py-1 rounded-full text-teal-700">
+                      {agent_name || assigned_agent_name}
+                      {agent_role || assigned_agent_role ? ` (${agent_role || assigned_agent_role})` : ''}
+                    </span>
                   </div>
                 )}
                 {result.status_detail && (

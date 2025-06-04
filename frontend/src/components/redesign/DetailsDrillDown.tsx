@@ -6,10 +6,11 @@ import TaskResultDetails from '@/components/TaskResultDetails'
 
 interface Props {
   output: ProjectOutputExtended
+  workspaceId: string
   onClose: () => void
 }
 
-const DetailsDrillDown: React.FC<Props> = ({ output, onClose }) => {
+const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => {
   const [details, setDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +43,45 @@ const DetailsDrillDown: React.FC<Props> = ({ output, onClose }) => {
         ) : error ? (
           <div className="text-red-600 text-center">{error}</div>
         ) : (
-          <TaskResultDetails result={details} />
+          <>
+            <TaskResultDetails result={details} />
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await api.monitoring.submitDeliverableFeedback(workspaceId, {
+                      feedback_type: 'request_changes',
+                      message: '',
+                      priority: 'medium',
+                      specific_tasks: [output.task_id]
+                    })
+                    alert('Feedback inviato')
+                  } catch (e) {
+                    console.error(e)
+                    alert('Errore nell\'invio del feedback')
+                  }
+                }}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md text-sm"
+              >
+                Request Modifications
+              </button>
+              <button
+                onClick={() => {
+                  const dataStr = 'data:application/json;charset=utf-8,' +
+                    encodeURIComponent(JSON.stringify(details, null, 2))
+                  const link = document.createElement('a')
+                  link.href = dataStr
+                  link.download = `asset_${output.task_id}.json`
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm"
+              >
+                Download Full Asset
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
