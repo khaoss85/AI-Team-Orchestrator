@@ -66,8 +66,14 @@ export const useOrchestration = (workspaceId: string) => {
         status: 'completed',
         limit: 50
       });
+      const tasksArray = Array.isArray(tasksResponse)
+        ? tasksResponse
+        : Array.isArray(tasksResponse?.tasks)
+          ? tasksResponse.tasks
+          : [];
+
       const proposalsData = await Promise.all(
-        tasksResponse.tasks
+        tasksArray
           .filter(task => task.result && isViableProposal(task))
           .map(task => transformTaskToProposal(task, workspaceId))
       );
