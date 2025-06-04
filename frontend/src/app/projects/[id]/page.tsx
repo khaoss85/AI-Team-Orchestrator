@@ -127,9 +127,9 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {deliverablesLoading && <div>Caricamento deliverable...</div>}
         {deliverablesError && <div className="text-red-600">{deliverablesError}</div>}
-        {!deliverablesLoading && deliverables && deliverables.key_outputs.map(output => (
+        {!deliverablesLoading && deliverables && deliverables.key_outputs.map((output, idx) => (
           <DeliverableCard
-            key={output.task_id}
+            key={`${output.task_id}-${idx}`}
             output={output}
             workspaceId={id}
             onViewDetails={() => setSelectedOutput(output)}
