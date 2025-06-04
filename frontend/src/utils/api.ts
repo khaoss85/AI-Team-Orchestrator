@@ -1289,9 +1289,9 @@ export const api = {
       }
     },
     
-    approveProposal: async (workspaceId: string, proposalId: string): Promise<any> => {
+    approveProposal: async (_workspaceId: string, proposalId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/director/approve/${workspaceId}?proposal_id=${proposalId}`, {
+        const response = await fetch(`${API_BASE_URL}/proposals/${proposalId}/approve`, {
           method: 'POST',
         });
         if (!response.ok) {
@@ -1317,9 +1317,9 @@ export const api = {
     },
 
     // 🔥 NEW: Reject proposal
-    rejectProposal: async (workspaceId: string, proposalId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+    rejectProposal: async (_workspaceId: string, proposalId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/director/reject/${workspaceId}?proposal_id=${proposalId}`, {
+        const response = await fetch(`${API_BASE_URL}/proposals/${proposalId}/reject`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
