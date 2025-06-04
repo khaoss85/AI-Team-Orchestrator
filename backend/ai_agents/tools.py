@@ -9,9 +9,30 @@ from pydantic import Field
 try:
     from agents import function_tool
 except ImportError:
-    from openai_agents import function_tool # type: ignore
+    try:  # pragma: no cover - fallback if optional deps missing
+        from openai_agents import function_tool  # type: ignore
+    except ImportError:  # pragma: no cover - final fallback for tests
+        import asyncio
 
-from models import TaskStatus, ProjectPhase # Assicurati che ProjectPhase sia importato
+        def function_tool(*_a, **_kw):
+            """Fallback decorator returning a minimal tool wrapper."""
+
+            def decorator(func):
+                class Tool:
+                    async def on_invoke_tool(self, _ctx, params_json):
+                        data = json.loads(params_json) if isinstance(params_json, str) else params_json
+                        if asyncio.iscoroutinefunction(func):
+                            return await func(**(data or {}))
+                        return func(**(data or {}))
+
+                return Tool()
+
+            return decorator
+
+try:
+    from models import TaskStatus, ProjectPhase  # prefer local models module
+except Exception:  # pragma: no cover - fallback if wrong module on path
+    from backend.models import TaskStatus, ProjectPhase  # type: ignore
 from database import (
     create_task as db_create_task,
     list_agents as db_list_agents,
