@@ -3,3 +3,9 @@
 # Example .gitignore files: https://github.com/github/gitignore
 /bower_components/
 /node_modules/
+
+# Ignore Python bytecode directories
+__pycache__/
+
+# Ignore environment variable files
+.env*
