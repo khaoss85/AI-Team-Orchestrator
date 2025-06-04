@@ -59,7 +59,7 @@ const AssetViewer: React.FC<{
                 <p className="text-sm text-gray-800 truncate">{post.caption}</p>
                 {post.hashtags && (
                   <div className="mt-1">
-                    {post.hashtags.slice(0, 3).map((tag, i) => (
+                    {post.hashtags.slice(0, 3).map((tag: string, i: number) => (
                       <span key={i} className="text-xs bg-blue-100 text-blue-700 px-1 rounded mr-1">
                         {tag}
                       </span>

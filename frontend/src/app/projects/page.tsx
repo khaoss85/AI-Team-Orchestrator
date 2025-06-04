@@ -137,7 +137,7 @@ const suggestedProjects = [
 ];
 
 // Componente per la card del progetto suggerito
-function SuggestedProjectCard({ project, onClick }) {
+function SuggestedProjectCard({ project, onClick }: { project: typeof suggestedProjects[number]; onClick: () => void }) {
   return (
     <div 
       onClick={onClick}
@@ -215,7 +215,7 @@ export default function ProjectsPage() {
     router.push(`/projects/${id}`);
   };
   
-  const handleSuggestedProjectClick = (project) => {
+  const handleSuggestedProjectClick = (project: typeof suggestedProjects[number]) => {
     // Salva i dati del template in localStorage per recuperarli nella pagina di creazione
     localStorage.setItem('projectTemplate', JSON.stringify({
       name: project.name,
