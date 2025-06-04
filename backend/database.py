@@ -540,16 +540,39 @@ async def delete_custom_tool(tool_id: str):
         logger.error(f"Error deleting custom tool: {e}")
         raise
         
-async def list_tasks(workspace_id: str, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+async def list_tasks(
+    workspace_id: str,
+    status: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    asset_only: bool = False,
+    limit: Optional[int] = None,
+    offset: int = 0,
+) -> List[Dict[str, Any]]:
+    """List tasks for a workspace with optional filtering and pagination."""
     try:
         query = supabase.table("tasks").select("*").eq("workspace_id", workspace_id)
-        if status_filter:
-            query = query.eq("status", status_filter)
-        query = query.order("created_at", desc=True) # Ordina per creazione decrescente
+
+        if status:
+            query = query.eq("status", status)
+        if agent_id:
+            query = query.eq("agent_id", agent_id)
+
+        query = query.order("created_at", desc=True)
+
+        if limit is not None:
+            query = query.range(offset, offset + limit - 1)
+
         result = query.execute()
-        return result.data if result.data else []
+        tasks = result.data if result.data else []
+
+        if asset_only:
+            tasks = [t for t in tasks if _is_asset_task(t)]
+
+        return tasks
     except Exception as e:
-        logger.error(f"Error listing tasks for workspace {workspace_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error listing tasks for workspace {workspace_id}: {e}", exc_info=True
+        )
         raise
         
 async def get_agent(agent_id: str):
@@ -920,7 +943,6 @@ async def get_task(task_id: str) -> Optional[Dict[str, Any]]:
         logger.error(f"Exception while retrieving task {task_id}: {e}", exc_info=True)
         return None
 
-
 async def update_team_proposal_status(proposal_id: str, status: str) -> Optional[Dict[str, Any]]:
     """Update the status of a team proposal."""
     try:
@@ -965,4 +987,3 @@ async def log_proposal_decision(
     except Exception as e:
         logger.error(f"Error logging decision for proposal {proposal_id}: {e}")
         raise
-
