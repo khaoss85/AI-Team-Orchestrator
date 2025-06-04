@@ -123,7 +123,12 @@ export default function ProjectPage({ params: paramsPromise }: Props) {
         {deliverablesLoading && <div>Caricamento deliverable...</div>}
         {deliverablesError && <div className="text-red-600">{deliverablesError}</div>}
         {!deliverablesLoading && deliverables && deliverables.key_outputs.map(output => (
-          <DeliverableCard key={output.task_id} output={output} onViewDetails={() => setSelectedOutput(output)} />
+          <DeliverableCard
+            key={output.task_id}
+            output={output}
+            workspaceId={id}
+            onViewDetails={() => setSelectedOutput(output)}
+          />
         ))}
       </div>
 
