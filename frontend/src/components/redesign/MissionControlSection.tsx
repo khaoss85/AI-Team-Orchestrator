@@ -1,7 +1,7 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { api } from '@/utils/api'
-import type { Workspace, Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
+
+import React, { useEffect, useRef } from 'react'
+import type { Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
 
 interface Props {
   workspace: Workspace
@@ -37,7 +37,22 @@ const MissionControlSection: React.FC<Props> = ({ workspace }) => {
     fetchData()
   }, [workspace.id])
 
-  if (loading) {
+const MissionControlSection: React.FC<Props> = ({ agents, feedback, taskAnalysis, loading, error, onRefresh }) => {
+  const initialized = useRef(false)
+
+  useEffect(() => {
+    const timer = setInterval(onRefresh, 30000)
+    return () => clearInterval(timer)
+  }, [onRefresh])
+
+  useEffect(() => {
+    if (!loading) {
+      initialized.current = true
+    }
+  }, [loading])
+
+  if (loading && !initialized.current) {
+
     return (
       <div className="bg-white rounded-lg shadow-sm p-6 text-center">Caricamento mission control...</div>
     )
@@ -61,7 +76,12 @@ const MissionControlSection: React.FC<Props> = ({ workspace }) => {
     <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 space-y-4">
       <div className="flex justify-between">
         <h2 className="text-lg font-semibold">Mission Control</h2>
-        <button className="text-sm text-indigo-600" onClick={fetchData}>Aggiorna</button>
+        <div className="flex items-center space-x-2">
+          {loading && initialized.current && (
+            <span className="text-sm text-gray-500">Updating...</span>
+          )}
+          <button className="text-sm text-indigo-600" onClick={onRefresh}>Aggiorna</button>
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
         <div>
