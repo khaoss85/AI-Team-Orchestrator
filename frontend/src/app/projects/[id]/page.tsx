@@ -3,8 +3,15 @@
 import React, { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { api } from '@/utils/api'
-import type { Workspace, ProjectOutputExtended } from '@/types'
+import type {
+  Workspace,
+  Agent,
+  FeedbackRequest,
+  TaskAnalysisResponse,
+  ProjectOutputExtended
+} from '@/types'
 import { useAssetManagement } from '@/hooks/useAssetManagement'
+import { useProjectDeliverables } from '@/hooks/useProjectDeliverables'
 import ActionableHeroSection from '@/components/redesign/ActionableHeroSection'
 import MissionControlSection from '@/components/redesign/MissionControlSection'
 import DeliverableCard from '@/components/redesign/DeliverableCard'
@@ -30,23 +37,60 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     error: assetError
   } = useAssetManagement(id)
 
+  const {
+    deliverables,
+    loading: deliverablesLoading,
+    error: deliverablesError,
+    refetch: refetchDeliverables
+  } = useProjectDeliverables(id)
+
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [feedback, setFeedback] = useState<FeedbackRequest[]>([])
+  const [taskAnalysis, setTaskAnalysis] = useState<TaskAnalysisResponse | null>(null)
+  const [missionLoading, setMissionLoading] = useState(true)
+  const [missionError, setMissionError] = useState<string | null>(null)
+
   const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null)
 
   useEffect(() => {
-    const fetchWorkspace = async () => {
-      try {
-        setLoading(true)
-        const data = await api.workspaces.get(id)
-        setWorkspace(data)
-        setError(null)
-      } catch (e: any) {
-        setError(e.message || 'Impossibile caricare il progetto')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchWorkspace()
+  }, [id])
+
+  const fetchWorkspace = async () => {
+    try {
+      setLoading(true)
+      const data = await api.workspaces.get(id)
+      setWorkspace(data)
+      setError(null)
+    } catch (e: any) {
+      setError(e.message || 'Impossibile caricare il progetto')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchMissionControl = async () => {
+    try {
+      setMissionLoading(true)
+      const [agentsData, feedbackData, analysisData] = await Promise.all([
+        api.agents.list(id),
+        api.humanFeedback.getPendingRequests(id),
+        api.monitoring.getTaskAnalysis(id)
+      ])
+      setAgents(agentsData)
+      setFeedback(feedbackData)
+      setTaskAnalysis(analysisData)
+      setMissionError(null)
+    } catch (e: any) {
+      console.error(e)
+      setMissionError(e.message || 'Errore nel caricamento dei dati')
+    } finally {
+      setMissionLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMissionControl()
   }, [id])
 
   if (loading || assetsLoading) {
