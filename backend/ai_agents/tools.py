@@ -123,17 +123,8 @@ class PMOrchestrationTools:
 
                 all_current_tasks = await db_list_tasks(workspace_id=workspace_id_str)
                 agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
-                target_agent = next(
-                    (
-                        agent
-                        for agent in agents_in_db
-                        if agent.get("name", "").lower() == target_agent_role.lower()
-                        and agent.get("status") == "active"
-                    ),
-                    None,
-                )
                 task_name_lower = task_name.lower().strip()
-                
+
                 for existing_task_dict in all_current_tasks:
                     if existing_task_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]:
                         existing_name_lower = existing_task_dict.get("name", "").lower().strip()
@@ -143,7 +134,7 @@ class PMOrchestrationTools:
                         existing_agent_id_in_task = existing_task_dict.get("agent_id")
                         existing_assigned_role_in_task = existing_task_dict.get("assigned_to_role", "") 
                         
-                        target_agent_object_for_new_task = target_agent
+                        target_agent_object_for_new_task = next((ag for ag in agents_in_db if ag.get("name", "").lower() == target_agent_role.lower() and ag.get("status") == "active"), None)
 
                         if target_agent_object_for_new_task:
                             if existing_agent_id_in_task == target_agent_object_for_new_task.get("id"):
@@ -167,6 +158,8 @@ class PMOrchestrationTools:
                                 "message": msg,
                                 "error": "Likely duplicate task detected (similar name, target agent/role, and phase)."
                             })
+                
+                target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "active"), None)
                 
                 if not target_agent:
                     available_agents_summary = [
