@@ -15,6 +15,7 @@ from database import (
     list_tasks,
 )
 from executor import task_executor
+from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["project-insights"])
@@ -639,6 +640,35 @@ Please review this feedback and take appropriate action:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit feedback: {str(e)}"
+        )
+
+# NEW: Endpoint to manually trigger deliverable asset analysis
+@router.post("/{workspace_id}/trigger-asset-analysis", status_code=status.HTTP_200_OK)
+async def trigger_asset_analysis(workspace_id: UUID):
+    """Run the deliverable requirements analyzer and return a summary"""
+    try:
+        analyzer = DeliverableRequirementsAnalyzer()
+        analysis = await analyzer.analyze_deliverable_requirements(
+            str(workspace_id), force_refresh=True
+        )
+
+        return {
+            "success": True,
+            "message": "Asset requirements analysis completed",
+            "workspace_id": str(workspace_id),
+            "analysis_results": {
+                "deliverable_category": analysis.deliverable_category,
+                "assets_needed": len(analysis.primary_assets_needed),
+                "asset_types": [a.asset_type for a in analysis.primary_assets_needed],
+            },
+            "triggered_at": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Error triggering asset analysis for {workspace_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to trigger asset analysis: {str(e)}",
         )
 
 # Helper functions
