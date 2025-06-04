@@ -10,6 +10,8 @@ import warnings
 
 # Suppress Pydantic JSON schema warnings globally per questo modulo
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic._internal._generate_schema")
+# Silence Pydantic JSON schema warnings when building API docs
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic.json_schema")
 
 # --- Enums ---
 class WorkspaceStatus(str, Enum):
