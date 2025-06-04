@@ -1,50 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/utils/api';
-
-export interface AgentProposal {
-  id: string;
-  agentName: string;
-  agentRole: string;
-  title: string;
-  type: 'analysis' | 'deliverable' | 'system' | 'optimization';
-  status: 'ready_for_review' | 'implementing' | 'approved' | 'rejected' | 'completed';
-  confidence: number;
-  timestamp: string;
-  taskId: string;
-  preview: {
-    type: 'chart' | 'calendar' | 'flowchart' | 'document' | 'dataset';
-    data: string;
-    thumbnail?: string;
-  };
-  output: {
-    summary: string;
-    actionable: string;
-    impact: string;
-    technicalDetails?: any;
-  };
-  nextSteps: Array<{
-    action: string;
-    urgency: 'high' | 'medium' | 'low';
-    effort: 'low' | 'medium' | 'high';
-    automated?: boolean;
-  }>;
-  metadata: {
-    createdAt: string;
-    updatedAt: string;
-    sourceTaskId: string;
-    estimatedValue?: number;
-    riskLevel?: 'low' | 'medium' | 'high';
-  };
-}
-
-export interface OrchestrationStats {
-  total: number;
-  pending: number;
-  implementing: number;
-  completed: number;
-  avgConfidence: number;
-  totalEstimatedValue: number;
-}
+import type { AgentProposal, OrchestrationStats } from '@/types';
 
 export const useOrchestration = (workspaceId: string) => {
   const [proposals, setProposals] = useState<AgentProposal[]>([]);

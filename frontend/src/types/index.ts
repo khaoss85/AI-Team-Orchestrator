@@ -546,7 +546,8 @@ export interface ProjectDeliverableCard {
   created_by: string;
   created_at: string;
   completeness_score: number;
-    
+}
+
 export interface AssetDisplayData {
   asset: ActionableAsset;
   task_info: AssetTaskInfo;
