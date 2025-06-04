@@ -919,3 +919,50 @@ async def get_task(task_id: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Exception while retrieving task {task_id}: {e}", exc_info=True)
         return None
+
+
+async def update_team_proposal_status(proposal_id: str, status: str) -> Optional[Dict[str, Any]]:
+    """Update the status of a team proposal."""
+    try:
+        result = (
+            supabase.table("team_proposals")
+            .update({"status": status})
+            .eq("id", proposal_id)
+            .execute()
+        )
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error updating team proposal {proposal_id} status: {e}")
+        raise
+
+
+async def log_proposal_decision(
+    workspace_id: str,
+    proposal_id: str,
+    decision: str,
+    reason: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Log an approve/reject decision for a proposal."""
+    try:
+        content = {"proposal_id": proposal_id, "decision": decision}
+        if reason:
+            content["reason"] = reason
+
+        result = (
+            supabase.table("execution_logs")
+            .insert(
+                {
+                    "workspace_id": workspace_id,
+                    "agent_id": None,
+                    "task_id": None,
+                    "type": "proposal_decision",
+                    "content": content,
+                }
+            )
+            .execute()
+        )
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error logging decision for proposal {proposal_id}: {e}")
+        raise
+
