@@ -1300,11 +1300,14 @@ export const api = {
       }
     },
     
-    approveProposal: async (_workspaceId: string, proposalId: string): Promise<any> => {
+    approveProposal: async (workspaceId: string, proposalId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/proposals/${proposalId}/approve`, {
-          method: 'POST',
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/director/approve/${workspaceId}?proposal_id=${proposalId}`,
+          {
+            method: 'POST'
+          }
+        );
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
