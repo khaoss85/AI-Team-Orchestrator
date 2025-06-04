@@ -110,6 +110,7 @@ export default function ProjectPage({ params: paramsPromise }: Props) {
       <Link href="/projects" className="text-indigo-600 hover:underline text-sm">← Progetti</Link>
       <ActionableHeroSection workspace={workspace} assetStats={assetStats} finalDeliverables={finalDeliverables.length} />
       <MissionControlSection
+        workspaceId={id}
         agents={agents}
         feedback={feedback}
         taskAnalysis={taskAnalysis}
