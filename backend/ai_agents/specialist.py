@@ -71,9 +71,20 @@ from database import (
     list_tasks as db_list_tasks,
 )
 
-# FIXED: Import centralizzato Quality System
+# FIXED: Import centralizzato Quality System con fallback
 try:
     from backend.utils.quality_config_loader import load_quality_system_config
+except ImportError:
+    try:
+        from utils.quality_config_loader import load_quality_system_config  # type: ignore
+    except ImportError as e:
+        logger.warning(f"⚠️ Quality System loader not available: {e}")
+        QUALITY_SYSTEM_AVAILABLE = False
+        QualitySystemConfig = None
+        DynamicPromptEnhancer = None
+    else:
+        QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = load_quality_system_config()
+else:
     QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = load_quality_system_config()
     
     # Prova a importare DynamicPromptEnhancer
@@ -88,12 +99,6 @@ try:
             QUALITY_SYSTEM_AVAILABLE = False
     
     logger.info(f"✅ Quality System for SpecialistAgent: Available={QUALITY_SYSTEM_AVAILABLE}")
-    
-except ImportError as e:
-    logger.warning(f"⚠️ Quality System loader not available: {e}")
-    QUALITY_SYSTEM_AVAILABLE = False
-    QualitySystemConfig = None
-    DynamicPromptEnhancer = None
 
 # NUOVO: Import per JSON parsing robusto
 try:
