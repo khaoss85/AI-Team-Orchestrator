@@ -12,8 +12,7 @@ type Props = {
 };
 
 // 🔧 DEBUG: Component to show raw data
-const DebugDataViewer: React.FC<{ data: any; title: string }> = ({ data, title }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const DebugDataViewer: React.FC<{ data: unknown; title: string }> = ({ data, title }) => {
   
   if (!data) return null;
   

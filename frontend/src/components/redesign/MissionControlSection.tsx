@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
 import type { Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
 
 interface Props {
@@ -70,7 +70,7 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
       <div className="flex justify-between">
         <h2 className="text-lg font-semibold">Mission Control</h2>
         <div className="flex items-center space-x-2">
-          {loading && initialized.current && (
+          {loading && (
             <span className="text-sm text-gray-500">Updating...</span>
           )}
           <button className="text-sm text-indigo-600" onClick={onRefresh}>Aggiorna</button>

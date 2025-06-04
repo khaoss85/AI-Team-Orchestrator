@@ -3,17 +3,16 @@
 import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/utils/api';
-import { Workspace, Agent, Handoff, SkillLevel, PersonalityTrait, CommunicationStyle } from '@/types'; 
+import { Workspace, Agent, Handoff, PersonalityTrait } from '@/types';
 import AgentEditModal from '@/components/AgentEditModal';
 import AgentDetailRadarSection from '@/components/AgentDetailRadarSection';
 import AgentSkillRadarChart, { calculateTeamDimensions } from '@/components/AgentSkillRadarChart';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
 };
 
-export default function ProjectTeamPage({ params: paramsPromise, searchParams }: Props) {
+export default function ProjectTeamPage({ params: paramsPromise }: Props) {
   const params = use(paramsPromise);
   const { id } = params;
 
@@ -124,14 +123,6 @@ export default function ProjectTeamPage({ params: paramsPromise, searchParams }:
     }
   };
   
-  const formatPersonalityTraits = (traits: PersonalityTrait[] | undefined) => {
-    if (!traits || !Array.isArray(traits) || traits.length === 0) return "Non specificati";
-    return traits.map(trait => 
-      typeof trait === 'string' 
-        ? trait.replace(/_/g, ' ').replace(/-/g, ' ') 
-        : String(trait).replace(/_/g, ' ').replace(/-/g, ' ')
-    ).join(', ');
-  };
   
   const getAgentHandoffs = (agentId: string): Handoff[] => {
     if (!handoffs) return [];

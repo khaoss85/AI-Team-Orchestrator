@@ -718,7 +718,6 @@ export interface EnhancedProjectResult {
     usageGuide?: Record<string, string>;
   };
 }
-}
 export interface AgentProposal {
   id: string;
   agentName: string;
