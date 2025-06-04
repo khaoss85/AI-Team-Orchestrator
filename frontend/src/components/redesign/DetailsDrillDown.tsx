@@ -19,7 +19,7 @@ const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => 
     const fetchDetails = async () => {
       try {
         setLoading(true)
-        const data = await api.monitoring.getTaskResult(output.task_id)
+        const data = await api.monitoring.getTaskResult(workspaceId, output.task_id)
         setDetails(data)
         setError(null)
       } catch (e: any) {
@@ -29,7 +29,7 @@ const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => 
       }
     }
     fetchDetails()
-  }, [output.task_id])
+  }, [workspaceId, output.task_id])
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
