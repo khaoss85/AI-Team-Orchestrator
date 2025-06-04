@@ -501,6 +501,18 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         raise
 
 
+async def update_task_fields(task_id: str, fields: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Generic update of arbitrary task fields."""
+    try:
+        db_result = supabase.table("tasks").update(fields).eq("id", task_id).execute()
+        if db_result.data and len(db_result.data) > 0:
+            return db_result.data[0]
+        return {"id": task_id, **fields}
+    except Exception as e:
+        logger.error(f"Error updating task {task_id}: {e}")
+        return None
+
+
 async def create_custom_tool(name: str, description: Optional[str], code: str, workspace_id: str, created_by: str):
     try:
         data_to_insert = {

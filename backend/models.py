@@ -37,6 +37,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
     CANCELED = "canceled"
     TIMED_OUT = "timed_out"
+    STALE = "stale"
 
 class LogType(str, Enum):
     INFO = "info"
@@ -229,6 +230,9 @@ class TaskCreate(BaseModel):
     estimated_effort_hours: Optional[float] = PydanticField(None, ge=0)
     deadline: Optional[datetime] = None
     context_data: Optional[Dict[str, Any]] = PydanticField(None, description="Arbitrary JSONB data")
+    iteration_count: int = 0
+    max_iterations: Optional[int] = None
+    dependency_map: Optional[Dict[str, List[str]]] = None
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -243,6 +247,9 @@ class TaskUpdate(BaseModel):
     estimated_effort_hours: Optional[float] = None
     deadline: Optional[datetime] = None
     context_data: Optional[Dict[str, Any]] = None
+    iteration_count: Optional[int] = None
+    max_iterations: Optional[int] = None
+    dependency_map: Optional[Dict[str, List[str]]] = None
 
 class Task(BaseModel):
     id: UUID
@@ -258,6 +265,9 @@ class Task(BaseModel):
     estimated_effort_hours: Optional[float] = None
     deadline: Optional[datetime] = None
     context_data: Optional[Dict[str, Any]] = None
+    iteration_count: int = 0
+    max_iterations: Optional[int] = None
+    dependency_map: Optional[Dict[str, List[str]]] = None
     result: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime

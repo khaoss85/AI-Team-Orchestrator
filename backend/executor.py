@@ -24,6 +24,7 @@ from database import (
     update_workspace_status,
     get_task
 )
+from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 logger = logging.getLogger(__name__)
@@ -756,6 +757,15 @@ class TaskExecutor(AssetCoordinationMixin):
             logger.error(error_msg)
             await self._force_complete_task(task_dict, error_msg, status_to_set=TaskStatus.FAILED.value)
             return
+
+        allowed = await controlled_iteration(task_id, workspace_id, task_dict.get("max_iterations"))
+        if not allowed:
+            await self._force_complete_task(
+                task_dict,
+                "iteration limit reached",
+                status_to_set=TaskStatus.FAILED.value
+            )
+            return
             
         # Tracking e preparazione
         start_time_tracking = time.time()
@@ -822,6 +832,7 @@ class TaskExecutor(AssetCoordinationMixin):
 
             # ESECUZIONE DEL TASK
             await self.process_task_with_coordination(task_dict, manager)
+            await refresh_dependencies(task_id)
             return
         except Exception as e:
             # Gestione errori che non sono stati catturati dal coordination layer
