@@ -1100,12 +1100,12 @@ export default function ProjectDashboard({ params: paramsPromise }: Props) {
                           </div>
                           
                           {finals.map(result => (
-                            <div 
-                              key={result.id} 
-                              onClick={() => setActiveResultId(result.id)}
+                            <div
+                              key={result.task_id}
+                              onClick={() => setActiveResultId(result.task_id)}
                               className={`p-4 rounded-lg cursor-pointer transition-all border-2 mb-3 ${
-                                result.id === activeResultId 
-                                  ? 'border-indigo-400 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg' 
+                                result.task_id === activeResultId
+                                  ? 'border-indigo-400 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-lg'
                                   : 'border-indigo-200 bg-gradient-to-r from-indigo-25 to-purple-25 hover:border-indigo-300 hover:shadow-md'
                               }`}
                             >
