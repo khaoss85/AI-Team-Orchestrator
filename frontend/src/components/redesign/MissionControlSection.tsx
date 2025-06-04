@@ -14,10 +14,12 @@ interface Props {
 }
 
 const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback, taskAnalysis, loading, error, onRefresh }) => {
+
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     setInitialized(true)
+
   }, [])
   if (loading) {
     return (
