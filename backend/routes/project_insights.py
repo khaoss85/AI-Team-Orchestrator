@@ -4,6 +4,7 @@ from uuid import UUID
 import logging
 import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
+import os
 from collections import Counter
 from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback, ProjectDeliverableCard
 from ai_agents.director import DirectorAgent
@@ -17,6 +18,11 @@ from executor import task_executor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["project-insights"])
+
+# Simple in-memory cache for deliverables
+ENABLE_DELIVERABLE_CACHE = os.getenv("ENABLE_DELIVERABLE_CACHE", "true").lower() == "true"
+DELIVERABLE_CACHE: Dict[str, Dict[str, Any]] = {}
+
 
 @router.get("/{workspace_id}/insights", response_model=Dict[str, Any])
 async def get_project_insights(workspace_id: UUID):
@@ -374,6 +380,13 @@ async def get_project_deliverables(workspace_id: UUID):
         # Get all tasks
         tasks = await list_tasks(str(workspace_id))
         completed_tasks = [t for t in tasks if t.get("status") == "completed"]
+
+        # Cache check based on latest task update
+        last_updated = _get_latest_update_timestamp(tasks)
+        cache_entry = DELIVERABLE_CACHE.get(str(workspace_id)) if ENABLE_DELIVERABLE_CACHE else None
+        if cache_entry and cache_entry.get("last_updated") == last_updated:
+            logger.info(f"\U0001F4E6 Using cached deliverable for {workspace_id}")
+            return cache_entry["data"]
         
         # Get agents info for names/roles
         agents = await db_list_agents(str(workspace_id))
@@ -523,8 +536,8 @@ async def get_project_deliverables(workspace_id: UUID):
         
         logger.info(f"🎯 DELIVERABLE RESPONSE: {len(key_outputs)} outputs, "
                    f"summary length: {len(summary)}, cards: {len(insight_cards)}")
-        
-        return ProjectDeliverables(
+
+        response = ProjectDeliverables(
             workspace_id=str(workspace_id),
             summary=summary,
             key_outputs=key_outputs,
@@ -536,6 +549,14 @@ async def get_project_deliverables(workspace_id: UUID):
             completed_tasks=len(completed_tasks),
             generated_at=datetime.now()
         )
+
+        if ENABLE_DELIVERABLE_CACHE:
+            DELIVERABLE_CACHE[str(workspace_id)] = {
+                "last_updated": last_updated,
+                "data": response,
+            }
+
+        return response
         
     except HTTPException:
         raise
@@ -732,6 +753,21 @@ def _determine_completion_status(tasks: List[Dict], outputs: List[ProjectOutput]
     # Otherwise in progress
     else:
         return "in_progress"
+
+def _get_latest_update_timestamp(tasks: List[Dict]) -> str:
+    """Return ISO timestamp of the most recently updated task"""
+    latest = None
+    for task in tasks:
+        ts = task.get("updated_at") or task.get("created_at")
+        if not ts:
+            continue
+        try:
+            dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+        except Exception:
+            continue
+        if not latest or dt > latest:
+            latest = dt
+    return latest.isoformat() if latest else ""
 
 async def _generate_deliverable_insights(outputs: List[Dict]) -> List[ProjectDeliverableCard]:
     """Generate user-friendly insights cards from task outputs"""
