@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
-import { ProjectDeliverables, DeliverableFeedback, ActionableAsset } from '@/types';
+import { ProjectDeliverables, DeliverableFeedback, ActionableAsset, ProjectOutputExtended } from '@/types';
 import DeliverableInsightCard from './DeliverableInsightCard';
+import ActionableOutputCard from './ActionableOutputCard';
+import TaskResultDetails from './TaskResultDetails';
 
 interface ProjectDeliverableDashboardProps {
   workspaceId: string;
@@ -208,9 +210,16 @@ export default function ProjectDeliverableDashboard({
 
   const [viewMode, setViewMode] = useState<'cards' | 'detailed'>('cards');
   const [expandedOutput, setExpandedOutput] = useState<string | null>(null);
-  
+
   // NEW: Asset states
   const [selectedAsset, setSelectedAsset] = useState<{name: string, asset: ActionableAsset} | null>(null);
+
+  // Selected output state
+  const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null);
+  const [outputDetails, setOutputDetails] = useState<any | null>(null);
+  const [loadingOutput, setLoadingOutput] = useState(false);
+
+  const [showMore, setShowMore] = useState(false);
 
   /* --------------------------- Fetch deliverables -------------------------- */
 
@@ -280,6 +289,20 @@ export default function ProjectDeliverableDashboard({
 
   const handleViewAssetDetails = (assetName: string, asset: ActionableAsset) => {
     setSelectedAsset({ name: assetName, asset });
+  };
+
+  const openOutputModal = async (output: ProjectOutputExtended) => {
+    setSelectedOutput(output);
+    setLoadingOutput(true);
+    try {
+      const details = await api.monitoring.getTaskResult(output.task_id);
+      setOutputDetails(details);
+    } catch (err) {
+      console.error('Error fetching output', err);
+      setOutputDetails(null);
+    } finally {
+      setLoadingOutput(false);
+    }
   };
 
   /* ----------------------------- Helpers UI ------------------------------- */
@@ -392,6 +415,12 @@ export default function ProjectDeliverableDashboard({
     (o) => o.type !== 'final_deliverable' && o.category !== 'final_deliverable',
   );
 
+  const actionableOutputs = deliverables.key_outputs.filter(
+    (o) =>
+      o.type === 'final_deliverable' ||
+      (o.actionable_assets && Object.keys(o.actionable_assets).length > 0)
+  );
+
   const hasActionableAssets = Object.keys(actionableAssets).length > 0;
 
   /* --------------------------------- JSX ---------------------------------- */
@@ -481,8 +510,17 @@ export default function ProjectDeliverableDashboard({
         <div className="text-xs text-gray-500 mt-2">Generato il {formatDate(deliverables.generated_at)}</div>
       </div>
 
+      {/* Actionable outputs */}
+      {actionableOutputs.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {actionableOutputs.map(o => (
+            <ActionableOutputCard key={o.task_id} output={o} onClick={() => openOutputModal(o)} />
+          ))}
+        </div>
+      )}
+
       {/* Final deliverable spotlight */}
-      {finalDeliverables.length > 0 && (
+      {showMore && finalDeliverables.length > 0 && (
         <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white rounded-xl shadow-lg p-8 space-y-8">
           <div className="flex justify-between">
             <div>
@@ -612,7 +650,14 @@ export default function ProjectDeliverableDashboard({
       )}
 
       {/* Other deliverables */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <button
+        onClick={() => setShowMore(!showMore)}
+        className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full"
+      >
+        {showMore ? 'Hide details' : 'More details'}
+      </button>
+      {showMore && (
+      <div className="bg-white rounded-lg shadow-sm p-6 mt-4">
         <div className="flex justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold">🎯 Altri Deliverable del Progetto</h2>
@@ -685,6 +730,7 @@ export default function ProjectDeliverableDashboard({
           </div>
         )}
       </div>
+      )}
 
       {/* Enhanced Feedback section */}
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -789,6 +835,36 @@ export default function ProjectDeliverableDashboard({
           asset={selectedAsset.asset}
           onClose={() => setSelectedAsset(null)}
         />
+      )}
+
+      {selectedOutput && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">{selectedOutput.title || selectedOutput.task_name}</h2>
+              <button onClick={() => { setSelectedOutput(null); setOutputDetails(null); }} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            {loadingOutput ? (
+              <div className="text-center py-10">Caricamento...</div>
+            ) : (
+              <TaskResultDetails result={outputDetails} />
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => api.monitoring.submitDeliverableFeedback(workspaceId, { feedback_type: 'request_changes', message: '', specific_tasks: [selectedOutput.task_id], priority: 'medium' })}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md text-sm"
+              >
+                Request changes
+              </button>
+              <button
+                onClick={() => api.monitoring.submitDeliverableFeedback(workspaceId, { feedback_type: 'approve', message: 'generate new deliverable', specific_tasks: [selectedOutput.task_id], priority: 'medium' })}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm"
+              >
+                Generate new deliverable
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
