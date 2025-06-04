@@ -162,7 +162,10 @@ class PMOrchestrationTools:
                 target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "active"), None)
                 
                 if not target_agent:
-                    available_agents_summary = [{"name": a.get("name"), "role": a.get("role"), "status": a.get("status")} for a in agents_in_db]
+                    available_agents_summary = [
+                        {"name": a.get("name"), "role": a.get("role"), "status": a.get("status")}
+                        for a in agents_in_db
+                    ]
                     error_msg = f"Agent Assignment Error: No ACTIVE agent found with the EXACT name '{target_agent_role}'. Ensure the name matches an active agent from 'get_team_roles_and_status'."
                     logger.warning(f"{error_msg}. Workspace: {workspace_id_str}. Available agents for reference: {available_agents_summary}")
                     return json.dumps({

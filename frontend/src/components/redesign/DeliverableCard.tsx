@@ -14,13 +14,27 @@ const DeliverableCard: React.FC<Props> = ({ output, workspaceId, onViewDetails }
   const title = output.title || output.task_name
   const summary = output.summary || output.output || ''
 
-  const firstAsset =
-    output.actionable_assets && Object.keys(output.actionable_assets).length > 0
-      ? output.actionable_assets[Object.keys(output.actionable_assets)[0]]
-      : output.content?.actionableAssets &&
-        Object.keys(output.content.actionableAssets).length > 0
-      ? output.content.actionableAssets[Object.keys(output.content.actionableAssets)[0]]
-      : null
+  const firstAsset = React.useMemo(() => {
+    if (output.actionable_assets && Object.keys(output.actionable_assets).length > 0) {
+      const key = Object.keys(output.actionable_assets)[0]
+      return output.actionable_assets[key]
+    }
+
+    if (
+      output.content?.actionableAssets &&
+      Object.keys(output.content.actionableAssets).length > 0
+    ) {
+      const key = Object.keys(output.content.actionableAssets)[0]
+      return output.content.actionableAssets[key]
+    }
+
+    if (output.result?.actionable_assets && Object.keys(output.result.actionable_assets).length > 0) {
+      const key = Object.keys(output.result.actionable_assets)[0]
+      return output.result.actionable_assets[key]
+    }
+
+    return null
+  }, [output])
 
   const handleDownload = () => {
     if (!firstAsset) return
