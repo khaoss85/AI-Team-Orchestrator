@@ -161,7 +161,6 @@ export default function ProjectOrchestrationPage({ params: paramsPromise }: Prop
           )}
         </div>
       </div>
-
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-6">
           <nav className="flex space-x-8">
