@@ -286,7 +286,7 @@ export default function ProjectDeliverableDashboard({
     setSelectedOutput(output);
     setLoadingOutput(true);
     try {
-      const details = await api.monitoring.getTaskResult(output.task_id);
+      const details = await api.monitoring.getTaskResult(workspaceId, output.task_id);
       setOutputDetails(details);
     } catch (err) {
       console.error('Error fetching output', err);
