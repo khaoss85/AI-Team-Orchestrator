@@ -2360,7 +2360,8 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     # Fallback al sistema standard se abilitato
                     if QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
                         try:
-                            fallback_id = await check_and_create_final_deliverable(workspace_id)
+                            from backend import deliverable_aggregator
+                            fallback_id = await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
                             
                             if fallback_id:
                                 logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")
