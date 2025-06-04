@@ -128,7 +128,11 @@ export default function ProjectPage({ params: paramsPromise }: Props) {
       </div>
 
       {selectedOutput && (
-        <DetailsDrillDown output={selectedOutput} onClose={() => setSelectedOutput(null)} />
+        <DetailsDrillDown
+          output={selectedOutput}
+          workspaceId={id}
+          onClose={() => setSelectedOutput(null)}
+        />
       )}
     </div>
   )
