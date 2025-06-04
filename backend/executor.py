@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from config.quality_system_config import QualitySystemConfig
-    from deliverable_aggregator import create_quality_enhanced_deliverable
+    from deliverable_aggregator import check_and_create_final_deliverable
     QUALITY_SYSTEM_AVAILABLE = True
     logger.info("✅ Quality System integration available for TaskExecutor")
 except ImportError as e:
@@ -2247,7 +2247,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                         continue
                     
                     # Tentativo di creare deliverable quality-enhanced
-                    deliverable_id = await create_quality_enhanced_deliverable(workspace_id)
+                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
                     
                     if deliverable_id:
                         logger.info(f"🔍 QUALITY DELIVERABLE: Created {deliverable_id} for {workspace_id}")
