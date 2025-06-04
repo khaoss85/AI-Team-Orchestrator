@@ -10,31 +10,27 @@ from datetime import datetime
 from models import DeliverableRequirements, AssetRequirement, AssetSchema
 from database import get_workspace, list_tasks, list_agents
 
-# FIXED: Import corretto per QualitySystemConfig
+# FIXED: Import centralizzato con fallback robusto
 try:
-    from config.quality_system_config import QualitySystemConfig
-    QUALITY_CONFIG_AVAILABLE = True
+    from backend.utils.quality_config_loader import load_quality_system_config
+    QualitySystemConfig, QUALITY_CONFIG_AVAILABLE = load_quality_system_config()
     logger = logging.getLogger(__name__)
-    logger.info("✅ QualitySystemConfig imported successfully")
+    if QUALITY_CONFIG_AVAILABLE:
+        logger.info("✅ QualitySystemConfig loaded successfully via centralized loader")
+    else:
+        logger.warning("⚠️ QualitySystemConfig using fallback configuration")
 except ImportError:
-    try:
-        # Fallback path
-        from backend.config.quality_system_config import QualitySystemConfig
-        QUALITY_CONFIG_AVAILABLE = True
-        logger = logging.getLogger(__name__)
-        logger.info("✅ QualitySystemConfig imported successfully (fallback path)")
-    except ImportError:
-        logger = logging.getLogger(__name__)
-        logger.warning("⚠️ QualitySystemConfig not available, using default settings")
-        QUALITY_CONFIG_AVAILABLE = False
-        
-        # Classe fallback con valori di default
-        class QualitySystemConfig:
-            QUALITY_SCORE_THRESHOLD = 0.8
-            ACTIONABILITY_THRESHOLD = 0.7
-            AUTHENTICITY_THRESHOLD = 0.8
-            COMPLETENESS_THRESHOLD = 0.7
-            ENABLE_AI_QUALITY_EVALUATION = True
+    logger = logging.getLogger(__name__)
+    logger.error("❌ Critical: Could not load quality config loader - system may be unstable")
+    QUALITY_CONFIG_AVAILABLE = False
+    
+    # Emergency fallback
+    class QualitySystemConfig:
+        QUALITY_SCORE_THRESHOLD = 0.8
+        ACTIONABILITY_THRESHOLD = 0.7
+        AUTHENTICITY_THRESHOLD = 0.8
+        COMPLETENESS_THRESHOLD = 0.7
+        ENABLE_AI_QUALITY_EVALUATION = True
 
 logger = logging.getLogger(__name__)
 

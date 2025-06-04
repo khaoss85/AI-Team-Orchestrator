@@ -71,17 +71,54 @@ from database import (
     list_tasks as db_list_tasks,
 )
 
+# FIXED: Import centralizzato Quality System
 try:
-    from config.quality_system_config import QualitySystemConfig
-    from ai_quality_assurance.quality_integration import DynamicPromptEnhancer
-    QUALITY_SYSTEM_AVAILABLE = True
-    logger.info("✅ Quality System integration available for SpecialistAgent")
+    from backend.utils.quality_config_loader import load_quality_system_config
+    QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = load_quality_system_config()
+    
+    # Prova a importare DynamicPromptEnhancer
+    try:
+        from ai_quality_assurance.quality_integration import DynamicPromptEnhancer
+    except ImportError:
+        try:
+            from backend.ai_quality_assurance.quality_integration import DynamicPromptEnhancer
+        except ImportError:
+            logger.warning("DynamicPromptEnhancer not available")
+            DynamicPromptEnhancer = None
+            QUALITY_SYSTEM_AVAILABLE = False
+    
+    logger.info(f"✅ Quality System for SpecialistAgent: Available={QUALITY_SYSTEM_AVAILABLE}")
+    
 except ImportError as e:
-    logger.warning(f"⚠️ Quality System not available: {e}")
+    logger.warning(f"⚠️ Quality System loader not available: {e}")
     QUALITY_SYSTEM_AVAILABLE = False
     QualitySystemConfig = None
     DynamicPromptEnhancer = None
 
+# NUOVO: Import per JSON parsing robusto
+try:
+    from backend.utils.robust_json_parser import parse_llm_json_robust, robust_json_parser
+    from backend.utils.output_length_manager import optimize_agent_output
+    ROBUST_JSON_AVAILABLE = True
+    logger.info("✅ Robust JSON parser available")
+except ImportError:
+    logger.warning("⚠️ Robust JSON parser not available - using fallback")
+    ROBUST_JSON_AVAILABLE = False
+    
+    # Fallback function
+    def parse_llm_json_robust(raw_output: str, task_id: str = None, expected_schema: dict = None):
+        try:
+            import json
+            return json.loads(raw_output), True, "fallback_parse"
+        except:
+            return {
+                "task_id": task_id or "unknown",
+                "status": "failed", 
+                "summary": "JSON parsing failed with fallback"
+            }, False, "fallback_error"
+    def optimize_agent_output(output, task_id=None): 
+        return output, False, []
+            
 # Dummy async context manager per il fallback di 'trace'
 @contextlib.asynccontextmanager
 async def _dummy_async_context_manager():
@@ -1105,70 +1142,139 @@ class SpecialistAgent(Generic[T]):
                 )
 
                 final_llm_output = agent_run_result.final_output
+                # ENHANCED: Parsing robusto dell'output dell'agente
                 execution_result_obj: TaskExecutionOutput
-
+                parsing_method = "unknown"
+                
                 if isinstance(final_llm_output, TaskExecutionOutput):
+                    # Output già nel formato corretto
                     execution_result_obj = final_llm_output
-                elif isinstance(final_llm_output, dict):
-                    final_llm_output.setdefault('task_id', str(task.id))
-                    final_llm_output.setdefault('status', 'completed')
-                    final_llm_output.setdefault('summary', 'Task processing completed by agent.')
-                    try:
-                        execution_result_obj = TaskExecutionOutput.model_validate(final_llm_output)
-                    except Exception as val_err:
-                        logger.error(f"Pydantic validation error for agent's dict output: {val_err}. Raw output: {str(final_llm_output)[:500]}")
-                        execution_result_obj = TaskExecutionOutput(
-                            task_id=str(task.id), status="failed", summary=f"Output validation error: {val_err}.",
-                            detailed_results_json=json.dumps({"error": "Agent output validation failed", "raw_output": str(final_llm_output)[:1000]})
-                        )
-                else: # final_llm_output is likely a string
-                    logger.warning(f"Agent for task {task.id} returned raw string output. Attempting to parse as TaskExecutionOutput JSON. Output snippet: {str(final_llm_output)[:500]}")
-                    parsed_successfully_from_string = False
-                    extracted_json_dict = None
-                    try:
-                        # Regex per estrarre il blocco JSON, anche con ```json ... ```
-                        json_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*\})", str(final_llm_output), re.DOTALL)
-                        if json_match:
-                            actual_json_content_str = json_match.group(1) if json_match.group(1) else json_match.group(2)
-                            if actual_json_content_str:
-                                # Pulisci caratteri di controllo prima del parsing finale
-                                clean_actual_json_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', actual_json_content_str)
-                                extracted_json_dict = json.loads(clean_actual_json_str)
-                                
-                                if isinstance(extracted_json_dict, dict):
-                                    # Se il JSON estratto è l'intero TaskExecutionOutput
-                                    if "summary" in extracted_json_dict and "status" in extracted_json_dict:
-                                        extracted_json_dict.setdefault('task_id', str(task.id))
-                                        execution_result_obj = TaskExecutionOutput.model_validate(extracted_json_dict)
-                                        parsed_successfully_from_string = True
-                                        logger.info(f"Successfully parsed TaskExecutionOutput from agent's string output for task {task.id}.")
-                                    # Se il JSON estratto è solo il detailed_results_json
-                                    # (caso meno probabile se il prompt chiede TaskExecutionOutput completo)
-                                    else:
-                                        execution_result_obj = TaskExecutionOutput(
-                                            task_id=str(task.id),
-                                            status="completed", # Assumiamo completed se non specificato
-                                            summary=f"Successfully extracted structured data. Original summary might be missing or part of raw text. Raw text: {str(final_llm_output)[:200]}...",
-                                            detailed_results_json=json.dumps(extracted_json_dict) # Usa il JSON estratto qui
-                                        )
-                                        parsed_successfully_from_string = True
-                                        logger.info(f"Successfully parsed detailed_results_json from agent's string output for task {task.id}.")
-                                else:
-                                     logger.warning(f"Extracted content for task {task.id} was not a dictionary.")
-                        else:
-                            logger.warning(f"Could not find a JSON object within the string output for task {task.id}.")
-
-                    except (json.JSONDecodeError, Exception) as e: # Exception più generica per Pydantic ValidationError
-                        logger.error(f"Failed to parse string output or validate as TaskExecutionOutput JSON for task {task.id}: {e}. Raw string: {str(final_llm_output)[:500]}")
+                    parsing_method = "direct_taskexecutionoutput"
+                    logger.info(f"Task {task.id}: Direct TaskExecutionOutput received")
                     
-                    if not parsed_successfully_from_string:
-                        # Fallback definitivo se il parsing dalla stringa fallisce
-                        execution_result_obj = TaskExecutionOutput(
-                            task_id=str(task.id), 
-                            status="completed", # Potrebbe essere "failed" se il contenuto indica un errore
-                            summary=f"Agent returned non-standard string output (first 500 chars): {str(final_llm_output)[:500]}",
-                            detailed_results_json=json.dumps({"error": "Agent returned raw string, not parsable into TaskExecutionOutput JSON or a valid detailed_results_json.", "raw_output_snippet": str(final_llm_output)[:1000]})
-                        )
+                elif isinstance(final_llm_output, dict):
+                    # Output dict - prova validazione diretta
+                    try:
+                        final_llm_output.setdefault('task_id', str(task.id))
+                        final_llm_output.setdefault('status', 'completed')
+                        final_llm_output.setdefault('summary', 'Task processing completed by agent.')
+                        execution_result_obj = TaskExecutionOutput.model_validate(final_llm_output)
+                        parsing_method = "direct_dict_validation"
+                        logger.info(f"Task {task.id}: Direct dict validation successful")
+                    except Exception as val_err:
+                        logger.warning(f"Task {task.id}: Dict validation failed: {val_err}")
+                        # Fallback a parsing robusto del dict serializzato
+                        if ROBUST_JSON_AVAILABLE:
+                            try:
+                                dict_as_json = json.dumps(final_llm_output)
+                                parsed_data, is_complete, method = parse_llm_json_robust(
+                                    dict_as_json, str(task.id)
+                                )
+                                parsed_data.setdefault('task_id', str(task.id))
+                                execution_result_obj = TaskExecutionOutput.model_validate(parsed_data)
+                                parsing_method = f"robust_dict_recovery_{method}"
+                                logger.info(f"Task {task.id}: Robust dict recovery successful ({method})")
+                            except Exception as robust_err:
+                                logger.error(f"Task {task.id}: Robust dict recovery failed: {robust_err}")
+                                execution_result_obj = TaskExecutionOutput(
+                                    task_id=str(task.id), status="failed", 
+                                    summary=f"Dict validation and recovery failed: {val_err}",
+                                    detailed_results_json=json.dumps({
+                                        "error": "validation_and_recovery_failed",
+                                        "original_validation_error": str(val_err),
+                                        "robust_recovery_error": str(robust_err),
+                                        "raw_output": str(final_llm_output)[:1000]
+                                    })
+                                )
+                                parsing_method = "error_fallback_dict"
+                        else:
+                            # Fallback senza robust parser
+                            execution_result_obj = TaskExecutionOutput(
+                                task_id=str(task.id), status="failed", 
+                                summary=f"Output validation error: {val_err}",
+                                detailed_results_json=json.dumps({
+                                    "error": "Agent output validation failed", 
+                                    "raw_output": str(final_llm_output)[:1000]
+                                })
+                            )
+                            parsing_method = "basic_fallback_dict"
+                
+                else:
+                    # Output string - usa parsing robusto
+                    logger.info(f"Task {task.id}: Processing string output with robust parser")
+                    
+                    if ROBUST_JSON_AVAILABLE:
+                        try:
+                            parsed_data, is_complete, method = parse_llm_json_robust(
+                                str(final_llm_output), str(task.id)
+                            )
+                            
+                            # Assicura campi minimi
+                            parsed_data.setdefault('task_id', str(task.id))
+                            parsed_data.setdefault('status', 'completed' if is_complete else 'failed')
+                            
+                            if not is_complete:
+                                # Aggiungi nota sul parsing incompleto
+                                original_summary = parsed_data.get('summary', '')
+                                parsed_data['summary'] = f"{original_summary} [Note: Output was truncated/incomplete, recovery applied]"
+                            
+                            execution_result_obj = TaskExecutionOutput.model_validate(parsed_data)
+                            parsing_method = f"robust_string_{method}"
+                            
+                            completion_status = "✅ Complete" if is_complete else "⚠️ Incomplete/Recovered"
+                            logger.info(f"Task {task.id}: Robust string parsing successful - {completion_status} ({method})")
+                            
+                        except Exception as robust_err:
+                            logger.error(f"Task {task.id}: Robust string parsing failed: {robust_err}")
+                            # Create error fallback
+                            execution_result_obj = TaskExecutionOutput(
+                                task_id=str(task.id), status="failed",
+                                summary=f"String output parsing failed: {str(robust_err)[:100]}",
+                                detailed_results_json=json.dumps({
+                                    "error": "robust_string_parsing_failed",
+                                    "parsing_error": str(robust_err),
+                                    "raw_output_length": len(str(final_llm_output)),
+                                    "raw_output_preview": str(final_llm_output)[:500]
+                                })
+                            )
+                            parsing_method = "error_fallback_string"
+                    else:
+                        # Fallback senza robust parser - usa logica originale semplificata
+                        logger.warning(f"Task {task.id}: Using basic string parsing (robust parser unavailable)")
+                        try:
+                            # Prova estrazione JSON semplice
+                            json_match = re.search(r'\{.*\}', str(final_llm_output), re.DOTALL)
+                            if json_match:
+                                basic_json = json.loads(json_match.group())
+                                basic_json.setdefault('task_id', str(task.id))
+                                basic_json.setdefault('status', 'completed')
+                                basic_json.setdefault('summary', f"Basic extraction from string output")
+                                execution_result_obj = TaskExecutionOutput.model_validate(basic_json)
+                                parsing_method = "basic_string_extraction"
+                            else:
+                                raise ValueError("No JSON found in string output")
+                        except Exception:
+                            execution_result_obj = TaskExecutionOutput(
+                                task_id=str(task.id), status="failed",
+                                summary=f"Basic string parsing failed. Raw output: {str(final_llm_output)[:200]}...",
+                                detailed_results_json=json.dumps({
+                                    "error": "basic_string_parsing_failed",
+                                    "raw_output_snippet": str(final_llm_output)[:1000]
+                                })
+                            )
+                            parsing_method = "basic_fallback"
+                
+                # Log del metodo di parsing utilizzato per monitoring
+                logger.info(f"Task {task.id}: Final parsing method: {parsing_method}")
+                await self._log_execution_internal(
+                    "output_parsing_completed",
+                    {
+                        "task_id": str(task.id),
+                        "parsing_method": parsing_method,
+                        "final_status": execution_result_obj.status,
+                        "output_type": type(final_llm_output).__name__
+                    }
+                )
                 
                 execution_result_obj.task_id = str(task.id) 
                 
@@ -1213,6 +1319,17 @@ class SpecialistAgent(Generic[T]):
                         logger.warning(f"Error extracting cost/tokens from resources_consumed_json for task {task.id}: {e}")
                 
                 result_dict_to_save["trace_id_for_run"] = trace_id_val
+                
+                # NUOVO: Ottimizza output prima del salvataggio per prevenire problemi di lunghezza
+                if ROBUST_JSON_AVAILABLE:
+                    result_dict_to_save, was_optimized, optimizations = optimize_agent_output(
+                        result_dict_to_save, str(task.id)
+                    )
+                    if was_optimized:
+                        logger.info(f"Task {task.id}: Output optimized to prevent length issues - Applied: {optimizations}")
+                        # Aggiungi metadata sull'ottimizzazione
+                        if "status_detail" in result_dict_to_save:
+                            result_dict_to_save["status_detail"] += f" | Output optimized: {len(optimizations)} modifications"
 
                 await self._register_usage_in_budget_tracker(
                     str(task.id), model_name, token_usage, cost_data
