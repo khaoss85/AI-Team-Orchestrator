@@ -396,7 +396,8 @@ async def get_project_deliverables(workspace_id: UUID):
         # Extract outputs from completed tasks
         key_outputs = []
         for task in completed_tasks:
-            result = task.get("result", {})
+            result = task.get("result", {}) or {}
+            context_data = task.get("context_data", {}) or {}
             output_text = result.get("summary", "")
             
             if output_text and len(output_text.strip()) > 10:  # Skip trivial outputs
@@ -412,7 +413,12 @@ async def get_project_deliverables(workspace_id: UUID):
                     agent_name=agent_info.get("name", "Unknown Agent"),
                     agent_role=agent_info.get("role", "Unknown Role"),
                     created_at=datetime.fromisoformat(task.get("updated_at", task.get("created_at", datetime.now().isoformat())).replace('Z', '+00:00')),
-                    type=output_type
+                    type=output_type,
+                    execution_time_seconds=result.get("execution_time_seconds") or context_data.get("execution_time_seconds"),
+                    cost_estimated=result.get("cost_estimated") or context_data.get("cost_estimated"),
+                    tokens_used=result.get("tokens_used") or context_data.get("tokens_used"),
+                    model_used=result.get("model_used") or context_data.get("model_used"),
+                    rationale=result.get("rationale") or context_data.get("rationale") or result.get("phase_rationale") or context_data.get("phase_rationale")
                 ))
         
         # ENHANCED: Controlla se esiste un deliverable finale aggregato
@@ -429,6 +435,7 @@ async def get_project_deliverables(workspace_id: UUID):
         if final_deliverable_task:
             logger.info(f"🎯 PROCESSING final deliverable task: {final_deliverable_task['id']}")
             result = final_deliverable_task.get("result", {}) or {}
+            fd_context = final_deliverable_task.get("context_data", {}) or {}
             
             # ENHANCED: Multiple fallback strategies for getting executive summary
             executive_summary = ""
@@ -481,7 +488,12 @@ async def get_project_deliverables(workspace_id: UUID):
                     description=executive_summary,  # Use the robust executive_summary
                     key_insights=detailed_json_data.get("key_findings", detailed_json_data.get("key_insights", [])),
                     metrics=detailed_json_data.get("project_metrics", detailed_json_data.get("project_success_metrics", {})),
-                    category="final_deliverable"
+                    category="final_deliverable",
+                    execution_time_seconds=result.get("execution_time_seconds") or fd_context.get("execution_time_seconds"),
+                    cost_estimated=result.get("cost_estimated") or fd_context.get("cost_estimated"),
+                    tokens_used=result.get("tokens_used") or fd_context.get("tokens_used"),
+                    model_used=result.get("model_used") or fd_context.get("model_used"),
+                    rationale=result.get("rationale") or fd_context.get("rationale") or result.get("phase_rationale") or fd_context.get("phase_rationale")
                 )
                 
                 # Add the final deliverable at the beginning of the list
@@ -669,6 +681,28 @@ async def trigger_asset_analysis(workspace_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to trigger asset analysis: {str(e)}",
+        )
+
+# New endpoint: return full task record for a specific output
+@router.get("/{workspace_id}/output/{task_id}", response_model=Task)
+async def get_output_detail(workspace_id: UUID, task_id: UUID):
+    """Fetch a single task from the workspace and return its details."""
+    try:
+        tasks = await list_tasks(str(workspace_id))
+        for task in tasks:
+            if str(task.get("id")) == str(task_id):
+                return task
+        raise HTTPException(status_code=404, detail="Task not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Error retrieving output detail for {task_id} in {workspace_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get output detail: {str(e)}",
         )
 
 # Helper functions

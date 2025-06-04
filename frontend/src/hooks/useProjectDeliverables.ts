@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/utils/api';
-import { ProjectDeliverablesExtended, ProjectOutputExtended } from '@/types';
+import { ProjectDeliverablesExtended, ProjectOutputExtended, DeliverableFeedback } from '@/types';
 
 export const useProjectDeliverables = (workspaceId: string) => {
   const [deliverables, setDeliverables] = useState<ProjectDeliverablesExtended | null>(null);
@@ -42,6 +42,14 @@ export const useProjectDeliverables = (workspaceId: string) => {
     }
   }, [workspaceId]);
 
+  const submitFeedback = useCallback(
+    async (feedback: DeliverableFeedback) => {
+      await api.monitoring.submitDeliverableFeedback(workspaceId, feedback);
+      await fetchDeliverables();
+    },
+    [workspaceId, fetchDeliverables],
+  );
+
   useEffect(() => {
     if (workspaceId) {
       fetchDeliverables();
@@ -54,6 +62,7 @@ export const useProjectDeliverables = (workspaceId: string) => {
     loading,
     error,
     refetch: fetchDeliverables,
+    submitFeedback,
     checkForFinalDeliverables,
     hasFinalDeliverables: finalDeliverables.length > 0,
     finalDeliverablesCount: finalDeliverables.length

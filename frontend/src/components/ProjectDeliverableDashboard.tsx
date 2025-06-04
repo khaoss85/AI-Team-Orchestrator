@@ -207,6 +207,7 @@ export default function ProjectDeliverableDashboard({
   const [feedback, setFeedback] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackTaskId, setFeedbackTaskId] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<'cards' | 'detailed'>('cards');
   const [expandedOutput, setExpandedOutput] = useState<string | null>(null);
@@ -243,22 +244,25 @@ export default function ProjectDeliverableDashboard({
 
   /* ------------------------------- Feedback -------------------------------- */
 
-  const handleSubmitFeedback = async () => {
+  const handleSubmitFeedback = async (taskIds?: string[]) => {
     if (!feedback.trim()) {
       alert('Inserisci un messaggio di feedback');
       return;
     }
     try {
       setSubmittingFeedback(true);
+      const ids = taskIds || finalDeliverables.map(d => d.task_id);
       const feedbackData: DeliverableFeedback = {
         feedback_type: feedbackType,
         message: feedback,
         priority,
+        specific_tasks: ids,
       };
       await api.monitoring.submitDeliverableFeedback(workspaceId, feedbackData);
       setFeedback('');
       setShowFeedbackForm(false);
       setFeedbackType('general_feedback');
+      setFeedbackTaskId(null);
       alert('Feedback inviato con successo!');
       fetchDeliverables();
     } catch (err) {
@@ -493,7 +497,10 @@ export default function ProjectDeliverableDashboard({
                 📦 Scarica Tutti gli Asset
               </button>
               <button
-                onClick={() => setShowFeedbackForm(true)}
+                onClick={() => {
+                  setFeedbackTaskId(null);
+                  setShowFeedbackForm(true);
+                }}
                 className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition shadow-sm"
               >
                 💬 Fornisci Feedback
@@ -605,6 +612,21 @@ export default function ProjectDeliverableDashboard({
                   >
                     📥 Scarica
                   </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleQuickFeedback('approve', d.task_id)}
+                      className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
+                    >
+                      ✅ Approva
+                    </button>
+                    <button
+                      onClick={() => handleQuickFeedback('request_changes', d.task_id)}
+                      className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm hover:bg-orange-600"
+                    >
+                      📝 Rework
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="mt-6 pt-4 border-t border-white/20 flex justify-between text-sm text-indigo-200">
@@ -629,6 +651,7 @@ export default function ProjectDeliverableDashboard({
               <button
                 onClick={() => {
                   setFeedbackType('approve');
+                  setFeedbackTaskId(finalDeliverables[0]?.task_id || null);
                   setShowFeedbackForm(true);
                 }}
                 className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium"
@@ -638,6 +661,7 @@ export default function ProjectDeliverableDashboard({
               <button
                 onClick={() => {
                   setFeedbackType('request_changes');
+                  setFeedbackTaskId(finalDeliverables[0]?.task_id || null);
                   setShowFeedbackForm(true);
                 }}
                 className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-medium"
@@ -764,6 +788,7 @@ export default function ProjectDeliverableDashboard({
               <button
                 onClick={() => {
                   setFeedbackType('general_feedback');
+                  setFeedbackTaskId(null);
                   setShowFeedbackForm(true);
                 }}
                 className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
@@ -814,7 +839,7 @@ export default function ProjectDeliverableDashboard({
 
             <div className="flex gap-3">
               <button
-                onClick={handleSubmitFeedback}
+                onClick={() => handleSubmitFeedback(feedbackTaskId ? [feedbackTaskId] : undefined)}
                 disabled={submittingFeedback}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-50 hover:bg-indigo-700"
               >
