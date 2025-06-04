@@ -592,6 +592,10 @@ export interface AssetManagementState {
     }>;
     next_steps: string[];
   } | null;
+
+  // Deliverables data
+  deliverables: ProjectDeliverablesExtended | null;
+  finalDeliverables: ProjectOutputExtended[];
   
   // Processed deliverable assets
   deliverableAssets: Record<string, ActionableAsset>;
@@ -622,6 +626,10 @@ export interface UseAssetManagementReturn {
   requirements: AssetManagementState['requirements'];
   schemas: Record<string, AssetSchema>;
   extractionStatus: AssetManagementState['extractionStatus'];
+
+  // Deliverables
+  deliverables: ProjectDeliverablesExtended | null;
+  finalDeliverables: ProjectOutputExtended[];
   
   // Direct access to processed assets
   assets: ActionableAsset[];
