@@ -835,18 +835,24 @@ class TaskExecutor(AssetCoordinationMixin):
                 is_completed = await task_executor.check_project_completion_criteria(workspace_id)
                 
                 if is_completed:
+                    if workspace_id in self.completed_workspaces:
+                        logger.debug(f"Workspace {workspace_id} already processed as completed")
+                        return
+
                     # Aggiorna stato workspace
                     workspace = await get_workspace(workspace_id)
                     if workspace and workspace.get("status") != "completed":
                         await update_workspace_status(workspace_id, "completed")
-                        
                         logger.info(f"Project {workspace_id} automatically marked as COMPLETED")
-                        self.execution_log.append({
-                            "timestamp": datetime.now().isoformat(),
-                            "event": "project_completed",
-                            "workspace_id": workspace_id,
-                            "trigger_task_id": completed_task_id
-                        })
+
+                    # Mark as processed regardless of DB status to avoid redundant checks
+                    self.completed_workspaces.add(workspace_id)
+                    self.execution_log.append({
+                        "timestamp": datetime.now().isoformat(),
+                        "event": "project_completed",
+                        "workspace_id": workspace_id,
+                        "trigger_task_id": completed_task_id
+                    })
         except Exception as e:
             logger.error(f"Error checking project completion after task {completed_task_id}: {e}", exc_info=True)
 
