@@ -777,13 +777,17 @@ class EnhancedTaskExecutor:
         # Extract and parse detailed_results_json
         detailed_results_json_str = result.get("detailed_results_json")
         if not detailed_results_json_str:
-            logger.error(f"TaskAnalyzer: PM task {task_id_str} missing detailed_results_json in its result.")
-            return False
-
-        results_data = self._safe_json_loads(detailed_results_json_str)
-        if not results_data:
-            logger.error(f"TaskAnalyzer: PM task {task_id_str} failed to parse detailed_results_json.")
-            return False
+            logger.warning(
+                f"TaskAnalyzer: PM task {task_id_str} missing detailed_results_json in its result."
+            )
+            results_data = {}
+        else:
+            results_data = self._safe_json_loads(detailed_results_json_str)
+            if not results_data:
+                logger.warning(
+                    f"TaskAnalyzer: PM task {task_id_str} failed to parse detailed_results_json."
+                )
+                results_data = {}
 
         # Validate current project phase
         current_project_phase_from_pm_str = results_data.get("current_project_phase")
