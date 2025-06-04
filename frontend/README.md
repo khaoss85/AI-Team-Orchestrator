@@ -33,3 +33,14 @@ e lasciarli lavorare in completa autonomia su un progetto.
    ```bash
    git clone https://github.com/tuonome/ai-team-orchestrator.git
    cd ai-team-orchestrator
+   ```
+
+2. Installa le dipendenze del backend e del frontend:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   cd ../frontend
+   npm install
+   ```
+
+3. Configura le variabili d'ambiente modificando il file `backend/.env` con la tua `OPENAI_API_KEY` e le credenziali Supabase.
