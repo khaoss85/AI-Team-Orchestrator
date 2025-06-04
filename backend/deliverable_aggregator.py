@@ -18,6 +18,7 @@ from models import TaskStatus, ProjectPhase
 from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
 from deliverable_system.schema_generator import AssetSchemaGenerator
 from models import ExtractedAsset, ActionableDeliverable, AssetSchema
+from asset_first_packager import AssetFirstDeliverablePackager
 
 # ENHANCED: AI Quality Assurance Integration with graceful fallback
 AI_QUALITY_ASSURANCE_AVAILABLE = False
@@ -60,6 +61,7 @@ MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DEL
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
 ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
 ENABLE_DYNAMIC_AI_ANALYSIS = os.getenv("ENABLE_DYNAMIC_AI_ANALYSIS", "true").lower() == "true"
+USE_ASSET_FIRST_DELIVERABLE = os.getenv("USE_ASSET_FIRST_DELIVERABLE", "false").lower() == "true"
 
 def is_quality_assurance_available():
     """Controllo sicuro per la disponibilità del sistema di quality assurance"""
@@ -889,6 +891,8 @@ class IntelligentDeliverablePackager:
     
     def __init__(self):
         self.ai_analyzer = AIDeliverableAnalyzer()
+        self.asset_first_packager = AssetFirstDeliverablePackager()
+        self.use_asset_first = USE_ASSET_FIRST_DELIVERABLE
     
     async def create_intelligent_deliverable(
         self,
@@ -902,6 +906,16 @@ class IntelligentDeliverablePackager:
         """
         Crea deliverable intelligente usando analisi AI e quality assurance
         """
+
+        if self.use_asset_first:
+            return await self.asset_first_packager.create_asset_first_deliverable(
+                workspace_id,
+                workspace_goal,
+                deliverable_analysis,
+                extracted_assets,
+                completed_tasks,
+                quality_analysis,
+            )
         
         # Genera executive summary con AI awareness
         executive_summary = await self._generate_intelligent_executive_summary(
