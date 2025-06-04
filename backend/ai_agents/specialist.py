@@ -1090,9 +1090,15 @@ class SpecialistAgent(Generic[T]):
 
         try:
             if SDK_AVAILABLE:
-                trace_context_manager = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id))
-                if not hasattr(trace_context_manager, '__aenter__'): # type: ignore
-                    raise AttributeError("TraceImpl doesn't support async context manager")
+                _trace_cm = trace(workflow_name=workflow_name, trace_id=trace_id_val, group_id=str(task.id))
+                if hasattr(_trace_cm, "__aenter__"):
+                    trace_context_manager = _trace_cm
+                else:
+                    @contextlib.asynccontextmanager
+                    async def _wrap():
+                        with _trace_cm:
+                            yield
+                    trace_context_manager = _wrap()
             else:
                 trace_context_manager = _dummy_async_context_manager()
         except (AttributeError, TypeError) as e:
