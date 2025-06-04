@@ -20,6 +20,7 @@ AI Team Orchestrator is a platform for managing teams of cooperating AI agents. 
 # install Python dependencies
 cd backend
 pip install -r requirements.txt
+pytest
 
 # install Node dependencies
 cd ../frontend
