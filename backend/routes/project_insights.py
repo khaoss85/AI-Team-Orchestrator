@@ -6,13 +6,21 @@ import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
 import os
 from collections import Counter
-from models import ProjectDeliverables, ProjectOutput, DeliverableFeedback, ProjectDeliverableCard
+from models import (
+    ProjectDeliverables,
+    ProjectOutput,
+    DeliverableFeedback,
+    ProjectDeliverableCard,
+    Task,
+    TaskStatus,
+)
 from ai_agents.director import DirectorAgent
 
 from database import (
     get_workspace,
     list_agents as db_list_agents,
     list_tasks,
+    create_task,
 )
 from executor import task_executor
 from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
