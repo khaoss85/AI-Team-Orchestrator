@@ -32,15 +32,26 @@ except ImportError as e:
     logger.warning(f"⚠️ AI Quality Assurance not available: {e}")
     AI_QUALITY_ASSURANCE_AVAILABLE = False
     
-# ENHANCED: Import centralizzato Quality System
+# ENHANCED: Import centralizzato Quality System con fallback
 try:
     from backend.utils.quality_config_loader import load_quality_system_config
-    _QualitySystemConfig, _quality_available = load_quality_system_config()
-    logger.info(f"Quality System loaded in deliverable_aggregator: {_quality_available}")
 except ImportError:
-    logger.warning("Quality config loader not available in deliverable_aggregator")
-    _QualitySystemConfig = None
-    _quality_available = False
+    try:
+        from utils.quality_config_loader import load_quality_system_config  # type: ignore
+    except ImportError as e:
+        logger.warning(f"Quality config loader not available in deliverable_aggregator: {e}")
+        _QualitySystemConfig = None
+        _quality_available = False
+    else:
+        _QualitySystemConfig, _quality_available = load_quality_system_config()
+        logger.info(
+            f"Quality System loaded in deliverable_aggregator: {_quality_available}"
+        )
+else:
+    _QualitySystemConfig, _quality_available = load_quality_system_config()
+    logger.info(
+        f"Quality System loaded in deliverable_aggregator: {_quality_available}"
+    )
 
 # Enhanced configuration from environment
 DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
