@@ -384,8 +384,12 @@ class TaskExecutor(AssetCoordinationMixin):
         self.max_pending_tasks_per_workspace: int = int(os.getenv("MAX_PENDING_TASKS_PER_WORKSPACE", "50"))
         self.runaway_check_interval: int = 300  # secondi
 
-        # Workspaces already marked as completed in the current run
-        self.completed_workspaces: Set[str] = set()
+        # === QUERY CACHING CONFIGURATION ===
+        # Minimum seconds before repeating the same DB query for a workspace
+        self.min_db_query_interval: int = int(os.getenv("MIN_DB_QUERY_INTERVAL", "30"))
+        self._tasks_query_cache: Dict[str, Tuple[float, List[Dict]]] = {}
+        self._agents_query_cache: Dict[str, Tuple[float, List[Dict]]] = {}
+        self._active_ws_cache: Tuple[float, List[str]] = (0, [])
 
     async def start(self):
         """Start the task executor"""
@@ -962,6 +966,9 @@ class TaskExecutor(AssetCoordinationMixin):
                 if self.task_queue.full():
                     logger.warning(f"Anti-loop Task Queue is full ({self.task_queue.qsize()}/{self.max_queue_size}). Skipping further workspace processing in this cycle")
                     break
+                # Pre-warm caches to avoid repeated DB hits in quick succession
+                await self._cached_list_tasks(workspace_id)
+                await self._cached_list_agents(workspace_id)
                 await self.process_workspace_tasks_anti_loop_with_health_check_enhanced(workspace_id)
                 
         except Exception as e:
@@ -1016,7 +1023,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 return
 
             # === ENHANCED: Ottieni TUTTI i task e applica prioritizzazione intelligente ===
-            all_tasks_for_workspace = await list_tasks(workspace_id)
+            all_tasks_for_workspace = await self._cached_list_tasks(workspace_id)
             
             # Filtra per task PENDING non già completati
             pending_eligible_tasks = [
@@ -1139,6 +1146,34 @@ class TaskExecutor(AssetCoordinationMixin):
         
         logger.info("Tracking data cleanup finished")
 
+    # === CACHED DATABASE ACCESS HELPERS ===
+    async def _cached_list_tasks(self, workspace_id: str) -> List[Dict]:
+        now = time.time()
+        ts, data = self._tasks_query_cache.get(workspace_id, (0, None))
+        if data is not None and now - ts < self.min_db_query_interval:
+            return data
+        data = await list_tasks(workspace_id)
+        self._tasks_query_cache[workspace_id] = (now, data)
+        return data
+
+    async def _cached_list_agents(self, workspace_id: str) -> List[Dict]:
+        now = time.time()
+        ts, data = self._agents_query_cache.get(workspace_id, (0, None))
+        if data is not None and now - ts < self.min_db_query_interval:
+            return data
+        data = await db_list_agents(workspace_id)
+        self._agents_query_cache[workspace_id] = (now, data)
+        return data
+
+    async def _cached_active_workspaces(self) -> List[str]:
+        now = time.time()
+        ts, data = self._active_ws_cache
+        if data and now - ts < self.min_db_query_interval:
+            return data
+        data = await get_active_workspaces()
+        self._active_ws_cache = (now, data)
+        return data
+
     async def get_agent_manager(self, workspace_id: str) -> Optional[AgentManager]:
         """Ottieni o crea un AgentManager per il workspace specificato"""
         try:
@@ -1169,8 +1204,8 @@ class TaskExecutor(AssetCoordinationMixin):
     async def check_workspace_health(self, workspace_id: str) -> Dict[str, Any]:
         """Controlla lo stato di salute di un workspace"""
         try:
-            all_tasks_db = await list_tasks(workspace_id)
-            agents_db = await db_list_agents(workspace_id)
+            all_tasks_db = await self._cached_list_tasks(workspace_id)
+            agents_db = await self._cached_list_agents(workspace_id)
             
             # Conteggio task per status
             task_counts = Counter(t.get("status") for t in all_tasks_db)
@@ -1545,7 +1580,7 @@ class TaskExecutor(AssetCoordinationMixin):
 
         try:
             logger.debug("Checking for active workspaces needing initial tasks...")
-            active_ws_ids = await get_active_workspaces()
+            active_ws_ids = await self._cached_active_workspaces()
 
             for ws_id in active_ws_ids:
                 if ws_id in self.workspace_auto_generation_paused:
@@ -1553,7 +1588,7 @@ class TaskExecutor(AssetCoordinationMixin):
                     continue
 
                 # Se il workspace non ha task, crea task iniziale
-                tasks = await list_tasks(ws_id)
+                tasks = await self._cached_list_tasks(ws_id)
                 if not tasks:
                     ws_data = await get_workspace(ws_id)
                     if ws_data and ws_data.get("status") == WorkspaceStatus.ACTIVE.value:
