@@ -6,8 +6,12 @@ import sys
 from dotenv import load_dotenv
 import logging
 
-# Aggiungi la directory corrente al path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Aggiungi la directory corrente e la root del progetto al path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, CURRENT_DIR)
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # Load environment variables
 load_dotenv()
