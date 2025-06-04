@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function TaskResultDetails({ result }) {
+export default function TaskResultDetails({ result }: { result: Record<string, unknown> }) {
   if (!result) return null;
 
   // Extract main fields from result
@@ -20,10 +20,10 @@ export default function TaskResultDetails({ result }) {
     assigned_agent_name,
     assigned_agent_role,
     rationale
-  } = result;
+  } = result as Record<string, any>;
 
   // Use only one source for the main content - prefer summary, then output
-  const mainContent = summary || output || "Nessun risultato disponibile";
+  const mainContent = String(summary || output || 'Nessun risultato disponibile');
 
   // Parse detailed JSON if available
   let detailedResults = null;
@@ -110,7 +110,7 @@ export default function TaskResultDetails({ result }) {
             Prossimi Passi
           </h3>
           <ul className="space-y-3">
-            {next_steps.map((step, index) => (
+            {next_steps.map((step: string, index: number) => (
               <li key={index} className="flex bg-white bg-opacity-60 p-3 rounded-lg shadow-sm">
                 <span className="bg-green-200 text-green-800 h-6 w-6 rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0 shadow-sm">
                   {index + 1}

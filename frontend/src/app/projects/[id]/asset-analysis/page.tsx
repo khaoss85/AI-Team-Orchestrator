@@ -8,7 +8,7 @@ import { useAssetManagement } from '@/hooks/useAssetManagement';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 // 🔧 DEBUG: Component to show raw data

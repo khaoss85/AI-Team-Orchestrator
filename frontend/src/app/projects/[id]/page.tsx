@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { api } from '@/utils/api'
-import type { Workspace, ProjectOutputExtended } from '@/types'
+import type { Workspace, ProjectOutputExtended, Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
 import { useAssetManagement } from '@/hooks/useAssetManagement'
 import ActionableHeroSection from '@/components/redesign/ActionableHeroSection'
 import MissionControlSection from '@/components/redesign/MissionControlSection'
@@ -25,12 +25,43 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
 
   const {
     finalDeliverables,
+    deliverables,
     getAssetCompletionStats,
     loading: assetsLoading,
     error: assetError
   } = useAssetManagement(id)
 
   const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null)
+
+  // Data for Mission Control section
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [feedback, setFeedback] = useState<FeedbackRequest[]>([])
+  const [taskAnalysis, setTaskAnalysis] = useState<TaskAnalysisResponse | null>(null)
+  const [missionLoading, setMissionLoading] = useState(true)
+  const [missionError, setMissionError] = useState<string | null>(null)
+
+  const fetchMissionControl = async () => {
+    try {
+      setMissionLoading(true)
+      const [agentsData, feedbackData, analysisData] = await Promise.all([
+        api.agents.list(id),
+        api.humanFeedback.getPendingRequests(id),
+        api.monitoring.getTaskAnalysis(id)
+      ])
+      setAgents(agentsData)
+      setFeedback(feedbackData)
+      setTaskAnalysis(analysisData)
+      setMissionError(null)
+    } catch (e: any) {
+      setMissionError(e.message || 'Errore caricamento mission control')
+    } finally {
+      setMissionLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMissionControl()
+  }, [id])
 
   useEffect(() => {
     const fetchWorkspace = async () => {
@@ -81,9 +112,7 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
       <InteractionPanel workspace={workspace} onWorkspaceUpdate={setWorkspace} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {deliverablesLoading && <div>Caricamento deliverable...</div>}
-        {deliverablesError && <div className="text-red-600">{deliverablesError}</div>}
-        {!deliverablesLoading && deliverables && deliverables.key_outputs.map(output => (
+        {deliverables && deliverables.key_outputs.map(output => (
           <DeliverableCard
             key={output.task_id}
             output={output}

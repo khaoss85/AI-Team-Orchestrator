@@ -8,7 +8,7 @@ import AssetDashboard from '@/components/AssetDashboard';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default function ProjectAssetsPage({ params: paramsPromise }: Props) {

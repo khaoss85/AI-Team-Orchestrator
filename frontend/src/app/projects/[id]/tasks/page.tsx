@@ -7,7 +7,7 @@ import { Task, Agent } from '@/types';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export default function ProjectTasksPage({ params: paramsPromise, searchParams }: Props) {
