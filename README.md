@@ -60,3 +60,32 @@ cd frontend
 npm run dev
 ```
 
+## Six-Step Improvement Loop
+
+Tasks can iterate through a dedicated improvement loop to address feedback and
+quality issues. The loop follows these high level stages:
+
+1. **Checkpoint output** – after a task runs, its result is submitted for human
+   review.
+2. **Feedback tasks** – if changes are requested a new follow‑up task is
+   created automatically.
+3. **Controlled iteration** – each execution increments the
+   `iteration_count` field and is checked against the task's `max_iterations`
+   limit.
+4. **Refresh dependencies** – dependent tasks are marked as `stale` so they are
+   revisited with the new information.
+5. **QA gate** – final approval of the output before completion.
+6. **Close loop** – once approved the iteration counter resets to zero.
+
+### API endpoints
+
+The backend exposes a small API to manage this loop:
+
+- `POST /improvement/start/{task_id}` – submit output for review.
+- `GET /improvement/status/{task_id}` – retrieve the current iteration count and
+  configured limit.
+- `POST /improvement/close/{task_id}` – clear the loop state once approved.
+
+Use the status endpoint to monitor how many iterations have occurred and to
+detect when the `max_iterations` threshold has been exceeded.
+
