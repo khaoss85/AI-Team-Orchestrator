@@ -5,9 +5,10 @@ from supabase import create_client, Client
 import logging
 from typing import Optional, Dict, Any, List, Union
 from uuid import UUID
-import uuid 
+import uuid
 from datetime import datetime, timedelta
 import json
+from models import TaskStatus
 
 # Load environment variables
 load_dotenv()
@@ -312,6 +313,20 @@ async def create_task(
         clean_name = sanitize_unicode_for_postgres(name)
         clean_description = sanitize_unicode_for_postgres(description) if description else None
         clean_assigned_to_role = sanitize_unicode_for_postgres(assigned_to_role) if assigned_to_role else None
+
+        # Duplicate task name check within the workspace
+        try:
+            existing_tasks = await list_tasks(workspace_id)
+            check_name_lower = clean_name.lower().strip()
+            for t in existing_tasks:
+                if t.get("name", "").lower().strip() == check_name_lower and \
+                   t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]:
+                    logger.warning(
+                        f"Duplicate task name detected in workspace {workspace_id}: '{clean_name}' already exists as {t.get('id')}"
+                    )
+                    return t
+        except Exception as dup_err:
+            logger.error(f"Error during duplicate task name check: {dup_err}")
 
         final_context_data_dict: Optional[Dict[str, Any]] = None
         if auto_build_context:
