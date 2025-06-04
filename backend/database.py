@@ -836,7 +836,7 @@ async def build_task_context_data(
         # Recupera parent task per delegation depth inheritance
         try:
             # FIXED: Usa il workspace_id corretto invece di stringa vuota
-            workspace_tasks = await list_tasks(workspace_id, status_filter=None)
+            workspace_tasks = await list_tasks(workspace_id, status=None)
             parent_task = next((t for t in workspace_tasks if t.get("id") == parent_task_id), None)
             
             if parent_task:
