@@ -12,7 +12,7 @@ interface ActionableAssetViewerProps {
 }
 
 // Helper component to render different data types
-const DataRenderer: React.FC<{ data: any; level?: number }> = ({ data, level = 0 }) => {
+const DataRenderer: React.FC<{ data: unknown; level?: number }> = ({ data, level = 0 }) => {
   const maxLevel = 3; // Prevent infinite nesting
   
   if (level > maxLevel) {
@@ -146,7 +146,7 @@ export default function ActionableAssetViewer({ assetName, asset, onClose }: Act
             const headers = Object.keys(asset.asset_data[0] || {});
             const csvContent = [
               headers.join(','),
-              ...asset.asset_data.map((row: any) => 
+              ...asset.asset_data.map((row: Record<string, unknown>) =>
                 headers.map(header => JSON.stringify(row[header] || '')).join(',')
               )
             ].join('\n');
@@ -198,11 +198,11 @@ export default function ActionableAssetViewer({ assetName, asset, onClose }: Act
     
     const search = searchTerm.toLowerCase();
     if (Array.isArray(asset.asset_data)) {
-      return asset.asset_data.filter((item: any) => 
+      return asset.asset_data.filter((item: unknown) =>
         JSON.stringify(item).toLowerCase().includes(search)
       );
     } else if (typeof asset.asset_data === 'object') {
-      const filtered: any = {};
+      const filtered: Record<string, unknown> = {};
       Object.entries(asset.asset_data).forEach(([key, value]) => {
         if (key.toLowerCase().includes(search) || 
             JSON.stringify(value).toLowerCase().includes(search)) {
@@ -241,15 +241,17 @@ export default function ActionableAssetViewer({ assetName, asset, onClose }: Act
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
-            {[
-              { id: 'overview', label: '👀 Panoramica', icon: '👀' },
-              { id: 'data', label: '📊 Dati', icon: '📊' },
-              { id: 'technical', label: '🔧 Tecnico', icon: '🔧' },
-              { id: 'usage', label: '📖 Utilizzo', icon: '📖' }
-            ].map(tab => (
+            {(
+              [
+                { id: 'overview', label: '👀 Panoramica', icon: '👀' },
+                { id: 'data', label: '📊 Dati', icon: '📊' },
+                { id: 'technical', label: '🔧 Tecnico', icon: '🔧' },
+                { id: 'usage', label: '📖 Utilizzo', icon: '📖' }
+              ] as const
+            ).map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-2 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-indigo-500 text-indigo-600'

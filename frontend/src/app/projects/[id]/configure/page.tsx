@@ -8,11 +8,10 @@ import TeamExplanationAnimation from '@/components/TeamExplanationAnimation';
 
 
 type Props = {
-  params: Promise<{ id: string }>; // Indica che params è una Promise che risolverà in un oggetto { id: string }
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ id: string }>;
 };
 
-export default function ConfigureProjectPage({ params: paramsPromise, searchParams }: Props) {
+export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   // Usa React.use() per "sbloccare" la Promise dei parametri
   const params = use(paramsPromise);
   const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
