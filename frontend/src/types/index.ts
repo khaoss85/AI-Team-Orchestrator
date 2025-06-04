@@ -133,6 +133,27 @@ export interface Task {
   context_data?: EnhancedTaskContextData;
 }
 
+export interface TaskResultDetailsData {
+  task_id: string;
+  task_name: string;
+  summary?: string;
+  output?: string;
+  status?: string;
+  key_points?: string[];
+  next_steps?: string[];
+  detailed_results_json?: any;
+  execution_time_seconds?: number;
+  cost_estimated?: number;
+  tokens_used?: { [key: string]: number };
+  model_used?: string;
+  agent_name?: string;
+  agent_role?: string;
+  assigned_agent_name?: string;
+  assigned_agent_role?: string;
+  metrics?: Record<string, any>;
+  rationale?: string;
+}
+
 export interface TaskCreateData {
   workspace_id: string;
   agent_id: string;
