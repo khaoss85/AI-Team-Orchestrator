@@ -2109,15 +2109,6 @@ class TaskExecutor(AssetCoordinationMixin):
             })
 
 
-# Istanza globale del TaskExecutor
-
-if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM:
-    task_executor = QualityEnhancedTaskExecutor()
-    logger.info("🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version")
-else:
-    task_executor = TaskExecutor()
-    logger.info("📦 TASK EXECUTOR INITIALIZED: Standard version")
-
 # Aggiungi queste funzioni helper:
 
 async def enable_quality_integration() -> Dict[str, Any]:
@@ -2325,6 +2316,15 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
             base_stats["quality_integration"] = {"enabled": False}
         
         return base_stats
+
+# Istanza globale del TaskExecutor
+
+if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM:
+    task_executor = QualityEnhancedTaskExecutor()
+    logger.info("🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version")
+else:
+    task_executor = TaskExecutor()
+    logger.info("📦 TASK EXECUTOR INITIALIZED: Standard version")
 
 # Funzioni di controllo executor
 async def start_task_executor():

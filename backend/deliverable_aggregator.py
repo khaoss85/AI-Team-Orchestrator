@@ -32,15 +32,26 @@ except ImportError as e:
     logger.warning(f"⚠️ AI Quality Assurance not available: {e}")
     AI_QUALITY_ASSURANCE_AVAILABLE = False
     
-# ENHANCED: Import centralizzato Quality System
+# ENHANCED: Import centralizzato Quality System con fallback
 try:
     from backend.utils.quality_config_loader import load_quality_system_config
-    _QualitySystemConfig, _quality_available = load_quality_system_config()
-    logger.info(f"Quality System loaded in deliverable_aggregator: {_quality_available}")
 except ImportError:
-    logger.warning("Quality config loader not available in deliverable_aggregator")
-    _QualitySystemConfig = None
-    _quality_available = False
+    try:
+        from utils.quality_config_loader import load_quality_system_config  # type: ignore
+    except ImportError as e:
+        logger.warning(f"Quality config loader not available in deliverable_aggregator: {e}")
+        _QualitySystemConfig = None
+        _quality_available = False
+    else:
+        _QualitySystemConfig, _quality_available = load_quality_system_config()
+        logger.info(
+            f"Quality System loaded in deliverable_aggregator: {_quality_available}"
+        )
+else:
+    _QualitySystemConfig, _quality_available = load_quality_system_config()
+    logger.info(
+        f"Quality System loaded in deliverable_aggregator: {_quality_available}"
+    )
 
 # Enhanced configuration from environment
 DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
@@ -2043,6 +2054,16 @@ async def create_intelligent_deliverable(workspace_id: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"Error in forced intelligent deliverable creation: {e}")
         return None
+
+# === COMPATIBILITY WRAPPERS ===
+
+async def create_quality_enhanced_deliverable(workspace_id: str) -> Optional[str]:
+    """Deprecated wrapper maintained for backward compatibility."""
+    logger.warning(
+        "create_quality_enhanced_deliverable is deprecated; "
+        "use check_and_create_final_deliverable instead"
+    )
+    return await check_and_create_final_deliverable(workspace_id)
 
 def get_deliverable_system_status() -> Dict[str, Any]:
     """Ottieni stato completo del sistema deliverable intelligente"""
