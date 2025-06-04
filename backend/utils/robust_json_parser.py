@@ -416,6 +416,6 @@ if __name__ == "__main__":
     test_output = '''{"task_id":"test","status":"completed","summary":"Test summary","detailed_results_json":"{\\"test\\": \\"value\\", \\"name\\": \\" '''
     
     result, complete, method = parse_llm_json_robust(test_output, "test_task")
-    print(f"Result: {result}")
-    print(f"Complete: {complete}")
-    print(f"Method: {method}")
+    logging.info(f"Result: {result}")
+    logging.info(f"Complete: {complete}")
+    logging.info(f"Method: {method}")
