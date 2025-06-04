@@ -449,6 +449,21 @@ GET /monitoring/workspace/{workspace_id}/budget
 }
 ```
 
+#### 🆕 Riprendi Auto-Generation
+```http
+POST /monitoring/workspace/{workspace_id}/resume-auto-generation
+```
+
+#### 🆕 Force Finalization
+```http
+POST /monitoring/workspace/{workspace_id}/force-finalization
+```
+
+#### 🆕 Clear Stuck Tasks
+```http
+POST /monitoring/workspace/{workspace_id}/clear-stuck-tasks
+```
+
 ### 🎨 Project Insights
 
 #### Insights Progetto
@@ -480,10 +495,16 @@ GET /projects/{workspace_id}/insights
   "performance": {
     "cost_per_completed_task": 3.75,
     "total_cost": 67.50,
-    "budget_utilization": 6.7
+  "budget_utilization": 6.7
   }
 }
 ```
+
+#### 🆕 Major Milestones
+```http
+GET /projects/{workspace_id}/major-milestones
+```
+
 
 #### 🆕 Asset Insights
 ```http
@@ -1084,6 +1105,10 @@ graph TD
 - `GET /projects/{id}/insights` - Insights avanzati
 - `GET /monitoring/workspace/{id}/asset-tracking` - 🆕 Tracking asset
 - `GET /monitoring/workspace/{id}/deliverable-readiness` - 🆕 Readiness deliverable
+- `GET /projects/{id}/major-milestones` - Cronologia milestone
+- `POST /monitoring/workspace/{id}/resume-auto-generation` - Riattiva auto-gen
+- `POST /monitoring/workspace/{id}/force-finalization` - Forza deliverable
+- `POST /monitoring/workspace/{id}/clear-stuck-tasks` - Pulisci task bloccati
 
 ### 4. Gestione Fasi Progetto (Enhanced)
 
