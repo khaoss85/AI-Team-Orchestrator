@@ -1,5 +1,5 @@
 import React from 'react';
-import { AgentProposal } from '@/hooks/useOrchestration';
+import type { AgentProposal } from '@/types';
 
 interface ProposalCardProps {
   proposal: AgentProposal;
