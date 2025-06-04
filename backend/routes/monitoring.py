@@ -53,6 +53,17 @@ class TaskAnalysisResponse(BaseModel):
     recommendations: List[str]
     analysis_timestamp: str
 
+
+class WorkspaceTasksResponse(BaseModel):
+    workspace_id: str
+    tasks: List[Dict[str, Any]]
+    total_count: int
+    completed_count: int
+    pending_count: int
+    failed_count: int
+    asset_tasks_count: int
+    last_updated: str
+
 # ENDPOINT BASE - DA V1
 @router.get("/workspace/{workspace_id}/activity", response_model=List[Dict[str, Any]])
 async def get_workspace_activity(
@@ -105,12 +116,38 @@ async def get_workspace_budget(workspace_id: UUID):
             detail=f"Failed to get workspace budget: {str(e)}"
         )
 
-@router.get("/workspace/{workspace_id}/tasks", response_model=List[Dict[str, Any]])
-async def get_workspace_tasks(workspace_id: UUID):
-    """Get all tasks for a workspace"""
+@router.get("/workspace/{workspace_id}/tasks", response_model=WorkspaceTasksResponse)
+async def get_workspace_tasks(
+    workspace_id: UUID,
+    status: Optional[str] = Query(default=None),
+    agent_id: Optional[str] = Query(default=None),
+    asset_only: bool = Query(default=False),
+    limit: Optional[int] = Query(default=None, ge=1),
+    offset: int = Query(default=0, ge=0),
+):
+    """Get tasks for a workspace with optional filtering."""
     try:
-        tasks = await list_tasks(str(workspace_id))
-        return tasks
+        tasks = await list_tasks(
+            str(workspace_id),
+            status=status,
+            agent_id=agent_id,
+            asset_only=asset_only,
+            limit=limit,
+            offset=offset,
+        )
+
+        asset_count = len([t for t in tasks if _is_asset_task(t)])
+        response = WorkspaceTasksResponse(
+            workspace_id=str(workspace_id),
+            tasks=tasks,
+            total_count=len(tasks),
+            completed_count=len([t for t in tasks if t.get("status") == "completed"]),
+            pending_count=len([t for t in tasks if t.get("status") == "pending"]),
+            failed_count=len([t for t in tasks if t.get("status") == "failed"]),
+            asset_tasks_count=asset_count,
+            last_updated=datetime.now().isoformat(),
+        )
+        return response
     except Exception as e:
         logger.error(f"Error getting workspace tasks for {workspace_id}: {e}", exc_info=True)
         raise HTTPException(
@@ -813,10 +850,22 @@ def _is_handoff_task(task: Dict) -> bool:
     """Determine if a task is a handoff task"""
     task_name = task.get("name", "").lower()
     handoff_indicators = [
-        "handoff", "continuation", "transfer", "delegate", 
+        "handoff", "continuation", "transfer", "delegate",
         "escalation", "coordinate", "follow-up"
     ]
     return any(indicator in task_name for indicator in handoff_indicators)
+
+
+def _is_asset_task(task: Dict) -> bool:
+    """Return True if the task appears to be asset-oriented."""
+    context_data = task.get("context_data", {}) or {}
+    if not isinstance(context_data, dict):
+        return False
+    return (
+        context_data.get("asset_production")
+        or context_data.get("asset_oriented_task")
+        or "PRODUCE ASSET:" in task.get("name", "").upper()
+    )
 
 def _detect_stuck_agents(agents: List[Dict], recent_activity: List[Dict]) -> List[str]:
     """Detect agents that might be stuck (no activity in recent time)"""
