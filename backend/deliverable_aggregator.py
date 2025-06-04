@@ -372,13 +372,24 @@ class DynamicAssetExtractor:
     
     def __init__(self):
         self.ai_analyzer = AIDeliverableAnalyzer()
-        
+
         # ENHANCED: Pattern fake content più accurati
         self.fake_content_patterns = [
-            r"john\s+doe\b", r"jane\s+smith\b", r"example\.com", 
+            r"john\s+doe\b", r"jane\s+smith\b", r"example\.com",
             r"test@example", r"placeholder", r"lorem\s+ipsum",
             r"xxx+", r"\btbd\b", r"to\s+be\s+determined",
             r"mario\s+rossi\b", r"giuseppe\s+verdi\b"  # Italian fake names
+        ]
+
+        # Pattern per individuare placeholder espliciti
+        self.placeholder_patterns = [
+            r"\bn/?a\b",
+            r"\bplaceholder\b",
+            r"lorem\s+ipsum",
+            r"\btbd\b",
+            r"to\s+be\s+determined",
+            r"to\s+be\s+filled",
+            r"dummy\s+data",
         ]
         
         # ENHANCED: Pattern di contenuto reale da NON penalizzare
@@ -389,6 +400,25 @@ class DynamicAssetExtractor:
             r"\b\d+[.,]\d+\s*€?\$?\b",  # Prezzi/numeri
             r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b"  # Nomi reali (non fake)
         ]
+
+    def _verify_placeholder_content(self, asset: Dict[str, Any]) -> Dict[str, Any]:
+        """Verifica la presenza di placeholder nel dato estratto"""
+
+        try:
+            data_str = json.dumps(asset.get('asset_data', ''), default=str, ensure_ascii=False).lower()
+        except Exception:
+            data_str = str(asset.get('asset_data', '')).lower()
+
+        if any(re.search(p, data_str) for p in self.placeholder_patterns):
+            asset['has_placeholders'] = True
+            asset['ready_to_use'] = False
+            notes = asset.get('verification_notes', [])
+            notes.append('placeholder_detected')
+            asset['verification_notes'] = notes
+        else:
+            asset['has_placeholders'] = False
+
+        return asset
     
     async def extract_assets_dynamically(
         self, 
@@ -409,10 +439,10 @@ class DynamicAssetExtractor:
             try:
                 # Determina se questo task ha prodotto asset azionabili
                 asset_data = await self._extract_asset_from_task(task, target_asset_types, deliverable_analysis)
-                
+
                 if asset_data:
                     asset_id = f"asset_{task.get('id', '')}"
-                    
+
                     # Se abbiamo schema esistenti, prova validazione
                     if existing_schemas and asset_data.get('asset_type') in existing_schemas:
                         schema = existing_schemas[asset_data['asset_type']]
@@ -442,7 +472,7 @@ class DynamicAssetExtractor:
                 if isinstance(data, dict) and len(data) >= 2:  # Soglia più permissiva
                     asset_type = await self._determine_asset_type_ai(data, target_asset_types, task.get('name', ''), deliverable_analysis)
                     
-                    return {
+                    asset = {
                         'asset_type': asset_type,
                         'asset_data': data,
                         'source_task_id': task.get('id', ''),
@@ -457,6 +487,7 @@ class DynamicAssetExtractor:
                         },
                         'enhancement_potential': self._assess_enhancement_potential(data)
                     }
+                    return self._verify_placeholder_content(asset)
             except json.JSONDecodeError:
                 pass
         
@@ -466,7 +497,7 @@ class DynamicAssetExtractor:
             if structured_data:
                 asset_type = await self._determine_asset_type_ai(structured_data, target_asset_types, task.get('name', ''), deliverable_analysis)
                 
-                return {
+                asset = {
                     'asset_type': asset_type,
                     'asset_data': structured_data,
                     'source_task_id': task.get('id', ''),
@@ -480,6 +511,7 @@ class DynamicAssetExtractor:
                     },
                     'enhancement_potential': 0.8  # High potential for text-extracted data
                 }
+                return self._verify_placeholder_content(asset)
         
         return None
     
@@ -1432,7 +1464,32 @@ class IntelligentDeliverableAggregator:
             extracted_assets = await self.asset_extractor.extract_assets_dynamically(
                 completed_tasks, deliverable_analysis, asset_schemas
             )
-            
+
+            # Controlla asset per placeholder e ritenta se necessario
+            placeholder_assets = [aid for aid, a in extracted_assets.items() if a.get("has_placeholders")]
+            if placeholder_assets:
+                logger.warning(
+                    f"⚠️ PLACEHOLDER DETECTED in assets {placeholder_assets}. Retrying extraction"
+                )
+                try:
+                    retry_assets = await self.asset_extractor.extract_assets_dynamically(
+                        completed_tasks, deliverable_analysis, asset_schemas
+                    )
+                    retry_placeholders = [aid for aid, a in retry_assets.items() if a.get("has_placeholders")]
+                    if not retry_placeholders:
+                        extracted_assets = retry_assets
+                        logger.info("🔄 Placeholder resolved after retry")
+                    else:
+                        logger.warning(
+                            "⚠️ Placeholders persist after retry - assets marked as incomplete"
+                        )
+                        extracted_assets = retry_assets
+                except Exception as e:
+                    logger.error(f"Placeholder retry failed: {e}")
+
+            # Placeholder assets dopo eventuale retry
+            placeholder_assets = [aid for aid, a in extracted_assets.items() if a.get("has_placeholders")]
+
             if not extracted_assets:
                 logger.warning(f"🤖 NO ASSETS: No actionable assets extracted from {len(completed_tasks)} tasks")
                 # Continua comunque con deliverable vuoto ma informativo
@@ -1441,8 +1498,12 @@ class IntelligentDeliverableAggregator:
             intelligent_deliverable = await self.packager.create_intelligent_deliverable(
                 workspace_id, workspace_goal, deliverable_analysis, extracted_assets, completed_tasks
             )
-            
+
             # Fase 7: Quality Enhancement se disponibile
+            if placeholder_assets:
+                logger.warning(
+                    f"⚠️ Assets with placeholders ({len(placeholder_assets)}) marked as incomplete."
+                )
             quality_enhanced_deliverable = None
             if self.enhancement_orchestrator and ENABLE_AI_QUALITY_ASSURANCE:
                 try:
