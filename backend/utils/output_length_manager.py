@@ -345,6 +345,6 @@ if __name__ == "__main__":
     }
     
     optimized, modified, mods = optimize_agent_output(test_output, "test_task")
-    print(f"Modified: {modified}")
-    print(f"Modifications: {mods}")
-    print(f"Optimized length: {len(json.dumps(optimized))}")
+    logging.info(f"Modified: {modified}")
+    logging.info(f"Modifications: {mods}")
+    logging.info(f"Optimized length: {len(json.dumps(optimized))}")

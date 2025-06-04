@@ -3,6 +3,10 @@
 AI Quality Assurance System
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     from .quality_validator import AIQualityValidator, QualityAssessment, QualityIssueType
     from .ai_evaluator import EnhancedAIQualityValidator, AIQualityEvaluator
@@ -24,6 +28,6 @@ try:
     QUALITY_SYSTEM_AVAILABLE = True
     
 except ImportError as e:
-    print(f"Warning: AI Quality Assurance system not fully available: {e}")
+    logger.warning(f"AI Quality Assurance system not fully available: {e}")
     QUALITY_SYSTEM_AVAILABLE = False
     __all__ = []
