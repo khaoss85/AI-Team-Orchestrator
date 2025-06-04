@@ -21,7 +21,8 @@ from database import (
     create_task,
     get_active_workspaces,
     get_workspaces_with_pending_tasks,
-    update_workspace_status
+    update_workspace_status,
+    get_task
 )
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
@@ -366,6 +367,10 @@ class TaskExecutor(AssetCoordinationMixin):
         self.delegation_chain_tracker: Dict[str, List[str]] = defaultdict(list)
         self.workspace_anti_loop_task_counts: Dict[str, int] = defaultdict(int)
 
+        # Track task IDs currently queued or running to avoid duplicates
+        self.queued_task_ids: Set[str] = set()
+        self.active_task_ids: Set[str] = set()
+
         self.last_cleanup: datetime = datetime.now()
 
         # Queue configuration
@@ -507,6 +512,14 @@ class TaskExecutor(AssetCoordinationMixin):
                 task_name = task_dict_from_queue.get("name", "Unnamed Task")
                 workspace_id = task_dict_from_queue.get("workspace_id", "UnknownWS")
 
+                # Update queued/active trackers
+                self.queued_task_ids.discard(task_id)
+                if task_id in self.active_task_ids:
+                    logger.warning(f"Worker {worker_id} received already active task {task_id}. Skipping")
+                    self.task_queue.task_done()
+                    continue
+                self.active_task_ids.add(task_id)
+
                 logger.info(f"Worker {worker_id} picking up task: '{task_name}' (ID: {task_id}) from W: {workspace_id}. Q size: {self.task_queue.qsize()}")
 
                 # --- LOGICA DI ASSEGNAZIONE AGENTE SE NON PRESENTE ---
@@ -525,14 +538,16 @@ class TaskExecutor(AssetCoordinationMixin):
                         current_agent_id = str(assigned_agent_info["id"])
                         logger.info(f"Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id}) for role '{assigned_role}'")
                     else:
-                        logger.warning(f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task.")
-                        self.task_queue.task_done()
-                        continue
+                    logger.warning(f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task.")
+                    self.task_queue.task_done()
+                    self.active_task_ids.discard(task_id)
+                    continue
                 
                 # Validazione anti-loop
                 if not await self._validate_task_execution(task_dict_from_queue):
                     logger.warning(f"Worker {worker_id} skipping task {task_id} - failed anti-loop validation")
                     self.task_queue.task_done()
+                    self.active_task_ids.discard(task_id)
                     await asyncio.sleep(0.05)
                     continue
                 
@@ -552,6 +567,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 finally:
                     self.active_tasks_count -= 1
                     self.task_queue.task_done()
+                    self.active_task_ids.discard(task_id)
                     logger.info(f"Worker {worker_id} finished task: {task_id}. Active: {self.active_tasks_count}")
                     
                     # Marca come completato nel tracker
@@ -679,6 +695,8 @@ class TaskExecutor(AssetCoordinationMixin):
             logger.info(f"Forcibly finalized task {task_id} as {status_to_set}: {reason}")
             if workspace_id:
                 self.task_completion_tracker[workspace_id].add(task_id)
+            self.active_task_ids.discard(task_id)
+            self.queued_task_ids.discard(task_id)
         except Exception as e:
             logger.error(f"Error force finalizing task {task_id}: {e}")
 
@@ -1066,14 +1084,25 @@ class TaskExecutor(AssetCoordinationMixin):
             task_to_queue_dict = pending_eligible_tasks[0]
             task_id_to_queue = task_to_queue_dict.get("id")
 
-            # Validazione finale (mantieni logica esistente)
+            # Validazione finale e controllo duplicati
             if not await self._validate_task_execution(task_to_queue_dict):
                 logger.warning(f"Pre-queue validation FAILED for task {task_id_to_queue}")
                 return
-                    
+
+            if task_id_to_queue in self.queued_task_ids or task_id_to_queue in self.active_task_ids:
+                logger.debug(f"Task {task_id_to_queue} already queued or running. Skipping")
+                return
+
+            # Check status from DB to avoid queuing task already in progress
+            latest = await get_task(task_id_to_queue)
+            if latest and latest.get("status") != TaskStatus.PENDING.value:
+                logger.debug(f"Task {task_id_to_queue} status changed to {latest.get('status')}. Skip queue")
+                return
+
             # Aggiungi alla queue con log migliorato
             try:
                 self.task_queue.put_nowait((manager, task_to_queue_dict))
+                self.queued_task_ids.add(task_id_to_queue)
                 
                 task_phase = task_to_queue_dict.get('context_data', {}).get('project_phase', 'N/A')
                 needs_assign = not task_to_queue_dict.get('agent_id') and task_to_queue_dict.get('assigned_to_role')
