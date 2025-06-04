@@ -69,7 +69,15 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     <div className="container mx-auto space-y-6">
       <Link href="/projects" className="text-indigo-600 hover:underline text-sm">← Progetti</Link>
       <ActionableHeroSection workspace={workspace} assetStats={assetStats} finalDeliverables={finalDeliverables.length} />
-      <MissionControlSection workspace={workspace} />
+      <MissionControlSection
+        workspaceId={id}
+        agents={agents}
+        feedback={feedback}
+        taskAnalysis={taskAnalysis}
+        loading={missionLoading}
+        error={missionError}
+        onRefresh={fetchMissionControl}
+      />
       <InteractionPanel workspace={workspace} onWorkspaceUpdate={setWorkspace} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
