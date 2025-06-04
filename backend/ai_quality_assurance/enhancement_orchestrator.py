@@ -2,14 +2,14 @@
 import logging
 import json
 import os
-import asyncio 
-from typing import Dict, Any, List, Optional
+import asyncio
+from typing import Dict, Any, List, Optional, Set
 from datetime import datetime
 from uuid import uuid4
-import asyncio 
 
 # FIXED: Aggiunti import mancanti
 from pydantic import BaseModel, Field
+from collections import defaultdict
 
 # FIXED: Import corretto per il codebase
 from ai_quality_assurance.quality_validator import QualityAssessment, QualityIssueType
