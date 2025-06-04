@@ -7,6 +7,8 @@ from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime
 from ai_quality_assurance.quality_validator import AIQualityValidator
 
+logger = logging.getLogger(__name__)
+
 # Import per LLM calls - adatta in base al tuo setup
 try:
     from openai import AsyncOpenAI
@@ -14,8 +16,6 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
     logger.warning("OpenAI not available - quality evaluation will use fallback logic")
-
-logger = logging.getLogger(__name__)
 
 class AIQualityEvaluator:
     """

@@ -1,6 +1,14 @@
 # backend/models.py
 
 from pydantic import BaseModel, Field as PydanticField, ConfigDict
+
+# Compatibility for Pydantic v1
+if not hasattr(BaseModel, "model_validate"):
+    @classmethod
+    def _model_validate(cls, data):
+        return cls.parse_obj(data)
+
+    BaseModel.model_validate = _model_validate  # type: ignore
 from typing import List, Dict, Any, Optional, Union, Literal
 from datetime import datetime
 from uuid import UUID
