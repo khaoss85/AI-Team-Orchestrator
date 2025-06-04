@@ -402,6 +402,11 @@ class ProjectOutput(BaseModel):
     metrics: Optional[Dict[str, Any]] = None
     visual_summary: Optional[str] = None
     category: Optional[str] = None
+    execution_time_seconds: Optional[float] = None
+    cost_estimated: Optional[float] = None
+    tokens_used: Optional[Dict[str, int]] = None
+    model_used: Optional[str] = None
+    rationale: Optional[str] = None
 
 class ProjectDeliverables(BaseModel):
     workspace_id: str
