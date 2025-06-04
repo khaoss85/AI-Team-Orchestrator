@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { api } from '@/utils/api'
-import type { ProjectOutputExtended } from '@/types'
+import type { ProjectOutputExtended, TaskResultDetailsData } from '@/types'
 import TaskResultDetails from '@/components/TaskResultDetails'
 
 interface Props {
@@ -11,19 +11,32 @@ interface Props {
 }
 
 const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => {
-  const [details, setDetails] = useState<any>(null)
+  const [details, setDetails] = useState<TaskResultDetailsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
         setLoading(true)
+        setWarning(null)
         const data = await api.monitoring.getTaskResult(workspaceId, output.task_id)
         setDetails(data)
         setError(null)
       } catch (e: any) {
-        setError(e.message || 'Errore nel caricamento dei dettagli')
+        const fallbackDetails: TaskResultDetailsData = {
+          task_id: output.task_id,
+          task_name: output.task_name,
+          summary: output.summary || output.output,
+          metrics: output.metrics,
+          next_steps: output.next_steps,
+          key_points: output.key_insights,
+          status: output.type,
+        }
+        setDetails(fallbackDetails)
+        setWarning('Dettagli limitati disponibili')
+        setError(null)
       } finally {
         setLoading(false)
       }
@@ -44,6 +57,9 @@ const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => 
           <div className="text-red-600 text-center">{error}</div>
         ) : (
           <>
+            {warning && (
+              <div className="text-yellow-600 text-center mb-2">{warning}</div>
+            )}
             <TaskResultDetails result={details} />
             <div className="mt-6 flex justify-end gap-3">
               <button
