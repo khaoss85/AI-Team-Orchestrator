@@ -35,7 +35,8 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
       if (!tasksResponse.ok) {
         throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
       }
-      const realTasks = await tasksResponse.json();
+      const realTasksData = await tasksResponse.json();
+      const realTasks = Array.isArray(realTasksData) ? realTasksData : realTasksData.tasks;
       setTasks(realTasks);
       
       // Fetch real agents
