@@ -483,6 +483,11 @@ export interface ProjectOutput {
   automation_ready?: boolean;
   usage_guide?: Record<string, string>;
   next_steps?: string[];
+  execution_time_seconds?: number;
+  cost_estimated?: number;
+  tokens_used?: { [key: string]: number };
+  model_used?: string;
+  rationale?: string;
 }
 
 export interface ProjectOutputExtended extends ProjectOutput {
@@ -491,6 +496,11 @@ export interface ProjectOutputExtended extends ProjectOutput {
   priority?: number;
   completeness?: number;
   isFinalDeliverable?: boolean;
+  execution_time_seconds?: number;
+  cost_estimated?: number;
+  tokens_used?: { [key: string]: number };
+  model_used?: string;
+  rationale?: string;
   content?: {
     summary: string;
     keyPoints: string[];
