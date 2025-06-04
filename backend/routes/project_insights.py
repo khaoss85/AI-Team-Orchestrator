@@ -671,6 +671,28 @@ async def trigger_asset_analysis(workspace_id: UUID):
             detail=f"Failed to trigger asset analysis: {str(e)}",
         )
 
+# New endpoint: return full task record for a specific output
+@router.get("/{workspace_id}/output/{task_id}", response_model=Task)
+async def get_output_detail(workspace_id: UUID, task_id: UUID):
+    """Fetch a single task from the workspace and return its details."""
+    try:
+        tasks = await list_tasks(str(workspace_id))
+        for task in tasks:
+            if str(task.get("id")) == str(task_id):
+                return task
+        raise HTTPException(status_code=404, detail="Task not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Error retrieving output detail for {task_id} in {workspace_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get output detail: {str(e)}",
+        )
+
 # Helper functions
 def _classify_output_type(task_name: str, output: str) -> str:
     """Classify the type of output based on task name and content"""

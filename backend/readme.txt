@@ -627,6 +627,24 @@ GET /projects/{workspace_id}/deliverables
 }
 ```
 
+#### 🆕 Dettaglio Output
+```http
+GET /projects/{workspace_id}/output/{task_id}
+```
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "workspace_id": "uuid",
+  "name": "Task name",
+  "status": "completed",
+  "result": {
+    "summary": "..."
+  }
+}
+```
+
 #### Feedback su Deliverable
 ```http
 POST /projects/{workspace_id}/deliverables/feedback
@@ -1106,6 +1124,7 @@ graph TD
 - `GET /monitoring/workspace/{id}/asset-tracking` - 🆕 Tracking asset
 - `GET /monitoring/workspace/{id}/deliverable-readiness` - 🆕 Readiness deliverable
 - `GET /projects/{id}/major-milestones` - Cronologia milestone
+- `GET /projects/{id}/output/{task_id}` - Dettaglio singolo task
 - `POST /monitoring/workspace/{id}/resume-auto-generation` - Riattiva auto-gen
 - `POST /monitoring/workspace/{id}/force-finalization` - Forza deliverable
 - `POST /monitoring/workspace/{id}/clear-stuck-tasks` - Pulisci task bloccati
