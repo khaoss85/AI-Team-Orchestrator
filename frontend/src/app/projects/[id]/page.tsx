@@ -24,6 +24,7 @@ export default function ProjectOrchestrationPage({ params: paramsPromise }: Prop
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedView, setSelectedView] = useState<'orchestration' | 'insights'>('orchestration');
+  const [startingTeam, setStartingTeam] = useState(false);
 
   const { proposals, stats, loading: orchestrationLoading, error: orchestrationError, actions } = useOrchestration(workspaceId);
 
@@ -53,6 +54,21 @@ export default function ProjectOrchestrationPage({ params: paramsPromise }: Prop
       router.push('/projects');
     } catch (err) {
       console.error('Error deleting project:', err);
+    }
+  };
+
+  const handleStartTeam = async () => {
+    try {
+      setStartingTeam(true);
+      await api.monitoring.startTeam(workspaceId);
+      const updated = await api.workspaces.get(workspaceId);
+      setWorkspace(updated);
+      setError(null);
+    } catch (err) {
+      console.error('Error starting team:', err);
+      setError(err instanceof Error ? err.message : 'Impossibile avviare il team');
+    } finally {
+      setStartingTeam(false);
     }
   };
 
@@ -190,6 +206,15 @@ export default function ProjectOrchestrationPage({ params: paramsPromise }: Prop
               <Link href={`/projects/${workspaceId}/assets`} className="text-sm text-gray-600 hover:text-gray-800 transition">
                 📦 Asset
               </Link>
+              {workspace.status === 'created' && (
+                <button
+                  onClick={handleStartTeam}
+                  className="text-sm bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition disabled:opacity-50"
+                  disabled={startingTeam}
+                >
+                  {startingTeam ? 'Avvio...' : '🚀 Avvia Team'}
+                </button>
+              )}
               <button onClick={() => setIsDeleteModalOpen(true)} className="text-sm text-red-600 hover:text-red-800 transition">
                 🗑️ Elimina
               </button>
