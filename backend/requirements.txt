@@ -3,6 +3,6 @@ uvicorn[standard]  ==0.23.2
 python-dotenv      ==1.0.0
 pydantic           >=2.10,<3.0      # niente pin rigido, basta fascia
 supabase           ==2.0.3
-python-multipart   ==0.0.6
+python-multipart   >=0.0.7          # FIXED: era ==0.0.6
 openai             >=1.81,<2.0      # compatibile con agents
 openai-agents      >=0.0.17
