@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AgentProposal } from '@/hooks/useOrchestration';
+import type { AgentProposal } from '@/types';
 
 interface ProposalViewerProps {
   proposal: AgentProposal;

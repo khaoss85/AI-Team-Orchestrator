@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AgentProposal, OrchestrationStats } from '@/hooks/useOrchestration';
+import type { AgentProposal, OrchestrationStats } from '@/types';
 import { ProposalCard } from './ProposalCard';
 import { ProposalViewer } from './ProposalViewer';
 
