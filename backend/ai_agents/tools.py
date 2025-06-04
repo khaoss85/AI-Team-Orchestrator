@@ -1,7 +1,7 @@
 # backend/ai_agents/tools.py
 import logging
 import json
-from typing import List, Dict, Any, Optional, Literal, Union # Aggiunto Union
+from typing import List, Dict, Any, Optional, Literal, Union, Annotated
 from uuid import UUID
 from datetime import datetime
 from pydantic import Field
@@ -96,12 +96,12 @@ class PMOrchestrationTools:
         # Usa l'attributo di classe per name_override
         @function_tool(name_override=PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK)
         async def impl(
-            task_name: str = Field(..., description="Clear, concise, and unique name for the new sub-task (max 100 chars)."),
-            task_description: str = Field(..., description="Detailed description (min 50 chars) of what needs to be done, including all necessary context, inputs, expected deliverables, and acceptance criteria."),
-            target_agent_role: str = Field(..., description="The EXACT 'agent_name' of the ACTIVE agent to assign this task to (e.g., 'ContentSpecialist', 'AnalysisLead'). Obtain this from 'get_team_roles_and_status' tool."),
-            priority: Literal["low", "medium", "high"] = Field(default="medium", description="Priority of the sub-task: low, medium, or high."),
-            project_phase: str = Field(..., description="The project phase this sub-task belongs to (e.g., ANALYSIS, IMPLEMENTATION, FINALIZATION). Must be one of the official project phases."),
-            parent_task_id: Optional[str] = Field(None, description="ID of the parent task (the PM's current task ID) from which this sub-task is derived. This is CRITICAL for tracking.")
+            task_name: Annotated[str, Field(description="Clear, concise, and unique name for the new sub-task (max 100 chars).")],
+            task_description: Annotated[str, Field(description="Detailed description (min 50 chars) of what needs to be done, including all necessary context, inputs, expected deliverables, and acceptance criteria.")],
+            target_agent_role: Annotated[str, Field(description="The EXACT 'agent_name' of the ACTIVE agent to assign this task to (e.g., 'ContentSpecialist', 'AnalysisLead'). Obtain this from 'get_team_roles_and_status' tool.")],
+            project_phase: Annotated[str, Field(description="The project phase this sub-task belongs to (e.g., ANALYSIS, IMPLEMENTATION, FINALIZATION). Must be one of the official project phases.")],
+            priority: Annotated[Literal["low", "medium", "high"], Field(description="Priority of the sub-task: low, medium, or high.")] = "medium",
+            parent_task_id: Annotated[Optional[str], Field(description="ID of the parent task (the PM's current task ID) from which this sub-task is derived. This is CRITICAL for tracking.")] = None
         ) -> str:
             logger.info(f"Tool '{PMOrchestrationTools.TOOL_NAME_CREATE_SUB_TASK}': Attempting to create sub-task '{task_name}' for agent NAME '{target_agent_role}' in workspace '{workspace_id_str}' for phase '{project_phase}'. Parent Task ID: {parent_task_id}")
             
