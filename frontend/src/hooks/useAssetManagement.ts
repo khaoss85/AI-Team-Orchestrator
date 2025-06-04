@@ -140,6 +140,8 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
     requirements: null,
     schemas: {},
     extractionStatus: null,
+    deliverables: null,
+    finalDeliverables: [],
     deliverableAssets: {},
     processedAssets: [],
     loading: true,
@@ -184,6 +186,11 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
       const schemasResponse = schemasResult.status === 'fulfilled' ? schemasResult.value : null;
       const extractionStatus = extractionResult.status === 'fulfilled' ? extractionResult.value : null;
       const deliverables = deliverablesResult.status === 'fulfilled' ? deliverablesResult.value : null;
+      const finalDeliverables = deliverables?.key_outputs
+        ? deliverables.key_outputs.filter(output =>
+            output.type === 'final_deliverable' || output.category === 'final_deliverable'
+          )
+        : [];
       const rawTasksResponse = rawTasksResult.status === 'fulfilled' ? rawTasksResult.value : null;
 
       const schemas = schemasResponse?.available_schemas || {};
@@ -303,6 +310,8 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
         requirements,
         schemas,
         extractionStatus,
+        deliverables,
+        finalDeliverables,
         deliverableAssets: extractedAssets,
         processedAssets,
         loading: false,
@@ -527,6 +536,9 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
     requirements: state.requirements,
     schemas: state.schemas,
     extractionStatus: state.extractionStatus,
+
+    deliverables: state.deliverables,
+    finalDeliverables: state.finalDeliverables,
     
     // Direct access to processed assets
     assets,
