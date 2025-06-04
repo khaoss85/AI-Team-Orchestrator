@@ -121,8 +121,17 @@ except ImportError:
                 "status": "failed", 
                 "summary": "JSON parsing failed with fallback"
             }, False, "fallback_error"
-    def optimize_agent_output(output, task_id=None): 
+    def optimize_agent_output(output, task_id=None):
         return output, False, []
+
+# Configuration for agent behaviour (e.g., timeouts)
+try:
+    from backend.config.agent_system_config import AgentSystemConfig
+except ImportError:
+    try:
+        from config.agent_system_config import AgentSystemConfig
+    except ImportError:
+        AgentSystemConfig = None
             
 # Dummy async context manager per il fallback di 'trace'
 @contextlib.asynccontextmanager
@@ -208,7 +217,9 @@ class SpecialistAgent(Generic[T]):
         # Configurazioni anti-loop
         self.max_self_delegations_per_tool_call = 1 
         self.self_delegation_tool_call_count = 0 
-        self.execution_timeout = 120 
+        self.execution_timeout = 120
+        if AgentSystemConfig and hasattr(AgentSystemConfig, 'SPECIALIST_EXECUTION_TIMEOUT'):
+            self.execution_timeout = AgentSystemConfig.SPECIALIST_EXECUTION_TIMEOUT
         
         self.seniority_model_map = {
             AgentSeniority.JUNIOR.value:  "gpt-4.1-nano",
@@ -1153,17 +1164,36 @@ class SpecialistAgent(Generic[T]):
                 )
 
                 final_llm_output = agent_run_result.final_output
-                # ENHANCED: Parsing robusto dell'output dell'agente
+                parsed_successfully = False
                 execution_result_obj: TaskExecutionOutput
                 parsing_method = "unknown"
-                
-                if isinstance(final_llm_output, TaskExecutionOutput):
+
+                if isinstance(final_llm_output, str):
+                    try:
+                        basic_data = json.loads(final_llm_output)
+                        execution_result_obj = TaskExecutionOutput.model_validate(basic_data)
+                        parsing_method = "json_loads"
+                        parsed_successfully = True
+                        logger.info(f"Task {task.id}: simple json parsing successful")
+                    except Exception as json_err:
+                        logger.warning(f"Task {task.id}: json parsing failed: {json_err}")
+                        if ROBUST_JSON_AVAILABLE:
+                            try:
+                                fixed_data, _, fix_method = parse_llm_json_robust(final_llm_output, str(task.id))
+                                execution_result_obj = TaskExecutionOutput.model_validate(fixed_data)
+                                parsing_method = f"json_fix_{fix_method}"
+                                parsed_successfully = True
+                                logger.info(f"Task {task.id}: json fix successful ({fix_method})")
+                            except Exception as fix_err:
+                                logger.error(f"Task {task.id}: json fix failed: {fix_err}")
+
+                if not parsed_successfully and isinstance(final_llm_output, TaskExecutionOutput):
                     # Output già nel formato corretto
                     execution_result_obj = final_llm_output
                     parsing_method = "direct_taskexecutionoutput"
                     logger.info(f"Task {task.id}: Direct TaskExecutionOutput received")
-                    
-                elif isinstance(final_llm_output, dict):
+
+                elif not parsed_successfully and isinstance(final_llm_output, dict):
                     # Output dict - prova validazione diretta
                     try:
                         final_llm_output.setdefault('task_id', str(task.id))
@@ -1210,7 +1240,7 @@ class SpecialistAgent(Generic[T]):
                             )
                             parsing_method = "basic_fallback_dict"
                 
-                else:
+                elif not parsed_successfully:
                     # Output string - usa parsing robusto
                     logger.info(f"Task {task.id}: Processing string output with robust parser")
                     
