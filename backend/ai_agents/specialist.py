@@ -1171,6 +1171,7 @@ class SpecialistAgent(Generic[T]):
                 if isinstance(final_llm_output, str):
                     try:
                         basic_data = json.loads(final_llm_output)
+                        basic_data.setdefault('task_id', str(task.id))
                         execution_result_obj = TaskExecutionOutput.model_validate(basic_data)
                         parsing_method = "json_loads"
                         parsed_successfully = True
@@ -1180,6 +1181,7 @@ class SpecialistAgent(Generic[T]):
                         if ROBUST_JSON_AVAILABLE:
                             try:
                                 fixed_data, _, fix_method = parse_llm_json_robust(final_llm_output, str(task.id))
+                                fixed_data.setdefault('task_id', str(task.id))
                                 execution_result_obj = TaskExecutionOutput.model_validate(fixed_data)
                                 parsing_method = f"json_fix_{fix_method}"
                                 parsed_successfully = True

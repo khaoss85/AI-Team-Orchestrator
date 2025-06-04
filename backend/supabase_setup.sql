@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS agents (
     system_prompt TEXT,
     status TEXT NOT NULL DEFAULT 'created',
     health JSONB DEFAULT '{"status": "unknown", "last_update": null}'::JSONB,
-    model_config JSONB,
+    llm_config JSONB,
     tools JSONB,
     can_create_tools BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
