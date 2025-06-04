@@ -253,3 +253,22 @@ ADD COLUMN IF NOT EXISTS delegation_depth INTEGER DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_tasks_created_by_task_id ON tasks(created_by_task_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_delegation_depth ON tasks(delegation_depth);
 CREATE INDEX IF NOT EXISTS idx_tasks_creation_type ON tasks(creation_type);
+
+-- Optional table for storing individual agent proposals
+CREATE TABLE IF NOT EXISTS agent_proposals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    proposal_data JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', -- pending, approved, rejected
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER update_agent_proposals_updated_at
+BEFORE UPDATE ON agent_proposals
+FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE INDEX IF NOT EXISTS idx_agent_proposals_agent_id ON agent_proposals(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_proposals_status ON agent_proposals(status);

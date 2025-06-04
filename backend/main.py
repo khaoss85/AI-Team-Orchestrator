@@ -26,6 +26,7 @@ from routes.monitoring import router as monitoring_router
 from routes.human_feedback import router as human_feedback_router
 from routes.project_insights import router as project_insights_router
 from routes.delegation_monitor import router as delegation_router
+from routes.proposals import router as proposals_router
 from routes import asset_management
 
 # Import task executor
@@ -59,6 +60,7 @@ app.include_router(tools_router)
 app.include_router(monitoring_router) 
 app.include_router(human_feedback_router)
 app.include_router(project_insights_router)
+app.include_router(proposals_router)
 app.include_router(delegation_router)
 app.include_router(asset_management.router)
 
