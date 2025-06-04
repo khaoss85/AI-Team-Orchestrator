@@ -36,6 +36,14 @@ Create a `backend/.env` file and define at least the following variables:
 
 Other optional variables are available in the backend configuration. Example usage of these variables can be seen in `backend/deliverable_aggregator.py` and `backend/database.py`.
 
+To enable a simpler asset-oriented output you can set the following in your `.env`:
+
+```bash
+USE_ASSET_FIRST_DELIVERABLE=true
+```
+
+This will create deliverables that prioritise immediately usable assets.
+
 ### Running
 
 Start the backend:
