@@ -485,9 +485,9 @@ export const api = {
     },
 
     // Fetch detailed output for a single task
-    getTaskResult: async (taskId: string): Promise<any> => {
+    getTaskResult: async (workspaceId: string, taskId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/output/${taskId}`);
+        const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/output/${taskId}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
