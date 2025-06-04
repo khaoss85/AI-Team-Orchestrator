@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api } from '@/utils/api';
-import { ProjectDeliverables, DeliverableFeedback, ActionableAsset, ProjectOutputExtended } from '@/types';
+import { DeliverableFeedback, ActionableAsset, ProjectOutputExtended } from '@/types';
+import { useProjectDeliverables } from '@/hooks/useProjectDeliverables';
 import DeliverableInsightCard from './DeliverableInsightCard';
 import ActionableOutputCard from './ActionableOutputCard';
 import TaskResultDetails from './TaskResultDetails';
@@ -196,9 +197,13 @@ const SimpleAssetViewer: React.FC<{
 export default function ProjectDeliverableDashboard({
   workspaceId,
 }: ProjectDeliverableDashboardProps) {
-  const [deliverables, setDeliverables] = useState<ProjectDeliverables | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    deliverables,
+    loading,
+    error,
+    refetch,
+    submitFeedback,
+  } = useProjectDeliverables(workspaceId);
 
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedbackType, setFeedbackType] = useState<
@@ -223,24 +228,7 @@ export default function ProjectDeliverableDashboard({
   const [showMore, setShowMore] = useState(false);
 
   /* --------------------------- Fetch deliverables -------------------------- */
-
-  useEffect(() => {
-    fetchDeliverables();
-  }, [workspaceId]);
-
-  const fetchDeliverables = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await api.monitoring.getProjectDeliverables(workspaceId);
-      setDeliverables(data);
-    } catch (err) {
-      console.error(err);
-      setError('Impossibile caricare i deliverable');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Loading and error handling are managed by the useProjectDeliverables hook
 
   /* ------------------------------- Feedback -------------------------------- */
 
@@ -258,13 +246,12 @@ export default function ProjectDeliverableDashboard({
         priority,
         specific_tasks: ids,
       };
-      await api.monitoring.submitDeliverableFeedback(workspaceId, feedbackData);
+      await submitFeedback(feedbackData);
       setFeedback('');
       setShowFeedbackForm(false);
       setFeedbackType('general_feedback');
       setFeedbackTaskId(null);
       alert('Feedback inviato con successo!');
-      fetchDeliverables();
     } catch (err) {
       console.error(err);
       alert("Errore nell'invio del feedback. Riprova.");
@@ -306,6 +293,22 @@ export default function ProjectDeliverableDashboard({
       setOutputDetails(null);
     } finally {
       setLoadingOutput(false);
+    }
+  };
+
+  const handleQuickFeedback = async (
+    type: 'approve' | 'request_changes',
+    taskId: string,
+  ) => {
+    try {
+      await submitFeedback({
+        feedback_type: type,
+        message: '',
+        priority: 'medium',
+        specific_tasks: [taskId],
+      });
+    } catch (err) {
+      console.error('Error sending feedback', err);
     }
   };
 
@@ -366,7 +369,7 @@ export default function ProjectDeliverableDashboard({
         <div className="text-4xl mb-2">❌</div>
         {error}
         <button
-          onClick={fetchDeliverables}
+          onClick={refetch}
           className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
         >
           Riprova
@@ -742,6 +745,20 @@ export default function ProjectDeliverableDashboard({
                   </span>
                   <span>{formatDate(o.created_at)}</span>
                 </div>
+                <div className="flex gap-2 mt-2 text-xs">
+                  <button
+                    onClick={() => handleQuickFeedback('approve', o.task_id)}
+                    className="flex-1 bg-green-600 text-white py-1 rounded-md"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleQuickFeedback('request_changes', o.task_id)}
+                    className="flex-1 bg-orange-500 text-white py-1 rounded-md"
+                  >
+                    Request Changes
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -876,13 +893,13 @@ export default function ProjectDeliverableDashboard({
             )}
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => api.monitoring.submitDeliverableFeedback(workspaceId, { feedback_type: 'request_changes', message: '', specific_tasks: [selectedOutput.task_id], priority: 'medium' })}
+                onClick={() => handleQuickFeedback('request_changes', selectedOutput.task_id)}
                 className="px-4 py-2 bg-orange-600 text-white rounded-md text-sm"
               >
                 Request changes
               </button>
               <button
-                onClick={() => api.monitoring.submitDeliverableFeedback(workspaceId, { feedback_type: 'approve', message: 'generate new deliverable', specific_tasks: [selectedOutput.task_id], priority: 'medium' })}
+                onClick={() => handleQuickFeedback('approve', selectedOutput.task_id)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm"
               >
                 Generate new deliverable
