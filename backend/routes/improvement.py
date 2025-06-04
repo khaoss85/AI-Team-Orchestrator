@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
 
-from improvement_loop import checkpoint_output, qa_gate, close_loop
+from improvement_loop import (
+    checkpoint_output,
+    qa_gate,
+    close_loop,
+    DEFAULT_FEEDBACK_TIMEOUT,
+)
 from database import get_task
 
 router = APIRouter(prefix="/improvement", tags=["improvement"])
@@ -12,7 +17,7 @@ async def start_improvement(task_id: str, payload: Dict[str, Any]):
     task = await get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    approved = await checkpoint_output(task_id, payload)
+    approved = await checkpoint_output(task_id, payload, timeout=DEFAULT_FEEDBACK_TIMEOUT)
     return {"task_id": task_id, "approved": approved}
 
 
