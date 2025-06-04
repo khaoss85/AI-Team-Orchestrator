@@ -2044,6 +2044,16 @@ async def create_intelligent_deliverable(workspace_id: str) -> Optional[str]:
         logger.error(f"Error in forced intelligent deliverable creation: {e}")
         return None
 
+# === COMPATIBILITY WRAPPERS ===
+
+async def create_quality_enhanced_deliverable(workspace_id: str) -> Optional[str]:
+    """Deprecated wrapper maintained for backward compatibility."""
+    logger.warning(
+        "create_quality_enhanced_deliverable is deprecated; "
+        "use check_and_create_final_deliverable instead"
+    )
+    return await check_and_create_final_deliverable(workspace_id)
+
 def get_deliverable_system_status() -> Dict[str, Any]:
     """Ottieni stato completo del sistema deliverable intelligente"""
     
