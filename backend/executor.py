@@ -538,10 +538,12 @@ class TaskExecutor(AssetCoordinationMixin):
                         current_agent_id = str(assigned_agent_info["id"])
                         logger.info(f"Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id}) for role '{assigned_role}'")
                     else:
-                    logger.warning(f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task.")
-                    self.task_queue.task_done()
-                    self.active_task_ids.discard(task_id)
-                    continue
+                        logger.warning(
+                            f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task."
+                        )
+                        self.task_queue.task_done()
+                        self.active_task_ids.discard(task_id)
+                        continue
                 
                 # Validazione anti-loop
                 if not await self._validate_task_execution(task_dict_from_queue):
