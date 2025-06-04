@@ -484,6 +484,17 @@ export const api = {
       }
     },
 
+    // Fetch detailed output for a single task
+    getTaskResult: async (taskId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/output/${taskId}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
     pauseExecutor: async (): Promise<{ message: string }> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/executor/pause`, {
