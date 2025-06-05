@@ -1,9 +1,25 @@
 class Agent:
-    pass
+    """Very small fallback Agent implementation.
+
+    It simply stores any provided arguments so code expecting an SDK class
+    can instantiate it without errors when the real package is missing.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class Runner:
-    pass
+    """Trivial async runner used as a fallback when the real SDK is absent."""
+
+    @staticmethod
+    async def run(*_a, **_k):
+        class Dummy:
+            final_output = "{}"
+
+        return Dummy()
 
 class AgentOutputSchema:
     def __init__(self, *a, **k):
