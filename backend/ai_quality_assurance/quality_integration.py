@@ -30,34 +30,45 @@ class DynamicPromptEnhancer:
 
 🔧 **ENHANCED QUALITY REQUIREMENTS (AI Quality Assurance Active)**
 
-**CRITICAL: ZERO FAKE CONTENT POLICY**
-- NEVER use placeholder data like "John Doe", "Jane Smith", "example.com", "555-1234"
-- NEVER generate fake emails, phone numbers, or addresses  
-- NEVER use "Lorem ipsum" or template text
-- NEVER use generic company names like "ABC Corp", "XYZ Inc"
-- If you lack specific data, state "Research needed for [specific data point]"
+**CRITICAL: ANTI-THEORETICAL CONTENT POLICY**
+- NEVER generate "strategies", "frameworks", or "best practices" without concrete examples
+- NEVER use placeholder data like "[Insert content here]", "TBD", "Example post"
+- NEVER create generic templates - always fill with REAL, specific content
+- NEVER use theoretical language like "should include", "consider adding", "example of"
+- REPLACE theoretical concepts with actual implementations
 
-**ACTIONABILITY STANDARDS**
-- Every output must be immediately implementable by the client
-- Provide specific, concrete data derived from actual research or analysis
-- Include real business metrics, authentic contact information, actual market data
-- Replace ALL generic examples with domain-specific, actionable content
-- Include specific implementation steps and success criteria
+**MANDATORY CONCRETE OUTPUT STANDARDS**
+- Every output must contain SPECIFIC, actionable items (dates, times, exact content)
+- Provide COMPLETE implementations, not suggestions or guidelines
+- Include REAL examples that users can copy/paste immediately
+- Generate FULL content lists (if asked for 30 posts, provide 30 complete posts)
+- Add SPECIFIC metrics, measurements, and quantified outcomes
 
-**QUALITY VALIDATION CHECKLIST**
-✅ All data points are specific and realistic
-✅ No placeholder or example content present  
-✅ Asset follows domain best practices for {asset_type or 'business assets'}
-✅ Ready for immediate business implementation
-✅ Includes concrete next steps and success criteria
-✅ Contains measurable outcomes and KPIs
+**CONCRETE CONTENT CHECKLIST** 
+✅ Zero theoretical/strategic language - only concrete deliverables
+✅ Complete content ready for immediate business use
+✅ Specific examples with real details (dates, names, numbers)
+✅ Full implementation details, not just recommendations  
+✅ Quantified metrics and measurable outcomes
+✅ Business-ready format that requires no additional work
+
+**EXAMPLES OF UNACCEPTABLE THEORETICAL CONTENT**:
+❌ "Create engaging posts about fitness topics"
+❌ "Develop a content strategy that includes..."
+❌ "Consider posting motivational content on Mondays"
+❌ "Include relevant hashtags for your audience"
+
+**EXAMPLES OF REQUIRED CONCRETE CONTENT**:
+✅ "Post 1 (Dec 20): '💪 5 ESERCIZI MASSA - 1. SQUAT 4x8 reps...' #bodybuilding #palestra"
+✅ "Monday 6:00 AM: Morning workout routine video (30 seconds)"
+✅ "Caption: 'COLAZIONE PROTEICA 🥚 400 cal: 4 uova + avocado + pane integrale'"
 
 **AI QUALITY ASSESSMENT NOTE**
 Your output will be automatically analyzed for:
-- Content authenticity (fake content detection)
-- Actionability level (immediate usability)  
-- Completeness (missing information detection)
-- Professional readiness (business standard compliance)
+- Concrete content vs theoretical strategy (Target: 0.9+)
+- Immediate actionability without additional work (Target: 0.85+)
+- Completeness of all requested deliverables (Target: 0.8+)
+- Zero placeholder/template content (Target: 0.9+)
 
 Outputs scoring below {quality_threshold}/1.0 will trigger enhancement tasks. Aim for 0.9+ quality score.
 
@@ -83,11 +94,22 @@ For CONTACT DATABASES:
 - Include industry and company size data where relevant""",
             
             "content_calendar": """
-For CONTENT CALENDARS:
-- Specify exact posting dates and times
-- Include complete captions and hashtag strategies  
-- Provide content type specifications (image, video, carousel)
-- Add engagement predictions and performance metrics""",
+For CONTENT CALENDARS (CRITICAL - NO THEORETICAL CONTENT):
+- Generate COMPLETE posts with full captions, not "post about X topic"
+- Include EXACT posting dates and times (e.g., "Monday 18:00")
+- Write FULL captions with emojis, hashtags, and CTAs
+- Specify DETAILED content ("Carousel: 5 slides showing squat progression")
+- Provide ACTUAL hashtag lists (#bodybuilding #palestra #massa)
+- Include REAL engagement predictions with numbers""",
+            
+            "editorial_plan": """
+For EDITORIAL PLANS (ANTI-THEORETICAL MODE):
+- Generate ACTUAL posts with complete captions, not content ideas
+- Provide FULL 30-day calendars with specific posts for each date
+- Include REAL captions users can copy-paste immediately
+- Write COMPLETE carousel/reel scripts with timing and scenes
+- Add SPECIFIC hashtag strategies for each post type
+- Include ACTUAL trending audio suggestions and usage tips""",
             
             "training_program": """
 For TRAINING PROGRAMS:
@@ -111,38 +133,40 @@ For RESEARCH DATABASES:
 - Add recommendations based on research findings""",
             
             "strategy_framework": """
-For STRATEGY FRAMEWORKS:
-- Include specific KPIs and success metrics
-- Provide implementation timelines and resource requirements
-- Add risk assessments and mitigation strategies
-- Include competitive analysis and market positioning"""
+For STRATEGY FRAMEWORKS (CONCRETE IMPLEMENTATION FOCUS):
+- Provide SPECIFIC KPIs with exact numbers and targets
+- Include DETAILED implementation timelines with dates and milestones
+- Add REAL resource requirements (tools, budget, team size)
+- Include ACTIONABLE competitive analysis with specific actions
+- Generate COMPLETE implementation checklists"""
         }
         
         return guidance_map.get(asset_type, "Focus on creating business-ready, actionable content with real data.")
     
     @staticmethod
-    def create_quality_focused_task_description(base_description: str, quality_target: float = 0.8) -> str:
+    def create_quality_focused_task_description(base_description: str, quality_target: float = 0.85) -> str:
         """
         Migliora la descrizione di un task con focus sulla qualità
         """
         
         quality_addendum = f"""
 
-📊 **AI QUALITY TARGET: {quality_target}/1.0**
+📊 **AI QUALITY TARGET: {quality_target}/1.0 - CONCRETE CONTENT REQUIRED**
 
 This task will be automatically evaluated for quality. Ensure your output meets these standards:
-- **Authenticity**: Real data, no fake/placeholder content (Target: ≥{quality_target})
-- **Actionability**: Immediately usable for business purposes (Target: ≥{quality_target})
-- **Completeness**: All necessary information included (Target: ≥{quality_target})
-- **Professional**: Business-ready format and presentation
+- **Concrete Content**: ZERO theoretical/strategic language, only actionable deliverables (Target: ≥0.9)
+- **Completeness**: ALL requested items with FULL details, no placeholders (Target: ≥{quality_target})
+- **Immediate Usability**: Ready for copy-paste business use (Target: ≥{quality_target})
+- **Specific Examples**: Real dates, numbers, content - no generic templates (Target: ≥0.9)
 
-⚠️ **QUALITY WARNING**: Outputs scoring below {quality_target} will automatically trigger enhancement tasks and may delay project completion.
+⚠️ **QUALITY WARNING**: Outputs with theoretical content, placeholders, or incomplete details will automatically trigger enhancement tasks and delay project completion.
 
-✅ **SUCCESS CRITERIA**: 
-- Zero fake/placeholder content
-- Immediately actionable by client
-- Complete and professional presentation
-- Specific implementation guidance included"""
+✅ **SUCCESS CRITERIA FOR ASSET PRODUCTION**: 
+- Zero theoretical/strategic content - only concrete deliverables
+- COMPLETE implementation ready for immediate use
+- SPECIFIC examples with real data (dates, numbers, names)
+- FULL content generation (if 30 posts requested, provide 30 complete posts)
+- Business-ready format requiring no additional work"""
         
         return base_description + quality_addendum
     
@@ -166,9 +190,10 @@ This task will be automatically evaluated for quality. Ensure your output meets 
 **COORDINATION RESPONSIBILITIES**:
 1. **Validate AI Findings**: Review quality assessments and confirm priorities
 2. **Resource Allocation**: Assign appropriate specialists to enhancement tasks
-3. **Quality Standards**: Ensure all enhanced assets meet ≥0.8 quality score
-4. **Timeline Management**: Balance quality improvement with project deadlines
-5. **Final Approval**: Sign off on enhanced assets before client delivery
+3. **Quality Standards**: Ensure all enhanced assets meet ≥0.85 quality score (ENHANCED)
+4. **Concrete Content Validation**: Verify outputs contain actual implementations, not strategies
+5. **Timeline Management**: Balance quality improvement with project deadlines
+6. **Final Approval**: Sign off on enhanced assets before client delivery
 
 **QUALITY ESCALATION AUTHORITY**:
 - You have final authority to approve/reject AI quality assessments

@@ -1074,19 +1074,25 @@ class EnhancedTaskExecutor:
         task_name = (task_dict.get("name") or "").lower()
         task_description = (task_dict.get("description") or "").lower()
 
-        # Pattern che indicano necessità di asset production
+        # ENHANCED: Pattern che indicano necessità di asset production con focus concreto
         asset_patterns = {
             "contact_database": [
                 r"find.*contact", r"generate.*lead", r"prospect.*list", 
-                r"contact.*database", r"lead.*generation"
+                r"contact.*database", r"lead.*generation", r"client.*list"
             ],
             "content_calendar": [
                 r"content.*calendar", r"post.*schedule", r"social.*media.*plan",
-                r"content.*strategy", r"editorial.*calendar"
+                r"content.*strategy", r"editorial.*calendar", r"instagram.*plan",
+                r"social.*post", r"content.*creation"
+            ],
+            "editorial_plan": [
+                r"editorial.*plan", r"piano.*editoriale", r"content.*plan", 
+                r"instagram.*editorial", r"social.*editorial", r"post.*planning",
+                r"content.*scheduling", r"social.*content.*plan"
             ],
             "training_program": [
                 r"training.*program", r"workout.*plan", r"exercise.*routine",
-                r"fitness.*program", r"training.*schedule"
+                r"fitness.*program", r"training.*schedule", r"workout.*schedule"
             ],
             "financial_model": [
                 r"financial.*model", r"budget.*plan", r"cost.*analysis",
@@ -1106,14 +1112,19 @@ class EnhancedTaskExecutor:
 
         if detected_asset_type:
             try:
-                # Aggiorna il task con asset orientation markers
+                # ENHANCED: Aggiorna il task con asset orientation markers + quality requirements
                 enhanced_context = task_dict.get("context_data", {}) or {}
                 enhanced_context.update({
                     "asset_oriented_task": True,
                     "asset_production": True,
                     "detected_asset_type": detected_asset_type,
                     "asset_enhancement_timestamp": datetime.now().isoformat(),
-                    "enhanced_by": "asset_aware_analyzer"
+                    "enhanced_by": "asset_aware_analyzer",
+                    # NUOVO: Quality requirements per asset concreti
+                    "require_concrete_content": True,
+                    "prohibit_theoretical_output": True,
+                    "mandatory_quality_check": True,
+                    "expected_output_type": "concrete_deliverable"
                 })
 
                 # Update nel database

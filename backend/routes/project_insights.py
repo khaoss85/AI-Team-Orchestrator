@@ -430,21 +430,27 @@ async def get_project_deliverables(workspace_id: UUID):
                     rationale=result.get("rationale") or context_data.get("rationale") or result.get("phase_rationale") or context_data.get("phase_rationale")
                 ))
         
-        # ENHANCED: Controlla se esiste un deliverable finale aggregato
+        # ENHANCED: Controlla se esiste un deliverable finale aggregato (include anche failed tasks)
         final_deliverable_task = None
-        for task in completed_tasks:
+        for task in tasks:  # Cerca in TUTTI i task, non solo completed
             context_data = task.get("context_data", {}) or {}
             if (context_data.get("is_final_deliverable") or 
                 context_data.get("deliverable_aggregation") or
                 context_data.get("triggers_project_completion")):
                 final_deliverable_task = task
+                logger.info(f"🎯 FOUND final deliverable task {task.get('id')} with status: {task.get('status')}")
                 break
         
         # ENHANCED: Se esiste un deliverable finale, processalo con logica robusta
         if final_deliverable_task:
-            logger.info(f"🎯 PROCESSING final deliverable task: {final_deliverable_task['id']}")
+            task_status = final_deliverable_task.get("status", "unknown")
+            logger.info(f"🎯 PROCESSING final deliverable task: {final_deliverable_task['id']} (status: {task_status})")
             result = final_deliverable_task.get("result", {}) or {}
             fd_context = final_deliverable_task.get("context_data", {}) or {}
+            
+            # SPECIAL HANDLING: Se il task è failed, prova comunque a estrarre contenuto utile
+            if task_status == "failed":
+                logger.warning(f"🎯 WARNING: Final deliverable task {final_deliverable_task['id']} has FAILED status - attempting content recovery")
             
             # ENHANCED: Multiple fallback strategies for getting executive summary
             executive_summary = ""
@@ -479,21 +485,31 @@ async def get_project_deliverables(workspace_id: UUID):
             # Strategy 4: Generate basic summary if still empty
             if not executive_summary:
                 workspace_goal = workspace.get("goal", "")
-                executive_summary = f"Project deliverable completed for: {workspace_goal}"
-                logger.warning(f"🎯 EMERGENCY FALLBACK: Generated basic executive summary")
+                if task_status == "failed":
+                    executive_summary = f"Final deliverable attempted but failed during generation. Project goal: {workspace_goal}. Check task logs for details."
+                    logger.warning(f"🎯 FAILED TASK FALLBACK: Generated recovery executive summary")
+                else:
+                    executive_summary = f"Project deliverable completed for: {workspace_goal}"
+                    logger.warning(f"🎯 EMERGENCY FALLBACK: Generated basic executive summary")
             
             # ENHANCED: Create comprehensive final output with robust data
             try:
+                # Customize display based on task status
+                task_name_prefix = "🎯 " if task_status != "failed" else "⚠️ 🎯 "
+                agent_role_display = "Final Deliverable" if task_status != "failed" else "Final Deliverable (Failed)"
+                
                 final_output = ProjectOutput(
                     task_id=final_deliverable_task["id"],
-                    task_name="🎯 " + final_deliverable_task.get("name", "Final Deliverable"),
+                    task_name=task_name_prefix + final_deliverable_task.get("name", "Final Deliverable"),
                     output=executive_summary,  # This will now always have content
                     agent_name=agent_map.get(final_deliverable_task.get("agent_id"), {}).get("name", "Project Manager"),
-                    agent_role="Final Deliverable",
+                    agent_role=agent_role_display,
                     created_at=datetime.fromisoformat(final_deliverable_task.get("updated_at", datetime.now().isoformat()).replace('Z', '+00:00')),
                     type="final_deliverable",
                     # ENHANCED: Robust field extraction with fallbacks
-                    title=detailed_json_data.get("deliverable_type", "Final Project Deliverable").replace("_", " ").title(),
+                    title=detailed_json_data.get("deliverable_type", 
+                        "Final Project Deliverable (Recovery Mode)" if task_status == "failed" 
+                        else "Final Project Deliverable").replace("_", " ").title(),
                     description=executive_summary,  # Use the robust executive_summary
                     key_insights=detailed_json_data.get("key_findings", detailed_json_data.get("key_insights", [])),
                     metrics=detailed_json_data.get("project_metrics", detailed_json_data.get("project_success_metrics", {})),
@@ -507,7 +523,10 @@ async def get_project_deliverables(workspace_id: UUID):
                 
                 # Add the final deliverable at the beginning of the list
                 key_outputs.insert(0, final_output)
-                logger.info(f"🎯 SUCCESS: Added final deliverable to outputs with robust data")
+                if task_status == "failed":
+                    logger.info(f"🎯 RECOVERY SUCCESS: Added FAILED final deliverable to outputs with recovery data")
+                else:
+                    logger.info(f"🎯 SUCCESS: Added final deliverable to outputs with robust data")
                 
             except Exception as e:
                 logger.error(f"🎯 ERROR: Failed to create final ProjectOutput: {e}")

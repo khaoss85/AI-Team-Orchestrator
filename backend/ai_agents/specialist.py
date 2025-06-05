@@ -112,6 +112,7 @@ try:
         Task,
         TaskStatus,
         AgentSeniority,
+        TaskExecutionOutput,
     )
 except Exception:  # pragma: no cover - fallback if wrong module on path
     from backend.models import (
@@ -122,6 +123,7 @@ except Exception:  # pragma: no cover - fallback if wrong module on path
         Task,
         TaskStatus,
         AgentSeniority,
+        TaskExecutionOutput,
     )  # type: ignore
 try:
     from database import (
@@ -254,28 +256,7 @@ TOKEN_COSTS = {
 }
 
 
-class TaskExecutionOutput(BaseModel):
-    task_id: str = Field(..., description="ID of the task")  # Required, no default
-    status: Literal["completed", "failed", "requires_handoff"] = Field(
-        default="completed", description="Task completion status"
-    )
-    summary: str = Field(
-        ..., description="Summary of work performed"
-    )  # Required, no default
-    detailed_results_json: Optional[str] = Field(
-        default=None, description="Detailed structured results as JSON string"
-    )
-    next_steps: Optional[List[str]] = Field(
-        default=None, description="Suggested next actions"
-    )
-    suggested_handoff_target_role: Optional[str] = Field(
-        default=None, description="Role to hand off to if required"
-    )
-    resources_consumed_json: Optional[str] = Field(
-        default=None, description="Resource usage as JSON string"
-    )
-
-    model_config = ConfigDict(extra="forbid")
+# TaskExecutionOutput is now imported from models.py to avoid duplication
 
 
 class CapabilityVerificationOutput(BaseModel):
@@ -669,9 +650,9 @@ class SpecialistAgent(Generic[T]):
 
     OUTPUT REQUIREMENTS:
     Your final output for EACH task execution MUST be a single, valid JSON object matching the 'TaskExecutionOutput' schema:
-    - "task_id": (string) ID of the current task being processed (e.g., "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}").
-    - "status": (string) Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
-    - "summary": (string) Concise summary of the work performed and the outcome. THIS IS MANDATORY.
+    - "task_id": (string) MANDATORY - ID of the current task being processed (e.g., "{self._current_task_being_processed_id or 'CURRENT_TASK_ID'}"). NEVER omit this field.
+    - "status": (string) MANDATORY - Must be one of: "completed", "failed", "requires_handoff". Default to "completed" if substantial work is done.
+    - "summary": (string) MANDATORY - Concise summary of the work performed and the outcome. THIS IS REQUIRED.
     - "detailed_results_json": (string, optional) A VALID JSON STRING containing detailed, structured results. NULL if not applicable. MUST be valid JSON if provided.
     - "next_steps": (array of strings, optional) Only if you completed the task and have suggestions for the PM or for future work based on your findings.
     - "suggested_handoff_target_role": (string, optional) ONLY if status is "requires_handoff". Specify the different specialist role to hand off to.
@@ -695,6 +676,8 @@ class SpecialistAgent(Generic[T]):
       "suggested_handoff_target_role": null,
       "resources_consumed_json": null
     }}
+
+    🚨 CRITICAL: The task_id field is MANDATORY and MUST be included in every response. Without it, your output will fail validation.
 
     ⚠️ FINAL VALIDATION: Before outputting your response, mentally check that any JSON string in detailed_results_json is valid!
 
@@ -723,7 +706,48 @@ class SpecialistAgent(Generic[T]):
     3. **Business Ready**: Output should be copy-paste ready for business use
     4. **Validation Ready**: Follow exact schema if provided in task description
 
-    **EXAMPLES OF ASSET-ORIENTED OUTPUT**:
+    **EXAMPLES OF CONCRETE ASSET-ORIENTED OUTPUT**:
+
+    For Instagram Editorial Plan (AVOID Generic Strategy - CREATE ACTUAL POSTS):
+    ```json
+    {
+      "editorial_calendar": [
+        {
+          "date": "2024-12-20",
+          "post_type": "carousel",
+          "caption": "💪 5 ESERCIZI PER MASSA MUSCOLARE\n\n1. SQUAT - 4 serie x 8-10 reps\n2. PANCA PIANA - 4 serie x 6-8 reps\n3. STACCHI - 3 serie x 5-6 reps\n4. MILITARY PRESS - 3 serie x 8-10 reps\n5. TRAZIONI - 3 serie x max reps\n\nSalva questo post! 🔥\n\n#bodybuilding #palestra #massa #workout",
+          "hashtags": ["#bodybuilding", "#palestra", "#massa", "#workout", "#fitness"],
+          "slide_content": [
+            "Slide 1: SQUAT - Tecnica corretta\nPiedi larghezza spalle\nScendi fino a 90°\nSpingi sui talloni",
+            "Slide 2: PANCA PIANA - Grip e movimento\nImpugnatura media\nControllo in discesa\nEsplosione in salita"
+          ],
+          "call_to_action": "Seguimi per altri workout! 💪"
+        },
+        {
+          "date": "2024-12-21", 
+          "post_type": "reel",
+          "caption": "MORNING WORKOUT ROUTINE ☀️\n\n6:00 - Sveglia\n6:15 - Pre-workout\n6:30 - Allenamento (45 min)\n7:15 - Colazione proteica\n\nChi si allena al mattino? 👇\n\n#morningworkout #routine #disciplina",
+          "hashtags": ["#morningworkout", "#routine", "#disciplina", "#motivazione"],
+          "duration_seconds": 30,
+          "trending_audio": "Motivational Gym Music 2024",
+          "scenes": [
+            "0-5s: Sveglia al buio",
+            "5-15s: Preparazione pre-workout", 
+            "15-25s: Allenamento intenso",
+            "25-30s: Post-workout energy"
+          ]
+        }
+      ],
+      "content_pillars": {
+        "education": 40,
+        "motivation": 30, 
+        "lifestyle": 20,
+        "transformation": 10
+      },
+      "posting_schedule": "Mon-Wed-Fri ore 18:00, Sat ore 10:00",
+      "total_posts_planned": 30
+    }
+    ```
 
     For Contact Database Task:
     ```json
@@ -746,14 +770,70 @@ class SpecialistAgent(Generic[T]):
     }
     ```
 
-    🚨 CRITICAL FOR ASSET PRODUCTION:
-    - Replace generic examples with specific, real content
-    - Ensure data is structured for immediate business use
-    - Include usage instructions and implementation guidance
-    - Validate output against provided schema if available
-    - Focus on business value and actionability over strategic insights
+    For Training Program:
+    ```json
+    {
+      "program_name": "12-Week Muscle Building Program",
+      "weekly_schedule": [
+        {
+          "day": "Monday",
+          "focus": "Chest & Triceps",
+          "exercises": [
+            {
+              "name": "Bench Press",
+              "sets": 4,
+              "reps": "6-8",
+              "rest_seconds": 120,
+              "notes": "Focus on controlled negative"
+            },
+            {
+              "name": "Incline Dumbbell Press", 
+              "sets": 3,
+              "reps": "8-10",
+              "rest_seconds": 90
+            }
+          ],
+          "total_duration_minutes": 75
+        }
+      ],
+      "nutrition_guidelines": {
+        "calories_per_day": 2800,
+        "protein_grams": 180,
+        "sample_meals": [
+          "Breakfast: 4 eggs + oatmeal + banana",
+          "Lunch: 200g chicken + rice + vegetables",
+          "Dinner: 200g salmon + sweet potato + salad"
+        ]
+      }
+    }
+    ```
 
-    If your task is NOT asset production, continue with standard analytical/strategic approach.
+    🚨 CRITICAL ANTI-THEORETICAL REQUIREMENTS:
+    
+    **MANDATORY FOR ALL ASSET PRODUCTION TASKS:**
+    1. **NO PLACEHOLDERS**: Replace ALL "[Insert here]", "TBD", "Example" with real content
+    2. **CONCRETE DATA**: Generate actual lists, real examples, specific numbers
+    3. **IMMEDIATELY USABLE**: Output must be copy-paste ready for business use
+    4. **COMPLETE CONTENT**: If asked for 30 posts, provide 30 actual posts with real captions
+    5. **SPECIFIC DETAILS**: Include dates, times, exact measurements, real hashtags
+    6. **ACTIONABLE INSTRUCTIONS**: Provide step-by-step implementation guidance
+    
+    **EXAMPLES OF WHAT TO AVOID:**
+    ❌ "Create engaging content about fitness" 
+    ✅ "💪 5 ESERCIZI PER MASSA MUSCOLARE - 1. SQUAT 4x8-10..."
+    
+    ❌ "Post 1: [Morning motivation content]"
+    ✅ "Post 1: MORNING WARRIOR ☀️ - Il segreto per vincere la giornata..."
+    
+    ❌ "Include relevant hashtags"
+    ✅ "#bodybuilding #palestra #massa #workout #motivazione #italia"
+    
+    **QUALITY VALIDATION:**
+    - If a business owner receives your output, can they use it immediately?
+    - Does it contain specific, actionable items they can implement today?
+    - Are there concrete examples they can copy/adapt?
+    
+    If your task is NOT asset production, continue with standard analytical approach.
     """
 
         enhanced_prompt = base_prompt + asset_enhancement

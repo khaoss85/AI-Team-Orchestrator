@@ -38,6 +38,7 @@ except ImportError as e:
     logger.warning(f"⚠️ Quality System not available in TaskExecutor: {e}")
     QUALITY_SYSTEM_AVAILABLE = False
     QualitySystemConfig = None
+    check_and_create_final_deliverable = None  # Define as None to avoid NameError
 
 
 # === ENHANCED FINALIZATION PRIORITY CONFIGURATIONS ===
@@ -2261,7 +2262,7 @@ def get_quality_integration_status() -> Dict[str, Any]:
             isinstance(task_executor, QualityEnhancedTaskExecutor) and 
             getattr(task_executor, 'quality_integration_enabled', False)
         ),
-        "configuration": QualitySystemConfig.get_all_settings() if QUALITY_SYSTEM_AVAILABLE else None
+        "configuration": QualitySystemConfig.get_all_settings() if (QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig) else None
     }
 
 class QualityEnhancedTaskExecutor(TaskExecutor):
@@ -2273,6 +2274,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
         super().__init__()
         self.quality_integration_enabled = (
             QUALITY_SYSTEM_AVAILABLE and 
+            QualitySystemConfig and
             QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM
         )
         
@@ -2359,7 +2361,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                         continue
                     
                     # Tentativo di creare deliverable quality-enhanced
-                    if QUALITY_SYSTEM_AVAILABLE:
+                    if QUALITY_SYSTEM_AVAILABLE and check_and_create_final_deliverable is not None:
                         deliverable_id = await check_and_create_final_deliverable(workspace_id)
                     else:
                         # Fallback se quality system non disponibile
@@ -2370,7 +2372,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                         logger.info(f"🔍 QUALITY DELIVERABLE: Created {deliverable_id} for {workspace_id}")
                         
                         # Registra metriche se abilitato
-                        if QualitySystemConfig.ENABLE_QUALITY_METRICS_COLLECTION:
+                        if QualitySystemConfig and QualitySystemConfig.ENABLE_QUALITY_METRICS_COLLECTION:
                             try:
                                 from backend.ai_quality_assurance.quality_integration import quality_metrics_collector
                                 quality_metrics_collector.record_enhancement_activity(
@@ -2389,7 +2391,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     logger.error(f"Error creating quality deliverable for {workspace_id}: {e_ws}")
                     
                     # Fallback al sistema standard se abilitato
-                    if QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
+                    if QualitySystemConfig and QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
                         try:
                             from deliverable_aggregator import check_and_create_final_deliverable
                             fallback_id = await check_and_create_final_deliverable(workspace_id)
@@ -2397,6 +2399,8 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                             if fallback_id:
                                 logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")
                                 
+                        except ImportError as import_error:
+                            logger.error(f"Cannot import deliverable_aggregator for fallback: {import_error}")
                         except Exception as fallback_error:
                             logger.error(f"Fallback deliverable also failed for {workspace_id}: {fallback_error}")
                     
@@ -2436,7 +2440,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
 
 # Istanza globale del TaskExecutor
 
-if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM:
+if QUALITY_SYSTEM_AVAILABLE and QualitySystemConfig and QualitySystemConfig.INTEGRATE_WITH_EXISTING_DELIVERABLE_SYSTEM:
     task_executor = QualityEnhancedTaskExecutor()
     logger.info("🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version")
 else:

@@ -51,24 +51,32 @@ class RobustJSONParser:
             result = self._attempt_direct_parse(raw_output)
             if result:
                 self.parsing_stats["successful_parses"] += 1
+                # CRITICAL FIX: Ensure task_id is always present
+                result = self._ensure_required_fields(result, task_id)
                 return result, True, "direct_parse"
             
             # Tentativo 2: Estrazione JSON con regex
             result = self._attempt_regex_extraction(raw_output)
             if result:
                 self.parsing_stats["recovery_successes"] += 1
+                # CRITICAL FIX: Ensure task_id is always present
+                result = self._ensure_required_fields(result, task_id)
                 return result, True, "regex_extraction"
             
             # Tentativo 3: Recovery da JSON troncato
             result = self._attempt_truncated_recovery(raw_output, expected_schema)
             if result:
                 self.parsing_stats["recovery_successes"] += 1
+                # CRITICAL FIX: Ensure task_id is always present
+                result = self._ensure_required_fields(result, task_id)
                 return result, False, "truncated_recovery"  # False = incomplete
             
             # Tentativo 4: Parsing parziale intelligente
             result = self._attempt_intelligent_partial_parse(raw_output, expected_schema)
             if result:
                 self.parsing_stats["recovery_successes"] += 1
+                # CRITICAL FIX: Ensure task_id is always present
+                result = self._ensure_required_fields(result, task_id)
                 return result, False, "partial_parse"
             
             # Fallimento completo
@@ -398,6 +406,43 @@ class RobustJSONParser:
             return meaningful_lines[0][:200] + "..." if len(meaningful_lines[0]) > 200 else meaningful_lines[0]
         
         return None
+    
+    def _ensure_required_fields(self, result: Dict[str, Any], task_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        CRITICAL FIX: Assicura che i campi obbligatori siano sempre presenti nel risultato
+        
+        Args:
+            result: Il dizionario parsed dal JSON
+            task_id: Il task_id da usare se mancante
+            
+        Returns:
+            Dict con tutti i campi obbligatori presenti
+        """
+        if not isinstance(result, dict):
+            result = {}
+        
+        # CAMPO OBBLIGATORIO: task_id
+        if "task_id" not in result or not result["task_id"]:
+            result["task_id"] = task_id or "unknown"
+            logger.warning(f"Missing task_id in parsed result - added: {result['task_id']}")
+        
+        # CAMPO OBBLIGATORIO: status
+        if "status" not in result or not result["status"]:
+            result["status"] = "completed"
+            logger.warning(f"Missing status in parsed result - defaulted to: completed")
+        
+        # CAMPO OBBLIGATORIO: summary
+        if "summary" not in result or not result["summary"]:
+            result["summary"] = f"Task {result.get('task_id', 'unknown')} completed"
+            logger.warning(f"Missing summary in parsed result - added default summary")
+        
+        # Validate status field value
+        valid_statuses = ["completed", "failed", "requires_handoff"]
+        if result["status"] not in valid_statuses:
+            logger.warning(f"Invalid status '{result['status']}' - defaulting to 'completed'")
+            result["status"] = "completed"
+        
+        return result
     
     def get_parsing_stats(self) -> Dict[str, Any]:
         """Ottieni statistiche di parsing"""

@@ -9,10 +9,12 @@ import { useProjectDeliverables } from '@/hooks/useProjectDeliverables'
 import ActionableHeroSection from '@/components/redesign/ActionableHeroSection'
 import MissionControlSection from '@/components/redesign/MissionControlSection'
 import DeliverableCard from '@/components/redesign/DeliverableCard'
-import DetailsDrillDown from '@/components/redesign/DetailsDrillDown'
+import EnhancedDetailsDrillDown from '@/components/EnhancedDetailsDrillDown'
 import ExecutionDetailsModal from '@/components/redesign/ExecutionDetailsModal'
 import RationaleModal from '@/components/redesign/RationaleModal'
 import InteractionPanel from '@/components/redesign/InteractionPanel'
+import ActionableAssetCard from '@/components/ActionableAssetCard'
+import SmartAssetViewer from '@/components/SmartAssetViewer'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -29,6 +31,8 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
   const {
     finalDeliverables,
     deliverables: assetDeliverables,
+    assets,
+    assetDisplayData,
     getAssetCompletionStats,
     loading: assetsLoading,
     error: assetError
@@ -47,6 +51,9 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
   const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null)
   const [executionOutput, setExecutionOutput] = useState<ProjectOutputExtended | null>(null)
   const [rationaleOutput, setRationaleOutput] = useState<ProjectOutputExtended | null>(null)
+  const [selectedAsset, setSelectedAsset] = useState<any>(null)
+  const [showAssetDetails, setShowAssetDetails] = useState(false)
+  const [showAssetInteraction, setShowAssetInteraction] = useState(false)
 
   // Data for Mission Control section
   const [agents, setAgents] = useState<Agent[]>([])
@@ -183,6 +190,31 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
   }
 
   const assetStats = getAssetCompletionStats()
+  
+  // Asset management handlers
+  const handleViewAssetDetails = (asset: any) => {
+    setSelectedAsset(asset)
+    setShowAssetDetails(true)
+  }
+
+  const handleInteractWithAsset = (asset: any) => {
+    setSelectedAsset(asset)
+    setShowAssetInteraction(true)
+  }
+
+  const handleDownloadAsset = (asset: any) => {
+    // Create downloadable content
+    const assetContent = JSON.stringify(asset.asset_data, null, 2)
+    const blob = new Blob([assetContent], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${asset.asset_name}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="container mx-auto space-y-6">
@@ -205,10 +237,42 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
       />
       <InteractionPanel workspace={workspace} onWorkspaceUpdate={setWorkspace} />
 
+      {/* Business-Ready Assets Section */}
+      {assetDisplayData && assetDisplayData.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-semibold text-gray-900">Your Business-Ready Assets</h2>
+              <span className="text-sm text-gray-600">{assetDisplayData.length} deliverables ready</span>
+            </div>
+            <p className="text-gray-600 text-sm">
+              ⚡ Actionable business assets ready for immediate deployment (calendars, databases, strategies, etc.)
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {assetDisplayData.map((assetData, index) => (
+              <ActionableAssetCard
+                key={`asset-${assetData.asset.asset_name}-${index}`}
+                assetData={assetData}
+                onViewDetails={handleViewAssetDetails}
+                onInteract={handleInteractWithAsset}
+                onDownload={handleDownloadAsset}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Show final deliverables prominently if available */}
       {hasFinalDeliverables && projectFinalDeliverables.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4 text-green-800">🎯 Final Deliverables Ready</h2>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-2 text-green-800">🎯 Final Deliverables Ready</h2>
+            <p className="text-green-700 text-sm">
+              📋 Main project summary and comprehensive deliverable that aggregates all work completed
+            </p>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {projectFinalDeliverables.map((output, index) => (
               <div key={`final-${output.task_id}-${index}`} className="transform scale-105">
@@ -257,7 +321,7 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
       </div>
 
       {selectedOutput && (
-        <DetailsDrillDown
+        <EnhancedDetailsDrillDown
           output={selectedOutput}
           workspaceId={id}
           onClose={() => setSelectedOutput(null)}
@@ -274,6 +338,48 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
           rationale={rationaleOutput.rationale || ''}
           onClose={() => setRationaleOutput(null)}
         />
+      )}
+      
+      {/* Asset Viewer Modal - Smart Viewer */}
+      {showAssetDetails && selectedAsset && (
+        <SmartAssetViewer
+          asset={selectedAsset}
+          onClose={() => setShowAssetDetails(false)}
+          onDownload={handleDownloadAsset}
+          onRefine={handleInteractWithAsset}
+        />
+      )}
+      
+      {showAssetInteraction && selectedAsset && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Interact with Asset</h2>
+                  <p className="opacity-90">Request modifications for {selectedAsset.asset_name}</p>
+                </div>
+                <button 
+                  onClick={() => setShowAssetInteraction(false)} 
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600">Asset interaction feature coming soon! This will allow you to refine and modify your business assets with AI assistance.</p>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowAssetInteraction(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
