@@ -1,6 +1,7 @@
 class Agent:
     pass
 
+
 class Runner:
     pass
 
@@ -8,8 +9,10 @@ class AgentOutputSchema:
     def __init__(self, *a, **k):
         pass
 
+
 class ModelSettings:
     pass
+
 
 def function_tool(name_override=None):
     def decorator(func):

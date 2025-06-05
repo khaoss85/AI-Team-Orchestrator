@@ -16,6 +16,8 @@ import ActionableHeroSection from '@/components/redesign/ActionableHeroSection'
 import MissionControlSection from '@/components/redesign/MissionControlSection'
 import DeliverableCard from '@/components/redesign/DeliverableCard'
 import DetailsDrillDown from '@/components/redesign/DetailsDrillDown'
+import ExecutionDetailsModal from '@/components/redesign/ExecutionDetailsModal'
+import RationaleModal from '@/components/redesign/RationaleModal'
 import InteractionPanel from '@/components/redesign/InteractionPanel'
 
 interface Props {
@@ -51,6 +53,8 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
   const [missionError, setMissionError] = useState<string | null>(null)
 
   const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null)
+  const [executionOutput, setExecutionOutput] = useState<ProjectOutputExtended | null>(null)
+  const [rationaleOutput, setRationaleOutput] = useState<ProjectOutputExtended | null>(null)
 
   useEffect(() => {
     fetchWorkspace()
@@ -133,6 +137,8 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
             output={output}
             workspaceId={id}
             onViewDetails={() => setSelectedOutput(output)}
+            onViewExecution={() => setExecutionOutput(output)}
+            onViewRationale={() => setRationaleOutput(output)}
           />
         ))}
       </div>
@@ -142,6 +148,18 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
           output={selectedOutput}
           workspaceId={id}
           onClose={() => setSelectedOutput(null)}
+        />
+      )}
+      {executionOutput && (
+        <ExecutionDetailsModal
+          output={executionOutput}
+          onClose={() => setExecutionOutput(null)}
+        />
+      )}
+      {rationaleOutput && (
+        <RationaleModal
+          rationale={rationaleOutput.rationale || ''}
+          onClose={() => setRationaleOutput(null)}
         />
       )}
     </div>
