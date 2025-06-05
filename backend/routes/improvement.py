@@ -36,3 +36,12 @@ async def get_status(task_id: str):
 async def close_improvement(task_id: str):
     await close_loop(task_id)
     return {"closed": True}
+
+
+@router.post("/qa/{task_id}", response_model=Dict[str, Any])
+async def qa_improvement(task_id: str, payload: Dict[str, Any]):
+    task = await get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    approved = await qa_gate(task_id, payload)
+    return {"task_id": task_id, "approved": approved}
