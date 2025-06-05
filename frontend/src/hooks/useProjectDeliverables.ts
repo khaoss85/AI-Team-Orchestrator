@@ -68,7 +68,7 @@ export const useProjectDeliverables = (workspaceId: string) => {
       } finally {
         setLoading(false);
       }
-    }, DEBOUNCE_DELAY);
+    }, forceRefresh ? 0 : DEBOUNCE_DELAY);
   }, [workspaceId]);
 
   const checkForFinalDeliverables = useCallback(async () => {
@@ -94,6 +94,18 @@ export const useProjectDeliverables = (workspaceId: string) => {
   useEffect(() => {
     if (workspaceId) {
       fetchDeliverables();
+      
+      // Set up auto-refresh interval
+      const interval = setInterval(() => {
+        fetchDeliverables(true); // Force refresh every 30 seconds
+      }, 30000);
+      
+      return () => {
+        clearInterval(interval);
+        if (fetchTimeoutRef.current) {
+          clearTimeout(fetchTimeoutRef.current);
+        }
+      };
     }
     
     // Cleanup timeout on unmount

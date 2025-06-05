@@ -350,6 +350,8 @@ export const api = {
             title: output.title || output.task_name,
             description: output.description || '',
             category: output.category || 'general',
+            // Preserve important classification fields
+            type: output.type,
             // 🆕 NEW: Asset-specific fields
             actionable_assets: output.actionable_assets || {},
             actionability_score: output.actionability_score || 0,

@@ -25,17 +25,24 @@ const DetailsDrillDown: React.FC<Props> = ({ output, workspaceId, onClose }) => 
         setDetails(data)
         setError(null)
       } catch (e: any) {
+        console.log('API error fetching task details:', e.message)
         const fallbackDetails: TaskResultDetailsData = {
           task_id: output.task_id,
-          task_name: output.task_name,
-          summary: output.summary || output.output,
-          metrics: output.metrics,
-          next_steps: output.next_steps,
-          key_points: output.key_insights,
-          status: output.type,
+          task_name: output.task_name || output.title,
+          summary: output.summary || output.output || 'No summary available',
+          metrics: output.metrics || {},
+          next_steps: output.next_steps || [],
+          key_points: output.key_insights || [],
+          status: output.type || output.category || 'completed',
+          // Add asset data if available
+          result: output.actionable_assets ? {
+            actionable_assets: output.actionable_assets,
+            detailed_results_json: JSON.stringify(output.actionable_assets, null, 2)
+          } : undefined,
+          content: output.content || {},
         }
         setDetails(fallbackDetails)
-        setWarning('Dettagli limitati disponibili')
+        setWarning('Showing available data (API details unavailable)')
         setError(null)
       } finally {
         setLoading(false)

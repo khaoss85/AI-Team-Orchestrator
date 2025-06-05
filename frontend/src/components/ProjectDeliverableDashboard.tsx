@@ -7,149 +7,13 @@ import { useProjectDeliverables } from '@/hooks/useProjectDeliverables';
 import DeliverableInsightCard from './DeliverableInsightCard';
 import ActionableOutputCard from './ActionableOutputCard';
 import TaskResultDetails from './TaskResultDetails';
+import DeliverableCard from './redesign/DeliverableCard';
 
 interface ProjectDeliverableDashboardProps {
   workspaceId: string;
 }
 
-// NEW: Enhanced ActionableAsset display component
-const ActionableAssetCard: React.FC<{
-  assetName: string;
-  asset: ActionableAsset;
-  onDownload: () => void;
-  onViewDetails: () => void;
-}> = ({ assetName, asset, onDownload, onViewDetails }) => {
-  const getAssetIcon = (name: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('calendar')) return '📅';
-    if (lowerName.includes('contact') || lowerName.includes('database')) return '📊';
-    if (lowerName.includes('strategy')) return '🎯';
-    if (lowerName.includes('content')) return '📝';
-    if (lowerName.includes('analysis')) return '📈';
-    return '📦';
-  };
-
-  const getActionabilityColor = (score: number) => {
-    if (score >= 0.8) return 'from-green-500 to-emerald-600';
-    if (score >= 0.6) return 'from-yellow-500 to-orange-600';
-    return 'from-red-500 to-pink-600';
-  };
-
-  const getActionabilityLabel = (score: number) => {
-    if (score >= 0.8) return 'Pronto all\'uso';
-    if (score >= 0.6) return 'Richiede personalizzazione';
-    return 'Template di base';
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-      {/* Header with actionability score */}
-      <div className={`bg-gradient-to-r ${getActionabilityColor(asset.actionability_score)} p-4 text-white`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="text-2xl mr-3">{getAssetIcon(assetName)}</span>
-            <div>
-              <h3 className="font-bold text-lg">{assetName.replace(/_/g, ' ').toUpperCase()}</h3>
-              <p className="text-sm opacity-90">{getActionabilityLabel(asset.actionability_score)}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{Math.round(asset.actionability_score * 100)}%</div>
-            <div className="text-xs opacity-90">Azionabilità</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6">
-        {/* Asset validation and ready status */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="text-center">
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              asset.validation_score >= 0.8 
-                ? 'bg-green-100 text-green-800' 
-                : asset.validation_score >= 0.6
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-            }`}>
-              {asset.validation_score >= 0.8 ? '✅' : asset.validation_score >= 0.6 ? '⚠️' : '❌'}
-              <span className="ml-1">Validazione: {Math.round(asset.validation_score * 100)}%</span>
-            </div>
-          </div>
-          
-          <div className="text-center">
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              asset.ready_to_use 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-orange-100 text-orange-800'
-            }`}>
-              {asset.ready_to_use ? '🚀' : '🔧'}
-              <span className="ml-1">{asset.ready_to_use ? 'Pronto' : 'In lavorazione'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Asset data preview */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-          <h4 className="font-medium text-gray-800 mb-2">Anteprima Dati:</h4>
-          <div className="space-y-2">
-            {Object.entries(asset.asset_data).slice(0, 3).map(([key, value], index) => (
-              <div key={index} className="flex justify-between text-sm">
-                <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                <span className="font-medium text-gray-800 truncate ml-2">
-                  {Array.isArray(value) 
-                    ? `${value.length} elementi`
-                    : typeof value === 'object'
-                      ? 'Dati strutturati'
-                      : String(value).length > 30
-                        ? `${String(value).slice(0, 30)}...`
-                        : String(value)
-                  }
-                </span>
-              </div>
-            ))}
-            {Object.keys(asset.asset_data).length > 3 && (
-              <div className="text-xs text-gray-500 text-center pt-2">
-                +{Object.keys(asset.asset_data).length - 3} altri campi...
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Extraction info */}
-        <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
-          <div className="flex items-center text-blue-800">
-            <span className="mr-2">🔬</span>
-            <span className="font-medium">Metodo estrazione:</span>
-            <span className="ml-1">{asset.extraction_method}</span>
-          </div>
-          <div className="flex items-center text-blue-700 mt-1">
-            <span className="mr-2">📋</span>
-            <span>Task origine: {asset.source_task_id.slice(0, 8)}...</span>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex space-x-3">
-          <button
-            onClick={onViewDetails}
-            className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center"
-          >
-            <span className="mr-2">👁️</span>
-            Visualizza Dettagli
-          </button>
-          <button
-            onClick={onDownload}
-            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center justify-center"
-          >
-            <span className="mr-2">📥</span>
-            Scarica Asset
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Using the redesigned DeliverableCard component instead of the old ActionableAssetCard
 
 // NEW: Simple Asset Viewer Modal (you can create a separate component later)
 const SimpleAssetViewer: React.FC<{
@@ -474,15 +338,48 @@ export default function ProjectDeliverableDashboard({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(actionableAssets).map(([assetName, asset]) => (
-              <ActionableAssetCard
-                key={assetName}
-                assetName={assetName}
-                asset={asset}
-                onDownload={() => handleDownloadAsset(assetName, asset)}
-                onViewDetails={() => handleViewAssetDetails(assetName, asset)}
-              />
-            ))}
+            {Object.entries(actionableAssets).map(([assetName, asset]) => {
+              // Convert asset to ProjectOutputExtended format for DeliverableCard
+              const assetAsOutput: ProjectOutputExtended = {
+                task_id: asset.source_task_id,
+                task_name: assetName.replace(/_/g, ' ').toUpperCase(),
+                title: assetName.replace(/_/g, ' ').toUpperCase(),
+                output: `Business-ready ${assetName} asset with ${Object.keys(asset.asset_data).length} data points`,
+                summary: `Ready-to-use ${assetName} asset for immediate implementation`,
+                type: 'final_deliverable',
+                category: 'execution',
+                agent_name: 'Asset Packager',
+                agent_role: 'specialist',
+                created_at: new Date().toISOString(),
+                actionable_assets: {
+                  [assetName]: asset
+                },
+                result: {
+                  actionable_assets: {
+                    [assetName]: asset
+                  }
+                },
+                metrics: {
+                  validation_score: Math.round(asset.validation_score * 100),
+                  actionability_score: Math.round(asset.actionability_score * 100),
+                  ready_to_use: asset.ready_to_use
+                },
+                key_insights: [
+                  `Asset quality: ${Math.round(asset.validation_score * 100)}%`,
+                  `Actionability: ${Math.round(asset.actionability_score * 100)}%`,
+                  asset.ready_to_use ? 'Ready for immediate use' : 'Requires customization'
+                ]
+              };
+
+              return (
+                <DeliverableCard
+                  key={assetName}
+                  output={assetAsOutput}
+                  workspaceId={workspaceId}
+                  onViewDetails={() => handleViewAssetDetails(assetName, asset)}
+                />
+              );
+            })}
           </div>
 
           {/* Quick actions for all assets */}
@@ -522,10 +419,18 @@ export default function ProjectDeliverableDashboard({
 
       {/* Actionable outputs */}
       {actionableOutputs.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {actionableOutputs.map(o => (
-            <ActionableOutputCard key={o.task_id} output={o} onClick={() => openOutputModal(o)} />
-          ))}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">🎯 Altri Output Azionabili</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {actionableOutputs.map(o => (
+              <DeliverableCard 
+                key={o.task_id} 
+                output={o} 
+                workspaceId={workspaceId}
+                onViewDetails={() => openOutputModal(o)} 
+              />
+            ))}
+          </div>
         </div>
       )}
 

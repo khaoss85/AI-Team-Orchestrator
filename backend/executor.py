@@ -296,9 +296,14 @@ class AssetCoordinationMixin:
                 if len(completed_asset_tasks) >= len(asset_tasks) * 0.8:  # 80% asset tasks completed
                     logger.info(f"🎯 ASSET THRESHOLD: 80% asset tasks completed, checking deliverable readiness")
                     
-                    # Trigger enhanced deliverable check
-                    from deliverable_aggregator import check_and_create_final_deliverable
-                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    # Check if last completed task was enhancement task to prevent loops
+                    last_task = completed_asset_tasks[-1] if completed_asset_tasks else None
+                    if last_task and not self._is_enhancement_task(last_task):
+                        # Trigger enhanced deliverable check
+                        from deliverable_aggregator import check_and_create_final_deliverable
+                        deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    else:
+                        logger.info(f"🔧 ENHANCEMENT LOOP PREVENTION: Skipping deliverable trigger - last task was enhancement")
                     
                     if deliverable_id:
                         logger.critical(f"🎯 ASSET-TRIGGERED DELIVERABLE: {deliverable_id} created for {workspace_id}")
@@ -1130,6 +1135,27 @@ class TaskExecutor(AssetCoordinationMixin):
         
         except Exception as e:
             logger.error(f"Error in enhanced workspace task processing for W:{workspace_id}: {e}", exc_info=True)
+
+    def _is_enhancement_task(self, task_data: Dict) -> bool:
+        """Check if this is an enhancement task that shouldn't trigger new deliverables"""
+        if not isinstance(task_data, dict):
+            return False
+            
+        context_data = task_data.get("context_data", {}) or {}
+        if isinstance(context_data, dict):
+            # Check for enhancement markers in context_data
+            if (context_data.get("asset_enhancement_task") or
+                context_data.get("enhancement_coordination") or
+                context_data.get("ai_guided_enhancement")):
+                return True
+        
+        # Check task name for enhancement keywords
+        task_name = (task_data.get("name") or "").lower()
+        return (
+            "enhance:" in task_name or
+            "enhancement" in task_name or
+            ("quality" in task_name and "enhancement" in task_name)
+        )
 
     def _get_task_priority_score_standard(self, task_data):
         """Funzione standard di prioritizzazione (fallback)"""
@@ -2333,7 +2359,12 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                         continue
                     
                     # Tentativo di creare deliverable quality-enhanced
-                    deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    if QUALITY_SYSTEM_AVAILABLE:
+                        deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    else:
+                        # Fallback se quality system non disponibile
+                        from deliverable_aggregator import check_and_create_final_deliverable as fallback_func
+                        deliverable_id = await fallback_func(workspace_id)
                     
                     if deliverable_id:
                         logger.info(f"🔍 QUALITY DELIVERABLE: Created {deliverable_id} for {workspace_id}")
@@ -2360,8 +2391,8 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     # Fallback al sistema standard se abilitato
                     if QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
                         try:
-                            from backend import deliverable_aggregator
-                            fallback_id = await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+                            from deliverable_aggregator import check_and_create_final_deliverable
+                            fallback_id = await check_and_create_final_deliverable(workspace_id)
                             
                             if fallback_id:
                                 logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")

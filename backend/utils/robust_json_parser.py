@@ -319,7 +319,7 @@ class RobustJSONParser:
         return result
     
     def _clean_json_string(self, json_str: str) -> str:
-        """Pulizia generale di stringhe JSON"""
+        """Enhanced JSON cleaning with common error fixes"""
         
         # Rimuovi caratteri di controllo problematici
         cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', json_str)
@@ -327,6 +327,23 @@ class RobustJSONParser:
         # Rimuovi non-breaking spaces e altri caratteri Unicode problematici
         cleaned = cleaned.replace('\u00a0', ' ')  # Non-breaking space
         cleaned = cleaned.replace('\ufeff', '')   # BOM
+        
+        # Fix trailing commas (major cause of parsing errors)
+        cleaned = re.sub(r',(\s*[}\]])', r'\1', cleaned)
+        
+        # Fix unescaped quotes inside strings (common in LLM outputs)
+        # This is tricky - we need to escape quotes that are inside string values
+        # Pattern: "field": "value with "quotes" inside"
+        cleaned = re.sub(r'(":\s*")([^"]*)"([^"]*)"([^"]*)(")(?=\s*[,}])', r'\1\2\"\3\"\4\5', cleaned)
+        
+        # Fix invalid escape sequences
+        cleaned = re.sub(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'\\\\', cleaned)
+        
+        # Fix missing quotes around field names
+        cleaned = re.sub(r'(\{|\,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1 "\2":', cleaned)
+        
+        # Fix single quotes to double quotes (JSON requires double quotes)
+        cleaned = re.sub(r"'([^']*)'", r'"\1"', cleaned)
         
         # Normalizza whitespace
         cleaned = re.sub(r'\s+', ' ', cleaned)

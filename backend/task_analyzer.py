@@ -385,6 +385,24 @@ class EnhancedTaskExecutor:
 
         return False
 
+    def _is_enhancement_task(self, task: Task) -> bool:
+        """Check if this is an enhancement task that shouldn't trigger new deliverables"""
+        context_data = task.context_data or {}
+        if isinstance(context_data, dict):
+            # Check for enhancement markers in context_data
+            if (context_data.get("asset_enhancement_task") or
+                context_data.get("enhancement_coordination") or
+                context_data.get("ai_guided_enhancement")):
+                return True
+        
+        # Check task name for enhancement keywords
+        task_name = (task.name or "").lower()
+        return (
+            "enhance:" in task_name or
+            "enhancement" in task_name or
+            "quality" in task_name and "enhancement" in task_name
+        )
+
     async def handle_task_completion(
         self,
         completed_task: Task,
@@ -508,18 +526,21 @@ class EnhancedTaskExecutor:
             except Exception as e:
                 logger.error(f"Error in asset analysis for task {completed_task.id}: {e}")           
             
-            # After every specialist task, check for final deliverable
-            try:
-                from deliverable_aggregator import check_and_create_final_deliverable
-                final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
-                if final_deliverable_id:
-                    logger.info(f"🎯 Specialist task completion triggered final deliverable: {final_deliverable_id}")
-                    await self._log_completion_analysis(
-                        completed_task, task_result, "specialist_triggered_final_deliverable",
-                        f"Created final deliverable: {final_deliverable_id}"
-                    )
-            except Exception as e:
-                logger.error(f"Error checking final deliverable after specialist task: {e}")
+            # After every specialist task, check for final deliverable (but not for enhancement tasks)
+            if not self._is_enhancement_task(completed_task):
+                try:
+                    from deliverable_aggregator import check_and_create_final_deliverable
+                    final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    if final_deliverable_id:
+                        logger.info(f"🎯 Specialist task completion triggered final deliverable: {final_deliverable_id}")
+                        await self._log_completion_analysis(
+                            completed_task, task_result, "specialist_triggered_final_deliverable",
+                            f"Created final deliverable: {final_deliverable_id}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error checking final deliverable after specialist task: {e}")
+            else:
+                logger.info(f"🔧 ENHANCEMENT TASK: Skipping deliverable check for enhancement task: {completed_task.name}")
 
             # Phase completion check (after any task)
             try:

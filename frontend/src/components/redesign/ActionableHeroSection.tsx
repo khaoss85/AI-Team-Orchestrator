@@ -6,6 +6,8 @@ interface Props {
   workspace: Workspace
   assetStats: AssetCompletionStats
   finalDeliverables: number
+  completionPercentage?: number
+  finalizationStatus?: any
 }
 
 const gradients = [
@@ -16,7 +18,7 @@ const gradients = [
   'from-blue-600 via-indigo-600 to-purple-600'
 ]
 
-const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDeliverables }) => {
+const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDeliverables, completionPercentage = 0, finalizationStatus }) => {
   const gradient = React.useMemo(() => {
     const idx = workspace.id
       ? workspace.id.charCodeAt(0) % gradients.length
@@ -25,7 +27,8 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
   }, [workspace.id])
 
   // Calculate business value metrics
-  const isProjectComplete = assetStats.completionRate >= 80
+  const actualCompletionRate = completionPercentage > 0 ? completionPercentage : assetStats.completionRate
+  const isProjectComplete = actualCompletionRate >= 80
   const businessValue = React.useMemo(() => {
     // Estimate business value based on completed assets
     const baseValue = assetStats.completedAssets * 2500 // €2,500 per asset
@@ -40,7 +43,7 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
         title: "All deliverables completed successfully!",
         subtitle: `Your team of AI agents has produced ${assetStats.completedAssets} business-ready assets worth €${businessValue.toLocaleString()}. Ready to deploy immediately.`
       }
-    } else if (assetStats.completionRate >= 50) {
+    } else if (actualCompletionRate >= 50) {
       return {
         emoji: "🚀",
         title: "Great progress! Almost there!",
@@ -105,14 +108,24 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium opacity-90">Project Completion</span>
-            <span className="text-sm font-bold">{Math.round(assetStats.completionRate)}%</span>
+            <span className="text-sm font-bold">{Math.round(actualCompletionRate)}%</span>
           </div>
           <div className="w-full bg-white bg-opacity-30 rounded-full h-3 shadow-inner">
             <div
               className="bg-white h-3 rounded-full shadow-lg transition-all duration-1000 ease-out"
-              style={{ width: `${assetStats.completionRate}%` }}
+              style={{ width: `${actualCompletionRate}%` }}
             />
           </div>
+          {finalizationStatus && (
+            <div className="mt-2 text-xs opacity-80">
+              {finalizationStatus.finalization_phase_active && (
+                <span className="bg-green-400 text-green-900 px-2 py-1 rounded-full mr-2">🔧 Finalization Phase</span>
+              )}
+              {finalizationStatus.final_deliverables_completed > 0 && (
+                <span className="bg-blue-400 text-blue-900 px-2 py-1 rounded-full">✅ {finalizationStatus.final_deliverables_completed} Final Deliverables</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}

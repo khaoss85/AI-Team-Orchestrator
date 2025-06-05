@@ -62,6 +62,12 @@ ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC
 ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
 ENABLE_DYNAMIC_AI_ANALYSIS = os.getenv("ENABLE_DYNAMIC_AI_ANALYSIS", "true").lower() == "true"
 USE_ASSET_FIRST_DELIVERABLE = os.getenv("USE_ASSET_FIRST_DELIVERABLE", "false").lower() == "true"
+PREVENT_DUPLICATE_DELIVERABLES = os.getenv("PREVENT_DUPLICATE_DELIVERABLES", "true").lower() == "true"
+MAX_DELIVERABLES_PER_WORKSPACE = int(os.getenv("MAX_DELIVERABLES_PER_WORKSPACE", "3"))
+DELIVERABLE_CHECK_COOLDOWN_SECONDS = int(os.getenv("DELIVERABLE_CHECK_COOLDOWN_SECONDS", "30"))
+
+# Cache per cooldown dei check deliverable
+_deliverable_check_cache = {}
 
 def is_quality_assurance_available():
     """Controllo sicuro per la disponibilità del sistema di quality assurance"""
@@ -1519,7 +1525,11 @@ class IntelligentDeliverableAggregator:
                     f"⚠️ Assets with placeholders ({len(placeholder_assets)}) marked as incomplete."
                 )
             quality_enhanced_deliverable = None
-            if self.enhancement_orchestrator and ENABLE_AI_QUALITY_ASSURANCE:
+            
+            # Check for active enhancement tasks to prevent loops
+            has_active_enhancement = await self._has_active_enhancement_tasks(workspace_id)
+            
+            if self.enhancement_orchestrator and ENABLE_AI_QUALITY_ASSURANCE and not has_active_enhancement:
                 try:
                     logger.info(f"🤖 QUALITY ENHANCEMENT: Starting AI quality analysis")
                     enhanced_data = await self.enhancement_orchestrator.analyze_and_enhance_deliverable_assets(
@@ -1529,6 +1539,8 @@ class IntelligentDeliverableAggregator:
                     logger.info(f"🤖 QUALITY ENHANCEMENT: Completed successfully")
                 except Exception as e:
                     logger.error(f"Quality enhancement failed: {e}, continuing with standard deliverable")
+            elif has_active_enhancement:
+                logger.info(f"🔧 ENHANCEMENT LOOP PREVENTION: Skipping quality analysis - enhancement tasks already in progress")
             
             # Fase 8: Creazione task deliverable nel database
             deliverable_task_id = await self._create_intelligent_deliverable_task(
@@ -1550,6 +1562,39 @@ class IntelligentDeliverableAggregator:
         except Exception as e:
             logger.error(f"🤖 ERROR: Exception in intelligent deliverable creation for {workspace_id}: {e}", exc_info=True)
             return None
+
+    async def _has_active_enhancement_tasks(self, workspace_id: str) -> bool:
+        """Check if there are already active enhancement tasks to prevent finalization loops"""
+        try:
+            tasks = await list_tasks(workspace_id)
+            enhancement_tasks = [
+                t for t in tasks 
+                if t.get("status") in ["pending", "in_progress"] 
+                and (
+                    # Check context_data for enhancement markers
+                    t.get("context_data", {}).get("asset_enhancement_task") 
+                    or t.get("context_data", {}).get("enhancement_coordination")
+                    or t.get("context_data", {}).get("ai_guided_enhancement")
+                    # Check task name for enhancement keywords
+                    or "ENHANCE:" in (t.get("name") or "").upper()
+                    or "enhance" in (t.get("name") or "").lower()
+                    or "quality" in (t.get("name") or "").lower() and "enhancement" in (t.get("name") or "").lower()
+                )
+            ]
+            
+            if enhancement_tasks:
+                logger.info(f"🔧 ENHANCEMENT DETECTION: Found {len(enhancement_tasks)} active enhancement tasks")
+                for task in enhancement_tasks[:3]:  # Log first 3 tasks
+                    logger.info(f"  - {task.get('name', 'Unnamed task')} ({task.get('status')})")
+                if len(enhancement_tasks) > 3:
+                    logger.info(f"  - ... and {len(enhancement_tasks) - 3} more enhancement tasks")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking for active enhancement tasks: {e}")
+            return False  # If we can't check, don't block enhancement
     
     async def _is_ready_for_deliverable(self, workspace_id: str) -> bool:
         """Controlla readiness con criteri intelligenti"""
@@ -1571,26 +1616,31 @@ class IntelligentDeliverableAggregator:
             # Criteri intelligenti multi-path
             completion_rate = completed_count / total_tasks if total_tasks > 0 else 0
             
-            # Path 1: Alta completion rate
+            # ENHANCED: Asset-first paths più aggressivi
+            
+            # Path 1: Alta completion rate (mantenuto)
             high_completion = completion_rate >= self.readiness_threshold and completed_count >= self.min_completed_tasks
             
-            # Path 2: Sufficiente progresso con buona distribuzione
-            good_progress = completed_count >= 4 and completion_rate >= 0.6 and len(pending) <= 5
+            # Path 2: Asset-oriented projects - aggressivo per lead generation
+            asset_focused = completed_count >= 2 and completion_rate >= 0.4 and len(pending) <= 6
             
-            # Path 3: Progetti lunghi con sostanziale completamento
+            # Path 3: Quick wins per progetti concrete
+            quick_wins = completed_count >= 3 and len([t for t in completed if self._has_structured_output(t)]) >= 2
+            
+            # Path 4: Progetti lunghi con sostanziale completamento  
             substantial_work = completed_count >= 8 and completion_rate >= 0.5
             
-            # Path 4: Analisi qualitativa dei task completati
+            # Path 5: Analisi qualitativa dei task completati
             quality_threshold = await self._qualitative_readiness_check(completed, workspace_id)
             
-            # Path 5: Time-based per progetti running
+            # Path 6: Time-based per progetti running
             time_based = await self._time_based_readiness_check(workspace_id, completed_count)
             
-            is_ready = any([high_completion, good_progress, substantial_work, quality_threshold, time_based])
+            is_ready = any([high_completion, asset_focused, quick_wins, substantial_work, quality_threshold, time_based])
             
             logger.info(f"🤖 READINESS: {completed_count}/{total_tasks} completed ({completion_rate:.2f}), "
-                       f"Paths: [HiComp:{high_completion}, GoodProg:{good_progress}, Subst:{substantial_work}, "
-                       f"Qual:{quality_threshold}, Time:{time_based}] = {is_ready}")
+                       f"Paths: [HiComp:{high_completion}, AssetFoc:{asset_focused}, QuickWins:{quick_wins}, "
+                       f"Subst:{substantial_work}, Qual:{quality_threshold}, Time:{time_based}] = {is_ready}")
             
             return is_ready
             
@@ -1642,11 +1692,41 @@ class IntelligentDeliverableAggregator:
         except Exception:
             return False
     
+    def _has_structured_output(self, task: Dict) -> bool:
+        """Verifica se un task ha output strutturato potenzialmente asset-ready"""
+        
+        try:
+            result = task.get('result', {}) or {}
+            detailed_json = result.get('detailed_results_json', '')
+            summary = result.get('summary', '')
+            
+            # Check per JSON structured
+            if detailed_json:
+                try:
+                    data = json.loads(detailed_json) if isinstance(detailed_json, str) else detailed_json
+                    if isinstance(data, dict) and len(data) >= 3:
+                        return True
+                except:
+                    pass
+            
+            # Check per output sostanzioso
+            if summary and len(summary) > 200:
+                # Look for structured indicators
+                structured_indicators = ['strategy', 'campaign', 'automation', 'sequence', 'setup', 'plan']
+                if any(indicator in summary.lower() for indicator in structured_indicators):
+                    return True
+            
+            return False
+            
+        except Exception:
+            return False
+    
     async def _deliverable_exists(self, workspace_id: str) -> bool:
-        """Controlla esistenza deliverable con detection intelligente"""
+        """Controlla esistenza deliverable con detection intelligente e limitazione duplicazioni"""
         
         try:
             tasks = await list_tasks(workspace_id)
+            deliverable_count = 0
             
             for task in tasks:
                 context_data = task.get("context_data", {}) or {}
@@ -1664,8 +1744,8 @@ class IntelligentDeliverableAggregator:
                     ]
                     
                     if any(context_data.get(marker) for marker in deliverable_markers):
+                        deliverable_count += 1
                         logger.info(f"🤖 EXISTING DELIVERABLE: Found by context marker: {task['id']}")
-                        return True
                 
                 # Check per pattern specifici nel nome (escludendo planning)
                 deliverable_patterns = [
@@ -1690,10 +1770,15 @@ class IntelligentDeliverableAggregator:
                 
                 # Se contiene pattern di deliverable, è un deliverable
                 if any(pattern in task_name for pattern in deliverable_patterns):
+                    deliverable_count += 1
                     logger.info(f"🤖 EXISTING DELIVERABLE: Found by name pattern: {task['id']}")
-                    return True
             
-            return False
+            # Controllo del limite di deliverable per workspace
+            if PREVENT_DUPLICATE_DELIVERABLES and deliverable_count >= MAX_DELIVERABLES_PER_WORKSPACE:
+                logger.warning(f"🚫 DELIVERABLE LIMIT: Workspace {workspace_id} has {deliverable_count} deliverables (max: {MAX_DELIVERABLES_PER_WORKSPACE})")
+                return True
+            
+            return deliverable_count > 0
             
         except Exception as e:
             logger.error(f"Error checking existing deliverable: {e}")
@@ -2115,9 +2200,26 @@ deliverable_aggregator = IntelligentDeliverableAggregator()
 # === HELPER FUNCTIONS ===
 
 async def check_and_create_final_deliverable(workspace_id: str) -> Optional[str]:
-    """Helper function principale che usa il sistema intelligente"""
+    """Helper function principale che usa il sistema intelligente con cooldown"""
     try:
-        return await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+        # Check cooldown
+        current_time = datetime.now().timestamp()
+        last_check = _deliverable_check_cache.get(workspace_id, 0)
+        
+        if current_time - last_check < DELIVERABLE_CHECK_COOLDOWN_SECONDS:
+            logger.debug(f"🕒 COOLDOWN: Skipping deliverable check for {workspace_id} (last check {current_time - last_check:.1f}s ago)")
+            return None
+        
+        # Update cache
+        _deliverable_check_cache[workspace_id] = current_time
+        
+        result = await deliverable_aggregator.check_and_create_final_deliverable(workspace_id)
+        
+        # If successful, extend cooldown
+        if result:
+            _deliverable_check_cache[workspace_id] = current_time + DELIVERABLE_CHECK_COOLDOWN_SECONDS * 2  # Double cooldown after success
+            
+        return result
     except Exception as e:
         logger.error(f"Error in intelligent deliverable creation: {e}", exc_info=True)
         return None
@@ -2133,10 +2235,15 @@ async def create_intelligent_deliverable(workspace_id: str) -> Optional[str]:
 # === COMPATIBILITY WRAPPERS ===
 
 async def create_quality_enhanced_deliverable(workspace_id: str) -> Optional[str]:
-    """Deprecated wrapper maintained for backward compatibility."""
+    """
+    DEPRECATED (January 2025): Use check_and_create_final_deliverable instead.
+    This function will be removed in version 4.0.
+    Maintained for backward compatibility only.
+    """
     logger.warning(
-        "create_quality_enhanced_deliverable is deprecated; "
-        "use check_and_create_final_deliverable instead"
+        "create_quality_enhanced_deliverable is DEPRECATED since January 2025; "
+        "use check_and_create_final_deliverable instead. "
+        "This function will be removed in version 4.0."
     )
     return await check_and_create_final_deliverable(workspace_id)
 

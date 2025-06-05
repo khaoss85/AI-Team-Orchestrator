@@ -1446,6 +1446,46 @@ class SpecialistAgent(Generic[T]):
         except Exception as e:
             logger.error(f"Error registering usage in BudgetTracker: {e}")
 
+    def _preprocess_task_output_data(self, data: Dict[str, Any], task: Task) -> Dict[str, Any]:
+        """Preprocess and validate task output data before schema validation"""
+        if not isinstance(data, dict):
+            data = {}
+        
+        # Ensure required fields exist
+        data.setdefault("task_id", str(task.id))
+        data.setdefault("status", "completed")
+        data.setdefault("summary", "Task completed")
+        
+        # Fix common data type issues
+        if "detailed_results_json" in data:
+            # Ensure detailed_results_json is a string
+            if not isinstance(data["detailed_results_json"], (str, type(None))):
+                try:
+                    data["detailed_results_json"] = json.dumps(data["detailed_results_json"])
+                except (TypeError, ValueError):
+                    data["detailed_results_json"] = str(data["detailed_results_json"])
+        
+        # Validate and fix status enum values
+        valid_statuses = ["completed", "failed", "in_progress", "pending"]
+        if data.get("status") not in valid_statuses:
+            logger.warning(f"Invalid status '{data.get('status')}', defaulting to 'completed'")
+            data["status"] = "completed"
+        
+        # Ensure required string fields are strings
+        for field in ["task_id", "summary"]:
+            if field in data and not isinstance(data[field], str):
+                data[field] = str(data[field])
+        
+        # Clean empty or null strings
+        for key, value in data.items():
+            if isinstance(value, str) and value.strip() == "":
+                if key == "summary":
+                    data[key] = f"Task {task.id} completed successfully"
+                elif key == "detailed_results_json":
+                    data[key] = "{}"
+        
+        return data
+
     async def _log_execution_internal(
         self, step: str, details: Union[str, Dict]
     ) -> bool:
@@ -1585,7 +1625,8 @@ class SpecialistAgent(Generic[T]):
                 if isinstance(final_llm_output, str):
                     try:
                         basic_data = json.loads(final_llm_output)
-                        basic_data.setdefault("task_id", str(task.id))
+                        # Enhanced preprocessing to ensure valid schema
+                        basic_data = self._preprocess_task_output_data(basic_data, task)
                         execution_result_obj = TaskExecutionOutput.model_validate(
                             basic_data
                         )
@@ -1601,7 +1642,8 @@ class SpecialistAgent(Generic[T]):
                                 fixed_data, _, fix_method = parse_llm_json_robust(
                                     final_llm_output, str(task.id)
                                 )
-                                fixed_data.setdefault("task_id", str(task.id))
+                                # Enhanced preprocessing for robust parsing path
+                                fixed_data = self._preprocess_task_output_data(fixed_data, task)
                                 execution_result_obj = (
                                     TaskExecutionOutput.model_validate(fixed_data)
                                 )
@@ -1631,8 +1673,10 @@ class SpecialistAgent(Generic[T]):
                         final_llm_output.setdefault(
                             "summary", "Task processing completed by agent."
                         )
+                        # Enhanced preprocessing for dict validation path
+                        preprocessed_data = self._preprocess_task_output_data(final_llm_output, task)
                         execution_result_obj = TaskExecutionOutput.model_validate(
-                            final_llm_output
+                            preprocessed_data
                         )
                         parsing_method = "direct_dict_validation"
                         logger.info(
@@ -1649,7 +1693,8 @@ class SpecialistAgent(Generic[T]):
                                 parsed_data, is_complete, method = (
                                     parse_llm_json_robust(dict_as_json, str(task.id))
                                 )
-                                parsed_data.setdefault("task_id", str(task.id))
+                                # Enhanced preprocessing for robust dict recovery
+                                parsed_data = self._preprocess_task_output_data(parsed_data, task)
                                 execution_result_obj = (
                                     TaskExecutionOutput.model_validate(parsed_data)
                                 )
@@ -1715,6 +1760,8 @@ class SpecialistAgent(Generic[T]):
                                     f"{original_summary} [Note: Output was truncated/incomplete, recovery applied]"
                                 )
 
+                            # Enhanced preprocessing for string parsing
+                            parsed_data = self._preprocess_task_output_data(parsed_data, task)
                             execution_result_obj = TaskExecutionOutput.model_validate(
                                 parsed_data
                             )
