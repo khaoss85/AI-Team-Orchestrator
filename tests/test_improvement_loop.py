@@ -4,7 +4,7 @@ import asyncio
 # Stub database functions
 stub_db = types.SimpleNamespace()
 async def _get_task(tid):
-    return {"id": tid, "workspace_id": "ws1", "iteration_count": 0}
+    return {"id": tid, "workspace_id": "ws1", "iteration_count": 0, "name": "t"}
 
 async def _update_fields(tid, fields):
     return fields
@@ -38,9 +38,20 @@ sys.modules['database'] = stub_db
 sys.modules['human_feedback_manager'] = types.ModuleType('human_feedback_manager')
 sys.modules['human_feedback_manager'].human_feedback_manager = stub_hfm
 sys.modules['human_feedback_manager'].FeedbackRequestType = types.SimpleNamespace(TASK_APPROVAL='task_approval')
+import importlib
+import pathlib
+root_dir = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(root_dir))
+sys.modules['models'] = importlib.import_module('backend.models')
 
 import improvement_loop
-from improvement_loop import controlled_iteration, refresh_dependencies
+from improvement_loop import (
+    controlled_iteration,
+    refresh_dependencies,
+    checkpoint_output,
+    qa_gate,
+    TaskStatus,
+)
 
 
 def test_controlled_iteration_limit(monkeypatch):
@@ -63,3 +74,36 @@ def test_refresh_dependencies(monkeypatch):
     monkeypatch.setattr(improvement_loop, 'list_tasks', _list_tasks)
     asyncio.run(refresh_dependencies('1'))
     assert captured[0][0] == '2'
+
+
+def test_checkpoint_output_timeout(monkeypatch):
+    calls = []
+
+    async def no_response_request(*a, **k):
+        # Do not invoke callback to simulate missing feedback
+        return "1"
+
+    async def fake_update_status(task_id, status):
+        calls.append((task_id, status))
+
+    monkeypatch.setattr(improvement_loop.human_feedback_manager, 'request_feedback', no_response_request)
+    monkeypatch.setattr(improvement_loop, 'update_task_status', fake_update_status)
+    result = asyncio.run(checkpoint_output('1', {}, timeout=0.01))
+    assert result is False
+    assert calls and calls[0][1] == TaskStatus.TIMED_OUT.value
+
+
+def test_qa_gate_timeout(monkeypatch):
+    calls = []
+
+    async def no_response_request(*a, **k):
+        return "1"
+
+    async def fake_update_status(task_id, status):
+        calls.append((task_id, status))
+
+    monkeypatch.setattr(improvement_loop.human_feedback_manager, 'request_feedback', no_response_request)
+    monkeypatch.setattr(improvement_loop, 'update_task_status', fake_update_status)
+    result = asyncio.run(qa_gate('1', {}, timeout=0.01))
+    assert result is False
+    assert calls and calls[0][1] == TaskStatus.TIMED_OUT.value
