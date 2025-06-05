@@ -1418,5 +1418,19 @@ export const api = {
         return handleApiError(error);
       }
     },
+
+    qaGate: async (taskId: string, payload: Record<string, any>): Promise<{ approved: boolean }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/improvement/qa/${taskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
   },
 };
