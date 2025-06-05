@@ -504,6 +504,7 @@ export interface ProjectOutput {
   automation_ready?: boolean;
   usage_guide?: Record<string, string>;
   next_steps?: string[];
+  result?: Record<string, any>;
   execution_time_seconds?: number;
   cost_estimated?: number;
   tokens_used?: { [key: string]: number };
@@ -738,7 +739,6 @@ export interface EnhancedProjectResult {
     actionableAssets?: Record<string, ActionableAsset>;
     usageGuide?: Record<string, string>;
   };
-}
 }
 export interface AgentProposal {
   id: string;

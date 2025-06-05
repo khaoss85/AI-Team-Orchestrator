@@ -3,7 +3,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Workspace } from '@/types';
+import { Workspace, ProposedAction } from '@/types';
 import { api } from '@/utils/api';
 import { useAssetManagement } from '@/hooks/useAssetManagement';
 
@@ -193,7 +193,7 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
                 action="Scarica Tutto"
                 onClick={async () => {
                   try {
-                    const data = await api.assetManagement.getAssetTracking(workspaceId);
+                    const data = await api.monitoring.getAssetTracking(workspaceId);
                     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -354,7 +354,7 @@ export default function ProjectActionsSection({
                 
                 <div className="mt-3 space-y-2">
                   <p className="text-sm font-medium">Azioni proposte:</p>
-                  {request.proposed_actions.map((action, index) => (
+                  {request.proposed_actions.map((action: ProposedAction, index: number) => (
                     <div key={index} className="bg-white bg-opacity-60 p-2 rounded border border-gray-200">
                       <p className="text-sm">
                         <span className="font-medium">{action.type}:</span> {action.description}
@@ -575,7 +575,7 @@ export default function ProjectActionsSection({
               <button
                 onClick={async () => {
                   try {
-                    const data = await api.assetManagement.getAssetTracking(workspace.id);
+                    const data = await api.monitoring.getAssetTracking(workspace.id);
                     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');

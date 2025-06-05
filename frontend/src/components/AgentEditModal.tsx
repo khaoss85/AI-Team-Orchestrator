@@ -108,7 +108,10 @@ export default function AgentEditModal({
         seniority: agentData.seniority,
         description: agentData.description || '',
         system_prompt: agentData.system_prompt || '',
-        llm_config: agentData.llm_config || { model: 'gpt-4.1-mini', temperature: 0.3 },
+        llm_config: {
+          model: (agentData.llm_config as { model?: string })?.model ?? 'gpt-4.1-mini',
+          temperature: (agentData.llm_config as { temperature?: number })?.temperature ?? 0.3,
+        },
         tools: agentData.tools || [],
         
         // Inizializzazione campi di personalità con gestione sicura dei tipi

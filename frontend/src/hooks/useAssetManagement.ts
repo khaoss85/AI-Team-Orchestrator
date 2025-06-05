@@ -2,12 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/utils/api';
-import type { WorkspaceTasksResponse } from '@/utils/api';
-import type { 
-  AssetTrackingData, 
-  ActionableAsset, 
+import type {
+  ActionableAsset,
   AssetTaskInfo,
-  AssetRequirement,
   AssetSchema,
   ProjectDeliverablesExtended,
   Task,
