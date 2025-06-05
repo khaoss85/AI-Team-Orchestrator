@@ -11,14 +11,32 @@ class AgentOutputSchema:
 
 
 class ModelSettings:
-    pass
+    """Simple container for LLM configuration settings."""
 
+    def __init__(self, temperature=None, top_p=None, max_tokens=None, **kwargs):
+        self.temperature = temperature
+        self.top_p = top_p
+        self.max_tokens = max_tokens
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+import asyncio
+import json
 
 def function_tool(name_override=None):
+    """Fallback implementation returning a minimal tool wrapper."""
+
     def decorator(func):
-        async def wrapper(*a, **k):
-            return await func(*a, **k)
-        return wrapper
+        class Tool:
+            async def on_invoke_tool(self, _ctx, params_json):
+                data = json.loads(params_json) if isinstance(params_json, str) else params_json
+                if asyncio.iscoroutinefunction(func):
+                    return await func(**(data or {}))
+                return func(**(data or {}))
+
+        return Tool()
+
     return decorator
 
 class WebSearchTool:
