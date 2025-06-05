@@ -3,11 +3,32 @@ import json
 
 
 class Agent:
-    pass
+    """Minimal stub mimicking the OpenAI Agents SDK `Agent` interface."""
+
+    def __init__(self, *args, **kwargs):
+        # The real SDK accepts various keyword arguments. We simply store them so
+        # that object creation with arbitrary parameters does not raise errors
+        # when the real package is unavailable.
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class Runner:
-    pass
+    """Simplified stand-in for the SDK `Runner` class."""
+
+    @staticmethod
+    async def run(*_args, **_kwargs):
+        """Return an object with a `final_output` attribute.
+
+        This allows calling code to proceed without raising `AttributeError`
+        when the real SDK is not available. The returned output is always an
+        empty JSON object encoded as a string.
+        """
+
+        class DummyRunResult:
+            final_output: str = "{}"
+
+        return DummyRunResult()
 
 
 class AgentOutputSchema:
