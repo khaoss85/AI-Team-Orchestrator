@@ -30,7 +30,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 # Try modern SDK, fall back gracefully
 # ---------------------------------------------------------------------------
 try:
-    from agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool  # type: ignore
+    from agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool, AgentOutputSchema  # type: ignore
 
     SDK_AVAILABLE = True
 except ImportError:
@@ -41,6 +41,13 @@ except ImportError:
     try:
         # legacy sdk
         from openai_agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool  # type: ignore
+        
+        # For legacy SDK, create a dummy AgentOutputSchema
+        class AgentOutputSchema:  # type: ignore
+            def __init__(self, schema_class, strict_json_schema=True):
+                self.schema_class = schema_class
+                self.strict_json_schema = strict_json_schema
+                
     except ImportError:  # ultimate fallback (no runtime execution, but code loads)
         logger.error(
             "No compatible Agent SDK found. DirectorAgent will operate in degraded mode."
@@ -49,6 +56,11 @@ except ImportError:
         class OpenAIAgent:  # type: ignore
             def __init__(self, *args, **kwargs):
                 pass
+
+        class AgentOutputSchema:  # type: ignore
+            def __init__(self, schema_class, strict_json_schema=True):
+                self.schema_class = schema_class
+                self.strict_json_schema = strict_json_schema
 
         class Runner:  # type: ignore
             @staticmethod
@@ -1060,7 +1072,6 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
                 temperature=0.1
             ),  # Low temperature for more deterministic output
             tools=available_tools_list,
-            output_schema_strict=False,
         )
         try:
             # The prompt to the LLM Director agent. It needs to understand how to use the tools.
