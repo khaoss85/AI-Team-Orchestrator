@@ -11,7 +11,11 @@ class AgentOutputSchema:
 
 
 class ModelSettings:
-    pass
+    """Lightweight container for model configuration settings."""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 def function_tool(name_override=None):
