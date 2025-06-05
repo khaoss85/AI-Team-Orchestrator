@@ -28,7 +28,7 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
 
   const {
     finalDeliverables,
-    deliverables,
+    deliverables: assetDeliverables,
     getAssetCompletionStats,
     loading: assetsLoading,
     error: assetError
