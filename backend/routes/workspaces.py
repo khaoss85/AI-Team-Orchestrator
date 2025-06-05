@@ -4,9 +4,10 @@ from uuid import UUID
 import logging
 
 from models import (
-    WorkspaceCreate, 
-    WorkspaceUpdate, 
+    WorkspaceCreate,
+    WorkspaceUpdate,
     Workspace,
+    WorkspaceStatus,
     TaskCreate,
     Task
 )
@@ -14,7 +15,9 @@ from database import (
     create_workspace,
     get_workspace,
     list_workspaces,
-    delete_workspace
+    delete_workspace,
+    update_workspace,
+    update_workspace_status
 )
 
 logger = logging.getLogger(__name__)
@@ -85,3 +88,69 @@ async def delete_workspace_by_id(workspace_id: UUID):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete workspace: {str(e)}"
         )
+
+
+@router.put("/{workspace_id}", status_code=status.HTTP_200_OK)
+async def update_workspace_by_id(workspace_id: UUID, workspace_update: WorkspaceUpdate):
+    """Update workspace fields"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        update_data = {}
+        for field, value in workspace_update.model_dump(exclude_unset=True).items():
+            if value is None:
+                continue
+            update_data[field] = value.value if hasattr(value, "value") else value
+
+        if not update_data:
+            return {"success": True, "message": "No fields updated"}
+
+        await update_workspace(str(workspace_id), update_data)
+        return {"success": True, "message": "Workspace updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating workspace: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update workspace: {str(e)}")
+
+
+@router.post("/{workspace_id}/pause", status_code=status.HTTP_200_OK)
+async def pause_workspace(workspace_id: UUID):
+    """Pause a workspace"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        if workspace.get("status") == WorkspaceStatus.PAUSED.value:
+            return {"success": True, "message": "Workspace already paused"}
+
+        await update_workspace_status(str(workspace_id), WorkspaceStatus.PAUSED.value)
+        return {"success": True, "message": "Workspace paused"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error pausing workspace: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to pause workspace: {str(e)}")
+
+
+@router.post("/{workspace_id}/resume", status_code=status.HTTP_200_OK)
+async def resume_workspace(workspace_id: UUID):
+    """Resume a paused workspace"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        if workspace.get("status") != WorkspaceStatus.PAUSED.value:
+            return {"success": True, "message": "Workspace is not paused"}
+
+        await update_workspace_status(str(workspace_id), WorkspaceStatus.ACTIVE.value)
+        return {"success": True, "message": "Workspace resumed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resuming workspace: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to resume workspace: {str(e)}")

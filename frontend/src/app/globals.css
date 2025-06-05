@@ -46,4 +46,31 @@ body {
 
 .final-deliverable-glow {
   animation: deliverable-glow 2s ease-in-out infinite;
+}@layer utilities {
+  .no-spacing {
+    margin: 0;
+    padding: 0;
+    font-size: 0;
+    line-height: 1;
+  }
+
+  .perfect-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .z-float {
+    z-index: 10;
+  }
+  .z-float:hover {
+    z-index: 999;
+  }
+}
+.ai-team-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

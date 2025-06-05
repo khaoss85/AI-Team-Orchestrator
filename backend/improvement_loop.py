@@ -14,8 +14,11 @@ from models import TaskStatus
 
 logger = logging.getLogger(__name__)
 
+# Default timeout (in seconds) for waiting on human feedback
+DEFAULT_FEEDBACK_TIMEOUT = 60 * 60 * 24  # 24 hours
 
-async def checkpoint_output(task_id: str, output: Dict[str, Any]) -> bool:
+
+async def checkpoint_output(task_id: str, output: Dict[str, Any], timeout: Optional[float] = None) -> bool:
     """Ask for human feedback on a task output."""
     task = await get_task(task_id)
     if not task:
@@ -42,7 +45,12 @@ async def checkpoint_output(task_id: str, output: Dict[str, Any]) -> bool:
         response_callback=_on_response
     )
 
-    await event.wait()
+    try:
+        await asyncio.wait_for(event.wait(), timeout)
+    except asyncio.TimeoutError:
+        logger.warning(f"Feedback request for task {task_id} timed out after {timeout}s")
+        await update_task_status(task_id, TaskStatus.TIMED_OUT.value)
+        return False
 
     if not result["approved"]:
         await feedback_to_task(result["comments"], workspace_id, task_id)
@@ -97,7 +105,7 @@ async def refresh_dependencies(task_id: str) -> None:
                 logger.error(f"Failed refreshing dependency {t['id']}: {e}")
 
 
-async def qa_gate(task_id: str, output: Dict[str, Any]) -> bool:
+async def qa_gate(task_id: str, output: Dict[str, Any], timeout: Optional[float] = None) -> bool:
     """Final QA approval for a task."""
     task = await get_task(task_id)
     if not task:
@@ -123,7 +131,12 @@ async def qa_gate(task_id: str, output: Dict[str, Any]) -> bool:
         response_callback=_on_response
     )
 
-    await event.wait()
+    try:
+        await asyncio.wait_for(event.wait(), timeout)
+    except asyncio.TimeoutError:
+        logger.warning(f"QA gate for task {task_id} timed out after {timeout}s")
+        await update_task_status(task_id, TaskStatus.TIMED_OUT.value)
+        return False
 
     if not result["approved"]:
         await feedback_to_task(result["comments"], workspace_id, task_id)

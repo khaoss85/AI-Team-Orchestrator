@@ -147,6 +147,17 @@ async def list_workspaces(user_id: str):
         raise
 
 
+async def update_workspace(workspace_id: str, data: Dict[str, Any]):
+    """Generic workspace update."""
+    try:
+        update_data = {k: v for k, v in data.items() if k not in ['id', 'user_id', 'created_at', 'updated_at']}
+        result = supabase.table("workspaces").update(update_data).eq("id", workspace_id).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error updating workspace: {e}")
+        raise
+
+
 async def create_agent(
     workspace_id: str,
     name: str,
