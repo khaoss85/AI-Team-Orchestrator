@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import type { Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
 
 interface Props {
@@ -14,6 +14,13 @@ interface Props {
 }
 
 const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback, taskAnalysis, loading, error, onRefresh }) => {
+
+  const [initialized, setInitialized] = useState(false)
+
+  useEffect(() => {
+    setInitialized(true)
+
+  }, [])
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6 text-center">Caricamento mission control...</div>
@@ -65,7 +72,7 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
       <div className="flex justify-between">
         <h2 className="text-lg font-semibold">Mission Control</h2>
         <div className="flex items-center space-x-2">
-          {loading && (
+          {loading && initialized && (
             <span className="text-sm text-gray-500">Updating...</span>
           )}
           <button className="text-sm text-indigo-600" onClick={onRefresh}>Aggiorna</button>

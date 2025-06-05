@@ -8,13 +8,28 @@ interface Props {
   finalDeliverables: number
 }
 
+const gradients = [
+  'from-indigo-500 to-purple-600',
+  'from-teal-500 to-emerald-600',
+  'from-pink-500 to-rose-600',
+  'from-amber-500 to-orange-600',
+  'from-sky-500 to-blue-600'
+]
+
 const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDeliverables }) => {
+  const gradient = React.useMemo(() => {
+    const idx = workspace.id
+      ? workspace.id.charCodeAt(0) % gradients.length
+      : 0
+    return gradients[idx]
+  }, [workspace.id])
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+    <div className={`rounded-lg shadow-lg p-8 text-white bg-gradient-to-br ${gradient}`}>
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold mb-1">{workspace.name}</h1>
-          {workspace.goal && <p className="text-gray-600">{workspace.goal}</p>}
+          {workspace.goal && <p className="opacity-90">{workspace.goal}</p>}
         </div>
         <div className="text-sm text-right space-y-1">
           <div>
@@ -26,13 +41,27 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
         </div>
       </div>
       <div className="mt-4">
-        <div className="w-full bg-gray-200 h-2 rounded-full">
+        <div className="w-full bg-white bg-opacity-30 h-2 rounded-full">
           <div
-            className="bg-indigo-600 h-2 rounded-full"
+            className="bg-white h-2 rounded-full"
             style={{ width: `${assetStats.completionRate}%` }}
           />
         </div>
-        <div className="text-xs text-gray-600 mt-1">Progresso asset: {Math.round(assetStats.completionRate)}%</div>
+        <div className="text-xs mt-1">Progresso asset: {Math.round(assetStats.completionRate)}%</div>
+      </div>
+      <div className="mt-6 flex gap-3 flex-wrap">
+        <a
+          href={`/projects/${workspace.id}/deliverables`}
+          className="px-4 py-2 bg-black/40 rounded-md text-sm hover:bg-black/60"
+        >
+          Download &amp; Use Now
+        </a>
+        <a
+          href={`/projects/${workspace.id}/team`}
+          className="px-4 py-2 bg-black/40 rounded-md text-sm hover:bg-black/60"
+        >
+          Talk to AI Team
+        </a>
       </div>
     </div>
   )

@@ -74,13 +74,22 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Local project imports (pydantic models)
 # ---------------------------------------------------------------------------
-from models import (
-    DirectorConfig,
-    DirectorTeamProposal,
-    AgentCreate,
-    AgentSeniority,
-    HandoffProposalCreate,
-)
+try:
+    from models import (
+        DirectorConfig,
+        DirectorTeamProposal,
+        AgentCreate,
+        AgentSeniority,
+        HandoffProposalCreate,
+    )
+except Exception:  # pragma: no cover - fallback if wrong module on path
+    from backend.models import (
+        DirectorConfig,
+        DirectorTeamProposal,
+        AgentCreate,
+        AgentSeniority,
+        HandoffProposalCreate,
+    )  # type: ignore
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------

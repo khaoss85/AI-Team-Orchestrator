@@ -147,6 +147,17 @@ async def list_workspaces(user_id: str):
         raise
 
 
+async def update_workspace(workspace_id: str, data: Dict[str, Any]):
+    """Generic workspace update."""
+    try:
+        update_data = {k: v for k, v in data.items() if k not in ['id', 'user_id', 'created_at', 'updated_at']}
+        result = supabase.table("workspaces").update(update_data).eq("id", workspace_id).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error updating workspace: {e}")
+        raise
+
+
 async def create_agent(
     workspace_id: str,
     name: str,
@@ -499,6 +510,18 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
     except Exception as e:
         logger.error(f"Error updating task {task_id} status: {e}", exc_info=True)
         raise
+
+
+async def update_task_fields(task_id: str, fields: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Generic update of arbitrary task fields."""
+    try:
+        db_result = supabase.table("tasks").update(fields).eq("id", task_id).execute()
+        if db_result.data and len(db_result.data) > 0:
+            return db_result.data[0]
+        return {"id": task_id, **fields}
+    except Exception as e:
+        logger.error(f"Error updating task {task_id}: {e}")
+        return None
 
 
 async def create_custom_tool(name: str, description: Optional[str], code: str, workspace_id: str, created_by: str):
