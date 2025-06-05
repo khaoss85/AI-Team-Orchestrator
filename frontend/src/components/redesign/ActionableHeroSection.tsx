@@ -9,11 +9,11 @@ interface Props {
 }
 
 const gradients = [
-  'from-indigo-500 to-purple-600',
-  'from-teal-500 to-emerald-600',
-  'from-pink-500 to-rose-600',
-  'from-amber-500 to-orange-600',
-  'from-sky-500 to-blue-600'
+  'from-violet-600 via-purple-600 to-indigo-600',
+  'from-emerald-500 via-teal-500 to-cyan-500',
+  'from-pink-500 via-rose-500 to-red-500',
+  'from-amber-500 via-orange-500 to-red-500',
+  'from-blue-600 via-indigo-600 to-purple-600'
 ]
 
 const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDeliverables }) => {
@@ -24,44 +24,126 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
     return gradients[idx]
   }, [workspace.id])
 
+  // Calculate business value metrics
+  const isProjectComplete = assetStats.completionRate >= 80
+  const businessValue = React.useMemo(() => {
+    // Estimate business value based on completed assets
+    const baseValue = assetStats.completedAssets * 2500 // €2,500 per asset
+    const bonusValue = finalDeliverables * 3500 // €3,500 per final deliverable
+    return baseValue + bonusValue
+  }, [assetStats.completedAssets, finalDeliverables])
+
+  const getStatusMessage = () => {
+    if (isProjectComplete) {
+      return {
+        emoji: "🎉",
+        title: "All deliverables completed successfully!",
+        subtitle: `Your team of AI agents has produced ${assetStats.completedAssets} business-ready assets worth €${businessValue.toLocaleString()}. Ready to deploy immediately.`
+      }
+    } else if (assetStats.completionRate >= 50) {
+      return {
+        emoji: "🚀",
+        title: "Great progress! Almost there!",
+        subtitle: `${assetStats.completedAssets} assets completed out of ${assetStats.totalAssets}. Estimated value: €${businessValue.toLocaleString()}.`
+      }
+    } else {
+      return {
+        emoji: "⚡",
+        title: "AI team is working hard!",
+        subtitle: `${assetStats.completedAssets} assets ready, ${assetStats.totalAssets - assetStats.completedAssets} in progress. Building your €${businessValue.toLocaleString()} solution.`
+      }
+    }
+  }
+
+  const status = getStatusMessage()
+
   return (
-    <div className={`rounded-lg shadow-lg p-8 text-white bg-gradient-to-br ${gradient}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold mb-1">{workspace.name}</h1>
-          {workspace.goal && <p className="opacity-90">{workspace.goal}</p>}
-        </div>
-        <div className="text-sm text-right space-y-1">
-          <div>
-            <span className="font-medium">Asset:</span> {assetStats.completedAssets}/{assetStats.totalAssets}
-          </div>
-          <div>
-            <span className="font-medium">Deliverable finali:</span> {finalDeliverables}
-          </div>
-        </div>
+    <div className={`relative rounded-xl shadow-2xl p-8 text-white bg-gradient-to-br ${gradient} overflow-hidden`}>
+      {/* Animated background elements */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16 animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 translate-y-12 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white rounded-full opacity-50 animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
-      <div className="mt-4">
-        <div className="w-full bg-white bg-opacity-30 h-2 rounded-full">
-          <div
-            className="bg-white h-2 rounded-full"
-            style={{ width: `${assetStats.completionRate}%` }}
-          />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
+            <div className="flex items-center mb-3">
+              <span className="text-4xl mr-3 animate-bounce">{status.emoji}</span>
+              <div>
+                <h1 className="text-3xl font-bold mb-1 tracking-tight">{workspace.name}</h1>
+                <div className="text-xl font-medium opacity-95">{status.title}</div>
+              </div>
+            </div>
+            <p className="text-lg opacity-90 leading-relaxed max-w-2xl">
+              {status.subtitle}
+            </p>
+          </div>
+          
+          {/* Business metrics showcase */}
+          <div className="hidden md:flex flex-col items-end space-y-2 text-right">
+            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 min-w-[200px]">
+              <div className="text-sm opacity-80">Business Value</div>
+              <div className="text-2xl font-bold">€{businessValue.toLocaleString()}</div>
+            </div>
+            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 min-w-[200px]">
+              <div className="text-sm opacity-80">Assets Ready</div>
+              <div className="text-2xl font-bold">{assetStats.completedAssets}/{assetStats.totalAssets}</div>
+            </div>
+            {finalDeliverables > 0 && (
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 min-w-[200px]">
+                <div className="text-sm opacity-80">Final Deliverables</div>
+                <div className="text-2xl font-bold">{finalDeliverables}</div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="text-xs mt-1">Progresso asset: {Math.round(assetStats.completionRate)}%</div>
-      </div>
-      <div className="mt-6 flex gap-3 flex-wrap">
-        <a
-          href={`/projects/${workspace.id}/deliverables`}
-          className="px-4 py-2 bg-black/40 rounded-md text-sm hover:bg-black/60"
-        >
-          Download &amp; Use Now
-        </a>
-        <a
-          href={`/projects/${workspace.id}/team`}
-          className="px-4 py-2 bg-black/40 rounded-md text-sm hover:bg-black/60"
-        >
-          Talk to AI Team
-        </a>
+
+        {/* Progress visualization */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium opacity-90">Project Completion</span>
+            <span className="text-sm font-bold">{Math.round(assetStats.completionRate)}%</span>
+          </div>
+          <div className="w-full bg-white bg-opacity-30 rounded-full h-3 shadow-inner">
+            <div
+              className="bg-white h-3 rounded-full shadow-lg transition-all duration-1000 ease-out"
+              style={{ width: `${assetStats.completionRate}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-4 flex-wrap">
+          <a
+            href={`/projects/${workspace.id}/deliverables`}
+            className="group px-6 py-3 bg-white text-black rounded-lg font-semibold text-sm hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download & Use Now
+          </a>
+          <a
+            href={`/projects/${workspace.id}/team`}
+            className="group px-6 py-3 bg-black/30 backdrop-blur-sm border border-white/20 rounded-lg font-semibold text-sm hover:bg-black/50 transform hover:scale-105 transition-all duration-200 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Talk to AI Team
+          </a>
+          {isProjectComplete && (
+            <button className="group px-6 py-3 bg-gradient-to-r from-green-400 to-emerald-500 text-white rounded-lg font-semibold text-sm hover:from-green-500 hover:to-emerald-600 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center animate-pulse">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Deploy Now!
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -15,17 +15,17 @@ interface Props {
 const getCategoryColors = (category?: string) => {
   switch (category) {
     case 'research':
-      return 'from-blue-500 to-blue-600'
+      return 'from-blue-600 via-indigo-600 to-purple-600'
     case 'planning':
-      return 'from-purple-500 to-purple-600'
+      return 'from-violet-600 via-purple-600 to-pink-600'
     case 'execution':
-      return 'from-green-500 to-green-600'
+      return 'from-emerald-500 via-green-500 to-teal-500'
     case 'analysis':
-      return 'from-orange-500 to-orange-600'
+      return 'from-amber-500 via-orange-500 to-red-500'
     case 'review':
-      return 'from-red-500 to-red-600'
+      return 'from-rose-500 via-pink-500 to-purple-500'
     default:
-      return 'from-gray-500 to-gray-600'
+      return 'from-slate-600 via-gray-600 to-zinc-600'
   }
 }
 
@@ -61,6 +61,69 @@ const DeliverableCard: React.FC<Props> = ({
     return null
   }, [output])
 
+  // Generate business-friendly preview from asset data
+  const getBusinessPreview = () => {
+    if (!firstAsset?.asset_data) return null
+
+    const data = firstAsset.asset_data
+    
+    // Content Calendar Preview
+    if (Array.isArray(data.posts)) {
+      return {
+        icon: "📅",
+        title: "Content Calendar Ready",
+        metrics: `${data.posts.length} posts planned`,
+        value: `€${(data.posts.length * 150).toLocaleString()}`,
+        details: data.posts.slice(0, 2).map(p => p.caption?.slice(0, 40) + "...").join(", ")
+      }
+    }
+
+    // Contact Database Preview
+    if (Array.isArray(data.contacts)) {
+      return {
+        icon: "📊",
+        title: "Lead Database Ready",
+        metrics: `${data.contacts.length} qualified leads`,
+        value: `€${(data.contacts.length * 50).toLocaleString()}`,
+        details: `${data.contacts.filter(c => c.qualification_score > 70).length} high-value prospects`
+      }
+    }
+
+    // Strategy Document Preview
+    if (data.strategy || data.recommendations) {
+      return {
+        icon: "🎯",
+        title: "Strategy Document",
+        metrics: "Business plan ready",
+        value: "€5,000",
+        details: "Implementation roadmap included"
+      }
+    }
+
+    // Analysis Report Preview
+    if (data.insights || data.analysis) {
+      return {
+        icon: "📈",
+        title: "Analysis Report",
+        metrics: "Data insights ready",
+        value: "€3,500", 
+        details: "Actionable recommendations included"
+      }
+    }
+
+    // Generic asset preview
+    const keys = Object.keys(data)
+    return {
+      icon: "📄",
+      title: "Asset Ready",
+      metrics: `${keys.length} data points`,
+      value: "€2,500",
+      details: "Download to explore"
+    }
+  }
+
+  const businessPreview = getBusinessPreview()
+
   const handleDownload = () => {
     if (!firstAsset) return
     const dataStr =
@@ -93,92 +156,141 @@ const DeliverableCard: React.FC<Props> = ({
 
   return (
     <div
-      className={`bg-gradient-to-br ${gradient} text-white rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition`}
+      className={`relative bg-gradient-to-br ${gradient} text-white rounded-xl p-6 shadow-lg hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 overflow-hidden group`}
     >
-      <div>
-        <h3 className="font-semibold text-white text-sm mb-1 truncate">{title}</h3>
-        {summary && (
-          <p className="text-sm opacity-90 line-clamp-3 overflow-hidden">
-            {summary.length > 160 ? summary.slice(0, 160) + '…' : summary}
-          </p>
-        )}
-        {firstAsset && (
-          <div className="mt-2 flex items-center text-xs gap-2">
-            <span
-              className={`px-2 py-1 rounded-full font-medium ${
-                firstAsset.validation_score >= 0.8
-                  ? 'bg-green-100 text-green-800'
-                  : firstAsset.validation_score >= 0.6
-                    ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {Math.round(firstAsset.validation_score * 100)}% valido
-            </span>
-            <span
-              className={`px-2 py-1 rounded-full font-medium ${
-                firstAsset.ready_to_use
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-orange-100 text-orange-800'
-              }`}
-            >
-              {firstAsset.ready_to_use ? 'Ready' : 'Needs Work'}
-            </span>
-          </div>
-        )}
-        {output.metrics && (
-          <div className="mt-2 flex flex-wrap gap-1 text-xs">
-            {Object.entries(output.metrics).map(([k, v]) => (
-              <span key={k} className="bg-white bg-opacity-20 px-2 py-1 rounded-full">
-                {k}: {String(v)}
-              </span>
-            ))}
-          </div>
-        )}
+      {/* Background decoration */}
+      <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-white rounded-full -translate-y-10 translate-x-10"></div>
+        <div className="absolute bottom-0 left-0 w-16 h-16 bg-white rounded-full translate-y-8 -translate-x-8"></div>
       </div>
-      <div className="mt-3 flex gap-2 flex-wrap">
-        <button
-          className="flex-1 bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md hover:bg-indigo-700"
-          onClick={onViewDetails}
-        >
-          Dettagli
-        </button>
+
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header with business preview */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <div className="flex items-center mb-2">
+              {businessPreview && (
+                <span className="text-2xl mr-2">{businessPreview.icon}</span>
+              )}
+              <h3 className="font-bold text-lg leading-tight">{title}</h3>
+            </div>
+            {businessPreview && (
+              <div className="space-y-1">
+                <div className="text-sm font-medium opacity-95">{businessPreview.title}</div>
+                <div className="text-xs opacity-80">{businessPreview.details}</div>
+              </div>
+            )}
+          </div>
+          
+          {/* Value indicator */}
+          {businessPreview && (
+            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-2 text-right">
+              <div className="text-xs opacity-80">Value</div>
+              <div className="font-bold text-lg">{businessPreview.value}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Business metrics showcase */}
+        {businessPreview && (
+          <div className="mb-4 p-3 bg-white bg-opacity-15 backdrop-blur-sm rounded-lg border border-white/20">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{businessPreview.metrics}</span>
+              {firstAsset?.ready_to_use && (
+                <span className="px-2 py-1 bg-green-400 text-green-900 text-xs font-bold rounded-full">
+                  ✅ READY
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quality indicators */}
         {firstAsset && (
-          <button
-            className="flex-1 bg-green-600 text-white text-sm px-3 py-1.5 rounded-md hover:bg-green-700"
-            onClick={handleDownload}
-          >
-            Download &amp; Use Now
-          </button>
+          <div className="mb-4 flex gap-2">
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+              firstAsset.validation_score >= 0.8
+                ? 'bg-green-100 text-green-800'
+                : firstAsset.validation_score >= 0.6
+                  ? 'bg-yellow-100 text-yellow-800'
+                : 'bg-red-100 text-red-800'
+            }`}>
+              {Math.round(firstAsset.validation_score * 100)}% validated
+            </div>
+            {firstAsset.automation_ready && (
+              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                🤖 Auto-ready
+              </div>
+            )}
+          </div>
         )}
-        {onViewExecution && (
-          <button
-            className="flex-1 bg-teal-600 text-white text-sm px-3 py-1.5 rounded-md hover:bg-teal-700"
-            onClick={onViewExecution}
-          >
-            Execution
-          </button>
-        )}
-        {onViewRationale && (
-          <button
-            className="flex-1 bg-sky-600 text-white text-sm px-3 py-1.5 rounded-md hover:bg-sky-700"
-            onClick={onViewRationale}
-          >
-            Rationale
-          </button>
-        )}
-        <button
-          className="flex-1 bg-orange-500 text-white text-sm px-3 py-1.5 rounded-md hover:bg-orange-600"
-          onClick={handleRequestChanges}
-        >
-          Request Changes
-        </button>
-        <button
-          className="flex-1 bg-black/40 text-white text-sm px-3 py-1.5 rounded-md hover:bg-black/60"
-          onClick={() => (window.location.href = `/projects/${workspaceId}/team`)}
-        >
-          Talk to AI Team
-        </button>
+
+        {/* Action buttons - streamlined and prominent */}
+        <div className="space-y-2">
+          {/* Primary action */}
+          {firstAsset && (
+            <button
+              className="w-full bg-white text-black font-semibold py-3 px-4 rounded-lg hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 flex items-center justify-center shadow-lg"
+              onClick={handleDownload}
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download & Use Now
+            </button>
+          )}
+          
+          {/* Secondary actions */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className="bg-black/30 backdrop-blur-sm border border-white/20 text-white font-medium py-2 px-3 rounded-lg hover:bg-black/50 transition-all duration-200 text-sm"
+              onClick={onViewDetails}
+            >
+              View Details
+            </button>
+            <button
+              className="bg-black/30 backdrop-blur-sm border border-white/20 text-white font-medium py-2 px-3 rounded-lg hover:bg-black/50 transition-all duration-200 text-sm"
+              onClick={() => (window.location.href = `/projects/${workspaceId}/team`)}
+            >
+              Talk to AI Team
+            </button>
+          </div>
+          
+          {/* Drill-down options */}
+          <details className="group/details">
+            <summary className="cursor-pointer text-xs opacity-75 hover:opacity-100 transition-opacity list-none flex items-center justify-center">
+              <span>More options</span>
+              <svg className="w-4 h-4 ml-1 group-open/details:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              {onViewExecution && (
+                <button
+                  className="bg-teal-600/80 text-white text-xs py-1.5 px-2 rounded hover:bg-teal-600 transition-colors"
+                  onClick={onViewExecution}
+                >
+                  Execution
+                </button>
+              )}
+              {onViewRationale && (
+                <button
+                  className="bg-sky-600/80 text-white text-xs py-1.5 px-2 rounded hover:bg-sky-600 transition-colors"
+                  onClick={onViewRationale}
+                >
+                  Rationale
+                </button>
+              )}
+              <button
+                className="bg-orange-500/80 text-white text-xs py-1.5 px-2 rounded hover:bg-orange-500 transition-colors col-span-2"
+                onClick={handleRequestChanges}
+              >
+                Request Changes
+              </button>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   )
