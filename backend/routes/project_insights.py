@@ -24,6 +24,7 @@ from database import (
 )
 from executor import task_executor
 from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
+from deliverable_system.schema_generator import AssetSchemaGenerator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["project-insights"])
@@ -689,6 +690,76 @@ async def trigger_asset_analysis(workspace_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to trigger asset analysis: {str(e)}",
+        )
+
+@router.get("/{workspace_id}/asset-insights", response_model=Dict[str, Any])
+async def get_asset_insights(workspace_id: UUID):
+    """Return insight data about actionable assets for this workspace."""
+    try:
+        analyzer = DeliverableRequirementsAnalyzer()
+        schemas_generator = AssetSchemaGenerator()
+
+        requirements = await analyzer.analyze_deliverable_requirements(str(workspace_id))
+        schemas = await schemas_generator.generate_asset_schemas(requirements)
+
+        tasks = await list_tasks(str(workspace_id))
+
+        asset_tasks = []
+        produced_assets = set()
+        for t in tasks:
+            ctx = t.get("context_data", {}) or {}
+            if isinstance(ctx, dict) and (
+                ctx.get("asset_production")
+                or ctx.get("asset_oriented_task")
+                or "PRODUCE ASSET:" in t.get("name", "")
+            ):
+                asset_type = ctx.get("asset_type") or ctx.get("detected_asset_type")
+                produced_assets.add(asset_type)
+                asset_tasks.append(
+                    {
+                        "task_id": t.get("id"),
+                        "name": t.get("name"),
+                        "status": t.get("status"),
+                        "asset_type": asset_type,
+                        "agent_role": t.get("agent_role"),
+                    }
+                )
+
+        required_types = [a.asset_type for a in requirements.primary_assets_needed]
+        covered_assets = [a for a in required_types if a in produced_assets]
+        missing_assets = [a for a in required_types if a not in produced_assets]
+
+        insights = {
+            "workspace_id": str(workspace_id),
+            "deliverable_category": requirements.deliverable_category,
+            "requirements_analysis": {
+                "total_assets_needed": len(required_types),
+                "required_asset_types": required_types,
+                "asset_coverage_rate": round(len(covered_assets) / len(required_types) * 100, 1)
+                if required_types
+                else 0,
+                "covered_assets": covered_assets,
+                "missing_assets": missing_assets,
+            },
+            "asset_schemas_available": {
+                name: {
+                    "automation_ready": schema.automation_ready,
+                    "validation_rules_count": len(schema.validation_rules),
+                    "main_fields": list(schema.schema_definition.keys())[:3],
+                }
+                for name, schema in schemas.items()
+            },
+            "current_asset_tasks": asset_tasks,
+            "recommendations": [f"Create {a} production task" for a in missing_assets],
+        }
+
+        return insights
+
+    except Exception as e:
+        logger.error(f"Error generating asset insights for {workspace_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get asset insights: {str(e)}",
         )
 
 # New endpoint: return full task record for a specific output

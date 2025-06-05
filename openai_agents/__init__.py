@@ -5,36 +5,41 @@ class Agent:
 class Runner:
     pass
 
-
 class AgentOutputSchema:
-    pass
+    def __init__(self, *a, **k):
+        pass
 
 
 class ModelSettings:
     pass
 
 
+def function_tool(name_override=None):
+    def decorator(func):
+        async def wrapper(*a, **k):
+            return await func(*a, **k)
+        return wrapper
+    return decorator
+
 class WebSearchTool:
     pass
-
 
 class FileSearchTool:
     pass
 
+def RunContextWrapper(*a, **k):
+    return None
 
-def function_tool(*args, **kwargs):
-    def decorator(func):
-        async def on_invoke_tool(_self, param_json):
-            if isinstance(param_json, str):
-                import json
-                params = json.loads(param_json)
-            else:
-                params = param_json
-            return await func(**params)
-        wrapper = type(
-            "StubTool",
-            (),
-            {"on_invoke_tool": staticmethod(on_invoke_tool)},
-        )
-        return wrapper
-    return decorator
+def handoff(*a, **k):
+    return None
+
+def trace(*a, **k):
+    class Dummy:
+        def __enter__(self):
+            return self
+        def __exit__(self, exc_type, exc, tb):
+            pass
+    return Dummy()
+
+def gen_trace_id():
+    return "id"
