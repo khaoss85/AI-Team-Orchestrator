@@ -1,14 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
 
-import importlib
-
-_improvement = importlib.import_module("improvement_loop")
-
-checkpoint_output = getattr(_improvement, "checkpoint_output")
-qa_gate = getattr(_improvement, "qa_gate")
-close_loop = getattr(_improvement, "close_loop")
-DEFAULT_FEEDBACK_TIMEOUT = getattr(_improvement, "DEFAULT_FEEDBACK_TIMEOUT", 60 * 60 * 24)
+from improvement_loop import (
+    checkpoint_output,
+    qa_gate,
+    close_loop,
+    DEFAULT_FEEDBACK_TIMEOUT,
+)
 from database import get_task
 
 router = APIRouter(prefix="/improvement", tags=["improvement"])
