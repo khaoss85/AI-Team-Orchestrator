@@ -827,6 +827,9 @@ export const api = {
           },
           body: JSON.stringify(data),
         });
+        if (response.status === 404) {
+          throw new Error('Aggiornamento progetto non supportato dal backend');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -842,6 +845,9 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/workspaces/${id}/pause`, {
           method: 'POST',
         });
+        if (response.status === 404) {
+          throw new Error('Funzione di pausa progetto non disponibile');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -856,6 +862,9 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/workspaces/${id}/resume`, {
           method: 'POST',
         });
+        if (response.status === 404) {
+          throw new Error('Funzione di ripresa progetto non disponibile');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1376,6 +1385,56 @@ export const api = {
     }> => {
       try {
         const response = await fetch(`${API_BASE_URL}/delegation/workspace/${workspaceId}/analysis`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
+  improvement: {
+    startLoop: async (taskId: string, payload: Record<string, any>): Promise<{ approved: boolean }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/improvement/start/${taskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getStatus: async (taskId: string): Promise<{ iteration_count: number; max_iterations?: number }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/improvement/status/${taskId}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    closeLoop: async (taskId: string): Promise<{ closed: boolean }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/improvement/close/${taskId}`, { method: 'POST' });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    qaGate: async (taskId: string, payload: Record<string, any>): Promise<{ approved: boolean }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/improvement/qa/${taskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {

@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS agents (
     system_prompt TEXT,
     status TEXT NOT NULL DEFAULT 'created',
     health JSONB DEFAULT '{"status": "unknown", "last_update": null}'::JSONB,
-    model_config JSONB,
+    llm_config JSONB,
     tools JSONB,
     can_create_tools BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -243,11 +243,15 @@ ADD COLUMN IF NOT EXISTS soft_skills JSONB,
 ADD COLUMN IF NOT EXISTS background_story TEXT;
 
 -- In supabase_setup.sql, aggiungi queste colonne se non esistono già
-ALTER TABLE IF EXISTS tasks 
+ALTER TABLE IF EXISTS tasks
 ADD COLUMN IF NOT EXISTS created_by_task_id UUID REFERENCES tasks(id),
 ADD COLUMN IF NOT EXISTS created_by_agent_id UUID REFERENCES agents(id),
 ADD COLUMN IF NOT EXISTS creation_type VARCHAR(50) DEFAULT 'manual',
 ADD COLUMN IF NOT EXISTS delegation_depth INTEGER DEFAULT 0;
+ALTER TABLE IF EXISTS tasks
+ADD COLUMN IF NOT EXISTS iteration_count INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS max_iterations INTEGER,
+ADD COLUMN IF NOT EXISTS dependency_map JSONB;
 
 -- Indici per performance
 CREATE INDEX IF NOT EXISTS idx_tasks_created_by_task_id ON tasks(created_by_task_id);
