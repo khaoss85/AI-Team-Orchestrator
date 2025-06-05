@@ -29,7 +29,7 @@ npm install
 
 ### Environment variables
 
-Create a `backend/.env` file and define at least the following variables:
+Create a `backend/.env` file (there is a `backend/.env.example` you can copy) and define at least the following variables:
 
 - `OPENAI_API_KEY`
 - `SUPABASE_URL`
@@ -53,6 +53,8 @@ Start the backend:
 cd backend
 python main.py
 ```
+
+Run these commands from the `backend` directory so the `.env` file is detected.
 
 Start the frontend:
 

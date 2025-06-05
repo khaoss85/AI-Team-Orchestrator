@@ -13,8 +13,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, os.pardir))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from `.env` in this directory
+load_dotenv(os.path.join(CURRENT_DIR, ".env"))
 
 # Import routers
 from tools.registry import tool_registry
