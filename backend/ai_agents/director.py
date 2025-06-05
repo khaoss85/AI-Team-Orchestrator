@@ -1060,6 +1060,7 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000}},
                 temperature=0.1
             ),  # Low temperature for more deterministic output
             tools=available_tools_list,
+            output_schema_strict=False,
         )
         try:
             # The prompt to the LLM Director agent. It needs to understand how to use the tools.
