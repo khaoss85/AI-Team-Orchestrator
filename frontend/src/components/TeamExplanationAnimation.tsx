@@ -83,7 +83,7 @@ const TeamExplanationAnimation = () => {
   const currentStepData = steps[currentStep];
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-xl p-8 border border-indigo-200 shadow-lg">
+    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-xl p-8 border border-indigo-200 shadow-lg ai-team-container no-spacing">
       {/* Main Title */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
@@ -137,13 +137,13 @@ const TeamExplanationAnimation = () => {
               { icon: '🛡️', label: 'QA Critic', angle: 300, step: 7 }
             ].map((element, index) => {
               const isActive = currentStep === element.step;
-              const x = Math.cos((element.angle * Math.PI) / 180) * 100;
-              const y = Math.sin((element.angle * Math.PI) / 180) * 100;
+              const x = Math.round(Math.cos((element.angle * Math.PI) / 180) * 100);
+              const y = Math.round(Math.sin((element.angle * Math.PI) / 180) * 100);
 
               return (
                 <div
                   key={element.label}
-                  className={`absolute w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl shadow-md transform transition-all duration-500 ${
+                  className={`absolute w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl shadow-md transform transition-all duration-500 z-float ${
                     isActive ? 'scale-125 ring-3 ring-blue-300 bg-blue-50' : 'hover:scale-105'
                   }`}
                   style={{
