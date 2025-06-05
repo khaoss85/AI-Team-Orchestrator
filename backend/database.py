@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 import json
 from models import TaskStatus
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from `.env` in this directory
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 logger = logging.getLogger(__name__)
 
