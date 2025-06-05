@@ -827,6 +827,9 @@ export const api = {
           },
           body: JSON.stringify(data),
         });
+        if (response.status === 404) {
+          throw new Error('Aggiornamento progetto non supportato dal backend');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -842,6 +845,9 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/workspaces/${id}/pause`, {
           method: 'POST',
         });
+        if (response.status === 404) {
+          throw new Error('Funzione di pausa progetto non disponibile');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -856,6 +862,9 @@ export const api = {
         const response = await fetch(`${API_BASE_URL}/workspaces/${id}/resume`, {
           method: 'POST',
         });
+        if (response.status === 404) {
+          throw new Error('Funzione di ripresa progetto non disponibile');
+        }
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
