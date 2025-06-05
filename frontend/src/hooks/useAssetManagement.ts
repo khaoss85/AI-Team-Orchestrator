@@ -20,23 +20,17 @@ import type {
 const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsset> => {
   const extractedAssets: Record<string, ActionableAsset> = {};
   
-  console.log('🔍 [RAW TASK EXTRACTION] Starting extraction from', tasks.length, 'tasks');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 [RAW TASK EXTRACTION] Starting extraction from', tasks.length, 'tasks');
+  }
   
   tasks.forEach((task, index) => {
-    console.log(`🔍 [RAW TASK EXTRACTION] === Task ${index + 1}: ${task.name} ===`);
-    
     const contextData = task.context_data as EnhancedTaskContextData;
     
-    if (!contextData) {
-      console.log('🔍 [RAW TASK EXTRACTION] No context_data found');
-      return;
-    }
+    if (!contextData) return;
     
     // 🎯 PRIMARY LOCATION: context_data.precomputed_deliverable.actionable_assets
     if (contextData.precomputed_deliverable?.actionable_assets) {
-      console.log('🔍 [RAW TASK EXTRACTION] ✅ Found precomputed_deliverable.actionable_assets!');
-      console.log('🔍 [RAW TASK EXTRACTION] Asset keys:', Object.keys(contextData.precomputed_deliverable.actionable_assets));
-      
       Object.entries(contextData.precomputed_deliverable.actionable_assets).forEach(([key, asset]) => {
         if (asset && typeof asset === 'object') {
           extractedAssets[key] = {
@@ -44,21 +38,17 @@ const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsse
             source_task_id: task.id,
             extraction_method: 'precomputed_deliverable'
           } as ActionableAsset;
-          console.log(`🔍 [RAW TASK EXTRACTION] ✅ Added asset: ${key}`);
         }
       });
     }
     
     // 🎯 SECONDARY LOCATION: Direct context_data assets
     if (contextData.actionable_assets) {
-      console.log('🔍 [RAW TASK EXTRACTION] Found direct context_data.actionable_assets');
       Object.assign(extractedAssets, contextData.actionable_assets);
     }
     
     // 🎯 TERTIARY: Final deliverable task results
     if ((contextData.is_final_deliverable || contextData.deliverable_aggregation) && task.result) {
-      console.log('🔍 [RAW TASK EXTRACTION] Processing final deliverable task result');
-      
       if (task.result.actionable_assets) {
         Object.assign(extractedAssets, task.result.actionable_assets);
       }
@@ -74,15 +64,17 @@ const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsse
             Object.assign(extractedAssets, detailed.actionable_assets);
           }
         } catch (e) {
-          console.log('🔍 [RAW TASK EXTRACTION] Failed to parse detailed_results_json:', e);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 [RAW TASK EXTRACTION] Failed to parse detailed_results_json:', e);
+          }
         }
       }
     }
   });
   
-  console.log(`🔍 [RAW TASK EXTRACTION] === EXTRACTION COMPLETE ===`);
-  console.log(`🔍 [RAW TASK EXTRACTION] Total assets extracted: ${Object.keys(extractedAssets).length}`);
-  console.log(`🔍 [RAW TASK EXTRACTION] Asset names:`, Object.keys(extractedAssets));
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🔍 [RAW TASK EXTRACTION] Total assets extracted: ${Object.keys(extractedAssets).length}`);
+  }
   
   return extractedAssets;
 };
@@ -146,7 +138,9 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
   });
 
   const debugLog = useCallback((message: string, data?: any) => {
-    console.log(`🔍 [useAssetManagement] ${message}`, data || '');
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔍 [useAssetManagement] ${message}`, data || '');
+    }
   }, []);
 
   const fetchAssetData = useCallback(async () => {
@@ -173,8 +167,8 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
         api.assetManagement.getSchemas(workspaceId),
         api.assetManagement.getExtractionStatus(workspaceId),
         api.monitoring.getProjectDeliverables(workspaceId),
-        // 🔧 FIXED: Call with no options to get all tasks
-        api.monitoring.getWorkspaceTasks(workspaceId, { limit: 100 })
+        // Reduced limit to improve performance
+        api.monitoring.getWorkspaceTasks(workspaceId, { limit: 50 })
       ]);
 
       // Extract successful results
@@ -192,57 +186,41 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
 
       const schemas = schemasResponse?.available_schemas || {};
       
-      debugLog('API Results received:', {
-        hasTracking: !!tracking,
-        hasRequirements: !!requirements,
-        schemasCount: Object.keys(schemas).length,
-        hasExtraction: !!extractionStatus,
-        hasDeliverables: !!deliverables,
-        hasRawTasksResponse: !!rawTasksResponse,
-        rawTasksStructure: rawTasksResponse ? Object.keys(rawTasksResponse) : []
-      });
+      if (process.env.NODE_ENV === 'development') {
+        debugLog('API Results received:', {
+          hasTracking: !!tracking,
+          hasRequirements: !!requirements,
+          schemasCount: Object.keys(schemas).length,
+          hasExtraction: !!extractionStatus,
+          hasDeliverables: !!deliverables,
+          hasRawTasksResponse: !!rawTasksResponse
+        });
+      }
 
       // 🎯 PRIMARY ASSET EXTRACTION: From Raw Tasks
       let extractedAssets: Record<string, ActionableAsset> = {};
       
       if (rawTasksResponse) {
-        debugLog('Raw tasks response received');
-        debugLog('Raw tasks keys:', Object.keys(rawTasksResponse));
-        debugLog('Raw tasks structure:', rawTasksResponse);
-        
-        // 🔧 FIXED: Based on actual logs - rawTasks is DIRECTLY an array, not an object with .tasks
         let tasksArray: Task[] = [];
         
         if (Array.isArray(rawTasksResponse)) {
           tasksArray = rawTasksResponse;
-          debugLog('✅ Raw tasks is direct array');
         } else if (rawTasksResponse.tasks && Array.isArray(rawTasksResponse.tasks)) {
           tasksArray = rawTasksResponse.tasks;
-          debugLog('✅ Raw tasks has .tasks property');
-        } else {
-          debugLog('❌ Raw tasks structure unknown');
-          debugLog('rawTasks exists:', !!rawTasksResponse);
-          debugLog('rawTasks.tasks exists:', rawTasksResponse.tasks);
         }
           
         if (tasksArray.length > 0) {
-          debugLog(`✅ Processing ${tasksArray.length} raw tasks for context_data assets`);
           extractedAssets = extractAssetsFromRawTasks(tasksArray);
-        } else {
-          debugLog('❌ No tasks found in response or tasks array missing');
+          debugLog(`✅ Processing ${tasksArray.length} raw tasks for context_data assets`);
         }
-      } else {
-        debugLog('❌ No raw tasks response received');
       }
       
       // 🎯 SECONDARY EXTRACTION: From Deliverables (if raw tasks failed)
       if (Object.keys(extractedAssets).length === 0 && deliverables) {
-        debugLog('No assets from raw tasks, trying deliverables extraction');
         const deliverableAssets = extractDeliverablesAssets(deliverables);
         Object.assign(extractedAssets, deliverableAssets);
+        debugLog('No assets from raw tasks, using deliverables extraction');
       }
-
-      debugLog(`Total assets extracted: ${Object.keys(extractedAssets).length}`);
 
       // 🔄 Process assets into display format
       const processedAssets: AssetDisplayData[] = [];
@@ -299,7 +277,7 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
         });
       }
 
-      debugLog(`Final processed assets: ${processedAssets.length}`);
+      debugLog(`Total processed assets: ${processedAssets.length}`);
 
       // 🎯 Update state
       setState({

@@ -125,9 +125,9 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
       <InteractionPanel workspace={workspace} onWorkspaceUpdate={setWorkspace} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {deliverables && deliverables.key_outputs.map(output => (
+        {deliverables && deliverables.key_outputs.map((output, index) => (
           <DeliverableCard
-            key={`${output.task_id}-${idx}`}
+            key={`${output.task_id}-${index}`}
             output={output}
             workspaceId={id}
             onViewDetails={() => setSelectedOutput(output)}

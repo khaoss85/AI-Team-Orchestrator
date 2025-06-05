@@ -114,7 +114,7 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
               </div>
             </div>
             <a
-              href={`/projects/${workspaceId}/configure`}
+              href={`/projects/${workspaceId}/team`}
               className="inline-flex items-center text-xs bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-opacity-30 transition-all duration-200 font-medium"
             >
               Manage Team

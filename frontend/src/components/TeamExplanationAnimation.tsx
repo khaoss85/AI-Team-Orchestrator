@@ -83,7 +83,7 @@ const TeamExplanationAnimation = () => {
   const currentStepData = steps[currentStep];
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-xl p-8 border border-indigo-200 shadow-lg ai-team-container no-spacing">
+    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 rounded-xl p-8 border border-indigo-200 shadow-lg overflow-hidden">
       {/* Main Title */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
@@ -112,17 +112,17 @@ const TeamExplanationAnimation = () => {
       </div>
 
       {/* Main Animation Area */}
-      <div className="relative">
+      <div className="relative min-h-[400px] flex flex-col items-center">
         {/* Central Hub */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-16">
           <div className="relative">
             {/* Central Circle - AI Manager */}
-            <div className={`w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg transform transition-all duration-500 ${
+            <div className={`w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg transform transition-all duration-500 relative z-10 ${
               currentStep === 2 ? 'scale-110 ring-4 ring-purple-300' : ''
             }`}>
               🧠
             </div>
-            <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+            <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 text-center z-20">
               <div className="text-sm font-medium text-purple-700">AI Manager</div>
               <div className="text-xs text-purple-600">Coordinamento</div>
             </div>
@@ -137,13 +137,14 @@ const TeamExplanationAnimation = () => {
               { icon: '🛡️', label: 'QA Critic', angle: 300, step: 7 }
             ].map((element, index) => {
               const isActive = currentStep === element.step;
-              const x = Math.round(Math.cos((element.angle * Math.PI) / 180) * 100);
-              const y = Math.round(Math.sin((element.angle * Math.PI) / 180) * 100);
+              const radius = 120; // Increased radius for better spacing
+              const x = Math.round(Math.cos((element.angle * Math.PI) / 180) * radius);
+              const y = Math.round(Math.sin((element.angle * Math.PI) / 180) * radius);
 
               return (
                 <div
                   key={element.label}
-                  className={`absolute w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl shadow-md transform transition-all duration-500 z-float ${
+                  className={`absolute w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl shadow-md transform transition-all duration-500 z-30 ${
                     isActive ? 'scale-125 ring-3 ring-blue-300 bg-blue-50' : 'hover:scale-105'
                   }`}
                   style={{
@@ -153,8 +154,8 @@ const TeamExplanationAnimation = () => {
                 >
                   {element.icon}
                   {isActive && (
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                      <div className="text-xs font-medium text-blue-700">{element.label}</div>
+                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-40">
+                      <div className="text-xs font-medium text-blue-700 bg-white px-2 py-1 rounded shadow-sm">{element.label}</div>
                     </div>
                   )}
                 </div>
@@ -162,12 +163,15 @@ const TeamExplanationAnimation = () => {
             })}
 
             {/* Connection Lines */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ width: '200px', height: '200px', left: '-34px', top: '-34px' }}>
+            <svg className="absolute inset-0 pointer-events-none z-0" style={{ width: '300px', height: '300px', left: '-84px', top: '-84px' }}>
               {[0, 60, 120, 180, 240, 300].map((angle, index) => {
-                const x1 = 100 + Math.cos((angle * Math.PI) / 180) * 50;
-                const y1 = 100 + Math.sin((angle * Math.PI) / 180) * 50;
-                const x2 = 100 + Math.cos((angle * Math.PI) / 180) * 84;
-                const y2 = 100 + Math.sin((angle * Math.PI) / 180) * 84;
+                const radius = 120;
+                const centerX = 150;
+                const centerY = 150;
+                const x1 = centerX + Math.cos((angle * Math.PI) / 180) * 64;
+                const y1 = centerY + Math.sin((angle * Math.PI) / 180) * 64;
+                const x2 = centerX + Math.cos((angle * Math.PI) / 180) * (radius - 16);
+                const y2 = centerY + Math.sin((angle * Math.PI) / 180) * (radius - 16);
                 
                 return (
                   <line
@@ -190,10 +194,10 @@ const TeamExplanationAnimation = () => {
         </div>
 
         {/* Human in the Loop - Separate */}
-        <div className={`flex justify-center transform transition-all duration-500 ${
+        <div className={`flex justify-center mt-8 transform transition-all duration-500 z-20 ${
           currentStep === 8 ? 'scale-110' : ''
         }`}>
-          <div className={`bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-4 text-white flex items-center space-x-3 shadow-lg ${
+          <div className={`bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-4 text-white flex items-center space-x-3 shadow-lg relative ${
             currentStep === 8 ? 'ring-4 ring-green-300' : ''
           }`}>
             <div className="text-2xl">👤</div>
