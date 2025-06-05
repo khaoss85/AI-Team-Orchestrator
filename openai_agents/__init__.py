@@ -1,9 +1,14 @@
+import asyncio
+import json
+
+
 class Agent:
     pass
 
 
 class Runner:
     pass
+
 
 class AgentOutputSchema:
     def __init__(self, *a, **k):
@@ -20,30 +25,48 @@ class ModelSettings:
 
 def function_tool(name_override=None):
     def decorator(func):
-        async def wrapper(*a, **k):
-            return await func(*a, **k)
-        return wrapper
+        class Tool:
+            async def on_invoke_tool(self, _ctx, params_json):
+                data = (
+                    json.loads(params_json)
+                    if isinstance(params_json, str)
+                    else params_json
+                )
+                if asyncio.iscoroutinefunction(func):
+                    return await func(**(data or {}))
+                return func(**(data or {}))
+
+        return Tool()
+
     return decorator
+
 
 class WebSearchTool:
     pass
 
+
 class FileSearchTool:
     pass
+
 
 def RunContextWrapper(*a, **k):
     return None
 
+
 def handoff(*a, **k):
     return None
+
 
 def trace(*a, **k):
     class Dummy:
         def __enter__(self):
             return self
+
         def __exit__(self, exc_type, exc, tb):
             pass
+
     return Dummy()
+
 
 def gen_trace_id():
     return "id"
