@@ -41,12 +41,6 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     refetch: refetchDeliverables
   } = useProjectDeliverables(id)
 
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [feedback, setFeedback] = useState<FeedbackRequest[]>([])
-  const [taskAnalysis, setTaskAnalysis] = useState<TaskAnalysisResponse | null>(null)
-  const [missionLoading, setMissionLoading] = useState(true)
-  const [missionError, setMissionError] = useState<string | null>(null)
-
   const [selectedOutput, setSelectedOutput] = useState<ProjectOutputExtended | null>(null)
   const [executionOutput, setExecutionOutput] = useState<ProjectOutputExtended | null>(null)
   const [rationaleOutput, setRationaleOutput] = useState<ProjectOutputExtended | null>(null)
@@ -98,29 +92,6 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     }
   }
 
-  const fetchMissionControl = async () => {
-    try {
-      setMissionLoading(true)
-      const [agentsData, feedbackData, analysisData] = await Promise.all([
-        api.agents.list(id),
-        api.humanFeedback.getPendingRequests(id),
-        api.monitoring.getTaskAnalysis(id)
-      ])
-      setAgents(agentsData)
-      setFeedback(feedbackData)
-      setTaskAnalysis(analysisData)
-      setMissionError(null)
-    } catch (e: any) {
-      console.error(e)
-      setMissionError(e.message || 'Errore nel caricamento dei dati')
-    } finally {
-      setMissionLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchMissionControl()
-  }, [id])
 
   if (loading || assetsLoading) {
     return (
