@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useProjectResults, UnifiedResultItem } from '@/hooks/useProjectResults';
 import { UnifiedResultCard } from '@/components/UnifiedResultCard';
@@ -12,36 +13,403 @@ export default function ProjectResultsPage() {
   const params = useParams();
   const projectId = params.id as string;
   
+  // Get filter from URL params
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const urlFilter = searchParams.get('filter') as FilterType;
+  
   const {
-    results,
-    categories,
+    allResults,
+    readyToUse,
+    inProgress,
+    finalDeliverables,
+    totalResults,
+    completionRate,
+    qualityScore,
     loading,
     error,
-    stats,
-    refreshResults
+    lastUpdated,
+    refresh: refreshResults
   } = useProjectResults(projectId);
 
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>(urlFilter || 'all');
   const [sortBy, setSortBy] = useState<SortType>('impact');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedResult, setSelectedResult] = useState<UnifiedResultItem | null>(null);
+  const [enhancedContent, setEnhancedContent] = useState<any>(null);
+  const [loadingEnhanced, setLoadingEnhanced] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
+
+  // Function to fetch enhanced content when viewing details
+  const handleViewDetails = async (result: UnifiedResultItem) => {
+    setSelectedResult(result);
+    setLoadingEnhanced(true);
+    setEnhancedContent(null);
+
+    try {
+      // Get all workspace tasks to find the one with detailed results
+      const tasksResponse = await fetch(`http://localhost:8000/monitoring/workspace/${projectId}/tasks`);
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+        console.log('📋 All workspace tasks:', tasksData);
+        
+        // Find the specific task
+        const task = tasksData.tasks?.find((t: any) => t.id === result.sourceTaskId);
+        if (task) {
+          console.log('🎯 Found specific task:', task);
+          
+          // Try to extract detailed_results_json from the task
+          let detailedResults = null;
+          if (task.result?.detailed_results_json) {
+            try {
+              detailedResults = JSON.parse(task.result.detailed_results_json);
+              console.log('✅ Parsed detailed_results_json from task:', detailedResults);
+            } catch (e) {
+              console.warn('Failed to parse detailed_results_json from task:', e);
+            }
+          }
+          
+          if (detailedResults) {
+            const enhancedContent = {
+              visual_summary: task.result?.summary || `📋 ${result.title}`,
+              content: task.result?.summary || result.description,
+              structured_content: detailedResults,
+              key_insights: detailedResults.actionable_insights || detailedResults.key_insights || result.keyInsights || [],
+              business_impact: result.businessImpact,
+              actionability_score: result.actionabilityScore,
+              agent_details: {
+                name: result.agentName,
+                role: result.agentRole
+              },
+              task_metadata: {
+                source_task_id: result.sourceTaskId,
+                last_updated: result.lastUpdated
+              }
+            };
+            setEnhancedContent(enhancedContent);
+            return;
+          }
+        }
+      }
+      
+      // Fallback to enhanced endpoint
+      const enhancedResponse = await fetch(`http://localhost:8000/projects/${projectId}/task/${result.sourceTaskId}/enhanced-result`);
+      if (enhancedResponse.ok) {
+        const enhanced = await enhancedResponse.json();
+        setEnhancedContent(enhanced);
+      } else {
+        console.log('No detailed data available, using basic fallback');
+        
+        // Create basic fallback content
+        const fallbackContent = {
+          visual_summary: `📋 ${result.title}`,
+          content: result.description,
+          structured_content: result.structuredContent,
+          key_insights: result.keyInsights || [],
+          business_impact: result.businessImpact,
+          actionability_score: result.actionabilityScore,
+          agent_details: {
+            name: result.agentName,
+            role: result.agentRole
+          }
+        };
+        
+        setEnhancedContent(fallbackContent);
+      }
+    } catch (error) {
+      console.error('Error fetching enhanced content:', error);
+      // Create rich fallback content even on error
+      const fallbackContent = {
+        visual_summary: `📋 ${result.title}`,
+        content: result.description,
+        structured_content: result.structuredContent,
+        key_insights: result.keyInsights || [],
+        business_impact: result.businessImpact,
+        actionability_score: result.actionabilityScore
+      };
+      setEnhancedContent(fallbackContent);
+    } finally {
+      setLoadingEnhanced(false);
+    }
+  };
+
+  // Export functions
+  const exportSingleResult = (result: UnifiedResultItem, format: 'json' | 'txt' | 'md') => {
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+
+    switch (format) {
+      case 'json':
+        content = JSON.stringify({
+          title: result.title,
+          description: result.description,
+          type: result.type,
+          businessImpact: result.businessImpact,
+          actionabilityScore: result.actionabilityScore,
+          keyInsights: result.keyInsights,
+          nextActions: result.nextActions,
+          structuredContent: result.structuredContent,
+          sourceTaskId: result.sourceTaskId,
+          agentName: result.agentName,
+          lastUpdated: result.lastUpdated
+        }, null, 2);
+        filename = `${result.title.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+        mimeType = 'application/json';
+        break;
+      
+      case 'md':
+        content = `# ${result.title}\n\n`;
+        content += `**Type:** ${result.type}\n`;
+        content += `**Business Impact:** ${result.businessImpact}\n`;
+        content += `**Actionability:** ${result.actionabilityScore}%\n\n`;
+        content += `## Description\n${result.description}\n\n`;
+        
+        if (result.keyInsights && result.keyInsights.length > 0) {
+          content += `## Key Insights\n`;
+          result.keyInsights.forEach(insight => content += `- ${insight}\n`);
+          content += '\n';
+        }
+        
+        if (result.nextActions && result.nextActions.length > 0) {
+          content += `## Next Actions\n`;
+          result.nextActions.forEach(action => content += `- ${action}\n`);
+          content += '\n';
+        }
+        
+        filename = `${result.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
+        mimeType = 'text/markdown';
+        break;
+      
+      case 'txt':
+        content = `${result.title}\n${'='.repeat(result.title.length)}\n\n`;
+        content += `Type: ${result.type}\n`;
+        content += `Business Impact: ${result.businessImpact}\n`;
+        content += `Actionability: ${result.actionabilityScore}%\n\n`;
+        content += `Description:\n${result.description}\n\n`;
+        
+        if (result.keyInsights && result.keyInsights.length > 0) {
+          content += `Key Insights:\n`;
+          result.keyInsights.forEach(insight => content += `• ${insight}\n`);
+          content += '\n';
+        }
+        
+        filename = `${result.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+        mimeType = 'text/plain';
+        break;
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportBulkResults = (results: UnifiedResultItem[], format: 'json') => {
+    const content = JSON.stringify({
+      exportDate: new Date().toISOString(),
+      projectId: projectId,
+      totalResults: results.length,
+      results: results.map(result => ({
+        title: result.title,
+        description: result.description,
+        type: result.type,
+        businessImpact: result.businessImpact,
+        actionabilityScore: result.actionabilityScore,
+        keyInsights: result.keyInsights,
+        nextActions: result.nextActions,
+        structuredContent: result.structuredContent,
+        sourceTaskId: result.sourceTaskId,
+        agentName: result.agentName,
+        lastUpdated: result.lastUpdated
+      }))
+    }, null, 2);
+    
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `project_${projectId}_results_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Selection handlers
+  const toggleItemSelection = (itemId: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+    setShowBulkActions(newSelected.size > 0);
+  };
+
+  const selectAllVisible = () => {
+    const visibleIds = new Set(filteredResults.map(r => r.id));
+    setSelectedItems(visibleIds);
+    setShowBulkActions(visibleIds.size > 0);
+  };
+
+  const clearSelection = () => {
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+  };
+
+  // Render structured content in a user-friendly way
+  const renderStructuredContent = (content: any) => {
+    if (!content) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Executive Summary */}
+        {content.executive_summary && (
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="font-semibold text-blue-800 mb-2">📋 Executive Summary</h4>
+            <p className="text-blue-700">{content.executive_summary}</p>
+          </div>
+        )}
+
+        {/* Competitor Analysis */}
+        {content.competitor_analysis && Array.isArray(content.competitor_analysis) && (
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">🏆 Competitor Analysis</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {content.competitor_analysis.map((competitor: any, index: number) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <h5 className="font-semibold text-lg">{competitor.name}</h5>
+                    <span className="ml-2 text-sm text-gray-500">{competitor.instagram_handle}</span>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Followers:</strong> {competitor.followers}</p>
+                    <p><strong>Engagement:</strong> {competitor.engagement_rate}</p>
+                    <p><strong>Focus:</strong> {competitor.content_focus}</p>
+                    {competitor.notable_achievements && (
+                      <p><strong>Achievements:</strong> {competitor.notable_achievements}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Audience Profile */}
+        {content.audience_profile && (
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">👥 Audience Profile</h4>
+            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+              {content.audience_profile.demographics && (
+                <div>
+                  <h5 className="font-medium text-gray-700">Demographics</h5>
+                  <ul className="text-sm text-gray-600 mt-1">
+                    {content.audience_profile.demographics.gender_distribution && (
+                      <li>• Gender: {content.audience_profile.demographics.gender_distribution}</li>
+                    )}
+                    {content.audience_profile.demographics.age_range && (
+                      <li>• Age: {content.audience_profile.demographics.age_range}</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              
+              {content.audience_profile.interests && (
+                <div>
+                  <h5 className="font-medium text-gray-700">Interests</h5>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {content.audience_profile.interests.map((interest: string, index: number) => (
+                      <span key={index} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Content Calendar/Posts */}
+        {content.posts && Array.isArray(content.posts) && (
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">📅 Content Calendar</h4>
+            <div className="space-y-3">
+              {content.posts.slice(0, 5).map((post: any, index: number) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <h5 className="font-medium">{post.title || post.content_theme || `Post ${index + 1}`}</h5>
+                    <span className="text-xs text-gray-500">{post.date || post.posting_date}</span>
+                  </div>
+                  {post.caption && (
+                    <p className="text-sm text-gray-600 mb-2">{post.caption.substring(0, 100)}...</p>
+                  )}
+                  {post.hashtags && (
+                    <div className="text-xs text-blue-600">
+                      {post.hashtags.slice(0, 5).join(' ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {content.posts.length > 5 && (
+                <p className="text-sm text-gray-500 text-center">
+                  ...and {content.posts.length - 5} more posts
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Generic structured data rendering for other content types */}
+        {Object.keys(content).filter(key => 
+          !['executive_summary', 'competitor_analysis', 'audience_profile', 'posts', 'actionable_insights', 'key_insights'].includes(key)
+        ).map(key => {
+          const value = content[key];
+          if (typeof value === 'object' && value !== null) {
+            return (
+              <div key={key}>
+                <h4 className="font-semibold text-gray-800 mb-3 capitalize">
+                  {key.replace(/_/g, ' ')}
+                </h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  };
 
   const getFilteredResults = () => {
-    let filtered = results;
+    let filtered = allResults;
 
     // Apply category filter
     switch (activeFilter) {
       case 'readyToUse':
-        filtered = categories.readyToUse;
+        filtered = readyToUse;
         break;
       case 'inProgress':
-        filtered = categories.inProgress;
+        filtered = inProgress;
         break;
       case 'final':
-        filtered = categories.finalDeliverables;
+        filtered = finalDeliverables;
         break;
       default:
-        filtered = results;
+        filtered = allResults;
     }
 
     // Apply search filter
@@ -168,30 +536,42 @@ export default function ProjectResultsPage() {
               </p>
             </div>
             
-            <button
-              onClick={refreshResults}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Refresh Results
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={refreshResults}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Refresh Results
+              </button>
+              
+              <button
+                onClick={() => exportBulkResults(filteredResults, 'json')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export All
+              </button>
+            </div>
           </div>
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-green-600">{stats.readyToUse}</div>
+              <div className="text-2xl font-bold text-green-600">{readyToUse.length}</div>
               <div className="text-sm text-green-700">Ready to Use</div>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
+              <div className="text-2xl font-bold text-blue-600">{inProgress.length}</div>
               <div className="text-sm text-blue-700">In Progress</div>
             </div>
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-purple-600">{stats.finalDeliverables}</div>
+              <div className="text-2xl font-bold text-purple-600">{finalDeliverables.length}</div>
               <div className="text-sm text-purple-700">Final Deliverables</div>
             </div>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-600">{stats.total}</div>
+              <div className="text-2xl font-bold text-gray-600">{totalResults}</div>
               <div className="text-sm text-gray-700">Total Results</div>
             </div>
           </div>
@@ -246,8 +626,69 @@ export default function ProjectResultsPage() {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {showBulkActions && (
+        <div className="bg-indigo-50 border-y border-indigo-200">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-indigo-700 font-medium">
+                  {selectedItems.size} items selected
+                </span>
+                <button
+                  onClick={clearSelection}
+                  className="ml-4 text-indigo-600 hover:text-indigo-800 text-sm underline"
+                >
+                  Clear selection
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const selectedResults = filteredResults.filter(r => selectedItems.has(r.id));
+                    exportBulkResults(selectedResults, 'json');
+                  }}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export Selected
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selection Controls */}
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        {filteredResults.length > 0 && (
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={selectAllVisible}
+                className="text-sm text-gray-600 hover:text-gray-800 flex items-center"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Select All ({filteredResults.length})
+              </button>
+              
+              {selectedItems.size > 0 && (
+                <span className="text-sm text-indigo-600">
+                  {selectedItems.size} selected
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Results Grid */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-6 pb-6">
         {filteredResults.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">📄</div>
@@ -264,7 +705,10 @@ export default function ProjectResultsPage() {
               <UnifiedResultCard
                 key={result.id}
                 result={result}
-                onViewDetails={(result) => setSelectedResult(result)}
+                onViewDetails={handleViewDetails}
+                isSelected={selectedItems.has(result.id)}
+                onToggleSelection={toggleItemSelection}
+                onExport={exportSingleResult}
               />
             ))}
           </div>
@@ -294,7 +738,11 @@ export default function ProjectResultsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setSelectedResult(null)}
+                  onClick={() => {
+                    setSelectedResult(null);
+                    setEnhancedContent(null);
+                    setLoadingEnhanced(false);
+                  }}
                   className="ml-4 text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,45 +753,160 @@ export default function ProjectResultsPage() {
             </div>
             
             <div className="p-6">
-              <div className="prose max-w-none">
-                <h3 className="text-lg font-semibold mb-4">Description</h3>
-                <p className="text-gray-700 mb-6">{selectedResult.description}</p>
-                
-                {selectedResult.keyInsights && selectedResult.keyInsights.length > 0 && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-4">Key Insights</h3>
-                    <ul className="list-disc list-inside space-y-2 mb-6">
-                      {selectedResult.keyInsights.map((insight, index) => (
-                        <li key={index} className="text-gray-700">{insight}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                
-                {selectedResult.nextActions && selectedResult.nextActions.length > 0 && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-4">Recommended Actions</h3>
-                    <ul className="list-disc list-inside space-y-2 mb-6">
-                      {selectedResult.nextActions.map((action, index) => (
-                        <li key={index} className="text-gray-700">{action}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
+              {loadingEnhanced ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading detailed content...</span>
+                </div>
+              ) : (
+                <div className="prose max-w-none">
+                  {enhancedContent ? (
+                    <div>
+                      {/* Enhanced Rich Content */}
+                      {enhancedContent.visual_summary && (
+                        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                          <h3 className="text-lg font-semibold mb-2 text-blue-800">📋 Summary</h3>
+                          <p className="text-blue-700">{enhancedContent.visual_summary}</p>
+                        </div>
+                      )}
+                      
+                      {/* Main Content */}
+                      {enhancedContent.content && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-4">📄 Content</h3>
+                          <div 
+                            className="prose prose-sm max-w-none text-gray-700"
+                            dangerouslySetInnerHTML={{ 
+                              __html: enhancedContent.content.replace(/\n/g, '<br>') 
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Rich Structured Content Rendering */}
+                      {enhancedContent.structured_content && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-4">📊 Analysis Results</h3>
+                          {renderStructuredContent(enhancedContent.structured_content)}
+                        </div>
+                      )}
+                      
+                      {/* Raw Structured Data (Collapsible) */}
+                      {enhancedContent.structured_content && (
+                        <div className="mb-6">
+                          <button
+                            onClick={() => setShowRawData(!showRawData)}
+                            className="flex items-center text-sm text-gray-600 hover:text-gray-800 mb-2"
+                          >
+                            <svg className={`w-4 h-4 mr-1 transform transition-transform ${showRawData ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            Raw JSON Data
+                          </button>
+                          {showRawData && (
+                            <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto max-h-60 overflow-y-auto">
+                              {JSON.stringify(enhancedContent.structured_content, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Key Insights from enhanced content */}
+                      {enhancedContent.key_insights && enhancedContent.key_insights.length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-4">💡 Key Insights</h3>
+                          <ul className="list-disc list-inside space-y-2">
+                            {enhancedContent.key_insights.map((insight: string, index: number) => (
+                              <li key={index} className="text-gray-700">{insight}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Fallback to basic content */
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Description</h3>
+                      <p className="text-gray-700 mb-6">{selectedResult.description}</p>
+                      
+                      {selectedResult.keyInsights && selectedResult.keyInsights.length > 0 && (
+                        <>
+                          <h3 className="text-lg font-semibold mb-4">Key Insights</h3>
+                          <ul className="list-disc list-inside space-y-2 mb-6">
+                            {selectedResult.keyInsights.map((insight, index) => (
+                              <li key={index} className="text-gray-700">{insight}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      
+                      {selectedResult.nextActions && selectedResult.nextActions.length > 0 && (
+                        <>
+                          <h3 className="text-lg font-semibold mb-4">Recommended Actions</h3>
+                          <ul className="list-disc list-inside space-y-2 mb-6">
+                            {selectedResult.nextActions.map((action, index) => (
+                              <li key={index} className="text-gray-700">{action}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               
-              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-                <button
-                  onClick={() => setSelectedResult(null)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                {selectedResult.readyToUse && (
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Use This Result
+              <div className="flex justify-between items-center mt-6 pt-6 border-t border-gray-200">
+                <div className="flex gap-2">
+                  {enhancedContent && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const content = JSON.stringify(enhancedContent, null, 2);
+                          const blob = new Blob([content], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${selectedResult.title.replace(/[^a-zA-Z0-9]/g, '_')}_enhanced.json`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                      >
+                        📄 Export Enhanced
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          const contentStr = enhancedContent.content || enhancedContent.visual_summary || selectedResult.description;
+                          navigator.clipboard.writeText(contentStr);
+                        }}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                      >
+                        📋 Copy
+                      </button>
+                    </>
+                  )}
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedResult(null);
+                      setEnhancedContent(null);
+                      setLoadingEnhanced(false);
+                    }}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Close
                   </button>
-                )}
+                  {selectedResult.readyToUse && (
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                      Use This Result
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -13,11 +13,17 @@ interface UnifiedResultCardProps {
   onShare?: (result: UnifiedResultItem) => void;
   showActions?: boolean;
   compact?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (id: string) => void;
+  onExport?: (result: UnifiedResultItem, format: 'json' | 'txt' | 'md') => void;
 }
 
 export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
   result,
   onViewDetails,
+  isSelected = false,
+  onToggleSelection,
+  onExport,
   onDownload,
   onUse,
   onShare,
@@ -25,6 +31,7 @@ export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
   compact = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Icon mapping based on type and category
   const getResultIcon = () => {
@@ -139,6 +146,16 @@ export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-3">
+            {/* Selection checkbox */}
+            {onToggleSelection && (
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => onToggleSelection(result.id)}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+            )}
+            
             <div className="text-2xl">{getResultIcon()}</div>
             <div className="min-w-0 flex-1">
               <h3 className={`font-semibold text-gray-900 ${compact ? 'text-base' : 'text-lg'}`}>
@@ -265,6 +282,55 @@ export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
                 </svg>
                 Usa Ora
               </button>
+            )}
+
+            {/* Export menu */}
+            {onExport && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition flex items-center"
+                  title="Esporta contenuto"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+                
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10 border">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          onExport(result, 'json');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export JSON
+                      </button>
+                      <button
+                        onClick={() => {
+                          onExport(result, 'md');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export Markdown
+                      </button>
+                      <button
+                        onClick={() => {
+                          onExport(result, 'txt');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export Text
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {result.actions.canShare && onShare && (

@@ -21,6 +21,7 @@ export interface UnifiedResultItem {
   // Content
   visualSummary?: string;
   keyInsights: string[];
+  nextActions?: string[];
   metrics: Record<string, any>;
   structuredContent?: any;
   
@@ -110,6 +111,7 @@ export const useProjectResults = (workspaceId: string) => {
       
       visualSummary: undefined,
       keyInsights: [],
+      nextActions: [],
       metrics: {},
       structuredContent: asset.asset_data,
       
@@ -134,6 +136,22 @@ export const useProjectResults = (workspaceId: string) => {
   }, []);
 
   const normalizeDeliverableToResult = useCallback((deliverable: any): UnifiedResultItem => {
+    // Use structured_content directly (it's already an object, not a JSON string)
+    const detailedResults = deliverable.structured_content;
+    
+    if (detailedResults) {
+      console.log('✅ Found structured content for:', deliverable.task_name);
+    }
+    
+    // Extract enhanced data from detailed results
+    const extractedInsights = detailedResults?.actionable_insights || 
+                             detailedResults?.key_insights || 
+                             deliverable.key_insights || [];
+    
+    const extractedNextActions = detailedResults?.next_steps || 
+                                deliverable.next_actions || 
+                                deliverable.next_steps || [];
+    
     return {
       id: `deliverable_${deliverable.task_id}`,
       title: deliverable.task_name,
@@ -147,9 +165,10 @@ export const useProjectResults = (workspaceId: string) => {
       businessImpact: deliverable.type === 'final_deliverable' ? 'critical' : 'high',
       
       visualSummary: deliverable.visual_summary,
-      keyInsights: deliverable.key_insights || [],
+      keyInsights: extractedInsights,
+      nextActions: extractedNextActions,
       metrics: deliverable.metrics || {},
-      structuredContent: deliverable.structured_content,
+      structuredContent: detailedResults || deliverable.structured_content,
       
       usageInstructions: `Risultato di ${deliverable.agent_role}`,
       downloadable: true,
@@ -208,7 +227,7 @@ export const useProjectResults = (workspaceId: string) => {
       // Fetch both deliverables and assets in parallel
       const [deliverablesResponse, assetsResponse] = await Promise.allSettled([
         api.monitoring.getProjectDeliverables(workspaceId),
-        api.assetManagement.getAssetTracking(workspaceId)
+        api.monitoring.getAssetTracking(workspaceId)
       ]);
 
       const allResults: UnifiedResultItem[] = [];
@@ -216,6 +235,7 @@ export const useProjectResults = (workspaceId: string) => {
       // Process deliverables
       if (deliverablesResponse.status === 'fulfilled') {
         const deliverables = deliverablesResponse.value;
+        
         deliverables.key_outputs.forEach(output => {
           const normalizedResult = normalizeDeliverableToResult(output);
           allResults.push(normalizedResult);
