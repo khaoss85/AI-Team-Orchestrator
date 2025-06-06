@@ -6,6 +6,7 @@ import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
 import os
 from collections import Counter
+from deliverable_system.markup_processor import markup_processor
 from models import (
     ProjectDeliverables,
     ProjectOutput,
@@ -402,22 +403,89 @@ async def get_project_deliverables(workspace_id: UUID):
         agents = await db_list_agents(str(workspace_id))
         agent_map = {a["id"]: a for a in agents}
         
-        # Extract outputs from completed tasks
+        # Extract outputs from completed tasks - FILTER FOR USER-FACING DELIVERABLES
         key_outputs = []
         for task in completed_tasks:
             result = task.get("result", {}) or {}
             context_data = task.get("context_data", {}) or {}
             output_text = result.get("summary", "")
+            task_name = task.get("name", "")
             
+            # Skip system/coordination tasks that are not user-facing deliverables
+            if _is_system_task(task_name, context_data):
+                continue
+                
             if output_text and len(output_text.strip()) > 10:  # Skip trivial outputs
                 agent_info = agent_map.get(task.get("agent_id"), {})
                 
                 # Classify output type
                 output_type = _classify_output_type(task.get("name", ""), output_text)
                 
-                key_outputs.append(ProjectOutput(
+                # Create user-friendly task name
+                user_friendly_name = _get_user_friendly_task_name(task_name, context_data)
+                
+                # Extract structured content from detailed_results_json
+                structured_content = None
+                visual_summary = None
+                key_insights = []
+                metrics = {}
+                
+                if result.get("detailed_results_json"):
+                    try:
+                        detailed_data = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
+                        
+                        # Process with markup processor
+                        processed = markup_processor.process_deliverable_content(detailed_data)
+                        
+                        if processed.get("has_structured_content") or processed.get("has_markup"):
+                            # Create visual summary from processed content
+                            visual_parts = []
+                            
+                            # Add tables summary
+                            if processed.get("tables"):
+                                for table in processed["tables"][:2]:  # First 2 tables
+                                    visual_parts.append(f"📊 {table['display_name']}: {table['row_count']} rows")
+                            
+                            # Add cards summary  
+                            if processed.get("cards"):
+                                for card in processed["cards"][:2]:  # First 2 cards
+                                    if card['fields'].get('title'):
+                                        visual_parts.append(f"{card['icon']} {card['fields']['title']}")
+                            
+                            # Add metrics summary
+                            if processed.get("metrics"):
+                                for metric in processed["metrics"][:2]:  # First 2 metrics
+                                    visual_parts.append(f"📈 {metric['display_name']}: {metric.get('value', 'N/A')} {metric.get('unit', '')}")
+                            
+                            if visual_parts:
+                                visual_summary = "\n".join(visual_parts)
+                            
+                            # Store processed content for frontend
+                            structured_content = processed
+                        
+                        # Extract key insights from detailed data
+                        if isinstance(detailed_data, dict):
+                            # Look for various insight fields
+                            insights_fields = ["key_insights", "key_findings", "insights", "recommendations", "key_points"]
+                            for field in insights_fields:
+                                if field in detailed_data and isinstance(detailed_data[field], list):
+                                    key_insights.extend(detailed_data[field][:3])  # Limit to 3 per field
+                                    break
+                            
+                            # Extract metrics
+                            metrics_fields = ["metrics", "performance_metrics", "project_metrics", "kpis"]
+                            for field in metrics_fields:
+                                if field in detailed_data and isinstance(detailed_data[field], dict):
+                                    metrics = detailed_data[field]
+                                    break
+                    
+                    except Exception as e:
+                        logger.debug(f"Could not parse detailed results: {e}")
+                
+                # Create the output with enhanced data
+                output_data = ProjectOutput(
                     task_id=task["id"],
-                    task_name=task.get("name", "Unnamed Task"),
+                    task_name=user_friendly_name,
                     output=output_text[:1000] + "..." if len(output_text) > 1000 else output_text,
                     agent_name=agent_info.get("name", "Unknown Agent"),
                     agent_role=agent_info.get("role", "Unknown Role"),
@@ -427,19 +495,51 @@ async def get_project_deliverables(workspace_id: UUID):
                     cost_estimated=result.get("cost_estimated") or context_data.get("cost_estimated"),
                     tokens_used=result.get("tokens_used") or context_data.get("tokens_used"),
                     model_used=result.get("model_used") or context_data.get("model_used"),
-                    rationale=result.get("rationale") or context_data.get("rationale") or result.get("phase_rationale") or context_data.get("phase_rationale")
-                ))
+                    rationale=result.get("rationale") or context_data.get("rationale") or result.get("phase_rationale") or context_data.get("phase_rationale"),
+                    # NEW: Enhanced fields for rich content
+                    visual_summary=visual_summary,
+                    key_insights=key_insights[:5],  # Limit total to 5
+                    metrics=metrics,
+                    result=structured_content  # Pass processed content to frontend
+                )
+                
+                key_outputs.append(output_data)
         
-        # ENHANCED: Controlla se esiste un deliverable finale aggregato (include anche failed tasks)
+        # Sort outputs by importance (most important deliverables first)
+        key_outputs.sort(key=lambda x: _get_deliverable_importance_score(x.task_name, x.type), reverse=True)
+        
+        # ENHANCED: Find best final deliverable (prioritize user-facing over AI-generated)
         final_deliverable_task = None
+        best_deliverable_score = 0
+        
         for task in tasks:  # Cerca in TUTTI i task, non solo completed
             context_data = task.get("context_data", {}) or {}
             if (context_data.get("is_final_deliverable") or 
                 context_data.get("deliverable_aggregation") or
                 context_data.get("triggers_project_completion")):
-                final_deliverable_task = task
-                logger.info(f"🎯 FOUND final deliverable task {task.get('id')} with status: {task.get('status')}")
-                break
+                
+                # Score deliverables - prefer user-facing over system-generated
+                score = 1
+                task_name = task.get("name", "")
+                
+                # Penalty for AI-generated deliverables
+                if "🤖 AI INTELLIGENT DELIVERABLE" in task_name:
+                    score -= 0.5
+                
+                # Boost for completed tasks
+                if task.get("status") == "completed":
+                    score += 1
+                
+                # Boost for non-system tasks
+                if not _is_system_task(task_name, context_data):
+                    score += 1
+                
+                logger.info(f"🎯 EVALUATING deliverable task {task.get('id')} with score: {score}")
+                
+                if score > best_deliverable_score:
+                    best_deliverable_score = score
+                    final_deliverable_task = task
+                    logger.info(f"🎯 NEW BEST final deliverable task {task.get('id')} with status: {task.get('status')}")
         
         # ENHANCED: Se esiste un deliverable finale, processalo con logica robusta
         if final_deliverable_task:
@@ -606,6 +706,100 @@ async def get_project_deliverables(workspace_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get project deliverables: {str(e)}"
+        )
+
+@router.get("/{workspace_id}/task/{task_id}/enhanced-result", response_model=Dict[str, Any])
+async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID):
+    """Get enhanced task result with processed structured content"""
+    try:
+        # Get task details
+        task = await get_task(str(task_id))
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        if task.get("workspace_id") != str(workspace_id):
+            raise HTTPException(status_code=403, detail="Task does not belong to workspace")
+        
+        result = task.get("result", {})
+        if not result:
+            return {
+                "task_id": str(task_id),
+                "task_name": task.get("name", ""),
+                "status": task.get("status", ""),
+                "enhanced_content": None,
+                "has_structured_content": False
+            }
+        
+        # Extract and process detailed results
+        enhanced_content = None
+        structured_elements = {
+            "tables": [],
+            "cards": [],
+            "timelines": [],
+            "metrics": [],
+            "raw_data": {}
+        }
+        
+        if result.get("detailed_results_json"):
+            try:
+                detailed_data = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
+                
+                # Process with markup processor
+                processed = markup_processor.process_deliverable_content(detailed_data)
+                
+                if processed.get("has_structured_content") or processed.get("has_markup"):
+                    # Extract structured elements
+                    if processed.get("combined_elements"):
+                        structured_elements = processed["combined_elements"]
+                    else:
+                        # Fallback to individual elements
+                        structured_elements["tables"] = processed.get("tables", [])
+                        structured_elements["cards"] = processed.get("cards", [])
+                        structured_elements["timelines"] = processed.get("timelines", [])
+                        structured_elements["metrics"] = processed.get("metrics", [])
+                    
+                    enhanced_content = processed
+                
+                # Store raw data for reference
+                structured_elements["raw_data"] = detailed_data
+                
+            except Exception as e:
+                logger.error(f"Error processing task result: {e}")
+        
+        # Get agent info
+        agent = None
+        if task.get("agent_id"):
+            agent = await get_agent(task["agent_id"])
+        
+        return {
+            "task_id": str(task_id),
+            "task_name": task.get("name", ""),
+            "status": task.get("status", ""),
+            "agent": {
+                "name": agent.get("name", "Unknown") if agent else "Unknown",
+                "role": agent.get("role", "Unknown") if agent else "Unknown"
+            },
+            "summary": result.get("summary", ""),
+            "enhanced_content": enhanced_content,
+            "structured_elements": structured_elements,
+            "has_structured_content": bool(enhanced_content and (enhanced_content.get("has_structured_content") or enhanced_content.get("has_markup"))),
+            "execution_metadata": {
+                "execution_time_seconds": result.get("execution_time_seconds"),
+                "cost_estimated": result.get("cost_estimated"),
+                "tokens_used": result.get("tokens_used"),
+                "model_used": result.get("model_used")
+            },
+            "created_at": task.get("created_at"),
+            "updated_at": task.get("updated_at")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting enhanced task result: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get enhanced task result: {str(e)}"
         )
 
 @router.post("/{workspace_id}/deliverables/feedback", status_code=status.HTTP_200_OK)
@@ -804,6 +998,133 @@ async def get_output_detail(workspace_id: UUID, task_id: UUID):
         )
 
 # Helper functions
+def _is_system_task(task_name: str, context_data: Dict) -> bool:
+    """Filter out system/coordination tasks that shouldn't be shown to users"""
+    
+    # Skip system task patterns by name
+    system_name_patterns = [
+        "📋 IMPLEMENTATION:",
+        "🚨 ENHANCE:",
+        "🚨 URGENT Asset Quality Enhancement:",
+        "🤖 AI INTELLIGENT DELIVERABLE:",
+        "📋 FINALIZATION:",
+        "📋 ANALYSIS:",
+        "Project Setup & Strategic Planning",
+        "PHASE PLANNING",
+        "Asset Quality Enhancement",
+        "Enhancement Coordination"
+    ]
+    
+    for pattern in system_name_patterns:
+        if pattern in task_name:
+            return True
+    
+    # Skip system task types by context
+    if isinstance(context_data, dict):
+        creation_type = context_data.get("creation_type", "")
+        system_creation_types = [
+            "phase_transition",
+            "ai_quality_enhancement_coordination", 
+            "ai_asset_enhancement_specialist",
+            "intelligent_ai_deliverable",
+            "enhancement_coordination"
+        ]
+        
+        if creation_type in system_creation_types:
+            return True
+            
+        # Skip PM coordination/planning tasks
+        if (context_data.get("planning_task_marker") or 
+            context_data.get("pm_coordination_task") or
+            context_data.get("is_implementation_planning") or
+            context_data.get("is_final_deliverable") and "AI INTELLIGENT" in task_name):
+            return True
+    
+    return False
+
+def _get_user_friendly_task_name(task_name: str, context_data: Dict) -> str:
+    """Convert technical task names to user-friendly names"""
+    
+    # Mapping for common patterns
+    friendly_name_mappings = {
+        "Design Campaign Automation Workflow": "🚀 Campaign Automation Strategy",
+        "Create Editorial Calendar Template": "📅 Content Calendar Template", 
+        "Develop Content Strategy Framework": "📝 Content Strategy Framework",
+        "Create Editorial Calendar for Instagram Posts and Reels": "📱 3-Month Instagram Content Plan",
+        "Develop Initial Instagram Content Strategy Framework": "🎯 Instagram Growth Strategy",
+        "Conduct Competitor and Audience Analysis for Instagram Growth": "🔍 Market & Audience Analysis",
+        "Enhance 3-month Editorial Calendar Asset": "📅 Enhanced Content Calendar"
+    }
+    
+    # Check for direct mapping
+    if task_name in friendly_name_mappings:
+        return friendly_name_mappings[task_name]
+    
+    # Remove technical prefixes but keep meaningful parts
+    clean_name = task_name
+    prefixes_to_remove = ["📋 IMPLEMENTATION:", "📋 ANALYSIS:", "📋 FINALIZATION:"]
+    for prefix in prefixes_to_remove:
+        if clean_name.startswith(prefix):
+            clean_name = clean_name.replace(prefix, "").strip()
+    
+    # Add appropriate emoji based on content type
+    if "calendar" in clean_name.lower():
+        return f"📅 {clean_name}"
+    elif "strategy" in clean_name.lower():
+        return f"🎯 {clean_name}"
+    elif "analysis" in clean_name.lower():
+        return f"🔍 {clean_name}"
+    elif "content" in clean_name.lower():
+        return f"📝 {clean_name}"
+    elif "campaign" in clean_name.lower():
+        return f"🚀 {clean_name}"
+    else:
+        return clean_name
+
+def _get_deliverable_importance_score(task_name: str, output_type: str) -> int:
+    """Score deliverables by importance for user-facing ordering"""
+    score = 10  # Base score
+    
+    # High priority deliverables
+    high_priority_patterns = [
+        "content plan", "editorial calendar", "instagram", "strategy", "framework"
+    ]
+    
+    medium_priority_patterns = [
+        "analysis", "research", "template", "workflow"
+    ]
+    
+    task_lower = task_name.lower()
+    
+    # Boost for high priority content
+    for pattern in high_priority_patterns:
+        if pattern in task_lower:
+            score += 20
+            break
+    
+    # Medium boost for medium priority
+    for pattern in medium_priority_patterns:
+        if pattern in task_lower:
+            score += 10
+            break
+    
+    # Boost by output type
+    type_scores = {
+        "final_deliverable": 50,
+        "document": 15,
+        "recommendation": 12,
+        "analysis": 8,
+        "general": 5
+    }
+    
+    score += type_scores.get(output_type, 0)
+    
+    # Extra boost for calendar/content related deliverables
+    if any(keyword in task_lower for keyword in ["calendar", "content", "posts", "reels"]):
+        score += 25
+    
+    return score
+
 def _classify_output_type(task_name: str, output: str) -> str:
     """Classify the type of output based on task name and content"""
     task_lower = task_name.lower()

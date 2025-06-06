@@ -505,6 +505,7 @@ export interface ProjectOutput {
   usage_guide?: Record<string, string>;
   next_steps?: string[];
   result?: Record<string, any>;
+  visual_summary?: string;
   execution_time_seconds?: number;
   cost_estimated?: number;
   tokens_used?: { [key: string]: number };
@@ -523,6 +524,7 @@ export interface ProjectOutputExtended extends ProjectOutput {
   tokens_used?: { [key: string]: number };
   model_used?: string;
   rationale?: string;
+  visual_summary?: string;
   content?: {
     summary: string;
     keyPoints: string[];

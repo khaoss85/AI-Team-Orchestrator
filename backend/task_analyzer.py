@@ -427,10 +427,19 @@ class EnhancedTaskExecutor:
                 # PM tasks always create sub-tasks
                 pm_created_tasks = await self.handle_project_manager_completion(completed_task, task_result, workspace_id)
 
-                # After PM task completion, check for final deliverable
+                # After PM task completion, check for final deliverable with circuit breaker protection
                 try:
-                    from deliverable_aggregator import check_and_create_final_deliverable
-                    final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    async def _safe_deliverable_creation():
+                        from deliverable_aggregator import check_and_create_final_deliverable
+                        return await check_and_create_final_deliverable(workspace_id)
+                    
+                    # Use circuit breaker if available
+                    try:
+                        from executor import task_executor
+                        final_deliverable_id = await task_executor._execute_with_circuit_breaker(_safe_deliverable_creation)
+                    except ImportError:
+                        # Fallback without circuit breaker
+                        final_deliverable_id = await _safe_deliverable_creation()
                     if final_deliverable_id:
                         logger.info(f"✅ PM task completion triggered final deliverable: {final_deliverable_id}")
                         await self._log_completion_analysis(
@@ -529,8 +538,17 @@ class EnhancedTaskExecutor:
             # After every specialist task, check for final deliverable (but not for enhancement tasks)
             if not self._is_enhancement_task(completed_task):
                 try:
-                    from deliverable_aggregator import check_and_create_final_deliverable
-                    final_deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                    async def _safe_deliverable_creation():
+                        from deliverable_aggregator import check_and_create_final_deliverable
+                        return await check_and_create_final_deliverable(workspace_id)
+                    
+                    # Use circuit breaker if available
+                    try:
+                        from executor import task_executor
+                        final_deliverable_id = await task_executor._execute_with_circuit_breaker(_safe_deliverable_creation)
+                    except ImportError:
+                        # Fallback without circuit breaker
+                        final_deliverable_id = await _safe_deliverable_creation()
                     if final_deliverable_id:
                         logger.info(f"🎯 Specialist task completion triggered final deliverable: {final_deliverable_id}")
                         await self._log_completion_analysis(

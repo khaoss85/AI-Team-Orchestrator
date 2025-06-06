@@ -528,3 +528,31 @@ class DeliverableRequirementsAnalyzer:
             deliverable_structure={"executive_summary": "required"},
             generated_at=datetime.now()
         )
+
+# Enhanced domain support registry
+DOMAIN_REGISTRY = {
+    "marketing": ["instagram", "social", "content", "marketing", "campaign", "editorial", "piano editoriale"],
+    "sales": ["lead", "contact", "sales", "prospect", "business", "crm"],
+    "sports": ["fitness", "training", "sport", "athletic", "performance", "bodybuilding", "workout"],
+    "finance": ["finance", "budget", "investment", "financial", "cost", "accounting"],
+    "research": ["analysis", "research", "study", "data", "report", "insights"],
+    "legal": ["legal", "contract", "compliance", "regulation", "policy", "law"],
+    "hr": ["hr", "human resources", "employee", "hiring", "recruitment", "onboarding"],
+    "education": ["education", "course", "curriculum", "learning", "training material", "e-learning"],
+    "realestate": ["real estate", "property", "listing", "tenant", "lease", "inspection"],
+    "healthcare": ["healthcare", "medical", "patient", "health", "clinical", "medical device"]
+}
+
+def get_supported_domains() -> Dict[str, List[str]]:
+    """Ritorna i domini supportati con le loro keywords"""
+    return DOMAIN_REGISTRY
+
+def detect_domain_from_goal(goal: str) -> str:
+    """Detecta automaticamente il dominio dal goal usando il registry"""
+    goal_lower = goal.lower()
+    
+    for domain, keywords in DOMAIN_REGISTRY.items():
+        if any(keyword in goal_lower for keyword in keywords):
+            return domain
+    
+    return "business"  # fallback

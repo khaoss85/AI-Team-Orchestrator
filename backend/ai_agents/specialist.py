@@ -695,78 +695,91 @@ class SpecialistAgent(Generic[T]):
         # Asset-oriented enhancement (codice esistente)
         asset_enhancement = """
 
-    🎯 **ENHANCED ASSET PRODUCTION MODE**
+    🎯 **ENHANCED ASSET PRODUCTION MODE WITH STRUCTURED MARKUP**
 
     When your task is marked as "asset production" (check context_data.asset_production or task name contains "PRODUCE ASSET:"), 
-    you must focus on creating IMMEDIATELY ACTIONABLE business assets instead of strategic reports.
+    you must focus on creating IMMEDIATELY ACTIONABLE business assets using STRUCTURED MARKUP for optimal rendering.
 
     **ASSET PRODUCTION REQUIREMENTS**:
-    1. **Structured Output**: Your detailed_results_json MUST contain structured, ready-to-use data
+    1. **Structured Markup**: Use the markup format below for tables, cards, timelines, and metrics
     2. **No Placeholders**: Replace ALL placeholder text with real, actionable content
     3. **Business Ready**: Output should be copy-paste ready for business use
     4. **Validation Ready**: Follow exact schema if provided in task description
 
-    **EXAMPLES OF CONCRETE ASSET-ORIENTED OUTPUT**:
+    **STRUCTURED MARKUP FORMATS FOR BETTER READABILITY**:
 
-    For Instagram Editorial Plan (AVOID Generic Strategy - CREATE ACTUAL POSTS):
+    For Tables (use for calendars, databases, comparisons):
+    ```
+    ## TABLE: table_name
+    | Column1 | Column2 | Column3 | Column4 |
+    |---------|---------|---------|---------|
+    | Data1   | Data2   | Data3   | Data4   |
+    | Data5   | Data6   | Data7   | Data8   |
+    ## END_TABLE
+    ```
+
+    For Cards (use for contacts, templates, key items):
+    ```
+    ## CARD: card_type
+    TITLE: Main Title
+    SUBTITLE: Secondary Info
+    CONTENT: Detailed content here
+    ACTION: Call to action
+    METADATA: Additional info
+    ## END_CARD
+    ```
+
+    For Timelines (use for schedules, phases):
+    ```
+    ## TIMELINE: timeline_name
+    - DATE: 2024-01-15 | EVENT: Event description | STATUS: completed
+    - DATE: 2024-01-20 | EVENT: Next event | STATUS: upcoming
+    ## END_TIMELINE
+    ```
+
+    For Metrics (use for KPIs, scores):
+    ```
+    ## METRIC: metric_name
+    VALUE: 85
+    UNIT: percentage
+    TREND: up
+    TARGET: 90
+    ## END_METRIC
+    ```
+
+    **EXAMPLES OF CONCRETE ASSET-ORIENTED OUTPUT WITH MARKUP**:
+
+    For Instagram Editorial Plan (Use TABLE for calendar view):
     ```json
     {
-      "editorial_calendar": [
+      "structured_content": "## TABLE: instagram_editorial_calendar\n| Date | Type | Caption Preview | Hashtags | Engagement |\n|------|------|----------------|----------|------------|\n| 20/12/2024 | Carousel | 💪 5 ESERCIZI PER MASSA MUSCOLARE... | #bodybuilding #palestra #massa | Save post + Follow |\n| 21/12/2024 | Reel | MORNING WORKOUT ROUTINE ☀️ 6:00... | #morningworkout #routine | Comment below |\n| 22/12/2024 | Photo | MEAL PREP SUNDAY 🥗 Prepara... | #mealprep #nutrition | Tag a friend |\n## END_TABLE",
+      
+      "content_details": [
         {
-          "date": "2024-12-20",
-          "post_type": "carousel",
-          "caption": "💪 5 ESERCIZI PER MASSA MUSCOLARE\n\n1. SQUAT - 4 serie x 8-10 reps\n2. PANCA PIANA - 4 serie x 6-8 reps\n3. STACCHI - 3 serie x 5-6 reps\n4. MILITARY PRESS - 3 serie x 8-10 reps\n5. TRAZIONI - 3 serie x max reps\n\nSalva questo post! 🔥\n\n#bodybuilding #palestra #massa #workout",
-          "hashtags": ["#bodybuilding", "#palestra", "#massa", "#workout", "#fitness"],
-          "slide_content": [
-            "Slide 1: SQUAT - Tecnica corretta\nPiedi larghezza spalle\nScendi fino a 90°\nSpingi sui talloni",
-            "Slide 2: PANCA PIANA - Grip e movimento\nImpugnatura media\nControllo in discesa\nEsplosione in salita"
-          ],
-          "call_to_action": "Seguimi per altri workout! 💪"
-        },
-        {
-          "date": "2024-12-21", 
-          "post_type": "reel",
-          "caption": "MORNING WORKOUT ROUTINE ☀️\n\n6:00 - Sveglia\n6:15 - Pre-workout\n6:30 - Allenamento (45 min)\n7:15 - Colazione proteica\n\nChi si allena al mattino? 👇\n\n#morningworkout #routine #disciplina",
-          "hashtags": ["#morningworkout", "#routine", "#disciplina", "#motivazione"],
-          "duration_seconds": 30,
-          "trending_audio": "Motivational Gym Music 2024",
-          "scenes": [
-            "0-5s: Sveglia al buio",
-            "5-15s: Preparazione pre-workout", 
-            "15-25s: Allenamento intenso",
-            "25-30s: Post-workout energy"
-          ]
+          "markup": "## CARD: instagram_post_1\nTITLE: 5 ESERCIZI PER MASSA MUSCOLARE\nSUBTITLE: Carousel - 5 slides\nCONTENT: 1. SQUAT - 4 serie x 8-10 reps\n2. PANCA PIANA - 4 serie x 6-8 reps\n3. STACCHI - 3 serie x 5-6 reps\n4. MILITARY PRESS - 3 serie x 8-10 reps\n5. TRAZIONI - 3 serie x max reps\nACTION: Salva questo post e seguimi! 🔥\nMETADATA: Best time to post: 18:00\n## END_CARD"
         }
       ],
-      "content_pillars": {
-        "education": 40,
-        "motivation": 30, 
-        "lifestyle": 20,
-        "transformation": 10
-      },
-      "posting_schedule": "Mon-Wed-Fri ore 18:00, Sat ore 10:00",
-      "total_posts_planned": 30
+      
+      "posting_metrics": "## METRIC: engagement_rate\nVALUE: 8.5\nUNIT: percentage\nTREND: up\nTARGET: 10\n## END_METRIC",
+      
+      "content_strategy": {
+        "pillars": "## TABLE: content_pillars\n| Pillar | Percentage | Example Topics |\n|--------|------------|----------------|\n| Education | 40% | Exercise tutorials, form tips |\n| Motivation | 30% | Success stories, quotes |\n| Lifestyle | 20% | Day in life, behind scenes |\n| Transformation | 10% | Before/after, progress |\n## END_TABLE"
+      }
     }
     ```
 
-    For Contact Database Task:
+    For Contact Database Task (Use TABLE for easy scanning):
     ```json
     {
-      "contacts": [
+      "contact_table": "## TABLE: qualified_contacts_database\n| Name | Company | Email | Phone | Score | Next Action |\n|------|---------|-------|-------|-------|-------------|\n| Mario Rossi | TechCorp Italia | mario.rossi@techcorp.it | +39 02 1234567 | 8/10 | Send intro email |\n| Laura Bianchi | Digital Solutions | l.bianchi@digitalsol.it | +39 06 9876543 | 9/10 | Schedule call |\n| Giuseppe Verdi | StartupHub | g.verdi@startuphub.it | +39 02 5555555 | 7/10 | Nurture campaign |\n## END_TABLE",
+      
+      "summary_metrics": "## METRIC: database_quality\nVALUE: 95\nUNIT: percentage\nTREND: stable\nTARGET: 90\n## END_METRIC\n\n## METRIC: total_qualified_leads\nVALUE: 25\nUNIT: contacts\nTREND: up\nTARGET: 30\n## END_METRIC",
+      
+      "top_prospects": [
         {
-          "name": "Mario Rossi",
-          "company": "TechCorp Italia", 
-          "email": "mario.rossi@techcorp.it",
-          "phone": "+39 02 1234567",
-          "title": "Marketing Director",
-          "qualification_score": 8,
-          "next_action": "send_introduction_email",
-          "notes": "Interested in B2B marketing automation"
+          "markup": "## CARD: hot_lead_1\nTITLE: Laura Bianchi - Digital Solutions\nSUBTITLE: Score: 9/10 - Hot Lead\nCONTENT: Marketing Director interested in automation solutions.\nBudget: €50-75k annual\nTimeline: Q1 2024\nPain points: Manual processes, lack of integration\nACTION: Schedule discovery call this week\nMETADATA: Last contact: 2 days ago\n## END_CARD"
         }
-      ],
-      "total_contacts": 25,
-      "data_sources": ["LinkedIn Sales Navigator", "Industry Events"],
-      "quality_metrics": {"email_verified": 0.95, "phone_verified": 0.80}
+      ]
     }
     ```
 

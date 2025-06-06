@@ -325,6 +325,17 @@ export const api = {
       }
     },
     
+    // Get enhanced task result with structured content
+    getEnhancedTaskResult: async (workspaceId: string, taskId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/task/${taskId}/enhanced-result`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
     // 🆕 ENHANCED: Project Deliverables with Asset Support
     getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverablesExtended> => {
       try {
@@ -356,6 +367,8 @@ export const api = {
             actionable_assets: output.actionable_assets || {},
             actionability_score: output.actionability_score || 0,
             automation_ready: output.automation_ready || false,
+            // Add visual_summary if available
+            visual_summary: output.visual_summary || null,
           }))
         };
         

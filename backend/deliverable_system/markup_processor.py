@@ -1,0 +1,461 @@
+# backend/deliverable_system/markup_processor.py
+
+import re
+import json
+import logging
+from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+class DeliverableMarkupProcessor:
+    """
+    Processa e valida markup strutturato nei deliverables
+    Converte markup in strutture dati facilmente renderizzabili nel frontend
+    """
+    
+    def __init__(self):
+        # Pattern per identificare diversi tipi di markup
+        self.table_pattern = re.compile(r'## TABLE: (.*?)\n(.*?)## END_TABLE', re.DOTALL)
+        self.card_pattern = re.compile(r'## CARD: (.*?)\n(.*?)## END_CARD', re.DOTALL)
+        self.timeline_pattern = re.compile(r'## TIMELINE: (.*?)\n(.*?)## END_TIMELINE', re.DOTALL)
+        self.metric_pattern = re.compile(r'## METRIC: (.*?)\n(.*?)## END_METRIC', re.DOTALL)
+        
+        # Cache per performance
+        self.processed_cache = {}
+    
+    def process_deliverable_content(self, raw_content: Any) -> Dict[str, Any]:
+        """
+        Converte contenuto con markup in struttura dati utilizzabile
+        Gestisce sia stringhe che dict con campi markup
+        """
+        
+        try:
+            # Se è già un dict, cerca campi con markup
+            if isinstance(raw_content, dict):
+                return self._process_dict_content(raw_content)
+            
+            # Se è una stringa, processa direttamente
+            if isinstance(raw_content, str):
+                return self._process_string_content(raw_content)
+            
+            # Altri tipi, converte in stringa
+            content_str = str(raw_content)
+            return self._process_string_content(content_str)
+            
+        except Exception as e:
+            logger.error(f"Error processing markup content: {e}")
+            return {
+                "error": str(e),
+                "raw_content": raw_content,
+                "processed": False
+            }
+    
+    def _process_dict_content(self, content_dict: Dict) -> Dict[str, Any]:
+        """
+        Processa un dizionario cercando campi con markup
+        """
+        
+        processed = {
+            "original_structure": content_dict,
+            "has_markup": False,
+            "markup_fields": {},
+            "combined_elements": {
+                "tables": [],
+                "cards": [],
+                "timelines": [],
+                "metrics": []
+            }
+        }
+        
+        # Cerca markup in tutti i campi stringa
+        for key, value in content_dict.items():
+            if isinstance(value, str) and any(pattern in value for pattern in ["## TABLE:", "## CARD:", "## TIMELINE:", "## METRIC:"]):
+                processed["has_markup"] = True
+                field_processed = self._process_string_content(value)
+                processed["markup_fields"][key] = field_processed
+                
+                # Aggiungi elementi alla vista combinata
+                for element_type in ["tables", "cards", "timelines", "metrics"]:
+                    processed["combined_elements"][element_type].extend(
+                        field_processed.get(element_type, [])
+                    )
+            
+            # Gestisci array di oggetti con markup
+            elif isinstance(value, list):
+                for idx, item in enumerate(value):
+                    if isinstance(item, dict) and "markup" in item:
+                        processed["has_markup"] = True
+                        item_processed = self._process_string_content(item["markup"])
+                        
+                        # Aggiungi context dall'item originale
+                        for element_type in ["tables", "cards", "timelines", "metrics"]:
+                            for element in item_processed.get(element_type, []):
+                                element["source_context"] = {k: v for k, v in item.items() if k != "markup"}
+                                processed["combined_elements"][element_type].append(element)
+        
+        return processed
+    
+    def _process_string_content(self, content: str) -> Dict[str, Any]:
+        """
+        Processa una stringa contenente markup
+        """
+        
+        # Check cache
+        cache_key = hash(content[:500])  # Use first 500 chars for cache key
+        if cache_key in self.processed_cache:
+            return self.processed_cache[cache_key]
+        
+        processed = {
+            "tables": self._extract_tables(content),
+            "cards": self._extract_cards(content),
+            "timelines": self._extract_timelines(content),
+            "metrics": self._extract_metrics(content),
+            "plain_text": self._extract_plain_text(content),
+            "has_structured_content": False
+        }
+        
+        # Determina se ha contenuto strutturato
+        processed["has_structured_content"] = any([
+            processed["tables"],
+            processed["cards"],
+            processed["timelines"],
+            processed["metrics"]
+        ])
+        
+        # Cache result
+        self.processed_cache[cache_key] = processed
+        
+        return processed
+    
+    def _extract_tables(self, content: str) -> List[Dict]:
+        """
+        Estrae e parsa tabelle dal markup
+        """
+        tables = []
+        
+        for match in self.table_pattern.finditer(content):
+            table_name = match.group(1).strip()
+            table_content = match.group(2).strip()
+            
+            # Parse markdown table
+            lines = [line.strip() for line in table_content.split('\n') if line.strip()]
+            
+            if len(lines) < 2:  # Need at least header and separator
+                continue
+            
+            # Extract headers
+            headers = [h.strip() for h in lines[0].split('|') if h.strip()]
+            
+            # Parse rows (skip separator line)
+            rows = []
+            for line in lines[2:]:
+                if '|' in line:
+                    cells = [c.strip() for c in line.split('|')]
+                    # Filter empty cells from splitting
+                    cells = [c for c in cells if c]
+                    
+                    if len(cells) == len(headers):
+                        row_dict = dict(zip(headers, cells))
+                        rows.append(row_dict)
+            
+            table_data = {
+                "type": "table",
+                "name": table_name,
+                "display_name": table_name.replace('_', ' ').title(),
+                "headers": headers,
+                "rows": rows,
+                "row_count": len(rows),
+                "column_count": len(headers),
+                "metadata": {
+                    "sortable": True,
+                    "filterable": True,
+                    "exportable": True
+                }
+            }
+            
+            # Auto-detect special table types
+            if "date" in [h.lower() for h in headers]:
+                table_data["metadata"]["type"] = "calendar"
+            elif "email" in [h.lower() for h in headers]:
+                table_data["metadata"]["type"] = "contacts"
+            elif "score" in [h.lower() for h in headers]:
+                table_data["metadata"]["type"] = "scoring"
+            
+            tables.append(table_data)
+        
+        return tables
+    
+    def _extract_cards(self, content: str) -> List[Dict]:
+        """
+        Estrae e parsa cards dal markup
+        """
+        cards = []
+        
+        for match in self.card_pattern.finditer(content):
+            card_type = match.group(1).strip()
+            card_content = match.group(2).strip()
+            
+            # Parse card fields
+            card_data = {
+                "type": "card",
+                "card_type": card_type,
+                "fields": {}
+            }
+            
+            # Extract standard fields
+            field_patterns = {
+                "title": r'TITLE:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "subtitle": r'SUBTITLE:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "content": r'CONTENT:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "action": r'ACTION:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "metadata": r'METADATA:\s*(.+?)(?=\n[A-Z]+:|$)'
+            }
+            
+            for field_name, pattern in field_patterns.items():
+                match_field = re.search(pattern, card_content, re.DOTALL)
+                if match_field:
+                    card_data["fields"][field_name] = match_field.group(1).strip()
+            
+            # Determine card style based on type
+            if "lead" in card_type.lower() or "contact" in card_type.lower():
+                card_data["style"] = "contact"
+                card_data["icon"] = "👤"
+            elif "post" in card_type.lower() or "instagram" in card_type.lower():
+                card_data["style"] = "social"
+                card_data["icon"] = "📱"
+            elif "task" in card_type.lower() or "action" in card_type.lower():
+                card_data["style"] = "action"
+                card_data["icon"] = "✅"
+            else:
+                card_data["style"] = "default"
+                card_data["icon"] = "📄"
+            
+            cards.append(card_data)
+        
+        return cards
+    
+    def _extract_timelines(self, content: str) -> List[Dict]:
+        """
+        Estrae e parsa timeline dal markup
+        """
+        timelines = []
+        
+        for match in self.timeline_pattern.finditer(content):
+            timeline_name = match.group(1).strip()
+            timeline_content = match.group(2).strip()
+            
+            # Parse timeline entries
+            entries = []
+            entry_pattern = r'-\s*DATE:\s*(.+?)\s*\|\s*EVENT:\s*(.+?)(?:\s*\|\s*STATUS:\s*(.+?))?$'
+            
+            for line in timeline_content.split('\n'):
+                entry_match = re.match(entry_pattern, line.strip())
+                if entry_match:
+                    entry = {
+                        "date": entry_match.group(1).strip(),
+                        "event": entry_match.group(2).strip(),
+                        "status": entry_match.group(3).strip() if entry_match.group(3) else "pending"
+                    }
+                    
+                    # Parse date for sorting
+                    try:
+                        entry["parsed_date"] = datetime.strptime(
+                            entry["date"], "%Y-%m-%d"
+                        ).isoformat()
+                    except:
+                        entry["parsed_date"] = entry["date"]
+                    
+                    entries.append(entry)
+            
+            timeline_data = {
+                "type": "timeline",
+                "name": timeline_name,
+                "display_name": timeline_name.replace('_', ' ').title(),
+                "entries": entries,
+                "entry_count": len(entries),
+                "metadata": {
+                    "sortable": True,
+                    "interactive": True
+                }
+            }
+            
+            timelines.append(timeline_data)
+        
+        return timelines
+    
+    def _extract_metrics(self, content: str) -> List[Dict]:
+        """
+        Estrae e parsa metriche dal markup
+        """
+        metrics = []
+        
+        for match in self.metric_pattern.finditer(content):
+            metric_name = match.group(1).strip()
+            metric_content = match.group(2).strip()
+            
+            # Parse metric fields
+            metric_data = {
+                "type": "metric",
+                "name": metric_name,
+                "display_name": metric_name.replace('_', ' ').title()
+            }
+            
+            # Extract fields
+            field_patterns = {
+                "value": r'VALUE:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "unit": r'UNIT:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "trend": r'TREND:\s*(.+?)(?=\n[A-Z]+:|$)',
+                "target": r'TARGET:\s*(.+?)(?=\n[A-Z]+:|$)'
+            }
+            
+            for field_name, pattern in field_patterns.items():
+                match_field = re.search(pattern, metric_content)
+                if match_field:
+                    value = match_field.group(1).strip()
+                    # Try to convert numeric values
+                    if field_name in ["value", "target"]:
+                        try:
+                            metric_data[field_name] = float(value)
+                        except:
+                            metric_data[field_name] = value
+                    else:
+                        metric_data[field_name] = value
+            
+            # Determine display style
+            if metric_data.get("trend") == "up":
+                metric_data["trend_icon"] = "↑"
+                metric_data["trend_color"] = "green"
+            elif metric_data.get("trend") == "down":
+                metric_data["trend_icon"] = "↓"
+                metric_data["trend_color"] = "red"
+            else:
+                metric_data["trend_icon"] = "→"
+                metric_data["trend_color"] = "gray"
+            
+            # Calculate percentage to target if applicable
+            if "value" in metric_data and "target" in metric_data:
+                try:
+                    percentage = (metric_data["value"] / metric_data["target"]) * 100
+                    metric_data["percentage_to_target"] = round(percentage, 1)
+                except:
+                    pass
+            
+            metrics.append(metric_data)
+        
+        return metrics
+    
+    def _extract_plain_text(self, content: str) -> str:
+        """
+        Estrae testo plain rimuovendo tutto il markup
+        """
+        
+        # Remove all markup sections
+        clean_content = self.table_pattern.sub('', content)
+        clean_content = self.card_pattern.sub('', clean_content)
+        clean_content = self.timeline_pattern.sub('', clean_content)
+        clean_content = self.metric_pattern.sub('', clean_content)
+        
+        # Clean up extra whitespace
+        clean_content = re.sub(r'\n{3,}', '\n\n', clean_content)
+        
+        return clean_content.strip()
+    
+    def generate_export_data(self, processed_content: Dict, format: str = "json") -> Any:
+        """
+        Genera dati per export in diversi formati preservando la struttura
+        """
+        
+        if format == "json":
+            return json.dumps(processed_content, indent=2, ensure_ascii=False)
+        
+        elif format == "csv":
+            # Focus on tables for CSV export
+            csv_data = []
+            for table in processed_content.get("tables", []):
+                csv_data.append(f"# {table['display_name']}")
+                if table["rows"]:
+                    headers = table["headers"]
+                    csv_data.append(",".join(headers))
+                    for row in table["rows"]:
+                        row_values = [str(row.get(h, "")) for h in headers]
+                        csv_data.append(",".join(row_values))
+                csv_data.append("")  # Empty line between tables
+            
+            return "\n".join(csv_data)
+        
+        elif format == "html":
+            return self._generate_html_export(processed_content)
+        
+        else:
+            return processed_content
+    
+    def _generate_html_export(self, processed_content: Dict) -> str:
+        """
+        Genera HTML export con styling
+        """
+        
+        html_parts = ["""
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #4CAF50; color: white; }
+                .card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+                .metric { display: inline-block; padding: 10px; margin: 5px; background: #f0f0f0; border-radius: 5px; }
+                .timeline { margin: 20px 0; }
+                .timeline-entry { margin: 5px 0; padding: 5px; border-left: 3px solid #4CAF50; }
+            </style>
+        </head>
+        <body>
+        """]
+        
+        # Render tables
+        for table in processed_content.get("tables", []):
+            html_parts.append(f"<h2>{table['display_name']}</h2>")
+            html_parts.append("<table>")
+            html_parts.append("<tr>")
+            for header in table["headers"]:
+                html_parts.append(f"<th>{header}</th>")
+            html_parts.append("</tr>")
+            
+            for row in table["rows"]:
+                html_parts.append("<tr>")
+                for header in table["headers"]:
+                    html_parts.append(f"<td>{row.get(header, '')}</td>")
+                html_parts.append("</tr>")
+            html_parts.append("</table>")
+        
+        # Render cards
+        for card in processed_content.get("cards", []):
+            html_parts.append('<div class="card">')
+            fields = card.get("fields", {})
+            if "title" in fields:
+                html_parts.append(f"<h3>{fields['title']}</h3>")
+            if "subtitle" in fields:
+                html_parts.append(f"<h4>{fields['subtitle']}</h4>")
+            if "content" in fields:
+                html_parts.append(f"<p>{fields['content'].replace('\n', '<br>')}</p>")
+            if "action" in fields:
+                html_parts.append(f"<strong>Action:</strong> {fields['action']}")
+            html_parts.append('</div>')
+        
+        # Render metrics
+        if processed_content.get("metrics"):
+            html_parts.append("<h2>Metrics</h2>")
+            for metric in processed_content["metrics"]:
+                html_parts.append('<div class="metric">')
+                html_parts.append(f"<strong>{metric['display_name']}:</strong> ")
+                html_parts.append(f"{metric.get('value', 'N/A')} {metric.get('unit', '')}")
+                if "trend" in metric:
+                    html_parts.append(f" ({metric.get('trend_icon', '')})")
+                html_parts.append('</div>')
+        
+        html_parts.append("</body></html>")
+        
+        return "".join(html_parts)
+
+# Singleton instance
+markup_processor = DeliverableMarkupProcessor()

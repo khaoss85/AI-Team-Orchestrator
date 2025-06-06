@@ -794,7 +794,11 @@ export default function ProjectDeliverableDashboard({
             {loadingOutput ? (
               <div className="text-center py-10">Caricamento...</div>
             ) : (
-              <TaskResultDetails result={outputDetails} />
+              <TaskResultDetails 
+                result={outputDetails} 
+                workspaceId={workspaceId}
+                taskId={selectedOutput.task_id}
+              />
             )}
             <div className="flex justify-end gap-3 mt-4">
               <button

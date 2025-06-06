@@ -853,41 +853,41 @@ Make it specific to the business context and actionable for immediate use."""
         # Potenziale medio
         return 0.5
 
-# ENHANCED: Asset validation più accurata
-async def _enhance_with_schema_validation(self, asset_data: Dict, schema: AssetSchema) -> Dict:
-    """
-    ENHANCED: Migliora asset data con validazione schema meno rigida
-    """
-    
-    try:
-        from deliverable_system.schema_generator import AssetSchemaGenerator
-        schema_generator = AssetSchemaGenerator()
+    # ENHANCED: Asset validation più accurata
+    async def _enhance_with_schema_validation(self, asset_data: Dict, schema: AssetSchema) -> Dict:
+        """
+        ENHANCED: Migliora asset data con validazione schema meno rigida
+        """
         
-        # Valida contro schema
-        validation_result = schema_generator.validate_asset_against_schema(
-            asset_data['asset_data'], schema
-        )
+        try:
+            from deliverable_system.schema_generator import AssetSchemaGenerator
+            schema_generator = AssetSchemaGenerator()
+            
+            # Valida contro schema
+            validation_result = schema_generator.validate_asset_against_schema(
+                asset_data['asset_data'], schema
+            )
+            
+            # ENHANCED: Score più generoso basato su validazione
+            base_score = asset_data.get('quality_score', 0.5)
+            
+            if validation_result.get('valid', False):
+                # Boost sostanzioso per validazione positiva
+                asset_data['quality_score'] = min(max(base_score, 0.7), 1.0)
+                asset_data['schema_validated'] = True
+            elif validation_result.get('partial_valid', False):
+                # Boost moderato per validazione parziale
+                asset_data['quality_score'] = min(max(base_score, 0.6), 1.0)
+                asset_data['schema_partially_validated'] = True
+            
+            asset_data['schema_validation'] = validation_result
+            
+            logger.info(f"📊 SCHEMA VALIDATION: Score updated to {asset_data['quality_score']:.2f}")
+            
+        except Exception as e:
+            logger.debug(f"Schema validation failed: {e}")
         
-        # ENHANCED: Score più generoso basato su validazione
-        base_score = asset_data.get('quality_score', 0.5)
-        
-        if validation_result.get('valid', False):
-            # Boost sostanzioso per validazione positiva
-            asset_data['quality_score'] = min(max(base_score, 0.7), 1.0)
-            asset_data['schema_validated'] = True
-        elif validation_result.get('partial_valid', False):
-            # Boost moderato per validazione parziale
-            asset_data['quality_score'] = min(max(base_score, 0.6), 1.0)
-            asset_data['schema_partially_validated'] = True
-        
-        asset_data['schema_validation'] = validation_result
-        
-        logger.info(f"📊 SCHEMA VALIDATION: Score updated to {asset_data['quality_score']:.2f}")
-        
-    except Exception as e:
-        logger.debug(f"Schema validation failed: {e}")
-    
-    return asset_data
+        return asset_data
 
 
 class IntelligentDeliverablePackager:

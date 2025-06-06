@@ -3,7 +3,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Any, Optional, Set, Callable
 from uuid import UUID, uuid4
 import json
 import time
@@ -297,12 +297,18 @@ class AssetCoordinationMixin:
                 if len(completed_asset_tasks) >= len(asset_tasks) * 0.8:  # 80% asset tasks completed
                     logger.info(f"🎯 ASSET THRESHOLD: 80% asset tasks completed, checking deliverable readiness")
                     
+                    # Initialize deliverable_id to None
+                    deliverable_id = None
+                    
                     # Check if last completed task was enhancement task to prevent loops
                     last_task = completed_asset_tasks[-1] if completed_asset_tasks else None
                     if last_task and not self._is_enhancement_task(last_task):
-                        # Trigger enhanced deliverable check
-                        from deliverable_aggregator import check_and_create_final_deliverable
-                        deliverable_id = await check_and_create_final_deliverable(workspace_id)
+                        # Trigger enhanced deliverable check with circuit breaker protection
+                        async def _safe_deliverable_creation():
+                            from deliverable_aggregator import check_and_create_final_deliverable
+                            return await check_and_create_final_deliverable(workspace_id)
+                        
+                        deliverable_id = await self._execute_with_circuit_breaker(_safe_deliverable_creation)
                     else:
                         logger.info(f"🔧 ENHANCEMENT LOOP PREVENTION: Skipping deliverable trigger - last task was enhancement")
                     
@@ -316,7 +322,7 @@ class AssetCoordinationMixin:
         """Ottieni task asset-oriented per un workspace"""
         
         try:
-            all_tasks = await list_tasks(workspace_id)
+            all_tasks = await self._cached_list_tasks(workspace_id)
             
             asset_tasks = []
             for task in all_tasks:
@@ -398,10 +404,144 @@ class TaskExecutor(AssetCoordinationMixin):
 
         # === QUERY CACHING CONFIGURATION ===
         # Minimum seconds before repeating the same DB query for a workspace
-        self.min_db_query_interval: int = int(os.getenv("MIN_DB_QUERY_INTERVAL", "30"))
+        self.min_db_query_interval: int = int(os.getenv("MIN_DB_QUERY_INTERVAL", "60"))  # Increased from 30 to 60
         self._tasks_query_cache: Dict[str, Tuple[float, List[Dict]]] = {}
         self._agents_query_cache: Dict[str, Tuple[float, List[Dict]]] = {}
         self._active_ws_cache: Tuple[float, List[str]] = (0, [])
+        
+        # === DEBOUNCING CONFIGURATION ===
+        self._pending_queries: Dict[str, asyncio.Future] = {}
+        self._debounce_window: float = 2.0  # 2 second debounce window
+        self._query_debounce_cache: Dict[str, float] = {}  # Track last query times
+        
+        # === CIRCUIT BREAKER CONFIGURATION ===
+        self._quality_circuit_breaker = {
+            'failure_count': 0,
+            'last_failure_time': 0,
+            'state': 'closed',  # closed, open, half_open
+            'failure_threshold': 5,  # trips after 5 consecutive failures
+            'recovery_timeout': 300,  # 5 minutes before allowing retry
+            'half_open_max_calls': 3  # max calls in half-open state
+        }
+
+    async def _debounced_query(self, query_key: str, query_func: Callable, *args, **kwargs):
+        """Execute query with debouncing to prevent rapid repeated calls"""
+        import asyncio
+        from time import time
+        
+        current_time = time()
+        
+        # Check if there's already a pending query for this key
+        if query_key in self._pending_queries:
+            # Wait for the existing query to complete
+            try:
+                return await self._pending_queries[query_key]
+            except asyncio.CancelledError:
+                # If cancelled, proceed with new query
+                pass
+        
+        # Check if we need to debounce this query
+        last_query_time = self._query_debounce_cache.get(query_key, 0)
+        time_since_last = current_time - last_query_time
+        
+        if time_since_last < self._debounce_window:
+            # Wait for the debounce window to pass
+            wait_time = self._debounce_window - time_since_last
+            await asyncio.sleep(wait_time)
+        
+        # Create and store the query future
+        async def _execute_query():
+            try:
+                self._query_debounce_cache[query_key] = time()
+                result = await query_func(*args, **kwargs)
+                return result
+            finally:
+                # Clean up the pending query
+                if query_key in self._pending_queries:
+                    del self._pending_queries[query_key]
+        
+        query_future = asyncio.create_task(_execute_query())
+        self._pending_queries[query_key] = query_future
+        
+        return await query_future
+
+    async def _debounced_get_workspace_tasks(self, workspace_id: str, limit: int = 50):
+        """Get workspace tasks with debouncing"""
+        return await self._debounced_query(
+            f"tasks_{workspace_id}_{limit}",
+            list_tasks,
+            workspace_id, 
+            limit=limit
+        )
+
+    async def _debounced_get_workspace_agents(self, workspace_id: str):
+        """Get workspace agents with debouncing"""
+        return await self._debounced_query(
+            f"agents_{workspace_id}",
+            list_agents,
+            workspace_id
+        )
+
+    def _check_circuit_breaker_state(self, circuit_name: str = 'quality') -> str:
+        """Check and update circuit breaker state"""
+        circuit = self._quality_circuit_breaker
+        current_time = time.time()
+        
+        if circuit['state'] == 'open':
+            # Check if we should move to half-open
+            if current_time - circuit['last_failure_time'] >= circuit['recovery_timeout']:
+                circuit['state'] = 'half_open'
+                circuit['failure_count'] = 0
+                logger.info(f"🔌 Circuit breaker {circuit_name} moved to HALF-OPEN state")
+                return 'half_open'
+            return 'open'
+        
+        return circuit['state']
+
+    async def _execute_with_circuit_breaker(self, operation_func: Callable, *args, **kwargs):
+        """Execute operation with circuit breaker protection"""
+        circuit = self._quality_circuit_breaker
+        current_time = time.time()
+        
+        # Check circuit state
+        state = self._check_circuit_breaker_state()
+        
+        if state == 'open':
+            logger.warning("🔌 Circuit breaker OPEN - skipping quality validation")
+            return None
+            
+        try:
+            # Execute the operation
+            result = await operation_func(*args, **kwargs)
+            
+            # Success - reset failure count
+            circuit['failure_count'] = 0
+            if circuit['state'] == 'half_open':
+                circuit['state'] = 'closed'
+                logger.info("🔌 Circuit breaker returned to CLOSED state")
+            
+            return result
+            
+        except Exception as e:
+            # Failure - increment counter
+            circuit['failure_count'] += 1
+            circuit['last_failure_time'] = current_time
+            
+            logger.warning(f"🔌 Circuit breaker failure {circuit['failure_count']}/{circuit['failure_threshold']}: {e}")
+            
+            # Check if we should trip the circuit
+            if circuit['failure_count'] >= circuit['failure_threshold']:
+                circuit['state'] = 'open'
+                logger.error(f"🔌 Circuit breaker TRIPPED - quality validation disabled for {circuit['recovery_timeout']}s")
+            
+            # Don't re-raise the exception, just return None to indicate failure
+            return None
+
+    async def _safe_quality_validation(self, *args, **kwargs):
+        """Quality validation with circuit breaker protection"""
+        return await self._execute_with_circuit_breaker(
+            self._original_quality_validation, *args, **kwargs
+        )
 
     async def start(self):
         """Start the task executor"""
@@ -598,7 +738,7 @@ class TaskExecutor(AssetCoordinationMixin):
         Restituisce le info dell'agente assegnato o None.
         """
         try:
-            agents_in_db = await db_list_agents(workspace_id=workspace_id)
+            agents_in_db = await self._cached_list_agents(workspace_id)
             
             compatible_agents = [
                 agent for agent in agents_in_db
@@ -853,7 +993,7 @@ class TaskExecutor(AssetCoordinationMixin):
         """Verifica se il progetto è completato dopo un task importante"""
         try:
             # Verifica se il task è un task di completamento
-            tasks = await list_tasks(workspace_id)
+            tasks = await self._cached_list_tasks(workspace_id)
             completed_task = next((t for t in tasks if t.get("id") == completed_task_id), None)
             
             if not completed_task:
@@ -1221,7 +1361,8 @@ class TaskExecutor(AssetCoordinationMixin):
         ts, data = self._tasks_query_cache.get(workspace_id, (0, None))
         if data is not None and now - ts < self.min_db_query_interval:
             return data
-        data = await list_tasks(workspace_id)
+        # Use debounced query for database call
+        data = await self._debounced_query(f"tasks_{workspace_id}", list_tasks, workspace_id)
         self._tasks_query_cache[workspace_id] = (now, data)
         return data
 
@@ -1230,7 +1371,8 @@ class TaskExecutor(AssetCoordinationMixin):
         ts, data = self._agents_query_cache.get(workspace_id, (0, None))
         if data is not None and now - ts < self.min_db_query_interval:
             return data
-        data = await db_list_agents(workspace_id)
+        # Use debounced query for database call
+        data = await self._debounced_query(f"agents_{workspace_id}", db_list_agents, workspace_id)
         self._agents_query_cache[workspace_id] = (now, data)
         return data
 
@@ -1686,18 +1828,18 @@ class TaskExecutor(AssetCoordinationMixin):
             if workspace.get("status") != WorkspaceStatus.CREATED.value:
                 logger.info(f"W:{workspace_id} is not in 'created' state (current: {workspace.get('status')}). Initial task likely already created or process started.")
                 # Potresti voler controllare se ci sono già task per decidere se procedere
-                existing_tasks_check = await list_tasks(workspace_id)
+                existing_tasks_check = await self._cached_list_tasks(workspace_id)
                 if existing_tasks_check:
                     logger.info(f"W:{workspace_id} already has tasks. Skipping initial task creation.")
                     return None # O l'ID del primo task se vuoi che il flusso continui
             
-            agents = await db_list_agents(workspace_id)
+            agents = await self._cached_list_agents(workspace_id)
             if not agents:
                 logger.warning(f"No agents in W:{workspace_id}. No initial task")
                 return None
             
             # Verifica se esistono già task
-            existing_tasks = await list_tasks(workspace_id)
+            existing_tasks = await self._cached_list_tasks(workspace_id)
             if existing_tasks:
                 logger.info(f"W:{workspace_id} already has {len(existing_tasks)} tasks. No initial task creation needed.")
                 return None
@@ -2360,13 +2502,16 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     if not self._should_check_workspace_for_quality(workspace_id):
                         continue
                     
-                    # Tentativo di creare deliverable quality-enhanced
-                    if QUALITY_SYSTEM_AVAILABLE and check_and_create_final_deliverable is not None:
-                        deliverable_id = await check_and_create_final_deliverable(workspace_id)
-                    else:
-                        # Fallback se quality system non disponibile
-                        from deliverable_aggregator import check_and_create_final_deliverable as fallback_func
-                        deliverable_id = await fallback_func(workspace_id)
+                    # Tentativo di creare deliverable quality-enhanced con circuit breaker protection
+                    async def _safe_quality_deliverable_creation():
+                        if QUALITY_SYSTEM_AVAILABLE and check_and_create_final_deliverable is not None:
+                            return await check_and_create_final_deliverable(workspace_id)
+                        else:
+                            # Fallback se quality system non disponibile
+                            from deliverable_aggregator import check_and_create_final_deliverable as fallback_func
+                            return await fallback_func(workspace_id)
+                    
+                    deliverable_id = await self._execute_with_circuit_breaker(_safe_quality_deliverable_creation)
                     
                     if deliverable_id:
                         logger.info(f"🔍 QUALITY DELIVERABLE: Created {deliverable_id} for {workspace_id}")
@@ -2393,8 +2538,11 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     # Fallback al sistema standard se abilitato
                     if QualitySystemConfig and QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
                         try:
-                            from deliverable_aggregator import check_and_create_final_deliverable
-                            fallback_id = await check_and_create_final_deliverable(workspace_id)
+                            async def _safe_fallback_deliverable():
+                                from deliverable_aggregator import check_and_create_final_deliverable
+                                return await check_and_create_final_deliverable(workspace_id)
+                            
+                            fallback_id = await self._execute_with_circuit_breaker(_safe_fallback_deliverable)
                             
                             if fallback_id:
                                 logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")

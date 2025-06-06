@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '@/utils/api';
+import StructuredContentRenderer from './StructuredContentRenderer';
 
-export default function TaskResultDetails({ result }: { result: Record<string, unknown> }) {
+export default function TaskResultDetails({ result, workspaceId, taskId }: { result: Record<string, unknown>, workspaceId?: string, taskId?: string }) {
   if (!result) return null;
 
   // Extract main fields from result
@@ -25,6 +27,10 @@ export default function TaskResultDetails({ result }: { result: Record<string, u
   // Use only one source for the main content - prefer summary, then output
   const mainContent = String(summary || output || 'Nessun risultato disponibile');
 
+  // State for enhanced content
+  const [enhancedContent, setEnhancedContent] = useState<any>(null);
+  const [loadingEnhanced, setLoadingEnhanced] = useState(false);
+  
   // Parse detailed JSON if available
   let detailedResults = null;
   try {
@@ -39,6 +45,25 @@ export default function TaskResultDetails({ result }: { result: Record<string, u
   } catch (e) {
     console.log('Errore nel parsing del JSON dettagliato', e);
   }
+  
+  // Fetch enhanced content if workspace and task IDs are provided
+  useEffect(() => {
+    if (workspaceId && taskId && detailed_results_json) {
+      setLoadingEnhanced(true);
+      api.monitoring.getEnhancedTaskResult(workspaceId, taskId)
+        .then((data) => {
+          if (data.has_structured_content) {
+            setEnhancedContent(data);
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to fetch enhanced content:', error);
+        })
+        .finally(() => {
+          setLoadingEnhanced(false);
+        });
+    }
+  }, [workspaceId, taskId, detailed_results_json]);
 
   // Combine key points from different possible sources
   const allKeyPoints = Array.isArray(key_points) && key_points.length > 0 
@@ -122,8 +147,27 @@ export default function TaskResultDetails({ result }: { result: Record<string, u
         </div>
       )}
 
-      {/* Detailed Results Section - Improved styling */}
-      {detailedResults && (
+      {/* Enhanced Structured Content Section */}
+      {enhancedContent && enhancedContent.has_structured_content && (
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-200 shadow-sm">
+          <h3 className="font-semibold text-indigo-800 text-lg mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+            </svg>
+            Contenuto Strutturato
+          </h3>
+          
+          <div className="bg-white p-6 rounded-lg shadow-inner">
+            <StructuredContentRenderer 
+              elements={enhancedContent.structured_elements} 
+              rawData={detailedResults}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Detailed Results Section - Improved styling (fallback) */}
+      {detailedResults && !enhancedContent?.has_structured_content && (
         <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 text-lg mb-4 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

@@ -495,6 +495,18 @@ class AssetSchema(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class AssetQualityMetrics(BaseModel):
+    """Metriche di qualità per asset evaluation"""
+    overall_quality: float = PydanticField(..., ge=0.0, le=1.0, description="Score qualità complessiva")
+    actionability_score: float = PydanticField(..., ge=0.0, le=1.0, description="Quanto è actionable l'asset")
+    completeness_score: float = PydanticField(..., ge=0.0, le=1.0, description="Completezza dell'asset")
+    concreteness_score: float = PydanticField(..., ge=0.0, le=1.0, description="Concretezza vs teorico")
+    business_value_score: float = PydanticField(..., ge=0.0, le=1.0, description="Valore business stimato")
+    needs_enhancement: bool = PydanticField(..., description="Se richiede enhancement")
+    enhancement_suggestions: List[str] = PydanticField(default_factory=list, description="Suggerimenti miglioramento")
+    
+    model_config = ConfigDict(from_attributes=True)
+
 class ExtractedAsset(BaseModel):
     """Asset estratto da un task"""
     asset_name: str

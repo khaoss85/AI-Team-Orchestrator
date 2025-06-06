@@ -692,10 +692,13 @@ async def force_finalization_if_stuck(workspace_id: UUID):
         if len(finalization_pending) > 3 and len(finalization_completed) == 0:
             logger.critical(f"🚨 FINALIZATION STUCK DETECTED in W:{workspace_id}")
             
-            # Trigger deliverable creation
+            # Trigger deliverable creation with circuit breaker protection
             try:
-                from deliverable_aggregator import check_and_create_final_deliverable
-                deliverable_id = await check_and_create_final_deliverable(str(workspace_id))
+                async def _safe_deliverable_creation():
+                    from deliverable_aggregator import check_and_create_final_deliverable
+                    return await check_and_create_final_deliverable(str(workspace_id))
+                
+                deliverable_id = await task_executor._execute_with_circuit_breaker(_safe_deliverable_creation)
                 
                 return {
                     "forced": True, 

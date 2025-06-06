@@ -1,8 +1,9 @@
 // frontend/src/components/SmartAssetViewer.tsx - USER FRIENDLY ASSET VIEWER
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ActionableAsset } from '@/types';
+import StructuredAssetRenderer from './StructuredAssetRenderer';
 
 interface SmartAssetViewerProps {
   asset: ActionableAsset;
@@ -18,6 +19,14 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
   onRefine
 }) => {
   const [activeView, setActiveView] = useState<'visual' | 'data' | 'usage'>('visual');
+  const [processedMarkup, setProcessedMarkup] = useState<any>(null);
+  
+  // Check if asset has markup content
+  useEffect(() => {
+    if (asset.asset_data?._processed_markup) {
+      setProcessedMarkup(asset.asset_data._processed_markup);
+    }
+  }, [asset]);
 
   const getAssetTypeInfo = (assetName: string, assetData: any) => {
     // Simple universal approach - clean up the name and use generic icon
@@ -37,14 +46,40 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
 
   // Universal smart content renderer 
   const renderAssetContent = () => {
+    // If we have processed markup, use the structured renderer
+    if (processedMarkup && processedMarkup.has_structured_content) {
+      return (
+        <StructuredAssetRenderer 
+          data={processedMarkup}
+          onExport={(format) => {
+            // Handle export
+            console.log('Export in format:', format);
+            onDownload?.(asset);
+          }}
+        />
+      );
+    }
+    
     const data = asset.asset_data;
     
     if (!data || typeof data !== 'object') {
       return <div className="text-gray-500">No data available for this asset</div>;
     }
 
+    // Check if data has markup strings
+    const hasMarkupStrings = Object.values(data).some(value => 
+      typeof value === 'string' && value.includes('## TABLE:')
+    );
+    
+    if (hasMarkupStrings) {
+      // Process markup on the fly
+      return <div className="text-center py-8 text-gray-600">
+        <p>Structured content detected. Processing...</p>
+      </div>;
+    }
+
     // Universal approach: Auto-detect and render any data structure
-    const entries = Object.entries(data);
+    const entries = Object.entries(data).filter(([key]) => key !== '_processed_markup');
     
     return (
       <div className="space-y-4">
