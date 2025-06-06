@@ -482,11 +482,16 @@ async def get_project_deliverables(workspace_id: UUID):
                     except Exception as e:
                         logger.debug(f"Could not parse detailed results: {e}")
                 
+                # Use visual summary for display if available, otherwise use original output
+                display_output = visual_summary if visual_summary else output_text
+                if len(display_output) > 1000:
+                    display_output = display_output[:1000] + "..."
+                
                 # Create the output with enhanced data
-                output_data = ProjectOutput(
+                key_outputs.append(ProjectOutput(
                     task_id=task["id"],
                     task_name=user_friendly_name,
-                    output=output_text[:1000] + "..." if len(output_text) > 1000 else output_text,
+                    output=display_output,
                     agent_name=agent_info.get("name", "Unknown Agent"),
                     agent_role=agent_info.get("role", "Unknown Role"),
                     created_at=datetime.fromisoformat(task.get("updated_at", task.get("created_at", datetime.now().isoformat())).replace('Z', '+00:00')),
@@ -496,14 +501,12 @@ async def get_project_deliverables(workspace_id: UUID):
                     tokens_used=result.get("tokens_used") or context_data.get("tokens_used"),
                     model_used=result.get("model_used") or context_data.get("model_used"),
                     rationale=result.get("rationale") or context_data.get("rationale") or result.get("phase_rationale") or context_data.get("phase_rationale"),
-                    # NEW: Enhanced fields for rich content
-                    visual_summary=visual_summary,
+                    # Enhanced fields for rich content
                     key_insights=key_insights[:5],  # Limit total to 5
                     metrics=metrics,
-                    result=structured_content  # Pass processed content to frontend
-                )
-                
-                key_outputs.append(output_data)
+                    visual_summary=visual_summary,
+                    structured_content=structured_content
+                ))
         
         # Sort outputs by importance (most important deliverables first)
         key_outputs.sort(key=lambda x: _get_deliverable_importance_score(x.task_name, x.type), reverse=True)
@@ -995,6 +998,87 @@ async def get_output_detail(workspace_id: UUID, task_id: UUID):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get output detail: {str(e)}",
+        )
+
+@router.get("/{workspace_id}/task/{task_id}/enhanced-result")
+async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID):
+    """Get enhanced, processed task result with rich markup content"""
+    try:
+        tasks = await list_tasks(str(workspace_id))
+        task = None
+        for t in tasks:
+            if str(t.get("id")) == str(task_id):
+                task = t
+                break
+        
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        result = task.get("result", {}) or {}
+        
+        # Process detailed results if available
+        enhanced_result = {
+            "task_id": str(task_id),
+            "task_name": task.get("name", ""),
+            "summary": result.get("summary", ""),
+            "has_rich_content": False,
+            "structured_content": None,
+            "visual_summary": None,
+            "key_insights": [],
+            "metrics": {}
+        }
+        
+        if result.get("detailed_results_json"):
+            try:
+                detailed_data = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
+                
+                # Process with markup processor
+                processed = markup_processor.process_deliverable_content(detailed_data)
+                
+                if processed.get("has_structured_content") or processed.get("has_markup"):
+                    enhanced_result["has_rich_content"] = True
+                    enhanced_result["structured_content"] = processed
+                    
+                    # Create visual summary
+                    visual_parts = []
+                    if processed.get("tables"):
+                        for table in processed["tables"]:
+                            visual_parts.append(f"📊 {table['display_name']}: {table['row_count']} rows")
+                    
+                    if processed.get("cards"):
+                        for card in processed["cards"]:
+                            if card['fields'].get('title'):
+                                visual_parts.append(f"{card['icon']} {card['fields']['title']}")
+                    
+                    if visual_parts:
+                        enhanced_result["visual_summary"] = "\n".join(visual_parts)
+                
+                # Extract insights and metrics
+                if isinstance(detailed_data, dict):
+                    insights_fields = ["key_insights", "key_findings", "insights", "recommendations"]
+                    for field in insights_fields:
+                        if field in detailed_data and isinstance(detailed_data[field], list):
+                            enhanced_result["key_insights"] = detailed_data[field][:5]
+                            break
+                    
+                    metrics_fields = ["metrics", "performance_metrics", "project_metrics"]
+                    for field in metrics_fields:
+                        if field in detailed_data and isinstance(detailed_data[field], dict):
+                            enhanced_result["metrics"] = detailed_data[field]
+                            break
+                            
+            except Exception as e:
+                logger.debug(f"Could not process enhanced result for task {task_id}: {e}")
+        
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting enhanced task result: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get enhanced task result: {str(e)}"
         )
 
 # Helper functions

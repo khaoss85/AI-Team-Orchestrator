@@ -226,6 +226,37 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         completionPercentage={completionPercentage}
         finalizationStatus={finalizationStatus}
       />
+
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <Link
+            href={`/projects/${id}`}
+            className="py-2 px-1 border-b-2 border-indigo-500 font-medium text-sm text-indigo-600"
+          >
+            Overview
+          </Link>
+          <Link
+            href={`/projects/${id}/results`}
+            className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          >
+            📊 Unified Results
+          </Link>
+          <Link
+            href={`/projects/${id}/tasks`}
+            className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          >
+            Tasks
+          </Link>
+          <Link
+            href={`/projects/${id}/team`}
+            className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          >
+            Team
+          </Link>
+        </nav>
+      </div>
+
       <MissionControlSection
         workspaceId={id}
         agents={agents}
@@ -236,6 +267,25 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         onRefresh={fetchMissionControl}
       />
       <InteractionPanel workspace={workspace} onWorkspaceUpdate={setWorkspace} />
+
+      {/* New Unified Results Notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="text-blue-600 mr-3">📊</div>
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">New! Unified Results View</h3>
+              <p className="text-sm text-blue-600">See all your assets and deliverables in one organized, actionable view</p>
+            </div>
+          </div>
+          <Link
+            href={`/projects/${id}/results`}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            View Results
+          </Link>
+        </div>
+      </div>
 
       {/* Business-Ready Assets Section */}
       {assetDisplayData && assetDisplayData.length > 0 && (

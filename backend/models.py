@@ -425,6 +425,7 @@ class ProjectOutput(BaseModel):
     tokens_used: Optional[Dict[str, int]] = None
     model_used: Optional[str] = None
     rationale: Optional[str] = None
+    structured_content: Optional[Dict[str, Any]] = None  # For rich markup content
 
 class ProjectDeliverables(BaseModel):
     workspace_id: str
