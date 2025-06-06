@@ -68,157 +68,54 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 space-y-4">
-      <div className="flex justify-between">
-        <h2 className="text-lg font-semibold">Mission Control</h2>
-        <div className="flex items-center space-x-2">
-          {loading && initialized && (
-            <span className="text-sm text-gray-500">Updating...</span>
-          )}
-          <button className="text-sm text-indigo-600" onClick={onRefresh}>Aggiorna</button>
-        </div>
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-semibold text-gray-900">Team Status</h2>
+        {loading ? (
+          <span className="text-sm text-gray-500">Loading...</span>
+        ) : (
+          <button className="text-sm text-blue-600 hover:text-blue-700" onClick={onRefresh}>
+            Refresh
+          </button>
+        )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-        {/* Team Panel */}
-        <div className="group relative rounded-xl p-5 text-white bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
-          {/* Glassmorphism background decorations */}
-          <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-white rounded-full -translate-y-8 translate-x-8 group-hover:scale-110 transition-transform"></div>
-            <div className="absolute bottom-0 left-0 w-12 h-12 bg-white rounded-full translate-y-6 -translate-x-6 group-hover:scale-125 transition-transform"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="text-xs uppercase opacity-80 tracking-wide font-medium">👥 Team Control</div>
-                <div className="text-2xl font-bold mt-1">{totalAgents}</div>
-                <div className="text-xs opacity-90 mt-1">
-                  {activeAgents} active · {healthyAgents} healthy
-                </div>
-              </div>
-              <div className="flex -space-x-2">
-                {agents.slice(0, 4).map(agent => (
-                  <div
-                    key={agent.id}
-                    className="w-9 h-9 rounded-full bg-white bg-opacity-25 backdrop-blur-sm border border-white/30 flex items-center justify-center text-xs font-bold hover:scale-110 transition-transform cursor-pointer"
-                    title={agent.name}
-                  >
-                    {getInitials(agent.name)}
-                  </div>
-                ))}
-                {agents.length > 4 && (
-                  <div className="w-9 h-9 rounded-full bg-white bg-opacity-25 backdrop-blur-sm border border-white/30 flex items-center justify-center text-xs font-bold hover:scale-110 transition-transform">
-                    +{agents.length - 4}
-                  </div>
-                )}
-              </div>
-            </div>
-            <a
-              href={`/projects/${workspaceId}/team`}
-              className="inline-flex items-center text-xs bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-opacity-30 transition-all duration-200 font-medium"
-            >
-              Manage Team
-              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
+      
+      <div className="grid grid-cols-3 gap-6 text-center">
+        {/* Team */}
+        <div>
+          <div className="text-xl font-bold text-gray-900">{totalAgents}</div>
+          <div className="text-sm text-gray-600">Team Members</div>
+          <div className="text-xs text-gray-500 mt-1">{activeAgents} active</div>
+          <a href={`/projects/${workspaceId}/team`} className="text-xs text-blue-600 hover:text-blue-700 mt-1 block">
+            Manage →
+          </a>
         </div>
 
-        {/* Human Feedback Panel */}
-        <div className="group relative rounded-xl p-5 text-white bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
-          {/* Glassmorphism background decorations */}
-          <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-            <div className="absolute top-0 left-0 w-20 h-20 bg-white rounded-full -translate-y-10 -translate-x-10 group-hover:scale-110 transition-transform"></div>
-            <div className="absolute bottom-0 right-0 w-14 h-14 bg-white rounded-full translate-y-7 translate-x-7 group-hover:scale-125 transition-transform"></div>
+        {/* Feedback */}
+        <div>
+          <div className="text-xl font-bold text-gray-900">
+            {feedback.length}
+            {feedback.length > 0 && (
+              <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block"></span>
+            )}
           </div>
-          
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="text-xs uppercase opacity-80 tracking-wide font-medium">💬 Human Feedback</div>
-                <div className="text-2xl font-bold mt-1">
-                  {feedback.length}
-                  {feedback.length > 0 && (
-                    <span className="ml-2 px-2 py-0.5 bg-red-400 text-red-900 text-xs font-bold rounded-full animate-pulse">
-                      PENDING
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="mb-3 space-y-2">
-              {feedback.length === 0 ? (
-                <div className="text-xs opacity-75 bg-white bg-opacity-15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                  ✅ All feedback resolved
-                </div>
-              ) : (
-                feedback.slice(0, 2).map(req => (
-                  <div key={req.id} className="flex justify-between items-center text-xs bg-white bg-opacity-15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                    <span className="truncate mr-2 font-medium">{req.title}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getPriorityColor(req.priority)}`}>
-                      {req.priority}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            <a 
-              href="/human-feedback" 
-              className="inline-flex items-center text-xs bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-opacity-30 transition-all duration-200 font-medium"
-            >
-              Review All
-              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
+          <div className="text-sm text-gray-600">Pending Feedback</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {feedback.length === 0 ? 'All resolved' : `${feedback.length} waiting`}
           </div>
+          <a href="/human-feedback" className="text-xs text-blue-600 hover:text-blue-700 mt-1 block">
+            Review →
+          </a>
         </div>
 
-        {/* Logbook Panel */}
-        <div className="group relative rounded-xl p-5 text-white bg-gradient-to-br from-emerald-500 via-teal-500 to-green-500 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
-          {/* Glassmorphism background decorations */}
-          <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-            <div className="absolute top-0 right-0 w-18 h-18 bg-white rounded-full -translate-y-9 translate-x-9 group-hover:scale-110 transition-transform"></div>
-            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white rounded-full translate-y-8 -translate-x-8 group-hover:scale-125 transition-transform"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="text-xs uppercase opacity-80 tracking-wide font-medium">📋 Task Logbook</div>
-                <div className="text-2xl font-bold mt-1">{totalTasks}</div>
-                <div className="text-xs opacity-90 mt-1">
-                  {completedTasks} completed · {failedTasks} failed
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs opacity-80">Success Rate</div>
-                <div className="text-lg font-bold">{successRate}%</div>
-              </div>
-            </div>
-            
-            <div className="mb-3">
-              <div className="w-full bg-white bg-opacity-25 backdrop-blur-sm rounded-full h-2.5 border border-white/30">
-                <div
-                  className="bg-white h-2.5 rounded-full shadow-lg transition-all duration-1000 ease-out"
-                  style={{ width: `${successRate}%` }}
-                />
-              </div>
-            </div>
-            
-            <a
-              href={`/projects/${workspaceId}/tasks`}
-              className="inline-flex items-center text-xs bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-opacity-30 transition-all duration-200 font-medium"
-            >
-              View Details
-              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
+        {/* Tasks */}
+        <div>
+          <div className="text-xl font-bold text-gray-900">{totalTasks}</div>
+          <div className="text-sm text-gray-600">Total Tasks</div>
+          <div className="text-xs text-gray-500 mt-1">{successRate}% success</div>
+          <a href={`/projects/${workspaceId}/tasks`} className="text-xs text-blue-600 hover:text-blue-700 mt-1 block">
+            View →
+          </a>
         </div>
       </div>
     </div>

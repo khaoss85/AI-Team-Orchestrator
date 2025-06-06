@@ -96,13 +96,46 @@ class ConcreteAssetExtractor:
         assets = []
         result = task.get('result', {})
         
-        # Prova JSON strutturato
+        # Prova JSON strutturato - AGGIORNATO per nuovo formato dual output
         if result.get('detailed_results_json'):
             try:
                 data = json.loads(result['detailed_results_json'])
                 
-                # Check if data contains markup
-                if isinstance(data, dict):
+                # ✅ NEW: Check for dual output format first
+                if isinstance(data, dict) and 'structured_content' in data:
+                    # Extract from new dual format
+                    structured_content = data['structured_content']
+                    rendered_html = data.get('rendered_html', '')
+                    
+                    # Detecta tipo di asset dal contenuto strutturato
+                    asset_type = self._detect_asset_type(structured_content, task['name'])
+                    
+                    if asset_type and self._has_required_fields(structured_content, asset_type):
+                        assets.append({
+                            "type": asset_type,
+                            "data": structured_content,
+                            "rendered_html": rendered_html,  # Include pre-rendered HTML
+                            "source": "dual_output_format",
+                            "confidence": 0.95,
+                            "display_ready": True
+                        })
+                        logger.info(f"✅ Extracted {asset_type} asset from dual format: {task['name']}")
+                    
+                    # Also extract any additional structured content
+                    if isinstance(structured_content, dict):
+                        for key, value in structured_content.items():
+                            if isinstance(value, (list, dict)) and len(str(value)) > 100:
+                                sub_asset_type = self._detect_asset_type(value, f"{task['name']}_{key}")
+                                if sub_asset_type:
+                                    assets.append({
+                                        "type": sub_asset_type,
+                                        "data": value,
+                                        "source": "dual_output_sub_content",
+                                        "confidence": 0.85
+                                    })
+                
+                # ✅ FALLBACK: Check if data contains markup (old format)
+                elif isinstance(data, dict):
                     # Process any markup fields
                     processed_markup = markup_processor.process_deliverable_content(data)
                     
@@ -130,18 +163,19 @@ class ConcreteAssetExtractor:
                         
                         # Keep original data too
                         data['_processed_markup'] = processed_markup
-                
-                # Detecta tipo di asset
-                asset_type = self._detect_asset_type(data, task['name'])
-                
-                if asset_type and self._has_required_fields(data, asset_type):
-                    assets.append({
-                        "type": asset_type,
-                        "data": data,
-                        "source": "structured_json",
-                        "confidence": 0.9
-                    })
-            except:
+                    
+                    # Traditional asset detection for old format
+                    asset_type = self._detect_asset_type(data, task['name'])
+                    
+                    if asset_type and self._has_required_fields(data, asset_type):
+                        assets.append({
+                            "type": asset_type,
+                            "data": data,
+                            "source": "structured_json",
+                            "confidence": 0.9
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to parse detailed_results_json for task {task['name']}: {e}")
                 pass
         
         # Prova parsing dal summary
@@ -343,7 +377,8 @@ class ConcreteAssetExtractor:
                     "completeness": quality_metrics.completeness_score
                 },
                 "confidence": asset.get('confidence', 0.5),
-                "ready_to_use": quality_metrics.actionability_score > 0.85
+                "ready_to_use": quality_metrics.actionability_score > 0.85,
+                "has_rendered_html": bool(asset.get('rendered_html'))  # Track if we have pre-rendered HTML
             }
         }
         

@@ -27,6 +27,50 @@ const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsse
   tasks.forEach((task, index) => {
     const contextData = task.context_data as EnhancedTaskContextData;
     
+    // ✅ FIRST: Check ALL completed tasks for dual output format
+    if (task.status === 'completed' && task.result?.detailed_results_json) {
+      try {
+        const detailed = typeof task.result.detailed_results_json === 'string' 
+          ? JSON.parse(task.result.detailed_results_json)
+          : task.result.detailed_results_json;
+        
+        // Check for new dual output format
+        if (detailed.structured_content) {
+          // Create asset from structured content
+          const assetName = task.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+          const dualOutputAsset: ActionableAsset = {
+            asset_name: assetName,
+            asset_data: {
+              structured_content: detailed.structured_content,
+              rendered_html: detailed.rendered_html,
+              visual_summary: detailed.visual_summary,
+              actionable_insights: detailed.actionable_insights
+            },
+            source_task_id: task.id,
+            extraction_method: 'dual_output_extraction',
+            validation_score: 0.95,
+            actionability_score: 0.9,
+            ready_to_use: true,
+            usage_instructions: detailed.visual_summary || 'AI-generated business asset ready for immediate use'
+          };
+          
+          extractedAssets[assetName] = dualOutputAsset;
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ [RAW TASK EXTRACTION] Extracted dual output asset: ${assetName}`, {
+              hasStructuredContent: !!detailed.structured_content,
+              hasRenderedHtml: !!detailed.rendered_html,
+              taskName: task.name
+            });
+          }
+        }
+      } catch (e) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 [RAW TASK EXTRACTION] Failed to parse detailed_results_json:', e);
+        }
+      }
+    }
+    
     if (!contextData) return;
     
     // 🎯 PRIMARY LOCATION: context_data.precomputed_deliverable.actionable_assets
@@ -53,14 +97,45 @@ const extractAssetsFromRawTasks = (tasks: Task[]): Record<string, ActionableAsse
         Object.assign(extractedAssets, task.result.actionable_assets);
       }
       
-      // Check for nested asset structures
+      // ✅ NEW: Check for dual output format first
       if (task.result.detailed_results_json) {
         try {
           const detailed = typeof task.result.detailed_results_json === 'string' 
             ? JSON.parse(task.result.detailed_results_json)
             : task.result.detailed_results_json;
+          
+          // Check for new dual output format
+          if (detailed.structured_content) {
+            // Create asset from structured content
+            const assetName = task.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            const dualOutputAsset: ActionableAsset = {
+              asset_name: assetName,
+              asset_data: {
+                structured_content: detailed.structured_content,
+                rendered_html: detailed.rendered_html,
+                visual_summary: detailed.visual_summary,
+                actionable_insights: detailed.actionable_insights
+              },
+              source_task_id: task.id,
+              extraction_method: 'dual_output_extraction',
+              validation_score: 0.95,
+              actionability_score: 0.9,
+              ready_to_use: true,
+              usage_instructions: detailed.visual_summary || 'AI-generated business asset ready for immediate use'
+            };
             
-          if (detailed.actionable_assets) {
+            extractedAssets[assetName] = dualOutputAsset;
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ [RAW TASK EXTRACTION] Extracted dual output asset: ${assetName}`, {
+                hasStructuredContent: !!detailed.structured_content,
+                hasRenderedHtml: !!detailed.rendered_html,
+                taskName: task.name
+              });
+            }
+          }
+          // Fallback to old format
+          else if (detailed.actionable_assets) {
             Object.assign(extractedAssets, detailed.actionable_assets);
           }
         } catch (e) {

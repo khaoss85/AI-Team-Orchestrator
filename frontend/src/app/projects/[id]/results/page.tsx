@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useProjectResults, UnifiedResultItem } from '@/hooks/useProjectResults';
 import { UnifiedResultCard } from '@/components/UnifiedResultCard';
+import AssetDebugInspector from '@/components/AssetDebugInspector';
+import TestAssetInjector from '@/components/TestAssetInjector';
 
 type FilterType = 'all' | 'readyToUse' | 'inProgress' | 'final';
 type SortType = 'impact' | 'actionability' | 'recent' | 'alphabetical';
@@ -42,6 +44,8 @@ export default function ProjectResultsPage() {
   const [showRawData, setShowRawData] = useState(false);
   const [aiProcessedContent, setAiProcessedContent] = useState<string | null>(null);
   const [loadingAiContent, setLoadingAiContent] = useState(false);
+  const [showDebugInspector, setShowDebugInspector] = useState(false);
+  const [showTestInjector, setShowTestInjector] = useState(false);
 
   // Function to process structured content with AI for rich rendering
   const processWithAI = async (structuredContent: any, taskTitle: string) => {
@@ -736,6 +740,33 @@ export default function ProjectResultsPage() {
                 </svg>
                 Export All
               </button>
+              
+              {/* Debug Inspector Button */}
+              {process.env.NODE_ENV === 'development' && (
+                <>
+                  <button
+                    onClick={() => setShowDebugInspector(true)}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+                    title="Debug raw data extraction"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    🔍 Debug
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowTestInjector(true)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+                    title="Inject test calendar with real content"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    🧪 Test
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1174,6 +1205,19 @@ export default function ProjectResultsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Debug Inspector */}
+      {showDebugInspector && (
+        <AssetDebugInspector workspaceId={projectId} />
+      )}
+      
+      {/* Test Asset Injector */}
+      {showTestInjector && (
+        <TestAssetInjector 
+          workspaceId={projectId} 
+          onClose={() => setShowTestInjector(false)} 
+        />
       )}
       </div>
     </>
