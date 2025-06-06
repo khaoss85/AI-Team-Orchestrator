@@ -695,16 +695,17 @@ class SpecialistAgent(Generic[T]):
         # Asset-oriented enhancement (codice esistente)
         asset_enhancement = """
 
-    🎯 **ENHANCED ASSET PRODUCTION MODE WITH STRUCTURED MARKUP**
+    🎯 **ENHANCED ASSET PRODUCTION MODE WITH AUTOMATIC DUAL OUTPUT**
 
     When your task is marked as "asset production" (check context_data.asset_production or task name contains "PRODUCE ASSET:"), 
-    you must focus on creating IMMEDIATELY ACTIONABLE business assets using STRUCTURED MARKUP for optimal rendering.
+    you must focus on creating IMMEDIATELY ACTIONABLE business assets with AUTOMATIC DUAL OUTPUT: both structured data AND beautiful markup.
 
-    **ASSET PRODUCTION REQUIREMENTS**:
-    1. **Structured Markup**: Use the markup format below for tables, cards, timelines, and metrics
-    2. **No Placeholders**: Replace ALL placeholder text with real, actionable content
-    3. **Business Ready**: Output should be copy-paste ready for business use
-    4. **Validation Ready**: Follow exact schema if provided in task description
+    **MANDATORY DUAL OUTPUT REQUIREMENTS**:
+    1. **Structured Data**: Clean JSON for APIs and automation
+    2. **Rendered Markup**: Pre-formatted HTML for immediate display
+    3. **No Placeholders**: Replace ALL placeholder text with real, actionable content
+    4. **Business Ready**: Both outputs must be production-ready
+    5. **Zero Processing Delay**: User sees beautiful content instantly
 
     **STRUCTURED MARKUP FORMATS FOR BETTER READABILITY**:
 
@@ -821,15 +822,77 @@ class SpecialistAgent(Generic[T]):
     }
     ```
 
+    🚨 **MANDATORY DUAL OUTPUT FORMAT**
+    
+    For ALL asset production tasks, your detailed_results_json MUST include both structured data AND pre-rendered HTML:
+    
+    ```json
+    {
+      "structured_content": {
+        // Clean structured data for APIs/automation
+        "competitor_analysis": [...],
+        "audience_profile": {...},
+        "posts": [...]
+      },
+      "rendered_html": "<div class=\"ai-generated-content\"><!-- Beautiful HTML here --></div>",
+      "visual_summary": "Brief description of the asset",
+      "actionable_insights": ["Insight 1", "Insight 2", "Insight 3"]
+    }
+    ```
+    
+    **HTML RENDERING GUIDELINES:**
+    - Use semantic HTML with proper headings (h1, h2, h3)
+    - Include professional styling classes for cards, tables, metrics
+    - Add visual icons and emojis for engagement
+    - Create responsive grid layouts for data
+    - Highlight key insights and actionable items
+    - Make competitor analysis into professional cards
+    - Transform data into visual tables/charts
+    - Use color coding for importance levels
+    
+    **EXAMPLE RENDERED HTML FOR COMPETITOR ANALYSIS:**
+    ```html
+    <div class="space-y-6">
+      <div class="bg-blue-50 p-6 rounded-lg border border-blue-200">
+        <h1 class="text-2xl font-bold text-blue-900 mb-3">🏆 Competitor Analysis Report</h1>
+        <p class="text-blue-700">Complete analysis of key competitors in the fitness market</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+              <span class="text-blue-600 font-bold text-lg">🏋️</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-900">Competitor Name</h3>
+              <p class="text-blue-600 text-sm">@instagram_handle</p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Followers:</span>
+              <span class="font-semibold text-gray-900">125K</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Engagement:</span>
+              <span class="font-semibold text-green-600">4.8%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ```
+
     🚨 CRITICAL ANTI-THEORETICAL REQUIREMENTS:
     
     **MANDATORY FOR ALL ASSET PRODUCTION TASKS:**
     1. **NO PLACEHOLDERS**: Replace ALL "[Insert here]", "TBD", "Example" with real content
     2. **CONCRETE DATA**: Generate actual lists, real examples, specific numbers
-    3. **IMMEDIATELY USABLE**: Output must be copy-paste ready for business use
+    3. **IMMEDIATELY USABLE**: Both JSON and HTML must be production-ready
     4. **COMPLETE CONTENT**: If asked for 30 posts, provide 30 actual posts with real captions
     5. **SPECIFIC DETAILS**: Include dates, times, exact measurements, real hashtags
     6. **ACTIONABLE INSTRUCTIONS**: Provide step-by-step implementation guidance
+    7. **DUAL FORMAT**: Always provide both structured_content AND rendered_html
     
     **EXAMPLES OF WHAT TO AVOID:**
     ❌ "Create engaging content about fitness" 

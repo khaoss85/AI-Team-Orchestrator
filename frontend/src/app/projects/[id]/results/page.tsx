@@ -40,12 +40,109 @@ export default function ProjectResultsPage() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
+  const [aiProcessedContent, setAiProcessedContent] = useState<string | null>(null);
+  const [loadingAiContent, setLoadingAiContent] = useState(false);
+
+  // Function to process structured content with AI for rich rendering
+  const processWithAI = async (structuredContent: any, taskTitle: string) => {
+    if (!structuredContent) return null;
+    
+    setLoadingAiContent(true);
+    try {
+      // First try the real AI endpoint
+      const response = await fetch(`http://localhost:8000/ai/process-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: structuredContent,
+          title: taskTitle,
+          format: 'html',
+          instructions: `Transform this structured data into a beautiful, user-friendly HTML presentation. 
+                        Use appropriate headings, lists, tables, cards, and visual elements. 
+                        Make it engaging and easy to read. Include proper styling classes for a professional look.
+                        Focus on actionability and business value.`
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.processed_content || data.content;
+      } else {
+        // Fallback to preview endpoint if main endpoint fails
+        console.log('Main AI endpoint failed, trying preview...');
+        const previewResponse = await fetch(`http://localhost:8000/ai/process-content/preview`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: structuredContent,
+            title: taskTitle,
+            format: 'html'
+          })
+        });
+
+        if (previewResponse.ok) {
+          const previewData = await previewResponse.json();
+          return previewData.processed_content;
+        }
+      }
+    } catch (error) {
+      console.error('Error processing content with AI:', error);
+      
+      // Final fallback - generate basic HTML client-side
+      return generateBasicHTML(structuredContent, taskTitle);
+    } finally {
+      setLoadingAiContent(false);
+    }
+    return null;
+  };
+
+  // Client-side fallback for basic HTML generation
+  const generateBasicHTML = (content: any, title: string) => {
+    let html = `<div class="space-y-6">`;
+    html += `<div class="bg-blue-50 p-6 rounded-lg border border-blue-200">`;
+    html += `<h1 class="text-2xl font-bold text-blue-900 mb-3">📊 ${title}</h1>`;
+    html += `<p class="text-blue-700">AI-processed content (using fallback formatting)</p>`;
+    html += `</div>`;
+    
+    // Generate basic cards for each major content section
+    Object.keys(content).forEach(key => {
+      const value = content[key];
+      if (typeof value === 'object' && value !== null) {
+        html += `<div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">`;
+        html += `<h2 class="text-lg font-bold text-gray-900 mb-3">${key.replace(/_/g, ' ').toUpperCase()}</h2>`;
+        
+        if (Array.isArray(value)) {
+          html += `<ul class="space-y-2">`;
+          value.slice(0, 3).forEach(item => {
+            if (typeof item === 'string') {
+              html += `<li class="text-gray-700">• ${item}</li>`;
+            } else if (typeof item === 'object') {
+              html += `<li class="text-gray-700">• ${JSON.stringify(item).substring(0, 100)}...</li>`;
+            }
+          });
+          html += `</ul>`;
+        } else {
+          html += `<p class="text-gray-700">${JSON.stringify(value).substring(0, 200)}...</p>`;
+        }
+        
+        html += `</div>`;
+      }
+    });
+    
+    html += `</div>`;
+    return html;
+  };
 
   // Function to fetch enhanced content when viewing details
   const handleViewDetails = async (result: UnifiedResultItem) => {
     setSelectedResult(result);
     setLoadingEnhanced(true);
     setEnhancedContent(null);
+    setAiProcessedContent(null);
 
     try {
       // Get all workspace tasks to find the one with detailed results
@@ -88,6 +185,19 @@ export default function ProjectResultsPage() {
               }
             };
             setEnhancedContent(enhancedContent);
+            
+            // Check if we already have pre-rendered HTML
+            if (detailedResults.rendered_html) {
+              console.log('✅ Found pre-rendered HTML, using directly');
+              // HTML is already included in enhancedContent.structured_content
+              return;
+            }
+            
+            // Fallback: Process the structured content with AI for rich rendering
+            const aiContent = await processWithAI(detailedResults, result.title);
+            if (aiContent) {
+              setAiProcessedContent(aiContent);
+            }
             return;
           }
         }
@@ -487,7 +597,80 @@ export default function ProjectResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Custom CSS for AI-generated content */}
+      <style jsx global>{`
+        .ai-generated-content {
+          line-height: 1.7;
+        }
+        .ai-generated-content h1, .ai-generated-content h2, .ai-generated-content h3 {
+          color: #1f2937;
+          font-weight: 600;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        .ai-generated-content h1 {
+          font-size: 1.875rem;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 0.5rem;
+        }
+        .ai-generated-content h2 {
+          font-size: 1.5rem;
+        }
+        .ai-generated-content h3 {
+          font-size: 1.25rem;
+        }
+        .ai-generated-content ul, .ai-generated-content ol {
+          margin: 1rem 0;
+          padding-left: 1.5rem;
+        }
+        .ai-generated-content li {
+          margin: 0.5rem 0;
+        }
+        .ai-generated-content table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          background: white;
+          border-radius: 0.5rem;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .ai-generated-content th, .ai-generated-content td {
+          padding: 0.75rem 1rem;
+          text-align: left;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .ai-generated-content th {
+          background-color: #f9fafb;
+          font-weight: 600;
+          color: #374151;
+        }
+        .ai-generated-content .card {
+          background: white;
+          border-radius: 0.5rem;
+          padding: 1.5rem;
+          margin: 1rem 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border-left: 4px solid #3b82f6;
+        }
+        .ai-generated-content .highlight {
+          background: linear-gradient(120deg, #a7f3d0 0%, #a7f3d0 100%);
+          background-repeat: no-repeat;
+          background-size: 100% 0.2em;
+          background-position: 0 88%;
+          padding: 0.1em 0.3em;
+        }
+        .ai-generated-content blockquote {
+          border-left: 4px solid #3b82f6;
+          padding-left: 1rem;
+          margin: 1.5rem 0;
+          font-style: italic;
+          color: #6b7280;
+        }
+      `}</style>
+      
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-6">
@@ -770,21 +953,101 @@ export default function ProjectResultsPage() {
                         </div>
                       )}
                       
-                      {/* Main Content */}
-                      {enhancedContent.content && (
+                      {/* Pre-rendered HTML (NEW: Direct from backend) */}
+                      {enhancedContent.structured_content?.rendered_html && (
                         <div className="mb-6">
-                          <h3 className="text-lg font-semibold mb-4">📄 Content</h3>
+                          <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg mb-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h3 className="text-lg font-semibold text-green-800 mb-2">⚡ Ready-to-View Content</h3>
+                                <p className="text-green-700 text-sm">Pre-formatted by AI during creation - zero delay</p>
+                              </div>
+                              <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded">Instant</span>
+                            </div>
+                          </div>
                           <div 
-                            className="prose prose-sm max-w-none text-gray-700"
-                            dangerouslySetInnerHTML={{ 
-                              __html: enhancedContent.content.replace(/\n/g, '<br>') 
-                            }}
+                            className="prose prose-lg max-w-none ai-generated-content"
+                            dangerouslySetInnerHTML={{ __html: enhancedContent.structured_content.rendered_html }}
+                            style={{
+                              '--tw-prose-headings': '#1f2937',
+                              '--tw-prose-lead': '#4b5563',
+                              '--tw-prose-links': '#3b82f6',
+                              '--tw-prose-bold': '#1f2937',
+                              '--tw-prose-counters': '#6b7280',
+                              '--tw-prose-bullets': '#d1d5db',
+                              '--tw-prose-hr': '#e5e7eb',
+                              '--tw-prose-quotes': '#6b7280',
+                              '--tw-prose-quote-borders': '#e5e7eb',
+                              '--tw-prose-captions': '#6b7280',
+                              '--tw-prose-code': '#1f2937',
+                              '--tw-prose-pre-code': '#e5e7eb',
+                              '--tw-prose-pre-bg': '#1f2937',
+                              '--tw-prose-th-borders': '#d1d5db',
+                              '--tw-prose-td-borders': '#e5e7eb'
+                            } as React.CSSProperties}
+                          />
+                        </div>
+                      )}
+
+                      {/* AI-Generated Rich Content (Fallback for older content) */}
+                      {!enhancedContent.structured_content?.rendered_html && loadingAiContent && (
+                        <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                            <span className="text-blue-700 font-medium">🤖 AI is generating beautiful content...</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {!enhancedContent.structured_content?.rendered_html && aiProcessedContent && (
+                        <div className="mb-6">
+                          <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg mb-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <h3 className="text-lg font-semibold text-purple-800 mb-2">🤖 AI-Enhanced Presentation</h3>
+                                <p className="text-purple-700 text-sm">Content processed and beautifully formatted by AI</p>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  const newContent = await processWithAI(enhancedContent.structured_content, selectedResult.title);
+                                  if (newContent) setAiProcessedContent(newContent);
+                                }}
+                                disabled={loadingAiContent}
+                                className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm flex items-center"
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Regenerate
+                              </button>
+                            </div>
+                          </div>
+                          <div 
+                            className="prose prose-lg max-w-none ai-generated-content"
+                            dangerouslySetInnerHTML={{ __html: aiProcessedContent }}
+                            style={{
+                              '--tw-prose-headings': '#1f2937',
+                              '--tw-prose-lead': '#4b5563',
+                              '--tw-prose-links': '#3b82f6',
+                              '--tw-prose-bold': '#1f2937',
+                              '--tw-prose-counters': '#6b7280',
+                              '--tw-prose-bullets': '#d1d5db',
+                              '--tw-prose-hr': '#e5e7eb',
+                              '--tw-prose-quotes': '#6b7280',
+                              '--tw-prose-quote-borders': '#e5e7eb',
+                              '--tw-prose-captions': '#6b7280',
+                              '--tw-prose-code': '#1f2937',
+                              '--tw-prose-pre-code': '#e5e7eb',
+                              '--tw-prose-pre-bg': '#1f2937',
+                              '--tw-prose-th-borders': '#d1d5db',
+                              '--tw-prose-td-borders': '#e5e7eb'
+                            } as React.CSSProperties}
                           />
                         </div>
                       )}
                       
-                      {/* Rich Structured Content Rendering */}
-                      {enhancedContent.structured_content && (
+                      {/* Fallback: Manual Structured Content Rendering (only if no pre-rendered HTML and AI processing fails) */}
+                      {!enhancedContent.structured_content?.rendered_html && !aiProcessedContent && !loadingAiContent && enhancedContent.structured_content && (
                         <div className="mb-6">
                           <h3 className="text-lg font-semibold mb-4">📊 Analysis Results</h3>
                           {renderStructuredContent(enhancedContent.structured_content)}
@@ -912,6 +1175,7 @@ export default function ProjectResultsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
