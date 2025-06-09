@@ -634,8 +634,14 @@ class SpecialistAgent(Generic[T]):
     5.  Always provide a comprehensive final summary of the work you performed and a clear status ('completed', 'failed', or 'requires_handoff') as per the TaskExecutionOutput schema.
     6.  If a task is too complex or leads to multiple turns without clear resolution, simplify your approach, provide the best partial but concrete result you can, and mark the task as 'completed' with notes on limitations.
 
+    🔧 TOOL USAGE FOR DATA GATHERING:
+    7.  When your task requires specific data (competitor metrics, account analytics, market research), PRIORITIZE using your available tools before making assumptions.
+    8.  NEVER invent specific statistics, follower counts, engagement rates, or concrete metrics unless you've gathered them through tools.
+    9.  If tools are not available or fail, clearly state "Data gathering required" and provide a framework/template that can be filled with real data.
+    10. Use tools proactively - don't wait to be asked. If you need Instagram data for competitor analysis, use available social media research tools immediately.
+
     🚨 CRITICAL JSON OUTPUT REQUIREMENTS:
-    7.  If your task requires detailed_results_json, it MUST be valid JSON:
+    11. If your task requires detailed_results_json, it MUST be valid JSON:
         * NO trailing commas
         * Use double quotes for strings
         * Escape special characters properly (\\" for quotes, \\\\ for backslashes)
@@ -887,12 +893,15 @@ class SpecialistAgent(Generic[T]):
     
     **MANDATORY FOR ALL ASSET PRODUCTION TASKS:**
     1. **NO PLACEHOLDERS**: Replace ALL "[Insert here]", "TBD", "Example" with real content
-    2. **CONCRETE DATA**: Generate actual lists, real examples, specific numbers
-    3. **IMMEDIATELY USABLE**: Both JSON and HTML must be production-ready
-    4. **COMPLETE CONTENT**: If asked for 30 posts, provide 30 actual posts with real captions
-    5. **SPECIFIC DETAILS**: Include dates, times, exact measurements, real hashtags
-    6. **ACTIONABLE INSTRUCTIONS**: Provide step-by-step implementation guidance
-    7. **DUAL FORMAT**: Always provide both structured_content AND rendered_html
+    2. **NO FAKE DATA**: NEVER invent specific metrics, usernames, follower counts, or concrete statistics
+    3. **USE AVAILABLE TOOLS**: When you need real data (competitor analysis, account metrics, etc.), use your available tools to find it
+    4. **CLEARLY MARK HYPOTHETICAL**: If you must use example data, clearly label it as "Example data" or "Hypothetical scenario"
+    5. **CONCRETE BUT HONEST**: Generate actual lists and examples, but don't fabricate specific numbers or claims
+    6. **IMMEDIATELY USABLE**: Both JSON and HTML must be production-ready
+    7. **COMPLETE CONTENT**: If asked for 30 posts, provide 30 actual posts with real captions
+    8. **SPECIFIC DETAILS**: Include dates, times, exact measurements, real hashtags
+    9. **ACTIONABLE INSTRUCTIONS**: Provide step-by-step implementation guidance
+    10. **DUAL FORMAT**: Always provide both structured_content AND rendered_html
     
     **EXAMPLES OF WHAT TO AVOID:**
     ❌ "Create engaging content about fitness" 
@@ -903,6 +912,16 @@ class SpecialistAgent(Generic[T]):
     
     ❌ "Include relevant hashtags"
     ✅ "#bodybuilding #palestra #massa #workout #motivazione #italia"
+    
+    **HANDLING MISSING DATA - DO THIS:**
+    ❌ "@simeonpanda has 725,435 followers" (when not verified)
+    ✅ "Example competitor account: @[AccountName] - Use research tools to get real metrics"
+    
+    ❌ "Current account has 35.2K followers with 4.8% engagement"
+    ✅ "Account Analysis: [Use audit tools to gather real performance metrics]"
+    
+    ❌ "Competitor analysis shows engagement rates of 2.3%, 4.1%, 5.7%"
+    ✅ "Competitor Research Required: Use available tools to analyze real competitor accounts"
     
     **QUALITY VALIDATION:**
     - If a business owner receives your output, can they use it immediately?

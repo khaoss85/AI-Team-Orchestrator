@@ -392,11 +392,15 @@ async def get_project_deliverables(workspace_id: UUID):
         tasks = await list_tasks(str(workspace_id))
         completed_tasks = [t for t in tasks if t.get("status") == "completed"]
 
-        # Cache check based on latest task update
+        # Cache check based on latest task update and content hash
         last_updated = _get_latest_update_timestamp(tasks)
+        content_hash = _calculate_content_hash(completed_tasks)
         cache_entry = DELIVERABLE_CACHE.get(str(workspace_id)) if ENABLE_DELIVERABLE_CACHE else None
-        if cache_entry and cache_entry.get("last_updated") == last_updated:
-            logger.info(f"\U0001F4E6 Using cached deliverable for {workspace_id}")
+        
+        if (cache_entry and 
+            cache_entry.get("last_updated") == last_updated and 
+            cache_entry.get("content_hash") == content_hash):
+            logger.info(f"📦 Using cached deliverable for {workspace_id} (content unchanged)")
             return cache_entry["data"]
         
         # Get agents info for names/roles
@@ -434,43 +438,64 @@ async def get_project_deliverables(workspace_id: UUID):
                     try:
                         detailed_data = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
                         
-                        # Process with markup processor
-                        processed = markup_processor.process_deliverable_content(detailed_data)
+                        # Check if HTML is already rendered (avoid re-processing)
+                        if isinstance(detailed_data, dict) and detailed_data.get("rendered_html"):
+                            # HTML already exists, use it directly
+                            logger.debug(f"📦 Using pre-rendered HTML for task {task.get('id', 'unknown')}")
+                            processed = {
+                                "has_structured_content": bool(detailed_data.get("structured_content")),
+                                "has_markup": True,
+                                "rendered_html": detailed_data["rendered_html"],
+                                "visual_summary": detailed_data.get("visual_summary", ""),
+                                "actionable_insights": detailed_data.get("actionable_insights", [])
+                            }
+                        else:
+                            # Process with markup processor (fallback for legacy content)
+                            logger.debug(f"🔄 Processing markup for task {task.get('id', 'unknown')}")
+                            processed = markup_processor.process_deliverable_content(detailed_data)
                         
                         if processed.get("has_structured_content") or processed.get("has_markup"):
-                            # Create visual summary from processed content
-                            visual_parts = []
-                            
-                            # Add tables summary
-                            if processed.get("tables"):
-                                for table in processed["tables"][:2]:  # First 2 tables
-                                    visual_parts.append(f"📊 {table['display_name']}: {table['row_count']} rows")
-                            
-                            # Add cards summary  
-                            if processed.get("cards"):
-                                for card in processed["cards"][:2]:  # First 2 cards
-                                    if card['fields'].get('title'):
-                                        visual_parts.append(f"{card['icon']} {card['fields']['title']}")
-                            
-                            # Add metrics summary
-                            if processed.get("metrics"):
-                                for metric in processed["metrics"][:2]:  # First 2 metrics
-                                    visual_parts.append(f"📈 {metric['display_name']}: {metric.get('value', 'N/A')} {metric.get('unit', '')}")
-                            
-                            if visual_parts:
-                                visual_summary = "\n".join(visual_parts)
+                            # Use pre-existing visual summary if available
+                            if processed.get("visual_summary"):
+                                visual_summary = processed["visual_summary"]
+                            else:
+                                # Create visual summary from processed content (legacy fallback)
+                                visual_parts = []
+                                
+                                # Add tables summary
+                                if processed.get("tables"):
+                                    for table in processed["tables"][:2]:  # First 2 tables
+                                        visual_parts.append(f"📊 {table['display_name']}: {table['row_count']} rows")
+                                
+                                # Add cards summary  
+                                if processed.get("cards"):
+                                    for card in processed["cards"][:2]:  # First 2 cards
+                                        if card['fields'].get('title'):
+                                            visual_parts.append(f"{card['icon']} {card['fields']['title']}")
+                                
+                                # Add metrics summary
+                                if processed.get("metrics"):
+                                    for metric in processed["metrics"][:2]:  # First 2 metrics
+                                        visual_parts.append(f"📈 {metric['display_name']}: {metric.get('value', 'N/A')} {metric.get('unit', '')}")
+                                
+                                if visual_parts:
+                                    visual_summary = "\n".join(visual_parts)
                             
                             # Store processed content for frontend
                             structured_content = processed
                         
                         # Extract key insights from detailed data
                         if isinstance(detailed_data, dict):
-                            # Look for various insight fields
-                            insights_fields = ["key_insights", "key_findings", "insights", "recommendations", "key_points"]
-                            for field in insights_fields:
-                                if field in detailed_data and isinstance(detailed_data[field], list):
-                                    key_insights.extend(detailed_data[field][:3])  # Limit to 3 per field
-                                    break
+                            # First check if pre-rendered insights are available
+                            if detailed_data.get("actionable_insights"):
+                                key_insights = detailed_data["actionable_insights"][:3]  # Limit to 3
+                            else:
+                                # Fallback to legacy insight extraction
+                                insights_fields = ["key_insights", "key_findings", "insights", "recommendations", "key_points"]
+                                for field in insights_fields:
+                                    if field in detailed_data and isinstance(detailed_data[field], list):
+                                        key_insights.extend(detailed_data[field][:3])  # Limit to 3 per field
+                                        break
                             
                             # Extract metrics
                             metrics_fields = ["metrics", "performance_metrics", "project_metrics", "kpis"]
@@ -697,8 +722,10 @@ async def get_project_deliverables(workspace_id: UUID):
         if ENABLE_DELIVERABLE_CACHE:
             DELIVERABLE_CACHE[str(workspace_id)] = {
                 "last_updated": last_updated,
+                "content_hash": content_hash,
                 "data": response,
             }
+            logger.debug(f"📦 Cached deliverable for {workspace_id} with hash {content_hash[:8]}")
 
         return response
         
@@ -1335,6 +1362,24 @@ def _get_latest_update_timestamp(tasks: List[Dict]) -> str:
         if not latest or dt > latest:
             latest = dt
     return latest.isoformat() if latest else ""
+
+def _calculate_content_hash(tasks: List[Dict]) -> str:
+    """Calculate a hash of the task content to detect changes beyond timestamp"""
+    import hashlib
+    
+    # Create a string from key content fields
+    content_parts = []
+    for task in tasks:
+        result = task.get("result", {}) or {}
+        content_parts.extend([
+            task.get("id", ""),
+            task.get("name", ""),
+            result.get("summary", ""),
+            str(result.get("detailed_results_json", ""))[:500]  # First 500 chars to avoid huge hashes
+        ])
+    
+    content_string = "|".join(content_parts)
+    return hashlib.md5(content_string.encode('utf-8')).hexdigest()[:12]  # Short hash
 
 async def _generate_deliverable_insights(outputs: List[Dict]) -> List[ProjectDeliverableCard]:
     """Generate user-friendly insights cards from task outputs"""

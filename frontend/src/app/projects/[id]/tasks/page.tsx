@@ -219,7 +219,7 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
     return agent ? agent.name : 'Agente Sconosciuto';
   };
 
-  // Statistics for better overview
+  // Enhanced statistics including cost tracking and insights
   const taskStats = React.useMemo(() => {
     const stats = {
       total: tasks.length,
@@ -229,10 +229,53 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
       failed: tasks.filter(t => t.status === 'failed').length,
     };
     
+    // Calculate cost and value metrics
+    const costMetrics = tasks.reduce((acc, task) => {
+      const result = task.result || {};
+      const cost = parseFloat(result.cost_estimated || '0');
+      const executionTime = parseFloat(result.execution_time_seconds || '0');
+      
+      acc.totalCost += cost;
+      acc.totalTime += executionTime;
+      
+      if (task.status === 'completed') {
+        acc.completedCost += cost;
+        acc.completedTime += executionTime;
+        
+        // Count deliverables and insights
+        if (result.detailed_results_json) {
+          try {
+            const detailed = typeof result.detailed_results_json === 'string' 
+              ? JSON.parse(result.detailed_results_json) 
+              : result.detailed_results_json;
+            
+            if (detailed.structured_content) acc.structuredOutputs++;
+            if (detailed.rendered_html) acc.renderedOutputs++;
+            if (detailed.actionable_insights) acc.totalInsights += detailed.actionable_insights.length;
+          } catch (e) {
+            // Ignore JSON parsing errors
+          }
+        }
+      }
+      
+      return acc;
+    }, {
+      totalCost: 0,
+      completedCost: 0,
+      totalTime: 0,
+      completedTime: 0,
+      structuredOutputs: 0,
+      renderedOutputs: 0,
+      totalInsights: 0
+    });
+    
     return {
       ...stats,
+      ...costMetrics,
       success_rate: stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0',
-      failure_rate: stats.total > 0 ? ((stats.failed / stats.total) * 100).toFixed(1) : '0'
+      failure_rate: stats.total > 0 ? ((stats.failed / stats.total) * 100).toFixed(1) : '0',
+      avgCostPerTask: stats.completed > 0 ? (costMetrics.completedCost / stats.completed) : 0,
+      avgTimePerTask: stats.completed > 0 ? (costMetrics.completedTime / stats.completed) : 0
     };
   }, [tasks]);
 
@@ -262,6 +305,64 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
           <p className="text-sm text-gray-500">Totale attività</p>
           <p className="text-2xl font-bold">{tasks.length}</p>
         </div>
+      </div>
+
+      {/* Cost and Value Overview */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-blue-900 mb-4">💰 Recap Costi e Valore Generato</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-700">
+              ${taskStats.totalCost.toFixed(4)}
+            </div>
+            <div className="text-sm text-blue-600">Costo Totale</div>
+            <div className="text-xs text-blue-500">
+              Medio: ${taskStats.avgCostPerTask.toFixed(6)}/task
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-700">
+              {taskStats.structuredOutputs}
+            </div>
+            <div className="text-sm text-green-600">Asset Strutturati</div>
+            <div className="text-xs text-green-500">
+              {taskStats.renderedOutputs} con markup HTML
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-700">
+              {taskStats.totalInsights}
+            </div>
+            <div className="text-sm text-purple-600">Insights Azionabili</div>
+            <div className="text-xs text-purple-500">
+              Da {taskStats.completed} task completati
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-700">
+              {(taskStats.completedTime / 60).toFixed(1)}m
+            </div>
+            <div className="text-sm text-orange-600">Tempo Elaborazione</div>
+            <div className="text-xs text-orange-500">
+              Medio: {taskStats.avgTimePerTask.toFixed(1)}s/task
+            </div>
+          </div>
+        </div>
+        
+        {/* Value calculation */}
+        {taskStats.totalInsights > 0 && (
+          <div className="mt-4 p-3 bg-white rounded-lg">
+            <div className="text-sm text-gray-600">
+              🎯 <strong>Valore Generato:</strong> {taskStats.totalInsights} insights azionabili 
+              da {taskStats.structuredOutputs} asset pronti all'uso
+              {taskStats.totalCost > 0 && (
+                <span className="ml-2 text-green-600">
+                  (Costo per insight: ${(taskStats.completedCost / taskStats.totalInsights).toFixed(4)})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Enhanced Statistics */}
@@ -381,67 +482,225 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
               </div>
             </div>
             
-            {/* Task Results/Details */}
+            {/* Enhanced Task Results/Details */}
             {task.result && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                <h4 className="font-medium text-gray-900 mb-2">Risultati:</h4>
-                {task.status === 'completed' && (
-                  <div>
-                    {task.result.summary && (
-                      <p className="text-sm text-gray-700 mb-2">{task.result.summary}</p>
-                    )}
-                    {task.result.output && (
-                      <div className="text-sm text-gray-700 mb-2">
-                        <strong>Output:</strong>
-                        <div className="mt-1 p-2 bg-white rounded border">
-                          {typeof task.result.output === 'string' ? task.result.output : JSON.stringify(task.result.output, null, 2)}
+              <div className="mt-4 space-y-3">
+                {/* Rich Content Detection */}
+                {(() => {
+                  const result = task.result;
+                  let hasRichContent = false;
+                  let structuredContent = null;
+                  let visualSummary = null;
+                  let keyInsights = [];
+                  let renderableContent = null;
+                  
+                  // Check for detailed_results_json with structured content
+                  if (result.detailed_results_json) {
+                    try {
+                      const detailed = typeof result.detailed_results_json === 'string' 
+                        ? JSON.parse(result.detailed_results_json) 
+                        : result.detailed_results_json;
+                      
+                      // Check for pre-rendered HTML
+                      if (detailed.rendered_html) {
+                        hasRichContent = true;
+                        renderableContent = detailed.rendered_html;
+                      }
+                      
+                      // Check for structured content indicators
+                      if (detailed.structured_content || detailed.editorial_calendar || detailed.competitor_analysis) {
+                        hasRichContent = true;
+                        structuredContent = detailed;
+                      }
+                      
+                      // Extract visual summary
+                      if (detailed.visual_summary) {
+                        visualSummary = detailed.visual_summary;
+                      }
+                      
+                      // Extract insights
+                      if (detailed.actionable_insights) {
+                        keyInsights = detailed.actionable_insights;
+                      } else if (detailed.key_insights) {
+                        keyInsights = detailed.key_insights;
+                      }
+                    } catch (e) {
+                      // Ignore JSON parsing errors
+                    }
+                  }
+                  
+                  return (
+                    <div>
+                      {/* High-Value Content Badge */}
+                      {hasRichContent && (
+                        <div className="mb-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                          ✨ Contenuto Strutturato Disponibile
+                        </div>
+                      )}
+                      
+                      {/* Main Results Container */}
+                      <div className={`p-4 rounded-md ${
+                        hasRichContent 
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' 
+                          : 'bg-gray-50'
+                      }`}>
+                        <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                          📊 Risultati
+                          {hasRichContent && (
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Rich Content</span>
+                          )}
+                        </h4>
+                        
+                        {task.status === 'completed' && (
+                          <div className="space-y-3">
+                            {/* Visual Summary (Priority Display) */}
+                            {visualSummary && (
+                              <div className="bg-white p-3 rounded border border-blue-200">
+                                <h5 className="text-sm font-medium text-blue-900 mb-2">📈 Riepilogo Visivo</h5>
+                                <pre className="text-sm text-gray-700 whitespace-pre-line font-sans">{visualSummary}</pre>
+                              </div>
+                            )}
+                            
+                            {/* Key Insights */}
+                            {keyInsights.length > 0 && (
+                              <div className="bg-white p-3 rounded border border-green-200">
+                                <h5 className="text-sm font-medium text-green-900 mb-2">💡 Insights Chiave</h5>
+                                <ul className="space-y-1">
+                                  {keyInsights.slice(0, 3).map((insight: string, index: number) => (
+                                    <li key={index} className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-green-600 mr-2 mt-0.5">•</span>
+                                      {insight}
+                                    </li>
+                                  ))}
+                                </ul>
+                                {keyInsights.length > 3 && (
+                                  <p className="text-xs text-gray-500 mt-2">+ altri {keyInsights.length - 3} insights</p>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Structured Content Preview */}
+                            {structuredContent && (
+                              <div className="bg-white p-3 rounded border border-purple-200">
+                                <h5 className="text-sm font-medium text-purple-900 mb-2">🗂️ Contenuto Strutturato</h5>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                                  {structuredContent.editorial_calendar && (
+                                    <div className="flex items-center">
+                                      <span className="text-blue-600 mr-1">📅</span>
+                                      Calendar: {structuredContent.editorial_calendar.length} items
+                                    </div>
+                                  )}
+                                  {structuredContent.competitor_analysis && (
+                                    <div className="flex items-center">
+                                      <span className="text-orange-600 mr-1">🏆</span>
+                                      Competitors: {structuredContent.competitor_analysis.length} analyzed
+                                    </div>
+                                  )}
+                                  {structuredContent.metrics && (
+                                    <div className="flex items-center">
+                                      <span className="text-green-600 mr-1">📊</span>
+                                      Metrics: {Object.keys(structuredContent.metrics).length} tracked
+                                    </div>
+                                  )}
+                                  {renderableContent && (
+                                    <div className="flex items-center">
+                                      <span className="text-purple-600 mr-1">🎨</span>
+                                      HTML Ready
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Standard Summary (fallback or additional) */}
+                            {result.summary && !visualSummary && (
+                              <div className="bg-white p-3 rounded border">
+                                <h5 className="text-sm font-medium text-gray-900 mb-2">📝 Riepilogo</h5>
+                                <p className="text-sm text-gray-700">{result.summary}</p>
+                              </div>
+                            )}
+                            
+                            {/* Legacy fields (backwards compatibility) */}
+                            {result.output && !hasRichContent && (
+                              <div className="bg-white p-3 rounded border">
+                                <h5 className="text-sm font-medium text-gray-900 mb-2">📄 Output</h5>
+                                <div className="text-sm text-gray-700 max-h-32 overflow-y-auto">
+                                  {typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2)}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {result.deliverables && Array.isArray(result.deliverables) && (
+                              <div className="bg-white p-3 rounded border">
+                                <h5 className="text-sm font-medium text-gray-900 mb-2">📦 Deliverables</h5>
+                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                  {result.deliverables.map((item: string, index: number) => (
+                                    <li key={index}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {result.insights && Array.isArray(result.insights) && keyInsights.length === 0 && (
+                              <div className="bg-white p-3 rounded border border-yellow-200">
+                                <h5 className="text-sm font-medium text-yellow-900 mb-2">💭 Legacy Insights</h5>
+                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                  {result.insights.map((insight: string, index: number) => (
+                                    <li key={index}>{insight}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {task.status === 'failed' && (
+                          <div className="bg-red-50 p-3 rounded border border-red-200">
+                            <p className="text-sm text-red-700 font-medium flex items-center">
+                              <span className="mr-2">❌</span>
+                              Errore:
+                            </p>
+                            <p className="text-sm text-red-600 mt-1">{result.error}</p>
+                            {result.retry_needed && (
+                              <p className="text-xs text-red-500 mt-2 flex items-center">
+                                <span className="mr-1">🔄</span>
+                                Richiesto nuovo tentativo
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Execution Metadata */}
+                        <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-4 text-xs text-gray-500">
+                          {result.execution_time_seconds && (
+                            <div className="flex items-center">
+                              <span className="mr-1">⏱️</span>
+                              {result.execution_time_seconds}s
+                            </div>
+                          )}
+                          {result.cost_estimated && (
+                            <div className="flex items-center">
+                              <span className="mr-1">💰</span>
+                              ${result.cost_estimated.toFixed(6)}
+                            </div>
+                          )}
+                          {hasRichContent && (
+                            <div className="flex items-center text-blue-600">
+                              <span className="mr-1">✨</span>
+                              Rich Content Available
+                            </div>
+                          )}
+                          {keyInsights.length > 0 && (
+                            <div className="flex items-center text-green-600">
+                              <span className="mr-1">💡</span>
+                              {keyInsights.length} Insights
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
-                    {task.result.deliverables && Array.isArray(task.result.deliverables) && (
-                      <div>
-                        <span className="text-sm font-medium text-gray-600">Deliverables:</span>
-                        <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-                          {task.result.deliverables.map((item: string, index: number) => (
-                            <li key={index}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {task.result.insights && Array.isArray(task.result.insights) && (
-                      <div className="mt-2">
-                        <span className="text-sm font-medium text-gray-600">Insights:</span>
-                        <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-                          {task.result.insights.map((insight: string, index: number) => (
-                            <li key={index}>{insight}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {task.status === 'failed' && (
-                  <div>
-                    <p className="text-sm text-red-700 font-medium">❌ Errore:</p>
-                    <p className="text-sm text-red-600 mt-1">{task.result.error}</p>
-                    {task.result.retry_needed && (
-                      <p className="text-xs text-red-500 mt-2 flex items-center">
-                        <span className="mr-1">🔄</span>
-                        Richiesto nuovo tentativo
-                      </p>
-                    )}
-                  </div>
-                )}
-                {task.result.execution_time_seconds && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    ⏱️ Tempo di esecuzione: {task.result.execution_time_seconds}s
-                  </div>
-                )}
-                {task.result.cost_estimated && (
-                  <div className="mt-1 text-xs text-gray-500">
-                    💰 Costo stimato: ${task.result.cost_estimated.toFixed(6)}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
