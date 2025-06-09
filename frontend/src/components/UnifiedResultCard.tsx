@@ -16,6 +16,7 @@ interface UnifiedResultCardProps {
   isSelected?: boolean;
   onToggleSelection?: (id: string) => void;
   onExport?: (result: UnifiedResultItem, format: 'json' | 'txt' | 'md') => void;
+  isHighlighted?: boolean;
 }
 
 export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
@@ -28,6 +29,7 @@ export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
   onUse,
   onShare,
   showActions = true,
+  isHighlighted = false,
   compact = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -54,6 +56,11 @@ export const UnifiedResultCard: React.FC<UnifiedResultCardProps> = ({
 
   // Color scheme based on business impact and readiness
   const getCardColors = () => {
+    // Highlighted cards get special styling
+    if (isHighlighted) {
+      return 'border-purple-300 bg-purple-50 hover:bg-purple-100 shadow-lg ring-2 ring-purple-200';
+    }
+    
     if (!result.readyToUse) {
       return 'border-gray-200 bg-gray-50 hover:bg-gray-100';
     }

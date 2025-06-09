@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useProjectResults, UnifiedResultItem } from '@/hooks/useProjectResults';
 import { UnifiedResultCard } from '@/components/UnifiedResultCard';
 import AssetDebugInspector from '@/components/AssetDebugInspector';
-import TestAssetInjector from '@/components/TestAssetInjector';
+import GenericArrayViewer from '@/components/GenericArrayViewer';
 
 type FilterType = 'all' | 'readyToUse' | 'inProgress' | 'final';
 type SortType = 'impact' | 'actionability' | 'recent' | 'alphabetical';
@@ -15,9 +15,10 @@ export default function ProjectResultsPage() {
   const params = useParams();
   const projectId = params.id as string;
   
-  // Get filter from URL params
+  // Get filter and highlight from URL params
   const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const urlFilter = searchParams.get('filter') as FilterType;
+  const highlightId = searchParams.get('highlight');
   
   const {
     allResults,
@@ -34,6 +35,16 @@ export default function ProjectResultsPage() {
   } = useProjectResults(projectId);
 
   const [activeFilter, setActiveFilter] = useState<FilterType>(urlFilter || 'all');
+  
+  // Auto-open highlighted result
+  useEffect(() => {
+    if (highlightId && allResults.length > 0) {
+      const highlightedResult = allResults.find(r => r.id === highlightId);
+      if (highlightedResult) {
+        handleViewDetails(highlightedResult);
+      }
+    }
+  }, [highlightId, allResults]);
   const [sortBy, setSortBy] = useState<SortType>('impact');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedResult, setSelectedResult] = useState<UnifiedResultItem | null>(null);
@@ -45,7 +56,18 @@ export default function ProjectResultsPage() {
   const [aiProcessedContent, setAiProcessedContent] = useState<string | null>(null);
   const [loadingAiContent, setLoadingAiContent] = useState(false);
   const [showDebugInspector, setShowDebugInspector] = useState(false);
-  const [showTestInjector, setShowTestInjector] = useState(false);
+
+  // Debug hotkey (Ctrl+Shift+D)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+        setShowDebugInspector(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Function to process structured content with AI for rich rendering
   const processWithAI = async (structuredContent: any, taskTitle: string) => {
@@ -53,12 +75,16 @@ export default function ProjectResultsPage() {
     
     setLoadingAiContent(true);
     try {
-      // First try the real AI endpoint
+      // First try the real AI endpoint with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch(`http://localhost:8000/ai/process-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           content: structuredContent,
           title: taskTitle,
@@ -66,9 +92,21 @@ export default function ProjectResultsPage() {
           instructions: `Transform this structured data into a beautiful, user-friendly HTML presentation. 
                         Use appropriate headings, lists, tables, cards, and visual elements. 
                         Make it engaging and easy to read. Include proper styling classes for a professional look.
-                        Focus on actionability and business value.`
+                        Focus on actionability and business value.
+                        
+                        CRITICAL REQUIREMENTS:
+                        1. When you encounter arrays (like 'calendar' with multiple posts), generate complete HTML for ALL items in the array
+                        2. Do NOT show just one example with a note about repeating - actually create the HTML for every single item
+                        3. If there are 18 posts in a calendar, show all 18 posts with their full details
+                        4. Use emoji icons (📷 🎬 📱 💪 ✨) instead of image file references that don't exist
+                        5. Do NOT add any instructional comments about repetition - just generate complete content
+                        
+                        For arrays with many items, prioritize showing ALL items over brevity.
+                        Generate the COMPLETE presentation ready for immediate use.`
         })
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -168,6 +206,21 @@ export default function ProjectResultsPage() {
               console.log('✅ Parsed detailed_results_json from task:', detailedResults);
             } catch (e) {
               console.warn('Failed to parse detailed_results_json from task:', e);
+              // Try to clean the JSON via backend endpoint
+              try {
+                const cleanResponse = await fetch('http://localhost:8000/utils/clean-json', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ json_string: task.result.detailed_results_json })
+                });
+                if (cleanResponse.ok) {
+                  const cleanedData = await cleanResponse.json();
+                  detailedResults = cleanedData.parsed_json;
+                  console.log('✅ Cleaned and parsed JSON:', detailedResults);
+                }
+              } catch (cleanError) {
+                console.error('JSON cleaning also failed:', cleanError);
+              }
             }
           }
           
@@ -197,10 +250,35 @@ export default function ProjectResultsPage() {
               return;
             }
             
-            // Fallback: Process the structured content with AI for rich rendering
+            console.log('📝 No pre-rendered HTML found, checking for array data...');
+            console.log('📊 Data to process:', { 
+              hasCalendar: !!detailedResults.calendar,
+              calendarLength: detailedResults.calendar?.length,
+              keys: Object.keys(detailedResults)
+            });
+            
+            // Check if we have array-based data (like calendar) - use direct rendering
+            const arrayFields = Object.entries(detailedResults).filter(([key, value]) => 
+              Array.isArray(value) && value.length > 0 && typeof value[0] === 'object'
+            );
+            
+            if (arrayFields.length > 0) {
+              console.log('🔍 Found array data, using direct rendering instead of AI');
+              console.log('📋 Array fields found:', arrayFields.map(([key, value]) => `${key}: ${value.length} items`));
+              // Don't process with AI for array data - let the component handle it directly
+              return;
+            }
+            
+            // Only process with AI for non-array structured content
+            console.log('📝 Processing non-array data with AI...');
             const aiContent = await processWithAI(detailedResults, result.title);
-            if (aiContent) {
+            if (aiContent && aiContent.length > 100) { // Ensure we got meaningful content
+              console.log('🤖 AI generated content length:', aiContent.length);
+              console.log('🤖 AI content preview:', aiContent.substring(0, 500) + '...');
               setAiProcessedContent(aiContent);
+            } else {
+              console.log('🤖 AI processing failed or returned minimal content, using structured fallback');
+              // AI failed, but we can still show structured content nicely
             }
             return;
           }
@@ -383,6 +461,29 @@ export default function ProjectResultsPage() {
   const renderStructuredContent = (content: any) => {
     if (!content) return null;
 
+    // Check for array-based content first - use GenericArrayViewer
+    const arrayFields = Object.entries(content).filter(([key, value]) => 
+      Array.isArray(value) && value.length > 0 && typeof value[0] === 'object'
+    );
+    
+    if (arrayFields.length > 0) {
+      const [fieldName, fieldData] = arrayFields[0]; // Use the first array field
+      const additionalData = Object.fromEntries(
+        Object.entries(content).filter(([key, value]) => !Array.isArray(value))
+      );
+      
+      console.log(`🔍 renderStructuredContent: Using GenericArrayViewer for ${fieldName} with ${fieldData.length} items`);
+      
+      return (
+        <GenericArrayViewer 
+          items={fieldData} 
+          fieldName={fieldName}
+          additionalData={additionalData}
+          assetName={selectedResult?.title || 'Content Collection'}
+        />
+      );
+    }
+
     return (
       <div className="space-y-6">
         {/* Executive Summary */}
@@ -552,7 +653,9 @@ export default function ProjectResultsPage() {
     });
   };
 
-  const filteredResults = getFilteredResults();
+  const filteredResults = React.useMemo(() => getFilteredResults(), [
+    allResults, activeFilter, searchQuery, sortBy, readyToUse, inProgress, finalDeliverables
+  ]);
 
   const getBusinessImpactColor = (impact: string) => {
     switch (impact) {
@@ -604,8 +707,23 @@ export default function ProjectResultsPage() {
     <>
       {/* Custom CSS for AI-generated content */}
       <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-in-out;
+        }
         .ai-generated-content {
           line-height: 1.7;
+        }
+        .ai-generated-content img[src*="icon.png"]:not([src*="http"]) {
+          display: none;
+        }
+        .ai-generated-content img[src*="icon.png"]:not([src*="http"]):before {
+          content: "📱";
+          display: inline-block;
+          font-size: 1.2em;
         }
         .ai-generated-content h1, .ai-generated-content h2, .ai-generated-content h3 {
           color: #1f2937;
@@ -741,31 +859,15 @@ export default function ProjectResultsPage() {
                 Export All
               </button>
               
-              {/* Debug Inspector Button */}
-              {process.env.NODE_ENV === 'development' && (
-                <>
-                  <button
-                    onClick={() => setShowDebugInspector(true)}
-                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
-                    title="Debug raw data extraction"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    🔍 Debug
-                  </button>
-                  
-                  <button
-                    onClick={() => setShowTestInjector(true)}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
-                    title="Inject test calendar with real content"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                    </svg>
-                    🧪 Test
-                  </button>
-                </>
+              {/* Debug Inspector Button - Hidden by default, show with Ctrl+Shift+D */}
+              {(process.env.NODE_ENV === 'development' || showDebugInspector) && (
+                <button
+                  onClick={() => setShowDebugInspector(true)}
+                  className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  title="Debug raw data extraction (Ctrl+Shift+D)"
+                >
+                  🔍
+                </button>
               )}
             </div>
           </div>
@@ -923,6 +1025,7 @@ export default function ProjectResultsPage() {
                 isSelected={selectedItems.has(result.id)}
                 onToggleSelection={toggleItemSelection}
                 onExport={exportSingleResult}
+                isHighlighted={result.id === highlightId}
               />
             ))}
           </div>
@@ -931,7 +1034,7 @@ export default function ProjectResultsPage() {
 
       {/* Detail Modal */}
       {selectedResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-start justify-between">
@@ -968,9 +1071,10 @@ export default function ProjectResultsPage() {
             
             <div className="p-6">
               {loadingEnhanced ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span className="ml-3 text-gray-600">Loading detailed content...</span>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <span className="text-gray-600 font-medium">Loading detailed content...</span>
+                  <span className="text-gray-500 text-sm mt-1">Processing structured data</span>
                 </div>
               ) : (
                 <div className="prose max-w-none">
@@ -1210,14 +1314,6 @@ export default function ProjectResultsPage() {
       {/* Debug Inspector */}
       {showDebugInspector && (
         <AssetDebugInspector workspaceId={projectId} />
-      )}
-      
-      {/* Test Asset Injector */}
-      {showTestInjector && (
-        <TestAssetInjector 
-          workspaceId={projectId} 
-          onClose={() => setShowTestInjector(false)} 
-        />
       )}
       </div>
     </>

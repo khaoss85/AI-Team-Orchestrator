@@ -46,6 +46,14 @@ Guidelines:
 - Focus on business value and actionability
 - Use professional styling classes
 
+CRITICAL: When you encounter arrays or lists (like calendar posts, competitors, etc.), you MUST iterate through ALL items and generate complete HTML for each one. Do NOT just show one example and add a comment about "repeating for each item". Generate the FULL HTML for ALL items in the array.
+
+For example, if there are 18 calendar posts, generate HTML for all 18 posts, not just one with a note about repetition.
+
+IMPORTANT: Do NOT reference external image files (like carousel-icon.png, reel-icon.png, etc.) since they don't exist. Use emoji icons or Unicode symbols instead (📷 🎬 📱 💪 ✨).
+
+Do NOT add instructional comments about repeating content - just generate the complete content for all items.
+
 Output clean, well-structured {request.format.upper()} that is ready to be rendered directly.
 """
 
@@ -57,12 +65,28 @@ Title: {request.title}
 
 Instructions: {instructions}
 
+IMPORTANT STYLING REQUIREMENTS:
+- Use only Tailwind CSS classes for styling (no inline styles or <style> tags)
+- Generate clean HTML fragments, not full HTML documents
+- Use semantic HTML structure (div, h1-h6, p, ul, ol, etc.)
+- Focus on content presentation, not page layout
+
 Structured Data to Transform:
 {json.dumps(request.content, indent=2)}
 
-Please generate beautiful, professional {request.format.upper()} markup that transforms this data into an engaging, easy-to-read presentation. Focus on visual hierarchy, readability, and business value.
+Generate clean, professional {request.format.upper()} markup using Tailwind CSS classes that transforms this data into an engaging, easy-to-read presentation.
 """
 
+        # Calculate appropriate max_tokens based on input length
+        input_tokens = len(prompt) // 4  # Rough estimate: 1 token ≈ 4 characters
+        max_available_tokens = 8000 - input_tokens  # Leave buffer for system message
+        
+        # Ensure we don't exceed reasonable limits
+        max_tokens = min(max_available_tokens, 3000)  # Cap at 3000 for safety
+        max_tokens = max(max_tokens, 500)  # Minimum 500 tokens for useful output
+        
+        logger.info(f"AI processing: input_tokens={input_tokens}, max_tokens={max_tokens}, content_length={len(json.dumps(request.content))}")
+        
         # Call OpenAI API
         client = openai.OpenAI()
         response = client.chat.completions.create(
@@ -78,17 +102,38 @@ Please generate beautiful, professional {request.format.upper()} markup that tra
                 }
             ],
             temperature=0.7,
-            max_tokens=2000
+            max_tokens=max_tokens
         )
         
         processed_content = response.choices[0].message.content.strip()
         
         # Clean up the response (remove any markdown code blocks if present)
         if request.format == "html":
+            # Remove various markdown code block formats
             if processed_content.startswith("```html"):
                 processed_content = processed_content[7:]
+            elif processed_content.startswith("```HTML"):
+                processed_content = processed_content[7:]
+            elif processed_content.startswith("```"):
+                processed_content = processed_content[3:]
+            
             if processed_content.endswith("```"):
                 processed_content = processed_content[:-3]
+            
+            # Remove any remaining HTML document wrapper if present
+            if "<!DOCTYPE html>" in processed_content:
+                # Extract only the body content
+                import re
+                body_match = re.search(r'<body[^>]*>(.*?)</body>', processed_content, re.DOTALL)
+                if body_match:
+                    processed_content = body_match.group(1)
+            
+            # Remove explanatory text after HTML (common AI behavior)
+            # Look for patterns like "\n\nThis HTML..." or "\n\nThe HTML..."
+            import re
+            explanation_pattern = r'\n\n(This|The) HTML.*$'
+            processed_content = re.sub(explanation_pattern, '', processed_content, flags=re.DOTALL)
+            
             processed_content = processed_content.strip()
         
         return ContentProcessingResponse(
@@ -204,13 +249,49 @@ def generate_competitor_analysis_preview(content: Dict[str, Any]) -> str:
 
 def generate_content_calendar_preview(content: Dict[str, Any]) -> str:
     """Generate a preview for content calendar"""
-    return f"""
+    html = """
     <div class="space-y-6">
         <div class="bg-purple-50 p-6 rounded-lg border border-purple-200">
             <h1 class="text-2xl font-bold text-purple-900 mb-3">📅 Content Calendar Strategy</h1>
             <p class="text-purple-700">Strategic content planning and scheduling framework</p>
         </div>
+    """
+    
+    # Check for calendar posts
+    calendar_items = content.get('calendar', [])
+    posts = content.get('posts', [])
+    items_to_show = calendar_items or posts
+    
+    if items_to_show:
+        html += '<div class="space-y-4">'
+        html += f'<h2 class="text-xl font-bold text-gray-800">📱 {len(items_to_show)} Scheduled Posts</h2>'
         
+        # Show ALL posts, not just a sample
+        for idx, post in enumerate(items_to_show):
+            post_type = post.get('type', 'Post')
+            post_date = post.get('date', f'Day {idx + 1}')
+            caption = post.get('caption', post.get('content', 'Content preview...'))
+            hashtags = post.get('hashtags', [])
+            
+            html += f"""
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-bold text-gray-900">Post #{idx + 1} - {post_type}</h3>
+                    <span class="text-sm text-gray-500">{post_date}</span>
+                </div>
+                <p class="text-sm text-gray-700 mb-2">{caption[:150]}...</p>
+            """
+            
+            if hashtags:
+                hashtag_str = ' '.join(hashtags) if isinstance(hashtags, list) else str(hashtags)
+                html += f'<div class="text-xs text-blue-600">{hashtag_str[:100]}</div>'
+            
+            html += '</div>'
+        
+        html += '</div>'
+    else:
+        # Fallback to generic calendar view
+        html += """
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
                 <h3 class="font-bold text-gray-900 mb-2">📝 Week 1</h3>
@@ -225,13 +306,17 @@ def generate_content_calendar_preview(content: Dict[str, Any]) -> str:
                 <p class="text-sm text-gray-600">Growth content</p>
             </div>
         </div>
-        
+        """
+    
+    html += """
         <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
             <h2 class="text-xl font-bold text-yellow-900 mb-4">💡 Implementation Guidelines</h2>
             <p class="text-yellow-800">Follow the structured approach for optimal engagement and growth.</p>
         </div>
     </div>
     """
+    
+    return html
 
 def generate_workflow_preview(content: Dict[str, Any]) -> str:
     """Generate a preview for workflow content"""

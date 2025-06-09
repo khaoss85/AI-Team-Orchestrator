@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ActionableAsset } from '@/types';
 import StructuredAssetRenderer from './StructuredAssetRenderer';
+import GenericArrayViewer from './GenericArrayViewer';
 
 interface SmartAssetViewerProps {
   asset: ActionableAsset;
@@ -29,14 +30,26 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
   }, [asset]);
 
   const getAssetTypeInfo = (assetName: string, assetData: any) => {
-    // Simple universal approach - clean up the name and use generic icon
+    // Smart icon detection based on content
+    const nameLower = assetName.toLowerCase();
+    let icon = '📋'; // default
+    
+    if (nameLower.includes('calendar') || nameLower.includes('schedule')) icon = '📅';
+    else if (nameLower.includes('contact') || nameLower.includes('people')) icon = '👤';
+    else if (nameLower.includes('product') || nameLower.includes('catalog')) icon = '📦';
+    else if (nameLower.includes('task') || nameLower.includes('workflow')) icon = '✅';
+    else if (nameLower.includes('report') || nameLower.includes('analysis')) icon = '📊';
+    else if (nameLower.includes('strategy') || nameLower.includes('plan')) icon = '🎯';
+    else if (nameLower.includes('content') || nameLower.includes('social')) icon = '📱';
+    
+    // Clean up the name
     const cleanName = assetName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
     
     return {
       type: 'universal',
-      icon: '📋',
+      icon: icon,
       title: cleanName,
       description: 'Business-ready deliverable'
     };
@@ -46,27 +59,6 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
 
   // Universal smart content renderer 
   const renderAssetContent = () => {
-    // 🧪 TEST: Check for test asset injection
-    const testAsset = localStorage.getItem('test_instagram_calendar');
-    if (testAsset && asset.asset_name.toLowerCase().includes('calendar')) {
-      try {
-        const testData = JSON.parse(testAsset);
-        return (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg mb-4">
-              <h3 className="text-lg font-semibold text-green-800 mb-2">🧪 TEST MODE: Enhanced Content</h3>
-              <p className="text-green-700 text-sm">This is how the content should look with proper dual output format</p>
-            </div>
-            <div 
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: testData.rendered_html }} 
-            />
-          </div>
-        );
-      } catch (e) {
-        console.error('Error parsing test asset:', e);
-      }
-    }
 
     // ✅ PRIORITY 1: Check for pre-rendered HTML from dual output format
     if (asset.asset_data?.rendered_html) {
@@ -84,126 +76,26 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
       );
     }
 
-    // ✅ PRIORITY 2: Check for calendar array format (current backend format)
-    if (asset.asset_data?.calendar && Array.isArray(asset.asset_data.calendar)) {
-      const calendar = asset.asset_data.calendar;
-      const executiveSummary = asset.asset_data.executive_summary;
+    // ✅ PRIORITY 2: Smart detection of array-based content (generic approach)
+    const arrayFields = Object.entries(asset.asset_data || {}).filter(([key, value]) => 
+      Array.isArray(value) && value.length > 0 && typeof value[0] === 'object'
+    );
+    
+    if (arrayFields.length > 0) {
+      const [fieldName, fieldData] = arrayFields[0]; // Use the first array field
+      const additionalData = Object.fromEntries(
+        Object.entries(asset.asset_data || {}).filter(([key, value]) => !Array.isArray(value))
+      );
+      
+      console.log(`🔍 SmartAssetViewer: Using GenericArrayViewer for ${fieldName} with ${fieldData.length} items`);
       
       return (
-        <div className="space-y-6">
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg mb-4">
-            <h3 className="text-lg font-semibold text-purple-800 mb-2">📅 Instagram Editorial Calendar</h3>
-            <p className="text-purple-700 text-sm">Complete 3-month content strategy with {calendar.length} specific posts</p>
-          </div>
-
-          {/* Executive Summary */}
-          {executiveSummary && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-              <h4 className="font-semibold text-gray-800 mb-2">📋 Overview</h4>
-              <p className="text-gray-700 text-sm">{executiveSummary}</p>
-            </div>
-          )}
-
-          {/* Calendar Posts */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-800 mb-3">📱 Content Calendar ({calendar.length} Posts)</h4>
-            <div className="grid gap-4">
-              {calendar.map((post: any, index: number) => {
-                // Debug logging for each post
-                if (process.env.NODE_ENV === 'development') {
-                  console.log(`Rendering post ${index + 1}:`, post);
-                }
-                
-                return (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{post.type}</div>
-                        <div className="text-xs text-gray-500">{post.date}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {post.type === 'Carousel' && <span className="text-blue-500">🖼️</span>}
-                      {post.type === 'Reel' && <span className="text-purple-500">🎬</span>}
-                      {post.type === 'Photo' && <span className="text-green-500">📸</span>}
-                      {post.type === 'Video' && <span className="text-red-500">🎥</span>}
-                      {post.type === 'Motivational Post' && <span className="text-yellow-500">💪</span>}
-                      {post.type === 'Transformation Post' && <span className="text-orange-500">🔥</span>}
-                    </div>
-                  </div>
-                  
-                  {/* Caption */}
-                  <div className="mb-3">
-                    <h5 className="font-medium text-gray-800 mb-1">Caption:</h5>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border-l-4 border-blue-400">
-                      {post.caption}
-                    </p>
-                  </div>
-                  
-                  {/* Hashtags */}
-                  {post.hashtags && (
-                    <div className="mb-3">
-                      <h5 className="font-medium text-gray-800 mb-1">Hashtags:</h5>
-                      <div className="flex flex-wrap gap-1">
-                        {Array.isArray(post.hashtags) ? post.hashtags.map((hashtag: string, idx: number) => (
-                          <span key={idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
-                            {hashtag}
-                          </span>
-                        )) : (
-                          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
-                            {post.hashtags}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Engagement Strategy */}
-                  {post.engagement && (
-                    <div className="bg-green-50 border border-green-200 rounded p-2">
-                      <h5 className="font-medium text-green-800 text-xs mb-1">🎯 Engagement Strategy:</h5>
-                      <p className="text-green-700 text-xs">{post.engagement}</p>
-                    </div>
-                  )}
-                </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Content Statistics */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3">📊 Content Statistics</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-xl font-bold text-blue-600">{calendar.length}</div>
-                <div className="text-xs text-gray-600">Total Posts</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-purple-600">
-                  {calendar.filter((p: any) => p.type === 'Reel').length}
-                </div>
-                <div className="text-xs text-gray-600">Reels</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-green-600">
-                  {calendar.filter((p: any) => p.type === 'Carousel').length}
-                </div>
-                <div className="text-xs text-gray-600">Carousels</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-orange-600">
-                  {calendar.filter((p: any) => p.type && (p.type.includes('Motivational') || p.type.includes('Transformation'))).length}
-                </div>
-                <div className="text-xs text-gray-600">Special Posts</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <GenericArrayViewer 
+          items={fieldData} 
+          fieldName={fieldName}
+          additionalData={additionalData}
+          assetName={asset.asset_name}
+        />
       );
     }
 

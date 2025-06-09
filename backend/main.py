@@ -29,6 +29,7 @@ from routes.delegation_monitor import router as delegation_router
 from routes.proposals import router as proposals_router
 from routes import asset_management
 from routes.ai_content_processor import router as ai_content_router
+from routes.utils import router as utils_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -65,6 +66,7 @@ app.include_router(proposals_router)
 app.include_router(delegation_router)
 app.include_router(asset_management.router)
 app.include_router(ai_content_router)
+app.include_router(utils_router)
 
 # Health check endpoint
 @app.get("/health")
