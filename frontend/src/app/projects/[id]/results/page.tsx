@@ -75,16 +75,16 @@ export default function ProjectResultsPage() {
     
     setLoadingAiContent(true);
     try {
-      // First try the real AI endpoint with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      // Create timeout promise that doesn't interfere with the request
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('AI processing timeout')), 45000); // 45 second timeout
+      });
       
-      const response = await fetch(`http://localhost:8000/ai/process-content`, {
+      const fetchPromise = fetch(`http://localhost:8000/ai/process-content`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: controller.signal,
         body: JSON.stringify({
           content: structuredContent,
           title: taskTitle,
@@ -106,13 +106,19 @@ export default function ProjectResultsPage() {
         })
       });
 
-      clearTimeout(timeoutId);
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
 
       if (response.ok) {
         const data = await response.json();
         return data.processed_content || data.content;
       } else {
-        // Fallback to preview endpoint if main endpoint fails
+        throw new Error(`AI endpoint returned status ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error processing content with AI:', error);
+      
+      // Try preview endpoint as fallback
+      try {
         console.log('Main AI endpoint failed, trying preview...');
         const previewResponse = await fetch(`http://localhost:8000/ai/process-content/preview`, {
           method: 'POST',
@@ -130,45 +136,66 @@ export default function ProjectResultsPage() {
           const previewData = await previewResponse.json();
           return previewData.processed_content;
         }
+      } catch (previewError) {
+        console.error('Preview endpoint also failed:', previewError);
       }
-    } catch (error) {
-      console.error('Error processing content with AI:', error);
       
       // Final fallback - generate basic HTML client-side
       return generateBasicHTML(structuredContent, taskTitle);
     } finally {
       setLoadingAiContent(false);
     }
-    return null;
   };
 
   // Client-side fallback for basic HTML generation
   const generateBasicHTML = (content: any, title: string) => {
     let html = `<div class="space-y-6">`;
     html += `<div class="bg-blue-50 p-6 rounded-lg border border-blue-200">`;
-    html += `<h1 class="text-2xl font-bold text-blue-900 mb-3">📊 ${title}</h1>`;
-    html += `<p class="text-blue-700">AI-processed content (using fallback formatting)</p>`;
+    html += `<h1 class="text-2xl font-bold text-blue-900 mb-3">📋 ${title}</h1>`;
+    html += `<p class="text-blue-700">Structured content formatted for easy viewing</p>`;
     html += `</div>`;
     
-    // Generate basic cards for each major content section
+    // Generate enhanced cards for each major content section
     Object.keys(content).forEach(key => {
       const value = content[key];
       if (typeof value === 'object' && value !== null) {
-        html += `<div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">`;
-        html += `<h2 class="text-lg font-bold text-gray-900 mb-3">${key.replace(/_/g, ' ').toUpperCase()}</h2>`;
+        html += `<div class="bg-white p-6 rounded-lg shadow border-l-4 border-indigo-500">`;
+        html += `<h2 class="text-xl font-bold text-gray-900 mb-4">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h2>`;
         
         if (Array.isArray(value)) {
-          html += `<ul class="space-y-2">`;
-          value.slice(0, 3).forEach(item => {
-            if (typeof item === 'string') {
-              html += `<li class="text-gray-700">• ${item}</li>`;
-            } else if (typeof item === 'object') {
-              html += `<li class="text-gray-700">• ${JSON.stringify(item).substring(0, 100)}...</li>`;
-            }
-          });
-          html += `</ul>`;
+          // Check if it's an array of objects with common fields
+          if (value.length > 0 && typeof value[0] === 'object') {
+            html += `<div class="grid gap-3">`;
+            value.forEach((item, index) => {
+              html += `<div class="bg-gray-50 p-4 rounded-lg">`;
+              if (item.segment_name) {
+                html += `<h3 class="font-semibold text-gray-800 mb-2">${item.segment_name}</h3>`;
+                html += `<p class="text-gray-600 text-sm">${item.description}</p>`;
+              } else if (item.metric) {
+                html += `<h3 class="font-semibold text-gray-800 mb-2">${item.metric}</h3>`;
+                html += `<p class="text-gray-600 text-sm mb-1">${item.definition}</p>`;
+                html += `<p class="text-green-600 font-medium text-sm">Target: ${item.target}</p>`;
+              } else {
+                html += `<h3 class="font-semibold text-gray-800 mb-2">Item ${index + 1}</h3>`;
+                Object.entries(item).forEach(([k, v]) => {
+                  html += `<p class="text-sm"><span class="font-medium text-gray-700">${k.replace(/_/g, ' ')}:</span> ${v}</p>`;
+                });
+              }
+              html += `</div>`;
+            });
+            html += `</div>`;
+          } else {
+            // Simple array
+            html += `<ul class="space-y-2">`;
+            value.forEach(item => {
+              html += `<li class="flex items-start"><span class="text-indigo-500 mr-2">•</span><span class="text-gray-700">${item}</span></li>`;
+            });
+            html += `</ul>`;
+          }
         } else {
-          html += `<p class="text-gray-700">${JSON.stringify(value).substring(0, 200)}...</p>`;
+          html += `<div class="bg-gray-50 p-4 rounded-lg">`;
+          html += `<pre class="text-sm text-gray-700 whitespace-pre-wrap">${JSON.stringify(value, null, 2)}</pre>`;
+          html += `</div>`;
         }
         
         html += `</div>`;
@@ -217,6 +244,17 @@ export default function ProjectResultsPage() {
                   const cleanedData = await cleanResponse.json();
                   detailedResults = cleanedData.parsed_json;
                   console.log('✅ Cleaned and parsed JSON:', detailedResults);
+                  
+                  // Check if the cleaned result has nested JSON strings that need parsing
+                  if (detailedResults && typeof detailedResults.content === 'string') {
+                    try {
+                      const nestedJson = JSON.parse(detailedResults.content);
+                      detailedResults = nestedJson;
+                      console.log('✅ Parsed nested JSON content:', detailedResults);
+                    } catch (nestedError) {
+                      console.log('ℹ️ Content is not nested JSON, using as-is');
+                    }
+                  }
                 }
               } catch (cleanError) {
                 console.error('JSON cleaning also failed:', cleanError);

@@ -44,7 +44,7 @@ class QualitySystemConfig:
     ENABLE_DETAILED_LOGGING: bool = os.getenv("ENABLE_DETAILED_LOGGING", "true").lower() == "true"
     
     # === AI MODEL SETTINGS ===
-    QUALITY_EVALUATION_MODEL: str = os.getenv("QUALITY_EVALUATION_MODEL", "gpt-4o-mini")
+    QUALITY_EVALUATION_MODEL: str = os.getenv("QUALITY_EVALUATION_MODEL", "gpt-4.1-mini")
     QUALITY_EVALUATION_TEMPERATURE: float = float(os.getenv("QUALITY_EVALUATION_TEMPERATURE", "0.1"))
     QUALITY_EVALUATION_MAX_TOKENS: int = int(os.getenv("QUALITY_EVALUATION_MAX_TOKENS", "1000"))
     QUALITY_EVALUATION_TIMEOUT: float = float(os.getenv("QUALITY_EVALUATION_TIMEOUT", "30.0"))

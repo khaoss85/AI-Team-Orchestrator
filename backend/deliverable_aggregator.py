@@ -547,7 +547,7 @@ Respond with just the asset type name (e.g., "contact_database", "content_calend
 Make it specific to the business context and actionable for immediate use."""
 
                 response = await self.ai_analyzer.ai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1-mini",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.2,
                     max_tokens=50
@@ -1036,7 +1036,7 @@ Write a professional 2-3 paragraph executive summary that:
 Focus on outcomes, business impact, and the intelligent approach used."""
 
                 response = await self.ai_analyzer.ai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4.1-mini",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.4,
                     max_tokens=700

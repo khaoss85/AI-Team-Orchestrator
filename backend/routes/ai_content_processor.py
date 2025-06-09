@@ -59,6 +59,15 @@ Output clean, well-structured {request.format.upper()} that is ready to be rende
 
         instructions = request.instructions or default_instructions
         
+        # Truncate content if it's too large to prevent token overflow
+        content_str = json.dumps(request.content, indent=2)
+        max_content_length = 4000  # Conservative limit for content size
+        
+        if len(content_str) > max_content_length:
+            logger.warning(f"Content too large ({len(content_str)} chars), truncating to {max_content_length}")
+            # Try to truncate intelligently by preserving structure
+            content_str = content_str[:max_content_length] + "\n... (content truncated for processing)"
+            
         # Create the AI prompt
         prompt = f"""
 Title: {request.title}
@@ -72,38 +81,100 @@ IMPORTANT STYLING REQUIREMENTS:
 - Focus on content presentation, not page layout
 
 Structured Data to Transform:
-{json.dumps(request.content, indent=2)}
+{content_str}
 
 Generate clean, professional {request.format.upper()} markup using Tailwind CSS classes that transforms this data into an engaging, easy-to-read presentation.
 """
 
         # Calculate appropriate max_tokens based on input length
         input_tokens = len(prompt) // 4  # Rough estimate: 1 token ≈ 4 characters
-        max_available_tokens = 8000 - input_tokens  # Leave buffer for system message
+        # Use more conservative token limits to prevent API errors
+        max_available_tokens = 4000 - input_tokens  # Much more conservative buffer
         
-        # Ensure we don't exceed reasonable limits
-        max_tokens = min(max_available_tokens, 3000)  # Cap at 3000 for safety
-        max_tokens = max(max_tokens, 500)  # Minimum 500 tokens for useful output
+        # Ensure we don't exceed reasonable limits and stay well within API limits
+        max_tokens = min(max_available_tokens, 2000)  # Lower cap for safety
+        max_tokens = max(max_tokens, 300)  # Lower minimum but still useful
         
         logger.info(f"AI processing: input_tokens={input_tokens}, max_tokens={max_tokens}, content_length={len(json.dumps(request.content))}")
         
-        # Call OpenAI API
+        # Call OpenAI API with new GPT-4.1 models and fallback strategy
         client = openai.OpenAI()
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": f"You are an expert UI/UX designer and content formatter. You specialize in transforming structured data into beautiful, professional {request.format.upper()} presentations that are engaging and business-focused."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.7,
-            max_tokens=max_tokens
-        )
+        
+        # Determine best model based on content size and complexity
+        content_size = len(content_str)
+        
+        # Model selection strategy:
+        # - gpt-4.1: Complex content, high quality needed
+        # - gpt-4.1-mini: Medium content, good balance of cost/quality
+        # - gpt-4.1-nano: Simple content, cost-effective
+        
+        if content_size > 3000 or "calendar" in str(request.content).lower():
+            primary_model = "gpt-4.1"
+            fallback_model = "gpt-4.1-mini"
+        elif content_size > 1500:
+            primary_model = "gpt-4.1-mini" 
+            fallback_model = "gpt-4.1-nano"
+        else:
+            primary_model = "gpt-4.1-nano"
+            fallback_model = "gpt-4.1-mini"
+        
+        # Try with primary model first
+        try:
+            logger.info(f"Trying primary model: {primary_model} for content size: {content_size}")
+            response = client.chat.completions.create(
+                model=primary_model,
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": f"You are an expert UI/UX designer and content formatter. You specialize in transforming structured data into beautiful, professional {request.format.upper()} presentations that are engaging and business-focused."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=max_tokens
+            )
+        except openai.OpenAIError as e:
+            logger.warning(f"{primary_model} failed: {e}, trying fallback model {fallback_model}")
+            # Fallback to alternative GPT-4.1 model with reduced tokens
+            fallback_max_tokens = min(max_tokens, 1500)
+            try:
+                response = client.chat.completions.create(
+                    model=fallback_model,
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": f"Transform this data into clean {request.format.upper()} with good formatting and visual hierarchy."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.7,
+                    max_tokens=fallback_max_tokens
+                )
+            except openai.OpenAIError as e2:
+                logger.warning(f"{fallback_model} also failed: {e2}, trying gpt-4.1-nano as final fallback")
+                # Final fallback to nano model with minimal tokens
+                final_max_tokens = min(fallback_max_tokens, 1000)
+                response = client.chat.completions.create(
+                    model="gpt-4.1-nano",
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": f"Create clean {request.format.upper()} from this data with basic formatting."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.5,
+                    max_tokens=final_max_tokens
+                )
         
         processed_content = response.choices[0].message.content.strip()
         
@@ -136,13 +207,18 @@ Generate clean, professional {request.format.upper()} markup using Tailwind CSS 
             
             processed_content = processed_content.strip()
         
+        # Determine which model was actually used
+        model_used = response.model if hasattr(response, 'model') else primary_model
+        
         return ContentProcessingResponse(
             processed_content=processed_content,
             original_content=request.content,
             processing_metadata={
-                "model_used": "gpt-4",
+                "model_used": model_used,
+                "primary_model_attempted": primary_model,
                 "format": request.format,
                 "tokens_used": response.usage.total_tokens,
+                "content_size": content_size,
                 "processing_time": "N/A"  # Could add timing if needed
             }
         )

@@ -316,7 +316,7 @@ Be HARSH in scoring. Only give high scores to truly exceptional, ready-to-use as
             
             # Call AI
             response = await self.client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model="gpt-4.1",
                 messages=[
                     {"role": "system", "content": "You are a strict business asset quality evaluator."},
                     {"role": "user", "content": evaluation_prompt}

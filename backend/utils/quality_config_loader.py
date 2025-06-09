@@ -83,7 +83,7 @@ def load_quality_system_config() -> tuple[Optional[Any], bool]:
         ENHANCEMENT_TASK_PRIORITY = "high"
         ENABLE_QUALITY_METRICS_COLLECTION = True
         ENABLE_DETAILED_LOGGING = True
-        QUALITY_EVALUATION_MODEL = "gpt-4o-mini"
+        QUALITY_EVALUATION_MODEL = "gpt-4.1-mini"
         QUALITY_EVALUATION_TEMPERATURE = 0.1
         QUALITY_EVALUATION_MAX_TOKENS = 1000
         QUALITY_EVALUATION_TIMEOUT = 30.0

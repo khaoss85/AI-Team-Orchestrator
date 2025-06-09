@@ -195,11 +195,11 @@ class BudgetTracker:
         """Initialize the budget tracker."""
         self.usage_log: Dict[str, List[Dict[str, Any]]] = {}
         self.token_costs = {
-            "gpt-4.1": {"input": 0.03, "output": 0.06},
-            "gpt-4.1-mini": {"input": 0.015, "output": 0.03},
-            "gpt-4.1-nano": {"input": 0.01, "output": 0.02},
-            "gpt-4-turbo": {"input": 0.02, "output": 0.04},
-            "gpt-3.5-turbo": {"input": 0.001, "output": 0.002}
+            "gpt-4.1": {"input": 0.002, "output": 0.008},           # $2.00/$8.00 per 1K tokens
+            "gpt-4.1-mini": {"input": 0.0004, "output": 0.0016},    # $0.40/$1.60 per 1K tokens  
+            "gpt-4.1-nano": {"input": 0.0001, "output": 0.0004},    # $0.10/$0.40 per 1K tokens
+            "gpt-4-turbo": {"input": 0.01, "output": 0.03},         # Legacy model costs
+            "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015}    # Legacy model costs
         }
         self.default_model = "gpt-4.1-mini"
 

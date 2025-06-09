@@ -26,7 +26,7 @@ class AIQualityEvaluator:
     def __init__(self):
         if OPENAI_AVAILABLE:
             self.client = AsyncOpenAI()
-        self.model = "gpt-4-turbo-preview"  # o il modello che preferisci
+        self.model = "gpt-4.1"  # Aggiornato al nuovo modello GPT-4.1
         
         # Fallback patterns per quando AI non è disponibile
         self.fallback_fake_patterns = [
