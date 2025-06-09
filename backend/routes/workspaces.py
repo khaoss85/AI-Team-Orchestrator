@@ -178,3 +178,208 @@ async def get_workspace_settings(workspace_id: UUID):
     except Exception as e:
         logger.error(f"Error getting workspace settings: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get workspace settings: {str(e)}")
+
+# Human Interaction Endpoints for Human-in-the-Loop Workflow
+
+@router.post("/{workspace_id}/ask-question", status_code=status.HTTP_200_OK)
+async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any]):
+    """Ask a question to the AI team"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        question = request.get("question", "")
+        target_agent = request.get("target_agent")
+        
+        if not question.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question cannot be empty")
+
+        # Create a task for answering the question
+        from database import create_task
+        
+        task_name = "Answer Human Question"
+        task_description = f"Human Question: {question}"
+        if target_agent:
+            task_description += f"\n\nDirected to: {target_agent}"
+        
+        task = await create_task(
+            workspace_id=str(workspace_id),
+            name=task_name,
+            description=task_description,
+            priority="medium"
+        )
+        
+        logger.info(f"Created question task {task['id']} for workspace {workspace_id}")
+        
+        return {
+            "success": True,
+            "message": "Question sent to AI team",
+            "task_id": task["id"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending question: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send question: {str(e)}")
+
+@router.post("/{workspace_id}/provide-feedback", status_code=status.HTTP_200_OK)
+async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any]):
+    """Provide general feedback to the AI team"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        feedback = request.get("feedback", "")
+        context = request.get("context", {})
+        
+        if not feedback.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback cannot be empty")
+
+        # Create a human feedback request
+        from human_feedback_manager import get_human_feedback_manager
+        
+        feedback_manager = await get_human_feedback_manager()
+        
+        feedback_request = await feedback_manager.create_feedback_request(
+            workspace_id=str(workspace_id),
+            request_type="general_feedback",
+            title="Human Feedback Provided",
+            description=feedback,
+            context={"feedback": feedback, "additional_context": context},
+            priority="medium"
+        )
+        
+        logger.info(f"Created feedback request {feedback_request['id']} for workspace {workspace_id}")
+        
+        return {
+            "success": True,
+            "message": "Feedback sent to AI team",
+            "feedback_request_id": feedback_request["id"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error providing feedback: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to provide feedback: {str(e)}")
+
+@router.post("/{workspace_id}/request-iteration", status_code=status.HTTP_200_OK)
+async def request_iteration(workspace_id: UUID, request: Dict[str, Any]):
+    """Request an iteration with specific changes"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        changes = request.get("changes", [])
+        
+        if not changes or (isinstance(changes, list) and not any(changes)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Changes list cannot be empty")
+
+        # Create iteration tasks
+        from database import create_task
+        
+        tasks_created = []
+        for i, change in enumerate(changes):
+            if isinstance(change, str) and change.strip():
+                task_name = f"Iteration Request {i+1}"
+                task_description = f"Requested Change: {change}"
+                
+                task = await create_task(
+                    workspace_id=str(workspace_id),
+                    name=task_name,
+                    description=task_description,
+                    priority="high"
+                )
+                tasks_created.append(task["id"])
+        
+        logger.info(f"Created {len(tasks_created)} iteration tasks for workspace {workspace_id}")
+        
+        return {
+            "success": True,
+            "message": f"Iteration request created with {len(tasks_created)} change tasks",
+            "task_ids": tasks_created
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error requesting iteration: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to request iteration: {str(e)}")
+
+@router.post("/{workspace_id}/approve-completion", status_code=status.HTTP_200_OK)
+async def approve_project_completion(workspace_id: UUID):
+    """Approve the completion of the project"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        # Update workspace status to approved/completed
+        await update_workspace_status(str(workspace_id), "approved")
+        
+        # Log approval
+        logger.info(f"Project {workspace_id} approved by human reviewer")
+        
+        return {
+            "success": True,
+            "message": "Project completion approved",
+            "status": "approved"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error approving completion: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to approve completion: {str(e)}")
+
+@router.post("/{workspace_id}/request-changes", status_code=status.HTTP_200_OK)
+async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, Any]):
+    """Request changes to the completed project"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        changes = request.get("changes", "")
+        priority = request.get("priority", "medium")
+        
+        if not changes.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Changes description cannot be empty")
+
+        # Create a high-priority task for the requested changes
+        from database import create_task
+        
+        task = await create_task(
+            workspace_id=str(workspace_id),
+            name="Final Changes Requested",
+            description=f"Human-requested changes to final deliverables:\n\n{changes}",
+            priority=priority
+        )
+        
+        # Also create a human feedback request for tracking
+        from human_feedback_manager import get_human_feedback_manager
+        
+        feedback_manager = await get_human_feedback_manager()
+        
+        feedback_request = await feedback_manager.create_feedback_request(
+            workspace_id=str(workspace_id),
+            request_type="change_request",
+            title="Final Changes Requested",
+            description=changes,
+            context={"priority": priority, "task_id": task["id"]},
+            priority=priority
+        )
+        
+        logger.info(f"Created change request task {task['id']} and feedback request {feedback_request['id']} for workspace {workspace_id}")
+        
+        return {
+            "success": True,
+            "message": "Change request submitted",
+            "task_id": task["id"],
+            "feedback_request_id": feedback_request["id"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error requesting changes: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to request changes: {str(e)}")

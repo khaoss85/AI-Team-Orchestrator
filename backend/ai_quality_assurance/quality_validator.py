@@ -425,7 +425,7 @@ Respond in this exact JSON format:
                 output_tokens = usage.completion_tokens
                 total_tokens = usage.total_tokens
                 
-                costs = self.token_costs.get(model_to_use, self.token_costs["gpt-3.5-turbo"])
+                costs = self.token_costs.get(model_to_use, self.token_costs["gpt-4.1-mini"])
                 cost = (input_tokens * costs["input"] / 1000) + (output_tokens * costs["output"] / 1000)
                 
                 logger.debug(f"✅ AI SUCCESS: {operation_type} - Tokens: {total_tokens}, Cost: ${cost:.6f}")

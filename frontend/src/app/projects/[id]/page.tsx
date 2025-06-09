@@ -225,7 +225,7 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     setWorkspace(updatedWorkspace)
     // Refresh other data that might be affected
     fetchMissionControl()
-    refetchResults()
+    // Note: refetchResults removed as it doesn't exist - data will refresh via useEffect
   }
 
   return (
@@ -282,35 +282,14 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         <InteractionPanel 
           workspace={workspace}
           onWorkspaceUpdate={handleWorkspaceUpdate}
+          hasFinalDeliverables={hasFinalDeliverables}
+          finalDeliverablesCount={finalDeliverablesCount}
         />
       )}
 
       {/* Unified Project Results Overview */}
       <ProjectResultsOverview projectId={id} />
 
-      {/* Project Completion Banner */}
-      {hasFinalDeliverables && projectFinalDeliverables.length > 0 && (
-        <div className="mb-8">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
-            <div className="text-center">
-              <div className="text-green-600 text-4xl mb-2">🎉</div>
-              <h2 className="text-2xl font-semibold text-green-900 mb-2">Project Completed!</h2>
-              <p className="text-green-700 mb-4">
-                {workspace?.goal || workspace?.description || 'All objectives accomplished successfully'}
-              </p>
-              <Link
-                href={`/projects/${id}/results?filter=final`}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors inline-flex items-center"
-              >
-                View Final Deliverables
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
 
       {selectedOutput && (

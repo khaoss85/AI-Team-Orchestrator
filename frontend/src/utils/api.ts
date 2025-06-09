@@ -1483,4 +1483,94 @@ export const api = {
       }
     },
   },
+
+  // Human Interaction API - for human-in-the-loop workflow
+  interaction: {
+    askQuestion: async (workspaceId: string, question: string, targetAgent?: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/ask-question`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            question,
+            target_agent: targetAgent 
+          }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    provideFeedback: async (workspaceId: string, feedback: string, context?: any): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/provide-feedback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            feedback,
+            context 
+          }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    requestIteration: async (workspaceId: string, changes: string[]): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/request-iteration`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            changes 
+          }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    approveCompletion: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/approve-completion`, {
+          method: 'POST',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    requestChanges: async (workspaceId: string, changes: string, priority: 'low' | 'medium' | 'high' = 'medium'): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/request-changes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            changes,
+            priority 
+          }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
 };
