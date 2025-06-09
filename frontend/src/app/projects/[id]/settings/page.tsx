@@ -27,10 +27,22 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
   const [goal, setGoal] = useState('');
   const [maxBudget, setMaxBudget] = useState<number>(10);
   const [maxIterations, setMaxIterations] = useState<number>(3);
+  
+  // Advanced settings
+  const [qualityThreshold, setQualityThreshold] = useState<number>(85);
+  const [maxConcurrentTasks, setMaxConcurrentTasks] = useState<number>(3);
+  const [taskTimeout, setTaskTimeout] = useState<number>(150);
+  const [enableQualityAssurance, setEnableQualityAssurance] = useState<boolean>(true);
+  const [deliverableThreshold, setDeliverableThreshold] = useState<number>(50);
+  const [maxDeliverablesPerProject, setMaxDeliverablesPerProject] = useState<number>(3);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  
+  // Settings test state
+  const [testingSettings, setTestingSettings] = useState(false);
+  const [settingsTestResult, setSettingsTestResult] = useState<any>(null);
 
   useEffect(() => {
     fetchWorkspace();
@@ -48,6 +60,15 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
       setGoal(data.goal || '');
       setMaxBudget(data.budget?.max_budget || 10);
       setMaxIterations(data.budget?.max_iterations || 3);
+      
+      // Load advanced settings
+      const settings = data.budget?.settings || {};
+      setQualityThreshold(settings.quality_threshold || 85);
+      setMaxConcurrentTasks(settings.max_concurrent_tasks || 3);
+      setTaskTimeout(settings.task_timeout || 150);
+      setEnableQualityAssurance(settings.enable_quality_assurance !== false);
+      setDeliverableThreshold(settings.deliverable_threshold || 50);
+      setMaxDeliverablesPerProject(settings.max_deliverables || 3);
       
       setError(null);
     } catch (e: any) {
@@ -70,7 +91,15 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
         goal,
         budget: {
           max_budget: maxBudget,
-          max_iterations: maxIterations
+          max_iterations: maxIterations,
+          settings: {
+            quality_threshold: qualityThreshold,
+            max_concurrent_tasks: maxConcurrentTasks,
+            task_timeout: taskTimeout,
+            enable_quality_assurance: enableQualityAssurance,
+            deliverable_threshold: deliverableThreshold,
+            max_deliverables: maxDeliverablesPerProject
+          }
         }
       });
 
@@ -94,6 +123,27 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
     } catch (e: any) {
       setError(e.message || 'Failed to delete project');
       setDeleting(false);
+    }
+  };
+
+  const testSettings = async () => {
+    try {
+      setTestingSettings(true);
+      setSettingsTestResult(null);
+      
+      const result = await api.workspaces.getSettings(id);
+      setSettingsTestResult(result);
+      
+      // Show success notification with settings values
+      const settingsInfo = Object.entries(result.settings)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+      alert(`Settings verified successfully!\n\n${settingsInfo}`);
+    } catch (e: any) {
+      setSettingsTestResult({ error: e.message });
+      alert(`Failed to test settings: ${e.message}`);
+    } finally {
+      setTestingSettings(false);
     }
   };
 
@@ -178,9 +228,9 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
             </div>
           </div>
 
-          {/* Budget & Limits */}
+          {/* Budget & Basic Limits */}
           <div className="border-t pt-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Budget & Limits</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Budget & Basic Limits</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -200,9 +250,19 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
               </div>
 
               <div>
-                <label htmlFor="iterations" className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Iterations per Task
-                </label>
+                <div className="flex items-center">
+                  <label htmlFor="iterations" className="block text-sm font-medium text-gray-700 mb-1">
+                    Max Iterations per Task
+                  </label>
+                  <div className="relative ml-1 group">
+                    <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                      Number of improvement cycles each task can go through before being marked complete
+                    </div>
+                  </div>
+                </div>
                 <input
                   type="number"
                   id="iterations"
@@ -213,6 +273,185 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">Maximum improvement loops per task</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Settings */}
+          <div className="border-t pt-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Advanced Settings</h2>
+            
+            <div className="space-y-6">
+              {/* Quality Settings */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Quality Assurance</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="qualityThreshold" className="text-sm font-medium text-gray-700">
+                        Quality Threshold (%)
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Minimum quality score required for content to be approved (0-100)
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      id="qualityThreshold"
+                      value={qualityThreshold}
+                      onChange={(e) => setQualityThreshold(Number(e.target.value))}
+                      min={0}
+                      max={100}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="enableQA" className="text-sm font-medium text-gray-700">
+                        Enable Quality Assurance
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Enable AI-driven quality evaluation and enhancement
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="enableQA"
+                        checked={enableQualityAssurance}
+                        onChange={(e) => setEnableQualityAssurance(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        {enableQualityAssurance ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Execution Settings */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Task Execution</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="concurrentTasks" className="text-sm font-medium text-gray-700">
+                        Max Concurrent Tasks
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Maximum number of tasks that can run simultaneously (1-10)
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      id="concurrentTasks"
+                      value={maxConcurrentTasks}
+                      onChange={(e) => setMaxConcurrentTasks(Number(e.target.value))}
+                      min={1}
+                      max={10}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="taskTimeout" className="text-sm font-medium text-gray-700">
+                        Task Timeout (seconds)
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Maximum time a single task can run before being terminated (30-600 seconds)
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      id="taskTimeout"
+                      value={taskTimeout}
+                      onChange={(e) => setTaskTimeout(Number(e.target.value))}
+                      min={30}
+                      max={600}
+                      step={10}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Deliverable Settings */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Deliverables</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="deliverableThreshold" className="text-sm font-medium text-gray-700">
+                        Completion Threshold (%)
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Minimum task completion percentage before deliverables can be created (0-100)
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      id="deliverableThreshold"
+                      value={deliverableThreshold}
+                      onChange={(e) => setDeliverableThreshold(Number(e.target.value))}
+                      min={0}
+                      max={100}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center mb-1">
+                      <label htmlFor="maxDeliverables" className="text-sm font-medium text-gray-700">
+                        Max Deliverables
+                      </label>
+                      <div className="relative ml-1 group">
+                        <svg className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          Maximum number of deliverables that can be created for this project (1-10)
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      id="maxDeliverables"
+                      value={maxDeliverablesPerProject}
+                      onChange={(e) => setMaxDeliverablesPerProject(Number(e.target.value))}
+                      min={1}
+                      max={10}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -248,7 +487,15 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-between items-center pt-4">
+            <button
+              onClick={testSettings}
+              disabled={testingSettings}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {testingSettings ? 'Testing...' : 'Test Settings'}
+            </button>
+            
             <button
               onClick={handleSave}
               disabled={saving}
@@ -261,6 +508,24 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-sm">
               {error}
+            </div>
+          )}
+
+          {/* Settings Test Result */}
+          {settingsTestResult && (
+            <div className={`border rounded-lg p-4 text-sm ${
+              settingsTestResult.error 
+                ? 'bg-red-50 border-red-200 text-red-600' 
+                : 'bg-green-50 border-green-200 text-green-600'
+            }`}>
+              <h4 className="font-semibold mb-2">Settings Test Result:</h4>
+              {settingsTestResult.error ? (
+                <p>Error: {settingsTestResult.error}</p>
+              ) : (
+                <pre className="whitespace-pre-wrap">
+                  {JSON.stringify(settingsTestResult, null, 2)}
+                </pre>
+              )}
             </div>
           )}
         </div>

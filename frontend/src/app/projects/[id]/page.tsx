@@ -221,6 +221,13 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
     URL.revokeObjectURL(url)
   }
 
+  const handleWorkspaceUpdate = (updatedWorkspace: Workspace) => {
+    setWorkspace(updatedWorkspace)
+    // Refresh other data that might be affected
+    fetchMissionControl()
+    refetchResults()
+  }
+
   return (
     <div className="container mx-auto space-y-6">
       <Link href="/projects" className="text-indigo-600 hover:underline text-sm">← Progetti</Link>
@@ -269,6 +276,14 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         error={missionError}
         onRefresh={fetchMissionControl}
       />
+
+      {/* Team Interaction Panel with Start Team button */}
+      {workspace && (
+        <InteractionPanel 
+          workspace={workspace}
+          onWorkspaceUpdate={handleWorkspaceUpdate}
+        />
+      )}
 
       {/* Unified Project Results Overview */}
       <ProjectResultsOverview projectId={id} />

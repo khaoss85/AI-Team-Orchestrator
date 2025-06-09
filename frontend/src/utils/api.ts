@@ -888,6 +888,32 @@ export const api = {
         return handleApiError(error);
       }
     },
+
+    // 🔥 NEW: Get workspace settings
+    getSettings: async (id: string): Promise<{
+      success: boolean;
+      workspace_id: string;
+      settings: {
+        quality_threshold: number;
+        max_iterations: number;
+        max_concurrent_tasks: number;
+        task_timeout: number;
+        enable_quality_assurance: boolean;
+        deliverable_threshold: number;
+        max_deliverables: number;
+        max_budget: number;
+      };
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/settings`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
   },
       
   // Handoffs API

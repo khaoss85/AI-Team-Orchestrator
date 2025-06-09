@@ -27,6 +27,7 @@ from database import (
 from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
+from utils.project_settings import get_project_settings
 logger = logging.getLogger(__name__)
 
 try:
@@ -369,10 +370,10 @@ class TaskExecutor(AssetCoordinationMixin):
         self.budget_tracker = BudgetTracker()
         self.execution_log: List[Dict[str, Any]] = []
 
-        # ANTI-LOOP CONFIGURATIONS
-        self.max_concurrent_tasks: int = 3  # Numero di worker paralleli
+        # ANTI-LOOP CONFIGURATIONS (these can be overridden per workspace)
+        self.default_max_concurrent_tasks: int = 3  # Numero di worker paralleli
         self.max_tasks_per_workspace_anti_loop: int = 10
-        self.execution_timeout: int = 150  # secondi per task
+        self.default_execution_timeout: int = 150  # secondi per task
         self.max_delegation_depth: int = 2
 
         # Tracking per anti-loop
@@ -423,6 +424,43 @@ class TaskExecutor(AssetCoordinationMixin):
             'recovery_timeout': 300,  # 5 minutes before allowing retry
             'half_open_max_calls': 3  # max calls in half-open state
         }
+
+    async def get_workspace_settings(self, workspace_id: str):
+        """Get workspace-specific settings with fallback to defaults"""
+        try:
+            project_settings = get_project_settings(workspace_id)
+            return {
+                'max_concurrent_tasks': await project_settings.get_max_concurrent_tasks(),
+                'task_timeout': await project_settings.get_task_timeout(),
+                'quality_threshold': await project_settings.get_quality_threshold(),
+                'max_iterations': await project_settings.get_max_iterations(),
+                'enable_quality_assurance': await project_settings.is_quality_assurance_enabled(),
+                'deliverable_threshold': await project_settings.get_deliverable_threshold(),
+                'max_deliverables': await project_settings.get_max_deliverables(),
+                'max_budget': await project_settings.get_max_budget()
+            }
+        except Exception as e:
+            logger.warning(f"Failed to load workspace settings for {workspace_id}, using defaults: {e}")
+            return {
+                'max_concurrent_tasks': self.default_max_concurrent_tasks,
+                'task_timeout': self.default_execution_timeout,
+                'quality_threshold': 85.0,
+                'max_iterations': 3,
+                'enable_quality_assurance': True,
+                'deliverable_threshold': 50.0,
+                'max_deliverables': 3,
+                'max_budget': 10.0
+            }
+
+    @property
+    def max_concurrent_tasks(self) -> int:
+        """Get max concurrent tasks (workspace-aware when possible)"""
+        return getattr(self, '_current_max_concurrent_tasks', self.default_max_concurrent_tasks)
+
+    @property
+    def execution_timeout(self) -> int:
+        """Get execution timeout (workspace-aware when possible)"""
+        return getattr(self, '_current_execution_timeout', self.default_execution_timeout)
 
     async def _debounced_query(self, query_key: str, query_func: Callable, *args, **kwargs):
         """Execute query with debouncing to prevent rapid repeated calls"""
@@ -1143,6 +1181,22 @@ class TaskExecutor(AssetCoordinationMixin):
                 if self.task_queue.full():
                     logger.warning(f"Anti-loop Task Queue is full ({self.task_queue.qsize()}/{self.max_queue_size}). Skipping further workspace processing in this cycle")
                     break
+                
+                # Load workspace-specific settings before processing
+                try:
+                    workspace_settings = await self.get_workspace_settings(workspace_id)
+                    # Apply workspace-specific settings for this cycle
+                    self._current_max_concurrent_tasks = workspace_settings['max_concurrent_tasks']
+                    self._current_execution_timeout = workspace_settings['task_timeout']
+                    logger.debug(f"Loaded settings for workspace {workspace_id}: "
+                               f"concurrent_tasks={workspace_settings['max_concurrent_tasks']}, "
+                               f"timeout={workspace_settings['task_timeout']}s")
+                except Exception as e:
+                    logger.warning(f"Failed to load workspace settings for {workspace_id}, using defaults: {e}")
+                    # Reset to defaults on error
+                    self._current_max_concurrent_tasks = self.default_max_concurrent_tasks
+                    self._current_execution_timeout = self.default_execution_timeout
+                
                 # Pre-warm caches to avoid repeated DB hits in quick succession
                 await self._cached_list_tasks(workspace_id)
                 await self._cached_list_agents(workspace_id)
@@ -2683,3 +2737,23 @@ def get_auto_generation_stats() -> Dict[str, Any]:
 def get_runaway_protection_status() -> Dict[str, Any]:
     """Backward compatibility: restituisce solo la sezione runaway_protection_status"""
     return task_executor.get_detailed_stats().get("runaway_protection_status", {})
+
+# Helper function to get workspace settings
+async def get_workspace_execution_settings(workspace_id: str) -> Dict[str, Any]:
+    """Get workspace-specific execution settings with fallbacks"""
+    try:
+        project_settings = get_project_settings(workspace_id)
+        return await project_settings.get_all_settings()
+    except Exception as e:
+        logger.warning(f"Failed to load workspace settings for {workspace_id}: {e}")
+        # Return default settings
+        return {
+            'quality_threshold': 85.0,
+            'max_iterations': 3,
+            'max_concurrent_tasks': 3,
+            'task_timeout': 150,
+            'enable_quality_assurance': True,
+            'deliverable_threshold': 50.0,
+            'max_deliverables': 3,
+            'max_budget': 10.0
+        }

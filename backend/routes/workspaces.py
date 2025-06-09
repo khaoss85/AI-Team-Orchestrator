@@ -154,3 +154,27 @@ async def resume_workspace(workspace_id: UUID):
     except Exception as e:
         logger.error(f"Error resuming workspace: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to resume workspace: {str(e)}")
+
+@router.get("/{workspace_id}/settings", status_code=status.HTTP_200_OK)
+async def get_workspace_settings(workspace_id: UUID):
+    """Get workspace-specific settings"""
+    try:
+        from utils.project_settings import get_project_settings
+        
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        project_settings = get_project_settings(str(workspace_id))
+        settings = await project_settings.get_all_settings()
+        
+        return {
+            "success": True,
+            "workspace_id": str(workspace_id),
+            "settings": settings
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting workspace settings: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get workspace settings: {str(e)}")
