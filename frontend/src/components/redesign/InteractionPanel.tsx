@@ -201,6 +201,57 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
             </button>
           </div>
         </div>
+
+        {/* Changes Modal - Using Portal */}
+        {showChangesModal && createPortal(
+          <div 
+            className="fixed inset-0 flex items-center justify-center p-4" 
+            style={{
+              zIndex: 99999, 
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              pointerEvents: 'auto'
+            }}
+          >
+            <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4">Request Changes</h3>
+              <textarea
+                value={changesText}
+                onChange={(e) => setChangesText(e.target.value)}
+                placeholder="Describe specific changes needed for the final deliverables..."
+                className="w-full border border-gray-300 rounded-lg p-3 mb-4 resize-none"
+                rows={4}
+              />
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <select 
+                  value={changesPriority}
+                  onChange={(e) => setChangesPriority(e.target.value as 'low' | 'medium' | 'high')}
+                  className="w-full border border-gray-300 rounded-lg p-2"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowChangesModal(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRequestChanges}
+                  disabled={!changesText.trim()}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg disabled:opacity-50 hover:bg-green-700"
+                >
+                  Submit Changes
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     )
   }

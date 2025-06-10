@@ -19,8 +19,11 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterAgent, setFilterAgent] = useState<string>('all');
+  const [filterRichContent, setFilterRichContent] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -176,8 +179,23 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
   const filteredAndSortedTasks = React.useMemo(() => {
     let filtered = tasks;
     
+    // Status filter
     if (filterStatus !== 'all') {
-      filtered = tasks.filter(task => task.status === filterStatus);
+      filtered = filtered.filter(task => task.status === filterStatus);
+    }
+    
+    // Agent filter
+    if (filterAgent !== 'all') {
+      filtered = filtered.filter(task => task.agent_id === filterAgent);
+    }
+    
+    // Rich content filter
+    if (filterRichContent !== 'all') {
+      filtered = filtered.filter(task => {
+        const result = task.result || {};
+        const hasRichContent = result.detailed_results_json ? true : false;
+        return filterRichContent === 'rich' ? hasRichContent : !hasRichContent;
+      });
     }
     
     return filtered.sort((a, b) => {
@@ -217,6 +235,24 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
   const getAgentName = (agentId: string) => {
     const agent = agents.find(a => a.id === agentId);
     return agent ? agent.name : 'Agente Sconosciuto';
+  };
+  
+  // Detect project phase based on task names
+  const detectTaskPhase = (taskName: string): string => {
+    const nameLower = taskName.toLowerCase();
+    
+    if (nameLower.includes('setup') || nameLower.includes('planning') || nameLower.includes('initialization')) {
+      return 'planning';
+    } else if (nameLower.includes('analysis') || nameLower.includes('research') || nameLower.includes('audit')) {
+      return 'analysis';
+    } else if (nameLower.includes('implement') || nameLower.includes('create') || nameLower.includes('develop')) {
+      return 'implementation';
+    } else if (nameLower.includes('enhance') || nameLower.includes('optimize') || nameLower.includes('improve')) {
+      return 'optimization';
+    } else if (nameLower.includes('final') || nameLower.includes('review') || nameLower.includes('complete')) {
+      return 'finalization';
+    }
+    return 'execution';
   };
 
   // Enhanced statistics including cost tracking and insights
@@ -309,7 +345,35 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
 
       {/* Cost and Value Overview */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-blue-900 mb-4">💰 Recap Costi e Valore Generato</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-blue-900">💰 Recap Costi e Valore Generato</h2>
+          <button
+            onClick={() => {
+              if (expandedTasks.size === 0) {
+                setExpandedTasks(new Set(tasks.map(t => t.id)));
+              } else {
+                setExpandedTasks(new Set());
+              }
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          >
+            {expandedTasks.size === 0 ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Espandi Tutti
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Chiudi Tutti
+              </>
+            )}
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-700">
@@ -365,6 +429,93 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
         )}
       </div>
 
+      {/* Agent Performance Summary */}
+      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">👥 Performance Agenti</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {agents.map(agent => {
+            const agentTasks = tasks.filter(t => t.agent_id === agent.id);
+            const completedTasks = agentTasks.filter(t => t.status === 'completed').length;
+            const totalCost = agentTasks.reduce((sum, t) => sum + (t.result?.cost_estimated || 0), 0);
+            const richContentTasks = agentTasks.filter(t => t.result?.detailed_results_json).length;
+            
+            return (
+              <div key={agent.id} className="border border-gray-200 rounded-lg p-3">
+                <div className="flex items-center mb-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-medium mr-2">
+                    {agent.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{agent.name}</div>
+                    <div className="text-xs text-gray-500">{agent.role}</div>
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Task:</span>
+                    <span className="font-medium">{completedTasks}/{agentTasks.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Costo:</span>
+                    <span className="font-medium">${totalCost.toFixed(4)}</span>
+                  </div>
+                  {richContentTasks > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Rich:</span>
+                      <span className="font-medium text-purple-600">✨ {richContentTasks}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Phase Distribution */}
+      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">🎯 Distribuzione per Fase</h3>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+          {(() => {
+            const phaseStats = tasks.reduce((acc, task) => {
+              const phase = detectTaskPhase(task.name);
+              if (!acc[phase]) acc[phase] = { total: 0, completed: 0 };
+              acc[phase].total++;
+              if (task.status === 'completed') acc[phase].completed++;
+              return acc;
+            }, {} as Record<string, { total: number; completed: number }>);
+            
+            const phaseConfig = {
+              planning: { icon: '📋', label: 'Planning', color: 'blue' },
+              analysis: { icon: '🔍', label: 'Analisi', color: 'yellow' },
+              implementation: { icon: '🔨', label: 'Sviluppo', color: 'green' },
+              execution: { icon: '⚙️', label: 'Esecuzione', color: 'indigo' },
+              optimization: { icon: '🚀', label: 'Ottimizzazione', color: 'purple' },
+              finalization: { icon: '✅', label: 'Finalizzazione', color: 'gray' }
+            };
+            
+            return Object.entries(phaseStats).map(([phase, stats]) => {
+              const config = phaseConfig[phase as keyof typeof phaseConfig];
+              const completionRate = stats.total > 0 ? (stats.completed / stats.total * 100) : 0;
+              
+              return (
+                <div key={phase} className={`border border-${config.color}-200 rounded-lg p-2 text-center bg-${config.color}-50`}>
+                  <div className="text-lg mb-1">{config.icon}</div>
+                  <div className="text-xs font-medium text-gray-700">{config.label}</div>
+                  <div className="text-xs text-gray-600">{stats.completed}/{stats.total}</div>
+                  <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
+                    <div 
+                      className={`bg-${config.color}-500 h-1 rounded-full transition-all`}
+                      style={{ width: `${completionRate}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+
       {/* Enhanced Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center">
@@ -394,7 +545,7 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
       {/* Filters and Controls */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
               <select
@@ -407,6 +558,33 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
                 <option value="in_progress">In Corso</option>
                 <option value="completed">Completati</option>
                 <option value="failed">Falliti</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agente</label>
+              <select
+                value={filterAgent}
+                onChange={(e) => setFilterAgent(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">Tutti gli Agenti</option>
+                {agents.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contenuto</label>
+              <select
+                value={filterRichContent}
+                onChange={(e) => setFilterRichContent(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">Tutti i Contenuti</option>
+                <option value="rich">✨ Con Rich Content</option>
+                <option value="standard">📄 Standard</option>
               </select>
             </div>
             
@@ -455,32 +633,136 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
 
       {/* Tasks List */}
       <div className="space-y-4">
-        {filteredAndSortedTasks.map((task) => (
-          <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <span className="text-xl">{getStatusIcon(task.status)}</span>
-                  <h3 className="text-lg font-semibold text-gray-900">{task.name}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(task.status)}`}>
-                    {getStatusLabel(task.status)}
-                  </span>
-                </div>
-                <p className="text-gray-600 mb-3">{task.description}</p>
-                
-                <div className="flex items-center space-x-6 text-sm text-gray-500">
-                  <div>
-                    <span className="font-medium">Agente:</span> {getAgentName(task.agent_id || '')}
+        {filteredAndSortedTasks.map((task) => {
+          const isExpanded = expandedTasks.has(task.id);
+          const agent = agents.find(a => a.id === task.agent_id);
+          const hasRichContent = task.result?.detailed_results_json ? true : false;
+          
+          return (
+            <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Task Header - Always Visible */}
+              <div 
+                className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                  const newExpanded = new Set(expandedTasks);
+                  if (isExpanded) {
+                    newExpanded.delete(task.id);
+                  } else {
+                    newExpanded.add(task.id);
+                  }
+                  setExpandedTasks(newExpanded);
+                }}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <span className="text-xl">{getStatusIcon(task.status)}</span>
+                      <h3 className="text-lg font-semibold text-gray-900 flex-1">{task.name}</h3>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(task.status)}`}>
+                        {getStatusLabel(task.status)}
+                      </span>
+                      {hasRichContent && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                          ✨ Rich
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Agent Info with Avatar/Role */}
+                    <div className="flex items-center space-x-6 mb-2">
+                      {agent && (
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                            agent.seniority === 'expert' ? 'bg-purple-100 text-purple-700' :
+                            agent.seniority === 'senior' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {agent.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {agent.name}
+                              {agent.seniority === 'expert' && (
+                                <span className="ml-1 text-xs text-purple-600" title="Expert">★</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">{agent.role}</div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+                        <div className="flex items-center">
+                          <span className="mr-1">📅</span>
+                          {formatDate(task.created_at)}
+                        </div>
+                        {task.result?.cost_estimated && (
+                          <div className="flex items-center">
+                            <span className="mr-1">💰</span>
+                            ${task.result.cost_estimated.toFixed(6)}
+                          </div>
+                        )}
+                        {task.result?.execution_time_seconds && (
+                          <div className="flex items-center">
+                            <span className="mr-1">⏱️</span>
+                            {task.result.execution_time_seconds}s
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Collapsible Preview */}
+                    {!isExpanded && task.result?.summary && (
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {task.result.summary}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <span className="font-medium">Creato:</span> {formatDate(task.created_at)}
-                  </div>
-                  <div>
-                    <span className="font-medium">Aggiornato:</span> {formatDate(task.updated_at)}
+                  
+                  {/* Expand/Collapse Icon */}
+                  <div className="ml-4">
+                    <svg className={`w-5 h-5 text-gray-400 transform transition-transform ${
+                      isExpanded ? 'rotate-90' : ''
+                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </div>
               </div>
-            </div>
+              
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className="border-t border-gray-200">
+                  {/* Task Description */}
+                  <div className="px-6 py-4 bg-gray-50">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">📋 Descrizione</h4>
+                    <p className="text-sm text-gray-600">{task.description}</p>
+                  </div>
+                  
+                  {/* Task Metadata */}
+                  <div className="px-6 py-4 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">📊 Dettagli Task</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-gray-500">ID Task</div>
+                        <div className="font-mono text-xs text-gray-600">{task.id.slice(0, 8)}...</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500">Creato</div>
+                        <div className="text-gray-700">{formatDate(task.created_at)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500">Ultimo Aggiornamento</div>
+                        <div className="text-gray-700">{formatDate(task.updated_at)}</div>
+                      </div>
+                      {task.priority && (
+                        <div>
+                          <div className="text-gray-500">Priorità</div>
+                          <div className="text-gray-700 capitalize">{task.priority}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
             
             {/* Enhanced Task Results/Details */}
             {task.result && (
@@ -703,8 +985,11 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
                 })()}
               </div>
             )}
-          </div>
-        ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       
       {filteredAndSortedTasks.length === 0 && (
