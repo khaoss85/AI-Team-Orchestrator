@@ -834,42 +834,6 @@ export default function ProjectResultsPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          {/* Navigation */}
-          <div className="mb-6">
-            <Link href={`/projects/${projectId}`} className="text-indigo-600 hover:underline text-sm">
-              ← Back to Project
-            </Link>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8">
-              <Link
-                href={`/projects/${projectId}`}
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Overview
-              </Link>
-              <Link
-                href={`/projects/${projectId}/results`}
-                className="py-2 px-1 border-b-2 border-indigo-500 font-medium text-sm text-indigo-600"
-              >
-                📊 Unified Results
-              </Link>
-              <Link
-                href={`/projects/${projectId}/tasks`}
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Tasks
-              </Link>
-              <Link
-                href={`/projects/${projectId}/team`}
-                className="py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Team
-              </Link>
-            </nav>
-          </div>
 
           <div className="flex items-center justify-between mb-6">
             <div>

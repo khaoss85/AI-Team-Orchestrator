@@ -1573,4 +1573,272 @@ export const api = {
       }
     },
   },
+
+  // Asset dependency management API endpoints
+  assets: {
+    // Asset Dependencies
+    getDependencies: (assetId: string) =>
+      fetch(`${API_BASE_URL}/assets/${assetId}/dependencies`).then(res => res.json()),
+    
+    updateDependencies: (assetId: string, updates: any) =>
+      fetch(`${API_BASE_URL}/assets/${assetId}/apply-updates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }).then(res => res.json()),
+    
+    getHistory: (assetId: string, options?: any) =>
+      fetch(`${API_BASE_URL}/assets/${assetId}/history${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
+    
+    compareVersions: (assetId: string, fromVersion: string, toVersion: string) =>
+      fetch(`${API_BASE_URL}/assets/${assetId}/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_version: fromVersion, to_version: toVersion }),
+      }).then(res => res.json()),
+    
+    predictImpact: (assetId: string, changeData: any) =>
+      fetch(`${API_BASE_URL}/assets/${assetId}/predict-impact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changeData),
+      }).then(res => res.json()),
+
+    checkDependencies: async (assetId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/assets/${assetId}/dependencies`, {
+          method: 'GET',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    applyDependencyUpdates: async (assetId: string, updateRequest: any): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/assets/${assetId}/apply-updates`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateRequest),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    getDependencyGraph: async (workspaceId: string, centralAssetId?: string): Promise<any> => {
+      try {
+        const url = centralAssetId 
+          ? `${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph?central_asset=${centralAssetId}`
+          : `${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph`;
+        
+        const response = await fetch(url, {
+          method: 'GET',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
+  // Workspace Management APIs
+  workspaces: {
+    // Basic CRUD operations
+    list: async (userId: string): Promise<Workspace[]> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/user/${userId}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    get: async (id: string): Promise<Workspace> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+    
+    create: async (data: WorkspaceCreateData): Promise<Workspace> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    update: async (id: string, data: Partial<WorkspaceCreateData>): Promise<Workspace> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        if (response.status === 404) {
+          throw new Error('Aggiornamento progetto non supportato dal backend');
+        }
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.success;
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Asset management APIs
+    getDependencyGraph: (workspaceId: string, options?: any) =>
+      fetch(`${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
+    
+    getAssets: (workspaceId: string, filters?: any) =>
+      fetch(`${API_BASE_URL}/workspaces/${workspaceId}/assets${filters ? `?${new URLSearchParams(filters)}` : ''}`).then(res => res.json()),
+
+    // Control operations
+    pause: async (id: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/pause`, {
+          method: 'POST',
+        });
+        if (response.status === 404) {
+          throw new Error('Funzione di pausa progetto non disponibile');
+        }
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    resume: async (id: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/resume`, {
+          method: 'POST',
+        });
+        if (response.status === 404) {
+          throw new Error('Funzione di ripresa progetto non disponibile');
+        }
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Settings
+    getSettings: async (id: string): Promise<{
+      success: boolean;
+      workspace_id: string;
+      settings: {
+        quality_threshold: number;
+        max_iterations: number;
+        max_concurrent_tasks: number;
+        task_timeout: number;
+        enable_quality_assurance: boolean;
+        deliverable_threshold: number;
+        max_deliverables: number;
+        max_budget: number;
+      };
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/settings`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
+  // Analytics APIs
+  analytics: {
+    getAssetMetrics: (workspaceId: string, timeRange: string) =>
+      fetch(`${API_BASE_URL}/analytics/assets/${workspaceId}/metrics?time_range=${timeRange}`).then(res => res.json()),
+    
+    getTrendData: (workspaceId: string, timeRange: string) =>
+      fetch(`${API_BASE_URL}/analytics/assets/${workspaceId}/trends?time_range=${timeRange}`).then(res => res.json()),
+  },
+
+  // Workflow Automation APIs
+  workflowAutomation: {
+    getRules: (workspaceId: string) =>
+      fetch(`${API_BASE_URL}/automation/rules?workspace_id=${workspaceId}`).then(res => res.json()),
+    
+    createRule: (workspaceId: string, rule: any) =>
+      fetch(`${API_BASE_URL}/automation/rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...rule, workspace_id: workspaceId }),
+      }).then(res => res.json()),
+    
+    updateRule: (ruleId: string, updates: any) =>
+      fetch(`${API_BASE_URL}/automation/rules/${ruleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }).then(res => res.json()),
+    
+    deleteRule: (ruleId: string) =>
+      fetch(`${API_BASE_URL}/automation/rules/${ruleId}`, {
+        method: 'DELETE',
+      }).then(res => res.json()),
+    
+    getStats: (workspaceId: string) =>
+      fetch(`${API_BASE_URL}/automation/stats?workspace_id=${workspaceId}`).then(res => res.json()),
+  },
+
+  // Real-time Updates APIs
+  realTime: {
+    getConnectionInfo: (workspaceId: string) =>
+      fetch(`${API_BASE_URL}/ws/info/${workspaceId}`).then(res => res.json()),
+  },
 };

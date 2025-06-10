@@ -206,6 +206,7 @@ async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any]):
         task = await create_task(
             workspace_id=str(workspace_id),
             name=task_name,
+            status="pending",
             description=task_description,
             priority="medium"
         )
@@ -289,6 +290,7 @@ async def request_iteration(workspace_id: UUID, request: Dict[str, Any]):
                 task = await create_task(
                     workspace_id=str(workspace_id),
                     name=task_name,
+                    status="pending",
                     description=task_description,
                     priority="high"
                 )
@@ -315,8 +317,8 @@ async def approve_project_completion(workspace_id: UUID):
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        # Update workspace status to approved/completed
-        await update_workspace_status(str(workspace_id), "approved")
+        # Update workspace status to completed
+        await update_workspace_status(str(workspace_id), "completed")
         
         # Log approval
         logger.info(f"Project {workspace_id} approved by human reviewer")
@@ -324,7 +326,7 @@ async def approve_project_completion(workspace_id: UUID):
         return {
             "success": True,
             "message": "Project completion approved",
-            "status": "approved"
+            "status": "completed"
         }
     except HTTPException:
         raise
@@ -352,6 +354,7 @@ async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, A
         task = await create_task(
             workspace_id=str(workspace_id),
             name="Final Changes Requested",
+            status="pending",
             description=f"Human-requested changes to final deliverables:\n\n{changes}",
             priority=priority
         )
