@@ -321,7 +321,7 @@ export default function ProjectsPage() {
                       <div>
                         <p className="text-gray-500">Budget</p>
                         <p className="font-medium text-gray-800">
-                          {workspace.budget 
+                          {workspace.budget && workspace.budget.max_amount && workspace.budget.currency
                             ? `${workspace.budget.max_amount} ${workspace.budget.currency}`
                             : 'Non specificato'}
                         </p>

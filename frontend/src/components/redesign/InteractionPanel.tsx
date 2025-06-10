@@ -309,9 +309,16 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
       </div>
 
       {/* Question Modal */}
-      {showQuestionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+      {showQuestionModal && createPortal(
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4" 
+          style={{
+            zIndex: 99999, 
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl">
             <h3 className="text-lg font-semibold mb-4">Ask a Question</h3>
             <textarea
               value={questionText}
@@ -336,13 +343,21 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Feedback Modal */}
-      {showFeedbackModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+      {showFeedbackModal && createPortal(
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4" 
+          style={{
+            zIndex: 99999, 
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl">
             <h3 className="text-lg font-semibold mb-4">Provide Feedback</h3>
             <textarea
               value={feedbackText}
@@ -367,13 +382,21 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Iteration Modal */}
-      {showIterationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+      {showIterationModal && createPortal(
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4" 
+          style={{
+            zIndex: 99999, 
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl">
             <h3 className="text-lg font-semibold mb-4">Request Iteration</h3>
             <textarea
               value={iterationText}
@@ -398,7 +421,8 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Changes Modal - Using Portal */}

@@ -948,66 +948,20 @@ def _generate_recommendations(
 
 @router.get("/workspace/{workspace_id}/asset-tracking", response_model=Dict[str, Any])
 async def get_workspace_asset_tracking(workspace_id: UUID):
-    """Get asset-oriented task tracking for a workspace"""
+    """Get asset-oriented task tracking for a workspace with enhanced detection"""
     try:
+        from utils.asset_discovery import discover_assets_from_tasks
+        
         tasks = await list_tasks(str(workspace_id))
+        logger.info(f"🔍 Asset tracking for workspace {workspace_id}: {len(tasks)} total tasks")
         
-        # Identifica asset tasks
-        asset_tasks = []
-        completed_asset_tasks = []
-        pending_asset_tasks = []
+        # Use enhanced asset discovery
+        discovery_result = discover_assets_from_tasks(tasks)
         
-        for task in tasks:
-            context_data = task.get("context_data", {}) or {}
-            if isinstance(context_data, dict):
-                if (context_data.get("asset_production") or 
-                    context_data.get("asset_oriented_task") or
-                    "PRODUCE ASSET:" in task.get("name", "").upper()):
-                    
-                    asset_info = {
-                        "task_id": task.get("id"),
-                        "task_name": task.get("name"),
-                        "asset_type": context_data.get("detected_asset_type") or context_data.get("asset_type"),
-                        "status": task.get("status"),
-                        "agent_role": task.get("assigned_to_role"),
-                        "created_at": task.get("created_at"),
-                        "updated_at": task.get("updated_at")
-                    }
-                    
-                    asset_tasks.append(asset_info)
-                    
-                    if task.get("status") == "completed":
-                        completed_asset_tasks.append(asset_info)
-                    elif task.get("status") in ["pending", "in_progress"]:
-                        pending_asset_tasks.append(asset_info)
-        
-        # Calcola statistiche
-        total_assets = len(asset_tasks)
-        completion_rate = len(completed_asset_tasks) / total_assets if total_assets > 0 else 0
-        
-        # Asset types breakdown
-        asset_types = {}
-        for task in asset_tasks:
-            asset_type = task.get("asset_type", "unknown")
-            if asset_type not in asset_types:
-                asset_types[asset_type] = {"total": 0, "completed": 0}
-            asset_types[asset_type]["total"] += 1
-            if task.get("status") == "completed":
-                asset_types[asset_type]["completed"] += 1
-        
+        # Return the result with workspace_id
         return {
             "workspace_id": str(workspace_id),
-            "asset_summary": {
-                "total_asset_tasks": total_assets,
-                "completed_asset_tasks": len(completed_asset_tasks),
-                "pending_asset_tasks": len(pending_asset_tasks),
-                "completion_rate": round(completion_rate * 100, 1),
-                "deliverable_ready": completion_rate >= 0.7  # 70% threshold
-            },
-            "asset_types_breakdown": asset_types,
-            "completed_assets": completed_asset_tasks,
-            "pending_assets": pending_asset_tasks,
-            "analysis_timestamp": datetime.now().isoformat()
+            **discovery_result
         }
         
     except Exception as e:

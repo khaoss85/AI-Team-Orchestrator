@@ -96,12 +96,12 @@ export const useProjectResults = (workspaceId: string) => {
   const normalizeAssetToResult = useCallback((asset: ActionableAsset, taskInfo: any): UnifiedResultItem => {
     return {
       id: `asset_${asset.source_task_id}`,
-      title: asset.asset_name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      title: (asset.asset_name || 'Unknown Asset').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       description: asset.usage_instructions || 'Asset pronto per l\'uso',
       type: 'asset',
-      category: asset.asset_name.includes('calendar') ? 'content' : 
-                asset.asset_name.includes('database') ? 'data' : 
-                asset.asset_name.includes('strategy') ? 'strategy' : 'general',
+      category: (asset.asset_name || '').includes('calendar') ? 'content' : 
+                (asset.asset_name || '').includes('database') ? 'data' : 
+                (asset.asset_name || '').includes('strategy') ? 'strategy' : 'general',
       
       actionabilityScore: asset.actionability_score || 0.5,
       validationScore: asset.validation_score || 0.5,

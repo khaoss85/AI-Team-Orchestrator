@@ -11,6 +11,7 @@ import HumanFeedbackDashboard from '@/components/HumanFeedbackDashboard';
 import GenericArrayViewer from '@/components/GenericArrayViewer';
 import StructuredContentRenderer from '@/components/StructuredContentRenderer';
 import StructuredAssetRenderer from '@/components/StructuredAssetRenderer';
+import AssetDebugger from '@/components/AssetDebugger';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -43,8 +44,10 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
 
   // Load real assets from the workspace
   const {
-    assets: realAssets,
-    loading: assetsLoading
+    deliverableAssets: realAssets,
+    assets: processedAssets,
+    loading: assetsLoading,
+    assetDisplayData
   } = useAssetManagement(workspaceId);
 
   // Load tasks to get iteration counts and proper versioning
@@ -105,66 +108,460 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
   };
 
   // Convert real assets to display format with proper versioning and deduplication
-  const processedAssets = new Map();
+  const groupedAssets = new Map();
   
-  Object.entries(realAssets).forEach(([key, asset]) => {
-    // Use task name as the primary identifier to group versions
-    const taskName = tasks?.find(t => t.id === asset.source_task_id)?.name || asset.asset_name;
-    const cleanName = taskName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  // Helper function to normalize asset names for grouping - IMPROVED
+  const normalizeAssetName = (name: string): string => {
+    let normalized = name;
     
-    // Find the source task to get more info
-    const sourceTask = tasks?.find(t => t.id === asset.source_task_id);
-    
-    // Try to determine version number from various sources
-    let versionNumber = 1;
-    
-    // 1. Check if the task name contains version info
-    if (taskName.includes('Asset 1')) versionNumber = 1;
-    else if (taskName.includes('Asset 2')) versionNumber = 2;
-    else if (taskName.includes('Asset 3')) versionNumber = 3;
-    
-    // 2. Check iteration_count if available
-    if (sourceTask?.iteration_count && sourceTask.iteration_count > 1) {
-      versionNumber = sourceTask.iteration_count;
-    }
-    
-    // 3. Check if it's an enhancement task (usually means v2+)
-    if (taskName.toLowerCase().includes('enhance') && versionNumber === 1) {
-      versionNumber = 2;
-    }
-    
-    // 4. Look at creation timestamp to infer versions for same asset type
-    const updatedAt = sourceTask?.updated_at || new Date().toISOString();
-    
-    // Create a unique identifier based on the clean name
-    const assetKey = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    
-    if (processedAssets.has(assetKey)) {
-      // If we already have this asset, update with higher version number if applicable
-      const existing = processedAssets.get(assetKey);
-      if (versionNumber > existing.versions) {
-        processedAssets.set(assetKey, {
-          ...existing,
-          versions: versionNumber,
-          lastModified: new Date(updatedAt).toISOString().split('T')[0],
-          sourceTaskId: asset.source_task_id,
-          id: asset.source_task_id // Use latest task ID
-        });
+    // For AI INTELLIGENT DELIVERABLE tasks, extract the actual asset name
+    if (normalized.includes('🎯 🤖 AI INTELLIGENT DELIVERABLE:')) {
+      const match = normalized.match(/🎯 🤖 AI INTELLIGENT DELIVERABLE:\s*([^(]+)/);
+      if (match) {
+        normalized = match[1].trim();
       }
-    } else {
-      // Add new asset
-      processedAssets.set(assetKey, {
-        id: asset.source_task_id,
-        name: cleanName,
-        type: getAssetTypeFromName(asset.asset_name || taskName),
-        lastModified: new Date(updatedAt).toISOString().split('T')[0],
-        versions: versionNumber,
-        sourceTaskId: asset.source_task_id
-      });
+    }
+    
+    // Specific name mappings to ensure proper grouping
+    const nameMap = {
+      'strategic_content_plan': 'content_strategy',
+      'comprehensive_content_strategy_document': 'content_strategy', 
+      'content_strategy_document': 'content_strategy',
+      'content_strategy_framework': 'content_strategy',
+      'instagram_growth_strategy': 'content_strategy',
+      'editorial_calendar_template': 'content_calendar',
+      'content_calendar_asset': 'content_calendar'
+    };
+    
+    normalized = normalized
+      .toLowerCase()
+      .replace(/enhanced|comprehensive|detailed|advanced|improved|updated|revised|final/g, '') // Remove version-indicating words
+      .replace(/🎯|🤖|ai intelligent deliverable|deliverable/g, '') // Remove AI symbols
+      .replace(/\([cx]:\d+\.?\d*\)/g, '') // Remove confidence scores
+      .replace(/\(\d{8}[_\s]\d{4}\)/g, '') // Remove timestamps
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim()
+      .replace(/\s+/g, '_');
+    
+    // Apply specific mappings
+    for (const [pattern, canonical] of Object.entries(nameMap)) {
+      if (normalized.includes(pattern)) {
+        return canonical;
+      }
+    }
+    
+    return normalized;
+  };
+
+  // Helper function to detect asset type from content - EXTENSIBLE
+  const detectAssetType = (taskName: string, assetName: string): string => {
+    const combined = `${taskName} ${assetName}`.toLowerCase();
+    
+    // Priority order: specific types first, then general
+    const assetTypeMap = [
+      { keywords: ['content', 'calendar'], type: 'content_calendar' },
+      { keywords: ['content', 'strategy'], type: 'content_strategy' },
+      { keywords: ['strategy', 'plan'], type: 'strategy' },
+      { keywords: ['analysis', 'research', 'competitor'], type: 'analysis' },
+      { keywords: ['budget', 'financial', 'cost'], type: 'spreadsheet' },
+      { keywords: ['calendar', 'schedule', 'timeline'], type: 'calendar' },
+      { keywords: ['report', 'document'], type: 'report' },
+      { keywords: ['database', 'contact', 'list'], type: 'database' },
+      { keywords: ['guideline', 'brand', 'style'], type: 'guidelines' },
+      { keywords: ['presentation', 'deck', 'slides'], type: 'presentation' }
+    ];
+    
+    for (const { keywords, type } of assetTypeMap) {
+      if (keywords.every(keyword => combined.includes(keyword)) || 
+          keywords.some(keyword => combined.includes(keyword) && keywords.length === 1)) {
+        return type;
+      }
+    }
+    
+    return 'document';
+  };
+
+  // Helper function to determine version based on task characteristics
+  const determineVersion = (taskName: string, sourceTask: any, createdAt: string, assetType: string): number => {
+    const name = taskName.toLowerCase();
+    
+    // 1. Explicit version indicators
+    if (name.includes('version 2') || name.includes('v2')) return 2;
+    if (name.includes('version 3') || name.includes('v3')) return 3;
+    if (name.includes('asset 2')) return 2;
+    if (name.includes('asset 3')) return 3;
+    
+    // 2. Enhancement/improvement indicators (usually v2+)
+    if (name.includes('enhanced') || name.includes('improved') || 
+        name.includes('updated') || name.includes('revised') || 
+        name.includes('advanced') || name.includes('detailed')) {
+      return 2;
+    }
+    
+    // 3. Final/comprehensive indicators might be higher versions
+    if (name.includes('final') || name.includes('comprehensive')) {
+      return name.includes('enhanced') ? 3 : 2;
+    }
+    
+    // 4. Check iteration count from task
+    if (sourceTask?.iteration_count && sourceTask.iteration_count > 1) {
+      return Math.min(sourceTask.iteration_count, 3); // Cap at v3 for display
+    }
+    
+    // 5. Default to v1
+    return 1;
+  };
+
+  // Group tasks by normalized asset type and collect all related tasks
+  const assetGroups = new Map();
+  
+  // Enhanced asset discovery - look at all completed tasks with detailed results
+  const allPotentialAssets = new Map();
+  
+  // First, add from realAssets (deliverableAssets from hook)
+  Object.entries(realAssets).forEach(([key, asset]) => {
+    allPotentialAssets.set(key, asset);
+  });
+  
+  // Then, also check all completed tasks with detailed results for additional assets
+  tasks.forEach(task => {
+    if (task.status === 'completed' && task.result?.detailed_results_json) {
+      try {
+        const detailed = typeof task.result.detailed_results_json === 'string' 
+          ? JSON.parse(task.result.detailed_results_json)
+          : task.result.detailed_results_json;
+        
+        if (detailed && (detailed.structured_content || detailed.actionable_insights || detailed.analysis)) {
+          const assetKey = `task_${task.id}`;
+          if (!allPotentialAssets.has(assetKey)) {
+            // Create synthetic asset from task result
+            allPotentialAssets.set(assetKey, {
+              asset_name: task.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+              asset_data: detailed,
+              source_task_id: task.id,
+              ready_to_use: true,
+              actionability_score: 0.8
+            });
+          }
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
     }
   });
+  
+  // HIGH-VALUE asset patterns - only include actionable business assets
+  const highValueAssetPatterns = [
+    'competitor', 'analysis', 'research', 'strategy', 'plan', 
+    'calendar', 'budget', 'report', 'guideline', 'framework',
+    'database', 'contact', 'presentation', 'brand'
+  ];
+  
+  // LOW-VALUE patterns to exclude
+  const excludePatterns = [
+    'enhance', 'handoff', 'urgent', 'quality enhancement', 
+    'implementation', 'setup', 'kick-off', 'score'
+  ];
+  
+  tasks.forEach(task => {
+    const taskNameLower = task.name?.toLowerCase() || '';
+    const hasHighValueKeyword = highValueAssetPatterns.some(keyword => taskNameLower.includes(keyword));
+    const hasExcludePattern = excludePatterns.some(pattern => taskNameLower.includes(pattern));
+    
+    // Only include if it has high-value keywords AND doesn't have exclude patterns
+    const isHighValueAsset = hasHighValueKeyword && !hasExcludePattern;
+    
+    console.log('🔍 [High-Value Asset Check] Checking task:', task.name, {
+      status: task.status,
+      hasResult: !!task.result,
+      hasSummary: !!task.result?.summary,
+      hasDetailedResults: !!task.result?.detailed_results_json,
+      hasHighValueKeyword,
+      hasExcludePattern,
+      isHighValueAsset,
+      matchedKeywords: highValueAssetPatterns.filter(keyword => taskNameLower.includes(keyword))
+    });
+    
+    if (task.status === 'completed' && isHighValueAsset) {
+      
+      const assetKey = `analysis_${task.id}`;
+      if (!allPotentialAssets.has(assetKey)) {
+        // Create asset even if no summary - use available data
+        const assetData = {
+          task_name: task.name,
+          analysis_type: 'research_analysis',
+          status: 'completed'
+        };
+        
+        if (task.result?.summary) {
+          assetData.summary = task.result.summary;
+        }
+        
+        if (task.result?.detailed_results_json) {
+          try {
+            const detailed = typeof task.result.detailed_results_json === 'string' 
+              ? JSON.parse(task.result.detailed_results_json)
+              : task.result.detailed_results_json;
+            assetData.detailed_analysis = detailed;
+          } catch (e) {
+            console.log('🔍 [Competitor Check] Failed to parse detailed results for:', task.name);
+          }
+        }
+        
+        allPotentialAssets.set(assetKey, {
+          asset_name: task.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+          asset_data: assetData,
+          source_task_id: task.id,
+          ready_to_use: true,
+          actionability_score: 0.7
+        });
+        
+        console.log('🔍 [Competitor Check] Added analysis asset:', task.name);
+      }
+    }
+  });
+  
+  // Debug: Log what we're starting with
+  console.log('🔍 [Asset Processing] Starting with', allPotentialAssets.size, 'potential assets');
 
-  const assets = Array.from(processedAssets.values());
+  allPotentialAssets.forEach((asset, key) => {
+    console.log('🔍 [Asset Processing] Processing asset entry:', { key, asset });
+    
+    const sourceTask = tasks?.find(t => t.id === asset.source_task_id);
+    const taskName = sourceTask?.name || asset.asset_name || 'Unknown Asset';
+    const assetName = asset.asset_name || taskName;
+    
+    console.log('🔍 [Asset Processing] Asset details:', { taskName, assetName, sourceTaskId: asset.source_task_id });
+    
+    // Skip low-value tasks: enhancements, handoffs, setup tasks, etc.
+    const skipPatterns = [
+      'handoff from', 'enhance asset:', 'enhance:', 'urgent asset',
+      'quality enhancement', 'implementation:', 'setup &', 'kick-off'
+    ];
+    
+    const shouldSkip = skipPatterns.some(pattern => 
+      taskName.toLowerCase().includes(pattern.toLowerCase())
+    );
+    
+    if (shouldSkip) {
+      console.log('🔍 [Asset Processing] Skipping low-value task:', taskName);
+      return;
+    }
+    
+    // Always keep AI INTELLIGENT DELIVERABLE tasks - these are core assets
+    if (taskName.includes('🎯 🤖 AI INTELLIGENT DELIVERABLE:')) {
+      console.log('🔍 [Asset Processing] Keeping AI deliverable task:', taskName);
+    }
+    
+    // Normalize the asset name for grouping
+    const normalizedName = normalizeAssetName(taskName);
+    const assetType = detectAssetType(taskName, assetName);
+    const version = determineVersion(taskName, sourceTask, sourceTask?.created_at || new Date().toISOString(), assetType);
+    const updatedAt = sourceTask?.updated_at || sourceTask?.created_at || new Date().toISOString();
+    
+    // Create a better grouping key - use semantic grouping instead of strict naming
+    let groupKey;
+    if (normalizedName === 'content_strategy') {
+      groupKey = 'content_strategy'; // All content strategy variations group together
+    } else if (normalizedName === 'content_calendar') {
+      groupKey = 'content_calendar'; // All calendar variations group together
+    } else {
+      groupKey = `${assetType}_${normalizedName}`;
+    }
+    
+    console.log('🔍 [Asset Processing] Processing asset:', {
+      taskName,
+      assetType,
+      normalizedName,
+      groupKey,
+      version
+    });
+    
+    if (!assetGroups.has(groupKey)) {
+      assetGroups.set(groupKey, {
+        type: assetType,
+        baseName: normalizedName,
+        tasks: []
+      });
+    }
+    
+    assetGroups.get(groupKey).tasks.push({
+      id: asset.source_task_id,
+      originalName: taskName,
+      cleanName: taskName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      version: version,
+      updatedAt: updatedAt,
+      sourceTask: sourceTask,
+      asset: asset
+    });
+  });
+
+  // Process each group to create final assets with proper versioning
+  console.log('🔍 [Asset Processing] Processing', assetGroups.size, 'asset groups');
+  
+  assetGroups.forEach((group, groupKey) => {
+    console.log('🔍 [Asset Processing] Processing group:', groupKey, 'with', group.tasks.length, 'tasks');
+    
+    if (group.tasks.length === 0) {
+      console.log('🔍 [Asset Processing] Skipping empty group:', groupKey);
+      return;
+    }
+    
+    // Sort tasks by version and then by date to get the latest for each version
+    group.tasks.sort((a, b) => {
+      if (a.version !== b.version) return b.version - a.version; // Higher versions first
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); // More recent first
+    });
+    
+    // Filter meaningful tasks for accurate version counting
+    const meaningfulTasks = group.tasks.filter(task => {
+      const taskName = task.originalName?.toLowerCase() || '';
+      const shouldSkip = [
+        'enhance asset:', 'critical enhancement', 'urgent asset',
+        'quality enhancement', 'ai intelligent deliverable creation',
+        'handoff from', 'enhance content', 'enhance strategic'
+      ].some(pattern => taskName.includes(pattern));
+      return !shouldSkip;
+    });
+    
+    // Use the highest version meaningful task as the representative
+    const latestTask = group.tasks[0];
+    const maxVersion = Math.min(meaningfulTasks.length, 3); // Cap at v3, count meaningful tasks
+    
+    // Create semantic display names based on group type
+    let displayName;
+    if (groupKey === 'content_strategy') {
+      displayName = 'Content Strategy Document';
+    } else if (groupKey === 'content_calendar') {
+      displayName = 'Content Calendar';
+    } else {
+      // For other assets, clean the name
+      displayName = latestTask.cleanName
+        .replace(/\b(Enhanced|Comprehensive|Detailed|Advanced|Improved|Updated|Revised|Final)\s+/gi, '')
+        .replace(/🎯\s*🤖\s*AI\s*INTELLIGENT\s*DELIVERABLE:\s*/gi, '') // Remove AI deliverable prefix
+        .replace(/\([CX]:\d+\.?\d*\)/g, '') // Remove confidence scores like (C:0.8)
+        .replace(/\(\d{8}\s+\d{4}\)/g, '') // Remove timestamps like (20250610 1349)
+        .replace(/\s+/g, ' ') // Normalize multiple spaces
+        .trim();
+      
+      // Ensure the name is properly capitalized
+      displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    // Quality check: Only include assets with real business value
+    const highValueTypes = ['strategy', 'analysis', 'calendar', 'report', 'content_strategy', 'content_calendar'];
+    const hasBusinessValue = (
+      latestTask.asset?.ready_to_use ||
+      latestTask.asset?.actionability_score > 0.5 ||
+      highValueTypes.includes(group.type) ||
+      displayName.length > 10 // Meaningful names
+    );
+    
+    if (!hasBusinessValue) {
+      console.log('🔍 [Asset Processing] Skipping low-value asset:', displayName);
+      return;
+    }
+    
+    // Determine the final asset type
+    let finalType = group.type;
+    if (groupKey === 'content_strategy') {
+      finalType = 'content_strategy';
+    } else if (groupKey === 'content_calendar') {
+      finalType = 'content_calendar';
+    }
+    
+    const finalAsset = {
+      id: latestTask.id,
+      name: displayName,
+      type: finalType,
+      lastModified: new Date(latestTask.updatedAt).toISOString().split('T')[0],
+      versions: maxVersion,
+      sourceTaskId: latestTask.id,
+      relatedTasks: group.tasks // Store all related tasks for version history
+    };
+    
+    console.log('🔍 [Asset Processing] Created high-value final asset:', finalAsset);
+    
+    groupedAssets.set(groupKey, finalAsset);
+  });
+  
+  console.log('🔍 [Asset Processing] Final result: ', groupedAssets.size, 'assets created');
+
+  let assets = Array.from(groupedAssets.values());
+  
+  // Fallback: if no assets were created by grouping, create simple assets from ALL potential assets
+  if (assets.length === 0 && allPotentialAssets.size > 0) {
+    console.log('🔍 [Asset Processing] Fallback: Creating simple assets from allPotentialAssets');
+    
+    // Use a Map to deduplicate by task name
+    const deduplicatedAssets = new Map();
+    
+    allPotentialAssets.forEach((asset, key) => {
+      console.log('🔍 [Fallback Processing] Processing asset:', { key, asset });
+      
+      const sourceTask = tasks?.find(t => t.id === asset.source_task_id);
+      const taskName = sourceTask?.name || asset.asset_name || 'Unknown Asset';
+      
+      console.log('🔍 [Fallback Processing] Task details:', { taskName, sourceTask: !!sourceTask });
+      
+      // Clean the name for display
+      let displayName = taskName
+        .replace(/🎯\s*🤖\s*AI\s*INTELLIGENT\s*DELIVERABLE:\s*/gi, '')
+        .replace(/\([CX]:\d+\.?\d*\)/g, '')
+        .replace(/\(\d{8}[_\s]\d{4}\)/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
+      
+      console.log('🔍 [Fallback Processing] Display name created:', displayName);
+      
+      // Use display name as key to avoid duplicates
+      const assetKey = displayName.toLowerCase().replace(/\s+/g, '_');
+      
+      // Skip if display name is too generic or short
+      if (displayName.length < 8 || 
+          ['enhance', 'setup', 'implementation', 'handoff'].some(word => 
+            displayName.toLowerCase().includes(word))) {
+        console.log('🔍 [Fallback Processing] Skipping generic/low-value asset:', displayName);
+        return;
+      }
+      
+      // Determine version based on task characteristics
+      let version = 1;
+      if (taskName.toLowerCase().includes('enhance') || 
+          taskName.toLowerCase().includes('improved') ||
+          taskName.toLowerCase().includes('updated')) {
+        version = 2;
+      }
+      
+      if (!deduplicatedAssets.has(assetKey)) {
+        deduplicatedAssets.set(assetKey, {
+          id: `${asset.source_task_id}_${assetKey}`, // Make unique ID
+          name: displayName,
+          type: detectAssetType(taskName, asset.asset_name || ''),
+          lastModified: new Date().toISOString().split('T')[0],
+          versions: version,
+          sourceTaskId: asset.source_task_id
+        });
+      } else {
+        // If asset already exists, update to higher version
+        const existing = deduplicatedAssets.get(assetKey);
+        if (version > existing.versions) {
+          deduplicatedAssets.set(assetKey, {
+            ...existing,
+            versions: version,
+            sourceTaskId: asset.source_task_id,
+            id: `${asset.source_task_id}_${assetKey}`
+          });
+        }
+      }
+    });
+    
+    assets = Array.from(deduplicatedAssets.values());
+    console.log('🔍 [Asset Processing] Fallback created', assets.length, 'deduplicated assets');
+  }
 
   // Handle asset selection
   const handleAssetSelect = async (assetId: string) => {
@@ -213,14 +610,18 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
     }
   };
   
-  // AI content processing (from Results page)
+  // AI content processing (from Results page) - CONFIGURABLE TIMEOUT
   const processWithAI = async (structuredContent: any, taskTitle: string) => {
     if (!structuredContent) return null;
     
     setLoadingAiContent(true);
     try {
+      // Configurable timeout based on content complexity
+      const contentSize = JSON.stringify(structuredContent).length;
+      const timeoutMs = Math.min(60000, Math.max(30000, contentSize * 0.1)); // 30s-60s based on size
+      
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('AI processing timeout')), 45000);
+        setTimeout(() => reject(new Error(`AI processing timeout after ${timeoutMs/1000}s`)), timeoutMs);
       });
       
       const fetchPromise = fetch(`http://localhost:8000/ai/process-content`, {
@@ -389,6 +790,13 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
       case 'report': return '📄';
       case 'spreadsheet': return '📈';
       case 'document': return '📝';
+      case 'content_strategy': return '🎯';
+      case 'content_calendar': return '📅';
+      case 'strategy': return '🎯';
+      case 'calendar': return '📅';
+      case 'guidelines': return '📋';
+      case 'presentation': return '🎤';
+      case 'database': return '🗃️';
       default: return '📦';
     }
   };
@@ -428,6 +836,16 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
 
       {/* Asset Management Content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Debug Information */}
+        <AssetDebugger 
+          workspaceId={workspaceId}
+          tasks={tasks}
+          assets={realAssets}
+          loading={assetsLoading || tasksLoading}
+          processedAssets={processedAssets}
+          assetDisplayData={assetDisplayData}
+        />
+        
         {/* Components - Asset Management */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Asset List */}
@@ -484,7 +902,15 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
                   {assets.length === 0 && !assetsLoading && !tasksLoading && (
                     <div className="text-center py-8 text-gray-500">
                       <div className="text-4xl mb-4">📦</div>
-                      <p>No assets found</p>
+                      <p className="font-medium mb-2">No assets found after processing</p>
+                      <div className="text-sm text-left max-w-md mx-auto">
+                        <p className="mb-2"><strong>Debug info:</strong></p>
+                        <p>• Total tasks: {tasks.length}</p>
+                        <p>• Completed tasks: {tasks.filter(t => t.status === 'completed').length}</p>
+                        <p>• Tasks with results: {tasks.filter(t => t.result?.detailed_results_json).length}</p>
+                        <p>• Raw assets extracted: {Object.keys(realAssets).length}</p>
+                        <p className="mt-2 text-blue-600">Check browser console for detailed processing logs</p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -712,6 +1138,8 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
                         assetId={selectedAsset.sourceTaskId || selectedAssetId}
                         workspaceId={workspaceId}
                         className="shadow-sm"
+                        relatedTasks={selectedAsset.relatedTasks || []}
+                        assetName={selectedAsset.name}
                       />
                     )}
 

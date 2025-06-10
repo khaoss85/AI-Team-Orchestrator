@@ -268,7 +268,9 @@ export const useAssetManagement = (workspaceId: string): UseAssetManagementRetur
           schemasCount: Object.keys(schemas).length,
           hasExtraction: !!extractionStatus,
           hasDeliverables: !!deliverables,
-          hasRawTasksResponse: !!rawTasksResponse
+          hasRawTasksResponse: !!rawTasksResponse,
+          trackingAssets: tracking?.asset_summary?.total_asset_tasks || 0,
+          rawTasksCount: Array.isArray(rawTasksResponse) ? rawTasksResponse.length : rawTasksResponse?.tasks?.length || 0
         });
       }
 
