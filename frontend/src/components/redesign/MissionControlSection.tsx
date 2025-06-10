@@ -8,12 +8,13 @@ interface Props {
   agents: Agent[]
   feedback: FeedbackRequest[]
   taskAnalysis: TaskAnalysisResponse | null
+  budgetData?: any
   loading: boolean
   error?: string | null
   onRefresh: () => void
 }
 
-const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback, taskAnalysis, loading, error, onRefresh }) => {
+const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback, taskAnalysis, budgetData, loading, error, onRefresh }) => {
 
   const [initialized, setInitialized] = useState(false)
 
@@ -80,7 +81,7 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
         )}
       </div>
       
-      <div className="grid grid-cols-3 gap-6 text-center">
+      <div className="grid grid-cols-4 gap-6 text-center">
         {/* Team */}
         <div>
           <div className="text-xl font-bold text-gray-900">{totalAgents}</div>
@@ -89,6 +90,17 @@ const MissionControlSection: React.FC<Props> = ({ workspaceId, agents, feedback,
           <a href={`/projects/${workspaceId}/team`} className="text-xs text-blue-600 hover:text-blue-700 mt-1 block">
             Manage →
           </a>
+        </div>
+
+        {/* Budget */}
+        <div>
+          <div className="text-xl font-bold text-gray-900">
+            {budgetData ? `$${budgetData.total_cost?.toFixed(2) || '0.00'}` : '$0.00'}
+          </div>
+          <div className="text-sm text-gray-600">Total Budget</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {budgetData ? `${budgetData.utilization_percentage || 0}% used` : 'No data'}
+          </div>
         </div>
 
         {/* Feedback */}

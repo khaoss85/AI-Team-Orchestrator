@@ -18,6 +18,73 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+/* AI Enhanced Content Styling */
+.ai-enhanced-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  border: 1px solid #d1d5db;
+}
+
+.ai-enhanced-content th, 
+.ai-enhanced-content td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.ai-enhanced-content th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ai-enhanced-content ul, 
+.ai-enhanced-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.ai-enhanced-content li {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.ai-enhanced-content h1, 
+.ai-enhanced-content h2, 
+.ai-enhanced-content h3,
+.ai-enhanced-content h4,
+.ai-enhanced-content h5,
+.ai-enhanced-content h6 {
+  margin: 1.5em 0 0.5em 0;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.ai-enhanced-content h1 { font-size: 1.875rem; }
+.ai-enhanced-content h2 { font-size: 1.5rem; }
+.ai-enhanced-content h3 { font-size: 1.25rem; }
+
+.ai-enhanced-content p {
+  margin: 1em 0;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.ai-enhanced-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.ai-enhanced-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.ai-enhanced-content a:hover {
+  color: #1d4ed8;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

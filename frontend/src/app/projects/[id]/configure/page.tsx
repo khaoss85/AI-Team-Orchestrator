@@ -68,26 +68,43 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       setError(null);
 
       const directorConfig = {
-        workspace_id: workspace.id, // workspace.id dovrebbe essere corretto qui
+        workspace_id: workspace.id,
         goal: workspace.goal || 'Completare il progetto con successo',
         budget_constraint: workspace.budget || { max_amount: 1000, currency: 'EUR' },
         user_id: workspace.user_id,
-        user_feedback: userFeedback || undefined // Includi il feedback se presente
+        user_feedback: userFeedback || undefined
       };
 
-      const data = await api.director.createProposal(directorConfig);
+      console.log('🚀 Creating proposal with config:', directorConfig);
+
+      // Aggiungi timeout alla chiamata API
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: Il Director sta impiegando troppo tempo')), 120000); // 2 minuti
+      });
+
+      const apiPromise = api.director.createProposal(directorConfig);
+      
+      const data = await Promise.race([apiPromise, timeoutPromise]);
+      
+      console.log('✅ Received proposal data:', data);
+      
       setProposal(data);
-      // Salva l'ID della proposta se presente
-       if (data.id) {
+      if (data.id) {
         setProposalId(data.id);
-        }
+      }
       setUserFeedback('');
       setShowFeedbackInput(false);
-    } catch (err) {
-      console.error('Failed to create team proposal:', err);
-      setError('Impossibile generare la proposta di team. Riprova più tardi.');
+    } catch (err: any) {
+      console.error('❌ Failed to create team proposal:', err);
+      
+      if (err.message.includes('Timeout')) {
+        setError('Il Director sta ancora processando. Prova a ricaricare la pagina tra qualche secondo.');
+      } else {
+        setError(`Errore nella generazione proposta: ${err.message || 'Errore sconosciuto'}`);
+      }
 
-      if (workspace) {
+      // Fallback proposal solo se non è un timeout
+      if (!err.message.includes('Timeout') && workspace) {
         setProposal({
           workspace_id: workspace.id,
           agents: [

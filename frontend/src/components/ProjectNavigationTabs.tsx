@@ -21,18 +21,11 @@ export const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = 
       description: 'Project dashboard'
     },
     {
-      id: 'results',
-      label: 'Results',
-      href: `/projects/${projectId}/results`,
-      icon: '📊',
-      description: 'All outputs & deliverables'
-    },
-    {
       id: 'assets',
-      label: 'Assets',
+      label: 'Assets & Deliverables',
       href: `/projects/${projectId}/assets`,
-      icon: '📜',
-      description: 'Version history & dependencies'
+      icon: '📦',
+      description: 'Components, deliverables & feedback'
     },
     {
       id: 'ai-management',

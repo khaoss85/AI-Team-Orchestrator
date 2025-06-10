@@ -6,9 +6,14 @@ import { FeedbackRequest, FeedbackResponse, ProposedAction } from '@/types';
 
 interface HumanFeedbackDashboardProps {
   workspaceId?: string;
+  assetContext?: {
+    assetId: string;
+    assetName: string;
+    sourceTaskId: string;
+  };
 }
 
-export default function HumanFeedbackDashboard({ workspaceId }: HumanFeedbackDashboardProps) {
+export default function HumanFeedbackDashboard({ workspaceId, assetContext }: HumanFeedbackDashboardProps) {
   const [pendingRequests, setPendingRequests] = useState<FeedbackRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<FeedbackRequest | null>(null);
   const [response, setResponse] = useState<Partial<FeedbackResponse>>({});
@@ -20,13 +25,24 @@ export default function HumanFeedbackDashboard({ workspaceId }: HumanFeedbackDas
     fetchPendingRequests();
     const interval = setInterval(fetchPendingRequests, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, [workspaceId]);
+  }, [workspaceId, assetContext]);
 
   const fetchPendingRequests = async () => {
     try {
       setLoading(true);
       const requests = await api.humanFeedback.getPendingRequests(workspaceId);
-      setPendingRequests(requests);
+      
+      // Filter by asset context if provided
+      const filteredRequests = assetContext 
+        ? requests.filter(request => 
+            // Check if the request is related to this specific asset/task
+            request.context?.task_id === assetContext.sourceTaskId ||
+            request.context?.asset_id === assetContext.assetId ||
+            request.title.toLowerCase().includes(assetContext.assetName.toLowerCase())
+          )
+        : requests;
+      
+      setPendingRequests(filteredRequests);
       setError(null);
     } catch (err) {
       console.error('Error fetching pending requests:', err);
@@ -116,8 +132,15 @@ export default function HumanFeedbackDashboard({ workspaceId }: HumanFeedbackDas
 
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold">Richieste di Feedback Umano</h2>
-          <p className="text-gray-600">Decisioni che richiedono supervisione umana</p>
+          <h2 className="text-xl font-semibold">
+            {assetContext ? `Feedback for ${assetContext.assetName}` : 'Richieste di Feedback Umano'}
+          </h2>
+          <p className="text-gray-600">
+            {assetContext 
+              ? 'Asset-specific feedback requests and decisions'
+              : 'Decisioni che richiedono supervisione umana'
+            }
+          </p>
         </div>
         <button
           onClick={fetchPendingRequests}
@@ -130,8 +153,18 @@ export default function HumanFeedbackDashboard({ workspaceId }: HumanFeedbackDas
       {pendingRequests.length === 0 ? (
         <div className="text-center py-10 bg-white rounded-lg shadow-sm">
           <div className="text-4xl mb-4">✅</div>
-          <p className="text-gray-500">Nessuna richiesta di feedback pendente</p>
-          <p className="text-sm text-gray-400 mt-2">Il sistema sta operando autonomamente</p>
+          <p className="text-gray-500">
+            {assetContext 
+              ? `No feedback requests for ${assetContext.assetName}`
+              : 'Nessuna richiesta di feedback pendente'
+            }
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            {assetContext 
+              ? 'This asset is working smoothly without human intervention needed'
+              : 'Il sistema sta operando autonomamente'
+            }
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

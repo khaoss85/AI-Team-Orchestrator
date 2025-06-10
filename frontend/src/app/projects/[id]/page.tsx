@@ -244,6 +244,7 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         agents={agents}
         feedback={feedback}
         taskAnalysis={taskAnalysis}
+        budgetData={budgetData}
         loading={missionLoading}
         error={missionError}
         onRefresh={fetchMissionControl}

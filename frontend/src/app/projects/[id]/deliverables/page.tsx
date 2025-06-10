@@ -16,17 +16,17 @@ export default function ProjectDeliverablesPage({ params: paramsPromise }: Props
   const { id } = params;
   const router = useRouter();
 
-  // Auto-redirect to unified results after 3 seconds
+  // Auto-redirect to assets page after 3 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push(`/projects/${id}/results?filter=final`);
+      router.push(`/projects/${id}/assets`);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [id, router]);
 
   const handleRedirectNow = () => {
-    router.push(`/projects/${id}/results?filter=final`);
+    router.push(`/projects/${id}/assets`);
   };
 
   return (
@@ -38,7 +38,7 @@ export default function ProjectDeliverablesPage({ params: paramsPromise }: Props
             <div className="text-6xl mb-4">📋</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Page Moved!</h1>
             <p className="text-gray-600">
-              Deliverables are now part of our new <strong>Unified Results</strong> view for a better experience.
+              Deliverables are now part of our new <strong>Assets</strong> page for a better experience.
             </p>
           </div>
 
@@ -57,7 +57,7 @@ export default function ProjectDeliverablesPage({ params: paramsPromise }: Props
               onClick={handleRedirectNow}
               className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-700 transition-colors"
             >
-              Go to Unified Results Now
+              Go to Assets Page Now
             </button>
             
             <Link

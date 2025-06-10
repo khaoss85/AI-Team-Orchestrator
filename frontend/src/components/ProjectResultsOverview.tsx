@@ -85,10 +85,10 @@ const ProjectResultsOverview: React.FC<ProjectResultsOverviewProps> = ({ project
             </p>
           </div>
           <Link
-            href={`/projects/${projectId}/results`}
+            href={`/projects/${projectId}/assets`}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center"
           >
-            View All Results
+            View All Assets
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
@@ -127,7 +127,7 @@ const ProjectResultsOverview: React.FC<ProjectResultsOverviewProps> = ({ project
                     </div>
                   </div>
                   <Link
-                    href={`/projects/${projectId}/results?highlight=${result.id}`}
+                    href={`/projects/${projectId}/assets`}
                     className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
                     View →
@@ -139,7 +139,7 @@ const ProjectResultsOverview: React.FC<ProjectResultsOverviewProps> = ({ project
             {readyToUse.length > 3 && (
               <div className="mt-4 text-center">
                 <Link
-                  href={`/projects/${projectId}/results?filter=readyToUse`}
+                  href={`/projects/${projectId}/assets`}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                 >
                   + {readyToUse.length - 3} more ready-to-use results

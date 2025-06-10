@@ -31,7 +31,12 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
     hasFinalDeliverables,
     finalDeliverablesCount,
     showingCompletedUI: workspace.status === 'completed' || hasFinalDeliverables,
-    showChangesModal
+    showQuestionModal,
+    showFeedbackModal,
+    showIterationModal,
+    showChangesModal,
+    currentSection: workspace.status === 'active' ? 'ACTIVE_SECTION' : 
+                   (workspace.status === 'completed' || hasFinalDeliverables) ? 'COMPLETED_SECTION' : 'START_SECTION'
   })
 
   const handleStart = async () => {
@@ -130,7 +135,10 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button 
-              onClick={() => setShowQuestionModal(true)}
+              onClick={() => {
+                console.log('🔍 Ask Questions button clicked!')
+                setShowQuestionModal(true)
+              }}
               className="bg-white border border-blue-200 text-blue-700 py-3 px-4 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +148,10 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
             </button>
             
             <button 
-              onClick={() => setShowFeedbackModal(true)}
+              onClick={() => {
+                console.log('💬 Give Feedback button clicked!')
+                setShowFeedbackModal(true)
+              }}
               className="bg-white border border-blue-200 text-blue-700 py-3 px-4 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,7 +310,7 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
 
       {/* Question Modal */}
       {showQuestionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold mb-4">Ask a Question</h3>
             <textarea
@@ -330,7 +341,7 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
 
       {/* Feedback Modal */}
       {showFeedbackModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold mb-4">Provide Feedback</h3>
             <textarea
@@ -361,7 +372,7 @@ const InteractionPanel: React.FC<Props> = ({ workspace, onWorkspaceUpdate, hasFi
 
       {/* Iteration Modal */}
       {showIterationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 99999}}>
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold mb-4">Request Iteration</h3>
             <textarea
