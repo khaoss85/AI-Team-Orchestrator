@@ -145,7 +145,7 @@ export const DependencyGraph: React.FC<Props> = ({
     const adjList = new Map<string, string[]>();
 
     // Costruisci lista di adiacenza
-    edges.forEach(edge => {
+    edges && edges.forEach(edge => {
       if (!adjList.has(edge.source)) adjList.set(edge.source, []);
       adjList.get(edge.source)!.push(edge.target);
     });
@@ -244,7 +244,7 @@ export const DependencyGraph: React.FC<Props> = ({
   };
 
   const highlightedEdges = selectedNode 
-    ? edges.filter(e => e.source === selectedNode || e.target === selectedNode)
+    ? (edges ? edges.filter(e => e.source === selectedNode || e.target === selectedNode) : [])
     : [];
 
   return (
@@ -293,7 +293,7 @@ export const DependencyGraph: React.FC<Props> = ({
 
           {/* Render edges */}
           <g className="edges">
-            {edges.map((edge, index) => {
+            {edges && edges.map((edge, index) => {
               const style = getEdgeStyle(edge);
               const isHighlighted = highlightedEdges.includes(edge);
               
@@ -496,7 +496,7 @@ export const DependencyGraph: React.FC<Props> = ({
             const node = nodes.find(n => n.id === selectedNode);
             if (!node) return null;
             
-            const relatedEdges = edges.filter(e => e.source === selectedNode || e.target === selectedNode);
+            const relatedEdges = edges ? edges.filter(e => e.source === selectedNode || e.target === selectedNode) : [];
             
             return (
               <div className="text-sm">
