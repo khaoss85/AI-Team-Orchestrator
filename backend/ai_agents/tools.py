@@ -642,3 +642,248 @@ class AgentTools:
         except Exception as e:
             logger.error(f"Failed to get available handoffs: {e}")
             return json.dumps([])
+
+# === WORKSPACE MEMORY TOOLS ===
+
+class WorkspaceMemoryTools:
+    """Tools for workspace memory management - agents can query/store project insights"""
+    
+    @staticmethod
+    @function_tool
+    async def query_project_memory(
+        workspace_id: str, 
+        query: str,
+        insight_types: str = None,
+        max_results: int = 5
+    ) -> str:
+        """
+        Query project memory for relevant insights and lessons learned.
+        
+        Args:
+            workspace_id: ID of the current workspace
+            query: Search query (e.g., "contact research challenges", "email strategy")
+            insight_types: Optional comma-separated types: success_pattern,failure_lesson,discovery,constraint,optimization
+            max_results: Maximum number of insights to return (1-10)
+            
+        Returns:
+            JSON string with relevant insights and context
+        """
+        try:
+            from workspace_memory import workspace_memory
+            from models import MemoryQueryRequest, InsightType
+            from uuid import UUID
+            
+            # Parse insight types
+            types = None
+            if insight_types:
+                type_names = [t.strip() for t in insight_types.split(",")]
+                types = []
+                for name in type_names:
+                    try:
+                        types.append(InsightType(name))
+                    except ValueError:
+                        logger.warning(f"Invalid insight type: {name}")
+            
+            # Create query request
+            request = MemoryQueryRequest(
+                query=query,
+                insight_types=types,
+                max_results=min(max_results, 10),  # Cap at 10
+                min_confidence=0.5,
+                exclude_expired=True
+            )
+            
+            # Query memory
+            response = await workspace_memory.query_insights(UUID(workspace_id), request)
+            
+            # Format response for agent
+            result = {
+                "total_found": response.total_found,
+                "context": response.query_context,
+                "insights": [
+                    {
+                        "type": insight.insight_type.value,
+                        "content": insight.content,
+                        "agent": insight.agent_role,
+                        "confidence": insight.confidence_score,
+                        "tags": insight.relevance_tags
+                    }
+                    for insight in response.insights
+                ]
+            }
+            
+            logger.info(f"🧠 Agent queried memory: '{query}' → {response.total_found} insights found")
+            return json.dumps(result)
+            
+        except Exception as e:
+            logger.error(f"Failed to query project memory: {e}")
+            return json.dumps({"error": str(e), "total_found": 0, "context": "", "insights": []})
+
+    @staticmethod
+    @function_tool
+    async def store_key_insight(
+        workspace_id: str,
+        task_id: str,
+        agent_role: str,
+        insight_type: str,
+        content: str,
+        tags: str = None,
+        confidence: float = 1.0
+    ) -> str:
+        """
+        Store an important insight or lesson learned for future reference.
+        
+        Args:
+            workspace_id: ID of the current workspace
+            task_id: ID of the current task
+            agent_role: Your role/name as the agent
+            insight_type: Type of insight (success_pattern, failure_lesson, discovery, constraint, optimization)
+            content: The insight content (max 200 chars, be concise)
+            tags: Optional comma-separated tags for categorization
+            confidence: Confidence in the insight (0.0-1.0)
+            
+        Returns:
+            JSON string with storage status
+        """
+        try:
+            from workspace_memory import workspace_memory
+            from models import InsightType
+            from uuid import UUID
+            
+            # Validate insight type
+            try:
+                insight_type_enum = InsightType(insight_type)
+            except ValueError:
+                valid_types = [t.value for t in InsightType]
+                return json.dumps({
+                    "success": False, 
+                    "error": f"Invalid insight_type. Use one of: {', '.join(valid_types)}"
+                })
+            
+            # Parse tags
+            tag_list = []
+            if tags:
+                tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            
+            # Store insight
+            stored_insight = await workspace_memory.store_insight(
+                workspace_id=UUID(workspace_id),
+                task_id=UUID(task_id),
+                agent_role=agent_role,
+                insight_type=insight_type_enum,
+                content=content,
+                relevance_tags=tag_list,
+                confidence_score=min(max(confidence, 0.0), 1.0)  # Clamp to 0-1
+            )
+            
+            if stored_insight:
+                logger.info(f"✅ Agent stored insight: {insight_type} - {content[:50]}...")
+                return json.dumps({
+                    "success": True, 
+                    "insight_id": str(stored_insight.id),
+                    "message": "Insight stored successfully"
+                })
+            else:
+                return json.dumps({
+                    "success": False, 
+                    "error": "Insight not stored (may not meet quality thresholds)"
+                })
+                
+        except Exception as e:
+            logger.error(f"Failed to store insight: {e}")
+            return json.dumps({"success": False, "error": str(e)})
+
+    @staticmethod
+    @function_tool
+    async def get_workspace_discoveries(workspace_id: str, domain: str = None) -> str:
+        """
+        Get key discoveries made in this workspace.
+        
+        Args:
+            workspace_id: ID of the current workspace
+            domain: Optional domain filter (e.g., "contact_research", "email_strategy")
+            
+        Returns:
+            JSON string with workspace discoveries and constraints
+        """
+        try:
+            from workspace_memory import workspace_memory
+            from uuid import UUID
+            
+            # Get workspace summary
+            summary = await workspace_memory.get_workspace_summary(UUID(workspace_id))
+            
+            result = {
+                "total_insights": summary.total_insights,
+                "insights_by_type": summary.insights_by_type,
+                "recent_discoveries": summary.recent_discoveries,
+                "key_constraints": summary.key_constraints,
+                "success_patterns": summary.success_patterns,
+                "top_tags": summary.top_tags
+            }
+            
+            # Filter by domain if specified
+            if domain:
+                domain_lower = domain.lower()
+                result["recent_discoveries"] = [
+                    d for d in result["recent_discoveries"] 
+                    if domain_lower in d.lower()
+                ]
+                result["key_constraints"] = [
+                    c for c in result["key_constraints"] 
+                    if domain_lower in c.lower()
+                ]
+                result["success_patterns"] = [
+                    s for s in result["success_patterns"] 
+                    if domain_lower in s.lower()
+                ]
+            
+            logger.info(f"🔍 Agent requested workspace discoveries for domain: {domain or 'all'}")
+            return json.dumps(result)
+            
+        except Exception as e:
+            logger.error(f"Failed to get workspace discoveries: {e}")
+            return json.dumps({"error": str(e), "total_insights": 0})
+
+    @staticmethod  
+    @function_tool
+    async def get_relevant_project_context(workspace_id: str, current_task_name: str) -> str:
+        """
+        Get relevant project context for the current task automatically.
+        
+        Args:
+            workspace_id: ID of the current workspace
+            current_task_name: Name of the current task being executed
+            
+        Returns:
+            Formatted context string with relevant project insights
+        """
+        try:
+            from workspace_memory import workspace_memory
+            from models import Task
+            from uuid import UUID
+            
+            # Create a mock task for context extraction
+            mock_task = Task(
+                id=UUID("00000000-0000-0000-0000-000000000000"),
+                workspace_id=UUID(workspace_id),
+                name=current_task_name,
+                description="",
+                agent_id=None,
+                assigned_to_role="",
+                priority="medium",
+                status="pending"
+            )
+            
+            # Get relevant context
+            context = await workspace_memory.get_relevant_context(UUID(workspace_id), mock_task)
+            
+            if context:
+                logger.info(f"📋 Agent got relevant context for task: {current_task_name}")
+                return context
+            else:
+                return "No relevant project context found for this task."
+                
+        except Exception as e:
+            logger.error(f"Failed to get project context: {e}")
+            return f"Error retrieving project context: {str(e)}"

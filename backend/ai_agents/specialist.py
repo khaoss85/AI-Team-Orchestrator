@@ -1063,6 +1063,20 @@ class SpecialistAgent(Generic[T]):
                 self._create_report_progress_tool(),
             ]
         )
+        
+        # 🧠 WORKSPACE MEMORY TOOLS - Available to all agents
+        try:
+            from ai_agents.tools import WorkspaceMemoryTools
+            tools_list.extend([
+                WorkspaceMemoryTools.query_project_memory,
+                WorkspaceMemoryTools.store_key_insight,
+                WorkspaceMemoryTools.get_workspace_discoveries,
+                WorkspaceMemoryTools.get_relevant_project_context
+            ])
+            logger.info(f"Agent {self.agent_data.name} equipped with WorkspaceMemoryTools")
+        except Exception as e:
+            logger.error(f"Error initializing WorkspaceMemoryTools for {self.agent_data.name}: {e}")
+            # Continue without memory tools if there's an issue
 
         # Aggiungi tool specifici per ruolo
         current_agent_role_lower = self.agent_data.role.lower()
@@ -1755,7 +1769,18 @@ class SpecialistAgent(Generic[T]):
                         )
                         task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (Raw String):\n{str(task.context_data)}"
 
-                task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
+                # 🧠 WORKSPACE MEMORY INTEGRATION: Get relevant context from previous tasks
+                project_memory_context = ""
+                try:
+                    from workspace_memory import workspace_memory
+                    memory_context = await workspace_memory.get_relevant_context(task.workspace_id, task)
+                    if memory_context.strip():
+                        project_memory_context = f"\n{memory_context}\n"
+                        logger.info(f"🧠 Added memory context for task {task.id} ({len(memory_context)} chars)")
+                except Exception as e:
+                    logger.warning(f"Failed to get workspace memory context for task {task.id}: {e}")
+
+                task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}{project_memory_context}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
 
                 # NUOVO: Stima token di input per calcolo costi
                 input_text = f"{task.name} {task.description or ''}"
@@ -2170,6 +2195,14 @@ class SpecialistAgent(Generic[T]):
                             f"Error adding quality note to task {task.id}: {e}"
                         )
 
+                # 🧠 WORKSPACE MEMORY INTEGRATION: Extract and store insights after successful execution
+                if final_db_status == TaskStatus.COMPLETED.value:
+                    try:
+                        await self._extract_and_store_insights(task, execution_result_obj, agent_run_result)
+                        logger.info(f"🧠 Insights extraction completed for task {task.id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to extract insights for task {task.id}: {e}")
+
                 # Continua con update_task_status come nel codice originale...
                 await update_task_status(
                     task_id=str(task.id),
@@ -2199,6 +2232,11 @@ class SpecialistAgent(Generic[T]):
                         "summary": execution_result_obj.summary,
                     },
                 )
+                
+                # 🧠 AUTO-EXTRACT INSIGHTS for workspace memory
+                if execution_result_obj.status == "completed":
+                    await self._extract_and_store_insights(task, execution_result_obj, agent_run_result)
+                
                 return result_dict_to_save
 
             except asyncio.TimeoutError:
@@ -2301,3 +2339,164 @@ class SpecialistAgent(Generic[T]):
             finally:
                 self._current_task_being_processed_id = None
                 self._handoff_attempts_for_current_task = set()
+
+    async def _extract_and_store_insights(self, task: Task, execution_result: TaskExecutionOutput, run_result: Any):
+        """
+        Extract key insights from task execution and store in workspace memory
+        Uses LLM to intelligently extract lessons learned, discoveries, and constraints
+        """
+        try:
+            # Only extract insights for meaningful tasks (avoid noise)
+            if len(execution_result.summary or "") < 20:
+                return
+                
+            # Build insight extraction prompt
+            insight_prompt = f"""
+            Analyze this task execution and extract 1-3 key insights that would help future tasks.
+            
+            TASK: {task.name}
+            DESCRIPTION: {task.description or 'N/A'}
+            AGENT ROLE: {self.agent_data.role}
+            RESULT STATUS: {execution_result.status}
+            SUMMARY: {execution_result.summary}
+            
+            Extract insights in these categories (pick the most relevant ones):
+            - success_pattern: What approach or method worked well
+            - failure_lesson: What didn't work or caused issues  
+            - discovery: New information or findings discovered
+            - constraint: Limitations, restrictions, or blockers encountered
+            - optimization: Improvements or better approaches identified
+            
+            REQUIREMENTS:
+            - Each insight must be concise (max 150 chars)
+            - Focus on actionable information for future tasks
+            - Only include significant learnings, not obvious facts
+            - If no meaningful insights, return empty list
+            
+            Return JSON format:
+            {{
+                "insights": [
+                    {{
+                        "type": "success_pattern|failure_lesson|discovery|constraint|optimization",
+                        "content": "Concise insight description",
+                        "tags": ["relevant", "keyword", "tags"],
+                        "confidence": 0.8
+                    }}
+                ]
+            }}
+            """
+            
+            # Use a simple LLM call to extract insights
+            try:
+                # Create a minimal agent for insight extraction
+                from utils.model_settings_factory import create_model_settings
+                
+                insight_model_settings = create_model_settings(
+                    model="gpt-4o-mini",  # Use cheaper model for insights
+                    temperature=0.3,      # Lower temperature for structured output
+                    max_tokens=500        # Limit tokens for concise insights
+                )
+                
+                if SDK_AVAILABLE:
+                    insight_agent = OpenAIAgent(
+                        instructions="You are an expert at extracting actionable insights from task executions. Be concise and focus on meaningful learnings.",
+                        model_settings=insight_model_settings
+                    )
+                    
+                    insight_result = await Runner.run(
+                        insight_agent,
+                        insight_prompt,
+                        max_turns=1
+                    )
+                    
+                    # Parse the result
+                    insight_data = json.loads(insight_result.final_output)
+                    insights = insight_data.get("insights", [])
+                    
+                    # Store each insight
+                    from workspace_memory import workspace_memory
+                    from models import InsightType
+                    
+                    for insight in insights:
+                        if insight.get("content") and insight.get("type"):
+                            try:
+                                insight_type = InsightType(insight["type"])
+                                await workspace_memory.store_insight(
+                                    workspace_id=task.workspace_id,
+                                    task_id=task.id,
+                                    agent_role=self.agent_data.role,
+                                    insight_type=insight_type,
+                                    content=insight["content"],
+                                    relevance_tags=insight.get("tags", []),
+                                    confidence_score=insight.get("confidence", 0.8)
+                                )
+                                logger.info(f"🧠 Stored insight: {insight['type']} - {insight['content'][:50]}...")
+                            except Exception as store_error:
+                                logger.warning(f"Failed to store insight: {store_error}")
+                    
+                else:
+                    logger.debug("SDK not available, skipping automatic insight extraction")
+                    
+            except Exception as llm_error:
+                logger.warning(f"LLM insight extraction failed: {llm_error}")
+                
+                # FALLBACK: Simple pattern-based insight extraction
+                await self._extract_insights_fallback(task, execution_result)
+                
+        except Exception as e:
+            logger.error(f"Error in insight extraction: {e}")
+            # Don't fail the task if insight extraction fails
+
+    async def _extract_insights_fallback(self, task: Task, execution_result: TaskExecutionOutput):
+        """
+        Fallback insight extraction using simple patterns when LLM is unavailable
+        """
+        try:
+            from workspace_memory import workspace_memory
+            from models import InsightType
+            
+            insights = []
+            summary = execution_result.summary or ""
+            task_name = task.name.lower()
+            
+            # Pattern-based extraction
+            if "failed" in summary.lower() or "error" in summary.lower():
+                insights.append({
+                    "type": InsightType.FAILURE_LESSON,
+                    "content": f"Task '{task.name}' encountered issues: {summary[:100]}",
+                    "tags": ["failure", task_name.split()[0] if task_name else "general"],
+                    "confidence": 0.7
+                })
+            
+            elif "successful" in summary.lower() or "completed" in summary.lower():
+                insights.append({
+                    "type": InsightType.SUCCESS_PATTERN,
+                    "content": f"Successfully completed {task.name}",
+                    "tags": ["success", task_name.split()[0] if task_name else "general"],
+                    "confidence": 0.6
+                })
+            
+            # Look for discovery patterns
+            if any(word in summary.lower() for word in ["found", "discovered", "identified", "learned"]):
+                insights.append({
+                    "type": InsightType.DISCOVERY,
+                    "content": f"Discovery from {task.name}: {summary[:120]}",
+                    "tags": ["discovery", task_name.split()[0] if task_name else "general"],
+                    "confidence": 0.5
+                })
+            
+            # Store fallback insights
+            for insight in insights:
+                await workspace_memory.store_insight(
+                    workspace_id=task.workspace_id,
+                    task_id=task.id,
+                    agent_role=self.agent_data.role,
+                    insight_type=insight["type"],
+                    content=insight["content"],
+                    relevance_tags=insight["tags"],
+                    confidence_score=insight["confidence"]
+                )
+                logger.info(f"🧠 Stored fallback insight: {insight['content'][:50]}...")
+                
+        except Exception as e:
+            logger.error(f"Error in fallback insight extraction: {e}")

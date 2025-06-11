@@ -553,3 +553,54 @@ class AssetProductionContext(BaseModel):
     automation_requirements: List[str] = PydanticField(default_factory=list)
     
     model_config = ConfigDict(from_attributes=True)
+
+# === WORKSPACE MEMORY SYSTEM ===
+
+class InsightType(str, Enum):
+    """Tipi di insight per workspace memory"""
+    SUCCESS_PATTERN = "success_pattern"     # Cosa ha funzionato bene
+    FAILURE_LESSON = "failure_lesson"       # Cosa non ha funzionato
+    DISCOVERY = "discovery"                 # Nuove informazioni scoperte
+    CONSTRAINT = "constraint"               # Limitazioni o vincoli trovati
+    OPTIMIZATION = "optimization"           # Miglioramenti identificati
+
+class WorkspaceInsight(BaseModel):
+    """Insight estratto da task execution per workspace memory"""
+    id: Optional[UUID] = PydanticField(default=None, description="ID univoco dell'insight")
+    workspace_id: UUID = PydanticField(..., description="ID del workspace")
+    task_id: UUID = PydanticField(..., description="ID del task sorgente")
+    agent_role: str = PydanticField(..., description="Ruolo dell'agente che ha generato l'insight")
+    insight_type: InsightType = PydanticField(..., description="Tipo di insight")
+    content: str = PydanticField(..., max_length=200, description="Contenuto dell'insight (max 200 chars)")
+    relevance_tags: List[str] = PydanticField(default_factory=list, description="Tag per filtraggio")
+    confidence_score: float = PydanticField(default=1.0, ge=0.0, le=1.0, description="Fiducia nell'insight")
+    expires_at: Optional[datetime] = PydanticField(default=None, description="Data scadenza insight (anti-stale)")
+    created_at: datetime = PydanticField(default_factory=datetime.now, description="Data creazione")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class MemoryQueryRequest(BaseModel):
+    """Richiesta di query alla memoria del workspace"""
+    query: str = PydanticField(..., description="Query di ricerca")
+    insight_types: Optional[List[InsightType]] = PydanticField(default=None, description="Filtro per tipi insight")
+    tags: Optional[List[str]] = PydanticField(default=None, description="Filtro per tag")
+    max_results: int = PydanticField(default=5, ge=1, le=20, description="Numero massimo risultati")
+    min_confidence: float = PydanticField(default=0.5, ge=0.0, le=1.0, description="Confidence minima")
+    exclude_expired: bool = PydanticField(default=True, description="Escludi insight scaduti")
+
+class MemoryQueryResponse(BaseModel):
+    """Risposta di query alla memoria del workspace"""
+    insights: List[WorkspaceInsight] = PydanticField(..., description="Insight trovati")
+    total_found: int = PydanticField(..., description="Numero totale insight trovati")
+    query_context: str = PydanticField(..., description="Context riassuntivo per l'agente")
+    
+class WorkspaceMemorySummary(BaseModel):
+    """Summary della memoria del workspace"""
+    workspace_id: UUID = PydanticField(..., description="ID del workspace")
+    total_insights: int = PydanticField(default=0, description="Numero totale insights")
+    insights_by_type: Dict[str, int] = PydanticField(default_factory=dict, description="Count per tipo")
+    top_tags: List[str] = PydanticField(default_factory=list, description="Tag più frequenti")
+    recent_discoveries: List[str] = PydanticField(default_factory=list, description="Scoperte recenti")
+    key_constraints: List[str] = PydanticField(default_factory=list, description="Vincoli chiave")
+    success_patterns: List[str] = PydanticField(default_factory=list, description="Pattern di successo")
+    last_updated: datetime = PydanticField(default_factory=datetime.now, description="Ultimo aggiornamento")
