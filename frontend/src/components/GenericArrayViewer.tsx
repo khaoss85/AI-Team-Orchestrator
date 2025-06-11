@@ -92,8 +92,8 @@ const getDisplayFields = (items: any[]) => {
   return sortedFields.slice(0, 5); // Show max 5 fields
 };
 
-// Smart value formatting
-const formatValue = (value: any, key: string): string => {
+// Smart value formatting with better object rendering
+const formatValue = (value: any, key: string): React.ReactNode => {
   if (value === null || value === undefined) return 'N/A';
   
   if (Array.isArray(value)) {
@@ -111,7 +111,27 @@ const formatValue = (value: any, key: string): string => {
   }
   
   if (typeof value === 'object') {
-    return JSON.stringify(value).substring(0, 100) + '...';
+    // Special handling for key-value objects (like metrics)
+    const entries = Object.entries(value);
+    if (entries.length <= 5 && entries.every(([k, v]) => typeof k === 'string' && (typeof v === 'string' || typeof v === 'number'))) {
+      return (
+        <div className="space-y-1">
+          {entries.map(([k, v], idx) => (
+            <div key={idx} className="flex justify-between text-xs">
+              <span className="text-gray-600">{k.replace(/_/g, ' ')}:</span>
+              <span className="font-medium">{String(v)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    // Fallback to JSON for complex objects
+    const jsonStr = JSON.stringify(value, null, 2);
+    if (jsonStr.length > 100) {
+      return jsonStr.substring(0, 100) + '...';
+    }
+    return jsonStr;
   }
   
   return String(value);

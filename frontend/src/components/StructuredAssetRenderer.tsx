@@ -123,6 +123,16 @@ interface StructuredAssetRendererProps {
 }
 
 const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data, onExport }) => {
+  // Ensure data has default values
+  const safeData = {
+    ...data,
+    tables: data.tables || [],
+    cards: data.cards || [],
+    timelines: data.timelines || [],
+    metrics: data.metrics || [],
+    has_structured_content: data.has_structured_content !== undefined ? data.has_structured_content : true
+  };
+  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     tables: true,
     cards: true,
@@ -134,12 +144,12 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  if (!data.has_structured_content) {
+  if (!safeData.has_structured_content) {
     return (
       <div className="bg-gray-50 rounded-lg p-6 text-gray-600">
         <p>No structured content available. Displaying raw content:</p>
         <pre className="mt-4 whitespace-pre-wrap font-mono text-sm">
-          {data.plain_text || 'No content'}
+          {safeData.plain_text || 'No content'}
         </pre>
       </div>
     );
@@ -148,7 +158,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
   return (
     <div className="space-y-6">
       {/* Metrics Section - Always show first if available */}
-      {data.metrics.length > 0 && (
+      {safeData.metrics.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div 
             className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 cursor-pointer"
@@ -159,7 +169,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
                 <ChartBarIcon className="w-6 h-6" />
                 <h3 className="text-lg font-semibold">Key Metrics</h3>
                 <span className="bg-white/20 px-2 py-1 rounded-full text-sm">
-                  {data.metrics.length} metrics
+                  {safeData.metrics.length} metrics
                 </span>
               </div>
               {expandedSections.metrics ? 
@@ -171,14 +181,14 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
           
           {expandedSections.metrics && (
             <div className="p-6">
-              <MetricsGrid metrics={data.metrics} />
+              <MetricsGrid metrics={safeData.metrics} />
             </div>
           )}
         </div>
       )}
 
       {/* Tables Section */}
-      {data.tables.length > 0 && (
+      {safeData.tables.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div 
             className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-4 cursor-pointer"
@@ -189,7 +199,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
                 <TableCellsIcon className="w-6 h-6" />
                 <h3 className="text-lg font-semibold">Data Tables</h3>
                 <span className="bg-white/20 px-2 py-1 rounded-full text-sm">
-                  {data.tables.length} tables
+                  {safeData.tables.length} tables
                 </span>
               </div>
               {expandedSections.tables ? 
@@ -201,7 +211,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
           
           {expandedSections.tables && (
             <div className="p-6 space-y-6">
-              {data.tables.map((table, idx) => (
+              {safeData.tables.map((table, idx) => (
                 <EnhancedTable key={idx} table={table} />
               ))}
             </div>
@@ -210,7 +220,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
       )}
 
       {/* Cards Section */}
-      {data.cards.length > 0 && (
+      {safeData.cards.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div 
             className="bg-gradient-to-r from-emerald-600 to-green-600 text-white p-4 cursor-pointer"
@@ -221,7 +231,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
                 <CreditCardIcon className="w-6 h-6" />
                 <h3 className="text-lg font-semibold">Action Cards</h3>
                 <span className="bg-white/20 px-2 py-1 rounded-full text-sm">
-                  {data.cards.length} cards
+                  {safeData.cards.length} cards
                 </span>
               </div>
               {expandedSections.cards ? 
@@ -234,7 +244,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
           {expandedSections.cards && (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data.cards.map((card, idx) => (
+                {safeData.cards.map((card, idx) => (
                   <StructuredCard key={idx} card={card} />
                 ))}
               </div>
@@ -244,7 +254,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
       )}
 
       {/* Timelines Section */}
-      {data.timelines.length > 0 && (
+      {safeData.timelines.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div 
             className="bg-gradient-to-r from-orange-600 to-red-600 text-white p-4 cursor-pointer"
@@ -255,7 +265,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
                 <ClockIcon className="w-6 h-6" />
                 <h3 className="text-lg font-semibold">Timelines</h3>
                 <span className="bg-white/20 px-2 py-1 rounded-full text-sm">
-                  {data.timelines.length} timelines
+                  {safeData.timelines.length} timelines
                 </span>
               </div>
               {expandedSections.timelines ? 
@@ -267,7 +277,7 @@ const StructuredAssetRenderer: React.FC<StructuredAssetRendererProps> = ({ data,
           
           {expandedSections.timelines && (
             <div className="p-6 space-y-6">
-              {data.timelines.map((timeline, idx) => (
+              {safeData.timelines.map((timeline, idx) => (
                 <TimelineVisualization key={idx} timeline={timeline} />
               ))}
             </div>

@@ -31,6 +31,8 @@ from routes.proposals import router as proposals_router
 from routes import asset_management
 from routes.ai_content_processor import router as ai_content_router
 from routes.utils import router as utils_router
+from routes.unified_assets import router as unified_assets_router
+from routes.goal_validation import router as goal_validation_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -66,9 +68,12 @@ app.include_router(improvement_router)
 app.include_router(project_insights_router)
 app.include_router(proposals_router)
 app.include_router(delegation_router)
-app.include_router(asset_management.router)
+# Legacy asset management - deprecated
+# app.include_router(asset_management.router)
+app.include_router(unified_assets_router)
 app.include_router(ai_content_router)
 app.include_router(utils_router)
+app.include_router(goal_validation_router)
 
 # Health check endpoint
 @app.get("/health")

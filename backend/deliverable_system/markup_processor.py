@@ -31,9 +31,13 @@ class DeliverableMarkupProcessor:
         """
         
         try:
-            # Se è già un dict, cerca campi con markup
+            # 🎯 PRIORITY: Check for actionable business content first
             if isinstance(raw_content, dict):
-                return self._process_dict_content(raw_content)
+                # Check for high-value actionable content
+                if self._contains_actionable_content(raw_content):
+                    return self._process_actionable_dict_content(raw_content)
+                else:
+                    return self._process_dict_content(raw_content)
             
             # Se è una stringa, processa direttamente
             if isinstance(raw_content, str):
@@ -50,6 +54,201 @@ class DeliverableMarkupProcessor:
                 "raw_content": raw_content,
                 "processed": False
             }
+    
+    def _contains_actionable_content(self, content_dict: Dict) -> bool:
+        """
+        Verifica se il dict contiene contenuto azionabile (liste di contatti, email sequences, etc.)
+        """
+        actionable_keys = [
+            "contacts", "contact_list", "email_sequences", "sequences", 
+            "workflow", "automation", "templates", "scripts"
+        ]
+        
+        for key in actionable_keys:
+            if key in content_dict:
+                value = content_dict[key]
+                if isinstance(value, list) and len(value) > 0:
+                    return True
+                elif isinstance(value, dict) and value:
+                    return True
+        
+        return False
+    
+    def _process_actionable_dict_content(self, content_dict: Dict) -> Dict[str, Any]:
+        """
+        Processa content azionabile con rendering HTML specifico per business use
+        """
+        processed = {
+            "has_structured_content": True,
+            "has_actionable_content": True,
+            "actionable_type": self._detect_actionable_type(content_dict),
+            "tables": [],
+            "cards": [],
+            "timelines": [],
+            "metrics": [],
+            "actionable_sections": []
+        }
+        
+        # Process contacts list
+        if "contacts" in content_dict:
+            contacts_html = self._render_contacts_list(content_dict["contacts"])
+            processed["actionable_sections"].append({
+                "type": "contacts",
+                "title": "Contact Database",
+                "html": contacts_html,
+                "count": len(content_dict["contacts"]) if isinstance(content_dict["contacts"], list) else 0
+            })
+        
+        # Process email sequences
+        if "email_sequences" in content_dict:
+            sequences_html = self._render_email_sequences(content_dict["email_sequences"])
+            processed["actionable_sections"].append({
+                "type": "email_sequences",
+                "title": "Email Sequences",
+                "html": sequences_html,
+                "count": len(content_dict["email_sequences"]) if isinstance(content_dict["email_sequences"], list) else 0
+            })
+        
+        # Process workflow/automation
+        if "workflow" in content_dict or "automation" in content_dict:
+            workflow_data = content_dict.get("workflow") or content_dict.get("automation")
+            workflow_html = self._render_workflow(workflow_data)
+            processed["actionable_sections"].append({
+                "type": "workflow",
+                "title": "Automation Workflow",
+                "html": workflow_html
+            })
+        
+        # Create combined HTML for rendering
+        if processed["actionable_sections"]:
+            processed["rendered_html"] = self._combine_actionable_html(processed["actionable_sections"])
+            processed["visual_summary"] = f"Actionable {processed['actionable_type']} with {len(processed['actionable_sections'])} ready-to-use sections"
+        
+        return processed
+    
+    def _detect_actionable_type(self, content_dict: Dict) -> str:
+        """Detecta il tipo di content azionabile"""
+        if "contacts" in content_dict:
+            return "contact_database"
+        elif "email_sequences" in content_dict:
+            return "email_campaign"
+        elif "workflow" in content_dict or "automation" in content_dict:
+            return "automation_workflow"
+        else:
+            return "business_asset"
+    
+    def _render_contacts_list(self, contacts) -> str:
+        """Renderizza lista contatti in HTML tabella"""
+        if not isinstance(contacts, list) or not contacts:
+            return "<p>No contacts available</p>"
+        
+        html = """
+        <div class="contacts-database">
+            <table class="w-full border-collapse border border-gray-300">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border border-gray-300 px-4 py-2 text-left">Name</th>
+                        <th class="border border-gray-300 px-4 py-2 text-left">Title</th>
+                        <th class="border border-gray-300 px-4 py-2 text-left">Company</th>
+                        <th class="border border-gray-300 px-4 py-2 text-left">Email</th>
+                        <th class="border border-gray-300 px-4 py-2 text-left">LinkedIn</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        for contact in contacts:
+            name = contact.get("name", "N/A")
+            title = contact.get("title", "N/A")
+            company = contact.get("company", "N/A")
+            email = contact.get("email", "N/A")
+            linkedin = contact.get("linkedin", "")
+            
+            linkedin_cell = f'<a href="{linkedin}" target="_blank" class="text-blue-600 underline">Profile</a>' if linkedin else "N/A"
+            
+            html += f"""
+                <tr class="hover:bg-gray-50">
+                    <td class="border border-gray-300 px-4 py-2">{name}</td>
+                    <td class="border border-gray-300 px-4 py-2">{title}</td>
+                    <td class="border border-gray-300 px-4 py-2">{company}</td>
+                    <td class="border border-gray-300 px-4 py-2">{email}</td>
+                    <td class="border border-gray-300 px-4 py-2">{linkedin_cell}</td>
+                </tr>
+            """
+        
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+        
+        return html
+    
+    def _render_email_sequences(self, sequences) -> str:
+        """Renderizza sequenze email in HTML strutturato"""
+        if not isinstance(sequences, list) or not sequences:
+            return "<p>No email sequences available</p>"
+        
+        html = '<div class="email-sequences space-y-6">'
+        
+        for i, sequence in enumerate(sequences, 1):
+            name = sequence.get("name", f"Sequence {i}")
+            emails = sequence.get("emails", 0)
+            focus = sequence.get("focus", "")
+            
+            html += f"""
+            <div class="sequence-card border border-gray-200 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-gray-900 mb-2">{name}</h4>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div><strong>Emails:</strong> {emails}</div>
+                    <div><strong>Target:</strong> ≥30% open rate, ≥10% click rate</div>
+                </div>
+                <p class="text-gray-600 mt-2">{focus}</p>
+                <div class="mt-3 flex space-x-2">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Ready for Hubspot</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Optimized for SaaS</span>
+                </div>
+            </div>
+            """
+        
+        html += '</div>'
+        return html
+    
+    def _render_workflow(self, workflow_data) -> str:
+        """Renderizza workflow/automation in HTML"""
+        if not workflow_data:
+            return "<p>No workflow data available</p>"
+        
+        if isinstance(workflow_data, str):
+            return f'<div class="workflow-description p-4 bg-blue-50 rounded-lg">{workflow_data}</div>'
+        
+        html = '<div class="automation-workflow">'
+        
+        if isinstance(workflow_data, dict):
+            for key, value in workflow_data.items():
+                clean_key = key.replace("_", " ").title()
+                html += f'<div class="workflow-item mb-3"><strong>{clean_key}:</strong> {value}</div>'
+        
+        html += '</div>'
+        return html
+    
+    def _combine_actionable_html(self, sections) -> str:
+        """Combina tutte le sezioni azionabili in HTML unico"""
+        html = '<div class="actionable-content space-y-8">'
+        
+        for section in sections:
+            html += f"""
+            <section class="actionable-section">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                    {section["title"]}
+                </h3>
+                {section["html"]}
+            </section>
+            """
+        
+        html += '</div>'
+        return html
     
     def _process_dict_content(self, content_dict: Dict) -> Dict[str, Any]:
         """

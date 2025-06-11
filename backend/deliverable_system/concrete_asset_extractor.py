@@ -8,6 +8,8 @@ from datetime import datetime
 import asyncio
 
 from ai_quality_assurance.smart_evaluator import smart_evaluator
+from ai_quality_assurance.goal_validator import goal_validator
+from ai_quality_assurance.quality_gates import quality_gates
 from deliverable_system.markup_processor import markup_processor
 from models import AssetSchema
 
@@ -54,18 +56,48 @@ class ConcreteAssetExtractor:
     ) -> Dict[str, Any]:
         """
         Estrae solo asset concreti e immediatamente utilizzabili
+        Con validazione AI-driven contro workspace goals
         """
+        
+        # 🚨 AI GOAL VALIDATION: Check if tasks meet workspace requirements
+        workspace_id = completed_tasks[0].get('workspace_id', '') if completed_tasks else ''
+        goal_validations = await goal_validator.validate_workspace_goal_achievement(
+            workspace_goal, completed_tasks, workspace_id
+        )
+        
+        # Log validation results
+        critical_issues = [v for v in goal_validations if v.severity.value in ['critical', 'high']]
+        if critical_issues:
+            logger.warning(f"🚨 GOAL VALIDATION ISSUES found for workspace {workspace_id}:")
+            for issue in critical_issues:
+                logger.warning(f"  ⚠️ {issue.validation_message}")
+                logger.info(f"     Recommendations: {issue.recommendations[:2]}")
         
         extracted_assets = {}
         asset_counter = 0
         
+        # 🎯 PRIORITIZED EXTRACTION: Business actionable assets first
+        high_value_assets = {}
+        medium_value_assets = {}
+        
         for task in completed_tasks:
+            # 🔍 TASK-LEVEL VALIDATION: Check if task meets its expected contribution
+            task_adequate, task_issues = await quality_gates.validate_task_completion_against_goals(
+                task, workspace_goal, completed_tasks
+            )
+            
+            if not task_adequate:
+                logger.warning(f"⚠️ Task '{task.get('name')}' has adequacy issues: {task_issues}")
+            
             # Analizza output del task
             task_assets = await self._extract_from_task(task, deliverable_type)
             
             for asset in task_assets:
                 # Valida concretezza
                 if await self._validate_concreteness(asset, workspace_goal):
+                    # 🎯 Calculate business actionability
+                    business_actionability = self._calculate_business_actionability(asset, task, workspace_goal)
+                    
                     asset_counter += 1
                     asset_id = f"concrete_asset_{asset_counter}"
                     
@@ -74,15 +106,129 @@ class ConcreteAssetExtractor:
                         asset, task, workspace_goal
                     )
                     
-                    extracted_assets[asset_id] = enhanced_asset
-                    logger.info(f"✅ Extracted concrete {asset['type']}: {asset_id}")
+                    # Add actionability score and validation info
+                    enhanced_asset["metadata"]["business_actionability"] = business_actionability
+                    enhanced_asset["metadata"]["task_adequacy"] = task_adequate
+                    enhanced_asset["metadata"]["goal_validation_status"] = "passed" if not critical_issues else "issues_found"
+                    
+                    # 🎯 PRIORITIZE by actionability
+                    if business_actionability >= 0.8:  # HIGH-VALUE: Contacts, scripts, workflows
+                        high_value_assets[asset_id] = enhanced_asset
+                        logger.info(f"🎯 HIGH-VALUE asset: {asset_id} - {asset['type']} (actionability: {business_actionability:.2f})")
+                    elif business_actionability >= 0.5:  # MEDIUM-VALUE: Strategies, frameworks
+                        medium_value_assets[asset_id] = enhanced_asset
+                        logger.info(f"📋 MEDIUM-VALUE asset: {asset_id} - {asset['type']} (actionability: {business_actionability:.2f})")
+                    else:
+                        logger.debug(f"❌ Low actionability asset: {asset['type']} (actionability: {business_actionability:.2f})")
+        
+        # 🎯 PRIORITIZED SELECTION: High-value first
+        extracted_assets.update(high_value_assets)
+        
+        # Add medium-value only if we need more assets
+        if len(extracted_assets) < 3:
+            extracted_assets.update(medium_value_assets)
+            
+        logger.info(f"🎯 Asset prioritization: {len(high_value_assets)} high-value, {len(medium_value_assets)} medium-value, {len(extracted_assets)} total selected")
         
         # Post-processing per garantire qualità
         final_assets = await self._post_process_assets(
             extracted_assets, workspace_goal
         )
         
+        # 📊 ADD GOAL VALIDATION SUMMARY TO FINAL ASSETS
+        final_assets["_goal_validation_summary"] = {
+            "total_validations": len(goal_validations),
+            "critical_issues": len(critical_issues),
+            "overall_goal_achievement": self._calculate_overall_achievement(goal_validations),
+            "recommendations": [rec for issue in critical_issues for rec in issue.recommendations[:1]],
+            "workspace_goal": workspace_goal,
+            "validation_timestamp": datetime.now().isoformat()
+        }
+        
         return final_assets
+    
+    def _calculate_business_actionability(self, asset: Dict, task: Dict, workspace_goal: str) -> float:
+        """
+        Calcola il punteggio di actionability business dell'asset
+        Prioritizza: contatti, script, workflow > strategie > dashboard generici
+        """
+        task_name = task.get("name", "").lower()
+        asset_data = asset.get("data", {})
+        asset_type = asset.get("type", "")
+        
+        # 🎯 HIGHEST ACTIONABILITY: Direct asset types
+        if asset_type == "contact_database":
+            # Always high value for contact databases
+            if isinstance(asset_data, dict) and "contacts" in asset_data:
+                contacts = asset_data.get("contacts", [])
+                if isinstance(contacts, list) and len(contacts) > 0:
+                    # Check if contacts have actual email addresses
+                    has_emails = any(isinstance(c, dict) and c.get("email") and "@" in str(c.get("email", "")) for c in contacts)
+                    return 0.98 if has_emails else 0.85
+            return 0.9
+        
+        if asset_type == "email_templates":
+            # Always high value for email sequences
+            if isinstance(asset_data, dict) and ("email_sequences" in asset_data or "sequences" in asset_data):
+                return 0.95
+            return 0.9
+        
+        # 🎯 HIGH ACTIONABILITY (0.8-1.0): Immediately usable business assets
+        if "contact" in task_name and "research" in task_name:
+            # Contact lists with emails
+            if isinstance(asset_data, dict) and "contacts" in asset_data:
+                contacts = asset_data.get("contacts", [])
+                if isinstance(contacts, list) and len(contacts) > 0:
+                    # Check if contacts have actual email addresses
+                    has_emails = any(contact.get("email") and "@" in contact.get("email", "") for contact in contacts)
+                    return 0.95 if has_emails else 0.7
+            return 0.85
+        
+        if "email" in task_name and ("sequence" in task_name or "strategy" in task_name):
+            # Email sequences and scripts
+            if isinstance(asset_data, dict) and ("email_sequences" in asset_data or "sequences" in asset_data):
+                return 0.9
+            return 0.8
+        
+        if "workflow" in task_name or "automation" in task_name:
+            # Hubspot workflows and automation
+            if isinstance(asset_data, dict) and ("workflow" in asset_data or "automation" in asset_data):
+                return 0.85
+            return 0.8
+        
+        # 🎯 HIGH ACTIONABILITY (0.8-1.0): Templates and frameworks with structured data
+        if "template" in task_name or "calendar" in task_name:
+            # Check if contains structured template data
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["template", "calendar", "columns", "schedule"]):
+                return 0.9
+            return 0.85
+        
+        if "workflow" in task_name and "automation" in task_name:
+            return 0.88
+        
+        # 🎯 NEW: Enhanced scoring for framework and strategy assets with structured content
+        if "framework" in task_name and "strategy" in task_name:
+            # Content Strategy Framework - high actionability if structured
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["content_themes", "target_audience", "strategy_components", "framework"]):
+                return 0.82
+            return 0.75
+        
+        # 🎯 MEDIUM-HIGH ACTIONABILITY (0.7-0.85): Strategy frameworks with actionable content
+        if "strategy" in task_name or "framework" in task_name:
+            # Check if contains actionable frameworks (not just theory)
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["content_themes", "target_audience", "templates", "tactics"]):
+                return 0.8
+            return 0.65
+        
+        # 🎯 LOW ACTIONABILITY (0.0-0.49): Generic dashboards and reports
+        if "dashboard" in task_name or "metrics" in task_name:
+            return 0.4
+            
+        if "enhancement" in task_name or "enhance" in task_name:
+            return 0.3
+        
+        # Default for unknown types
+        return 0.5
     
     async def _extract_from_task(
         self,
@@ -90,14 +236,156 @@ class ConcreteAssetExtractor:
         deliverable_type: str
     ) -> List[Dict[str, Any]]:
         """
-        Estrae potenziali asset da un task
+        Estrae potenziali asset da un task usando la stessa logica del monitoring API
         """
         
         assets = []
         result = task.get('result', {})
+        context_data = task.get('context_data', {}) or {}
+        task_name = task.get('name', '')
         
-        # Prova JSON strutturato - AGGIORNATO per nuovo formato dual output
-        if result.get('detailed_results_json'):
+        # 1. Check for dual output format in completed tasks (same as monitoring API)
+        if task.get('status') == 'completed' and result.get('detailed_results_json'):
+            try:
+                detailed = result['detailed_results_json']
+                if isinstance(detailed, str):
+                    detailed = json.loads(detailed)
+                
+                # 🎯 NEW: Extract specific high-value assets from detailed results
+                # Check for contact lists
+                if "contacts" in detailed or "contact_list" in detailed:
+                    contacts_data = detailed.get("contacts") or detailed.get("contact_list", [])
+                    if contacts_data:
+                        assets.append({
+                            "type": "contact_database",
+                            "data": {
+                                "contacts": contacts_data,
+                                "total_contacts": len(contacts_data) if isinstance(contacts_data, list) else 0
+                            },
+                            "source": "detailed_results_extraction",
+                            "confidence": 0.95,
+                            "asset_name": "icp_contact_list"
+                        })
+                        logger.info(f"🎯 Extracted contact list with {len(contacts_data) if isinstance(contacts_data, list) else 'multiple'} contacts")
+                
+                # Check for email sequences
+                if "email_sequences" in detailed or "sequences" in detailed:
+                    sequences_data = detailed.get("email_sequences") or detailed.get("sequences", [])
+                    if sequences_data:
+                        assets.append({
+                            "type": "email_templates",
+                            "data": {
+                                "email_sequences": sequences_data,
+                                "total_sequences": len(sequences_data) if isinstance(sequences_data, list) else 0
+                            },
+                            "source": "detailed_results_extraction",
+                            "confidence": 0.95,
+                            "asset_name": "email_campaign_sequences"
+                        })
+                        logger.info(f"🎯 Extracted {len(sequences_data) if isinstance(sequences_data, list) else 'multiple'} email sequences")
+                
+                # Original structured content extraction as fallback
+                if detailed.get('structured_content'):
+                    # Create asset from structured content
+                    import re
+                    asset_name = re.sub(r'[^a-z0-9_]', '', task_name.lower().replace(' ', '_'))
+                    
+                    assets.append({
+                        "type": "structured_content",
+                        "data": {
+                            "structured_content": detailed.get("structured_content"),
+                            "rendered_html": detailed.get("rendered_html"),
+                            "visual_summary": detailed.get("visual_summary"),
+                            "actionable_insights": detailed.get("actionable_insights")
+                        },
+                        "source": "dual_output_extraction",
+                        "confidence": 0.95,
+                        "asset_name": asset_name
+                    })
+                    logger.info(f"✅ Extracted structured content asset from task: {task_name}")
+                    
+            except Exception as e:
+                logger.debug(f"Error parsing detailed_results_json: {e}")
+        
+        # 2. Check context_data for precomputed deliverables (same as monitoring API)
+        if isinstance(context_data, dict):
+            # Primary location: precomputed_deliverable.actionable_assets
+            if context_data.get("precomputed_deliverable", {}).get("actionable_assets"):
+                precomputed_assets = context_data["precomputed_deliverable"]["actionable_assets"]
+                for key, asset in precomputed_assets.items():
+                    if asset and isinstance(asset, dict):
+                        assets.append({
+                            "type": asset.get("asset_name", "precomputed_asset"),
+                            "data": asset.get("asset_data", asset),
+                            "source": "precomputed_deliverable",
+                            "confidence": 0.9,
+                            "asset_name": asset.get("asset_name", key),
+                            "ready_to_use": asset.get("ready_to_use", True),
+                            "actionability_score": asset.get("actionability_score", 0.8)
+                        })
+                        logger.info(f"✅ Extracted precomputed asset: {key}")
+            
+            # Secondary location: direct actionable_assets
+            if context_data.get("actionable_assets"):
+                direct_assets = context_data["actionable_assets"]
+                for key, asset in direct_assets.items():
+                    if asset and isinstance(asset, dict):
+                        assets.append({
+                            "type": key,
+                            "data": asset,
+                            "source": "direct_actionable_assets",
+                            "confidence": 0.85
+                        })
+                        logger.info(f"✅ Extracted direct asset: {key}")
+        
+        # 3. Check result for actionable_assets (same as monitoring API)
+        if result.get("actionable_assets"):
+            result_assets = result["actionable_assets"]
+            for key, asset in result_assets.items():
+                if asset and isinstance(asset, dict):
+                    assets.append({
+                        "type": key,
+                        "data": asset,
+                        "source": "result_actionable_assets",
+                        "confidence": 0.8
+                    })
+                    logger.info(f"✅ Extracted result asset: {key}")
+        
+        # 🎯 NEW: Additional extraction from result summary for high-value assets
+        if not assets and result.get('summary'):
+            summary_text = result.get('summary', '')
+            
+            # Check if the summary mentions contacts or emails
+            if "contact" in task_name.lower() and "research" in task_name.lower():
+                # This is likely a contact research task
+                assets.append({
+                    "type": "contact_database",
+                    "data": {
+                        "summary": summary_text,
+                        "extraction_needed": True
+                    },
+                    "source": "task_name_inference",
+                    "confidence": 0.7,
+                    "asset_name": "contact_research_output"
+                })
+                logger.info(f"📋 Inferred contact database asset from task name: {task_name}")
+            
+            elif "email" in task_name.lower() and ("sequence" in task_name.lower() or "strategy" in task_name.lower()):
+                # This is likely an email sequence task
+                assets.append({
+                    "type": "email_templates",
+                    "data": {
+                        "summary": summary_text,
+                        "extraction_needed": True
+                    },
+                    "source": "task_name_inference",
+                    "confidence": 0.7,
+                    "asset_name": "email_strategy_output"
+                })
+                logger.info(f"📋 Inferred email sequences asset from task name: {task_name}")
+        
+        # 4. ENHANCED FALLBACK: Complex parsing logic for additional extraction
+        if not assets and result.get('detailed_results_json'):
             try:
                 data = json.loads(result['detailed_results_json'])
                 
@@ -184,6 +472,12 @@ class ConcreteAssetExtractor:
                 result['summary'], deliverable_type
             )
             assets.extend(parsed_assets)
+        
+        # Log results and return
+        logger.info(f"Total assets extracted from task '{task_name}': {len(assets)}")
+        if assets:
+            for asset in assets:
+                logger.info(f"  - Asset type: {asset.get('type')}, source: {asset.get('source')}")
         
         return assets
     
@@ -480,6 +774,16 @@ class ConcreteAssetExtractor:
         asset.pop('enhancement_suggestions', None)
         
         return asset
+    
+    def _calculate_overall_achievement(self, goal_validations: List) -> float:
+        """
+        Calculate overall goal achievement percentage
+        """
+        if not goal_validations:
+            return 1.0  # No specific goals to validate
+        
+        achievement_scores = [1.0 - (v.gap_percentage / 100) for v in goal_validations]
+        return sum(achievement_scores) / len(achievement_scores)
 
 # Import necessari
 from datetime import timedelta

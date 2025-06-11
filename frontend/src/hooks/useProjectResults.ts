@@ -135,6 +135,49 @@ export const useProjectResults = (workspaceId: string) => {
     };
   }, []);
 
+  const normalizeUnifiedAssetToResult = useCallback((asset: any, assetKey: string): UnifiedResultItem => {
+    return {
+      id: `unified_asset_${assetKey}`,
+      title: (asset.name || assetKey).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      description: asset.content?.enhancement_source === 'markup_processor' 
+        ? 'Enhanced asset with structured content'
+        : asset.content?.enhancement_source === 'pre_rendered'
+        ? 'Pre-rendered asset ready to use'
+        : 'Unified asset from concrete extraction',
+      type: 'asset',
+      category: asset.type || 'general',
+      
+      actionabilityScore: asset.quality_scores?.actionability || 0.8,
+      validationScore: asset.quality_scores?.validation || 0.8,
+      readyToUse: asset.ready_to_use || false,
+      businessImpact: asset.ready_to_use ? 'high' : 'medium',
+      
+      visualSummary: undefined,
+      keyInsights: [],
+      nextActions: [],
+      metrics: {},
+      structuredContent: asset.content?.structured_content || asset.content,
+      
+      usageInstructions: `Unified asset: ${asset.name}`,
+      downloadable: asset.ready_to_use || false,
+      automationReady: asset.content?.has_ai_enhancement || false,
+      
+      sourceTaskId: asset.sourceTaskId || '',
+      sourceTaskName: asset.related_tasks?.[0]?.name || 'Unknown Task',
+      agentName: 'AI Team',
+      agentRole: 'Specialist',
+      createdAt: new Date(asset.lastModified || Date.now()),
+      lastUpdated: new Date(asset.lastModified || Date.now()),
+      
+      actions: {
+        canView: true,
+        canDownload: asset.ready_to_use || false,
+        canUse: asset.ready_to_use || false,
+        canShare: asset.ready_to_use || false,
+      }
+    };
+  }, []);
+
   const normalizeDeliverableToResult = useCallback((deliverable: any): UnifiedResultItem => {
     // Use structured_content directly (it's already an object, not a JSON string)
     const detailedResults = deliverable.structured_content;
@@ -224,10 +267,11 @@ export const useProjectResults = (workspaceId: string) => {
       setState(prev => ({ ...prev, loading: true, error: null }));
       debugLog(`Fetching unified results for workspace: ${workspaceId}`);
 
-      // Fetch both deliverables and assets in parallel
-      const [deliverablesResponse, assetsResponse] = await Promise.allSettled([
+      // Fetch deliverables, assets, and unified assets in parallel
+      const [deliverablesResponse, assetsResponse, unifiedAssetsResponse] = await Promise.allSettled([
         api.monitoring.getProjectDeliverables(workspaceId),
-        api.monitoring.getAssetTracking(workspaceId)
+        api.monitoring.getAssetTracking(workspaceId),
+        api.monitoring.getUnifiedAssets(workspaceId)
       ]);
 
       const allResults: UnifiedResultItem[] = [];
@@ -243,7 +287,7 @@ export const useProjectResults = (workspaceId: string) => {
         debugLog(`Processed ${deliverables.key_outputs.length} deliverables`);
       }
 
-      // Process assets (from asset management)
+      // Process assets (from legacy asset management)
       if (assetsResponse.status === 'fulfilled') {
         const assetData = assetsResponse.value;
         if (assetData?.completed_assets) {
@@ -255,7 +299,27 @@ export const useProjectResults = (workspaceId: string) => {
               allResults.push(normalizedResult);
             }
           });
-          debugLog(`Processed ${assetData.completed_assets.length} assets`);
+          debugLog(`Processed ${assetData.completed_assets.length} legacy assets`);
+        }
+      }
+
+      // Process unified assets (new system)
+      if (unifiedAssetsResponse.status === 'fulfilled') {
+        const unifiedData = unifiedAssetsResponse.value;
+        debugLog(`Unified assets response:`, unifiedData);
+        
+        if (unifiedData?.assets && Object.keys(unifiedData.assets).length > 0) {
+          Object.entries(unifiedData.assets).forEach(([assetKey, asset]: [string, any]) => {
+            const normalizedResult = normalizeUnifiedAssetToResult(asset, assetKey);
+            // Avoid duplicates by checking if we already have this task
+            const exists = allResults.some(r => r.sourceTaskId === asset.sourceTaskId);
+            if (!exists) {
+              allResults.push(normalizedResult);
+            }
+          });
+          debugLog(`Processed ${Object.keys(unifiedData.assets).length} unified assets`);
+        } else {
+          debugLog('No unified assets found - empty assets object or zero asset_count');
         }
       }
 
@@ -310,7 +374,7 @@ export const useProjectResults = (workspaceId: string) => {
         error: errorMessage,
       }));
     }
-  }, [workspaceId, debugLog, normalizeAssetToResult, normalizeDeliverableToResult]);
+  }, [workspaceId, debugLog, normalizeAssetToResult, normalizeUnifiedAssetToResult, normalizeDeliverableToResult]);
 
   // Initialize fetch
   useEffect(() => {

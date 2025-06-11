@@ -54,10 +54,9 @@ try:
         for i, ws in enumerate(result.data, 1):
             print(f"  {i}. {ws.get('name', 'Unnamed')} (ID: {ws['id'][:8]}...)")
         
-        # Ask for workspace to debug
-        workspace_id = input("\nEnter workspace ID to debug (or press Enter to use first): ").strip()
-        if not workspace_id:
-            workspace_id = result.data[0]['id']
+        # Use first workspace automatically for testing
+        workspace_id = result.data[0]['id']
+        print(f"\nUsing first workspace: {workspace_id}")
         
         print(f"\n🔍 Debugging workspace: {workspace_id}")
         

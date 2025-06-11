@@ -137,8 +137,9 @@ const handleApiError = (error: unknown) => {
 export const api = {
   getBaseUrl,
   
-  // 🆕 NEW: Asset Management API
+  // 🆕 UNIFIED: Asset Management API (Updated to use unified-assets endpoints)
   assetManagement: {
+    // Legacy endpoints replaced with unified assets
     getRequirements: async (workspaceId: string): Promise<{
       workspace_id: string;
       deliverable_category: string;
@@ -147,9 +148,20 @@ export const api = {
       generated_at: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/requirements`);
-        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-        return await response.json();
+        // Use unified assets endpoint and extract requirements from response
+        const unifiedAssets = await api.assetManagement.getUnifiedAssets(workspaceId);
+        return {
+          workspace_id: workspaceId,
+          deliverable_category: "unified_assets",
+          primary_assets_needed: Object.keys(unifiedAssets.assets || {}).map(key => ({
+            asset_name: key,
+            asset_type: unifiedAssets.assets[key]?.type || "unknown",
+            priority: "high",
+            description: `Asset: ${unifiedAssets.assets[key]?.name || key}`
+          })),
+          deliverable_structure: unifiedAssets.assets || {},
+          generated_at: unifiedAssets.processing_timestamp || new Date().toISOString()
+        };
       } catch (error) {
         return handleApiError(error);
       }
@@ -162,9 +174,26 @@ export const api = {
       generated_at: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/schemas`);
-        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-        return await response.json();
+        // Use unified assets endpoint and extract schemas from response
+        const unifiedAssets = await api.assetManagement.getUnifiedAssets(workspaceId);
+        const schemas: Record<string, AssetSchema> = {};
+        
+        Object.entries(unifiedAssets.assets || {}).forEach(([key, asset]: [string, any]) => {
+          schemas[key] = {
+            asset_name: asset.name || key,
+            asset_type: asset.type || "unknown",
+            required_fields: Object.keys(asset.content?.structured_content || {}),
+            validation_rules: asset.quality_scores || {},
+            example_structure: asset.content?.structured_content || {}
+          };
+        });
+
+        return {
+          workspace_id: workspaceId,
+          available_schemas: schemas,
+          schema_count: Object.keys(schemas).length,
+          generated_at: unifiedAssets.processing_timestamp || new Date().toISOString()
+        };
       } catch (error) {
         return handleApiError(error);
       }
@@ -191,49 +220,68 @@ export const api = {
       analyzed_at: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/extraction-status`);
-        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    },
-
-    // 🔥 NEW: Extract specific asset from task
-    extractAssetFromTask: async (workspaceId: string, taskId: string): Promise<{
-      success: boolean;
-      asset: ActionableAsset;
-      extraction_method: string;
-    }> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/extract/${taskId}`, {
-          method: 'POST',
-        });
-        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
-        return await response.json();
-      } catch (error) {
-        return handleApiError(error);
-      }
-    },
-
-    // 🔥 NEW: Batch extract multiple assets
-    batchExtractAssets: async (workspaceId: string, taskIds: string[]): Promise<{
-      success: boolean;
-      extracted_assets: ActionableAsset[];
-      failed_extractions: string[];
-      extraction_summary: {
-        total_requested: number;
-        successful: number;
-        failed: number;
-      };
-    }> => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/asset-management/workspace/${workspaceId}/batch-extract`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        // Use unified assets endpoint and derive extraction status
+        const unifiedAssets = await api.assetManagement.getUnifiedAssets(workspaceId);
+        const tasks = await api.monitoring.getWorkspaceTasks(workspaceId, { limit: 100 });
+        const completedTasks = tasks.tasks?.filter((t: any) => t.status === 'completed') || [];
+        
+        return {
+          workspace_id: workspaceId,
+          extraction_summary: {
+            total_completed_tasks: completedTasks.length,
+            asset_production_tasks: Object.keys(unifiedAssets.assets || {}).length,
+            extraction_ready_tasks: completedTasks.length,
+            extraction_readiness_rate: completedTasks.length > 0 ? (Object.keys(unifiedAssets.assets || {}).length / completedTasks.length) : 0
           },
-          body: JSON.stringify({ task_ids: taskIds }),
+          extraction_candidates: completedTasks.map((task: any) => ({
+            task_id: task.id,
+            task_name: task.name,
+            asset_type: "unified_asset",
+            has_structured_output: true,
+            output_size: JSON.stringify(task.result || {}).length,
+            extraction_ready: true,
+            completed_at: task.completed_at || task.updated_at || new Date().toISOString()
+          })),
+          next_steps: ["Assets ready for use", "Review asset quality scores"],
+          analyzed_at: unifiedAssets.processing_timestamp || new Date().toISOString()
+        };
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🆕 UNIFIED: Get unified assets (main endpoint)
+    getUnifiedAssets: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      workspace_goal: string;
+      assets: Record<string, any>;
+      asset_count: number;
+      total_versions: number;
+      processing_timestamp: string;
+      data_source: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🆕 UNIFIED: Refresh unified assets
+    refreshUnifiedAssets: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      workspace_goal: string;
+      assets: Record<string, any>;
+      asset_count: number;
+      total_versions: number;
+      processing_timestamp: string;
+      data_source: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}/refresh`, {
+          method: 'POST'
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
@@ -241,6 +289,7 @@ export const api = {
         return handleApiError(error);
       }
     },
+
   },
   
   // Enhanced Monitoring API with Asset Support
@@ -599,6 +648,25 @@ export const api = {
     getAssetTracking: async (workspaceId: string): Promise<AssetTrackingData> => {
       try {
         const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/asset-tracking`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🔥 NEW: Unified Assets API
+    getUnifiedAssets: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      workspace_goal: string;
+      assets: Record<string, any>;
+      asset_count: number;
+      total_versions: number;
+      processing_timestamp: string;
+      data_source: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
