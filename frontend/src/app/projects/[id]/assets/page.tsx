@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, use } from 'react';
-// Temporarily using mock to demonstrate fixes
-import { useUnifiedAssets } from '@/hooks/useUnifiedAssetsMock';
+// Using real unified assets API
+import { useUnifiedAssets } from '@/hooks/useUnifiedAssets';
 import { AssetHistoryPanel } from '@/components/assets/AssetHistoryPanel';
 import { RelatedAssetsModal } from '@/components/assets/RelatedAssetsModal';
 import { DependencyGraph } from '@/components/assets/DependencyGraph';
@@ -327,11 +327,29 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
                   </div>
                 )}
 
-                {!loading && assets.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="text-4xl mb-4">📦</div>
-                    <p className="font-medium mb-2">No assets found</p>
-                    <p className="text-sm">Complete some tasks to generate assets</p>
+                {!loading && !error && assets.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="text-6xl mb-6">🚀</div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-3">No Assets Available Yet</h3>
+                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                      This workspace doesn't have any completed tasks yet. 
+                      Start your AI team to begin generating actionable assets.
+                    </p>
+                    <div className="space-y-4">
+                      <button 
+                        onClick={() => window.location.href = `/projects/${workspaceId}/team`}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                      >
+                        🎯 Launch AI Team
+                      </button>
+                      <div className="text-sm text-gray-500">
+                        <p>Or go to <a href={`/projects/${workspaceId}/tasks`} className="text-blue-600 hover:underline">Tasks</a> to monitor progress</p>
+                      </div>
+                    </div>
+                    {/* Debug info */}
+                    <div className="mt-8 text-xs text-gray-400">
+                      Workspace ID: {workspaceId} | Asset Count: {assetCount}
+                    </div>
                   </div>
                 )}
               </div>
