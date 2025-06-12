@@ -39,10 +39,22 @@ DELIVERABLE_CACHE: Dict[str, Dict[str, Any]] = {}
 async def get_project_insights(workspace_id: UUID):
     """Get comprehensive project insights including progress, timing, and predictions"""
     try:
-        # Get workspace details
+        # Get workspace details - handle gracefully if workspace doesn't exist yet
         workspace = await get_workspace(str(workspace_id))
         if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
+            # Return empty insights instead of 404 for better UX
+            logger.info(f"🔍 [Insights] Workspace {workspace_id} not found, returning empty insights")
+            return {
+                "workspace_id": str(workspace_id),
+                "workspace_goal": "",
+                "project_status": "not_started",
+                "agents": [],
+                "tasks": [],
+                "activity": [],
+                "progress": 0.0,
+                "completion_prediction": "N/A - workspace not started",
+                "generation_timestamp": datetime.now().isoformat()
+            }
         
         # Get agents and tasks
         agents = await db_list_agents(str(workspace_id))
@@ -383,10 +395,26 @@ def _extract_major_milestones(
 async def get_project_deliverables(workspace_id: UUID):
     """Get aggregated project deliverables including final aggregated deliverable - ENHANCED"""
     try:
-        # Get workspace details
+        # Get workspace details - handle gracefully if workspace doesn't exist yet
         workspace = await get_workspace(str(workspace_id))
         if not workspace:
-            raise HTTPException(status_code=404, detail="Workspace not found")
+            # Return empty deliverables instead of 404 for better UX
+            logger.info(f"🔍 [Deliverables] Workspace {workspace_id} not found, returning empty deliverables")
+            return ProjectDeliverables(
+                workspace_id=str(workspace_id),
+                workspace_goal="",
+                outputs=[],
+                key_outputs=[],
+                final_recommendations=[],
+                next_steps=[],
+                completion_status="not_started",
+                total_tasks=0,
+                completed_tasks=0,
+                summary="No deliverables available yet - workspace not started",
+                aggregated_result="",
+                generation_timestamp=datetime.now().isoformat(),
+                generated_at=datetime.now().isoformat()
+            )
         
         # Get all tasks
         tasks = await list_tasks(str(workspace_id))

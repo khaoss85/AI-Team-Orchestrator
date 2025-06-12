@@ -1,0 +1,622 @@
+/Users/pelleri/Documents/ai-team-orchestrator/backend/human_feedback_manager.py:78: RuntimeWarning: coroutine 'HumanFeedbackManager._periodic_cleanup' was never awaited
+  logger.info("No event loop running, periodic cleanup will start when the event loop is available")
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+⚠️ Robust JSON parser not available - using fallback
+⚠️ OpenAI API not available - system will use fallback analysis methods
+⚠️ Quality Assurance not available - deliverables will not have automated quality enhancement
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+INFO:     Started server process [78966]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
+🚀 Starting simple backend server on port 8002...
+INFO:     127.0.0.1:54754 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54813 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54816 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54951 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54951 - "OPTIONS /workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54951 - "POST /workspaces HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54951 - "OPTIONS /workspaces/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54951 - "POST /workspaces/ HTTP/1.1" 201 Created
+INFO:     127.0.0.1:54972 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54972 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54972 - "OPTIONS /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55090 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54972 - "POST /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54972 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55286 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55380 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55512 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55368 - "POST /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55643 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55780 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55916 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56055 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56209 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56347 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56582 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "POST /director/approve/b8666b7a-0b19-4630-8de6-669f4ea0c166?proposal_id=290fcba4-f86f-4514-85e3-5463c2d7528d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56839 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56842 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56844 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56842 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56845 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56844 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56842 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56844 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56839 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56844 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56842 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56842 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56844 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56845 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56842 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56837 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56844 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56839 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56845 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56842 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56845 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56844 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56839 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56845 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56842 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "OPTIONS /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56823 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56896 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56957 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56955 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56959 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56962 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56959 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56955 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56963 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56955 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56963 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56959 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56953 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56962 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56959 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56963 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56962 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56955 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56959 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56963 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56953 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56957 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56953 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57120 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57122 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57212 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57214 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57215 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57217 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57219 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57295 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57298 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57444 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57446 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57444 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57450 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57452 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57453 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57454 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57592 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57742 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57825 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57825 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57828 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57825 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57871 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57873 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57871 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57873 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57871 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166/handoffs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57873 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166/handoffs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57923 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57923 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57923 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57931 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57965 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57966 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57965 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57970 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57966 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57973 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57965 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57970 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57974 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57966 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57973 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57974 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57965 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57970 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57966 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57973 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57965 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57965 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57973 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57965 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57966 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57970 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57974 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57966 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57974 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57973 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57970 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57965 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57974 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57969 - "GET /unified-assets/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57966 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57973 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57974 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57970 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57965 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57973 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57970 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58125 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58137 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58217 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58219 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58220 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58222 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58224 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58225 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58284 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58309 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58375 - "POST /director/proposal HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:58461 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58472 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58472 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58475 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58477 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58479 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58480 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58598 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58610 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58676 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58678 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58679 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58681 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58683 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58684 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58783 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58931 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58942 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58946 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58948 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58949 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58951 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58952 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59070 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59081 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59150 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59151 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59152 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59153 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59154 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59157 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59214 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59225 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59348 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59361 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59363 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59364 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59366 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59368 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59369 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59497 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59508 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59508 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59520 - "POST /goal-validation/b8666b7a-0b19-4630-8de6-669f4ea0c166/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59582 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59584 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59587 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59588 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59589 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59591 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59650 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59661 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59792 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59803 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59807 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59809 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59810 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59812 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59813 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59938 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59949 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60015 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60017 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60018 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60020 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60021 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60024 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60086 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60098 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60241 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60253 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60257 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60259 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60263 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60381 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60392 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60460 - "GET /agents/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60462 - "GET /human-feedback/pending?workspace_id=b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60463 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60464 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60465 - "GET /monitoring/workspace/b8666b7a-0b19-4630-8de6-669f4ea0c166/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60468 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60526 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60538 - "GET /projects/b8666b7a-0b19-4630-8de6-669f4ea0c166/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60538 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60538 - "GET /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60564 - "OPTIONS /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60564 - "DELETE /workspaces/b8666b7a-0b19-4630-8de6-669f4ea0c166 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60564 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60564 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60665 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60793 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60883 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60883 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60883 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60886 - "GET /workspaces/user/123e4567-e89b-12d3-a456-426614174000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61030 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "OPTIONS /workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "POST /workspaces HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61062 - "OPTIONS /workspaces/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "POST /workspaces/ HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61062 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "OPTIONS /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61176 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61062 - "POST /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61307 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61438 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61291 - "POST /director/proposal HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "POST /director/approve/aa60103f-608f-4f73-8824-194f24915474?proposal_id=2dc05b80-d04a-46b5-8d3c-7d59308efec9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61551 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61568 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61564 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61568 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61571 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61564 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61572 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61568 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61571 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61572 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61568 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61571 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61572 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61551 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61568 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61572 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61568 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61571 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61551 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61564 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61572 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61551 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61568 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61572 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61564 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61551 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61570 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61564 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61572 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61551 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61564 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61571 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61570 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61571 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61570 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61703 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61703 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61776 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61778 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61779 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61781 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61783 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61784 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61855 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61855 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62013 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62013 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62017 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62018 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62020 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62021 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62021 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62159 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62159 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62234 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62236 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62237 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62241 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62242 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62315 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62315 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62468 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62470 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62471 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62473 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62476 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62476 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62611 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62611 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62690 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62692 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62693 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62695 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62696 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62773 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62773 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62937 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62938 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62940 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62942 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62944 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62945 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62945 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63082 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63082 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63091 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63092 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63155 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63157 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63158 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63160 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63164 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63231 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63231 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63385 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63386 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63388 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63390 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63391 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63390 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63529 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63529 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63599 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63601 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63602 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63604 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63605 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63608 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63686 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63686 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63827 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63829 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63830 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63833 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63835 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63836 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63829 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63969 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63969 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64035 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64038 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64040 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64042 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64043 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64046 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64124 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64124 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64259 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64261 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64265 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64266 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64267 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64268 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64268 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64395 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64395 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64468 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64470 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64471 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64473 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64474 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64477 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64543 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64543 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64552 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64553 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64722 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64726 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64727 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64728 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64731 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64732 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64732 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64909 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64909 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64939 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64940 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64942 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64944 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64945 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64947 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64966 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64966 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65006 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65008 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65009 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65011 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65013 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65014 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65014 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65103 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65104 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65124 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65126 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65127 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65128 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65130 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65133 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65138 - "GET /unified-assets/workspace/test-id HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65162 - "GET /projects/test-id/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65171 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65172 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65178 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65207 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65209 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65210 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65212 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65213 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65238 - "GET /workspaces HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:65259 - "GET /unified-assets/workspace/c701640f-dbeb-463f-bb7c-51b595022424 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65259 - "GET /projects/c701640f-dbeb-463f-bb7c-51b595022424/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65259 - "GET /projects/c701640f-dbeb-463f-bb7c-51b595022424/insights HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65295 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65297 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65295 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65298 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65300 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65302 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65303 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65344 - "GET /unified-assets/workspace/3ea0ae20-d851-46d1-9f9c-80dbb75687b9 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65344 - "GET /projects/3ea0ae20-d851-46d1-9f9c-80dbb75687b9/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65344 - "GET /projects/3ea0ae20-d851-46d1-9f9c-80dbb75687b9/insights HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65353 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65355 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65356 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65358 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65360 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65361 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65361 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65360 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65355 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65360 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65386 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65383 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65387 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65386 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65391 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65387 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65383 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65393 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/tasks?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65386 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65394 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65386 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65386 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65394 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65387 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65393 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65386 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65393 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65394 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/asset-tracking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65387 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65386 - "GET /unified-assets/workspace/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65391 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65387 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/quality-gate/completion HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65393 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "GET /workspaces/aa60103f-608f-4f73-8824-194f24915474/goals?status=active HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65393 - "OPTIONS /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65383 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/validate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65391 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65383 - "POST /goal-validation/aa60103f-608f-4f73-8824-194f24915474/completion-readiness HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65518 - "GET /unified-assets/workspace/9EED3B07-CBFD-4FAC-926F-7CF1C0EC9761 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49155 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49157 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49211 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49239 - "GET /agents/aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49241 - "GET /human-feedback/pending?workspace_id=aa60103f-608f-4f73-8824-194f24915474 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49242 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/task-analysis HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49245 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/budget HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49246 - "GET /monitoring/workspace/aa60103f-608f-4f73-8824-194f24915474/finalization-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49247 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49258 - "GET /workspaces HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49298 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49339 - "GET /human-feedback/pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49340 - "GET /projects/aa60103f-608f-4f73-8824-194f24915474/deliverables HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [78966]

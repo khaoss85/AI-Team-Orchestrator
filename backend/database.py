@@ -1,9 +1,10 @@
 import os
 import re
+import asyncio
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import logging
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, Callable
 from uuid import UUID
 import uuid
 from datetime import datetime, timedelta
@@ -37,6 +38,82 @@ try:
 except Exception as e:
     logger.error(f"Error creating Supabase client: {e}")
     raise
+
+# Retry decorator for Supabase operations
+def supabase_retry(max_attempts: int = 3, backoff_factor: float = 2.0):
+    """
+    Decorator to retry Supabase operations on 502 Bad Gateway and other transient errors
+    """
+    def decorator(func: Callable):
+        async def async_wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_attempts):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e)
+                    
+                    # Check for retryable errors
+                    is_retryable = (
+                        "502" in error_msg or 
+                        "Bad Gateway" in error_msg or
+                        "timeout" in error_msg.lower() or
+                        "connection" in error_msg.lower()
+                    )
+                    
+                    if is_retryable and attempt < max_attempts - 1:
+                        wait_time = backoff_factor ** attempt
+                        logger.warning(f"Supabase error (attempt {attempt + 1}/{max_attempts}): {error_msg}. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        # Not retryable or max attempts reached
+                        break
+            
+            # If we get here, all attempts failed
+            logger.error(f"Supabase operation failed after {max_attempts} attempts: {last_exception}")
+            raise last_exception
+        
+        def sync_wrapper(*args, **kwargs):
+            # For sync functions, we can't use asyncio.sleep, so use time.sleep
+            import time
+            last_exception = None
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e)
+                    
+                    # Check for retryable errors
+                    is_retryable = (
+                        "502" in error_msg or 
+                        "Bad Gateway" in error_msg or
+                        "timeout" in error_msg.lower() or
+                        "connection" in error_msg.lower()
+                    )
+                    
+                    if is_retryable and attempt < max_attempts - 1:
+                        wait_time = backoff_factor ** attempt
+                        logger.warning(f"Supabase error (attempt {attempt + 1}/{max_attempts}): {error_msg}. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        # Not retryable or max attempts reached
+                        break
+            
+            # If we get here, all attempts failed
+            logger.error(f"Supabase operation failed after {max_attempts} attempts: {last_exception}")
+            raise last_exception
+        
+        # Return appropriate wrapper based on whether function is async
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
+    
+    return decorator
 
 def sanitize_unicode_for_postgres(data: Any) -> Any:
     """
@@ -109,6 +186,167 @@ def safe_json_serialize(data: Any) -> str:
         # Fallback: restituisci JSON con rappresentazione stringa sicura
         fallback_data = {"error": "JSON serialization failed", "original_error": str(e)}
         return json.dumps(fallback_data, ensure_ascii=True)
+
+async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
+    """
+    🎯 Automatically create workspace_goals records from goal text
+    
+    This function parses the workspace goal text and creates numerical 
+    workspace_goals records that enable the goal-driven system.
+    """
+    try:
+        # Import here to avoid circular imports
+        from ai_quality_assurance.goal_validator import goal_validator
+        from models import GoalMetricType, GoalStatus
+        from uuid import uuid4
+        from datetime import datetime
+        
+        # Extract numerical requirements from goal text
+        print(f"🎯 DEBUGGING: Extracting goals from text: {goal_text}")
+        logger.info(f"🎯 Extracting goals from text: {goal_text}")
+        requirements = await goal_validator._extract_goal_requirements(goal_text)
+        print(f"📊 DEBUGGING: Found {len(requirements)} requirements: {requirements}")
+        logger.info(f"📊 Found {len(requirements)} requirements: {requirements}")
+        
+        created_goals = []
+        for req in requirements:
+            try:
+                # Map requirement type to GoalMetricType
+                metric_type = _map_requirement_to_metric_type(req.get('type', 'general'))
+                
+                # Create workspace goal record
+                goal_data = {
+                    "id": str(uuid4()),
+                    "workspace_id": workspace_id,
+                    "metric_type": metric_type.value,
+                    "target_value": float(req['target_value']),
+                    "current_value": 0.0,
+                    "unit": req.get('unit', ''),
+                    "status": GoalStatus.ACTIVE.value,
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "description": f"Auto-created from workspace goal: {req.get('context', '')}"
+                }
+                
+                result = supabase.table("workspace_goals").insert(goal_data).execute()
+                if result.data:
+                    created_goals.append(result.data[0])
+                    logger.info(f"✅ Created workspace goal: {metric_type.value} = {req['target_value']} {req.get('unit', '')}")
+                
+            except Exception as goal_error:
+                logger.warning(f"Failed to create workspace goal from requirement {req}: {goal_error}")
+        
+        if created_goals:
+            logger.info(f"🎯 Auto-created {len(created_goals)} workspace goals for workspace {workspace_id}")
+        else:
+            logger.info(f"📋 No numerical goals detected in workspace goal text for {workspace_id}")
+        
+        return created_goals
+        
+    except Exception as e:
+        logger.error(f"Error auto-creating workspace goals: {e}")
+        return []
+
+def _map_requirement_to_metric_type(req_type: str) -> 'GoalMetricType':
+    """
+    🧠 AI-DRIVEN DYNAMIC MAPPING - Completely scalable metric type mapping
+    
+    Maps any requirement type to appropriate GoalMetricType enum values,
+    supporting unlimited domains and use cases.
+    """
+    from models import GoalMetricType
+    
+    # 🎯 UNIVERSAL MAPPING SYSTEM - Handles any domain
+    universal_mapping = {
+        # 📊 CREATION & PRODUCTION
+        'deliverables': GoalMetricType.DELIVERABLES,
+        'content_pieces': GoalMetricType.CONTENT_PIECES,
+        'products': GoalMetricType.DELIVERABLES,
+        'items': GoalMetricType.DELIVERABLES,
+        'features': GoalMetricType.DELIVERABLES,
+        'courses': GoalMetricType.CONTENT_PIECES,
+        'lessons': GoalMetricType.CONTENT_PIECES,
+        
+        # 📈 COLLECTION & ACQUISITION
+        'contacts': GoalMetricType.CONTACTS,
+        'leads': GoalMetricType.CONTACTS,
+        'data_points': GoalMetricType.CONTACTS,
+        'resources': GoalMetricType.DELIVERABLES,
+        
+        # 📧 COMMUNICATION & CAMPAIGNS
+        'email_sequences': GoalMetricType.EMAIL_SEQUENCES,
+        'campaigns': GoalMetricType.CAMPAIGNS,
+        'communications': GoalMetricType.CAMPAIGNS,
+        'messages': GoalMetricType.EMAIL_SEQUENCES,
+        
+        # 💰 FINANCIAL METRICS
+        'financial': GoalMetricType.REVENUE,
+        'revenue': GoalMetricType.REVENUE,
+        'costs': GoalMetricType.REVENUE,
+        'budget': GoalMetricType.REVENUE,
+        'roi': GoalMetricType.REVENUE,
+        
+        # 📊 PERFORMANCE & QUALITY
+        'percentage': GoalMetricType.CONVERSION_RATE,
+        'conversion_rate': GoalMetricType.CONVERSION_RATE,
+        'quality_score': GoalMetricType.QUALITY_SCORE,
+        'performance_metrics': GoalMetricType.QUALITY_SCORE,
+        'engagement_rate': GoalMetricType.ENGAGEMENT_RATE,
+        
+        # ⏰ TEMPORAL METRICS
+        'temporal': GoalMetricType.TIMELINE_DAYS,
+        'timeline_days': GoalMetricType.TIMELINE_DAYS,
+        'deadlines': GoalMetricType.TIMELINE_DAYS,
+        'milestones': GoalMetricType.TIMELINE_DAYS,
+        
+        # 🏃‍♂️ HEALTH & FITNESS
+        'workouts': GoalMetricType.TASKS_COMPLETED,  # Map to tasks as proxy
+        'exercises': GoalMetricType.TASKS_COMPLETED,
+        'health_metrics': GoalMetricType.QUALITY_SCORE,
+        
+        # 💻 TECHNOLOGY & DEVELOPMENT
+        'deployments': GoalMetricType.DELIVERABLES,
+        'integrations': GoalMetricType.DELIVERABLES,
+        'apis': GoalMetricType.DELIVERABLES,
+        
+        # 🎓 EDUCATION & LEARNING
+        'certifications': GoalMetricType.DELIVERABLES,
+        'skills': GoalMetricType.QUALITY_SCORE,
+        
+        # 🔄 FALLBACK MAPPINGS
+        'general': GoalMetricType.DELIVERABLES,
+        'creation': GoalMetricType.DELIVERABLES,
+        'collection': GoalMetricType.CONTACTS,
+        'performance': GoalMetricType.QUALITY_SCORE,
+        'communication': GoalMetricType.EMAIL_SEQUENCES,
+        'technology': GoalMetricType.DELIVERABLES,
+        'education': GoalMetricType.CONTENT_PIECES,
+        'health': GoalMetricType.QUALITY_SCORE
+    }
+    
+    # 🎯 Smart fallback: try exact match first, then partial matches
+    req_type_lower = req_type.lower()
+    
+    # Direct match
+    if req_type_lower in universal_mapping:
+        return universal_mapping[req_type_lower]
+    
+    # Partial match - find best substring match
+    for mapping_key, metric_type in universal_mapping.items():
+        if mapping_key in req_type_lower or req_type_lower in mapping_key:
+            return metric_type
+    
+    # Ultimate fallback - choose based on req_type characteristics
+    if 'rate' in req_type_lower or '%' in req_type_lower:
+        return GoalMetricType.CONVERSION_RATE
+    elif 'time' in req_type_lower or 'day' in req_type_lower:
+        return GoalMetricType.TIMELINE_DAYS
+    elif 'contact' in req_type_lower or 'lead' in req_type_lower:
+        return GoalMetricType.CONTACTS
+    elif 'email' in req_type_lower or 'message' in req_type_lower:
+        return GoalMetricType.EMAIL_SEQUENCES
+    else:
+        return GoalMetricType.DELIVERABLES  # Most generic fallback
     
 # Database operations
 async def create_workspace(name: str, description: Optional[str], user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
@@ -125,11 +363,18 @@ async def create_workspace(name: str, description: Optional[str], user_id: str, 
             data["budget"] = budget
             
         result = supabase.table("workspaces").insert(data).execute() # Rimossa await
-        return result.data[0] if result.data and len(result.data) > 0 else None
+        created_workspace = result.data[0] if result.data and len(result.data) > 0 else None
+        
+        # 🎯 AUTO-CREATE WORKSPACE GOALS: Parse goal for numerical targets
+        if created_workspace and goal:
+            await _auto_create_workspace_goals(created_workspace["id"], goal)
+        
+        return created_workspace
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
         raise
 
+@supabase_retry(max_attempts=3, backoff_factor=2.0)
 async def get_workspace(workspace_id: str):
     try:
         result = supabase.table("workspaces").select("*").eq("id", workspace_id).execute() # Rimossa await
@@ -140,10 +385,12 @@ async def get_workspace(workspace_id: str):
 
 async def list_workspaces(user_id: str):
     try:
-        result = supabase.table("workspaces").select("*").eq("user_id", user_id).execute() # Rimossa await
-        return result.data
+        logger.debug(f"Querying workspaces for user_id: {user_id}")
+        result = supabase.table("workspaces").select("*").eq("user_id", user_id).execute()
+        logger.debug(f"Database query completed. Found {len(result.data) if result.data else 0} workspaces")
+        return result.data or []
     except Exception as e:
-        logger.error(f"Error listing workspaces: {e}")
+        logger.error(f"Error listing workspaces for user {user_id}: {e}")
         raise
 
 
@@ -563,6 +810,7 @@ async def delete_custom_tool(tool_id: str):
         logger.error(f"Error deleting custom tool: {e}")
         raise
         
+@supabase_retry(max_attempts=3, backoff_factor=2.0)
 async def list_tasks(
     workspace_id: str,
     status: Optional[str] = None,
@@ -1010,3 +1258,212 @@ async def log_proposal_decision(
     except Exception as e:
         logger.error(f"Error logging decision for proposal {proposal_id}: {e}")
         raise
+
+# =========================================
+# 🎯 GOAL-DRIVEN DATABASE OPERATIONS
+# =========================================
+
+async def create_workspace_goal(goal_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Create a new workspace goal"""
+    try:
+        # Sanitize input data
+        clean_data = sanitize_unicode_for_postgres(goal_data)
+        
+        # Add timestamps
+        clean_data.update({
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "current_value": clean_data.get("current_value", 0),
+            "status": clean_data.get("status", "active")
+        })
+        
+        result = supabase.table("workspace_goals").insert(clean_data).execute()
+        return result.data[0] if result.data and len(result.data) > 0 else None
+        
+    except Exception as e:
+        logger.error(f"Error creating workspace goal: {e}", exc_info=True)
+        raise
+
+async def get_workspace_goals(workspace_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Get workspace goals with optional status filter"""
+    try:
+        query = supabase.table("workspace_goals").select("*").eq("workspace_id", workspace_id)
+        
+        if status:
+            query = query.eq("status", status)
+        
+        query = query.order("priority").order("created_at", desc=True)
+        result = query.execute()
+        
+        return result.data if result.data else []
+        
+    except Exception as e:
+        logger.error(f"Error getting workspace goals: {e}", exc_info=True)
+        raise
+
+async def update_goal_progress(goal_id: str, increment: float, task_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Update goal progress by incrementing current_value"""
+    try:
+        # Get current goal
+        goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
+        
+        if not goal_result.data:
+            logger.warning(f"Goal {goal_id} not found for progress update")
+            return None
+        
+        goal = goal_result.data[0]
+        old_value = goal["current_value"]
+        new_value = min(old_value + increment, goal["target_value"])  # Don't exceed target
+        
+        # Update goal
+        update_data = {
+            "current_value": new_value,
+            "updated_at": datetime.now().isoformat(),
+            "last_progress_date": datetime.now().isoformat()
+        }
+        
+        # Mark as completed if target reached
+        if new_value >= goal["target_value"] and goal["status"] != "completed":
+            update_data["status"] = "completed"
+            update_data["completed_at"] = datetime.now().isoformat()
+        
+        result = supabase.table("workspace_goals").update(update_data).eq("id", goal_id).execute()
+        
+        if result.data:
+            # Log progress update
+            await _log_goal_progress(goal_id, goal["workspace_id"], old_value, new_value, increment, task_id)
+            return result.data[0]
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error updating goal progress: {e}", exc_info=True)
+        raise
+
+async def get_unmet_goals(workspace_id: str, completion_threshold: float = 80.0) -> List[Dict[str, Any]]:
+    """Get goals that haven't met their targets (used by goal-driven task planner)"""
+    try:
+        result = supabase.table("workspace_goals").select("*").eq(
+            "workspace_id", workspace_id
+        ).eq("status", "active").execute()
+        
+        goals = result.data if result.data else []
+        unmet_goals = []
+        
+        for goal in goals:
+            completion_pct = (goal["current_value"] / goal["target_value"] * 100) if goal["target_value"] > 0 else 0
+            
+            if completion_pct < completion_threshold:
+                gap = goal["target_value"] - goal["current_value"]
+                unmet_goals.append({
+                    **goal,
+                    "completion_pct": completion_pct,
+                    "gap_value": gap,
+                    "urgency_score": _calculate_goal_urgency(goal, completion_pct)
+                })
+        
+        # Sort by urgency score (highest first)
+        unmet_goals.sort(key=lambda g: g["urgency_score"], reverse=True)
+        return unmet_goals
+        
+    except Exception as e:
+        logger.error(f"Error getting unmet goals: {e}", exc_info=True)
+        raise
+
+async def delete_workspace_goal(goal_id: str, workspace_id: str) -> bool:
+    """Delete a workspace goal (with safety checks)"""
+    try:
+        # Check for active tasks linked to this goal
+        tasks_result = supabase.table("tasks").select("id").eq("goal_id", goal_id).eq("status", "pending").execute()
+        
+        if tasks_result.data:
+            logger.warning(f"Cannot delete goal {goal_id}: has {len(tasks_result.data)} active tasks")
+            return False
+        
+        # Delete goal
+        result = supabase.table("workspace_goals").delete().eq("id", goal_id).eq("workspace_id", workspace_id).execute()
+        
+        if result.data:
+            await _log_goal_event(workspace_id, goal_id, "goal_deleted", {})
+            return True
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error deleting workspace goal: {e}", exc_info=True)
+        raise
+
+async def get_goal_task_performance(workspace_id: str) -> List[Dict[str, Any]]:
+    """Get performance metrics for goal-driven tasks"""
+    try:
+        # This would use the view created in SQL
+        result = supabase.table("goal_task_performance").select("*").eq("workspace_id", workspace_id).execute()
+        return result.data if result.data else []
+        
+    except Exception as e:
+        logger.error(f"Error getting goal task performance: {e}", exc_info=True)
+        return []
+
+# Helper functions for goal operations
+
+async def _log_goal_progress(goal_id: str, workspace_id: str, old_value: float, new_value: float, increment: float, task_id: Optional[str]):
+    """Log goal progress updates for monitoring"""
+    try:
+        log_data = {
+            "workspace_id": workspace_id,
+            "type": "goal_progress_updated",
+            "message": f"Goal {goal_id} progress: {old_value} → {new_value} (+{increment})",
+            "metadata": {
+                "goal_id": goal_id,
+                "old_value": old_value,
+                "new_value": new_value,
+                "increment": increment,
+                "task_id": task_id
+            }
+        }
+        
+        supabase.table("logs").insert(log_data).execute()
+        
+    except Exception as e:
+        logger.warning(f"Failed to log goal progress: {e}")
+
+async def _log_goal_event(workspace_id: str, goal_id: str, event_type: str, metadata: Dict[str, Any]):
+    """Log goal-related events"""
+    try:
+        log_data = {
+            "workspace_id": workspace_id,
+            "type": f"goal_{event_type}",
+            "message": f"Goal {event_type}: {goal_id}",
+            "metadata": {
+                "goal_id": goal_id,
+                "event_type": event_type,
+                **metadata
+            }
+        }
+        
+        supabase.table("logs").insert(log_data).execute()
+        
+    except Exception as e:
+        logger.warning(f"Failed to log goal event: {e}")
+
+def _calculate_goal_urgency(goal: Dict[str, Any], completion_pct: float) -> float:
+    """Calculate urgency score for unmet goals"""
+    base_urgency = 100 - completion_pct  # Lower completion = higher urgency
+    priority_multiplier = goal.get("priority", 1)
+    
+    # Add time-based urgency if target_date exists
+    time_urgency = 1.0
+    if goal.get("target_date"):
+        try:
+            target_date = datetime.fromisoformat(goal["target_date"].replace('Z', '+00:00'))
+            days_left = (target_date - datetime.now()).days
+            if days_left <= 1:
+                time_urgency = 3.0  # Very urgent
+            elif days_left <= 7:
+                time_urgency = 2.0  # Urgent
+            elif days_left <= 30:
+                time_urgency = 1.5  # Moderately urgent
+        except:
+            pass
+    
+    return base_urgency * priority_multiplier * time_urgency

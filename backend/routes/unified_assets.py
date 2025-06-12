@@ -34,10 +34,14 @@ class UnifiedAssetManager:
         con versioning automatico e content AI-enhanced
         """
         try:
-            # Get workspace and tasks
+            # Get workspace and tasks - handle gracefully if workspace doesn't exist yet
             workspace = await get_workspace(workspace_id)
+            
+            # If workspace doesn't exist, return empty response instead of 404
+            # This handles cases where frontend calls for workspaces before team starts
             if not workspace:
-                raise HTTPException(status_code=404, detail="Workspace not found")
+                logger.info(f"🔍 [UnifiedAssets] Workspace {workspace_id} not found, returning empty response")
+                return self._empty_response(workspace_id)
             
             tasks = await list_tasks(workspace_id)
             completed_tasks = [t for t in tasks if t.get("status") == TaskStatus.COMPLETED.value]
@@ -149,6 +153,27 @@ class UnifiedAssetManager:
         if asset_type == "email_templates":
             return "email_sequences"
         
+        # 📊 METRICS & TRACKING ASSETS
+        if asset_type in ["metrics_tracking_dashboard", "tracking_dashboard", "dashboard"]:
+            return "metrics_dashboard"
+        
+        if asset_type in ["kpi_dashboard", "analytics_dashboard", "performance_dashboard"]:
+            return "metrics_dashboard"
+        
+        # 🎯 SEGMENTATION & GUIDELINES ASSETS  
+        if asset_type in ["contact_segmentation_guidelines", "segmentation_guidelines", "guidelines"]:
+            return "segmentation_guidelines"
+        
+        if asset_type in ["targeting_guidelines", "audience_guidelines", "persona_guidelines"]:
+            return "segmentation_guidelines"
+        
+        # 📋 STRATEGY & FRAMEWORK ASSETS
+        if asset_type in ["strategy_framework", "framework", "playbook"]:
+            return "strategy_framework"
+        
+        if asset_type in ["workflow", "process", "checklist"]:
+            return "workflow_process"
+        
         # Content strategy variations
         if "content" in task_lower and ("strategy" in task_lower or "plan" in task_lower):
             return "content_strategy"
@@ -157,11 +182,25 @@ class UnifiedAssetManager:
         if "content" in task_lower and ("calendar" in task_lower or "editorial" in task_lower):
             return "content_calendar"
         
-        # Contact/lead variations (task name based)
+        # 📊 PRIORITY: Specific multi-word patterns first (most specific wins)
+        
+        # METRICS & TRACKING variations (task name based) - CHECK FIRST for specificity
+        if any(word in task_lower for word in ["metrics", "tracking", "dashboard", "kpi", "analytics"]):
+            return "metrics_dashboard"
+        
+        # SEGMENTATION & GUIDELINES variations (task name based) - CHECK BEFORE generic "contact"  
+        if any(word in task_lower for word in ["segmentation", "guidelines", "targeting", "persona"]):
+            return "segmentation_guidelines"
+        
+        # STRATEGY & FRAMEWORK variations (task name based)
+        if any(word in task_lower for word in ["framework", "playbook", "process", "workflow"]):
+            return "strategy_framework"
+        
+        # Contact/lead variations (task name based) - AFTER segmentation check
         if any(word in task_lower for word in ["contact", "lead", "database", "prospect", "icp"]):
             return "contact_database"
         
-        # Email variations (task name based)
+        # Email variations (task name based) - AFTER metrics check
         if any(word in task_lower for word in ["email", "sequence", "outreach", "campaign"]):
             return "email_sequences"
         
@@ -184,7 +223,27 @@ class UnifiedAssetManager:
             "contact_database": "ICP Contact List",
             "email_sequences": "Email Campaign Sequences",
             "email_campaign": "Email Campaign Strategy",
-            "analysis_report": "Analysis Report"
+            "analysis_report": "Analysis Report",
+            
+            # 📊 NEW: Metrics & Tracking Assets
+            "metrics_dashboard": "Metrics & Tracking Dashboard",
+            "metrics_tracking_dashboard": "Metrics & Tracking Dashboard",
+            "tracking_dashboard": "Performance Tracking Dashboard",
+            "kpi_dashboard": "KPI Dashboard",
+            "analytics_dashboard": "Analytics Dashboard",
+            
+            # 🎯 NEW: Segmentation & Guidelines Assets
+            "segmentation_guidelines": "Contact Segmentation Guidelines", 
+            "contact_segmentation_guidelines": "Contact Segmentation Guidelines",
+            "targeting_guidelines": "Targeting Guidelines",
+            "audience_guidelines": "Audience Guidelines", 
+            "persona_guidelines": "Persona Guidelines",
+            
+            # 📋 NEW: Strategy & Framework Assets
+            "strategy_framework": "Strategy Framework",
+            "workflow_process": "Workflow & Process Guide",
+            "framework": "Strategic Framework",
+            "playbook": "Strategy Playbook"
         }
         
         group_key = self._create_semantic_group_key(asset_type, task_name)
@@ -386,7 +445,15 @@ async def get_unified_workspace_assets(workspace_id: UUID):
     """
     Get all workspace assets using unified extraction and processing
     """
-    return await unified_asset_manager.get_workspace_assets(str(workspace_id))
+    try:
+        logger.info(f"🔍 [UnifiedAssets] GET request for workspace {workspace_id}")
+        result = await unified_asset_manager.get_workspace_assets(str(workspace_id))
+        logger.info(f"🔍 [UnifiedAssets] Successfully returned result for workspace {workspace_id}")
+        return result
+    except Exception as e:
+        logger.error(f"🔍 [UnifiedAssets] Error for workspace {workspace_id}: {e}", exc_info=True)
+        # Return empty response instead of letting it bubble up as 500/404
+        return unified_asset_manager._empty_response(str(workspace_id))
 
 @router.post("/workspace/{workspace_id}/refresh", response_model=Dict[str, Any])
 async def refresh_workspace_assets(workspace_id: UUID):

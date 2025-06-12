@@ -120,28 +120,33 @@ class AIQualityGates:
     ) -> Tuple[bool, List[str]]:
         """
         Validate if a task completion contributes adequately to workspace goals
+        
+        NOTE: Individual tasks should not be expected to achieve full workspace goals.
+        This method now focuses on task-level quality validation instead.
         """
         try:
-            # Extract what this task should contribute
-            task_requirements = await self._extract_task_expected_contribution(task, workspace_goal)
+            # For now, all tasks are considered adequate at the individual level
+            # Goal validation should only happen at the workspace level with all completed tasks
             
-            # Validate actual contribution
-            validations = await goal_validator.validate_workspace_goal_achievement(
-                workspace_goal, [task], task.get('workspace_id', '')
-            )
-            
-            # Check if task meets its expected contribution
+            # Simple quality checks for individual tasks
             issues = []
             is_adequate = True
             
-            for validation in validations:
-                if validation.severity in [ValidationSeverity.CRITICAL, ValidationSeverity.HIGH]:
-                    if validation.gap_percentage > 50:  # More than 50% gap
-                        is_adequate = False
-                        issues.append(
-                            f"Task '{task.get('name')}' achieved only {validation.actual_achievement} "
-                            f"vs expected {validation.target_requirement} ({validation.gap_percentage:.1f}% gap)"
-                        )
+            # Check if task has basic completion indicators
+            result = task.get('result', {})
+            if not result or not result.get('summary'):
+                is_adequate = False
+                issues.append(f"Task '{task.get('name')}' has no meaningful output summary")
+            
+            # Check if task failed
+            if task.get('status') == 'failed':
+                is_adequate = False
+                issues.append(f"Task '{task.get('name')}' marked as failed")
+            
+            # Check for basic deliverable content
+            if len(result.get('summary', '')) < 50:
+                logger.debug(f"Task '{task.get('name')}' has minimal output - may need review")
+                # Don't mark as inadequate for short summaries, just log for monitoring
             
             return is_adequate, issues
             

@@ -66,17 +66,26 @@ class SmartDeliverableEvaluator:
         # Pattern per rilevare contenuto teorico/placeholder
         self.theoretical_patterns = [
             r"potrebbe essere",
-            r"dovresti considerare",
+            r"dovresti considerare", 
+            r"potresti valutare",
+            r"potrebbe includere",
             r"è importante",
             r"strategia generale",
             r"approccio consigliato",
+            r"marketing generale",
+            r"vari canali",
+            r"pubblico target",
             r"\[placeholder\]",
             r"\[inserire qui\]",
             r"esempio:",
             r"template:",
             r"generico",
             r"da definire",
-            r"da personalizzare"
+            r"da personalizzare",
+            r"should consider",
+            r"could include",
+            r"might want",
+            r"general strategy"
         ]
         
         # Pattern per contenuto concreto
@@ -231,16 +240,29 @@ class SmartDeliverableEvaluator:
             for pattern in self.concrete_patterns
         )
         
-        # Calcola score concretezza
-        total_patterns = theoretical_count + concrete_count
-        if total_patterns == 0:
-            concreteness = 0.5
+        # Calcola score concretezza con logica più severa
+        if theoretical_count > 0:
+            # Se ha pattern teorici, penalizza pesantemente
+            if theoretical_count >= 4:
+                concreteness = 0.05  # Molto teorico  
+            elif theoretical_count >= 3:
+                concreteness = 0.15  # Molto teorico
+            elif theoretical_count >= 2:
+                concreteness = 0.25  # Abbastanza teorico
+            else:
+                concreteness = 0.4   # Un po' teorico
+            
+            # Aggiusta leggermente se ha anche pattern concreti
+            if concrete_count > 0:
+                concreteness = min(0.5, concreteness + (concrete_count * 0.05))
         else:
-            concreteness = concrete_count / total_patterns
-        
-        # Penalizza fortemente contenuto teorico
-        if theoretical_count > 3:
-            concreteness *= 0.5
+            # Nessun pattern teorico, valuta sui concreti
+            if concrete_count > 3:
+                concreteness = 0.9
+            elif concrete_count > 0:
+                concreteness = 0.7
+            else:
+                concreteness = 0.5  # Neutro
         
         return {
             "concreteness": min(1.0, concreteness),

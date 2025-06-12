@@ -13,7 +13,9 @@ from collections import defaultdict
 from models import Task, TaskStatus, ProjectPhase, PHASE_SEQUENCE, PHASE_DESCRIPTIONS
 from database import (
     create_task, list_agents, list_tasks, get_workspace, get_task,
-    update_workspace_status, get_agent, update_task_status
+    update_workspace_status, get_agent, update_task_status,
+    # 🎯 Goal-driven database functions
+    update_goal_progress, get_workspace_goals
 )
 
 logger = logging.getLogger(__name__)
@@ -403,6 +405,243 @@ class EnhancedTaskExecutor:
             "quality" in task_name and "enhancement" in task_name
         )
 
+    async def _handle_goal_progress_update(
+        self, 
+        completed_task: Task, 
+        task_result: Dict[str, Any], 
+        workspace_id: str
+    ) -> None:
+        """
+        🎯 GOAL-DRIVEN: Handle automatic goal progress update when goal-driven tasks complete
+        
+        This is called FIRST when any task completes to update goal progress
+        if the task contributes to a workspace goal.
+        """
+        try:
+            # Check if this is a goal-driven task
+            goal_id = getattr(completed_task, 'goal_id', None)
+            metric_type = getattr(completed_task, 'metric_type', None)
+            contribution_expected = getattr(completed_task, 'contribution_expected', None)
+            
+            # Also check context_data for goal information
+            context_data = getattr(completed_task, 'context_data', {}) or {}
+            if isinstance(context_data, dict):
+                goal_id = goal_id or context_data.get('goal_id')
+                metric_type = metric_type or context_data.get('metric_type')
+                contribution_expected = contribution_expected or context_data.get('contribution_expected')
+            
+            if not goal_id:
+                # Not a goal-driven task, skip
+                logger.debug(f"Task {completed_task.id} is not goal-driven, skipping goal progress update")
+                return
+            
+            # Determine actual contribution from task result
+            actual_contribution = self._calculate_actual_contribution(
+                completed_task, task_result, metric_type, contribution_expected
+            )
+            
+            if actual_contribution <= 0:
+                logger.warning(f"Goal-driven task {completed_task.id} completed but no measurable contribution detected")
+                return
+            
+            # Update goal progress
+            updated_goal = await update_goal_progress(
+                goal_id=str(goal_id),
+                increment=actual_contribution,
+                task_id=str(completed_task.id)
+            )
+            
+            if updated_goal:
+                completion_pct = (updated_goal['current_value'] / updated_goal['target_value'] * 100) if updated_goal['target_value'] > 0 else 0
+                
+                logger.info(
+                    f"🎯 GOAL UPDATE: Task {completed_task.id} contributed {actual_contribution} to "
+                    f"goal {metric_type} ({updated_goal['current_value']}/{updated_goal['target_value']} - {completion_pct:.1f}%)"
+                )
+                
+                # Log goal achievement if completed
+                if updated_goal.get('status') == 'completed':
+                    logger.info(f"🎯 GOAL ACHIEVED: {metric_type} goal completed with task {completed_task.id}!")
+                    
+                    # Store achievement insight in workspace memory
+                    try:
+                        from workspace_memory import workspace_memory
+                        from models import InsightType
+                        from uuid import UUID
+                        
+                        await workspace_memory.store_insight(
+                            workspace_id=UUID(workspace_id),
+                            task_id=completed_task.id,
+                            agent_role="goal_tracker",
+                            insight_type=InsightType.SUCCESS_PATTERN,
+                            content=f"Goal {metric_type} achieved: {updated_goal['current_value']} {updated_goal.get('unit', 'units')} completed",
+                            relevance_tags=[f"goal_{goal_id}", f"metric_{metric_type}", "goal_achievement"],
+                            confidence_score=1.0
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to store goal achievement insight: {e}")
+            else:
+                logger.error(f"Failed to update goal progress for task {completed_task.id}")
+                
+        except Exception as e:
+            logger.error(f"Error handling goal progress update for task {completed_task.id}: {e}", exc_info=True)
+
+    def _calculate_actual_contribution(
+        self, 
+        completed_task: Task, 
+        task_result: Dict[str, Any], 
+        metric_type: Optional[str], 
+        expected_contribution: Optional[float]
+    ) -> float:
+        """
+        Calculate actual contribution from task result based on metric type
+        
+        This analyzes the task result to determine how much the task actually
+        contributed to the goal (which may differ from expected_contribution).
+        """
+        try:
+            if not metric_type:
+                return expected_contribution or 0
+            
+            # For contacts metric: count actual contacts found
+            if metric_type == "contacts":
+                contacts_found = self._count_contacts_in_result(task_result)
+                if contacts_found > 0:
+                    logger.info(f"Task {completed_task.id} found {contacts_found} contacts")
+                    return contacts_found
+            
+            # For email_sequences metric: count sequences created
+            elif metric_type == "email_sequences":
+                sequences_found = self._count_email_sequences_in_result(task_result)
+                if sequences_found > 0:
+                    logger.info(f"Task {completed_task.id} created {sequences_found} email sequences")
+                    return sequences_found
+            
+            # For content metric: count content pieces
+            elif metric_type == "content":
+                content_pieces = self._count_content_pieces_in_result(task_result)
+                if content_pieces > 0:
+                    logger.info(f"Task {completed_task.id} created {content_pieces} content pieces")
+                    return content_pieces
+            
+            # For campaigns metric: count campaigns
+            elif metric_type == "campaigns":
+                campaigns_found = self._count_campaigns_in_result(task_result)
+                if campaigns_found > 0:
+                    logger.info(f"Task {completed_task.id} created {campaigns_found} campaigns")
+                    return campaigns_found
+            
+            # Default: use expected contribution if no specific analysis possible
+            logger.debug(f"Using expected contribution {expected_contribution} for metric {metric_type}")
+            return expected_contribution or 0
+            
+        except Exception as e:
+            logger.error(f"Error calculating actual contribution: {e}")
+            return expected_contribution or 0
+
+    def _count_contacts_in_result(self, task_result: Dict[str, Any]) -> int:
+        """Count actual contacts in task result"""
+        try:
+            # Look in actionable_assets for contacts
+            actionable_assets = task_result.get('actionable_assets', {})
+            if isinstance(actionable_assets, dict):
+                for asset_name, asset_data in actionable_assets.items():
+                    if 'contact' in asset_name.lower():
+                        if isinstance(asset_data, dict) and 'data' in asset_data:
+                            data = asset_data['data']
+                            if isinstance(data, dict) and 'contacts' in data:
+                                contacts = data['contacts']
+                                if isinstance(contacts, list):
+                                    # Count contacts with email addresses
+                                    valid_contacts = 0
+                                    for contact in contacts:
+                                        if isinstance(contact, dict) and contact.get('email'):
+                                            valid_contacts += 1
+                                    return valid_contacts
+            
+            # Look in detailed_results_json
+            detailed_json = task_result.get('detailed_results_json', '')
+            if detailed_json:
+                try:
+                    data = json.loads(detailed_json)
+                    if isinstance(data, dict) and 'contacts' in data:
+                        contacts = data['contacts']
+                        if isinstance(contacts, list):
+                            return len([c for c in contacts if isinstance(c, dict) and c.get('email')])
+                except json.JSONDecodeError:
+                    pass
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Error counting contacts: {e}")
+            return 0
+
+    def _count_email_sequences_in_result(self, task_result: Dict[str, Any]) -> int:
+        """Count email sequences in task result"""
+        try:
+            # Look for email sequences in actionable_assets
+            actionable_assets = task_result.get('actionable_assets', {})
+            if isinstance(actionable_assets, dict):
+                sequence_count = 0
+                for asset_name, asset_data in actionable_assets.items():
+                    if 'email' in asset_name.lower() and 'sequence' in asset_name.lower():
+                        sequence_count += 1
+                
+                if sequence_count > 0:
+                    return sequence_count
+            
+            # Look in detailed results for sequences
+            detailed_json = task_result.get('detailed_results_json', '')
+            if detailed_json:
+                try:
+                    data = json.loads(detailed_json)
+                    if isinstance(data, dict):
+                        if 'email_sequences' in data:
+                            sequences = data['email_sequences']
+                            if isinstance(sequences, list):
+                                return len(sequences)
+                        elif 'sequences' in data:
+                            sequences = data['sequences']
+                            if isinstance(sequences, list):
+                                return len(sequences)
+                except json.JSONDecodeError:
+                    pass
+            
+            return 0
+        except Exception as e:
+            logger.error(f"Error counting email sequences: {e}")
+            return 0
+
+    def _count_content_pieces_in_result(self, task_result: Dict[str, Any]) -> int:
+        """Count content pieces in task result"""
+        try:
+            actionable_assets = task_result.get('actionable_assets', {})
+            if isinstance(actionable_assets, dict):
+                content_count = 0
+                for asset_name in actionable_assets.keys():
+                    if 'content' in asset_name.lower() or 'blog' in asset_name.lower() or 'article' in asset_name.lower():
+                        content_count += 1
+                return content_count
+            return 0
+        except Exception as e:
+            logger.error(f"Error counting content pieces: {e}")
+            return 0
+
+    def _count_campaigns_in_result(self, task_result: Dict[str, Any]) -> int:
+        """Count campaigns in task result"""
+        try:
+            actionable_assets = task_result.get('actionable_assets', {})
+            if isinstance(actionable_assets, dict):
+                campaign_count = 0
+                for asset_name in actionable_assets.keys():
+                    if 'campaign' in asset_name.lower():
+                        campaign_count += 1
+                return campaign_count
+            return 0
+        except Exception as e:
+            logger.error(f"Error counting campaigns: {e}")
+            return 0
+
     async def handle_task_completion(
         self,
         completed_task: Task,
@@ -419,6 +658,9 @@ class EnhancedTaskExecutor:
             self.analyzed_tasks.add(task_id_str)
 
         try:
+            # 🎯 GOAL-DRIVEN: Handle goal progress update first
+            await self._handle_goal_progress_update(completed_task, task_result, workspace_id)
+            
             # Determine task type
             is_pm_task = await self._is_project_manager_task(completed_task, task_result)
 

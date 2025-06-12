@@ -1773,12 +1773,26 @@ class SpecialistAgent(Generic[T]):
                 project_memory_context = ""
                 try:
                     from workspace_memory import workspace_memory
-                    memory_context = await workspace_memory.get_relevant_context(task.workspace_id, task)
+                    # Convert Task object to dict for memory system compatibility
+                    task_dict = {
+                        "id": str(task.id),
+                        "name": task.name,
+                        "description": task.description,
+                        "priority": task.priority,
+                        "status": task.status,
+                        "phase": getattr(task, 'phase', 'unknown'),
+                        "goal_id": getattr(task, 'goal_id', None),
+                        "metric_type": getattr(task, 'metric_type', None),
+                        "type": getattr(task, 'type', 'standard')
+                    }
+                    memory_context = await workspace_memory.get_relevant_context(task.workspace_id, task_dict)
                     if memory_context.strip():
                         project_memory_context = f"\n{memory_context}\n"
                         logger.info(f"🧠 Added memory context for task {task.id} ({len(memory_context)} chars)")
                 except Exception as e:
-                    logger.warning(f"Failed to get workspace memory context for task {task.id}: {e}")
+                    logger.error(f"Error getting relevant context: {e}")
+                    # Fallback: continue without memory context
+                    project_memory_context = ""
 
                 task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}{project_memory_context}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
 
@@ -2399,6 +2413,7 @@ class SpecialistAgent(Generic[T]):
                 
                 if SDK_AVAILABLE:
                     insight_agent = OpenAIAgent(
+                        name="InsightExtractor",
                         instructions="You are an expert at extracting actionable insights from task executions. Be concise and focus on meaningful learnings.",
                         model_settings=insight_model_settings
                     )
@@ -2409,9 +2424,28 @@ class SpecialistAgent(Generic[T]):
                         max_turns=1
                     )
                     
-                    # Parse the result
-                    insight_data = json.loads(insight_result.final_output)
-                    insights = insight_data.get("insights", [])
+                    # Parse the result with robust JSON handling
+                    insights = []
+                    try:
+                        if insight_result.final_output and insight_result.final_output.strip():
+                            # Use the robust JSON parser
+                            from utils.robust_json_parser import parse_llm_json_robust
+                            
+                            parsed_data, is_complete, method = parse_llm_json_robust(
+                                insight_result.final_output, 
+                                task_id=str(task.id),
+                                expected_schema={"insights": "array"}
+                            )
+                            
+                            insights = parsed_data.get("insights", [])
+                            
+                            if not insights and is_complete:
+                                logger.debug(f"Valid JSON but no insights extracted from LLM output (method: {method})")
+                            elif not is_complete:
+                                logger.debug(f"Incomplete JSON parsed using {method}, extracted {len(insights)} insights")
+                    except Exception as parse_error:
+                        logger.debug(f"Robust JSON parser failed for insight extraction: {parse_error}")
+                        insights = []
                     
                     # Store each insight
                     from workspace_memory import workspace_memory
@@ -2434,11 +2468,17 @@ class SpecialistAgent(Generic[T]):
                             except Exception as store_error:
                                 logger.warning(f"Failed to store insight: {store_error}")
                     
+                    # If no insights were extracted, try fallback extraction
+                    if not insights:
+                        logger.debug("No valid insights extracted from LLM, trying fallback extraction")
+                        await self._extract_insights_fallback(task, execution_result)
+                        
                 else:
-                    logger.debug("SDK not available, skipping automatic insight extraction")
+                    logger.debug("SDK not available, using fallback insight extraction")
+                    await self._extract_insights_fallback(task, execution_result)
                     
             except Exception as llm_error:
-                logger.warning(f"LLM insight extraction failed: {llm_error}")
+                logger.debug(f"LLM insight extraction failed: {llm_error}")
                 
                 # FALLBACK: Simple pattern-based insight extraction
                 await self._extract_insights_fallback(task, execution_result)
@@ -2487,16 +2527,19 @@ class SpecialistAgent(Generic[T]):
             
             # Store fallback insights
             for insight in insights:
-                await workspace_memory.store_insight(
-                    workspace_id=task.workspace_id,
-                    task_id=task.id,
-                    agent_role=self.agent_data.role,
-                    insight_type=insight["type"],
-                    content=insight["content"],
-                    relevance_tags=insight["tags"],
-                    confidence_score=insight["confidence"]
-                )
-                logger.info(f"🧠 Stored fallback insight: {insight['content'][:50]}...")
+                try:
+                    await workspace_memory.store_insight(
+                        workspace_id=task.workspace_id,
+                        task_id=task.id,
+                        agent_role=self.agent_data.role,
+                        insight_type=insight["type"],
+                        content=insight["content"],
+                        relevance_tags=insight["tags"],
+                        confidence_score=insight["confidence"]
+                    )
+                    logger.debug(f"🧠 Stored fallback insight: {insight['content'][:50]}...")
+                except Exception as store_error:
+                    logger.debug(f"Failed to store fallback insight: {store_error}")
                 
         except Exception as e:
-            logger.error(f"Error in fallback insight extraction: {e}")
+            logger.debug(f"Error in fallback insight extraction: {e}")

@@ -33,6 +33,7 @@ from routes.ai_content_processor import router as ai_content_router
 from routes.utils import router as utils_router
 from routes.unified_assets import router as unified_assets_router
 from routes.goal_validation import router as goal_validation_router
+from routes.workspace_goals import router as workspace_goals_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -74,6 +75,7 @@ app.include_router(unified_assets_router)
 app.include_router(ai_content_router)
 app.include_router(utils_router)
 app.include_router(goal_validation_router)
+app.include_router(workspace_goals_router)
 
 # Health check endpoint
 @app.get("/health")
@@ -94,14 +96,37 @@ async def startup_event():
     logger.info("Initializing tool registry...")
     await tool_registry.initialize()
     
-    # Start task executor
-    logger.info("Starting task executor...")
-    await start_task_executor()
+    # Start task executor (only if not disabled)
+    if os.getenv("DISABLE_TASK_EXECUTOR", "false").lower() != "true":
+        logger.info("Starting task executor...")
+        await start_task_executor()
+    else:
+        logger.info("⚠️ Task executor disabled via environment variable")
     
-    # Initialize human feedback manager
+    # Initialize human feedback manager (lightweight)
     logger.info("Initializing human feedback manager...")
-    from human_feedback_manager import initialize_human_feedback_manager
-    await initialize_human_feedback_manager()
+    try:
+        from human_feedback_manager import initialize_human_feedback_manager
+        await initialize_human_feedback_manager()
+    except Exception as e:
+        logger.warning(f"Human feedback manager initialization failed: {e}")
+    
+    # 🎯 Start goal-driven automated monitoring (only if enabled)
+    enable_goal_system = os.getenv("ENABLE_GOAL_DRIVEN_SYSTEM", "true").lower()
+    logger.info(f"🔍 Goal system env check: ENABLE_GOAL_DRIVEN_SYSTEM='{os.getenv('ENABLE_GOAL_DRIVEN_SYSTEM')}', processed='{enable_goal_system}', check={enable_goal_system == 'true'}")
+    
+    if enable_goal_system == "true":
+        logger.info("🎯 Starting goal-driven automated monitoring...")
+        try:
+            import asyncio
+            from automated_goal_monitor import automated_goal_monitor
+            # Start monitoring as background task (non-blocking)
+            asyncio.create_task(automated_goal_monitor.start_monitoring())
+            logger.info("✅ Goal-driven automated monitoring started successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to start goal monitoring: {e}")
+    else:
+        logger.info("⚠️ Goal-driven system disabled via environment variable")
     
     logger.info("Application startup complete")
 
@@ -113,6 +138,16 @@ async def shutdown_event():
     # Stop task executor
     logger.info("Stopping task executor...")
     await stop_task_executor()
+    
+    # 🎯 Stop goal-driven automated monitoring
+    if os.getenv("ENABLE_GOAL_DRIVEN_SYSTEM", "true").lower() == "true":
+        logger.info("🎯 Stopping goal-driven automated monitoring...")
+        try:
+            from automated_goal_monitor import automated_goal_monitor
+            automated_goal_monitor.stop_monitoring()  # This is synchronous
+            logger.info("✅ Goal-driven automated monitoring stopped successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to stop goal monitoring: {e}")
     
     logger.info("Application shutdown complete")
 

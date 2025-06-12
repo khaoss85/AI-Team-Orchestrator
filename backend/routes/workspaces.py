@@ -17,11 +17,17 @@ from database import (
     list_workspaces,
     delete_workspace,
     update_workspace,
-    update_workspace_status
+    update_workspace_status,
+    _auto_create_workspace_goals
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
+
+@router.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    """Simple health check endpoint"""
+    return {"status": "healthy", "service": "workspaces"}
 
 @router.post("/", response_model=Workspace, status_code=status.HTTP_201_CREATED)
 async def create_new_workspace(workspace: WorkspaceCreate):
@@ -53,8 +59,17 @@ async def get_workspace_by_id(workspace_id: UUID):
 
 @router.get("/user/{user_id}", response_model=List[Workspace])
 async def get_user_workspaces(user_id: UUID):
-    workspaces = await list_workspaces(str(user_id))
-    return workspaces
+    try:
+        logger.info(f"Fetching workspaces for user: {user_id}")
+        workspaces = await list_workspaces(str(user_id))
+        logger.info(f"Successfully fetched {len(workspaces) if workspaces else 0} workspaces for user {user_id}")
+        return workspaces or []
+    except Exception as e:
+        logger.error(f"Error fetching workspaces for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch workspaces: {str(e)}"
+        )
 
 @router.delete("/{workspace_id}", status_code=status.HTTP_200_OK)
 async def delete_workspace_by_id(workspace_id: UUID):
@@ -386,3 +401,39 @@ async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, A
     except Exception as e:
         logger.error(f"Error requesting changes: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to request changes: {str(e)}")
+
+@router.post("/{workspace_id}/create-goals", status_code=status.HTTP_200_OK)
+async def create_workspace_goals(workspace_id: UUID):
+    """
+    🎯 Create workspace goals from workspace goal text
+    
+    This endpoint retroactively creates workspace_goals records from the 
+    workspace's goal text for workspaces that don't have numerical goals yet.
+    """
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+        
+        goal_text = workspace.get("goal")
+        if not goal_text:
+            return {"success": False, "message": "Workspace has no goal text"}
+        
+        # Create workspace goals from goal text
+        created_goals = await _auto_create_workspace_goals(str(workspace_id), goal_text)
+        
+        return {
+            "success": True,
+            "message": f"Created {len(created_goals)} workspace goals",
+            "goals_created": len(created_goals),
+            "goals": created_goals
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating workspace goals: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Failed to create workspace goals: {str(e)}"
+        )

@@ -36,41 +36,113 @@ class AIGoalValidator:
     """
     
     def __init__(self):
-        # AI-powered patterns for extracting numerical requirements
+        # Add caching to avoid re-parsing the same workspace goals
+        self._goal_requirements_cache = {}
+        self._cache_max_size = 50
+        # 🤖 AI-DRIVEN UNIVERSAL PATTERNS - Scalable across all domains
         self.numerical_patterns = [
-            # Quantity patterns
-            r'(\d+)\s*(contatti?|contacts?|leads?)',
-            r'(\d+)\s*(email|sequenc|campaigns?)',
-            r'(\d+)\s*(customers?|clients?|users?)',
-            r'(\d+)\s*(sales?|deals?|opportunities)',
-            r'(\d+)\s*(workouts?|exercises?|sessions?)',
-            r'(\d+)\s*(accounts?|portfolios?|investments?)',
-            r'(\d+)\s*(products?|items?|assets?)',
+            # 🎯 UNIVERSAL QUANTITY PATTERNS - Any number + noun
+            r'(\d+)\s+([a-zA-ZÀ-ÿ]+(?:\s+[a-zA-ZÀ-ÿ]+){0,3})',  # 1-4 words after number
+            r'almeno\s+(\d+)\s+([a-zA-ZÀ-ÿ]+(?:\s+[a-zA-ZÀ-ÿ]+){0,2})',  # "at least N items"
+            r'(\d+)\s+([a-zA-ZÀ-ÿ]+)\s+di\s+([a-zA-ZÀ-ÿ]+)',  # "N items di categoria"
+            r'(\d+)\s+([a-zA-ZÀ-ÿ]+)\s+per\s+([a-zA-ZÀ-ÿ]+)',  # "N items per category"
+            r'fino\s+a\s+(\d+)\s+([a-zA-ZÀ-ÿ]+)',  # "up to N items"
+            r'minimo\s+(\d+)\s+([a-zA-ZÀ-ÿ]+)',  # "minimum N items"
+            r'massimo\s+(\d+)\s+([a-zA-ZÀ-ÿ]+)',  # "maximum N items"
             
-            # Percentage patterns
-            r'(\d+(?:\.\d+)?)\s*%\s*(open[- ]?rate|engagement|conversion|accuracy)',
-            r'(\d+(?:\.\d+)?)\s*%\s*(click[- ]?rate|CTR|response)',
-            r'(\d+(?:\.\d+)?)\s*%\s*(success|completion|achievement)',
-            r'(\d+(?:\.\d+)?)\s*%\s*(growth|increase|improvement)',
+            # 🎯 PERCENTAGE PATTERNS - Universal for any metric
+            r'(\d+(?:\.\d+)?)\s*%\s*([a-zA-ZÀ-ÿ\-]+(?:\s+[a-zA-ZÀ-ÿ\-]+){0,2})?',  # Any percentage with optional context
+            r'≥\s*(\d+(?:\.\d+)?)\s*%',  # Greater-than-equal percentages
+            r'>\s*(\d+(?:\.\d+)?)\s*%',   # Greater-than percentages  
+            r'almeno\s+(\d+(?:\.\d+)?)\s*%',  # "at least X%"
+            r'minimo\s+(\d+(?:\.\d+)?)\s*%',  # "minimum X%"
+            r'target\s+(\d+(?:\.\d+)?)\s*%',  # "target X%"
+            r'obiettivo\s+(\d+(?:\.\d+)?)\s*%',  # "obiettivo X%"
             
-            # Financial patterns
-            r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(EUR|USD|GBP|\$|€|£)',
-            r'(\d+(?:\.\d+)?)\s*([KkMm])\s*(EUR|USD|GBP|\$|€|£)',
+            # 🎯 FINANCIAL PATTERNS - Universal currency support
+            r'(\d+(?:[\.,]\d{3})*(?:[\.,]\d{1,2})?)\s*(EUR|USD|GBP|CHF|JPY|\$|€|£|¥)',
+            r'(\d+(?:\.\d+)?)\s*([KkMmBb])\s*(EUR|USD|GBP|CHF|\$|€|£)',  # 1K, 1M, 1B
+            r'budget.*?(\d+(?:[\.,]\d{3})*)\s*(EUR|USD|\$|€)',  # Budget context
+            r'costo.*?(\d+(?:[\.,]\d{3})*)\s*(EUR|USD|\$|€)',   # Cost context
             
-            # Time patterns
-            r'(\d+)\s*(settiman|weeks?|giorni|days?|mesi|months?)',
-            r'entro\s+(\d+)\s*(settiman|weeks?|giorni|days?)',
-            r'in\s+(\d+)\s*(settiman|weeks?|giorni|days?)',
+            # 🎯 TIME PATTERNS - Universal temporal goals
+            r'(\d+)\s*(settiman[ei]?|weeks?|giorni|days?|mesi|months?|anni|years?|ore|hours?|minuti|minutes?)',
+            r'entro\s+(\d+)\s*(settiman[ei]?|weeks?|giorni|days?|mesi|months?)',
+            r'in\s+(\d+)\s*(settiman[ei]?|weeks?|giorni|days?|mesi|months?)',
+            r'ogni\s+(\d+)\s*(settiman[ei]?|weeks?|giorni|days?|mesi|months?)',  # "every N days"
+            r'per\s+(\d+)\s*(settiman[ei]?|weeks?|giorni|days?|mesi|months?)',   # "for N days"
+            
+            # 🎯 RATIO & MEASUREMENT PATTERNS
+            r'(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)',  # Ratios like 3:1
+            r'(\d+(?:\.\d+)?)\s*(volte|times|x)',      # Multipliers  
+            r'(\d+(?:\.\d+)?)\s*(punti|points|scores?|rating)',  # Scores/ratings
+            r'(\d+(?:\.\d+)?)\s*(kg|lb|g|metri|meters?|km|miles?)',  # Physical measurements
         ]
         
-        # Domain-specific keywords for context understanding
-        self.domain_keywords = {
-            'marketing': ['contatti', 'contacts', 'leads', 'email', 'campaign', 'open-rate', 'click-rate', 'engagement'],
-            'finance': ['EUR', 'USD', 'revenue', 'profit', 'budget', 'cost', 'ROI', 'investment'],
-            'sports': ['workout', 'exercise', 'training', 'session', 'performance', 'fitness'],
-            'sales': ['deals', 'opportunities', 'pipeline', 'conversion', 'customers', 'clients'],
-            'operations': ['efficiency', 'productivity', 'automation', 'process', 'optimization'],
-            'content': ['posts', 'articles', 'content', 'publication', 'schedule', 'calendar']
+        # 🧠 AI-DRIVEN UNIVERSAL DOMAIN KEYWORDS - Completely scalable
+        self.universal_concept_patterns = {
+            # 🎯 CREATION/PRODUCTION CONCEPTS
+            'creation': {
+                'keywords': ['creare', 'generare', 'produrre', 'sviluppare', 'costruire', 'fare', 'realizzare', 
+                           'create', 'generate', 'produce', 'develop', 'build', 'make', 'craft'],
+                'metric_types': ['deliverables', 'content_pieces', 'products', 'items']
+            },
+            
+            # 🎯 COLLECTION/GATHERING CONCEPTS  
+            'collection': {
+                'keywords': ['raccogliere', 'trovare', 'identificare', 'selezionare', 'acquisire',
+                           'collect', 'gather', 'find', 'identify', 'acquire', 'source'],
+                'metric_types': ['contacts', 'leads', 'data_points', 'resources']
+            },
+            
+            # 🎯 PERFORMANCE/QUALITY CONCEPTS
+            'performance': {
+                'keywords': ['performance', 'qualità', 'efficienza', 'accuratezza', 'successo', 'rate',
+                           'quality', 'efficiency', 'accuracy', 'success', 'score', 'rating'],
+                'metric_types': ['conversion_rate', 'quality_score', 'performance_metrics']
+            },
+            
+            # 🎯 COMMUNICATION/OUTREACH CONCEPTS
+            'communication': {
+                'keywords': ['email', 'messaggio', 'comunicazione', 'sequenza', 'campagna', 'outreach',
+                           'message', 'communication', 'sequence', 'campaign', 'newsletter'],
+                'metric_types': ['email_sequences', 'campaigns', 'communications']
+            },
+            
+            # 🎯 FINANCIAL/BUSINESS CONCEPTS
+            'financial': {
+                'keywords': ['budget', 'costo', 'prezzo', 'revenue', 'profitto', 'investimento', 'ROI',
+                           'cost', 'price', 'profit', 'investment', 'return', 'value'],
+                'metric_types': ['revenue', 'costs', 'budget', 'roi']
+            },
+            
+            # 🎯 TIME/TEMPORAL CONCEPTS
+            'temporal': {
+                'keywords': ['tempo', 'deadline', 'scadenza', 'durata', 'periodo', 'fase',
+                           'time', 'duration', 'period', 'phase', 'timeline', 'schedule'],
+                'metric_types': ['timeline_days', 'deadlines', 'milestones']
+            },
+            
+            # 🎯 HEALTH/FITNESS CONCEPTS
+            'health': {
+                'keywords': ['esercizio', 'workout', 'allenamento', 'fitness', 'salute', 'peso',
+                           'exercise', 'training', 'health', 'weight', 'nutrition', 'calories'],
+                'metric_types': ['workouts', 'exercises', 'health_metrics']
+            },
+            
+            # 🎯 TECHNOLOGY/DEVELOPMENT CONCEPTS
+            'technology': {
+                'keywords': ['app', 'software', 'API', 'feature', 'bug', 'deployment', 'codice',
+                           'application', 'system', 'platform', 'integration', 'code', 'development'],
+                'metric_types': ['features', 'deployments', 'integrations', 'apis']
+            },
+            
+            # 🎯 EDUCATION/LEARNING CONCEPTS
+            'education': {
+                'keywords': ['corso', 'lezione', 'tutorial', 'training', 'apprendimento', 'skill',
+                           'course', 'lesson', 'learning', 'knowledge', 'competency', 'certification'],
+                'metric_types': ['courses', 'lessons', 'certifications', 'skills']
+            }
         }
     
     async def validate_workspace_goal_achievement(
@@ -112,6 +184,12 @@ class AIGoalValidator:
         """
         AI-powered extraction of measurable requirements from workspace goal
         """
+        # Check cache first
+        cache_key = hash(workspace_goal)
+        if cache_key in self._goal_requirements_cache:
+            logger.debug("Using cached goal requirements")
+            return self._goal_requirements_cache[cache_key]
+        
         requirements = []
         goal_lower = workspace_goal.lower()
         
@@ -152,6 +230,15 @@ class AIGoalValidator:
         # AI enhancement: detect implicit requirements
         implicit_requirements = await self._detect_implicit_requirements(workspace_goal)
         requirements.extend(implicit_requirements)
+        
+        # Cache the result
+        self._goal_requirements_cache[cache_key] = requirements
+        
+        # Clean cache if it gets too large
+        if len(self._goal_requirements_cache) > self._cache_max_size:
+            # Remove oldest entry (simple cleanup)
+            oldest_key = next(iter(self._goal_requirements_cache))
+            del self._goal_requirements_cache[oldest_key]
         
         logger.info(f"🎯 Extracted {len(requirements)} goal requirements from workspace goal")
         return requirements
@@ -356,39 +443,99 @@ class AIGoalValidator:
     
     def _classify_requirement_type(self, unit_context: str, full_goal: str) -> str:
         """
-        AI-powered classification of requirement type
+        🧠 AI-DRIVEN UNIVERSAL CLASSIFICATION - Scalable across all domains
+        
+        Uses concept-based pattern matching to classify any requirement type
+        regardless of domain (marketing, fitness, tech, finance, etc.)
         """
         unit_lower = unit_context.lower()
+        goal_lower = full_goal.lower()
+        combined_text = f"{unit_lower} {goal_lower}"
         
-        if any(word in unit_lower for word in ['contatti', 'contacts', 'leads']):
-            return 'contacts'
-        elif any(word in unit_lower for word in ['email', 'sequenc', 'campaign']):
-            return 'email_sequences'
-        elif any(word in unit_lower for word in ['content', 'posts', 'articles']):
-            return 'content'
-        elif any(word in unit_lower for word in ['open', 'click', 'conversion', 'engagement']):
-            return 'percentage'
-        elif any(word in unit_lower for word in ['eur', 'usd', 'gbp', '$', '€', '£']):
+        # 🎯 STEP 1: Direct financial/percentage/temporal detection
+        if any(curr in unit_lower for curr in ['eur', 'usd', 'gbp', '$', '€', '£', '¥']):
             return 'financial'
-        elif any(word in unit_lower for word in ['workout', 'exercise', 'session']):
-            return 'fitness'
+        elif '%' in unit_lower or any(word in combined_text for word in ['percentuale', 'percentage', 'rate', 'ratio']):
+            return 'percentage'
+        elif any(time_word in unit_lower for time_word in ['settimana', 'week', 'giorno', 'day', 'mese', 'month', 'anno', 'year', 'ora', 'hour']):
+            return 'temporal'
+        
+        # 🎯 STEP 2: AI-driven concept-based classification
+        concept_scores = {}
+        
+        for concept_name, concept_data in self.universal_concept_patterns.items():
+            score = 0
+            keywords = concept_data['keywords']
+            
+            # Score based on keyword matches in context and goal
+            for keyword in keywords:
+                if keyword in combined_text:
+                    score += 2  # Higher weight for exact matches
+                elif any(keyword in word for word in combined_text.split()):
+                    score += 1  # Partial matches
+            
+            # Boost score if unit context contains concept-related words
+            for keyword in keywords:
+                if keyword in unit_lower:
+                    score += 3  # Even higher weight for unit context matches
+            
+            if score > 0:
+                concept_scores[concept_name] = score
+        
+        # 🎯 STEP 3: Select best matching concept
+        if concept_scores:
+            best_concept = max(concept_scores, key=concept_scores.get)
+            
+            # Map concept to specific type based on context
+            concept_data = self.universal_concept_patterns[best_concept]
+            metric_types = concept_data['metric_types']
+            
+            # Choose most appropriate metric type based on unit context
+            for metric_type in metric_types:
+                metric_keywords = metric_type.split('_')
+                if any(keyword in unit_lower for keyword in metric_keywords):
+                    return metric_type
+            
+            # Return first metric type if no specific match
+            return metric_types[0] if metric_types else best_concept
+        
+        # 🎯 STEP 4: Fallback intelligent classification based on unit structure
+        if len(unit_lower.split()) > 1:
+            # Multi-word units likely represent complex deliverables
+            return 'deliverables'
+        elif unit_lower.endswith(('i', 'e', 's')):
+            # Plural forms likely represent countable items
+            return 'items'
         else:
+            # Single word units default to general classification
             return 'general'
     
     def _detect_domain(self, workspace_goal: str) -> str:
         """
-        AI-powered domain detection
+        🧠 AI-DRIVEN UNIVERSAL DOMAIN DETECTION - Completely scalable
+        
+        Uses concept-based analysis to detect domain regardless of specific keywords
         """
         goal_lower = workspace_goal.lower()
         
-        domain_scores = {}
-        for domain, keywords in self.domain_keywords.items():
-            score = sum(1 for keyword in keywords if keyword in goal_lower)
+        concept_scores = {}
+        for concept_name, concept_data in self.universal_concept_patterns.items():
+            score = 0
+            keywords = concept_data['keywords']
+            
+            # Score based on keyword matches
+            for keyword in keywords:
+                if keyword in goal_lower:
+                    score += 2
+                elif any(keyword in word for word in goal_lower.split()):
+                    score += 1
+            
             if score > 0:
-                domain_scores[domain] = score
+                concept_scores[concept_name] = score
         
-        if domain_scores:
-            return max(domain_scores, key=domain_scores.get)
+        # Return the concept with highest score, or 'general' if no matches
+        if concept_scores:
+            return max(concept_scores, key=concept_scores.get)
         else:
             return 'general'
     
@@ -433,42 +580,46 @@ class AIGoalValidator:
         gap_percentage: float
     ) -> List[str]:
         """
-        AI-driven generation of actionable recommendations
+        🎯 STEP 3: Enhanced AI-driven generation of actionable recommendations
+        Now integrates with Goal-Driven Task Planner for immediate corrective action
         """
         recommendations = []
         req_type = requirement['type']
         
-        if gap_percentage > 50:  # Significant gap
+        if gap_percentage > 50:  # Significant gap - TRIGGER CORRECTIVE TASKS
             if req_type == 'contacts':
                 recommendations.extend([
-                    f"📈 IMMEDIATE ACTION: Current achievement is {actual}/{target} contacts ({gap_percentage:.1f}% gap)",
-                    "🔄 Create additional contact research tasks with specific numerical targets",
-                    "🎯 Implement iterative validation: task should not complete until target is reached",
-                    "🔍 Consider expanding research sources and methodologies",
-                    "📊 Add automated quality gates to prevent phase transitions with incomplete deliverables"
+                    f"🚨 CRITICAL GAP: Current achievement is {actual}/{target} contacts ({gap_percentage:.1f}% gap)",
+                    f"📋 AUTO-GENERATING CORRECTIVE TASK: 'Collect {target-actual} additional ICP contacts'",
+                    "🎯 Task will have numerical validation: cannot complete until target reached",
+                    "🔍 Will use memory insights from previous contact research failures",
+                    "📊 Implementing immediate quality gates and validation"
                 ])
             elif req_type == 'email_sequences':
                 recommendations.extend([
-                    f"📧 EMAIL DEFICIT: Created {actual}/{target} sequences ({gap_percentage:.1f}% gap)",
-                    "✨ Develop remaining email sequences before project completion",
-                    "🎨 Consider templates and automation to scale sequence creation",
-                    "📋 Implement sequence validation checklist"
+                    f"📧 CRITICAL EMAIL DEFICIT: Created {actual}/{target} sequences ({gap_percentage:.1f}% gap)",
+                    f"📋 AUTO-GENERATING CORRECTIVE TASK: 'Create {target-actual} email sequences immediately'",
+                    "✨ Task will focus on complete, ready-to-deploy sequences",
+                    "📋 Numerical validation: must create exact number required"
                 ])
             else:
                 recommendations.extend([
-                    f"⚠️ TARGET SHORTFALL: {gap_percentage:.1f}% gap in {req_type}",
-                    "🔄 Review and iterate on current approach",
-                    "📈 Scale up resources or extend timeline to meet targets"
+                    f"⚠️ CRITICAL TARGET SHORTFALL: {gap_percentage:.1f}% gap in {req_type}",
+                    f"📋 AUTO-GENERATING CORRECTIVE TASK: Close {target-actual} {requirement.get('unit', 'units')} gap",
+                    "🔄 Task will use failure insights to avoid previous mistakes",
+                    "📈 Immediate action required - 24hr deadline"
                 ])
-        elif gap_percentage > 20:  # Moderate gap
+        elif gap_percentage > 20:  # Moderate gap - SUGGEST OPTIMIZATION
             recommendations.extend([
-                f"📊 MINOR GAP: {gap_percentage:.1f}% shortfall, consider optimization",
-                "🔧 Fine-tune current processes to close remaining gap"
+                f"📊 MODERATE GAP: {gap_percentage:.1f}% shortfall, optimization needed",
+                f"📋 SUGGEST TASK: Optimize approach to close {target-actual} {requirement.get('unit', 'units')} gap",
+                "🔧 Fine-tune current processes with memory-guided improvements"
             ])
         else:  # Goal achieved or close
             recommendations.extend([
                 f"✅ TARGET ACHIEVED: {actual}/{target} {requirement['unit']} completed",
-                "🎯 Consider setting stretch goals for additional value"
+                "🎯 Consider setting stretch goals for additional value",
+                "📝 SUCCESS PATTERN: Document approach for future similar goals"
             ])
         
         return recommendations
@@ -510,6 +661,163 @@ class AIGoalValidator:
             gap = target - actual
             gap_pct = (gap / target * 100) if target > 0 else 0
             return f"⚠️ GOAL SHORTFALL: {actual}/{target} {unit} for {req_type} ({gap_pct:.1f}% gap, missing {gap})"
+    
+    async def trigger_corrective_actions(
+        self, 
+        validation_results: List[GoalValidationResult],
+        workspace_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        🎯 STEP 3: Memory-Driven Course Correction
+        
+        When critical gaps are detected, this method:
+        1. Stores failure insights in workspace memory
+        2. Calls Goal-Driven Task Planner to create corrective tasks
+        3. Creates immediate action plan
+        """
+        corrective_tasks = []
+        
+        # Filter critical validation failures
+        critical_failures = [
+            v for v in validation_results 
+            if v.severity in [ValidationSeverity.CRITICAL, ValidationSeverity.HIGH]
+        ]
+        
+        if not critical_failures:
+            logger.info(f"✅ No critical goal gaps found for workspace {workspace_id}")
+            return []
+        
+        logger.warning(f"🚨 Found {len(critical_failures)} critical goal gaps in workspace {workspace_id}")
+        
+        for failure in critical_failures:
+            try:
+                # 1. 🧠 STORE FAILURE LESSON IN MEMORY
+                await self._store_failure_insight(failure, workspace_id)
+                
+                # 2. 🎯 GENERATE CORRECTIVE TASK
+                corrective_task = await self._generate_corrective_task(failure, workspace_id)
+                
+                if corrective_task:
+                    corrective_tasks.append(corrective_task)
+                    
+                    # 3. 📊 LOG COURSE CORRECTION
+                    logger.warning(
+                        f"🔄 COURSE CORRECTION triggered for {failure.target_requirement}: "
+                        f"Gap {failure.gap_percentage:.1f}%, Created task: {corrective_task['name']}"
+                    )
+                
+            except Exception as e:
+                logger.error(f"Error creating corrective action for goal validation: {e}")
+        
+        return corrective_tasks
+    
+    async def _store_failure_insight(
+        self, 
+        failure: GoalValidationResult, 
+        workspace_id: str
+    ) -> None:
+        """Store failure lesson in workspace memory for future course correction"""
+        try:
+            from workspace_memory import workspace_memory
+            
+            insight_content = (
+                f"Goal gap detected: {failure.validation_message}. "
+                f"Gap: {failure.gap_percentage:.1f}%. "
+                f"Recommendations: {'; '.join(failure.recommendations[:2])}"
+            )
+            
+            # Store failure insight
+            await workspace_memory.store_insight(
+                workspace_id=workspace_id,
+                task_id=None,  # Not tied to specific task
+                agent_role="goal_validator",
+                insight_type="failure_lesson",
+                content=insight_content,
+                relevance_tags=[
+                    f"metric_{failure.extracted_metrics.get('type', 'unknown')}",
+                    f"gap_{int(failure.gap_percentage//10)*10}pct",  # 0-10%, 10-20%, etc.
+                    "course_correction",
+                    "critical_gap"
+                ],
+                confidence_score=failure.confidence
+            )
+            
+            logger.info(f"💾 Stored failure insight for workspace {workspace_id}: {insight_content[:100]}...")
+            
+        except Exception as e:
+            logger.error(f"Error storing failure insight: {e}")
+    
+    async def _generate_corrective_task(
+        self, 
+        failure: GoalValidationResult,
+        workspace_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Generate corrective task using Goal-Driven Task Planner"""
+        try:
+            from goal_driven_task_planner import goal_driven_task_planner
+            from uuid import UUID
+            
+            # Extract goal information from validation result
+            goal_id = failure.extracted_metrics.get('goal_id')
+            if not goal_id:
+                logger.warning("No goal_id in validation result, cannot create corrective task")
+                return None
+            
+            # Get memory context for corrective action
+            failure_context = await self._get_failure_context(workspace_id, failure)
+            
+            # Create corrective task with memory-driven insights
+            corrective_task = await goal_driven_task_planner.create_corrective_task(
+                goal_id=UUID(goal_id),
+                gap_percentage=failure.gap_percentage,
+                failure_context=failure_context
+            )
+            
+            # Add workspace context
+            corrective_task.update({
+                "workspace_id": workspace_id,
+                "created_by": "goal_validator_course_correction",
+                "urgency_reason": failure.validation_message,
+                "memory_context": failure_context
+            })
+            
+            return corrective_task
+            
+        except Exception as e:
+            logger.error(f"Error generating corrective task: {e}")
+            return None
+    
+    async def _get_failure_context(
+        self, 
+        workspace_id: str, 
+        failure: GoalValidationResult
+    ) -> Dict[str, Any]:
+        """Get relevant failure context from workspace memory"""
+        try:
+            from workspace_memory import workspace_memory
+            
+            # Get relevant insights for this metric type
+            memory_context = await workspace_memory.get_relevant_context(
+                workspace_id=workspace_id,
+                current_task=None,
+                context_filter={
+                    "insight_types": ["failure_lesson", "constraint"],
+                    "relevance_tags": [f"metric_{failure.extracted_metrics.get('type', 'unknown')}"],
+                    "limit": 5
+                }
+            )
+            
+            return {
+                "previous_failures": memory_context,
+                "gap_severity": failure.severity.value,
+                "target_missed": failure.target_requirement,
+                "actual_achieved": failure.actual_achievement,
+                "recommendations": failure.recommendations[:3]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting failure context: {e}")
+            return {}
 
 # Singleton instance
 goal_validator = AIGoalValidator()

@@ -111,8 +111,10 @@ class ConcreteAssetExtractor:
                     enhanced_asset["metadata"]["task_adequacy"] = task_adequate
                     enhanced_asset["metadata"]["goal_validation_status"] = "passed" if not critical_issues else "issues_found"
                     
-                    # 🎯 PRIORITIZE by actionability
-                    if business_actionability >= 0.8:  # HIGH-VALUE: Contacts, scripts, workflows
+                    # 🎯 PRIORITIZE by actionability (ENHANCED: Lower threshold for specific assets)
+                    # Special high-value treatment for metrics/segmentation assets
+                    if (business_actionability >= 0.75 or  # Standard high-value threshold lowered
+                        asset['type'] in ['metrics_tracking_dashboard', 'contact_segmentation_guidelines', 'segmentation_guidelines']):
                         high_value_assets[asset_id] = enhanced_asset
                         logger.info(f"🎯 HIGH-VALUE asset: {asset_id} - {asset['type']} (actionability: {business_actionability:.2f})")
                     elif business_actionability >= 0.5:  # MEDIUM-VALUE: Strategies, frameworks
@@ -162,16 +164,52 @@ class ConcreteAssetExtractor:
             if isinstance(asset_data, dict) and "contacts" in asset_data:
                 contacts = asset_data.get("contacts", [])
                 if isinstance(contacts, list) and len(contacts) > 0:
-                    # Check if contacts have actual email addresses
-                    has_emails = any(isinstance(c, dict) and c.get("email") and "@" in str(c.get("email", "")) for c in contacts)
-                    return 0.98 if has_emails else 0.85
+                    # Check if contacts have actual email addresses and are not fake
+                    real_contacts = sum(
+                        1 for contact in contacts
+                        if isinstance(contact, dict) and 
+                        contact.get("email") and "@" in str(contact.get("email", "")) and
+                        not self._is_fake_contact(contact)
+                    )
+                    
+                    if real_contacts == 0:
+                        return 0.2  # All fake contacts = very low actionability
+                    elif real_contacts < len(contacts) * 0.5:
+                        return 0.4  # Mostly fake = low actionability
+                    elif real_contacts < 5 and real_contacts >= 1:  # 1-4 contacts = moderate value
+                        return 0.7  # Moderate actionability for small lists
+                    else:
+                        return 0.98 if real_contacts == len(contacts) else 0.8  # Good quality
             return 0.9
         
         if asset_type == "email_templates":
-            # Always high value for email sequences
+            # Check email sequences quality
             if isinstance(asset_data, dict) and ("email_sequences" in asset_data or "sequences" in asset_data):
-                return 0.95
+                sequences = asset_data.get("email_sequences") or asset_data.get("sequences", [])
+                if isinstance(sequences, list) and sequences:
+                    # Check if sequences contain real content vs placeholders
+                    quality_issues = self._count_email_sequence_quality_issues(sequences)
+                    if quality_issues == 0:
+                        return 0.95  # High quality sequences
+                    elif quality_issues < len(sequences):
+                        return 0.7   # Some quality issues
+                    else:
+                        return 0.3   # Mostly placeholder content
+                return 0.9
             return 0.9
+        
+        # 📊 NEW: Direct asset type scoring for metrics and guidelines
+        if asset_type in ["metrics_tracking_dashboard", "tracking_dashboard", "dashboard"]:
+            # Direct metrics dashboard types
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["metrics", "kpis", "tracking"]):
+                return 0.75
+            return 0.7
+            
+        if asset_type in ["contact_segmentation_guidelines", "segmentation_guidelines", "guidelines"]:
+            # Direct segmentation guidelines types  
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["segments", "criteria", "guidelines"]):
+                return 0.8
+            return 0.75
         
         # 🎯 HIGH ACTIONABILITY (0.8-1.0): Immediately usable business assets
         if "contact" in task_name and "research" in task_name:
@@ -220,9 +258,23 @@ class ConcreteAssetExtractor:
                 return 0.8
             return 0.65
         
-        # 🎯 LOW ACTIONABILITY (0.0-0.49): Generic dashboards and reports
+        # 📊 MEDIUM-HIGH ACTIONABILITY (0.7-0.85): Specific tracking/segmentation assets
+        if "metrics" in task_name and "tracking" in task_name:
+            # Metrics tracking dashboard - valuable for performance monitoring
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["metrics", "kpis", "tracking", "dashboard"]):
+                return 0.75
+            return 0.7
+            
+        if "segmentation" in task_name and "guidelines" in task_name:
+            # Contact segmentation guidelines - high actionability for targeting  
+            if isinstance(asset_data, dict) and any(key in asset_data for key in ["segments", "criteria", "guidelines", "targeting"]):
+                return 0.8
+            return 0.75
+        
+        # 📊 MEDIUM ACTIONABILITY (0.5-0.7): Generic dashboards and reports  
         if "dashboard" in task_name or "metrics" in task_name:
-            return 0.4
+            # Generic dashboards - medium value
+            return 0.6
             
         if "enhancement" in task_name or "enhance" in task_name:
             return 0.3
@@ -784,6 +836,57 @@ class ConcreteAssetExtractor:
         
         achievement_scores = [1.0 - (v.gap_percentage / 100) for v in goal_validations]
         return sum(achievement_scores) / len(achievement_scores)
+    
+    def _is_fake_contact(self, contact: Dict) -> bool:
+        """
+        Detect if a contact contains fake/placeholder data
+        """
+        if not isinstance(contact, dict):
+            return True
+        
+        name = str(contact.get("name", "")).lower()
+        email = str(contact.get("email", "")).lower()
+        company = str(contact.get("company", "")).lower()
+        
+        # Fake patterns
+        fake_patterns = [
+            "[", "]", "esempio", "example", "inserire", "placeholder", 
+            "nome", "contatto", "azienda", "company", "test@", "fake@"
+        ]
+        
+        # Check for fake patterns in any field
+        all_text = f"{name} {email} {company}"
+        return any(pattern in all_text for pattern in fake_patterns)
+    
+    def _count_email_sequence_quality_issues(self, sequences: List) -> int:
+        """
+        Count quality issues in email sequences (placeholders, generic content)
+        """
+        quality_issues = 0
+        
+        for sequence in sequences:
+            if not isinstance(sequence, dict):
+                quality_issues += 1
+                continue
+                
+            # Check emails within sequence
+            emails = sequence.get("emails", [])
+            if isinstance(emails, list):
+                for email in emails:
+                    if isinstance(email, dict):
+                        subject = str(email.get("subject", "")).lower()
+                        body = str(email.get("body", "")).lower()
+                        cta = str(email.get("call_to_action", "")).lower()
+                        
+                        # Check for placeholder patterns
+                        all_content = f"{subject} {body} {cta}"
+                        if any(pattern in all_content for pattern in [
+                            "[", "inserire", "template", "esempio", "dovresti", "generico"
+                        ]):
+                            quality_issues += 1
+                            break  # One bad email = whole sequence has issues
+        
+        return quality_issues
 
 # Import necessari
 from datetime import timedelta

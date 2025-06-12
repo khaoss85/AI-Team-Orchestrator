@@ -116,14 +116,14 @@ export interface WorkspaceTasksResponse {
 const getBaseUrl = () => {
   // Controlla se il codice viene eseguito nel browser
   if (typeof window !== 'undefined') {
-    // Se siamo in localhost, punta a localhost:8000
+    // Se siamo in localhost, punta a localhost:8002 (simple mode server)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:8000';
+      return 'http://localhost:8002';
     }
   }
   
   // Altrimenti usa l'URL configurato o il fallback
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 };
 
 const API_BASE_URL = getBaseUrl();
@@ -1908,5 +1908,141 @@ export const api = {
   realTime: {
     getConnectionInfo: (workspaceId: string) =>
       fetch(`${API_BASE_URL}/ws/info/${workspaceId}`).then(res => res.json()),
+  },
+
+  // 🎯 Goal-Driven System APIs
+  goalValidation: {
+    // Validate workspace goal achievement
+    validateWorkspace: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Check quality gate for phase transition
+    checkQualityGate: async (workspaceId: string, targetPhase: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/quality-gate/${targetPhase}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Check project completion readiness
+    checkCompletionReadiness: async (workspaceId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/completion-readiness`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Validate specific task against goals
+    validateTask: async (workspaceId: string, taskId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/validate-task/${taskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
+  // 🎯 Workspace Goals Management APIs
+  workspaceGoals: {
+    // Create a new workspace goal
+    create: async (workspaceId: string, goalData: any): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(goalData),
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Get all goals for a workspace
+    getAll: async (workspaceId: string, filters?: { status?: string; metric_type?: string }): Promise<any> => {
+      try {
+        const params = new URLSearchParams();
+        if (filters?.status) params.append('status', filters.status);
+        if (filters?.metric_type) params.append('metric_type', filters.metric_type);
+        
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals?${params.toString()}`);
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Update goal progress
+    updateProgress: async (workspaceId: string, goalId: string, progressData: any): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}/progress`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(progressData),
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Update goal details
+    update: async (workspaceId: string, goalId: string, goalData: any): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(goalData),
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Delete a goal
+    delete: async (workspaceId: string, goalId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}`, {
+          method: 'DELETE',
+        });
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Get unmet goals (for task planning)
+    getUnmet: async (workspaceId: string, thresholdPct: number = 80): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/unmet?threshold_pct=${thresholdPct}`);
+        return response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
   },
 };

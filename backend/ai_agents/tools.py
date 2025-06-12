@@ -693,8 +693,15 @@ class WorkspaceMemoryTools:
                 exclude_expired=True
             )
             
+            # Validate and convert workspace_id
+            try:
+                workspace_uuid = UUID(workspace_id)
+            except ValueError as e:
+                logger.error(f"Invalid workspace_id format: {workspace_id}")
+                return json.dumps({"error": f"Invalid workspace_id format: {workspace_id}", "total_found": 0, "context": "", "insights": []})
+            
             # Query memory
-            response = await workspace_memory.query_insights(UUID(workspace_id), request)
+            response = await workspace_memory.query_insights(workspace_uuid, request)
             
             # Format response for agent
             result = {
@@ -765,10 +772,18 @@ class WorkspaceMemoryTools:
             if tags:
                 tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
             
+            # Validate UUIDs
+            try:
+                workspace_uuid = UUID(workspace_id)
+                task_uuid = UUID(task_id)
+            except ValueError as e:
+                logger.error(f"Invalid UUID format: workspace_id={workspace_id}, task_id={task_id}")
+                return json.dumps({"success": False, "error": f"Invalid UUID format: {e}"})
+            
             # Store insight
             stored_insight = await workspace_memory.store_insight(
-                workspace_id=UUID(workspace_id),
-                task_id=UUID(task_id),
+                workspace_id=workspace_uuid,
+                task_id=task_uuid,
                 agent_role=agent_role,
                 insight_type=insight_type_enum,
                 content=content,
@@ -810,8 +825,15 @@ class WorkspaceMemoryTools:
             from workspace_memory import workspace_memory
             from uuid import UUID
             
+            # Validate workspace_id
+            try:
+                workspace_uuid = UUID(workspace_id)
+            except ValueError as e:
+                logger.error(f"Invalid workspace_id format: {workspace_id}")
+                return json.dumps({"error": f"Invalid workspace_id format: {workspace_id}", "total_insights": 0})
+            
             # Get workspace summary
-            summary = await workspace_memory.get_workspace_summary(UUID(workspace_id))
+            summary = await workspace_memory.get_workspace_summary(workspace_uuid)
             
             result = {
                 "total_insights": summary.total_insights,
@@ -872,11 +894,20 @@ class WorkspaceMemoryTools:
                 agent_id=None,
                 assigned_to_role="",
                 priority="medium",
-                status="pending"
+                status="pending",
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
             
+            # Validate workspace_id
+            try:
+                workspace_uuid = UUID(workspace_id)
+            except ValueError as e:
+                logger.error(f"Invalid workspace_id format: {workspace_id}")
+                return f"Error: Invalid workspace_id format: {workspace_id}"
+            
             # Get relevant context
-            context = await workspace_memory.get_relevant_context(UUID(workspace_id), mock_task)
+            context = await workspace_memory.get_relevant_context(workspace_uuid, mock_task)
             
             if context:
                 logger.info(f"📋 Agent got relevant context for task: {current_task_name}")

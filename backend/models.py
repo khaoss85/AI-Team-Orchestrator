@@ -68,6 +68,25 @@ class AgentSeniority(str, Enum):
     SENIOR = "senior"
     EXPERT = "expert"
 
+class GoalStatus(str, Enum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+class GoalMetricType(str, Enum):
+    CONTACTS = "contacts"
+    EMAIL_SEQUENCES = "email_sequences"
+    CONTENT_PIECES = "content_pieces"
+    CAMPAIGNS = "campaigns"
+    REVENUE = "revenue"
+    CONVERSION_RATE = "conversion_rate"
+    ENGAGEMENT_RATE = "engagement_rate"
+    QUALITY_SCORE = "quality_score"
+    DELIVERABLES = "deliverables"
+    TASKS_COMPLETED = "tasks_completed"
+    TIMELINE_DAYS = "timeline_days"
+
 
 # --- Workspace Models ---
 class WorkspaceCreate(BaseModel):
@@ -241,6 +260,14 @@ class TaskCreate(BaseModel):
     iteration_count: int = 0
     max_iterations: Optional[int] = None
     dependency_map: Optional[Dict[str, List[str]]] = None
+    
+    # 🎯 Goal-driven task fields (Step 2: Goal-Driven Task Planner)
+    goal_id: Optional[UUID] = PydanticField(None, description="Associated workspace goal")
+    metric_type: Optional[GoalMetricType] = PydanticField(None, description="Goal metric this task contributes to")
+    contribution_expected: Optional[float] = PydanticField(None, description="Expected numerical contribution to goal")
+    numerical_target: Optional[Dict[str, Any]] = PydanticField(None, description="Specific numerical validation criteria")
+    is_corrective: bool = PydanticField(False, description="Whether this is a corrective task for goal gap")
+    success_criteria: Optional[List[str]] = PydanticField(None, description="Specific success criteria for goal achievement")
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -258,6 +285,14 @@ class TaskUpdate(BaseModel):
     iteration_count: Optional[int] = None
     max_iterations: Optional[int] = None
     dependency_map: Optional[Dict[str, List[str]]] = None
+    
+    # Goal-driven task fields
+    goal_id: Optional[UUID] = None
+    metric_type: Optional[GoalMetricType] = None
+    contribution_expected: Optional[float] = None
+    numerical_target: Optional[Dict[str, Any]] = None
+    is_corrective: Optional[bool] = None
+    success_criteria: Optional[List[str]] = None
 
 class Task(BaseModel):
     id: UUID
@@ -278,6 +313,14 @@ class Task(BaseModel):
     dependency_map: Optional[Dict[str, List[str]]] = None
     result: Optional[Dict[str, Any]] = None
     created_at: datetime
+    
+    # Goal-driven task fields
+    goal_id: Optional[UUID] = None
+    metric_type: Optional[GoalMetricType] = None
+    contribution_expected: Optional[float] = None
+    numerical_target: Optional[Dict[str, Any]] = None
+    is_corrective: bool = False
+    success_criteria: Optional[List[str]] = None
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -446,6 +489,104 @@ class DeliverableFeedback(BaseModel):
     message: str
     specific_tasks: Optional[List[str]] = None
     priority: Literal["low","medium","high"] = "medium"
+
+# --- Workspace Goals Models (Step 1: Goal Decomposition) ---
+class WorkspaceGoalCreate(BaseModel):
+    workspace_id: UUID
+    metric_type: GoalMetricType
+    target_value: float = PydanticField(..., gt=0, description="Numerical target to achieve")
+    unit: str = ""
+    description: Optional[str] = None
+    source_goal_text: Optional[str] = None
+    priority: int = PydanticField(default=1, ge=1, le=5)
+    success_criteria: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    validation_frequency_minutes: int = 20
+
+class WorkspaceGoalUpdate(BaseModel):
+    current_value: Optional[float] = None
+    target_value: Optional[float] = None
+    status: Optional[GoalStatus] = None
+    priority: Optional[int] = PydanticField(None, ge=1, le=5)
+    success_criteria: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    validation_frequency_minutes: Optional[int] = None
+
+class WorkspaceGoal(BaseModel):
+    id: UUID
+    workspace_id: UUID
+    metric_type: GoalMetricType
+    target_value: float
+    current_value: float = 0
+    unit: str = ""
+    priority: int
+    status: GoalStatus = GoalStatus.ACTIVE
+    success_criteria: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
+    source_goal_text: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+    last_validation_at: Optional[datetime] = None
+    validation_frequency_minutes: int = 20
+    
+    # Computed properties
+    @property
+    def completion_percentage(self) -> float:
+        if self.target_value <= 0:
+            return 0.0
+        return round((self.current_value / self.target_value) * 100, 1)
+    
+    @property
+    def remaining_value(self) -> float:
+        return max(0, self.target_value - self.current_value)
+    
+    @property
+    def is_completed(self) -> bool:
+        return self.current_value >= self.target_value
+    
+    @property
+    def needs_validation(self) -> bool:
+        if self.status != GoalStatus.ACTIVE:
+            return False
+        if self.last_validation_at is None:
+            return True
+        from datetime import timedelta
+        next_validation = self.last_validation_at + timedelta(minutes=self.validation_frequency_minutes)
+        return datetime.now() >= next_validation
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class WorkspaceGoalProgress(BaseModel):
+    """Extended view with progress tracking"""
+    goal: WorkspaceGoal
+    completion_percentage: float
+    remaining_value: float
+    progress_status: Literal["not_started", "started", "in_progress", "near_completion", "completed"]
+    needs_validation: bool
+    
+    @classmethod
+    def from_goal(cls, goal: WorkspaceGoal) -> "WorkspaceGoalProgress":
+        # Determine progress status
+        if goal.completion_percentage >= 100:
+            progress_status = "completed"
+        elif goal.completion_percentage >= 80:
+            progress_status = "near_completion"
+        elif goal.completion_percentage >= 50:
+            progress_status = "in_progress"
+        elif goal.current_value > 0:
+            progress_status = "started"
+        else:
+            progress_status = "not_started"
+        
+        return cls(
+            goal=goal,
+            completion_percentage=goal.completion_percentage,
+            remaining_value=goal.remaining_value,
+            progress_status=progress_status,
+            needs_validation=goal.needs_validation
+        )
     
 class ProjectPhase(str, Enum):
     ANALYSIS = "ANALYSIS"

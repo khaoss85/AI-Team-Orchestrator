@@ -269,22 +269,43 @@ class DirectorAgent:
             )
             if not isinstance(budget, (int, float)):
                 budget = 0  # Ensure budget is numeric
+            
+            # Extract user feedback for consideration in team sizing
+            user_feedback = constraints_dict.get("user_feedback", "")
+            
+            logger.info(f"🎯 Analyzing requirements with budget: {budget} EUR, user_feedback: '{user_feedback}'")
 
+            # Parse user feedback for specific team size requests
+            user_requested_size = None
+            if user_feedback:
+                # Look for numeric requests in user feedback
+                import re
+                size_matches = re.findall(r'(\d+)\s*agent[si]?', user_feedback.lower())
+                if size_matches:
+                    try:
+                        user_requested_size = int(size_matches[0])
+                        logger.info(f"🎯 User requested team size: {user_requested_size} agents")
+                    except ValueError:
+                        pass
+            
             instruction = f"""You are a strategic project analyst AI.
 Project Goal: \"{goal}\"
 Constraints (from JSON string): {json.dumps(constraints_dict)}
 Budget (EUR): {budget or 'Not specified'}
+User Feedback: {user_feedback or 'None'}
 
 CRITICAL GUIDELINES:
-1. Keep team size CONSERVATIVE (1-{MAX_TEAM_SIZE}).
+1. {"PRIORITIZE USER FEEDBACK: If user specified a team size preference, strongly consider it." if user_feedback else "Keep team size CONSERVATIVE (1-{MAX_TEAM_SIZE})."}
 2. Focus on ESSENTIAL skills only – avoid redundancy. Combine related skills where possible.
-3. Consider budget strictly.
+3. Consider budget strictly - use the FULL budget when appropriate.
 4. Prefer versatile agents when budget is tight.
 5. Each agent must have CLEAR, NON‑OVERLAPPING responsibilities.
 6. Think about domain expertise, process skills, and delivery capabilities
 
-TEAM SIZE RULE OF THUMB (EUR):
-<1500 ⇒ 1‑2 | 1500‑3000 ⇒ 2‑3 | 3000‑5000 ⇒ 3‑4 | >5000 ⇒ up to {MAX_TEAM_SIZE}
+TEAM SIZE GUIDELINES:
+- Budget-based sizing (EUR): <1500 ⇒ 1‑2 | 1500‑3000 ⇒ 2‑3 | 3000‑5000 ⇒ 3‑4 | 5000‑8000 ⇒ 4‑5 | >8000 ⇒ up to {MAX_TEAM_SIZE}
+{"- USER PREFERENCE: Consider user requested team size of " + str(user_requested_size) + " agents" if user_requested_size else ""}
+- ALWAYS justify your team size decision based on budget AND user feedback
 
 SKILL EXTRACTION APPROACH:
 - Analyze the goal to identify required FUNCTIONAL areas (not just generic skills)
@@ -452,14 +473,26 @@ Return *only* valid JSON:
     @staticmethod
     @function_tool
     async def design_team_structure(
-        required_skills_json: str, budget_total: float, max_agents: Optional[int] = None
+        required_skills_json: str, budget_total: float, max_agents: Optional[int] = None, user_feedback: str = ""
     ) -> str:
         """Progetta la struttura del team. 'required_skills_json' è una stringa JSON di una lista di skill."""
         logger.info(
-            f"Director Tool: design_team_structure invoked. Max_agents: {max_agents}, Budget: {budget_total}"
+            f"Director Tool: design_team_structure invoked. Max_agents: {max_agents}, Budget: {budget_total}, User feedback: '{user_feedback}'"
         )
         try:
             required_skills: List[str] = json.loads(required_skills_json)
+
+            # Parse user feedback for team size preference
+            user_requested_size = None
+            if user_feedback:
+                import re
+                size_matches = re.findall(r'(\d+)\s*agent[si]?', user_feedback.lower())
+                if size_matches:
+                    try:
+                        user_requested_size = int(size_matches[0])
+                        logger.info(f"🎯 User requested {user_requested_size} agents in feedback")
+                    except ValueError:
+                        pass
 
             # PRIMA DEFINISCI LE FUNZIONI HELPER (SPOSTATO IN ALTO)
             def _calculate_optimal_team_size(
@@ -467,16 +500,21 @@ Return *only* valid JSON:
             ) -> int:
                 """Calcola team size ottimale basato su budget e complessità"""
 
-                # Budget-based sizing (più permissivo)
-                if budget_total >= 5000:
+                # If user explicitly requested a size, prioritize it (if within reasonable bounds)
+                if user_requested_size and 1 <= user_requested_size <= MAX_TEAM_SIZE:
+                    logger.info(f"🎯 Using user-requested team size: {user_requested_size}")
+                    return user_requested_size
+
+                # Budget-based sizing (più aggressivo nell'utilizzare il budget)
+                if budget_total >= 8000:
                     budget_team_size = 6
-                elif budget_total >= 3000:
+                elif budget_total >= 5000:
                     budget_team_size = 5
-                elif budget_total >= 2000:
+                elif budget_total >= 3000:
                     budget_team_size = 4
-                elif budget_total >= 1200:
+                elif budget_total >= 1500:
                     budget_team_size = 3
-                elif budget_total >= 600:
+                elif budget_total >= 800:
                     budget_team_size = 2
                 else:
                     budget_team_size = 1
@@ -1035,18 +1073,26 @@ Return *only* valid JSON:
         # Instructions per l'LLM orchestratore
         # L'LLM deve capire che `constraints_json` per `analyze_project_requirements_llm` deve essere una stringa JSON.
         # E che `required_skills_json` e `team_composition_json` per gli altri tool sono anche stringhe JSON.
+        # Create enhanced constraints that include user feedback
+        enhanced_constraints = config.budget_constraint.copy() if config.budget_constraint else {}
+        if config.user_feedback:
+            enhanced_constraints["user_feedback"] = config.user_feedback
+        
         director_instructions = f"""You are an expert AI team architect. Your goal is to design an efficient team of AI agents.
 Max team size is {self.max_team_size}.
 Project Goal: {config.goal}
-Budget Constraints (passed as JSON string to analysis tool): {json.dumps(config.budget_constraint)}
-User Feedback (if any): {config.user_feedback or "None"}
+Budget Constraints: {json.dumps(config.budget_constraint)}
+User Feedback (IMPORTANT): {config.user_feedback or "None"}
+
+CRITICAL: If user provided feedback about team size (e.g., "can we have 5 agents?"), you MUST respect this preference and design accordingly.
 
 Follow these steps precisely using the provided tools:
-1.  **Analyze Requirements**: Call `analyze_project_requirements_llm` with the project `goal` and `constraints_json` (which must be a JSON string representing the budget and other constraints). This will return a JSON string with `required_skills`, `expertise_areas`, `recommended_team_size`, and `rationale`.
+1.  **Analyze Requirements**: Call `analyze_project_requirements_llm` with the project `goal` and `constraints_json` (which must be a JSON string including budget AND user_feedback). This will return a JSON string with `required_skills`, `expertise_areas`, `recommended_team_size`, and `rationale`.
 2.  **Design Team Structure**: Call `design_team_structure` using:
     * `required_skills_json`: The `required_skills` list from step 1, formatted as a JSON string.
     * `budget_total`: The `max_amount` from the budget constraints (float).
     * `max_agents`: The `recommended_team_size` (int) from step 1.
+    * `user_feedback`: Pass the user feedback string to consider user preferences (e.g., "{config.user_feedback or ''}").
     This tool returns a JSON string list of agent specifications.
 3.  **Estimate Costs**: Call `estimate_costs` using:
     * `team_composition_json`: The list of agents from step 2, formatted as a JSON string.
@@ -1057,7 +1103,11 @@ Follow these steps precisely using the provided tools:
 
 Your final output MUST be a single, valid JSON object containing the keys: "agents", "handoffs", "estimated_cost", and "rationale".
 Do NOT include any markdown formatting or explanatory text outside this JSON structure.
-Example for passing JSON string to tools: If constraints are {{"budget": 1000}}, pass it as the string "{{\\"budget\\": 1000}}".
+
+IMPORTANT: When calling analyze_project_requirements_llm, pass the COMPLETE constraints including user_feedback:
+Enhanced Constraints to pass: {json.dumps(enhanced_constraints)}
+
+Example for passing JSON string to tools: If constraints are {{"budget": 1000, "user_feedback": "5 agents"}}, pass it as the string "{{\\"budget\\": 1000, \\"user_feedback\\": \\"5 agents\\"}}".
 """
         available_tools_list = [
             DirectorAgent.analyze_project_requirements_llm,

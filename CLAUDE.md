@@ -44,6 +44,13 @@ Create `backend/.env` with:
 - `ENABLE_DYNAMIC_AI_ANALYSIS=true` - Enable dynamic AI analysis features
 - `ENABLE_AUTO_PROJECT_COMPLETION=true` - Enable automatic project completion
 
+### Goal-Driven System
+- `ENABLE_GOAL_DRIVEN_SYSTEM=true` - Enable goal-driven task generation and monitoring
+- `GOAL_VALIDATION_INTERVAL_MINUTES=20` - Interval for automated goal validation
+- `AUTO_CREATE_GOALS_FROM_WORKSPACE=true` - Automatically decompose workspace goals
+- `MAX_GOAL_DRIVEN_TASKS_PER_CYCLE=5` - Maximum goal-driven tasks created per cycle
+- `GOAL_COMPLETION_THRESHOLD=80` - Completion percentage threshold for goal success
+
 ## Architecture Overview
 
 ### AI Agent System

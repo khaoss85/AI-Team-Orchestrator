@@ -17,6 +17,8 @@ import InteractionPanel from '@/components/redesign/InteractionPanel'
 import ActionableAssetCard from '@/components/ActionableAssetCard'
 import SmartAssetViewer from '@/components/SmartAssetViewer'
 import ProjectResultsOverview from '@/components/ProjectResultsOverview'
+import GoalProgressTracker from '@/components/GoalProgressTracker'
+import GoalValidationDashboard from '@/components/GoalValidationDashboard'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -238,6 +240,17 @@ export default function ModernProjectPage({ params: paramsPromise }: Props) {
         finalizationStatus={finalizationStatus}
       />
 
+      {/* 🎯 Goal-Driven System Components */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GoalProgressTracker 
+          workspaceId={id}
+          showValidation={true}
+          autoRefresh={true}
+        />
+        <GoalValidationDashboard 
+          workspaceId={id}
+        />
+      </div>
 
       <MissionControlSection
         workspaceId={id}

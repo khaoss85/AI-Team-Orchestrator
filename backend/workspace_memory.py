@@ -206,39 +206,207 @@ class WorkspaceMemory:
             logger.error(f"Error getting workspace summary: {e}", exc_info=True)
             return WorkspaceMemorySummary(workspace_id=workspace_id)
 
-    async def get_relevant_context(self, workspace_id: UUID, current_task: Task) -> str:
+    async def get_relevant_context(
+        self, 
+        workspace_id: UUID, 
+        current_task: Optional[Dict] = None,
+        max_insights: int = 10,
+        context_filter: Optional[Dict[str, Any]] = None
+    ) -> str:
         """
-        Get relevant context for current task execution
+        🎯 STEP 5: Enhanced context retrieval with goal-driven filtering
+        
+        Get relevant context for current task execution with improved filtering:
+        1. Goal-specific insights (filter by goal_id)
+        2. Phase-specific insights (filter by phase)
+        3. Reduced noise for specialists
+        4. Strategic oversight preserved for coordinator
         """
         try:
-            # Build query based on task
-            task_keywords = self._extract_task_keywords(current_task)
+            # 🎯 GOAL-DRIVEN FILTERING
+            insight_types = ["success_pattern", "constraint", "discovery"]
+            relevance_tags = []
             
-            # Query for relevant insights
+            # Apply context filter if provided (from Step 3 integration)
+            if context_filter:
+                insight_types = context_filter.get("insight_types", insight_types)
+                relevance_tags = context_filter.get("relevance_tags", [])
+                max_insights = context_filter.get("limit", max_insights)
+            
+            # 🎯 TASK-SPECIFIC FILTERING
+            if current_task:
+                # Filter by goal_id if task is goal-driven
+                goal_id = current_task.get("goal_id")
+                metric_type = current_task.get("metric_type")
+                
+                if goal_id:
+                    relevance_tags.append(f"goal_{goal_id}")
+                if metric_type:
+                    relevance_tags.append(f"metric_{metric_type}")
+                
+                # Filter by task type
+                task_type = current_task.get("type", "")
+                if task_type:
+                    relevance_tags.append(f"task_{task_type}")
+                
+                # Add phase filtering if available
+                phase = current_task.get("phase")
+                if phase:
+                    relevance_tags.append(f"phase_{phase}")
+                
+                # Build query from task context
+                task_keywords = self._extract_task_keywords_from_dict(current_task)
+                query = " ".join(task_keywords)
+            else:
+                query = "relevant insights for workspace execution"
+            
+            # 🧠 MEMORY QUERY with enhanced filtering
             request = MemoryQueryRequest(
-                query=" ".join(task_keywords),
-                max_results=5,
-                min_confidence=0.6,
-                exclude_expired=True
+                query=query,
+                insight_types=insight_types,
+                relevance_tags=relevance_tags,
+                limit=max_insights
             )
             
             response = await self.query_insights(workspace_id, request)
             
-            if not response.insights:
+            # 🎯 POST-PROCESS: Filter insights by goal alignment
+            if current_task:
+                relevant_insights = self._filter_insights_by_goal_alignment(
+                    response.insights, current_task
+                )
+            else:
+                relevant_insights = response.insights[:max_insights]
+            
+            if not relevant_insights:
+                logger.debug(f"No relevant insights found for workspace {workspace_id}")
                 return ""
             
-            # Build context string
-            context_parts = []
-            context_parts.append("RELEVANT PROJECT CONTEXT:")
+            # 🎯 BUILD FOCUSED CONTEXT (reduced noise)
+            context_parts = [
+                "🧠 RELEVANT WORKSPACE MEMORY (Goal-Focused):",
+                ""
+            ]
             
-            for insight in response.insights:
-                context_parts.append(f"• {insight.insight_type.value.title()}: {insight.content}")
+            # Group insights by type for better organization
+            insights_by_type = {}
+            for insight in relevant_insights:
+                insight_type = insight.insight_type.value
+                if insight_type not in insights_by_type:
+                    insights_by_type[insight_type] = []
+                insights_by_type[insight_type].append(insight)
+            
+            # 🎯 PRIORITIZE SUCCESS PATTERNS and CONSTRAINTS for specialists
+            priority_order = ["success_pattern", "constraint", "failure_lesson", "discovery", "optimization"]
+            
+            for insight_type in priority_order:
+                if insight_type in insights_by_type:
+                    insights = insights_by_type[insight_type]
+                    context_parts.append(f"🎯 {insight_type.upper().replace('_', ' ')}:")
+                    
+                    for insight in insights[:3]:  # Limit to top 3 per type
+                        context_parts.append(f"• {insight.content}")
+                        
+                        # Add goal context if available
+                        goal_tags = [tag for tag in insight.relevance_tags if tag.startswith("goal_")]
+                        if goal_tags:
+                            context_parts.append(f"  Goal: {goal_tags[0].replace('goal_', '')}")
+                    
+                    context_parts.append("")
+            
+            # 🎯 ADD GOAL-SPECIFIC GUIDANCE
+            if current_task and current_task.get("goal_id"):
+                context_parts.extend([
+                    "🎯 GOAL-DRIVEN FOCUS:",
+                    f"• Your task contributes to goal: {current_task.get('metric_type', 'unknown')}",
+                    f"• Expected contribution: {current_task.get('contribution_expected', 'not specified')}",
+                    f"• Success criteria: {len(current_task.get('success_criteria', []))} specific requirements",
+                    ""
+                ])
+            
+            context_parts.append(
+                "💡 Use these goal-focused insights to optimize your approach and ensure numerical targets are met."
+            )
+            
+            logger.info(
+                f"🧠 Built focused context: {len(relevant_insights)} insights, "
+                f"{len(context_parts)} lines for workspace {workspace_id}"
+            )
             
             return "\n".join(context_parts)
             
         except Exception as e:
-            logger.error(f"Error getting relevant context: {e}", exc_info=True)
+            logger.error(f"Error getting relevant context: {e}")
             return ""
+    
+    def _extract_task_keywords_from_dict(self, task: Dict[str, Any]) -> List[str]:
+        """Extract keywords from task dictionary for memory querying"""
+        keywords = []
+        
+        # Extract from task name and description
+        task_name = task.get("name", "")
+        task_description = task.get("description", "")
+        
+        # Basic keyword extraction
+        import re
+        text = f"{task_name} {task_description}".lower()
+        words = re.findall(r'\b\w+\b', text)
+        
+        # Filter meaningful words (length > 3, not common words)
+        stop_words = {"the", "and", "for", "with", "this", "that", "from", "they", "have", "were", "been", "their"}
+        keywords = [word for word in words if len(word) > 3 and word not in stop_words]
+        
+        # Add goal-specific keywords
+        metric_type = task.get("metric_type")
+        if metric_type:
+            keywords.append(metric_type)
+        
+        # Add task type
+        task_type = task.get("type")
+        if task_type:
+            keywords.append(task_type)
+        
+        return keywords[:10]  # Limit to top 10 keywords
+    
+    def _filter_insights_by_goal_alignment(
+        self, 
+        insights: List[WorkspaceInsight], 
+        current_task: Dict[str, Any]
+    ) -> List[WorkspaceInsight]:
+        """Filter insights by goal alignment and relevance to current task"""
+        
+        goal_id = current_task.get("goal_id")
+        metric_type = current_task.get("metric_type")
+        task_type = current_task.get("type")
+        
+        aligned_insights = []
+        
+        for insight in insights:
+            relevance_score = 0
+            
+            # Goal ID alignment (highest priority)
+            if goal_id and f"goal_{goal_id}" in insight.relevance_tags:
+                relevance_score += 3
+            
+            # Metric type alignment
+            if metric_type and f"metric_{metric_type}" in insight.relevance_tags:
+                relevance_score += 2
+            
+            # Task type alignment
+            if task_type and f"task_{task_type}" in insight.relevance_tags:
+                relevance_score += 1
+            
+            # Success patterns and constraints are always valuable
+            if insight.insight_type in [InsightType.SUCCESS_PATTERN, InsightType.CONSTRAINT]:
+                relevance_score += 1
+            
+            # Only include insights with some relevance
+            if relevance_score > 0:
+                aligned_insights.append((insight, relevance_score))
+        
+        # Sort by relevance score and return top insights
+        aligned_insights.sort(key=lambda x: x[1], reverse=True)
+        return [insight for insight, _ in aligned_insights[:10]]
 
     # === PRIVATE METHODS ===
 

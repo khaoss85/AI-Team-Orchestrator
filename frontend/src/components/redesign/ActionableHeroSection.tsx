@@ -1,6 +1,7 @@
 'use client'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import type { Workspace, AssetCompletionStats } from '@/types'
+import { api } from '@/utils/api'
 
 interface Props {
   workspace: Workspace
@@ -8,6 +9,22 @@ interface Props {
   finalDeliverables: number
   completionPercentage?: number
   finalizationStatus?: any
+}
+
+interface WorkspaceGoal {
+  id: string;
+  metric_type: string;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  status: string;
+  completion_pct?: number;
+}
+
+interface GoalValidation {
+  overall_achievement: number;
+  validation_status: string;
+  critical_issues: number;
 }
 
 const gradients = [
@@ -19,11 +36,64 @@ const gradients = [
 ]
 
 const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDeliverables, completionPercentage = 0, finalizationStatus }) => {
+  const [goals, setGoals] = useState<WorkspaceGoal[]>([]);
+  const [goalValidation, setGoalValidation] = useState<GoalValidation | null>(null);
+  const [loadingGoals, setLoadingGoals] = useState(true);
+
   const gradient = React.useMemo(() => {
     const idx = workspace.id
       ? workspace.id.charCodeAt(0) % gradients.length
       : 0
     return gradients[idx]
+  }, [workspace.id])
+
+  // Fetch workspace goals
+  useEffect(() => {
+    const fetchGoals = async () => {
+      if (!workspace.id) return;
+      
+      try {
+        setLoadingGoals(true);
+        
+        // Fetch goals
+        const goalsResponse = await api.workspaceGoals.getAll(workspace.id, { status: 'active' });
+        if (goalsResponse.success) {
+          const goalsWithProgress = goalsResponse.goals.map((goal: any) => ({
+            ...goal,
+            completion_pct: goal.target_value > 0 ? (goal.current_value / goal.target_value * 100) : 0
+          }));
+          setGoals(goalsWithProgress);
+        }
+
+        // Fetch goal validation
+        try {
+          const validationResponse = await api.goalValidation.validateWorkspace(workspace.id);
+          if (validationResponse.validation_results) {
+            const validations = validationResponse.validation_results;
+            const avgAchievement = validations.reduce((sum: number, v: any) => 
+              sum + (v.achievement_percentage || 0), 0) / validations.length;
+            
+            const criticalCount = validations.filter((v: any) => 
+              v.severity === 'critical').length;
+
+            setGoalValidation({
+              overall_achievement: avgAchievement,
+              validation_status: avgAchievement >= 85 ? 'excellent' : avgAchievement >= 60 ? 'good' : 'needs_improvement',
+              critical_issues: criticalCount
+            });
+          }
+        } catch (validationError) {
+          console.warn('Goal validation not available:', validationError);
+        }
+
+      } catch (error) {
+        console.error('Error fetching goals:', error);
+      } finally {
+        setLoadingGoals(false);
+      }
+    };
+
+    fetchGoals();
   }, [workspace.id])
 
   // Calculate business value metrics
@@ -101,8 +171,66 @@ const ActionableHeroSection: React.FC<Props> = ({ workspace, assetStats, finalDe
                 <div className="text-2xl font-bold">{finalDeliverables}</div>
               </div>
             )}
+            
+            {/* 🎯 Goal Achievement Metrics */}
+            {!loadingGoals && goals.length > 0 && (
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 min-w-[200px]">
+                <div className="text-sm opacity-80">Goal Achievement</div>
+                <div className="text-2xl font-bold">
+                  {goals.filter(g => g.completion_pct! >= 100).length}/{goals.length}
+                </div>
+                <div className="text-xs opacity-70">Goals Completed</div>
+              </div>
+            )}
+            
+            {goalValidation && (
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 min-w-[200px]">
+                <div className="text-sm opacity-80">Validation Status</div>
+                <div className="text-lg font-bold">
+                  {goalValidation.validation_status === 'excellent' ? '🎯 Excellent' :
+                   goalValidation.validation_status === 'good' ? '✅ Good' :
+                   goalValidation.validation_status === 'needs_improvement' ? '⚠️ Improving' : '❌ Critical'}
+                </div>
+                <div className="text-xs opacity-70">
+                  {goalValidation.overall_achievement.toFixed(0)}% Achievement
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* 🎯 Goal Progress Summary */}
+        {!loadingGoals && goals.length > 0 && (
+          <div className="mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {goals.slice(0, 3).map((goal) => (
+                <div key={goal.id} className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium opacity-90">
+                      {goal.metric_type.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                    <span className="text-xs opacity-80">
+                      {goal.current_value}/{goal.target_value}
+                    </span>
+                  </div>
+                  <div className="w-full bg-white bg-opacity-30 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        goal.completion_pct! >= 100 ? 'bg-green-300' :
+                        goal.completion_pct! >= 70 ? 'bg-blue-300' :
+                        goal.completion_pct! >= 30 ? 'bg-yellow-300' : 'bg-red-300'
+                      }`}
+                      style={{ width: `${Math.min(goal.completion_pct!, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs opacity-80 mt-1">
+                    {goal.completion_pct!.toFixed(0)}% Complete
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Progress visualization */}
         <div className="mb-6">
