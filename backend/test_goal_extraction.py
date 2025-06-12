@@ -21,7 +21,7 @@ async def test_goal_extraction():
         
         print(f"📊 Found {len(requirements)} requirements:")
         for i, req in enumerate(requirements, 1):
-            print(f"  {i}. Type: {req.get('type')}, Value: {req.get('target_value')}, Unit: {req.get('unit')}, Context: {req.get('context')}")
+            print(f"  {i}. Type: {req.get('type')}, Value: {req.get('target_value')}, Unit: '{req.get('unit')}', Context: '{req.get('context')}'")
         
         return requirements
         

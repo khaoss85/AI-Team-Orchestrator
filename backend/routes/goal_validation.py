@@ -171,7 +171,7 @@ async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_p
             detail=f"Quality gate evaluation failed: {str(e)}"
         )
 
-@router.get("/{workspace_id}/completion-readiness", response_model=Dict[str, Any])
+@router.post("/{workspace_id}/completion-readiness", response_model=Dict[str, Any])
 async def check_project_completion_readiness(workspace_id: UUID):
     """
     Comprehensive check for project completion readiness

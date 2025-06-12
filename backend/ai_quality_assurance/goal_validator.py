@@ -50,8 +50,8 @@ class AIGoalValidator:
             r'minimo\s+(\d+)\s+([a-zA-ZÀ-ÿ]+)',  # "minimum N items"
             r'massimo\s+(\d+)\s+([a-zA-ZÀ-ÿ]+)',  # "maximum N items"
             
-            # 🎯 PERCENTAGE PATTERNS - Universal for any metric
-            r'(\d+(?:\.\d+)?)\s*%\s*([a-zA-ZÀ-ÿ\-]+(?:\s+[a-zA-ZÀ-ÿ\-]+){0,2})?',  # Any percentage with optional context
+            # 🎯 PERCENTAGE PATTERNS - Universal for any metric (IMPROVED to avoid false positives)
+            r'(\d+(?:\.\d+)?)\s*%(?:\s+([a-zA-ZÀ-ÿ\-]+(?:\s+[a-zA-ZÀ-ÿ\-]+){0,2}))?',  # Percentage with optional context after
             r'≥\s*(\d+(?:\.\d+)?)\s*%',  # Greater-than-equal percentages
             r'>\s*(\d+(?:\.\d+)?)\s*%',   # Greater-than percentages  
             r'almeno\s+(\d+(?:\.\d+)?)\s*%',  # "at least X%"
@@ -193,7 +193,9 @@ class AIGoalValidator:
         requirements = []
         goal_lower = workspace_goal.lower()
         
-        # Extract numerical requirements using patterns
+        # Extract numerical requirements using patterns with deduplication
+        seen_requirements = set()  # Track unique requirements to avoid duplicates
+        
         for pattern in self.numerical_patterns:
             matches = re.finditer(pattern, goal_lower, re.IGNORECASE)
             for match in matches:
@@ -208,8 +210,35 @@ class AIGoalValidator:
                     else:
                         value = float(value_str)
                     
-                    # Determine requirement type and domain
+                    # Determine requirement type first for better deduplication
                     req_type = self._classify_requirement_type(unit_context, goal_lower)
+                    
+                    # Create intelligent deduplication key
+                    is_percentage = '%' in match.group(0)
+                    context_key = match.group(0).lower().strip()
+                    
+                    # For percentages, use the exact context to avoid false duplicates
+                    if is_percentage:
+                        dedup_key = (value, req_type, context_key)
+                    elif req_type == 'email_sequences':
+                        # For email sequences, use value and type only to catch variants like "3 sequenze email" vs "almeno 3 sequenze email"
+                        dedup_key = (value, req_type)
+                    else:
+                        # For other types, use semantic deduplication
+                        unit_key_words = [word for word in unit_context.lower().split() if len(word) > 2]
+                        dedup_key = (value, req_type, tuple(sorted(unit_key_words)))
+                    
+                    # Skip if we've already seen this requirement
+                    if dedup_key in seen_requirements:
+                        continue
+                        
+                    # Quality filter: skip low-quality extractions
+                    if self._is_low_quality_extraction(unit_context, match.group(0), req_type):
+                        continue
+                        
+                    seen_requirements.add(dedup_key)
+                    
+                    # Determine domain (req_type already determined above)
                     domain = self._detect_domain(workspace_goal)
                     
                     requirement = {
@@ -452,13 +481,17 @@ class AIGoalValidator:
         goal_lower = full_goal.lower()
         combined_text = f"{unit_lower} {goal_lower}"
         
-        # 🎯 STEP 1: Direct financial/percentage/temporal detection
+        # 🎯 STEP 1: Direct detection - Most specific patterns first
         if any(curr in unit_lower for curr in ['eur', 'usd', 'gbp', '$', '€', '£', '¥']):
             return 'financial'
-        elif '%' in unit_lower or any(word in combined_text for word in ['percentuale', 'percentage', 'rate', 'ratio']):
-            return 'percentage'
+        elif any(contact_word in unit_lower for contact_word in ['contatti', 'contacts', 'contatto', 'contact']):
+            return 'contacts'
+        elif any(email_word in unit_lower for email_word in ['email', 'sequenze', 'sequence', 'messaggio', 'message']):
+            return 'email_sequences'
         elif any(time_word in unit_lower for time_word in ['settimana', 'week', 'giorno', 'day', 'mese', 'month', 'anno', 'year', 'ora', 'hour']):
             return 'temporal'
+        elif '%' in combined_text or any(word in combined_text for word in ['percentuale', 'percentage', 'rate', 'ratio']):
+            return 'percentage'
         
         # 🎯 STEP 2: AI-driven concept-based classification
         concept_scores = {}
@@ -538,6 +571,29 @@ class AIGoalValidator:
             return max(concept_scores, key=concept_scores.get)
         else:
             return 'general'
+    
+    def _is_low_quality_extraction(self, unit_context: str, full_context: str, req_type: str) -> bool:
+        """Filter out low-quality extractions with poor context"""
+        unit_lower = unit_context.lower()
+        full_lower = full_context.lower()
+        
+        # Skip extractions with very short or meaningless contexts
+        if len(unit_context.strip()) < 3:
+            return True
+            
+        # Skip percentage extractions that are just fragments
+        if req_type == 'percentage' and len(full_context.strip()) < 5:
+            return True
+            
+        # Skip temporal extractions that appear to be percentages in disguise
+        if req_type == 'percentage' and 'settimane' in unit_lower:
+            return True
+            
+        # Skip vague contexts like "in" or "da"
+        if unit_lower in ['in', 'da', 'di', 'per', 'con', 'su', 'a', 'e', 'del', 'della', 'delle', 'dei']:
+            return True
+            
+        return False
     
     async def _detect_implicit_requirements(self, workspace_goal: str) -> List[Dict[str, Any]]:
         """

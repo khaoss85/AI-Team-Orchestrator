@@ -116,14 +116,14 @@ export interface WorkspaceTasksResponse {
 const getBaseUrl = () => {
   // Controlla se il codice viene eseguito nel browser
   if (typeof window !== 'undefined') {
-    // Se siamo in localhost, punta a localhost:8002 (simple mode server)
+    // Se siamo in localhost, punta a localhost:8000 (main server)
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:8002';
+      return 'http://localhost:8000';
     }
   }
   
   // Altrimenti usa l'URL configurato o il fallback
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 };
 
 const API_BASE_URL = getBaseUrl();
@@ -1916,8 +1916,7 @@ export const api = {
     validateWorkspace: async (workspaceId: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/validate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'GET',
         });
         return response.json();
       } catch (error) {
@@ -1929,8 +1928,7 @@ export const api = {
     checkQualityGate: async (workspaceId: string, targetPhase: string): Promise<any> => {
       try {
         const response = await fetch(`${API_BASE_URL}/goal-validation/${workspaceId}/quality-gate/${targetPhase}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'GET',
         });
         return response.json();
       } catch (error) {
@@ -1970,7 +1968,7 @@ export const api = {
     // Create a new workspace goal
     create: async (workspaceId: string, goalData: any): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(goalData),
@@ -1988,7 +1986,7 @@ export const api = {
         if (filters?.status) params.append('status', filters.status);
         if (filters?.metric_type) params.append('metric_type', filters.metric_type);
         
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals?${params.toString()}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals?${params.toString()}`);
         return response.json();
       } catch (error) {
         return handleApiError(error);
@@ -1998,7 +1996,7 @@ export const api = {
     // Update goal progress
     updateProgress: async (workspaceId: string, goalId: string, progressData: any): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}/progress`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals/${goalId}/progress`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(progressData),
@@ -2012,7 +2010,7 @@ export const api = {
     // Update goal details
     update: async (workspaceId: string, goalId: string, goalData: any): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals/${goalId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(goalData),
@@ -2026,7 +2024,7 @@ export const api = {
     // Delete a goal
     delete: async (workspaceId: string, goalId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/${goalId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals/${goalId}`, {
           method: 'DELETE',
         });
         return response.json();
@@ -2038,7 +2036,7 @@ export const api = {
     // Get unmet goals (for task planning)
     getUnmet: async (workspaceId: string, thresholdPct: number = 80): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/goals/unmet?threshold_pct=${thresholdPct}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/goals/unmet?threshold_pct=${thresholdPct}`);
         return response.json();
       } catch (error) {
         return handleApiError(error);

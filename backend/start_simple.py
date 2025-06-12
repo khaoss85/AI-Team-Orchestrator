@@ -1,8 +1,40 @@
 #!/usr/bin/env python3
 """
-🚀 SIMPLE BACKEND STARTER
-Start the backend with minimal components for frontend testing
+⚠️ DEPRECATED - USE main.py INSTEAD
+
+This simple backend starter is DEPRECATED as of 2025-06-12.
+The main server (main.py) now provides all functionality with better performance.
+
+MIGRATION: Use `python main.py` instead of `python start_simple.py`
+PORT: Main server runs on port 8000 (not 8002)
+FEATURES: Main server includes all endpoints plus advanced features
 """
+
+import sys
+import os
+
+print("⚠️ DEPRECATED SERVER WARNING")
+print("=" * 50)
+print("This start_simple.py server is DEPRECATED.")
+print("Please use the main server instead:")
+print("")
+print("  python main.py")
+print("")
+print("The main server (port 8000) includes:")
+print("✅ All functionality from simple server")
+print("✅ Goal validation & quality gates") 
+print("✅ AI-driven improvements")
+print("✅ Human verification system")
+print("✅ Real-time goal tracking")
+print("✅ Enhanced monitoring")
+print("")
+print("Exiting in 10 seconds...")
+
+import time
+time.sleep(10)
+sys.exit(1)
+
+# === DEPRECATED CODE BELOW - DO NOT USE ===
 
 import os
 import sys
@@ -31,6 +63,7 @@ from routes.monitoring import router as monitoring_router
 from routes.unified_assets import router as unified_assets_router
 from routes.project_insights import router as project_insights_router
 from routes.tools import router as tools_router
+from routes.goal_validation import router as goal_validation_router
 import uvicorn
 
 app = FastAPI(title="AI Team Orchestrator API - Simple Mode")
@@ -53,6 +86,7 @@ app.include_router(monitoring_router)
 app.include_router(unified_assets_router)
 app.include_router(project_insights_router)
 app.include_router(tools_router)
+app.include_router(goal_validation_router)
 
 @app.get("/")
 async def root():

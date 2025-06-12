@@ -720,23 +720,143 @@ def sanitize_existing_json_payload(payload: Union[str, dict, list]) -> Union[str
 
 async def update_task_status(task_id: str, status: str, result_payload: Optional[dict] = None):
     """
-    AGGIORNATO: Update task status con sanitizzazione Unicode
+    ENHANCED: Update task status with quality validation and goal progress tracking
     """
     data_to_update = {"status": status, "updated_at": datetime.now().isoformat()}
     
-    if result_payload is not None:
+    # 🎯 STEP 1: QUALITY VALIDATION FOR COMPLETED TASKS
+    if status == "completed" and result_payload is not None:
         try:
-            # NUOVO: Sanitizza i dati prima del salvataggio
+            # Import quality validator
+            from ai_quality_assurance.quality_validator import AIQualityValidator
+            
+            # Get task details for context
+            task = await get_task(task_id)
+            if task:
+                workspace_id = task.get("workspace_id")
+                task_name = task.get("name", "")
+                
+                # Get workspace for context
+                workspace = await get_workspace(workspace_id)
+                workspace_goal = workspace.get("goal", "") if workspace else ""
+                
+                # Determine asset type from task name/result
+                asset_type = _determine_asset_type(task_name, result_payload)
+                
+                # Perform quality validation
+                quality_validator = AIQualityValidator()
+                quality_assessment = await quality_validator.validate_asset_quality(
+                    asset_data=result_payload,
+                    asset_type=asset_type,
+                    context={
+                        "workspace_goal": workspace_goal,
+                        "task_name": task_name,
+                        "workspace_id": workspace_id
+                    }
+                )
+                
+                # Add quality metadata to result
+                result_payload["quality_validation"] = {
+                    "overall_score": quality_assessment.overall_score,
+                    "ready_for_use": quality_assessment.ready_for_use,
+                    "needs_enhancement": quality_assessment.needs_enhancement,
+                    "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
+                    "enhancement_priority": quality_assessment.enhancement_priority,
+                    "validation_timestamp": quality_assessment.validation_timestamp
+                }
+                
+                # 🎯 STEP 1A: CHECK QUALITY THRESHOLD FIRST
+                if quality_assessment.overall_score < 0.3:
+                    # Quality too low - direct rejection without human verification
+                    status = "needs_enhancement"
+                    data_to_update["status"] = status
+                    logger.warning(f"🔴 QUALITY TOO LOW: Task {task_id} auto-rejected (score: {quality_assessment.overall_score:.2f})")
+                    
+                    result_payload["enhancement_required"] = {
+                        "reason": "Quality score too low for verification",
+                        "suggestions": quality_assessment.improvement_suggestions,
+                        "priority": "high"
+                    }
+                
+                else:
+                    # Quality sufficient for potential verification - create checkpoint
+                    from human_verification_system import human_verification_system
+                    
+                    verification_checkpoint = await human_verification_system.create_verification_checkpoint(
+                        workspace_id=workspace_id,
+                        task_id=task_id,
+                        task_name=task_name,
+                        asset_type=asset_type,
+                        deliverable_data=result_payload,
+                        quality_assessment={
+                            "overall_score": quality_assessment.overall_score,
+                            "ready_for_use": quality_assessment.ready_for_use,
+                            "needs_enhancement": quality_assessment.needs_enhancement,
+                            "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
+                            "enhancement_priority": quality_assessment.enhancement_priority,
+                            "improvement_suggestions": quality_assessment.improvement_suggestions
+                        },
+                        context={"workspace_goal": workspace_goal}
+                    )
+                    
+                    if verification_checkpoint:
+                        # Human verification required - set status to pending_verification
+                        status = "pending_verification"
+                        data_to_update["status"] = status
+                        
+                        result_payload["verification_required"] = {
+                            "verification_id": verification_checkpoint.id,
+                            "priority": verification_checkpoint.priority.value,
+                            "verification_type": verification_checkpoint.verification_type,
+                            "expires_at": verification_checkpoint.expires_at,
+                            "criteria": verification_checkpoint.verification_criteria
+                        }
+                        
+                        logger.warning(f"🚨 HUMAN VERIFICATION REQUIRED: Task {task_id} requires human approval "
+                                     f"(verification_id: {verification_checkpoint.id}, priority: {verification_checkpoint.priority.value})")
+                    
+                    else:
+                        # No human verification needed - proceed with quality gate
+                        if quality_assessment.overall_score < 0.7 or quality_assessment.needs_enhancement:
+                            status = "needs_enhancement"
+                            data_to_update["status"] = status
+                            logger.warning(f"🔴 QUALITY GATE FAILED: Task {task_id} marked as needs_enhancement (score: {quality_assessment.overall_score:.2f})")
+                            
+                            # Add enhancement suggestions to result
+                            result_payload["enhancement_required"] = {
+                                "reason": "Quality validation failed",
+                                "suggestions": quality_assessment.improvement_suggestions,
+                                "priority": quality_assessment.enhancement_priority
+                            }
+                        else:
+                            logger.info(f"✅ QUALITY GATE PASSED: Task {task_id} approved for completion (score: {quality_assessment.overall_score:.2f})")
+            
+            # Sanitize the enhanced payload
             clean_payload = sanitize_unicode_for_postgres(result_payload)
             data_to_update["result"] = clean_payload
             
-            # Log per debugging se sono stati rimossi caratteri problematici
+        except Exception as e:
+            logger.error(f"Error in quality validation for task {task_id}: {e}")
+            # Fallback: still save result but mark for manual review
+            clean_payload = sanitize_unicode_for_postgres(result_payload)
+            clean_payload["quality_validation_error"] = {
+                "error": str(e),
+                "requires_manual_review": True,
+                "timestamp": datetime.now().isoformat()
+            }
+            data_to_update["result"] = clean_payload
+    
+    elif result_payload is not None:
+        try:
+            # Regular sanitization for non-completed tasks
+            clean_payload = sanitize_unicode_for_postgres(result_payload)
+            data_to_update["result"] = clean_payload
+            
             if clean_payload != result_payload:
                 logger.warning(f"Unicode characters sanitized in task {task_id} result payload")
                 
         except Exception as e:
             logger.error(f"Error sanitizing result payload for task {task_id}: {e}")
-            # Fallback: salva un payload di errore sicuro
             data_to_update["result"] = {
                 "error": "Result payload sanitization failed",
                 "original_error": str(e),
@@ -744,7 +864,20 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
             }
 
     try:
+        # Update task in database
         db_result = supabase.table("tasks").update(data_to_update).eq("id", task_id).execute()
+        
+        # 🎯 STEP 2: UPDATE GOAL PROGRESS IF TASK COMPLETED SUCCESSFULLY
+        if status == "completed" and db_result.data:
+            try:
+                await _update_goal_progress_from_task_completion(task_id, result_payload)
+                
+                # 🎯 STEP 3: TRIGGER GOAL VALIDATION AND CORRECTIVE ACTIONS
+                await _trigger_goal_validation_and_correction(task_id, workspace_id)
+                
+            except Exception as goal_error:
+                logger.warning(f"Failed to update goal progress for completed task {task_id}: {goal_error}")
+        
         if db_result.data and len(db_result.data) > 0:
             logger.info(f"Task {task_id} status updated to {status}.")
             return db_result.data[0]
@@ -1467,3 +1600,372 @@ def _calculate_goal_urgency(goal: Dict[str, Any], completion_pct: float) -> floa
             pass
     
     return base_urgency * priority_multiplier * time_urgency
+
+def _determine_asset_type(task_name: str, result_payload: Dict[str, Any]) -> str:
+    """
+    🎯 SMART ASSET TYPE DETECTION - Determines asset type from task name and result
+    """
+    task_lower = task_name.lower()
+    result_str = json.dumps(result_payload, default=str).lower()
+    
+    # 📧 EMAIL & COMMUNICATION ASSETS
+    if any(keyword in task_lower for keyword in ["email", "sequenz", "campaign", "newsletter"]):
+        return "email_sequence"
+    
+    # 📞 CONTACT & LEAD ASSETS  
+    if any(keyword in task_lower for keyword in ["contatt", "contact", "lead", "prospect", "customer"]):
+        return "contact_database"
+    
+    # 📅 CONTENT & CALENDAR ASSETS
+    if any(keyword in task_lower for keyword in ["content", "calendar", "post", "social", "article"]):
+        return "content_calendar"
+        
+    # 📊 ANALYSIS & RESEARCH ASSETS
+    if any(keyword in task_lower for keyword in ["analisi", "analysis", "research", "competitor", "market"]):
+        return "business_analysis"
+        
+    # 📈 STRATEGY & PLANNING ASSETS
+    if any(keyword in task_lower for keyword in ["strategy", "strategia", "plan", "roadmap", "proposal"]):
+        return "strategic_plan"
+        
+    # 💰 FINANCIAL & BUDGET ASSETS
+    if any(keyword in task_lower for keyword in ["budget", "financial", "cost", "price", "revenue"]):
+        return "financial_plan"
+        
+    # 🛠️ TECHNICAL & DEVELOPMENT ASSETS
+    if any(keyword in task_lower for keyword in ["api", "technical", "development", "integration", "code"]):
+        return "technical_deliverable"
+        
+    # 📋 PROCESS & WORKFLOW ASSETS
+    if any(keyword in task_lower for keyword in ["process", "workflow", "procedure", "template"]):
+        return "process_document"
+    
+    # 🎯 DETECT FROM RESULT STRUCTURE
+    if "contacts" in result_str or "email" in result_str:
+        return "contact_database"
+    elif "date" in result_str and "post" in result_str:
+        return "content_calendar"
+    elif "sequence" in result_str or "subject" in result_str:
+        return "email_sequence"
+    elif "analysis" in result_str or "insight" in result_str:
+        return "business_analysis"
+    
+    # Default fallback
+    return "generic_deliverable"
+
+async def _update_goal_progress_from_task_completion(task_id: str, result_payload: Dict[str, Any]):
+    """
+    🎯 AUTOMATIC GOAL PROGRESS TRACKING - Updates workspace goals when tasks complete
+    
+    This function analyzes completed task results and automatically updates
+    the corresponding workspace goals with measurable progress.
+    """
+    try:
+        # Get task details
+        task = await get_task(task_id)
+        if not task:
+            logger.warning(f"Task {task_id} not found for goal progress update")
+            return
+            
+        workspace_id = task.get("workspace_id")
+        task_name = task.get("name", "")
+        
+        # Get workspace goals
+        workspace_goals = await get_workspace_goals(workspace_id, status="active")
+        if not workspace_goals:
+            logger.debug(f"No active goals found for workspace {workspace_id}")
+            return
+            
+        logger.info(f"🎯 GOAL PROGRESS UPDATE: Analyzing task '{task_name}' for {len(workspace_goals)} workspace goals")
+        
+        # Extract measurable achievements from task result
+        achievements = await _extract_task_achievements(result_payload, task_name)
+        
+        if not achievements:
+            logger.debug(f"No measurable achievements found in task {task_id} result")
+            return
+            
+        # Update each matching goal
+        for goal in workspace_goals:
+            try:
+                goal_metric_type = goal.get("metric_type", "")
+                goal_id = goal.get("id")
+                current_value = goal.get("current_value", 0)
+                target_value = goal.get("target_value", 0)
+                
+                # Map achievements to goal metrics
+                increment = _calculate_goal_increment(achievements, goal_metric_type)
+                
+                if increment > 0:
+                    # Update goal progress
+                    await update_goal_progress(goal_id, increment, task_id)
+                    
+                    new_value = min(current_value + increment, target_value)
+                    completion_pct = (new_value / target_value * 100) if target_value > 0 else 0
+                    
+                    logger.info(f"✅ GOAL UPDATED: {goal_metric_type} += {increment} "
+                               f"({new_value}/{target_value} = {completion_pct:.1f}% complete)")
+                               
+            except Exception as goal_error:
+                logger.error(f"Error updating individual goal {goal.get('id')}: {goal_error}")
+                
+    except Exception as e:
+        logger.error(f"Error in goal progress update for task {task_id}: {e}", exc_info=True)
+
+async def _extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
+    """
+    🔍 SMART ACHIEVEMENT EXTRACTION - Extracts measurable achievements from task results
+    """
+    achievements = {
+        "contacts_found": 0,
+        "email_sequences_created": 0,
+        "content_pieces_created": 0,
+        "campaigns_created": 0,
+        "deliverables_completed": 0,
+        "analysis_completed": 0
+    }
+    
+    try:
+        # 📊 EXTRACT FROM STRUCTURED DATA
+        if isinstance(result_payload, dict):
+            
+            # Contact extraction - multiple formats
+            contacts_data = result_payload.get("contacts", result_payload.get("contact_list", result_payload.get("leads", [])))
+            if isinstance(contacts_data, list):
+                achievements["contacts_found"] = len([c for c in contacts_data if c and c != ""])
+            elif isinstance(contacts_data, dict):
+                if "total" in contacts_data:
+                    achievements["contacts_found"] = int(contacts_data.get("total", 0))
+                elif "length" in contacts_data:
+                    achievements["contacts_found"] = int(contacts_data.get("length", 0))
+                else:
+                    achievements["contacts_found"] = len(contacts_data)
+            
+            # Email sequence extraction
+            email_data = result_payload.get("email_sequences", result_payload.get("sequences", result_payload.get("emails", [])))
+            if isinstance(email_data, list):
+                achievements["email_sequences_created"] = len([e for e in email_data if e and e != ""])
+            elif isinstance(email_data, dict) and "total_sequences" in email_data:
+                achievements["email_sequences_created"] = int(email_data.get("total_sequences", 0))
+            
+            # Content extraction
+            content_fields = ["content_calendar", "posts", "articles", "templates", "content_pieces"]
+            for field in content_fields:
+                if field in result_payload:
+                    content = result_payload[field]
+                    if isinstance(content, list):
+                        achievements["content_pieces_created"] += len([c for c in content if c and c != ""])
+                    elif isinstance(content, dict) and "items" in content:
+                        achievements["content_pieces_created"] += len(content["items"])
+            
+            # Campaign extraction
+            campaigns = result_payload.get("campaigns", result_payload.get("marketing_campaigns", []))
+            if isinstance(campaigns, list):
+                achievements["campaigns_created"] = len([c for c in campaigns if c and c != ""])
+            
+            # General deliverable extraction
+            deliverable_indicators = ["completed", "delivered", "generated", "created"]
+            for key, value in result_payload.items():
+                if any(indicator in key.lower() for indicator in deliverable_indicators):
+                    if isinstance(value, list):
+                        achievements["deliverables_completed"] += len(value)
+                    elif isinstance(value, bool) and value:
+                        achievements["deliverables_completed"] += 1
+                    elif isinstance(value, (int, float)) and value > 0:
+                        achievements["deliverables_completed"] += int(value)
+        
+        # 🔍 EXTRACT FROM TEXT ANALYSIS (fallback for unstructured results)
+        result_text = json.dumps(result_payload, default=str).lower()
+        
+        # Use regex patterns to find numbers + relevant keywords
+        import re
+        
+        # Contact patterns
+        contact_matches = re.findall(r'(\d+)\s*(?:contatti|contacts|leads|prospects)', result_text)
+        if contact_matches and not achievements["contacts_found"]:
+            achievements["contacts_found"] = max([int(m) for m in contact_matches])
+        
+        # Email sequence patterns  
+        email_matches = re.findall(r'(\d+)\s*(?:email|sequenz|sequence)', result_text)
+        if email_matches and not achievements["email_sequences_created"]:
+            achievements["email_sequences_created"] = max([int(m) for m in email_matches])
+        
+        # Content patterns
+        content_matches = re.findall(r'(\d+)\s*(?:post|article|content|piece)', result_text)
+        if content_matches and not achievements["content_pieces_created"]:
+            achievements["content_pieces_created"] = max([int(m) for m in content_matches])
+        
+        # 🎯 TASK NAME ANALYSIS - Infer achievements from successful task completion
+        task_lower = task_name.lower()
+        
+        # If no specific metrics found but task suggests deliverable creation
+        if sum(achievements.values()) == 0:
+            creation_keywords = ["creare", "create", "generate", "develop", "build", "analyze"]
+            if any(keyword in task_lower for keyword in creation_keywords):
+                achievements["deliverables_completed"] = 1
+                
+                # Be more specific based on task name
+                if any(keyword in task_lower for keyword in ["email", "sequenz"]):
+                    achievements["email_sequences_created"] = 1
+                elif any(keyword in task_lower for keyword in ["contatt", "contact", "lead"]):
+                    achievements["contacts_found"] = 1
+                elif any(keyword in task_lower for keyword in ["content", "post", "article"]):
+                    achievements["content_pieces_created"] = 1
+                elif any(keyword in task_lower for keyword in ["analisi", "analysis"]):
+                    achievements["analysis_completed"] = 1
+        
+        # Filter out zero achievements for cleaner logging
+        non_zero_achievements = {k: v for k, v in achievements.items() if v > 0}
+        
+        if non_zero_achievements:
+            logger.info(f"📊 EXTRACTED ACHIEVEMENTS: {non_zero_achievements}")
+        else:
+            logger.debug(f"No measurable achievements extracted from task: {task_name}")
+            
+        return achievements
+        
+    except Exception as e:
+        logger.error(f"Error extracting task achievements: {e}")
+        return achievements
+
+def _calculate_goal_increment(achievements: Dict[str, int], goal_metric_type: str) -> float:
+    """
+    🎯 SMART GOAL MAPPING - Maps task achievements to goal metrics
+    """
+    
+    # Direct mappings for common metric types
+    metric_mappings = {
+        "contacts": achievements.get("contacts_found", 0),
+        "email_sequences": achievements.get("email_sequences_created", 0),
+        "content_pieces": achievements.get("content_pieces_created", 0),
+        "campaigns": achievements.get("campaigns_created", 0),
+        "deliverables": achievements.get("deliverables_completed", 0),
+        "tasks_completed": 1 if sum(achievements.values()) > 0 else 0,  # Any achievement = task completion
+        "analysis_completed": achievements.get("analysis_completed", 0)
+    }
+    
+    # Try exact match first
+    if goal_metric_type.lower() in metric_mappings:
+        return float(metric_mappings[goal_metric_type.lower()])
+    
+    # Try partial matches
+    for metric_key, value in metric_mappings.items():
+        if metric_key in goal_metric_type.lower() or goal_metric_type.lower() in metric_key:
+            return float(value)
+    
+    # Fallback mapping logic
+    goal_lower = goal_metric_type.lower()
+    
+    if "contact" in goal_lower or "lead" in goal_lower:
+        return float(achievements.get("contacts_found", 0))
+    elif "email" in goal_lower or "sequence" in goal_lower:
+        return float(achievements.get("email_sequences_created", 0))
+    elif "content" in goal_lower or "post" in goal_lower:
+        return float(achievements.get("content_pieces_created", 0))
+    elif "campaign" in goal_lower:
+        return float(achievements.get("campaigns_created", 0))
+    elif "deliverable" in goal_lower:
+        return float(achievements.get("deliverables_completed", 0))
+    elif "task" in goal_lower:
+        return 1.0 if sum(achievements.values()) > 0 else 0.0
+    else:
+        # If no specific mapping, use general deliverable completion
+        return float(achievements.get("deliverables_completed", 0))
+
+async def _trigger_goal_validation_and_correction(task_id: str, workspace_id: str):
+    """
+    🎯 REAL-TIME GOAL VALIDATION AND COURSE CORRECTION
+    
+    This function is called after each task completion to:
+    1. Validate current progress against workspace goals
+    2. Detect critical gaps and misalignments
+    3. Create corrective tasks immediately (not just during periodic monitoring)
+    """
+    try:
+        # Get workspace details
+        workspace = await get_workspace(workspace_id)
+        if not workspace:
+            logger.warning(f"Workspace {workspace_id} not found for goal validation")
+            return
+            
+        workspace_goal = workspace.get("goal", "")
+        if not workspace_goal:
+            logger.debug(f"No workspace goal defined for {workspace_id}")
+            return
+        
+        # Get completed tasks for analysis
+        completed_tasks = await list_tasks(workspace_id, status="completed")
+        
+        # Import and use goal validator
+        from ai_quality_assurance.goal_validator import goal_validator
+        
+        logger.info(f"🎯 REAL-TIME GOAL VALIDATION: Analyzing {len(completed_tasks)} completed tasks against workspace goal")
+        
+        # Validate goal achievement
+        validation_results = await goal_validator.validate_workspace_goal_achievement(
+            workspace_goal=workspace_goal,
+            completed_tasks=completed_tasks,
+            workspace_id=workspace_id
+        )
+        
+        if not validation_results:
+            logger.debug(f"No goal validation results for workspace {workspace_id}")
+            return
+        
+        # Check for critical gaps
+        critical_gaps = [
+            result for result in validation_results 
+            if result.gap_percentage > 50.0  # More than 50% gap is critical
+        ]
+        
+        if critical_gaps:
+            logger.warning(f"🚨 CRITICAL GOAL GAPS DETECTED: {len(critical_gaps)} gaps found in workspace {workspace_id}")
+            
+            # Trigger immediate corrective actions
+            corrective_tasks = await goal_validator.trigger_corrective_actions(
+                validation_results=validation_results,
+                workspace_id=workspace_id
+            )
+            
+            if corrective_tasks:
+                logger.info(f"🔄 COURSE CORRECTION ACTIVATED: Created {len(corrective_tasks)} corrective tasks")
+                
+                # Create the corrective tasks in database
+                for corrective_task_data in corrective_tasks:
+                    try:
+                        corrective_task = await create_task(
+                            workspace_id=workspace_id,
+                            name=corrective_task_data.get("name", "Goal Correction Task"),
+                            status="pending",
+                            priority="high",
+                            description=corrective_task_data.get("description", "Corrective action for goal alignment"),
+                            creation_type="goal_correction",
+                            context_data={
+                                "triggered_by_task": task_id,
+                                "goal_gap_percentage": max([gap.gap_percentage for gap in critical_gaps]),
+                                "corrective_action_type": corrective_task_data.get("action_type", "unknown"),
+                                "target_metric": corrective_task_data.get("target_metric", "unknown")
+                            }
+                        )
+                        
+                        if corrective_task:
+                            logger.info(f"✅ CORRECTIVE TASK CREATED: {corrective_task['id']} - {corrective_task['name']}")
+                        
+                    except Exception as task_error:
+                        logger.error(f"Failed to create corrective task: {task_error}")
+            else:
+                logger.warning("🔴 COURSE CORRECTION FAILED: No corrective tasks generated")
+        else:
+            logger.info(f"✅ GOALS ON TRACK: No critical gaps detected in workspace {workspace_id}")
+            
+            # Check for completion opportunities
+            near_completion = [
+                result for result in validation_results
+                if result.gap_percentage < 20.0 and result.gap_percentage > 0.0
+            ]
+            
+            if near_completion:
+                logger.info(f"🎯 GOALS NEAR COMPLETION: {len(near_completion)} goals close to target")
+        
+    except Exception as e:
+        logger.error(f"Error in real-time goal validation for task {task_id}: {e}", exc_info=True)

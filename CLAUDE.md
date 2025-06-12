@@ -9,6 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run tests**: `cd backend && pytest`
 - **Install dependencies**: `cd backend && pip install -r requirements.txt`
 
+> ⚠️ **Note**: `start_simple.py` is DEPRECATED as of 2025-06-12. Always use `main.py` for full functionality.
+
 ### Frontend (Next.js)
 - **Start dev server**: `cd frontend && npm run dev` (uses Turbopack)
 - **Build**: `cd frontend && npm run build`
