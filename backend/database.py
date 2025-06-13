@@ -776,7 +776,7 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                     from ai_quality_assurance.ai_content_enhancer import AIContentEnhancer
                     
                     enhancer = AIContentEnhancer()
-                    task_context = update_data.get('context_data', {}) or {}
+                    task_context = task.get('context_data', {}) or {}
                     workspace_context = {'goal': workspace_goal, 'id': workspace_id}
                     
                     enhanced_payload, was_enhanced = await enhancer.enhance_content_for_business_use(
