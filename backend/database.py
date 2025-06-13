@@ -672,6 +672,37 @@ async def create_task(
         if db_result.data and len(db_result.data) > 0:
             created_task = db_result.data[0]
             logger.info(f"Task '{clean_name}' (ID: {created_task['id']}) created successfully")
+            
+            # 🤖 AI-DRIVEN GOAL LINKING: Automatically link task to relevant goals
+            try:
+                goal_link = await ai_link_task_to_goals(
+                    workspace_id=s_workspace_id,
+                    task_name=clean_name,
+                    task_description=clean_description or "",
+                    task_context=final_context_data_dict
+                )
+                
+                if goal_link and goal_link.get('goal_id'):
+                    # Update task with goal information
+                    goal_update_data = {
+                        'goal_id': goal_link['goal_id'],
+                        'metric_type': goal_link['metric_type'],
+                        'contribution_expected': goal_link.get('contribution_expected', 1.0)
+                    }
+                    
+                    update_result = supabase.table("tasks").update(goal_update_data).eq("id", created_task['id']).execute()
+                    
+                    if update_result.data:
+                        # Merge goal data into created_task for return
+                        created_task.update(goal_update_data)
+                        logger.info(f"🎯 TASK-GOAL LINKED: '{clean_name}' → {goal_link['metric_type']} goal")
+                    else:
+                        logger.warning(f"Failed to update task {created_task['id']} with goal link")
+                        
+            except Exception as goal_error:
+                logger.warning(f"Goal linking failed for task '{clean_name}': {goal_error}")
+                # Don't fail task creation if goal linking fails
+            
             return created_task
         else:
             err_msg = f"Failed to create task '{clean_name}'. Supabase response: {db_result}"
@@ -740,10 +771,41 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                 workspace = await get_workspace(workspace_id)
                 workspace_goal = workspace.get("goal", "") if workspace else ""
                 
+                # 🤖 AI-DRIVEN CONTENT ENHANCEMENT: Transform placeholder data to business-ready content
+                try:
+                    from ai_quality_assurance.ai_content_enhancer import AIContentEnhancer
+                    
+                    enhancer = AIContentEnhancer()
+                    task_context = update_data.get('context_data', {}) or {}
+                    workspace_context = {'goal': workspace_goal, 'id': workspace_id}
+                    
+                    enhanced_payload, was_enhanced = await enhancer.enhance_content_for_business_use(
+                        content=result_payload,
+                        task_context=task_context,
+                        workspace_context=workspace_context
+                    )
+                    
+                    if was_enhanced:
+                        result_payload = enhanced_payload
+                        logger.info(f"🤖 CONTENT ENHANCED: Task {task_id} content transformed to business-ready")
+                        
+                        # Add enhancement metadata
+                        result_payload["content_enhancement"] = {
+                            "enhanced": True,
+                            "enhanced_at": datetime.now().isoformat(),
+                            "enhancement_method": "ai_driven"
+                        }
+                    else:
+                        logger.debug(f"Content already business-ready for task {task_id}")
+                        
+                except Exception as enhancement_error:
+                    logger.warning(f"Content enhancement failed for task {task_id}: {enhancement_error}")
+                    # Continue with original content if enhancement fails
+                
                 # Determine asset type from task name/result
                 asset_type = _determine_asset_type(task_name, result_payload)
                 
-                # Perform quality validation
+                # Perform quality validation (now on potentially enhanced content)
                 quality_validator = AIQualityValidator()
                 quality_assessment = await quality_validator.validate_asset_quality(
                     asset_data=result_payload,
@@ -1736,6 +1798,15 @@ async def _update_goal_progress_from_task_completion(task_id: str, result_payloa
     except Exception as e:
         logger.error(f"Error in goal progress update for task {task_id}: {e}", exc_info=True)
 
+async def extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
+    """
+    🤖 PUBLIC WRAPPER: Universal task achievement extraction
+    
+    Public interface for universal task achievement extraction that works across all domains.
+    Uses AI-driven analysis to identify measurable achievements without domain-specific assumptions.
+    """
+    return await _extract_task_achievements(result_payload, task_name)
+
 async def _extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
     """
     🔍 AI-DRIVEN UNIVERSAL ACHIEVEMENT EXTRACTION - Works across all domains
@@ -2159,3 +2230,166 @@ async def _trigger_goal_validation_and_correction(task_id: str, workspace_id: st
         
     except Exception as e:
         logger.error(f"Error in real-time goal validation for task {task_id}: {e}", exc_info=True)
+
+# 🤖 AI-DRIVEN UNIVERSAL GOAL LINKING SYSTEM
+async def ai_link_task_to_goals(
+    workspace_id: str, 
+    task_name: str, 
+    task_description: str, 
+    task_context: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    🤖 AI-DRIVEN UNIVERSAL GOAL LINKING
+    
+    Automatically links tasks to relevant workspace goals using AI analysis.
+    Works across all business domains without hard-coded assumptions.
+    """
+    try:
+        # Get workspace goals
+        goals = await get_workspace_goals(workspace_id)
+        if not goals:
+            logger.debug(f"No goals found for workspace {workspace_id}")
+            return {}
+        
+        # 🤖 AI-DRIVEN GOAL MATCHING
+        best_match = await _ai_analyze_task_goal_relevance(
+            task_name, task_description, task_context or {}, goals
+        )
+        
+        if best_match and best_match.get('goal_id'):
+            logger.info(f"🎯 AI-LINKED: Task '{task_name}' → Goal {best_match['metric_type']} "
+                       f"(confidence: {best_match.get('confidence', 0):.2f})")
+            return best_match
+        
+        # 🔄 FALLBACK: Universal pattern matching if AI fails
+        fallback_match = _universal_pattern_goal_matching(task_name, task_description, goals)
+        if fallback_match:
+            logger.info(f"🔄 PATTERN-LINKED: Task '{task_name}' → Goal {fallback_match['metric_type']}")
+            return fallback_match
+        
+        logger.debug(f"No goal match found for task: {task_name}")
+        return {}
+        
+    except Exception as e:
+        logger.error(f"Error in AI goal linking: {e}")
+        return {}
+
+async def _ai_analyze_task_goal_relevance(
+    task_name: str, 
+    task_description: str, 
+    task_context: Dict[str, Any], 
+    goals: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """🤖 AI-driven task-goal relevance analysis"""
+    try:
+        # Check if AI is available
+        if not os.getenv("OPENAI_API_KEY"):
+            return None
+        
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # Build goals context for AI
+        goals_context = []
+        for goal in goals:
+            goals_context.append({
+                "id": goal.get("id"),
+                "metric_type": goal.get("metric_type"),
+                "target_value": goal.get("target_value"),
+                "current_value": goal.get("current_value"),
+                "description": goal.get("description", ""),
+                "unit": goal.get("unit", "")
+            })
+        
+        analysis_prompt = f"""Analyze this task and determine which workspace goal it best contributes to:
+
+TASK INFORMATION:
+- Name: "{task_name}"
+- Description: "{task_description}"
+- Context: {json.dumps(task_context, default=str)}
+
+AVAILABLE GOALS:
+{json.dumps(goals_context, indent=2)}
+
+Determine:
+1. Which goal (if any) this task directly contributes to
+2. How much progress this task completion would add to that goal (0-100% of target)
+3. Confidence level (0.0-1.0) in this assessment
+
+Return ONLY a JSON object:
+{{
+  "goal_id": "goal_uuid_or_null",
+  "metric_type": "metric_type_name",
+  "contribution_expected": 1.0,
+  "confidence": 0.85,
+  "reasoning": "Why this task contributes to this goal"
+}}
+
+If no relevant goal exists, return: {{"goal_id": null, "confidence": 0.0}}"""
+
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": analysis_prompt}],
+            temperature=0.2,
+            max_tokens=300
+        )
+        
+        result_text = response.choices[0].message.content.strip()
+        
+        # Parse AI response
+        try:
+            result = json.loads(result_text)
+            if result.get("goal_id") and result.get("confidence", 0) > 0.5:
+                return result
+        except json.JSONDecodeError:
+            logger.debug("AI returned non-JSON response for goal linking")
+        
+        return None
+        
+    except Exception as e:
+        logger.debug(f"AI goal analysis failed: {e}")
+        return None
+
+def _universal_pattern_goal_matching(
+    task_name: str, 
+    task_description: str, 
+    goals: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """🌍 Universal pattern-based goal matching (fallback)"""
+    
+    task_text = f"{task_name} {task_description}".lower()
+    
+    # 🌍 UNIVERSAL CONTRIBUTION PATTERNS
+    universal_patterns = {
+        # Collection patterns
+        'contacts': ['contact', 'lead', 'prospect', 'email', 'research', 'list', 'database'],
+        'email_sequences': ['email', 'sequence', 'campaign', 'newsletter', 'outreach', 'automation'],
+        'content_pieces': ['content', 'article', 'post', 'write', 'create', 'publish', 'blog'],
+        'deliverables': ['deliver', 'complete', 'finish', 'produce', 'build', 'develop'],
+        'campaigns': ['campaign', 'marketing', 'promotion', 'advertising', 'launch'],
+        'timeline_days': ['timeline', 'schedule', 'deadline', 'time', 'week', 'month', 'plan']
+    }
+    
+    best_match = None
+    highest_score = 0
+    
+    for goal in goals:
+        metric_type = goal.get('metric_type', '').lower()
+        
+        # Check for direct metric type patterns
+        if metric_type in universal_patterns:
+            pattern_keywords = universal_patterns[metric_type]
+            matches = sum(1 for keyword in pattern_keywords if keyword in task_text)
+            
+            if matches > 0:
+                score = matches / len(pattern_keywords)
+                if score > highest_score:
+                    highest_score = score
+                    best_match = {
+                        'goal_id': goal.get('id'),
+                        'metric_type': metric_type,
+                        'contribution_expected': 1.0,  # Default contribution
+                        'confidence': min(score, 0.8)  # Cap at 0.8 for pattern matching
+                    }
+    
+    return best_match if highest_score > 0.2 else None

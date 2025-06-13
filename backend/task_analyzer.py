@@ -661,6 +661,9 @@ class EnhancedTaskExecutor:
             # 🎯 GOAL-DRIVEN: Handle goal progress update first
             await self._handle_goal_progress_update(completed_task, task_result, workspace_id)
             
+            # 🧠 MEMORY-DRIVEN: Extract actionable insights from task completion
+            await self._handle_memory_intelligence_extraction(completed_task, task_result, workspace_id)
+            
             # Determine task type
             is_pm_task = await self._is_project_manager_task(completed_task, task_result)
 
@@ -2014,6 +2017,222 @@ If unclear, escalate to Project Manager immediately.
         
         except Exception as e:
             logger.error(f"Error in enhanced cleanup: {e}")
+
+    async def _handle_memory_intelligence_extraction(
+        self, 
+        completed_task: Task, 
+        task_result: Dict[str, Any], 
+        workspace_id: str
+    ) -> None:
+        """
+        🧠 MEMORY-DRIVEN INTELLIGENCE: Extract actionable insights and generate course corrections
+        
+        This is called for every completed task to:
+        1. Extract actionable insights from task completion patterns
+        2. Generate automatic corrective actions when needed
+        3. Store insights in workspace memory for future reference
+        """
+        try:
+            # Import memory intelligence system
+            from ai_quality_assurance.ai_memory_intelligence import AIMemoryIntelligence
+            
+            memory_intelligence = AIMemoryIntelligence()
+            
+            # Get workspace context for analysis
+            workspace_context = await self._get_workspace_context_for_memory(workspace_id)
+            
+            # Extract actionable insights from this task completion
+            insights = await memory_intelligence.extract_actionable_insights(
+                completed_task={
+                    'id': str(completed_task.id),
+                    'name': completed_task.name or '',
+                    'assigned_to_role': completed_task.assigned_to_role or '',
+                    'priority': completed_task.priority or 'medium',
+                    'creation_type': getattr(completed_task, 'creation_type', ''),
+                    'context_data': completed_task.context_data or {}
+                },
+                task_result=task_result,
+                workspace_context=workspace_context
+            )
+            
+            if insights:
+                logger.info(f"🧠 MEMORY INSIGHTS: Extracted {len(insights)} actionable insights from task {completed_task.id}")
+                
+                # Store insights in workspace memory
+                await self._store_insights_in_workspace_memory(insights, workspace_id, completed_task)
+                
+                # Generate corrective actions if patterns indicate issues
+                corrective_actions = await memory_intelligence.generate_corrective_actions(
+                    workspace_id=workspace_id,
+                    current_insights=insights,
+                    workspace_context=workspace_context
+                )
+                
+                if corrective_actions:
+                    logger.info(f"🔄 AUTO CORRECTION: Generated {len(corrective_actions)} corrective actions for workspace {workspace_id}")
+                    
+                    # Create corrective tasks to address identified issues
+                    await self._create_corrective_tasks(corrective_actions, workspace_id, completed_task)
+                else:
+                    logger.debug(f"🧠 MEMORY: No corrective actions needed for workspace {workspace_id}")
+            else:
+                logger.debug(f"🧠 MEMORY: No actionable insights extracted from task {completed_task.id}")
+                
+        except Exception as e:
+            logger.error(f"Error in memory intelligence extraction for task {completed_task.id}: {e}", exc_info=True)
+    
+    async def _get_workspace_context_for_memory(self, workspace_id: str) -> Dict[str, Any]:
+        """Get enhanced workspace context for memory intelligence analysis"""
+        try:
+            # Get basic workspace context
+            workspace = await get_workspace(workspace_id)
+            tasks = await list_tasks(workspace_id)
+            
+            # Get workspace goals for context
+            try:
+                workspace_goals = await get_workspace_goals(workspace_id)
+            except Exception:
+                workspace_goals = []
+            
+            # Build comprehensive context
+            return {
+                'workspace_id': workspace_id,
+                'goal': workspace.get('goal', '') if workspace else '',
+                'industry': workspace.get('industry', 'Business') if workspace else 'Business',
+                'status': workspace.get('status', '') if workspace else '',
+                'total_tasks': len(tasks),
+                'completed_tasks': len([t for t in tasks if t.get('status') == 'completed']),
+                'pending_tasks': len([t for t in tasks if t.get('status') in ['pending', 'in_progress']]),
+                'goals_count': len(workspace_goals),
+                'goals_active': len([g for g in workspace_goals if g.get('status') == 'active']),
+                'created_at': workspace.get('created_at', '') if workspace else ''
+            }
+        except Exception as e:
+            logger.error(f"Error getting workspace context for memory: {e}")
+            return {
+                'workspace_id': workspace_id,
+                'goal': '',
+                'industry': 'Business',
+                'total_tasks': 0,
+                'completed_tasks': 0,
+                'pending_tasks': 0
+            }
+    
+    async def _store_insights_in_workspace_memory(
+        self, 
+        insights: List[Dict[str, Any]], 
+        workspace_id: str, 
+        completed_task: Task
+    ) -> None:
+        """Store extracted insights in workspace memory system"""
+        try:
+            from workspace_memory import workspace_memory
+            from models import InsightType
+            from uuid import UUID
+            
+            for insight in insights:
+                # Map insight type to enum
+                insight_type_mapping = {
+                    'process_optimization': InsightType.OPTIMIZATION,
+                    'quality_improvement': InsightType.SUCCESS_PATTERN,
+                    'cost_efficiency': InsightType.OPTIMIZATION,
+                    'strategic_guidance': InsightType.SUCCESS_PATTERN
+                }
+                
+                insight_type = insight_type_mapping.get(
+                    insight.get('insight_type', 'optimization'), 
+                    InsightType.OPTIMIZATION
+                )
+                
+                # Prepare relevance tags
+                relevance_tags = insight.get('relevance_tags', [])
+                if completed_task.assigned_to_role:
+                    relevance_tags.append(f"role_{completed_task.assigned_to_role.lower()}")
+                if insight.get('source_agent_role'):
+                    relevance_tags.append(f"agent_{insight['source_agent_role'].lower()}")
+                
+                # Store insight
+                await workspace_memory.store_insight(
+                    workspace_id=UUID(workspace_id),
+                    task_id=completed_task.id,
+                    agent_role=insight.get('source_agent_role', 'memory_intelligence'),
+                    insight_type=insight_type,
+                    content=insight.get('content', ''),
+                    relevance_tags=relevance_tags,
+                    confidence_score=insight.get('confidence_score', 0.8)
+                )
+                
+                logger.debug(f"🧠 STORED: Insight '{insight.get('content', '')[:50]}...' in workspace memory")
+                
+        except Exception as e:
+            logger.error(f"Error storing insights in workspace memory: {e}")
+    
+    async def _create_corrective_tasks(
+        self, 
+        corrective_actions: List[Dict[str, Any]], 
+        workspace_id: str, 
+        source_task: Task
+    ) -> None:
+        """Create corrective tasks based on memory intelligence analysis"""
+        try:
+            # Find appropriate agent for corrective tasks (prefer PM)
+            pm_agent = await self._find_project_manager(workspace_id)
+            if not pm_agent:
+                logger.warning(f"No PM found for corrective tasks in workspace {workspace_id}")
+                return
+            
+            for action in corrective_actions:
+                try:
+                    # Prepare context data for tracking
+                    context_data = {
+                        'project_phase': 'IMPLEMENTATION',  # Corrective actions are usually implementation-focused
+                        'corrective_action': True,
+                        'memory_driven': True,
+                        'source_task_id': str(source_task.id),
+                        'action_type': action.get('action_type', 'process_optimization'),
+                        'target_metric': action.get('target_metric', ''),
+                        'urgency': action.get('urgency', 'medium'),
+                        'workspace_patterns': action.get('workspace_patterns', []),
+                        'generated_at': action.get('generated_at', ''),
+                        'generation_method': action.get('generation_method', 'ai_driven'),
+                        'creation_type': 'memory_intelligence_correction'
+                    }
+                    
+                    # Map urgency to priority
+                    urgency_to_priority = {
+                        'immediate': 'high',
+                        'next_week': 'medium',
+                        'within_month': 'low'
+                    }
+                    task_priority = urgency_to_priority.get(action.get('urgency', 'medium'), 'medium')
+                    
+                    # Create corrective task
+                    created_task = await create_task(
+                        workspace_id=workspace_id,
+                        agent_id=pm_agent['id'],
+                        name=action.get('task_name', 'Memory-Driven Improvement Task'),
+                        description=action.get('task_description', 'Implement improvements based on workspace memory analysis'),
+                        status=TaskStatus.PENDING.value,
+                        priority=task_priority,
+                        context_data=context_data,
+                        creation_type='memory_intelligence_correction',
+                        parent_task_id=str(source_task.id)
+                    )
+                    
+                    if created_task and created_task.get('id'):
+                        logger.info(
+                            f"🔄 CORRECTIVE TASK: Created {created_task['id']} - {action.get('task_name', 'Improvement Task')} "
+                            f"(Priority: {task_priority}, Target: {action.get('target_metric', 'general')})"
+                        )
+                    else:
+                        logger.error(f"Failed to create corrective task for action: {action.get('task_name', 'Unknown')}")
+                        
+                except Exception as e:
+                    logger.error(f"Error creating corrective task: {e}")
+                    continue
+                    
+        except Exception as e:
+            logger.error(f"Error creating corrective tasks: {e}", exc_info=True)
 
 # Global instance management
 _enhanced_executor_instance = None

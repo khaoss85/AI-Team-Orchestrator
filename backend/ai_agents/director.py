@@ -244,18 +244,18 @@ SKILL EXTRACTION APPROACH:
 - Separate high-level strategy from hands-on execution tasks
 - Consider stakeholder management, compliance, and quality assurance needs
 
-EXAMPLES by domain:
-- Financial: "Financial Analysis", "Risk Assessment", "Regulatory Compliance"
-- Sports: "Performance Analytics", "Training Program Design", "Athlete Development"  
-- Healthcare: "Clinical Research", "Regulatory Affairs", "Patient Safety"
-- Technology: "System Architecture", "Security Implementation", "User Experience"
+UNIVERSAL FUNCTIONAL EXAMPLES:
+- Creation: "Content Creation", "Product Development", "Process Design"
+- Analysis: "Data Analysis", "Performance Evaluation", "Research and Investigation"  
+- Optimization: "Process Improvement", "Performance Enhancement", "Efficiency Analysis"
+- Strategy: "Strategic Planning", "Framework Development", "Roadmap Creation"
 
 Return *only* valid JSON:
 {{
   "required_skills": ["Specific Functional Skill 1", "Domain Expertise 2", "Process Skill 3+"],
   "expertise_areas": ["Primary Domain", "Supporting Area+"],
   "recommended_team_size": X,
-  "rationale": "Domain-specific explanation of why these skills and team size are optimal"
+  "rationale": "Functional explanation of why these skills and team size are optimal"
 }}"""
 
             analyzer = OpenAIAgent(

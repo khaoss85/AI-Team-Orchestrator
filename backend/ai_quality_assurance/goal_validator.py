@@ -166,7 +166,7 @@ class AIGoalValidator:
                         value = float(value_str)
                     
                     # Determine requirement type first for better deduplication
-                    req_type = self._classify_requirement_type(unit_context, goal_lower)
+                    req_type = await self._classify_requirement_type(unit_context, goal_lower)
                     
                     # Create intelligent deduplication key
                     is_percentage = '%' in match.group(0)
@@ -194,7 +194,7 @@ class AIGoalValidator:
                     seen_requirements.add(dedup_key)
                     
                     # Determine domain (req_type already determined above)
-                    domain = self._detect_domain(workspace_goal)
+                    domain = await self._detect_domain(workspace_goal)
                     
                     requirement = {
                         'type': req_type,
@@ -246,7 +246,7 @@ class AIGoalValidator:
         
         for task in completed_tasks:
             # Use the universal achievement extraction from database.py
-            from database import _extract_task_achievements as universal_extract
+            from database import extract_task_achievements as universal_extract
             
             task_result = task.get('result', {})
             task_name = task.get('name', '')
