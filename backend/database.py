@@ -1537,8 +1537,7 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
         # Update goal
         update_data = {
             "current_value": new_value,
-            "updated_at": datetime.now().isoformat(),
-            "last_progress_date": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat()
         }
         
         # Mark as completed if target reached
