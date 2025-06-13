@@ -191,7 +191,7 @@ class DeliverableRequirementsAnalyzer:
             return "ANALYSIS"
     
     def _analyze_team_capabilities(self, agents: List[Dict]) -> Dict[str, Any]:
-        """Analizza le capacità del team per determinare che asset possono produrre"""
+        """🤖 AI-DRIVEN UNIVERSAL team capability analysis"""
         
         capabilities = {
             "roles_available": [],
@@ -208,17 +208,56 @@ class DeliverableRequirementsAnalyzer:
                 capabilities["roles_available"].append(role)
                 capabilities["seniority_distribution"][seniority] = capabilities["seniority_distribution"].get(seniority, 0) + 1
                 
-                # Mappping ruoli -> capacità di produzione asset
-                if any(keyword in role for keyword in ["content", "marketing", "social"]):
-                    capabilities["asset_production_capacity"]["content_assets"] = True
-                if any(keyword in role for keyword in ["analysis", "research", "data"]):
-                    capabilities["asset_production_capacity"]["data_assets"] = True
-                if any(keyword in role for keyword in ["technical", "developer", "automation"]):
-                    capabilities["asset_production_capacity"]["automation_assets"] = True
-                if any(keyword in role for keyword in ["sales", "business", "lead"]):
-                    capabilities["asset_production_capacity"]["business_assets"] = True
+                # 🤖 UNIVERSAL CAPABILITY MAPPING: Based on functional skills, not domain assumptions
+                role_capabilities = self._extract_universal_capabilities_from_role(role)
+                for capability, enabled in role_capabilities.items():
+                    if enabled:
+                        capabilities["asset_production_capacity"][capability] = True
         
         return capabilities
+    
+    def _extract_universal_capabilities_from_role(self, role: str) -> Dict[str, bool]:
+        """🤖 Extract universal capabilities from role description without domain assumptions"""
+        
+        # Universal functional capability patterns
+        universal_capabilities = {
+            "content_creation": False,     # Can create any type of content
+            "data_analysis": False,        # Can analyze and process data
+            "automation_setup": False,     # Can set up automated processes
+            "strategic_planning": False,   # Can create strategic plans
+            "communication_assets": False, # Can create communication materials
+            "process_documentation": False # Can document processes
+        }
+        
+        # Universal pattern matching (no business domain assumptions)
+        role_lower = role.lower()
+        
+        # Content creation capability
+        if any(keyword in role_lower for keyword in ["content", "writ", "editor", "creativ", "author"]):
+            universal_capabilities["content_creation"] = True
+            universal_capabilities["communication_assets"] = True
+            
+        # Data analysis capability  
+        if any(keyword in role_lower for keyword in ["analy", "research", "data", "evaluat", "report"]):
+            universal_capabilities["data_analysis"] = True
+            
+        # Automation capability
+        if any(keyword in role_lower for keyword in ["technical", "develop", "engineer", "automat", "system"]):
+            universal_capabilities["automation_setup"] = True
+            
+        # Strategic planning capability
+        if any(keyword in role_lower for keyword in ["strateg", "plan", "manag", "direct", "lead", "coordin"]):
+            universal_capabilities["strategic_planning"] = True
+            
+        # Communication assets capability
+        if any(keyword in role_lower for keyword in ["market", "social", "communic", "promot", "brand", "sales"]):
+            universal_capabilities["communication_assets"] = True
+            
+        # Process documentation capability
+        if any(keyword in role_lower for keyword in ["document", "process", "quality", "compliance", "guideline"]):
+            universal_capabilities["process_documentation"] = True
+        
+        return universal_capabilities
     
     def _analyze_existing_outputs(self, completed_tasks: List[Dict]) -> Dict[str, Any]:
         """Analizza gli output esistenti per capire che asset sono già disponibili"""
@@ -272,194 +311,282 @@ class DeliverableRequirementsAnalyzer:
     
     async def _ai_analyze_requirements(self, goal: str, context: Dict) -> Dict[str, Any]:
         """
-        Analisi AI per determinare requirements dinamici
-        NOTA: In implementazione reale, questa userebbe chiamate LLM
-        Per ora, logica rule-based intelligente
+        🤖 AI-DRIVEN UNIVERSAL REQUIREMENTS ANALYSIS
+        
+        Analyzes requirements dynamically without domain-specific assumptions
         """
         
-        # Analisi del goal per categoria principale
+        # Try AI-driven analysis first if available
+        if QUALITY_CONFIG_AVAILABLE:
+            try:
+                ai_requirements = await self._ai_driven_requirements_analysis(goal, context)
+                if ai_requirements:
+                    return ai_requirements
+            except Exception as e:
+                logger.debug(f"AI requirements analysis failed, using fallback: {e}")
+        
+        # Fallback: Universal functional analysis
+        return await self._universal_requirements_fallback(goal, context)
+    
+    async def _ai_driven_requirements_analysis(self, goal: str, context: Dict) -> Dict[str, Any]:
+        """🤖 AI-driven requirements analysis without domain assumptions"""
+        try:
+            # Check if we have AI capabilities
+            import os
+            if not os.getenv("OPENAI_API_KEY"):
+                return {}
+            
+            from ai_quality_assurance.quality_validator import AIQualityValidator
+            ai_validator = AIQualityValidator()
+            
+            team_capabilities = context.get("team_capabilities", {})
+            phase_progress = context.get("phase_progress", {})
+            
+            analysis_prompt = f"""Analyze this project goal and determine what types of deliverable assets would be most valuable:
+
+PROJECT GOAL: "{goal}"
+
+TEAM CAPABILITIES: {team_capabilities.get('asset_production_capacity', {})}
+PROJECT PHASE: {phase_progress.get('current_phase', 'ANALYSIS')}
+COMPLETED TASKS: {context.get('completed_tasks', 0)}
+
+Based on the goal and context, determine:
+1. What functional category best describes this project (e.g., "content_strategy", "data_analysis", "process_optimization", "communication_plan")
+2. What 2-4 specific asset types would deliver the most value (be specific about format and purpose)
+3. Priority level for each asset (1=highest, 2=medium, 3=supporting)
+
+Return ONLY a JSON object in this format:
+{{
+  "functional_category": "category_name",
+  "recommended_assets": [
+    {{
+      "asset_type": "specific_asset_name",
+      "asset_format": "structured_data|document|spreadsheet",
+      "purpose": "what this asset accomplishes",
+      "priority": 1,
+      "business_impact": "immediate|short_term|strategic"
+    }}
+  ]
+}}"""
+
+            ai_result = await ai_validator._call_openai_api(analysis_prompt, "requirements_analysis")
+            if ai_result and "raw_response" in ai_result:
+                try:
+                    parsed_requirements = json.loads(ai_result["raw_response"])
+                    if isinstance(parsed_requirements, dict) and parsed_requirements.get("recommended_assets"):
+                        # Convert to expected format
+                        assets = []
+                        for asset in parsed_requirements["recommended_assets"]:
+                            assets.append({
+                                "asset_type": asset.get("asset_type", "general_deliverable"),
+                                "asset_format": asset.get("asset_format", "document"),
+                                "actionability_level": "ready_to_use",
+                                "business_impact": asset.get("business_impact", "immediate"),
+                                "priority": asset.get("priority", 2),
+                                "validation_criteria": ["completeness", "actionability", "relevance"]
+                            })
+                        
+                        return {
+                            "deliverable_category": parsed_requirements.get("functional_category", "business"),
+                            "primary_assets_needed": assets,
+                            "deliverable_structure": self._create_universal_deliverable_structure(assets)
+                        }
+                except json.JSONDecodeError:
+                    logger.debug("AI returned non-JSON response for requirements analysis")
+        except Exception as e:
+            logger.debug(f"AI requirements analysis error: {e}")
+        
+        return {}
+    
+    async def _universal_requirements_fallback(self, goal: str, context: Dict) -> Dict[str, Any]:
+        """🔄 UNIVERSAL FALLBACK: Functional analysis without domain assumptions"""
+        
         goal_lower = goal.lower()
+        team_capabilities = context.get("team_capabilities", {}).get("asset_production_capacity", {})
         
-        # Mapping intelligente goal -> categoria
-        if any(keyword in goal_lower for keyword in ["instagram", "social", "content", "marketing", "campaign"]):
-            category = "marketing"
-            assets = self._generate_marketing_assets(goal, context)
-        elif any(keyword in goal_lower for keyword in ["lead", "contact", "sales", "prospect", "business"]):
-            category = "sales"
-            assets = self._generate_sales_assets(goal, context)
-        elif any(keyword in goal_lower for keyword in ["fitness", "training", "sport", "athletic", "performance"]):
-            category = "sports"
-            assets = self._generate_sports_assets(goal, context)
-        elif any(keyword in goal_lower for keyword in ["finance", "budget", "investment", "financial", "cost"]):
-            category = "finance"
-            assets = self._generate_finance_assets(goal, context)
-        elif any(keyword in goal_lower for keyword in ["analysis", "research", "study", "data", "report"]):
-            category = "research"
-            assets = self._generate_research_assets(goal, context)
+        # Universal functional categorization based on action patterns
+        if any(pattern in goal_lower for pattern in ["create", "develop", "build", "design", "generate"]):
+            category = "creation_project"
+            assets = self._generate_creation_assets(goal, context, team_capabilities)
+        elif any(pattern in goal_lower for pattern in ["analyze", "research", "study", "investigate", "evaluate"]):
+            category = "analysis_project"
+            assets = self._generate_analysis_assets(goal, context, team_capabilities)
+        elif any(pattern in goal_lower for pattern in ["optimize", "improve", "enhance", "increase", "boost"]):
+            category = "optimization_project"
+            assets = self._generate_optimization_assets(goal, context, team_capabilities)
+        elif any(pattern in goal_lower for pattern in ["plan", "strategy", "framework", "roadmap", "approach"]):
+            category = "strategic_project"
+            assets = self._generate_strategic_assets(goal, context, team_capabilities)
         else:
-            category = "business"
-            assets = self._generate_business_assets(goal, context)
-        
-        # Struttura del deliverable dinamica
-        deliverable_structure = {
-            "executive_summary": "required",
-            "actionable_assets": {asset["asset_type"]: asset for asset in assets},
-            "usage_guide": "required",
-            "automation_instructions": "optional",
-            "next_steps": "required"
-        }
+            category = "general_project"
+            assets = self._generate_general_assets(goal, context, team_capabilities)
         
         return {
             "deliverable_category": category,
             "primary_assets_needed": assets,
-            "deliverable_structure": deliverable_structure
+            "deliverable_structure": self._create_universal_deliverable_structure(assets)
         }
     
-    def _generate_marketing_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements per progetti marketing"""
-        
+    def _create_universal_deliverable_structure(self, assets: List[Dict]) -> Dict[str, Any]:
+        """Create universal deliverable structure based on assets"""
+        return {
+            "executive_summary": "required",
+            "actionable_assets": {asset["asset_type"]: asset for asset in assets},
+            "usage_guide": "required",
+            "implementation_notes": "optional",
+            "next_steps": "required"
+        }
+    
+    def _generate_creation_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
+        """🤖 Generate assets for creation-focused projects (universal)"""
         assets = []
         
-        # Asset sempre richiesti per marketing
-        assets.append({
-            "asset_type": "content_calendar",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["posts_with_dates", "complete_captions", "hashtags_included"]
-        })
-        
-        # Asset condizionali basati su context
-        if context.get("team_capabilities", {}).get("asset_production_capacity", {}).get("data_assets"):
+        # Primary creation asset based on capabilities
+        if capabilities.get("content_creation"):
             assets.append({
-                "asset_type": "audience_analysis_report",
+                "asset_type": "content_creation_plan",
                 "asset_format": "structured_data",
                 "actionability_level": "ready_to_use",
-                "business_impact": "strategic",
-                "priority": 2,
-                "validation_criteria": ["demographic_data", "behavior_insights", "recommendations"]
+                "business_impact": "immediate",
+                "priority": 1,
+                "validation_criteria": ["creation_schedule", "content_specifications", "quality_standards"]
             })
         
-        if "instagram" in goal.lower():
+        if capabilities.get("automation_setup"):
             assets.append({
-                "asset_type": "instagram_growth_strategy",
-                "asset_format": "structured_data",
+                "asset_type": "creation_workflow",
+                "asset_format": "structured_data", 
                 "actionability_level": "ready_to_use",
                 "business_impact": "short_term",
-                "priority": 1,
-                "validation_criteria": ["posting_schedule", "engagement_tactics", "hashtag_strategy"]
+                "priority": 2,
+                "validation_criteria": ["workflow_steps", "automation_triggers", "quality_checks"]
             })
         
-        return assets
-    
-    def _generate_sales_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements per progetti sales"""
-        
-        assets = []
-        
+        # Always include implementation guide
         assets.append({
-            "asset_type": "qualified_contact_database",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use", 
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["contact_info_complete", "qualification_scores", "next_actions"]
-        })
-        
-        assets.append({
-            "asset_type": "outreach_email_templates",
+            "asset_type": "implementation_guide",
             "asset_format": "document",
             "actionability_level": "ready_to_use",
             "business_impact": "immediate",
             "priority": 1,
-            "validation_criteria": ["personalization_fields", "call_to_action", "follow_up_sequence"]
+            "validation_criteria": ["step_by_step", "success_criteria", "troubleshooting"]
         })
         
         return assets
     
-    def _generate_sports_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements per progetti sports"""
-        
+    def _generate_analysis_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
+        """🤖 Generate assets for analysis-focused projects (universal)"""
         assets = []
         
-        if "training" in goal.lower():
-            assets.append({
-                "asset_type": "training_program",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "immediate",
-                "priority": 1,
-                "validation_criteria": ["exercise_details", "progression_plan", "performance_metrics"]
-            })
-        
+        # Core analysis deliverable
         assets.append({
-            "asset_type": "performance_tracking_system",
-            "asset_format": "structured_data",
-            "actionability_level": "needs_customization",
-            "business_impact": "short_term",
-            "priority": 2,
-            "validation_criteria": ["measurable_kpis", "tracking_methods", "improvement_targets"]
-        })
-        
-        return assets
-    
-    def _generate_finance_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements per progetti finance"""
-        
-        assets = []
-        
-        assets.append({
-            "asset_type": "financial_model",
-            "asset_format": "spreadsheet",
-            "actionability_level": "ready_to_use",
-            "business_impact": "strategic",
-            "priority": 1,
-            "validation_criteria": ["formulas_correct", "scenario_analysis", "assumptions_clear"]
-        })
-        
-        if "budget" in goal.lower():
-            assets.append({
-                "asset_type": "budget_allocation_plan",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "immediate",
-                "priority": 1,
-                "validation_criteria": ["category_breakdown", "timeline_aligned", "approval_workflow"]
-            })
-        
-        return assets
-    
-    def _generate_research_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements per progetti research"""
-        
-        assets = []
-        
-        assets.append({
-            "asset_type": "research_database",
+            "asset_type": "analysis_report",
             "asset_format": "structured_data",
             "actionability_level": "ready_to_use",
             "business_impact": "strategic",
             "priority": 1,
-            "validation_criteria": ["data_sources_credible", "analysis_methodology", "actionable_insights"]
+            "validation_criteria": ["data_sources_credible", "methodology_clear", "actionable_insights"]
         })
         
+        if capabilities.get("data_analysis"):
+            assets.append({
+                "asset_type": "data_summary_dashboard",
+                "asset_format": "structured_data",
+                "actionability_level": "ready_to_use",
+                "business_impact": "immediate",
+                "priority": 1,
+                "validation_criteria": ["key_metrics", "trend_analysis", "visualization_ready"]
+            })
+        
+        # Recommendations based on analysis
         assets.append({
-            "asset_type": "executive_recommendations",
+            "asset_type": "actionable_recommendations", 
             "asset_format": "document",
             "actionability_level": "ready_to_use",
-            "business_impact": "strategic",
+            "business_impact": "immediate",
             "priority": 1,
             "validation_criteria": ["evidence_based", "implementation_timeline", "success_metrics"]
         })
         
         return assets
     
-    def _generate_business_assets(self, goal: str, context: Dict) -> List[Dict]:
-        """Genera asset requirements generici per progetti business"""
-        
+    def _generate_optimization_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
+        """🤖 Generate assets for optimization-focused projects (universal)"""
         assets = []
         
+        # Optimization plan
+        assets.append({
+            "asset_type": "optimization_plan",
+            "asset_format": "structured_data",
+            "actionability_level": "ready_to_use",
+            "business_impact": "immediate",
+            "priority": 1,
+            "validation_criteria": ["improvement_targets", "implementation_steps", "success_metrics"]
+        })
+        
+        if capabilities.get("process_documentation"):
+            assets.append({
+                "asset_type": "process_improvement_guide",
+                "asset_format": "document",
+                "actionability_level": "ready_to_use",
+                "business_impact": "short_term",
+                "priority": 2,
+                "validation_criteria": ["current_state_analysis", "improvement_recommendations", "implementation_roadmap"]
+            })
+        
+        if capabilities.get("automation_setup"):
+            assets.append({
+                "asset_type": "automation_recommendations",
+                "asset_format": "structured_data",
+                "actionability_level": "needs_customization",
+                "business_impact": "strategic",
+                "priority": 2,
+                "validation_criteria": ["automation_opportunities", "technical_requirements", "roi_estimates"]
+            })
+        
+        return assets
+    
+    def _generate_strategic_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
+        """🤖 Generate assets for strategic-focused projects (universal)"""
+        assets = []
+        
+        # Core strategic plan
+        assets.append({
+            "asset_type": "strategic_plan",
+            "asset_format": "structured_data",
+            "actionability_level": "ready_to_use",
+            "business_impact": "strategic",
+            "priority": 1,
+            "validation_criteria": ["clear_objectives", "implementation_timeline", "resource_requirements"]
+        })
+        
+        if capabilities.get("strategic_planning"):
+            assets.append({
+                "asset_type": "execution_roadmap",
+                "asset_format": "structured_data",
+                "actionability_level": "ready_to_use",
+                "business_impact": "immediate",
+                "priority": 1,
+                "validation_criteria": ["milestone_definition", "resource_allocation", "risk_mitigation"]
+            })
+        
+        # Success measurement framework
+        assets.append({
+            "asset_type": "success_measurement_framework",
+            "asset_format": "document",
+            "actionability_level": "ready_to_use",
+            "business_impact": "short_term",
+            "priority": 2,
+            "validation_criteria": ["kpi_definition", "measurement_methods", "reporting_schedule"]
+        })
+        
+        return assets
+    
+    def _generate_general_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
+        """🤖 Generate universal assets for general projects"""
+        assets = []
+        
+        # Universal action plan
         assets.append({
             "asset_type": "action_plan",
             "asset_format": "structured_data",
@@ -469,14 +596,26 @@ class DeliverableRequirementsAnalyzer:
             "validation_criteria": ["tasks_defined", "timeline_realistic", "resources_allocated"]
         })
         
+        # Implementation support
         assets.append({
             "asset_type": "implementation_guide",
             "asset_format": "document",
             "actionability_level": "ready_to_use",
-            "business_impact": "short_term",
-            "priority": 2,
+            "business_impact": "immediate",
+            "priority": 1,
             "validation_criteria": ["step_by_step", "success_criteria", "troubleshooting"]
         })
+        
+        # Progress tracking if data analysis capability exists
+        if capabilities.get("data_analysis"):
+            assets.append({
+                "asset_type": "progress_tracking_system",
+                "asset_format": "structured_data",
+                "actionability_level": "ready_to_use",
+                "business_impact": "short_term",
+                "priority": 2,
+                "validation_criteria": ["measurable_kpis", "tracking_methods", "reporting_format"]
+            })
         
         return assets
     
@@ -529,30 +668,38 @@ class DeliverableRequirementsAnalyzer:
             generated_at=datetime.now()
         )
 
-# Enhanced domain support registry
-DOMAIN_REGISTRY = {
-    "marketing": ["instagram", "social", "content", "marketing", "campaign", "editorial", "piano editoriale"],
-    "sales": ["lead", "contact", "sales", "prospect", "business", "crm"],
-    "sports": ["fitness", "training", "sport", "athletic", "performance", "bodybuilding", "workout"],
-    "finance": ["finance", "budget", "investment", "financial", "cost", "accounting"],
-    "research": ["analysis", "research", "study", "data", "report", "insights"],
-    "legal": ["legal", "contract", "compliance", "regulation", "policy", "law"],
-    "hr": ["hr", "human resources", "employee", "hiring", "recruitment", "onboarding"],
-    "education": ["education", "course", "curriculum", "learning", "training material", "e-learning"],
-    "realestate": ["real estate", "property", "listing", "tenant", "lease", "inspection"],
-    "healthcare": ["healthcare", "medical", "patient", "health", "clinical", "medical device"]
-}
+# 🤖 AI-DRIVEN UNIVERSAL FUNCTION DETECTION
+# No longer using hard-coded domain registry - replaced with functional analysis
 
-def get_supported_domains() -> Dict[str, List[str]]:
-    """Ritorna i domini supportati con le loro keywords"""
-    return DOMAIN_REGISTRY
-
-def detect_domain_from_goal(goal: str) -> str:
-    """Detecta automaticamente il dominio dal goal usando il registry"""
+def detect_functional_category_from_goal(goal: str) -> str:
+    """🤖 Detect functional category from goal using universal patterns"""
     goal_lower = goal.lower()
     
-    for domain, keywords in DOMAIN_REGISTRY.items():
-        if any(keyword in goal_lower for keyword in keywords):
-            return domain
+    # Universal functional patterns (not domain-specific)
+    functional_patterns = {
+        "creation_project": ["create", "develop", "build", "design", "generate", "produce"],
+        "analysis_project": ["analyze", "research", "study", "investigate", "evaluate", "assess"],
+        "optimization_project": ["optimize", "improve", "enhance", "increase", "boost", "streamline"],
+        "strategic_project": ["plan", "strategy", "framework", "roadmap", "approach", "vision"],
+        "communication_project": ["communicate", "present", "share", "engage", "connect", "outreach"],
+        "automation_project": ["automate", "systematize", "workflow", "process", "integrate"]
+    }
     
-    return "business"  # fallback
+    # Find the best functional match
+    for category, keywords in functional_patterns.items():
+        if any(keyword in goal_lower for keyword in keywords):
+            return category
+    
+    return "general_project"  # Universal fallback
+
+def get_supported_functional_categories() -> Dict[str, List[str]]:
+    """Return supported functional categories with their patterns"""
+    return {
+        "creation_project": ["create", "develop", "build", "design", "generate"],
+        "analysis_project": ["analyze", "research", "study", "investigate", "evaluate"],
+        "optimization_project": ["optimize", "improve", "enhance", "increase", "boost"],
+        "strategic_project": ["plan", "strategy", "framework", "roadmap", "approach"],
+        "communication_project": ["communicate", "present", "share", "engage", "connect"],
+        "automation_project": ["automate", "systematize", "workflow", "process", "integrate"],
+        "general_project": ["execute", "complete", "deliver", "implement", "achieve"]
+    }

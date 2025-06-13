@@ -144,79 +144,9 @@ MODEL_BY_SENIORITY: Dict[str, str] = {
     AgentSeniority.SENIOR.value: "gpt-4.1-mini",
     AgentSeniority.EXPERT.value: "gpt-4.1",
 }
-# Domain mapping per raggruppamento skill in design_team_structure
-DOMAIN_MAPPING_DESIGN: Dict[str, List[str]] = {
-    "management": ["manage", "coordina", "plan", "lead", "oversight", "project manage"],
-    "analysis": [
-        "analy",
-        "research",
-        "investigat",
-        "evaluat",
-        "data",
-        "report",
-        "business intelligence",
-        "data mining",
-        "statistics",
-    ],
-    "content": [
-        "content",
-        "writ",
-        "edit",
-        "communicat",
-        "copywrit",
-        "translate",
-        "proofread",
-        "blog",
-        "article",
-    ],
-    "marketing": [
-        "market",
-        "promot",
-        "social media",
-        "brand",
-        "campaign",
-        "seo",
-        "advertis",
-        "digital market",
-    ],
-    "technical": [
-        "develop",
-        "implement",
-        "cod",
-        "engine",
-        "architect",
-        "design",
-        "test",
-        "qa",
-        "it support",
-        "software",
-        "frontend",
-        "backend",
-        "database",
-        "cloud",
-        "devops",
-    ],
-    "financial": ["financ", "budget", "account", "invest", "payroll", "cost analy"],
-    "creative_design": [
-        "design",
-        "graphic",
-        "ui/ux",
-        "visual",
-        "art",
-        "illustration",
-        "logo",
-    ],  # 'creative' rinominato per chiarezza
-    "legal": ["legal", "compliance", "contract", "regulation"],
-    "hr": ["human resource", "recruitment", "hr", "talent acquisition", "onboarding"],
-    "customer_service": [
-        "customer service",
-        "support",
-        "client interaction",
-        "helpdesk",
-    ],
-    "sales": ["sales", "business development", "lead generation", "negotiation"],
-    # 'other_domain' sarà usato per skill non mappate
-}
+# 🤖 AI-DRIVEN UNIVERSAL SKILL CATEGORIZATION
+# No longer using hard-coded domain mappings - replaced with AI-driven analysis
+AI_AVAILABLE = bool(os.getenv("OPENAI_API_KEY"))
 
 
 # ---------------------------------------------------------------------------
@@ -522,18 +452,22 @@ Return *only* valid JSON:
                 # Skill-based sizing
                 skill_complexity_score = len(required_skills)
 
-                # Boost per progetti complessi
+                # 🤖 UNIVERSAL COMPLEXITY BOOST: Based on functional patterns, not domains
+                skills_text = " ".join(required_skills).lower()
+                # Boost for functionally complex patterns (universal across domains)
                 if any(
-                    keyword in " ".join(required_skills).lower()
-                    for keyword in [
-                        "marketing",
-                        "strategy",
-                        "content",
-                        "social media",
-                        "lead generation",
+                    pattern in skills_text
+                    for pattern in [
+                        "strategy", "analysis", "research", "optimization", 
+                        "implementation", "coordination", "management",
+                        "multiple", "complex", "integration", "automation"
                     ]
                 ):
                     skill_complexity_score += 2
+                
+                # Additional boost for cross-functional requirements
+                if len(required_skills) > 5:
+                    skill_complexity_score += 1
 
                 skill_team_size = min(6, max(2, skill_complexity_score // 2 + 1))
 
@@ -746,51 +680,151 @@ Return *only* valid JSON:
 
                 return personality
 
-            def _group_skills_for_design(
+            async def _group_skills_for_design(
                 skills_list: List[str],
             ) -> List[Dict[str, Any]]:
-                s_groups: Dict[str, List[str]] = {
-                    domain_key: [] for domain_key in DOMAIN_MAPPING_DESIGN
-                }
-                s_groups["other_domain"] = []  # For unmapped skills
+                """
+                🤖 AI-DRIVEN UNIVERSAL SKILL CATEGORIZATION
+                
+                Groups skills semantically without domain-specific assumptions
+                """
+                # Use AI-driven categorization if available
+                if AI_AVAILABLE and len(skills_list) > 0:
+                    try:
+                        ai_categorized_groups = await _ai_categorize_skills(skills_list)
+                        if ai_categorized_groups:
+                            logger.info(f"🤖 AI categorized {len(skills_list)} skills into {len(ai_categorized_groups)} groups")
+                            return ai_categorized_groups
+                    except Exception as e:
+                        logger.debug(f"AI skill categorization failed, using fallback: {e}")
+                
+                # Fallback: Universal pattern-based grouping (no domain assumptions)
+                return await _universal_skill_grouping_fallback(skills_list)
+            
+            async def _ai_categorize_skills(skills_list: List[str]) -> List[Dict[str, Any]]:
+                """🤖 AI-driven skill categorization without domain assumptions"""
+                try:
+                    skills_str = ', '.join(skills_list)
+                    
+                    categorization_prompt = f"""Analyze these skills and group them into functional categories:
 
+SKILLS TO CATEGORIZE: {skills_str}
+
+Group these skills based on their FUNCTIONAL SIMILARITY (not business domain). Create 2-5 logical groups where:
+1. Skills in each group work together naturally
+2. Each group represents a coherent functional area
+3. Groups are balanced (avoid single-skill groups unless truly unique)
+4. Categories are UNIVERSAL (applicable across all business domains)
+
+For each group, determine:
+- A functional category name (e.g., "analytical_tasks", "creative_work", "coordination_activities")
+- Importance level: "high" for core execution skills, "medium" for supporting skills
+- Which skills belong in that group
+
+Return ONLY a JSON array in this format:
+[
+  {{
+    "category": "functional_category_name",
+    "skills": ["skill1", "skill2", "skill3"],
+    "importance": "high|medium",
+    "rationale": "Brief explanation of why these skills group together"
+  }}
+]"""
+
+                    analyzer = OpenAIAgent(
+                        name="SkillCategorizer",
+                        instructions=categorization_prompt,
+                        model="gpt-4.1-mini",
+                        model_settings=create_model_settings(temperature=0.3),
+                    )
+                    
+                    result = await Runner.run(analyzer, "Categorize the skills into functional groups.")
+                    raw_output = result.final_output
+                    
+                    # Parse AI response
+                    try:
+                        categorized_groups = json.loads(raw_output)
+                        if isinstance(categorized_groups, list):
+                            # Convert to expected format
+                            final_groups = []
+                            for group in categorized_groups:
+                                if isinstance(group, dict) and group.get("skills"):
+                                    final_groups.append({
+                                        "domain": group.get("category", "functional_group"),
+                                        "skills": group.get("skills", []),
+                                        "importance": group.get("importance", "medium")
+                                    })
+                            return final_groups
+                    except json.JSONDecodeError:
+                        # Try to extract JSON from response
+                        import re
+                        match = re.search(r'\[(.*?)\]', raw_output, re.DOTALL)
+                        if match:
+                            try:
+                                categorized_groups = json.loads(f"[{match.group(1)}]")
+                                final_groups = []
+                                for group in categorized_groups:
+                                    if isinstance(group, dict) and group.get("skills"):
+                                        final_groups.append({
+                                            "domain": group.get("category", "functional_group"),
+                                            "skills": group.get("skills", []),
+                                            "importance": group.get("importance", "medium")
+                                        })
+                                return final_groups
+                            except json.JSONDecodeError:
+                                pass
+                                
+                except Exception as e:
+                    logger.debug(f"AI skill categorization error: {e}")
+                
+                return []
+            
+            async def _universal_skill_grouping_fallback(skills_list: List[str]) -> List[Dict[str, Any]]:
+                """
+                🔄 UNIVERSAL FALLBACK: Pattern-based grouping without domain assumptions
+                """
+                # Universal functional patterns (not domain-specific)
+                universal_patterns = {
+                    "coordination_activities": ["manage", "coordina", "plan", "lead", "oversight", "organize"],
+                    "analytical_tasks": ["analy", "research", "investigat", "evaluat", "data", "report", "study"],
+                    "creative_work": ["content", "writ", "edit", "design", "creativ", "visual", "art"],
+                    "communication_tasks": ["communicat", "present", "social", "market", "promot", "brand"],
+                    "technical_implementation": ["develop", "implement", "cod", "engineer", "technical", "system"],
+                    "process_optimization": ["optim", "improve", "efficien", "automat", "workflow", "quality"]
+                }
+                
+                # Group skills by pattern matching
+                s_groups: Dict[str, List[str]] = {pattern: [] for pattern in universal_patterns}
+                s_groups["specialized_tasks"] = []  # For unmatched skills
+                
                 processed: Set[str] = set()
                 for skill_item in skills_list:
                     normalized_skill = skill_item.lower()
                     if normalized_skill in processed:
                         continue
-
+                    
                     assigned = False
-                    for domain_key, keywords in DOMAIN_MAPPING_DESIGN.items():
+                    for pattern_name, keywords in universal_patterns.items():
                         if any(kw in normalized_skill for kw in keywords):
-                            s_groups[domain_key].append(
-                                skill_item
-                            )  # Store original skill name
+                            s_groups[pattern_name].append(skill_item)
                             assigned = True
                             break
+                    
                     if not assigned:
-                        s_groups["other_domain"].append(skill_item)
+                        s_groups["specialized_tasks"].append(skill_item)
                     processed.add(normalized_skill)
-
+                
+                # Convert to expected format
                 final_skill_groups: List[Dict[str, Any]] = []
-                for domain_name_key, skills_in_group_list in s_groups.items():
-                    if skills_in_group_list:
-                        final_skill_groups.append(
-                            {
-                                "domain": (
-                                    domain_name_key
-                                    if domain_name_key != "other_domain"
-                                    else None
-                                ),
-                                "skills": skills_in_group_list,
-                                "importance": (
-                                    "high"
-                                    if domain_name_key
-                                    in ["management", "technical", "analysis", "sales"]
-                                    else "medium"
-                                ),
-                            }
-                        )
+                for pattern_name, skills_in_group in s_groups.items():
+                    if skills_in_group:
+                        importance = "high" if pattern_name in ["coordination_activities", "technical_implementation", "analytical_tasks"] else "medium"
+                        final_skill_groups.append({
+                            "domain": pattern_name,
+                            "skills": skills_in_group,
+                            "importance": importance
+                        })
+                
                 return final_skill_groups
 
             # ADESSO PUOI USARE LE FUNZIONI
@@ -853,14 +887,15 @@ Return *only* valid JSON:
             if any(
                 a.get("role") == "Project Manager" for a in team
             ):  # If PM exists, filter out mgmt skills
-                mgmt_keywords = DOMAIN_MAPPING_DESIGN.get("management", [])
+                # Universal management keywords (no domain assumptions)
+                mgmt_keywords = ["manage", "coordina", "plan", "lead", "oversight", "organize", "coordinate"]
                 skills_to_assign = [
                     s
                     for s in required_skills
                     if not any(kw in s.lower() for kw in mgmt_keywords)
                 ]
 
-            skill_groups_list = _group_skills_for_design(skills_to_assign)
+            skill_groups_list = await _group_skills_for_design(skills_to_assign)
 
             # 3. Create specialists for skill groups
             for group_item in skill_groups_list:

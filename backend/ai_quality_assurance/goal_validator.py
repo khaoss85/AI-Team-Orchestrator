@@ -79,71 +79,26 @@ class AIGoalValidator:
             r'(\d+(?:\.\d+)?)\s*(kg|lb|g|metri|meters?|km|miles?)',  # Physical measurements
         ]
         
-        # 🧠 AI-DRIVEN UNIVERSAL DOMAIN KEYWORDS - Completely scalable
-        self.universal_concept_patterns = {
-            # 🎯 CREATION/PRODUCTION CONCEPTS
-            'creation': {
-                'keywords': ['creare', 'generare', 'produrre', 'sviluppare', 'costruire', 'fare', 'realizzare', 
-                           'create', 'generate', 'produce', 'develop', 'build', 'make', 'craft'],
-                'metric_types': ['deliverables', 'content_pieces', 'products', 'items']
-            },
-            
-            # 🎯 COLLECTION/GATHERING CONCEPTS  
-            'collection': {
-                'keywords': ['raccogliere', 'trovare', 'identificare', 'selezionare', 'acquisire',
-                           'collect', 'gather', 'find', 'identify', 'acquire', 'source'],
-                'metric_types': ['contacts', 'leads', 'data_points', 'resources']
-            },
-            
-            # 🎯 PERFORMANCE/QUALITY CONCEPTS
-            'performance': {
-                'keywords': ['performance', 'qualità', 'efficienza', 'accuratezza', 'successo', 'rate',
-                           'quality', 'efficiency', 'accuracy', 'success', 'score', 'rating'],
-                'metric_types': ['conversion_rate', 'quality_score', 'performance_metrics']
-            },
-            
-            # 🎯 COMMUNICATION/OUTREACH CONCEPTS
-            'communication': {
-                'keywords': ['email', 'messaggio', 'comunicazione', 'sequenza', 'campagna', 'outreach',
-                           'message', 'communication', 'sequence', 'campaign', 'newsletter'],
-                'metric_types': ['email_sequences', 'campaigns', 'communications']
-            },
-            
-            # 🎯 FINANCIAL/BUSINESS CONCEPTS
-            'financial': {
-                'keywords': ['budget', 'costo', 'prezzo', 'revenue', 'profitto', 'investimento', 'ROI',
-                           'cost', 'price', 'profit', 'investment', 'return', 'value'],
-                'metric_types': ['revenue', 'costs', 'budget', 'roi']
-            },
-            
-            # 🎯 TIME/TEMPORAL CONCEPTS
-            'temporal': {
-                'keywords': ['tempo', 'deadline', 'scadenza', 'durata', 'periodo', 'fase',
-                           'time', 'duration', 'period', 'phase', 'timeline', 'schedule'],
-                'metric_types': ['timeline_days', 'deadlines', 'milestones']
-            },
-            
-            # 🎯 HEALTH/FITNESS CONCEPTS
-            'health': {
-                'keywords': ['esercizio', 'workout', 'allenamento', 'fitness', 'salute', 'peso',
-                           'exercise', 'training', 'health', 'weight', 'nutrition', 'calories'],
-                'metric_types': ['workouts', 'exercises', 'health_metrics']
-            },
-            
-            # 🎯 TECHNOLOGY/DEVELOPMENT CONCEPTS
-            'technology': {
-                'keywords': ['app', 'software', 'API', 'feature', 'bug', 'deployment', 'codice',
-                           'application', 'system', 'platform', 'integration', 'code', 'development'],
-                'metric_types': ['features', 'deployments', 'integrations', 'apis']
-            },
-            
-            # 🎯 EDUCATION/LEARNING CONCEPTS
-            'education': {
-                'keywords': ['corso', 'lezione', 'tutorial', 'training', 'apprendimento', 'skill',
-                           'course', 'lesson', 'learning', 'knowledge', 'competency', 'certification'],
-                'metric_types': ['courses', 'lessons', 'certifications', 'skills']
-            }
+        # 🤖 AI-DRIVEN GOAL ANALYSIS - No hard-coded domain assumptions
+        # All concept analysis is now done dynamically via AI
+        self.ai_available = self._check_ai_availability()
+        
+        # Only universal, cross-domain patterns (no business domain assumptions)
+        self.universal_action_patterns = {
+            'creation': ['create', 'creare', 'generate', 'build', 'develop', 'produce', 'make'],
+            'collection': ['collect', 'raccogliere', 'gather', 'find', 'acquire', 'source', 'get'],
+            'processing': ['process', 'analyze', 'evaluate', 'review', 'assess', 'study'],
+            'completion': ['complete', 'finish', 'deliver', 'achieve', 'accomplish', 'realize'],
+            'improvement': ['improve', 'enhance', 'optimize', 'increase', 'boost', 'grow']
         }
+    
+    def _check_ai_availability(self) -> bool:
+        """Check if AI services are available for dynamic analysis"""
+        try:
+            import os
+            return bool(os.getenv("OPENAI_API_KEY"))
+        except:
+            return False
     
     async def validate_workspace_goal_achievement(
         self, 
@@ -274,124 +229,248 @@ class AIGoalValidator:
     
     async def _extract_task_achievements(self, completed_tasks: List[Dict]) -> Dict[str, Any]:
         """
-        AI-powered extraction of actual achievements from completed tasks
+        🤖 AI-DRIVEN universal achievement extraction from completed tasks
         """
+        # Universal achievement tracking (no domain assumptions)
         achievements = {
-            'contacts_found': 0,
-            'email_sequences': 0,
-            'content_pieces': 0,
-            'campaigns_created': 0,
-            'financial_amounts': [],
-            'percentages_achieved': [],
-            'time_spent_days': 0,
-            'quality_scores': [],
-            'raw_extractions': []
+            'items_created': 0,        # Universal: any countable items created
+            'data_processed': 0,       # Universal: any data points processed  
+            'deliverables_completed': 0, # Universal: any deliverables finished
+            'metrics_achieved': [],    # Universal: any measurable results
+            'currency_amounts': [],    # Universal: any financial values
+            'percentages_achieved': [], # Universal: any percentage results
+            'quality_scores': [],      # Universal: any quality metrics
+            'temporal_values': [],     # Universal: any time-based results
+            'raw_extractions': []      # Debug information
         }
         
         for task in completed_tasks:
-            task_achievements = await self._extract_single_task_achievements(task)
+            # Use the universal achievement extraction from database.py
+            from database import _extract_task_achievements as universal_extract
             
-            # Aggregate achievements
-            achievements['contacts_found'] += task_achievements.get('contacts_count', 0)
-            achievements['email_sequences'] += task_achievements.get('email_sequences_count', 0)
-            achievements['content_pieces'] += task_achievements.get('content_count', 0)
-            achievements['campaigns_created'] += task_achievements.get('campaigns_count', 0)
+            task_result = task.get('result', {})
+            task_name = task.get('name', '')
             
-            if task_achievements.get('financial_amounts'):
-                achievements['financial_amounts'].extend(task_achievements['financial_amounts'])
+            # Get universal achievements
+            task_achievements = await universal_extract(task_result, task_name)
             
-            if task_achievements.get('percentages'):
-                achievements['percentages_achieved'].extend(task_achievements['percentages'])
+            # Aggregate universal achievements
+            achievements['items_created'] += task_achievements.get('items_created', 0)
+            achievements['data_processed'] += task_achievements.get('data_processed', 0)
+            achievements['deliverables_completed'] += task_achievements.get('deliverables_completed', 0)
+            achievements['metrics_achieved'].append(task_achievements.get('metrics_achieved', 0))
             
-            if task_achievements.get('quality_scores'):
-                achievements['quality_scores'].extend(task_achievements['quality_scores'])
+            # Extract additional universal patterns from task result
+            additional_achievements = await self._extract_universal_task_patterns(task_result)
+            
+            # Merge additional achievements
+            if additional_achievements.get('currency_amounts'):
+                achievements['currency_amounts'].extend(additional_achievements['currency_amounts'])
+            if additional_achievements.get('percentages'):
+                achievements['percentages_achieved'].extend(additional_achievements['percentages'])
+            if additional_achievements.get('quality_scores'):
+                achievements['quality_scores'].extend(additional_achievements['quality_scores'])
+            if additional_achievements.get('temporal_values'):
+                achievements['temporal_values'].extend(additional_achievements['temporal_values'])
             
             # Store raw extraction for debugging
             achievements['raw_extractions'].append({
                 'task_id': task.get('id'),
-                'task_name': task.get('name'),
-                'extractions': task_achievements
+                'task_name': task_name,
+                'universal_achievements': task_achievements,
+                'additional_patterns': additional_achievements
             })
         
-        logger.info(f"📊 Extracted achievements: {achievements['contacts_found']} contacts, {achievements['email_sequences']} sequences")
+        total_items = achievements['items_created']
+        total_deliverables = achievements['deliverables_completed']
+        logger.info(f"📊 Universal achievements: {total_items} items, {total_deliverables} deliverables")
         return achievements
     
-    async def _extract_single_task_achievements(self, task: Dict) -> Dict[str, Any]:
+    async def _extract_universal_task_patterns(self, task_result: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Extract measurable achievements from a single task
+        🤖 Extract universal patterns from task result (currency, percentages, quality scores, etc.)
         """
-        achievements = {
-            'contacts_count': 0,
-            'email_sequences_count': 0,
-            'content_count': 0,
-            'campaigns_count': 0,
-            'financial_amounts': [],
+        patterns = {
+            'currency_amounts': [],
             'percentages': [],
-            'quality_scores': []
+            'quality_scores': [],
+            'temporal_values': []
         }
         
-        result = task.get('result', {})
-        
-        # 1. Extract from detailed_results_json
-        if result.get('detailed_results_json'):
-            try:
-                detailed_data = json.loads(result['detailed_results_json']) if isinstance(result['detailed_results_json'], str) else result['detailed_results_json']
-                
-                # Contact extraction
-                if 'contacts' in detailed_data:
-                    contacts = detailed_data['contacts']
-                    if isinstance(contacts, list):
-                        achievements['contacts_count'] = len(contacts)
-                    elif isinstance(contacts, dict) and 'length' in contacts:
-                        achievements['contacts_count'] = contacts['length']
-                
-                # Email sequences extraction
-                if 'email_sequences' in detailed_data:
-                    sequences = detailed_data['email_sequences']
-                    if isinstance(sequences, list):
-                        achievements['email_sequences_count'] = len(sequences)
-                    elif isinstance(sequences, dict) and 'total_sequences' in sequences:
-                        achievements['email_sequences_count'] = sequences['total_sequences']
-                
-                # Content extraction
-                content_fields = ['content_calendar', 'posts', 'articles', 'templates']
-                for field in content_fields:
-                    if field in detailed_data:
-                        content = detailed_data[field]
-                        if isinstance(content, list):
-                            achievements['content_count'] += len(content)
-                        elif isinstance(content, dict) and 'items' in content:
-                            achievements['content_count'] += len(content['items'])
-                
-                # Quality scores
-                if 'quality_score' in detailed_data:
-                    achievements['quality_scores'].append(detailed_data['quality_score'])
-                
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.debug(f"Failed to parse detailed_results_json for task {task.get('id')}: {e}")
-        
-        # 2. Extract from summary using AI patterns
-        summary_text = result.get('summary', '')
-        if summary_text:
-            # Use regex patterns to find numerical achievements
-            for pattern in self.numerical_patterns:
-                matches = re.finditer(pattern, summary_text.lower())
+        try:
+            # Convert task result to string for pattern analysis
+            result_text = json.dumps(task_result, default=str)
+            
+            # Extract currency amounts (universal)
+            import re
+            currency_patterns = [
+                r'[\$€£¥]\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
+                r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:USD|EUR|GBP|JPY|usd|eur|gbp|jpy)',
+            ]
+            for pattern in currency_patterns:
+                matches = re.findall(pattern, result_text)
                 for match in matches:
                     try:
-                        value = float(match.group(1))
-                        context = match.group(2) if len(match.groups()) > 1 else ""
-                        
-                        if 'contact' in context:
-                            achievements['contacts_count'] = max(achievements['contacts_count'], int(value))
-                        elif 'email' in context or 'sequenc' in context:
-                            achievements['email_sequences_count'] = max(achievements['email_sequences_count'], int(value))
-                        elif '%' in match.group(0):
-                            achievements['percentages'].append(value)
-                            
-                    except (ValueError, IndexError):
+                        amount = float(str(match).replace(',', ''))
+                        patterns['currency_amounts'].append(amount)
+                    except ValueError:
                         continue
+            
+            # Extract percentages (universal)
+            percentage_patterns = [
+                r'(\d+(?:\.\d+)?)\s*%',
+                r'(\d+(?:\.\d+)?)\s*percent'
+            ]
+            for pattern in percentage_patterns:
+                matches = re.findall(pattern, result_text)
+                for match in matches:
+                    try:
+                        percentage = float(match)
+                        patterns['percentages'].append(percentage)
+                    except ValueError:
+                        continue
+            
+            # Extract quality scores (universal)
+            quality_patterns = [
+                r'quality[:\s]*(\d+(?:\.\d+)?)',
+                r'score[:\s]*(\d+(?:\.\d+)?)',
+                r'rating[:\s]*(\d+(?:\.\d+)?)'
+            ]
+            for pattern in quality_patterns:
+                matches = re.findall(pattern, result_text, re.IGNORECASE)
+                for match in matches:
+                    try:
+                        score = float(match)
+                        if 0 <= score <= 100:  # Reasonable quality score range
+                            patterns['quality_scores'].append(score)
+                    except ValueError:
+                        continue
+            
+            # Extract temporal values (universal)
+            temporal_patterns = [
+                r'(\d+)\s*(?:days?|giorni?)',
+                r'(\d+)\s*(?:weeks?|settimane?)',
+                r'(\d+)\s*(?:months?|mesi?)',
+                r'(\d+)\s*(?:hours?|ore?)'
+            ]
+            for pattern in temporal_patterns:
+                matches = re.findall(pattern, result_text, re.IGNORECASE)
+                for match in matches:
+                    try:
+                        value = float(match)
+                        patterns['temporal_values'].append(value)
+                    except ValueError:
+                        continue
+                        
+        except Exception as e:
+            logger.debug(f"Error extracting universal patterns: {e}")
         
-        return achievements
+        return patterns
+    
+    async def _map_requirement_to_achievement_universal(
+        self, 
+        req_type: str, 
+        requirement: Dict[str, Any], 
+        achievements: Dict[str, Any],
+        workspace_goal: str
+    ) -> float:
+        """
+        🤖 UNIVERSAL SEMANTIC MAPPING of requirements to achievements
+        
+        Uses AI-driven logic to map any requirement type to universal achievement categories
+        """
+        try:
+            # Universal mapping based on semantic meaning, not domain-specific logic
+            if req_type == 'items':
+                # Any countable items created
+                return achievements.get('items_created', 0)
+            elif req_type == 'metric':
+                # Any measurable results achieved
+                metrics = achievements.get('metrics_achieved', [])
+                return max(metrics) if metrics else 0
+            elif req_type == 'percentage':
+                # Any percentage-based achievements
+                percentages = achievements.get('percentages_achieved', [])
+                return max(percentages) if percentages else 0
+            elif req_type == 'currency':
+                # Any financial values
+                currency_amounts = achievements.get('currency_amounts', [])
+                return max(currency_amounts) if currency_amounts else 0
+            elif req_type == 'temporal':
+                # Any time-based achievements
+                temporal_values = achievements.get('temporal_values', [])
+                return max(temporal_values) if temporal_values else 0
+            elif req_type == 'quality':
+                # Any quality scores achieved
+                quality_scores = achievements.get('quality_scores', [])
+                return max(quality_scores) if quality_scores else 0
+            elif req_type == 'general':
+                # General deliverables completed
+                return achievements.get('deliverables_completed', 0)
+            else:
+                # AI-driven fallback: try to match semantically
+                if self.ai_available:
+                    return await self._ai_semantic_match_requirement(
+                        req_type, requirement, achievements, workspace_goal
+                    )
+                else:
+                    # Ultimate fallback: use the most appropriate universal metric
+                    if 'created' in req_type or 'item' in req_type:
+                        return achievements.get('items_created', 0)
+                    elif 'data' in req_type or 'process' in req_type:
+                        return achievements.get('data_processed', 0)
+                    else:
+                        return achievements.get('deliverables_completed', 0)
+        except Exception as e:
+            logger.error(f"Error in universal requirement mapping: {e}")
+            return 0
+    
+    async def _ai_semantic_match_requirement(
+        self, 
+        req_type: str, 
+        requirement: Dict[str, Any], 
+        achievements: Dict[str, Any],
+        workspace_goal: str
+    ) -> float:
+        """
+        🤖 AI-DRIVEN SEMANTIC MATCHING for unknown requirement types
+        """
+        try:
+            from ai_quality_assurance.quality_validator import AIQualityValidator
+            ai_validator = AIQualityValidator()
+            
+            matching_prompt = f"""Analyze this requirement and match it to the most appropriate achievement category:
+
+REQUIREMENT TYPE: "{req_type}"
+REQUIREMENT CONTEXT: "{requirement.get('unit', '')} {requirement.get('context', '')}"
+WORKSPACE GOAL: "{workspace_goal}"
+
+AVAILABLE ACHIEVEMENT CATEGORIES:
+- items_created: {achievements.get('items_created', 0)}
+- data_processed: {achievements.get('data_processed', 0)}
+- deliverables_completed: {achievements.get('deliverables_completed', 0)}
+- metrics_achieved: {achievements.get('metrics_achieved', [])}
+- currency_amounts: {achievements.get('currency_amounts', [])}
+- percentages_achieved: {achievements.get('percentages_achieved', [])}
+- quality_scores: {achievements.get('quality_scores', [])}
+- temporal_values: {achievements.get('temporal_values', [])}
+
+Return ONLY the numeric value from the most semantically appropriate category, nothing else."""
+
+            ai_result = await ai_validator._call_openai_api(matching_prompt, "semantic_requirement_matching")
+            if ai_result and "raw_response" in ai_result:
+                try:
+                    matched_value = float(str(ai_result["raw_response"]).strip())
+                    logger.info(f"🤖 AI matched requirement '{req_type}' to value: {matched_value}")
+                    return matched_value
+                except ValueError:
+                    logger.debug(f"AI returned non-numeric response: {ai_result['raw_response']}")
+                    
+        except Exception as e:
+            logger.debug(f"AI semantic matching failed: {e}")
+        
+        # Fallback to universal default
+        return achievements.get('deliverables_completed', 0)
     
     async def _validate_single_requirement(
         self, 
@@ -400,25 +479,18 @@ class AIGoalValidator:
         workspace_goal: str
     ) -> GoalValidationResult:
         """
-        Validate a single requirement against actual achievements
+        🤖 AI-DRIVEN UNIVERSAL REQUIREMENT VALIDATION
+        
+        Maps requirements to achievements using universal semantic matching
         """
         req_type = requirement['type']
         target_value = requirement['target_value']
         is_minimum = requirement.get('is_minimum', False)
         
-        # Map requirement to achievement
-        if req_type == 'contacts':
-            actual_value = achievements['contacts_found']
-        elif req_type == 'email_sequences':
-            actual_value = achievements['email_sequences']
-        elif req_type == 'content':
-            actual_value = achievements['content_pieces']
-        elif req_type == 'percentage':
-            # For percentages, check if any achievement meets target
-            relevant_percentages = achievements['percentages_achieved']
-            actual_value = max(relevant_percentages) if relevant_percentages else 0
-        else:
-            actual_value = 0
+        # 🤖 UNIVERSAL SEMANTIC MAPPING - No domain assumptions
+        actual_value = await self._map_requirement_to_achievement_universal(
+            req_type, requirement, achievements, workspace_goal
+        )
         
         # Calculate gap
         if target_value > 0:
@@ -470,107 +542,71 @@ class AIGoalValidator:
             }
         )
     
-    def _classify_requirement_type(self, unit_context: str, full_goal: str) -> str:
+    async def _classify_requirement_type(self, unit_context: str, full_goal: str) -> str:
         """
-        🧠 AI-DRIVEN UNIVERSAL CLASSIFICATION - Scalable across all domains
+        🤖 AI-DRIVEN UNIVERSAL CLASSIFICATION - No domain assumptions
         
-        Uses concept-based pattern matching to classify any requirement type
-        regardless of domain (marketing, fitness, tech, finance, etc.)
+        Uses AI to understand requirement type dynamically
         """
+        # If AI is available, use it for classification
+        if self.ai_available:
+            try:
+                from ai_quality_assurance.quality_validator import AIQualityValidator
+                ai_validator = AIQualityValidator()
+                
+                classification_prompt = f"""Analyze this requirement and classify its type universally:
+
+REQUIREMENT CONTEXT: "{unit_context}"
+FULL GOAL: "{full_goal}"
+
+Classify into one of these UNIVERSAL types (no domain-specific assumptions):
+- metric: Any measurable numeric target
+- percentage: Percentage-based targets
+- temporal: Time-based requirements
+- currency: Financial/monetary values
+- items: Countable objects/deliverables
+- quality: Quality/performance metrics
+- general: Other requirements
+
+Return ONLY the classification type, nothing else."""
+
+                ai_result = await ai_validator._call_openai_api(classification_prompt, "requirement_classification")
+                if ai_result and "raw_response" in ai_result:
+                    classification = str(ai_result["raw_response"]).strip().lower()
+                    if classification in ['metric', 'percentage', 'temporal', 'currency', 'items', 'quality', 'general']:
+                        logger.info(f"🤖 AI classified requirement as: {classification}")
+                        return classification
+            except Exception as e:
+                logger.debug(f"AI classification failed, using fallback: {e}")
+        
+        # Fallback: Universal pattern-based classification (no domain assumptions)
         unit_lower = unit_context.lower()
-        goal_lower = full_goal.lower()
-        combined_text = f"{unit_lower} {goal_lower}"
         
-        # 🎯 STEP 1: Direct detection - Most specific patterns first
-        if any(curr in unit_lower for curr in ['eur', 'usd', 'gbp', '$', '€', '£', '¥']):
-            return 'financial'
-        elif any(contact_word in unit_lower for contact_word in ['contatti', 'contacts', 'contatto', 'contact']):
-            return 'contacts'
-        elif any(email_word in unit_lower for email_word in ['email', 'sequenze', 'sequence', 'messaggio', 'message']):
-            return 'email_sequences'
-        elif any(time_word in unit_lower for time_word in ['settimana', 'week', 'giorno', 'day', 'mese', 'month', 'anno', 'year', 'ora', 'hour']):
-            return 'temporal'
-        elif '%' in combined_text or any(word in combined_text for word in ['percentuale', 'percentage', 'rate', 'ratio']):
+        # Currency symbols (universal)
+        if any(symbol in unit_lower for symbol in ['$', '€', '£', '¥', 'eur', 'usd', 'gbp']):
+            return 'currency'
+        # Percentage (universal)
+        elif '%' in unit_context:
             return 'percentage'
-        
-        # 🎯 STEP 2: AI-driven concept-based classification
-        concept_scores = {}
-        
-        for concept_name, concept_data in self.universal_concept_patterns.items():
-            score = 0
-            keywords = concept_data['keywords']
-            
-            # Score based on keyword matches in context and goal
-            for keyword in keywords:
-                if keyword in combined_text:
-                    score += 2  # Higher weight for exact matches
-                elif any(keyword in word for word in combined_text.split()):
-                    score += 1  # Partial matches
-            
-            # Boost score if unit context contains concept-related words
-            for keyword in keywords:
-                if keyword in unit_lower:
-                    score += 3  # Even higher weight for unit context matches
-            
-            if score > 0:
-                concept_scores[concept_name] = score
-        
-        # 🎯 STEP 3: Select best matching concept
-        if concept_scores:
-            best_concept = max(concept_scores, key=concept_scores.get)
-            
-            # Map concept to specific type based on context
-            concept_data = self.universal_concept_patterns[best_concept]
-            metric_types = concept_data['metric_types']
-            
-            # Choose most appropriate metric type based on unit context
-            for metric_type in metric_types:
-                metric_keywords = metric_type.split('_')
-                if any(keyword in unit_lower for keyword in metric_keywords):
-                    return metric_type
-            
-            # Return first metric type if no specific match
-            return metric_types[0] if metric_types else best_concept
-        
-        # 🎯 STEP 4: Fallback intelligent classification based on unit structure
-        if len(unit_lower.split()) > 1:
-            # Multi-word units likely represent complex deliverables
-            return 'deliverables'
-        elif unit_lower.endswith(('i', 'e', 's')):
-            # Plural forms likely represent countable items
+        # Temporal patterns (universal)
+        elif any(time_unit in unit_lower for time_unit in ['day', 'week', 'month', 'year', 'hour', 'giorno', 'settimana', 'mese', 'anno', 'ora']):
+            return 'temporal'
+        # Plural forms suggest countable items (universal)
+        elif unit_lower.endswith(('s', 'i', 'e')) and len(unit_lower) > 2:
             return 'items'
+        # Default to general metric
         else:
-            # Single word units default to general classification
-            return 'general'
+            return 'metric'
     
-    def _detect_domain(self, workspace_goal: str) -> str:
+    async def _detect_domain(self, workspace_goal: str) -> str:
         """
-        🧠 AI-DRIVEN UNIVERSAL DOMAIN DETECTION - Completely scalable
+        🤖 AI-DRIVEN DOMAIN DETECTION - Truly universal
         
-        Uses concept-based analysis to detect domain regardless of specific keywords
+        Uses AI to understand business domain without assumptions
         """
-        goal_lower = workspace_goal.lower()
-        
-        concept_scores = {}
-        for concept_name, concept_data in self.universal_concept_patterns.items():
-            score = 0
-            keywords = concept_data['keywords']
-            
-            # Score based on keyword matches
-            for keyword in keywords:
-                if keyword in goal_lower:
-                    score += 2
-                elif any(keyword in word for word in goal_lower.split()):
-                    score += 1
-            
-            if score > 0:
-                concept_scores[concept_name] = score
-        
-        # Return the concept with highest score, or 'general' if no matches
-        if concept_scores:
-            return max(concept_scores, key=concept_scores.get)
-        else:
-            return 'general'
+        # Always return 'universal' - domain doesn't matter for truly scalable system
+        # The AI will understand context without needing domain categorization
+        return 'universal'
     
     def _is_low_quality_extraction(self, unit_context: str, full_context: str, req_type: str) -> bool:
         """Filter out low-quality extractions with poor context"""
@@ -636,64 +672,149 @@ class AIGoalValidator:
         gap_percentage: float
     ) -> List[str]:
         """
-        🎯 STEP 3: Enhanced AI-driven generation of actionable recommendations
-        Now integrates with Goal-Driven Task Planner for immediate corrective action
+        🤖 AI-DRIVEN UNIVERSAL RECOMMENDATION GENERATION
+        
+        Generates actionable recommendations without domain-specific assumptions
         """
         recommendations = []
         req_type = requirement['type']
+        unit = requirement.get('unit', 'units')
+        gap_value = target - actual
         
         if gap_percentage > 50:  # Significant gap - TRIGGER CORRECTIVE TASKS
-            if req_type == 'contacts':
-                recommendations.extend([
-                    f"🚨 CRITICAL GAP: Current achievement is {actual}/{target} contacts ({gap_percentage:.1f}% gap)",
-                    f"📋 AUTO-GENERATING CORRECTIVE TASK: 'Collect {target-actual} additional ICP contacts'",
-                    "🎯 Task will have numerical validation: cannot complete until target reached",
-                    "🔍 Will use memory insights from previous contact research failures",
-                    "📊 Implementing immediate quality gates and validation"
-                ])
-            elif req_type == 'email_sequences':
-                recommendations.extend([
-                    f"📧 CRITICAL EMAIL DEFICIT: Created {actual}/{target} sequences ({gap_percentage:.1f}% gap)",
-                    f"📋 AUTO-GENERATING CORRECTIVE TASK: 'Create {target-actual} email sequences immediately'",
-                    "✨ Task will focus on complete, ready-to-deploy sequences",
-                    "📋 Numerical validation: must create exact number required"
-                ])
-            else:
-                recommendations.extend([
-                    f"⚠️ CRITICAL TARGET SHORTFALL: {gap_percentage:.1f}% gap in {req_type}",
-                    f"📋 AUTO-GENERATING CORRECTIVE TASK: Close {target-actual} {requirement.get('unit', 'units')} gap",
-                    "🔄 Task will use failure insights to avoid previous mistakes",
-                    "📈 Immediate action required - 24hr deadline"
-                ])
+            # Universal critical gap recommendations
+            recommendations.extend([
+                f"🚨 CRITICAL GAP: Current achievement is {actual:.1f}/{target} {unit} ({gap_percentage:.1f}% gap)",
+                f"📋 AUTO-GENERATING CORRECTIVE TASK: 'Close {gap_value:.1f} {unit} gap for {req_type}'",
+                "🎯 Task will have numerical validation: cannot complete until target reached",
+                "🔍 Will use memory insights from previous attempts to avoid similar failures",
+                "📊 Implementing immediate quality gates and validation"
+            ])
+            
+            # AI-driven specific recommendations if available
+            if self.ai_available:
+                try:
+                    ai_recommendations = await self._generate_ai_specific_recommendations(
+                        requirement, actual, target, gap_percentage, "critical"
+                    )
+                    recommendations.extend(ai_recommendations)
+                except Exception as e:
+                    logger.debug(f"AI recommendation generation failed: {e}")
+                    
         elif gap_percentage > 20:  # Moderate gap - SUGGEST OPTIMIZATION
             recommendations.extend([
-                f"📊 MODERATE GAP: {gap_percentage:.1f}% shortfall, optimization needed",
-                f"📋 SUGGEST TASK: Optimize approach to close {target-actual} {requirement.get('unit', 'units')} gap",
-                "🔧 Fine-tune current processes with memory-guided improvements"
+                f"📊 MODERATE GAP: {gap_percentage:.1f}% shortfall in {req_type}",
+                f"📋 SUGGEST TASK: Optimize approach to close {gap_value:.1f} {unit} gap",
+                "🔧 Fine-tune current processes with memory-guided improvements",
+                "⏱️ Consider timeline adjustment or resource reallocation"
             ])
+            
         else:  # Goal achieved or close
             recommendations.extend([
-                f"✅ TARGET ACHIEVED: {actual}/{target} {requirement['unit']} completed",
+                f"✅ TARGET ACHIEVED: {actual:.1f}/{target} {unit} completed for {req_type}",
                 "🎯 Consider setting stretch goals for additional value",
-                "📝 SUCCESS PATTERN: Document approach for future similar goals"
+                "📝 SUCCESS PATTERN: Document approach for future similar goals",
+                "🔄 Share insights with team for knowledge transfer"
             ])
         
         return recommendations
     
+    async def _generate_ai_specific_recommendations(
+        self, 
+        requirement: Dict, 
+        actual: float, 
+        target: float, 
+        gap_percentage: float,
+        severity: str
+    ) -> List[str]:
+        """
+        🤖 AI-DRIVEN SPECIFIC RECOMMENDATIONS based on requirement context
+        """
+        try:
+            from ai_quality_assurance.quality_validator import AIQualityValidator
+            ai_validator = AIQualityValidator()
+            
+            recommendation_prompt = f"""Generate specific, actionable recommendations for this goal gap:
+
+REQUIREMENT: {requirement['type']} - {requirement.get('unit', '')}
+TARGET: {target}
+ACTUAL: {actual}
+GAP: {gap_percentage:.1f}%
+SEVERITY: {severity}
+CONTEXT: {requirement.get('context', '')}
+
+Generate 2-3 specific, actionable recommendations that are:
+1. Immediately implementable
+2. Measurable in results  
+3. Context-appropriate for the requirement type
+4. Not domain-specific (universally applicable)
+
+Return as numbered list, one recommendation per line."""
+
+            ai_result = await ai_validator._call_openai_api(recommendation_prompt, "specific_recommendations")
+            if ai_result and "raw_response" in ai_result:
+                ai_recommendations = str(ai_result["raw_response"]).strip().split('\n')
+                # Clean and format recommendations
+                formatted_recs = []
+                for rec in ai_recommendations:
+                    cleaned = rec.strip()
+                    if cleaned and len(cleaned) > 10:  # Filter out empty or too short
+                        if not cleaned.startswith(('🤖', '📋', '⚡')):
+                            cleaned = f"🤖 {cleaned}"
+                        formatted_recs.append(cleaned)
+                
+                logger.info(f"🤖 Generated {len(formatted_recs)} AI-driven recommendations")
+                return formatted_recs
+                
+        except Exception as e:
+            logger.debug(f"AI-specific recommendation generation failed: {e}")
+        
+        return []
+    
     def _calculate_confidence(self, achievements: Dict, requirement: Dict) -> float:
         """
-        Calculate confidence score based on data quality and extraction method
+        🤖 UNIVERSAL CONFIDENCE CALCULATION
+        
+        Calculate confidence score based on data quality without domain assumptions
         """
         base_confidence = 0.7  # Base confidence
         
         # Boost confidence if we have detailed extractions
         if achievements.get('raw_extractions'):
-            detailed_extractions = sum(1 for ext in achievements['raw_extractions'] if ext['extractions'])
+            detailed_extractions = sum(
+                1 for ext in achievements['raw_extractions'] 
+                if isinstance(ext, dict) and ext.get('universal_achievements')
+            )
             if detailed_extractions > 0:
                 base_confidence += 0.2
         
-        # Boost if we have structured data
-        if requirement['type'] in ['contacts', 'email_sequences'] and achievements.get('contacts_found', 0) > 0:
+        # Boost confidence based on universal data richness
+        req_type = requirement.get('type', '')
+        
+        # Universal confidence boosters based on achievement categories
+        if req_type == 'items' and achievements.get('items_created', 0) > 0:
+            base_confidence += 0.1
+        elif req_type == 'metric' and achievements.get('metrics_achieved'):
+            base_confidence += 0.15
+        elif req_type == 'percentage' and achievements.get('percentages_achieved'):
+            base_confidence += 0.1
+        elif req_type == 'currency' and achievements.get('currency_amounts'):
+            base_confidence += 0.1
+        elif req_type == 'quality' and achievements.get('quality_scores'):
+            base_confidence += 0.1
+        elif achievements.get('deliverables_completed', 0) > 0:
+            base_confidence += 0.05  # General deliverable completion
+        
+        # Additional boost for data richness (universal)
+        total_data_points = (
+            len(achievements.get('metrics_achieved', [])) +
+            len(achievements.get('percentages_achieved', [])) +
+            len(achievements.get('currency_amounts', [])) +
+            len(achievements.get('quality_scores', [])) +
+            len(achievements.get('temporal_values', []))
+        )
+        
+        if total_data_points > 5:
             base_confidence += 0.1
         
         return min(1.0, base_confidence)

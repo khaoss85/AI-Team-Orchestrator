@@ -177,54 +177,57 @@ async def delete_tool(tool_id: UUID):
             detail=f"Failed to delete custom tool: {str(e)}"
         )
 
-@router.get("/instagram/analyze-hashtags", status_code=status.HTTP_200_OK)
-async def analyze_instagram_hashtags(hashtags: str):
+@router.get("/social-media/analyze-hashtags", status_code=status.HTTP_200_OK)
+async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram"):
     """
-    Analyze Instagram hashtags (wrapper for the tool)
+    🤖 UNIVERSAL: Analyze hashtags for any social media platform
     hashtags: Comma-separated list of hashtags
+    platform: Target platform (instagram, twitter, linkedin, tiktok, etc.)
     """
-    from ..tools.social_media import InstagramTools
+    from ..tools.social_media import UniversalSocialMediaTools
     
     try:
         hashtags_list = [tag.strip() for tag in hashtags.split(',')]
-        result = await InstagramTools.analyze_hashtags(hashtags_list)
+        result = await UniversalSocialMediaTools.analyze_hashtags(hashtags_list, platform)
         return result
     except Exception as e:
-        logger.error(f"Failed to analyze hashtags: {e}")
+        logger.error(f"Failed to analyze hashtags for {platform}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze hashtags: {str(e)}"
         )
 
-@router.get("/instagram/analyze-account/{username}", status_code=status.HTTP_200_OK)
-async def analyze_instagram_account(username: str):
+@router.get("/social-media/analyze-account/{username}", status_code=status.HTTP_200_OK)
+async def analyze_account_universal(username: str, platform: str = "instagram"):
     """
-    Analyze Instagram account (wrapper for the tool)
+    🤖 UNIVERSAL: Analyze social media account across platforms
     """
-    from ..tools.social_media import InstagramTools
+    from ..tools.social_media import UniversalSocialMediaTools
     
     try:
-        result = await InstagramTools.analyze_account(username)
+        result = await UniversalSocialMediaTools.analyze_account(username, platform)
         return result
     except Exception as e:
-        logger.error(f"Failed to analyze account: {e}")
+        logger.error(f"Failed to analyze {platform} account {username}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to analyze account: {str(e)}"
         )
 
-@router.post("/instagram/generate-content-ideas", status_code=status.HTTP_200_OK)
-async def generate_instagram_content_ideas(request: Request):
+@router.post("/social-media/generate-content-ideas", status_code=status.HTTP_200_OK)
+async def generate_content_ideas_universal(request: Request):
     """
-    Generate Instagram content ideas (wrapper for the tool)
+    🤖 UNIVERSAL: Generate content ideas for any social media platform
     """
-    from ..tools.social_media import InstagramTools
+    from ..tools.social_media import UniversalSocialMediaTools
     
     try:
         payload = await request.json()
         topic = payload.get("topic")
         target_audience = payload.get("target_audience")
+        platform = payload.get("platform", "instagram")
         count = payload.get("count", 5)
+        content_type = payload.get("content_type", "post")  # post, story, video, article
         
         if not topic or not target_audience:
             raise HTTPException(
@@ -232,7 +235,9 @@ async def generate_instagram_content_ideas(request: Request):
                 detail="Missing required parameters: topic and target_audience"
             )
         
-        result = await InstagramTools.generate_content_ideas(topic, target_audience, count)
+        result = await UniversalSocialMediaTools.generate_content_ideas(
+            topic, target_audience, platform, count, content_type
+        )
         return result
     except Exception as e:
         logger.error(f"Failed to generate content ideas: {e}")
@@ -240,3 +245,25 @@ async def generate_instagram_content_ideas(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate content ideas: {str(e)}"
         )
+
+# 🔄 BACKWARDS COMPATIBILITY: Keep old Instagram endpoints but redirect to universal ones
+@router.get("/instagram/analyze-hashtags", status_code=status.HTTP_200_OK)
+async def analyze_instagram_hashtags_legacy(hashtags: str):
+    """LEGACY: Redirects to universal hashtag analysis"""
+    return await analyze_hashtags_universal(hashtags, "instagram")
+
+@router.get("/instagram/analyze-account/{username}", status_code=status.HTTP_200_OK)
+async def analyze_instagram_account_legacy(username: str):
+    """LEGACY: Redirects to universal account analysis"""
+    return await analyze_account_universal(username, "instagram")
+
+@router.post("/instagram/generate-content-ideas", status_code=status.HTTP_200_OK)
+async def generate_instagram_content_ideas_legacy(request: Request):
+    """LEGACY: Redirects to universal content generation"""
+    payload = await request.json()
+    payload["platform"] = "instagram"  # Force Instagram platform
+    # Create new request with updated payload
+    class MockRequest:
+        async def json(self):
+            return payload
+    return await generate_content_ideas_universal(MockRequest())

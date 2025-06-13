@@ -12,6 +12,379 @@ from agents import function_tool
 
 logger = logging.getLogger(__name__)
 
+# 🤖 UNIVERSAL SOCIAL MEDIA PLATFORM CONFIGURATIONS
+PLATFORM_CONFIGS = {
+    "instagram": {
+        "content_types": ["image", "video", "carousel", "story", "reel", "igtv"],
+        "optimal_hashtags": 10,
+        "character_limits": {"caption": 2200, "bio": 150},
+        "posting_times": ["9:00 AM", "6:00 PM", "9:00 PM"],
+        "engagement_metrics": ["likes", "comments", "shares", "saves"]
+    },
+    "twitter": {
+        "content_types": ["tweet", "thread", "video", "poll", "space"],
+        "optimal_hashtags": 3,
+        "character_limits": {"tweet": 280, "bio": 160},
+        "posting_times": ["8:00 AM", "12:00 PM", "5:00 PM"],
+        "engagement_metrics": ["likes", "retweets", "replies", "clicks"]
+    },
+    "linkedin": {
+        "content_types": ["post", "article", "video", "document", "poll"],
+        "optimal_hashtags": 5,
+        "character_limits": {"post": 3000, "headline": 220},
+        "posting_times": ["8:00 AM", "12:00 PM", "2:00 PM"],
+        "engagement_metrics": ["likes", "comments", "shares", "clicks"]
+    },
+    "tiktok": {
+        "content_types": ["video", "live", "duet", "stitch"],
+        "optimal_hashtags": 8,
+        "character_limits": {"caption": 150, "bio": 80},
+        "posting_times": ["6:00 AM", "10:00 AM", "7:00 PM"],
+        "engagement_metrics": ["views", "likes", "comments", "shares"]
+    },
+    "facebook": {
+        "content_types": ["post", "photo", "video", "story", "event"],
+        "optimal_hashtags": 2,
+        "character_limits": {"post": 63206, "bio": 101},
+        "posting_times": ["9:00 AM", "1:00 PM", "3:00 PM"],
+        "engagement_metrics": ["likes", "comments", "shares", "clicks"]
+    },
+    "youtube": {
+        "content_types": ["video", "short", "live", "premiere"],
+        "optimal_hashtags": 15,
+        "character_limits": {"title": 100, "description": 5000},
+        "posting_times": ["2:00 PM", "8:00 PM", "9:00 PM"],
+        "engagement_metrics": ["views", "likes", "comments", "shares", "subscribers"]
+    }
+}
+
+class UniversalSocialMediaTools:
+    """🤖 UNIVERSAL social media tools that work across all platforms"""
+    
+    @staticmethod
+    @function_tool
+    async def analyze_hashtags(hashtags: List[str], platform: str = "instagram") -> Dict[str, Any]:
+        """
+        🤖 UNIVERSAL: Analyze hashtags for any social media platform
+        
+        Args:
+            hashtags: List of hashtags to analyze (without # symbol)
+            platform: Target platform (instagram, twitter, linkedin, etc.)
+        
+        Returns:
+            Analysis results with platform-specific insights
+        """
+        try:
+            logger.info(f"Analyzing hashtags for {platform}: {', '.join(hashtags)}")
+            
+            # Get platform config
+            config = PLATFORM_CONFIGS.get(platform.lower(), PLATFORM_CONFIGS["instagram"])
+            
+            results = {}
+            for hashtag in hashtags:
+                # Simulate API call delay
+                await asyncio.sleep(0.5)
+                
+                # Generate platform-appropriate stats
+                if platform.lower() in ["instagram", "tiktok"]:
+                    post_count = random.randint(10000, 10000000)
+                    engagement_metric = "engagement_rate"
+                elif platform.lower() == "twitter":
+                    post_count = random.randint(1000, 1000000)
+                    engagement_metric = "tweet_volume"
+                elif platform.lower() == "linkedin":
+                    post_count = random.randint(100, 100000)
+                    engagement_metric = "professional_engagement"
+                else:
+                    post_count = random.randint(5000, 5000000)
+                    engagement_metric = "engagement_rate"
+                
+                engagement_rate = round(random.uniform(0.5, 8.0), 2)
+                growth_rate = round(random.uniform(-2.0, 10.0), 2)
+                trending = growth_rate > 3.0
+                
+                # Generate platform-specific related tags
+                if platform.lower() == "linkedin":
+                    related_pool = ["business", "professional", "career", "leadership", "innovation", "industry"]
+                elif platform.lower() == "tiktok":
+                    related_pool = ["viral", "trending", "fyp", "foryou", "dance", "comedy"]
+                elif platform.lower() == "twitter":
+                    related_pool = ["trending", "breaking", "news", "opinion", "thread", "viral"]
+                else:
+                    related_pool = ["trending", "viral", "popular", "community", "content", "creator"]
+                
+                related_tags = random.sample(related_pool, min(5, len(related_pool)))
+                
+                results[hashtag] = {
+                    "posts_count": post_count,
+                    engagement_metric: f"{engagement_rate}%",
+                    "growth_rate": f"{growth_rate}%",
+                    "trending": trending,
+                    "popularity_score": round(min(post_count / 1000000, 1) * 10, 1),
+                    "related_tags": related_tags,
+                    "best_posting_times": config["posting_times"],
+                    "platform_specific": {
+                        "optimal_hashtag_count": config["optimal_hashtags"],
+                        "character_limits": config["character_limits"]
+                    }
+                }
+            
+            # Add platform-specific analysis
+            if hashtags:
+                top_hashtag = max(hashtags, key=lambda h: results[h]["popularity_score"])
+                trending_hashtags = [h for h in hashtags if results[h]["trending"]]
+                
+                results["analysis"] = {
+                    "platform": platform,
+                    "top_performing_hashtag": top_hashtag,
+                    "trending_hashtags": trending_hashtags,
+                    "recommendation": f"Use a mix of popular and niche hashtags optimized for {platform}",
+                    "platform_tips": UniversalSocialMediaTools._get_platform_tips(platform)
+                }
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error analyzing hashtags for {platform}: {e}")
+            return {"error": str(e)}
+    
+    @staticmethod
+    @function_tool
+    async def analyze_account(username: str, platform: str = "instagram") -> Dict[str, Any]:
+        """
+        🤖 UNIVERSAL: Analyze social media account across platforms
+        
+        Args:
+            username: Account username/handle
+            platform: Target platform
+        
+        Returns:
+            Account analysis with platform-specific metrics
+        """
+        try:
+            logger.info(f"Analyzing {platform} account: {username}")
+            
+            # Get platform config
+            config = PLATFORM_CONFIGS.get(platform.lower(), PLATFORM_CONFIGS["instagram"])
+            
+            # Simulate API call delay
+            await asyncio.sleep(1)
+            
+            # Generate platform-appropriate stats
+            if platform.lower() == "youtube":
+                followers_label = "subscribers"
+                followers = random.randint(100, 10000000)
+                posts_label = "videos"
+                posts = random.randint(10, 1000)
+            elif platform.lower() == "twitter":
+                followers_label = "followers"
+                followers = random.randint(100, 5000000)
+                posts_label = "tweets"
+                posts = random.randint(100, 50000)
+            elif platform.lower() == "linkedin":
+                followers_label = "connections"
+                followers = random.randint(50, 30000)
+                posts_label = "posts"
+                posts = random.randint(10, 500)
+            else:
+                followers_label = "followers"
+                followers = random.randint(100, 1000000)
+                posts_label = "posts"
+                posts = random.randint(10, 1000)
+            
+            following = random.randint(100, 5000)
+            engagement_rate = round(random.uniform(0.5, 8.0), 2)
+            
+            # Generate platform-specific content distribution
+            content_types = config["content_types"]
+            post_distribution = {}
+            for content_type in content_types:
+                post_distribution[content_type] = round(random.uniform(10, 60), 1)
+            
+            # Normalize to 100%
+            total = sum(post_distribution.values())
+            for key in post_distribution:
+                post_distribution[key] = round((post_distribution[key] / total) * 100, 1)
+            
+            posting_frequency = random.choice(["daily", "2-3 times per week", "weekly", "bi-weekly"])
+            
+            # Create platform-specific analysis
+            account_info = {
+                "platform": platform,
+                "username": username,
+                f"{followers_label}_count": followers,
+                "following_count": following,
+                f"{posts_label}_count": posts,
+                "engagement_rate": f"{engagement_rate}%",
+                "content_distribution": post_distribution,
+                "posting_frequency": posting_frequency,
+                "best_performing_content": {
+                    "type": random.choice(content_types),
+                    "average_engagement": int(followers * random.uniform(0.02, 0.1)),
+                    "engagement_metrics": config["engagement_metrics"]
+                },
+                "growth_trend": random.choice(["increasing", "stable", "decreasing"]),
+                "platform_insights": {
+                    "optimal_posting_times": config["posting_times"],
+                    "recommended_content_types": content_types[:3],
+                    "character_limits": config["character_limits"]
+                }
+            }
+            
+            return account_info
+        except Exception as e:
+            logger.error(f"Error analyzing {platform} account: {e}")
+            return {"error": str(e)}
+    
+    @staticmethod
+    @function_tool
+    async def generate_content_ideas(
+        topic: str, 
+        target_audience: str, 
+        platform: str = "instagram",
+        count: int = 5,
+        content_type: str = "post"
+    ) -> List[Dict[str, Any]]:
+        """
+        🤖 UNIVERSAL: Generate content ideas for any social media platform
+        
+        Args:
+            topic: Main topic or niche
+            target_audience: Description of target audience
+            platform: Target platform
+            count: Number of ideas to generate
+            content_type: Type of content (post, video, story, etc.)
+        
+        Returns:
+            List of platform-optimized content ideas
+        """
+        try:
+            logger.info(f"Generating {count} {content_type} ideas for {platform}: topic={topic}")
+            
+            # Get platform config
+            config = PLATFORM_CONFIGS.get(platform.lower(), PLATFORM_CONFIGS["instagram"])
+            
+            # Simulate thinking time
+            await asyncio.sleep(1.5)
+            
+            ideas = []
+            for i in range(count):
+                # Use platform-appropriate content types
+                if content_type == "auto":
+                    selected_type = random.choice(config["content_types"])
+                else:
+                    selected_type = content_type if content_type in config["content_types"] else config["content_types"][0]
+                
+                # Generate universal themes (not domain-specific)
+                universal_themes = [
+                    "How-to guide", "Behind the scenes", "Tips and tricks", "Case study",
+                    "Q&A session", "Day in the life", "Before and after", "Tutorial",
+                    "Industry insights", "Personal story", "Trending topic", "Educational content"
+                ]
+                theme = random.choice(universal_themes)
+                
+                # Generate platform-appropriate hashtags
+                hashtags = [f"#{topic.lower()}", f"#{platform.lower()}"]
+                
+                # Add platform-specific hashtags
+                if platform.lower() == "linkedin":
+                    hashtags.extend(["#professional", "#business", "#career"])
+                elif platform.lower() == "tiktok":
+                    hashtags.extend(["#fyp", "#viral", "#trending"])
+                elif platform.lower() == "twitter":
+                    hashtags.extend(["#thread", "#discussion"])
+                else:
+                    hashtags.extend(["#content", "#community"])
+                
+                # Limit hashtags based on platform optimal count
+                hashtags = hashtags[:config["optimal_hashtags"]]
+                
+                # Build platform-optimized idea
+                idea = {
+                    "title": f"{theme} {selected_type}",
+                    "description": f"Create a {selected_type.lower()} about {theme.lower()} for {target_audience} on {platform}",
+                    "platform": platform,
+                    "content_type": selected_type,
+                    "theme": theme,
+                    "hashtags": hashtags,
+                    "estimated_engagement": f"{random.randint(1, 5)}/5",
+                    "best_posting_time": random.choice(config["posting_times"]),
+                    "platform_optimization": {
+                        "character_limits": config["character_limits"],
+                        "engagement_tactics": UniversalSocialMediaTools._get_platform_tactics(platform),
+                        "content_format": UniversalSocialMediaTools._get_format_guidelines(platform, selected_type)
+                    }
+                }
+                
+                ideas.append(idea)
+            
+            return ideas
+        except Exception as e:
+            logger.error(f"Error generating content ideas for {platform}: {e}")
+            return [{"error": str(e)}]
+    
+    @staticmethod
+    def _get_platform_tips(platform: str) -> List[str]:
+        """Get platform-specific optimization tips"""
+        tips = {
+            "instagram": [
+                "Use Stories to increase engagement",
+                "Post consistently at optimal times",
+                "Mix content types (photos, videos, carousels)"
+            ],
+            "twitter": [
+                "Keep tweets concise and engaging",
+                "Use threads for longer content",
+                "Engage with trending hashtags"
+            ],
+            "linkedin": [
+                "Share professional insights",
+                "Use native video for better reach",
+                "Engage with industry discussions"
+            ],
+            "tiktok": [
+                "Follow trending sounds and challenges",
+                "Keep videos under 60 seconds",
+                "Use trending hashtags strategically"
+            ]
+        }
+        return tips.get(platform.lower(), ["Post consistently", "Engage with your audience", "Use relevant hashtags"])
+    
+    @staticmethod
+    def _get_platform_tactics(platform: str) -> List[str]:
+        """Get platform-specific engagement tactics"""
+        tactics = {
+            "instagram": ["Use polls in Stories", "Ask questions in captions", "Share user-generated content"],
+            "twitter": ["Create Twitter polls", "Start conversations", "Share quick tips"],
+            "linkedin": ["Ask thought-provoking questions", "Share industry insights", "Comment on others' posts"],
+            "tiktok": ["Use trending sounds", "Create duets/stitches", "Jump on challenges"]
+        }
+        return tactics.get(platform.lower(), ["Engage authentically", "Post consistently", "Use relevant hashtags"])
+    
+    @staticmethod
+    def _get_format_guidelines(platform: str, content_type: str) -> Dict[str, Any]:
+        """Get format guidelines for specific platform and content type"""
+        guidelines = {
+            "visual_specs": "High-quality, well-lit images/videos",
+            "text_overlay": "Keep text readable and minimal",
+            "call_to_action": "Include clear next steps"
+        }
+        
+        # Add platform-specific guidelines
+        if platform.lower() == "instagram" and content_type == "reel":
+            guidelines.update({
+                "duration": "15-30 seconds",
+                "orientation": "vertical",
+                "trending_audio": "Use popular sounds"
+            })
+        elif platform.lower() == "linkedin" and content_type == "article":
+            guidelines.update({
+                "length": "1000-2000 words",
+                "format": "Professional tone",
+                "structure": "Clear headers and bullet points"
+            })
+        
+        return guidelines
+
 class InstagramTools:
     """Tools for Instagram analysis and management"""
     
