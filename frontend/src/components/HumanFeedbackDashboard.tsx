@@ -95,8 +95,149 @@ export default function HumanFeedbackDashboard({ workspaceId, assetContext }: Hu
       case 'intervention_required': return '🚨';
       case 'priority_decision': return '⚡';
       case 'resource_allocation': return '💰';
+      case 'critical_asset_verification': return '🔍';
       default: return '❓';
     }
+  };
+
+  const renderDeliverableContent = (content: any) => {
+    if (!content || typeof content !== 'object') {
+      return <div className="text-gray-500">Nessun contenuto disponibile</div>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {Object.entries(content).map(([key, value]) => (
+          <div key={key} className="border-l-4 border-blue-500 pl-4">
+            <h4 className="font-medium text-gray-900 mb-2 capitalize">
+              {key.replace(/_/g, ' ')}
+            </h4>
+            {renderContentValue(value)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderContentValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return <span className="text-gray-400">Non disponibile</span>;
+    }
+
+    // Handle formatted list content (especially email sequences)
+    if (typeof value === 'object' && value.total_count !== undefined && value.items) {
+      return (
+        <div>
+          <div className="text-sm text-gray-600 mb-2">
+            Totale: {value.total_count} elementi
+          </div>
+          <div className="space-y-3">
+            {value.items.map((item: any, index: number) => (
+              <div key={index} className="bg-white p-3 rounded border border-gray-200">
+                {item.sequence_number && (
+                  <div className="text-xs text-gray-500 mb-2">Sequenza #{item.sequence_number}</div>
+                )}
+                {renderEmailSequenceItem(item.content || item)}
+              </div>
+            ))}
+          </div>
+          {value.note && (
+            <div className="text-xs text-gray-500 mt-2">{value.note}</div>
+          )}
+        </div>
+      );
+    }
+
+    // Handle formatted dict content
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      return (
+        <div className="space-y-2">
+          {Object.entries(value).map(([k, v]) => (
+            <div key={k} className="flex">
+              <span className="font-medium text-gray-700 min-w-32">{k}:</span>
+              <span className="text-gray-900 ml-2">{renderSimpleValue(v)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Handle arrays
+    if (Array.isArray(value)) {
+      return (
+        <div className="space-y-1">
+          {value.map((item, index) => (
+            <div key={index} className="p-2 bg-white rounded border border-gray-100">
+              {renderSimpleValue(item)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return renderSimpleValue(value);
+  };
+
+  const renderEmailSequenceItem = (item: any) => {
+    if (typeof item === 'object' && item !== null) {
+      return (
+        <div className="space-y-2">
+          {item.subject && (
+            <div>
+              <span className="font-semibold text-gray-700">Oggetto:</span>
+              <div className="mt-1 p-2 bg-blue-50 border-l-4 border-blue-400 text-gray-900">
+                {item.subject}
+              </div>
+            </div>
+          )}
+          {item.body && (
+            <div>
+              <span className="font-semibold text-gray-700">Contenuto:</span>
+              <div className="mt-1 p-3 bg-gray-50 rounded text-gray-900 whitespace-pre-wrap">
+                {item.body}
+              </div>
+            </div>
+          )}
+          {item.call_to_action && (
+            <div>
+              <span className="font-semibold text-gray-700">Call-to-Action:</span>
+              <div className="mt-1 p-2 bg-green-50 border-l-4 border-green-400 text-gray-900">
+                {item.call_to_action}
+              </div>
+            </div>
+          )}
+          {item.timing && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Timing:</span> {item.timing}
+            </div>
+          )}
+          {/* Handle other email fields */}
+          {Object.entries(item).map(([key, value]) => {
+            if (['subject', 'body', 'call_to_action', 'timing'].includes(key)) return null;
+            return (
+              <div key={key} className="text-sm">
+                <span className="font-medium text-gray-600">{key}:</span>
+                <span className="ml-2 text-gray-800">{renderSimpleValue(value)}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return renderSimpleValue(item);
+  };
+
+  const renderSimpleValue = (value: any): string => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    return JSON.stringify(value, null, 2);
   };
 
   const formatTimeRemaining = (expiresAt: string) => {
@@ -215,6 +356,28 @@ export default function HumanFeedbackDashboard({ workspaceId, assetContext }: Hu
               </div>
               
               <p className="text-gray-700 mb-4">{selectedRequest.description}</p>
+              
+              {/* Deliverable Content Preview */}
+              {selectedRequest.context?.deliverable_preview?.content_for_review && (
+                <div className="mb-6">
+                  <h3 className="font-medium mb-3">📋 Contenuto da Verificare:</h3>
+                  <div className="bg-gray-50 rounded-lg border p-4 max-h-96 overflow-y-auto">
+                    {renderDeliverableContent(selectedRequest.context.deliverable_preview.content_for_review)}
+                  </div>
+                  
+                  {/* Summary */}
+                  {selectedRequest.context.deliverable_preview.summary && (
+                    <div className="mt-3 text-sm text-gray-600">
+                      <strong>Riassunto:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {Object.entries(selectedRequest.context.deliverable_preview.summary).map(([key, value]) => (
+                          <li key={key}>{key}: {value as string}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Azioni Proposte:</h3>

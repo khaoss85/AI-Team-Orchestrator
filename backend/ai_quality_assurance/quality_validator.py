@@ -264,50 +264,184 @@ DATA SAMPLE:
 {data_sample}
 
 Evaluate the authenticity on a scale of 0.0-1.0 based on:
-- Does this contain real, specific business data?
-- Are there concrete facts, numbers, names, dates?
-- Is it derived from actual research/analysis?
-- Avoid generic examples or placeholder content
+
+STRICT SCORING CRITERIA:
+- 0.9-1.0: Real business data with specific facts, verified information
+- 0.7-0.9: Mostly real with some generic elements  
+- 0.5-0.7: Mix of real and placeholder content
+- 0.3-0.5: Mostly template/example data with some customization
+- 0.0-0.3: Fake data, Lorem Ipsum, or generic placeholders
+
+RED FLAGS (automatically score ≤0.3):
+- Names like "John Doe", "Jane Smith", "Example Corp", "Lorem Ipsum"
+- Email addresses with "example.com", "test.com", "domain.com"
+- Phone numbers like "123-456-7890" or "(555) xxx-xxxx"
+- Dates that are clearly placeholder (1/1/2024, 12/31/2023)
+- Generic company names ending in "Corp", "LLC", "Inc" without context
+- Financial figures that are round numbers without justification ($10,000, $100,000)
 
 Respond in this exact JSON format:
 {{
     "score": 0.0-1.0,
-    "reasoning": "brief explanation of score",
-    "authenticity_indicators": ["list", "of", "positive", "indicators"],
-    "fake_indicators": ["list", "of", "fake", "or", "generic", "elements"]
+    "reasoning": "specific explanation with examples",
+    "authenticity_indicators": ["specific", "real", "data", "elements"],
+    "fake_indicators": ["specific", "fake", "or", "placeholder", "elements"],
+    "red_flags_found": ["any", "red", "flags", "detected"]
 }}"""
 
         return await self._call_openai_api(prompt, "authenticity_assessment")
     
     async def _assess_actionability_ai(self, asset_data: Dict, asset_type: str, context: Dict) -> Dict[str, Any]:
         """
-        Valuta quanto l'asset sia immediatamente azionabile
+        Valuta quanto l'asset sia immediatamente azionabile con criteri specifici per tipo
         """
         
         data_sample = self._extract_data_sample(asset_data)
+        
+        # Criteri specifici per tipo di asset
+        actionability_criteria = self._get_actionability_criteria(asset_type)
         
         prompt = f"""You are a business consultant evaluating the actionability of a {asset_type} asset.
 
 ASSET DATA:
 {data_sample}
 
-Evaluate actionability on a scale of 0.0-1.0 based on:
-- Can this be used immediately without modification?
-- Does it contain specific, implementable actions?
-- Are there clear next steps and instructions?
-- Is it complete enough for business use?
+SPECIFIC ACTIONABILITY CRITERIA FOR {asset_type.upper()}:
+{actionability_criteria}
+
+Evaluate actionability on a scale of 0.0-1.0:
+
+SCORING GUIDELINES:
+- 0.9-1.0: Immediately usable, no changes needed
+- 0.7-0.9: Minor customization needed (names, dates, specific details)
+- 0.5-0.7: Moderate work needed (structure is good, content needs enhancement)  
+- 0.3-0.5: Major work needed (template-like, significant gaps)
+- 0.0-0.3: Not actionable (placeholders, fake data, generic structure)
 
 Respond in this exact JSON format:
 {{
     "score": 0.0-1.0,
-    "reasoning": "brief explanation",
+    "reasoning": "specific explanation based on criteria above",
     "ready_to_use_elements": ["list", "of", "immediately", "usable", "parts"],
     "missing_elements": ["list", "of", "missing", "or", "incomplete", "parts"],
-    "actionability_level": "ready_to_use|needs_customization|template_only"
+    "actionability_level": "ready_to_use|needs_customization|template_only",
+    "specific_issues": ["concrete", "issues", "found"],
+    "improvement_actions": ["specific", "steps", "to", "make", "it", "actionable"]
 }}"""
 
         return await self._call_openai_api(prompt, "actionability_assessment")
     
+    def _get_actionability_criteria(self, asset_type: str) -> str:
+        """Get specific actionability criteria for each asset type"""
+        
+        criteria_map = {
+            "email_sequence": """
+- Email subject lines are specific, not generic
+- Email content addresses real business needs, not Lorem Ipsum
+- Call-to-action buttons have specific text and links
+- Sender information is complete and professional
+- Timing/frequency schedule is realistic and detailed
+- Performance metrics and KPIs are defined
+- Target audience is clearly specified with real demographics
+            """,
+            
+            "contact_database": """
+- Contact names are realistic business professionals, not fake names
+- Email addresses follow real company domain patterns
+- Job titles are specific and industry-appropriate
+- Company names are real or realistic, not "Example Corp"
+- Phone numbers follow valid international formats
+- LinkedIn profiles or social links are provided where relevant
+- Contact source/acquisition method is documented
+            """,
+            
+            "strategic_plan": """
+- Goals have specific, measurable targets (not "increase sales")
+- Timeline includes concrete dates and milestones
+- Budget allocations are realistic and justified
+- Responsibilities are assigned to specific roles/people
+- Success metrics are quantifiable and trackable
+- Risk assessment includes real potential issues
+- Action items have clear owners and deadlines
+            """,
+            
+            "financial_plan": """
+- Revenue projections based on real market data/assumptions
+- Cost breakdown includes specific line items with amounts
+- Cash flow projections show monthly/quarterly details
+- ROI calculations are mathematically correct
+- Funding requirements are clearly specified
+- Financial assumptions are documented and justified
+- Break-even analysis includes realistic timelines
+            """,
+            
+            "process_document": """
+- Step-by-step instructions are specific and clear
+- Tools and systems mentioned are real and available
+- Roles and responsibilities are clearly defined
+- Decision points include specific criteria
+- Templates and forms are included or referenced
+- Quality checkpoints are measurable
+- Escalation procedures are defined with contacts
+            """
+        }
+        
+        return criteria_map.get(asset_type, """
+- Content is specific to the business context, not generic
+- Instructions and actions are concrete and implementable
+- All necessary information is provided for immediate use
+- No placeholder text or fake data present
+- Clear next steps and follow-up actions defined
+        """).strip()
+    
+    def _get_improvement_guidelines(self, asset_type: str) -> str:
+        """Get specific improvement guidelines for each asset type"""
+        
+        guidelines_map = {
+            "email_sequence": """
+- Replace generic subject lines with specific value propositions
+- Add real customer pain points and solutions in email content
+- Include specific call-to-action buttons with actual landing page URLs
+- Specify exact send times and frequency (e.g., "Monday 9 AM, Wednesday 2 PM")
+- Add personalization fields for real customer data integration
+- Include specific metrics to track (open rate >25%, click rate >3%)
+            """,
+            
+            "contact_database": """
+- Replace fake names with realistic business professional names
+- Use real company domain patterns for email addresses (@company.com)
+- Add specific job titles relevant to target industry
+- Include complete contact information (phone, LinkedIn, company size)
+- Add lead source tracking (website, referral, event name)
+- Include contact notes and interaction history
+            """,
+            
+            "strategic_plan": """
+- Convert vague goals to SMART objectives with specific numbers
+- Add exact budget amounts and resource allocation details  
+- Include specific deadlines and milestone dates
+- Assign clear ownership to named roles or departments
+- Add realistic success metrics and KPIs
+- Include specific risk mitigation strategies
+            """,
+            
+            "financial_plan": """
+- Replace round numbers with realistic projections based on market data
+- Add month-by-month cash flow breakdowns
+- Include specific cost categories and vendor information
+- Add realistic ROI calculations with timeframes
+- Include funding requirements and investor information
+- Add break-even analysis with specific unit economics
+            """
+        }
+        
+        return guidelines_map.get(asset_type, """
+- Replace all placeholder text with realistic business content
+- Add specific details that enable immediate implementation
+- Include concrete examples and actionable instructions
+- Ensure all data is contextually relevant to the business
+        """).strip()
+
     async def _assess_completeness_ai(self, asset_data: Dict, asset_type: str) -> Dict[str, Any]:
         """
         Valuta la completezza dell'asset
@@ -359,20 +493,30 @@ CURRENT ISSUES: {issues_str}
 PROJECT CONTEXT: {context.get('workspace_goal', '')}
 ASSET SAMPLE: {data_sample}
 
-Generate 3-5 specific, actionable improvement suggestions that will:
-1. Address the identified quality issues
-2. Make the asset more business-ready and actionable
-3. Provide concrete next steps
+Generate 3-5 specific, actionable improvement suggestions. Focus on making the asset immediately usable in business:
+
+FOR {asset_type.upper()} SPECIFICALLY:
+{self._get_improvement_guidelines(asset_type)}
+
+REQUIREMENTS:
+1. Replace any fake/placeholder data with realistic business examples
+2. Add missing elements that prevent immediate use
+3. Make all content specific to the business context
+4. Ensure actionability - user should be able to implement immediately
 
 Respond in this exact JSON format:
 {{
     "suggestions": [
-        "Specific improvement suggestion 1",
-        "Specific improvement suggestion 2", 
-        "Specific improvement suggestion 3"
+        "Replace [specific placeholder] with [concrete example]",
+        "Add [specific missing element] to [specific section]", 
+        "Update [specific field] to include [actionable detail]"
     ],
-    "priority_order": ["most", "important", "improvements", "first"],
-    "implementation_difficulty": "easy|medium|hard"
+    "priority_order": ["critical", "high", "medium"],
+    "implementation_examples": [
+        "Instead of 'Example Corp', use 'TechStart Solutions Ltd'",
+        "Replace '(555) 123-4567' with international format '+1-415-555-0123'"
+    ],
+    "quick_wins": ["easiest", "improvements", "for", "immediate", "impact"]
 }}"""
 
         return await self._call_openai_api(prompt, "improvement_suggestions")

@@ -870,7 +870,31 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         # 🎯 STEP 2: UPDATE GOAL PROGRESS IF TASK COMPLETED SUCCESSFULLY
         if status == "completed" and db_result.data:
             try:
+                # Update goal progress
                 await _update_goal_progress_from_task_completion(task_id, result_payload)
+                
+                # Extract assets for deliverable system
+                try:
+                    from deliverable_system.concrete_asset_extractor import ConcreteAssetExtractor
+                    asset_extractor = ConcreteAssetExtractor()
+                    
+                    # Get task details for asset extraction
+                    task = await get_task(task_id)
+                    if task:
+                        extracted_assets = await asset_extractor.extract_from_task_result(
+                            task_id=task_id,
+                            task_result=result_payload,
+                            task_name=task.get("name", ""),
+                            workspace_id=task.get("workspace_id")
+                        )
+                        
+                        if extracted_assets:
+                            logger.info(f"📦 ASSET EXTRACTION: Extracted {len(extracted_assets)} assets from completed task {task_id}")
+                        else:
+                            logger.debug(f"📦 ASSET EXTRACTION: No assets extracted from completed task {task_id}")
+                            
+                except Exception as asset_error:
+                    logger.warning(f"Asset extraction failed for completed task {task_id}: {asset_error}")
                 
                 # 🎯 STEP 3: TRIGGER GOAL VALIDATION AND CORRECTIVE ACTIONS
                 await _trigger_goal_validation_and_correction(task_id, workspace_id)
@@ -1714,163 +1738,329 @@ async def _update_goal_progress_from_task_completion(task_id: str, result_payloa
 
 async def _extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
     """
-    🔍 SMART ACHIEVEMENT EXTRACTION - Extracts measurable achievements from task results
+    🔍 AI-DRIVEN UNIVERSAL ACHIEVEMENT EXTRACTION - Works across all domains
+    
+    Uses AI to identify measurable achievements without domain-specific assumptions.
+    Scalable for finance, sport, learning, marketing, etc.
     """
+    
+    # Start with universal achievement tracking
     achievements = {
-        "contacts_found": 0,
-        "email_sequences_created": 0,
-        "content_pieces_created": 0,
-        "campaigns_created": 0,
-        "deliverables_completed": 0,
-        "analysis_completed": 0
+        "items_created": 0,        # Universal: any items/objects created
+        "data_processed": 0,       # Universal: data points processed  
+        "deliverables_completed": 0, # Universal: any deliverable completed
+        "metrics_achieved": 0      # Universal: any measurable result
     }
     
     try:
-        # 📊 EXTRACT FROM STRUCTURED DATA
-        if isinstance(result_payload, dict):
-            
-            # Contact extraction - multiple formats
-            contacts_data = result_payload.get("contacts", result_payload.get("contact_list", result_payload.get("leads", [])))
-            if isinstance(contacts_data, list):
-                achievements["contacts_found"] = len([c for c in contacts_data if c and c != ""])
-            elif isinstance(contacts_data, dict):
-                if "total" in contacts_data:
-                    achievements["contacts_found"] = int(contacts_data.get("total", 0))
-                elif "length" in contacts_data:
-                    achievements["contacts_found"] = int(contacts_data.get("length", 0))
-                else:
-                    achievements["contacts_found"] = len(contacts_data)
-            
-            # Email sequence extraction
-            email_data = result_payload.get("email_sequences", result_payload.get("sequences", result_payload.get("emails", [])))
-            if isinstance(email_data, list):
-                achievements["email_sequences_created"] = len([e for e in email_data if e and e != ""])
-            elif isinstance(email_data, dict) and "total_sequences" in email_data:
-                achievements["email_sequences_created"] = int(email_data.get("total_sequences", 0))
-            
-            # Content extraction
-            content_fields = ["content_calendar", "posts", "articles", "templates", "content_pieces"]
-            for field in content_fields:
-                if field in result_payload:
-                    content = result_payload[field]
-                    if isinstance(content, list):
-                        achievements["content_pieces_created"] += len([c for c in content if c and c != ""])
-                    elif isinstance(content, dict) and "items" in content:
-                        achievements["content_pieces_created"] += len(content["items"])
-            
-            # Campaign extraction
-            campaigns = result_payload.get("campaigns", result_payload.get("marketing_campaigns", []))
-            if isinstance(campaigns, list):
-                achievements["campaigns_created"] = len([c for c in campaigns if c and c != ""])
-            
-            # General deliverable extraction
-            deliverable_indicators = ["completed", "delivered", "generated", "created"]
-            for key, value in result_payload.items():
-                if any(indicator in key.lower() for indicator in deliverable_indicators):
-                    if isinstance(value, list):
-                        achievements["deliverables_completed"] += len(value)
-                    elif isinstance(value, bool) and value:
-                        achievements["deliverables_completed"] += 1
-                    elif isinstance(value, (int, float)) and value > 0:
-                        achievements["deliverables_completed"] += int(value)
+        logger.info(f"🔍 AI-DRIVEN ACHIEVEMENT EXTRACTION from task: {task_name}")
+        logger.debug(f"📋 Result payload keys: {list(result_payload.keys()) if result_payload else 'None'}")
         
-        # 🔍 EXTRACT FROM TEXT ANALYSIS (fallback for unstructured results)
-        result_text = json.dumps(result_payload, default=str).lower()
+        # 🤖 STEP 1: USE AI TO ANALYZE RESULT PAYLOAD
+        ai_achievements = await _analyze_achievements_with_ai(result_payload, task_name)
+        achievements.update(ai_achievements)
         
-        # Use regex patterns to find numbers + relevant keywords
-        import re
+        # 📊 STEP 2: UNIVERSAL STRUCTURAL ANALYSIS (backup for AI)
+        structural_achievements = _analyze_structural_patterns(result_payload)
         
-        # Contact patterns
-        contact_matches = re.findall(r'(\d+)\s*(?:contatti|contacts|leads|prospects)', result_text)
-        if contact_matches and not achievements["contacts_found"]:
-            achievements["contacts_found"] = max([int(m) for m in contact_matches])
+        # Merge AI and structural results (AI takes precedence)
+        for key, value in structural_achievements.items():
+            if achievements.get(key, 0) == 0:  # Only use structural if AI didn't find anything
+                achievements[key] = value
         
-        # Email sequence patterns  
-        email_matches = re.findall(r'(\d+)\s*(?:email|sequenz|sequence)', result_text)
-        if email_matches and not achievements["email_sequences_created"]:
-            achievements["email_sequences_created"] = max([int(m) for m in email_matches])
-        
-        # Content patterns
-        content_matches = re.findall(r'(\d+)\s*(?:post|article|content|piece)', result_text)
-        if content_matches and not achievements["content_pieces_created"]:
-            achievements["content_pieces_created"] = max([int(m) for m in content_matches])
-        
-        # 🎯 TASK NAME ANALYSIS - Infer achievements from successful task completion
-        task_lower = task_name.lower()
-        
-        # If no specific metrics found but task suggests deliverable creation
-        if sum(achievements.values()) == 0:
-            creation_keywords = ["creare", "create", "generate", "develop", "build", "analyze"]
-            if any(keyword in task_lower for keyword in creation_keywords):
-                achievements["deliverables_completed"] = 1
-                
-                # Be more specific based on task name
-                if any(keyword in task_lower for keyword in ["email", "sequenz"]):
-                    achievements["email_sequences_created"] = 1
-                elif any(keyword in task_lower for keyword in ["contatt", "contact", "lead"]):
-                    achievements["contacts_found"] = 1
-                elif any(keyword in task_lower for keyword in ["content", "post", "article"]):
-                    achievements["content_pieces_created"] = 1
-                elif any(keyword in task_lower for keyword in ["analisi", "analysis"]):
-                    achievements["analysis_completed"] = 1
+        # 🎯 TASK NAME INFERENCE (final fallback)
+        task_achievements = _infer_from_task_completion(task_name)
+        for key, value in task_achievements.items():
+            if achievements.get(key, 0) == 0:  # Only use if nothing else found
+                achievements[key] = value
         
         # Filter out zero achievements for cleaner logging
         non_zero_achievements = {k: v for k, v in achievements.items() if v > 0}
         
         if non_zero_achievements:
-            logger.info(f"📊 EXTRACTED ACHIEVEMENTS: {non_zero_achievements}")
+            logger.info(f"✅ AI-DRIVEN ACHIEVEMENTS: {non_zero_achievements}")
         else:
-            logger.debug(f"No measurable achievements extracted from task: {task_name}")
+            logger.warning(f"❌ NO ACHIEVEMENTS EXTRACTED from task: {task_name}")
+            logger.debug(f"Result payload sample: {json.dumps(result_payload, default=str)[:200]}...")
             
         return achievements
         
     except Exception as e:
-        logger.error(f"Error extracting task achievements: {e}")
+        logger.error(f"Error extracting task achievements: {e}", exc_info=True)
+        return achievements
+
+async def _analyze_achievements_with_ai(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
+    """
+    🤖 AI-DRIVEN ACHIEVEMENT ANALYSIS - Universal across all domains
+    
+    Uses AI to understand what was accomplished without domain-specific assumptions.
+    Works for finance, sport, learning, marketing, healthcare, etc.
+    """
+    try:
+        # Import AI quality validator that's already available
+        from ai_quality_assurance.quality_validator import AIQualityValidator
+        
+        # Create a prompt that analyzes achievements universally
+        sample_data = json.dumps(result_payload, default=str)[:1000]  # Limit for AI processing
+        
+        ai_prompt = f"""You are an achievement analysis expert. Analyze this task result to identify measurable accomplishments.
+
+TASK NAME: {task_name}
+
+RESULT DATA SAMPLE:
+{sample_data}
+
+UNIVERSAL ACHIEVEMENT CATEGORIES:
+- items_created: Count of any items, objects, entities created (emails, reports, contacts, analyses, etc.)
+- data_processed: Count of data points processed (records, entries, transactions, etc.) 
+- deliverables_completed: Count of completed deliverables/outputs (documents, strategies, plans, etc.)
+- metrics_achieved: Count of measurable outcomes/results achieved
+
+ANALYSIS INSTRUCTIONS:
+1. Look for QUANTITIES and COUNTS in the data
+2. Identify what was CREATED, PROCESSED, or COMPLETED
+3. Count measurable achievements regardless of domain
+4. Ignore technical metadata, focus on business outcomes
+5. Be conservative - only count clear, measurable results
+
+Respond with this exact JSON format:
+{{
+    "items_created": <number>,
+    "data_processed": <number>, 
+    "deliverables_completed": <number>,
+    "metrics_achieved": <number>,
+    "confidence_score": <0.0-1.0>,
+    "reasoning": "Brief explanation of what was found"
+}}"""
+
+        # Try to use AI if available
+        try:
+            quality_validator = AIQualityValidator()
+            if quality_validator.openai_available:
+                ai_result = await quality_validator._call_openai_api(ai_prompt, "achievement_analysis")
+                
+                if ai_result and "raw_response" in ai_result:
+                    response = ai_result["raw_response"]
+                    confidence = response.get("confidence_score", 0.0)
+                    
+                    if confidence >= 0.5:  # Only use AI results if confident
+                        achievements = {
+                            "items_created": int(response.get("items_created", 0)),
+                            "data_processed": int(response.get("data_processed", 0)),
+                            "deliverables_completed": int(response.get("deliverables_completed", 0)),
+                            "metrics_achieved": int(response.get("metrics_achieved", 0))
+                        }
+                        
+                        logger.info(f"🤖 AI ACHIEVEMENT ANALYSIS: {achievements} (confidence: {confidence:.2f})")
+                        logger.debug(f"🤖 AI Reasoning: {response.get('reasoning', 'No reasoning provided')}")
+                        
+                        return achievements
+                    else:
+                        logger.debug(f"🤖 AI confidence too low ({confidence:.2f}), falling back to structural analysis")
+                        
+        except Exception as ai_error:
+            logger.debug(f"🤖 AI achievement analysis failed: {ai_error}")
+        
+        # Fallback: return empty dict to use structural analysis
+        return {}
+        
+    except Exception as e:
+        logger.error(f"Error in AI achievement analysis: {e}")
+        return {}
+
+def _analyze_structural_patterns(result_payload: Dict[str, Any]) -> Dict[str, int]:
+    """
+    📊 UNIVERSAL STRUCTURAL PATTERN ANALYSIS
+    
+    Analyzes data structures to find counts without domain assumptions.
+    Works across all business domains.
+    """
+    achievements = {
+        "items_created": 0,
+        "data_processed": 0,
+        "deliverables_completed": 0,
+        "metrics_achieved": 0
+    }
+    
+    try:
+        if not isinstance(result_payload, dict):
+            return achievements
+        
+        # Count any lists of items (universal pattern)
+        total_list_items = 0
+        for key, value in result_payload.items():
+            if isinstance(value, list) and value:
+                # Skip metadata and system fields
+                if not key.lower().startswith(('task_', 'metadata', 'error', 'debug')):
+                    item_count = len([item for item in value if item and item != ""])
+                    total_list_items += item_count
+                    logger.debug(f"📊 Found {item_count} items in list '{key}'")
+        
+        if total_list_items > 0:
+            achievements["items_created"] = total_list_items
+            achievements["deliverables_completed"] = 1  # At least one deliverable if items were created
+        
+        # Count data processed (entries in dicts that look like data)
+        data_entries = 0
+        for key, value in result_payload.items():
+            if isinstance(value, dict) and value:
+                # Look for data-like structures
+                if any(data_key in key.lower() for data_key in ['data', 'records', 'entries', 'results']):
+                    data_entries += len(value)
+                elif len(value) > 5:  # Large dict suggests data processing
+                    data_entries += len(value)
+        
+        if data_entries > 0:
+            achievements["data_processed"] = data_entries
+        
+        # Count deliverables by looking for completion indicators
+        completion_indicators = 0
+        for key, value in result_payload.items():
+            if any(indicator in key.lower() for indicator in ['complete', 'deliver', 'output', 'result', 'final']):
+                if isinstance(value, (list, dict)) and value:
+                    completion_indicators += 1
+                elif isinstance(value, bool) and value:
+                    completion_indicators += 1
+        
+        if completion_indicators > 0:
+            achievements["deliverables_completed"] = max(achievements["deliverables_completed"], completion_indicators)
+        
+        logger.debug(f"📊 STRUCTURAL ANALYSIS: {achievements}")
+        return achievements
+        
+    except Exception as e:
+        logger.error(f"Error in structural pattern analysis: {e}")
+        return achievements
+
+def _infer_from_task_completion(task_name: str) -> Dict[str, int]:
+    """
+    🎯 UNIVERSAL TASK COMPLETION INFERENCE
+    
+    Infers achievements from successful task completion using universal patterns.
+    No domain-specific assumptions.
+    """
+    achievements = {
+        "items_created": 0,
+        "data_processed": 0,
+        "deliverables_completed": 0,
+        "metrics_achieved": 0
+    }
+    
+    try:
+        task_lower = task_name.lower()
+        
+        # Universal creation verbs (cross-domain)
+        creation_verbs = ["create", "creare", "generate", "build", "develop", "design", "produce", "make"]
+        if any(verb in task_lower for verb in creation_verbs):
+            achievements["deliverables_completed"] = 1
+            achievements["items_created"] = 1  # Assume at least one item created
+            logger.info(f"🎯 Inferred creation from task name: {task_name}")
+        
+        # Universal analysis verbs (cross-domain)
+        analysis_verbs = ["analyze", "analisi", "research", "study", "review", "evaluate", "assess"]
+        if any(verb in task_lower for verb in analysis_verbs):
+            achievements["deliverables_completed"] = 1
+            achievements["data_processed"] = 1  # Assume data was processed
+            logger.info(f"🎯 Inferred analysis from task name: {task_name}")
+        
+        # Universal processing verbs (cross-domain)
+        processing_verbs = ["process", "handle", "manage", "organize", "structure", "format"]
+        if any(verb in task_lower for verb in processing_verbs):
+            achievements["data_processed"] = 1
+            logger.info(f"🎯 Inferred processing from task name: {task_name}")
+        
+        # Handoff tasks (universal pattern)
+        if "handoff" in task_lower:
+            achievements["deliverables_completed"] = 1
+            logger.info(f"🎯 Inferred deliverable from handoff task: {task_name}")
+        
+        return achievements
+        
+    except Exception as e:
+        logger.error(f"Error in task completion inference: {e}")
         return achievements
 
 def _calculate_goal_increment(achievements: Dict[str, int], goal_metric_type: str) -> float:
     """
-    🎯 SMART GOAL MAPPING - Maps task achievements to goal metrics
+    🎯 UNIVERSAL GOAL MAPPING - Maps achievements to goals across all domains
+    
+    No hard-coded mappings. Uses AI-driven semantic matching.
+    Scalable for finance, sport, learning, marketing, healthcare, etc.
     """
     
-    # Direct mappings for common metric types
-    metric_mappings = {
-        "contacts": achievements.get("contacts_found", 0),
-        "email_sequences": achievements.get("email_sequences_created", 0),
-        "content_pieces": achievements.get("content_pieces_created", 0),
-        "campaigns": achievements.get("campaigns_created", 0),
+    logger.debug(f"🎯 UNIVERSAL MAPPING achievements {achievements} to goal metric '{goal_metric_type}'")
+    
+    # Universal mappings (no domain assumptions)
+    universal_mappings = {
+        "items": achievements.get("items_created", 0),
+        "created": achievements.get("items_created", 0),
+        "data": achievements.get("data_processed", 0),
+        "processed": achievements.get("data_processed", 0),
         "deliverables": achievements.get("deliverables_completed", 0),
-        "tasks_completed": 1 if sum(achievements.values()) > 0 else 0,  # Any achievement = task completion
-        "analysis_completed": achievements.get("analysis_completed", 0)
+        "completed": achievements.get("deliverables_completed", 0),
+        "metrics": achievements.get("metrics_achieved", 0),
+        "achieved": achievements.get("metrics_achieved", 0),
+        "tasks": 1 if sum(achievements.values()) > 0 else 0,  # Universal task completion
+        "progress": 1 if sum(achievements.values()) > 0 else 0  # Universal progress
     }
     
     # Try exact match first
-    if goal_metric_type.lower() in metric_mappings:
-        return float(metric_mappings[goal_metric_type.lower()])
+    exact_match = universal_mappings.get(goal_metric_type.lower())
+    if exact_match is not None and exact_match > 0:
+        logger.info(f"🎯 EXACT UNIVERSAL MATCH: '{goal_metric_type}' -> {exact_match}")
+        return float(exact_match)
     
-    # Try partial matches
-    for metric_key, value in metric_mappings.items():
-        if metric_key in goal_metric_type.lower() or goal_metric_type.lower() in metric_key:
-            return float(value)
-    
-    # Fallback mapping logic
+    # Try partial matches (semantic matching)
     goal_lower = goal_metric_type.lower()
     
-    if "contact" in goal_lower or "lead" in goal_lower:
-        return float(achievements.get("contacts_found", 0))
-    elif "email" in goal_lower or "sequence" in goal_lower:
-        return float(achievements.get("email_sequences_created", 0))
-    elif "content" in goal_lower or "post" in goal_lower:
-        return float(achievements.get("content_pieces_created", 0))
-    elif "campaign" in goal_lower:
-        return float(achievements.get("campaigns_created", 0))
-    elif "deliverable" in goal_lower:
-        return float(achievements.get("deliverables_completed", 0))
-    elif "task" in goal_lower:
-        return 1.0 if sum(achievements.values()) > 0 else 0.0
-    else:
-        # If no specific mapping, use general deliverable completion
-        return float(achievements.get("deliverables_completed", 0))
+    for mapping_key, value in universal_mappings.items():
+        if value > 0 and (mapping_key in goal_lower or goal_lower in mapping_key):
+            logger.info(f"🎯 SEMANTIC MATCH: '{goal_metric_type}' matched with '{mapping_key}' -> {value}")
+            return float(value)
+    
+    # Universal pattern matching (no domain assumptions)
+    # Look for creation/completion patterns
+    creation_patterns = ["create", "creat", "build", "generat", "produc", "develop", "design"]
+    if any(pattern in goal_lower for pattern in creation_patterns):
+        increment = achievements.get("items_created", 0)
+        if increment > 0:
+            logger.info(f"🎯 CREATION PATTERN: '{goal_metric_type}' -> {increment} items created")
+            return float(increment)
+    
+    # Look for processing/analysis patterns  
+    processing_patterns = ["process", "analyz", "evaluat", "assess", "review", "study", "research"]
+    if any(pattern in goal_lower for pattern in processing_patterns):
+        increment = achievements.get("data_processed", 0)
+        if increment > 0:
+            logger.info(f"🎯 PROCESSING PATTERN: '{goal_metric_type}' -> {increment} data processed")
+            return float(increment)
+    
+    # Look for completion/delivery patterns
+    completion_patterns = ["complet", "deliver", "finish", "achiev", "accomplish", "done"]
+    if any(pattern in goal_lower for pattern in completion_patterns):
+        increment = achievements.get("deliverables_completed", 0)
+        if increment > 0:
+            logger.info(f"🎯 COMPLETION PATTERN: '{goal_metric_type}' -> {increment} deliverables")
+            return float(increment)
+    
+    # Look for counting/quantitative patterns
+    counting_patterns = ["count", "number", "total", "amount", "quantity", "volume", "size"]
+    if any(pattern in goal_lower for pattern in counting_patterns):
+        # Use the highest achievement as count
+        max_achievement = max(achievements.values()) if achievements.values() else 0
+        if max_achievement > 0:
+            logger.info(f"🎯 COUNTING PATTERN: '{goal_metric_type}' -> {max_achievement} (max achievement)")
+            return float(max_achievement)
+    
+    # Universal fallback - if any achievements exist, count as progress
+    total_achievements = sum(achievements.values())
+    if total_achievements > 0:
+        logger.info(f"🎯 UNIVERSAL FALLBACK: '{goal_metric_type}' -> {total_achievements} total achievements")
+        return float(total_achievements)
+    
+    # No match found
+    logger.debug(f"🎯 NO MATCH: '{goal_metric_type}' has no matching achievements")
+    return 0.0
 
 async def _trigger_goal_validation_and_correction(task_id: str, workspace_id: str):
     """

@@ -462,6 +462,11 @@ class HumanVerificationSystem:
         try:
             from database import create_human_feedback_request
             
+            # Check for duplicate requests first
+            if await self._has_duplicate_request(checkpoint):
+                logger.info(f"🔄 DUPLICATE REQUEST DETECTED: Skipping verification request for task {checkpoint.task_id}")
+                return
+            
             # Prepare proposed actions
             proposed_actions = [
                 {
@@ -488,12 +493,16 @@ class HumanVerificationSystem:
                 "deliverable_preview": self._create_deliverable_preview(checkpoint.deliverable_data)
             }
             
+            # Create user-friendly title and description
+            user_friendly_title = self._generate_user_friendly_title(checkpoint)
+            detailed_description = self._generate_detailed_description(checkpoint)
+            
             # Create feedback request
             request = await create_human_feedback_request(
                 workspace_id=checkpoint.workspace_id,
                 request_type=checkpoint.verification_type,
-                title=f"Verify: {checkpoint.task_name}",
-                description=f"Human verification required for {checkpoint.asset_type} deliverable",
+                title=user_friendly_title,
+                description=detailed_description,
                 proposed_actions=proposed_actions,
                 context=context,
                 priority=checkpoint.priority.value,
@@ -506,50 +515,271 @@ class HumanVerificationSystem:
         except Exception as e:
             logger.error(f"Error creating database feedback request: {e}")
     
-    def _create_deliverable_preview(self, deliverable_data: Dict[str, Any], max_items: int = 3) -> Dict[str, Any]:
-        """Create a preview of deliverable data for human review"""
+    def _generate_user_friendly_title(self, checkpoint: VerificationCheckpoint) -> str:
+        """Generate user-friendly title for verification request"""
         
-        preview = {}
+        # Extract business-meaningful title from task name
+        task_name = checkpoint.task_name
+        asset_type = checkpoint.asset_type
+        
+        # Remove technical prefixes/suffixes
+        clean_name = task_name
+        if "HANDOFF from" in clean_name:
+            # Extract the actual work being done
+            clean_name = clean_name.split("for Task ID:")[0].replace("HANDOFF from Hubspot Campaign Specialist Agent", "Email Campaign Setup")
+        
+        # Asset type specific improvements
+        asset_friendly_names = {
+            "email_sequence": "Email Marketing Campaign",
+            "contact_database": "Customer Contact List",
+            "strategic_plan": "Strategic Business Plan",
+            "financial_plan": "Financial Planning Document", 
+            "process_document": "Business Process Guide",
+            "analysis_report": "Business Analysis Report"
+        }
+        
+        asset_display = asset_friendly_names.get(asset_type, asset_type.replace("_", " ").title())
+        
+        # Generate meaningful title
+        if "setup" in clean_name.lower() or "implement" in clean_name.lower():
+            return f"Review {asset_display} Setup"
+        elif "research" in clean_name.lower() or "define" in clean_name.lower():
+            return f"Approve {asset_display} Research"
+        elif "plan" in clean_name.lower():
+            return f"Validate {asset_display}"
+        else:
+            return f"Review {asset_display} Deliverable"
+    
+    def _generate_detailed_description(self, checkpoint: VerificationCheckpoint) -> str:
+        """Generate detailed, business-focused description"""
+        
+        asset_type = checkpoint.asset_type
+        task_name = checkpoint.task_name
+        
+        # Get quality score for context
+        quality_score = 0.0
+        quality_issues = []
+        if checkpoint.quality_assessment:
+            quality_score = checkpoint.quality_assessment.get("overall_score", 0.0)
+            quality_issues = checkpoint.quality_assessment.get("quality_issues", [])
+        
+        # Asset-specific descriptions
+        descriptions = {
+            "email_sequence": f"""
+**Business Impact**: Email marketing campaign ready for implementation
+**What to Review**: Email templates, targeting strategy, and performance tracking setup
+**Quality Score**: {quality_score:.1%} ({len(quality_issues)} issues identified)
+**Why Review Needed**: Ensure emails are professional, compliant, and will drive engagement
+            """,
+            "contact_database": f"""
+**Business Impact**: Customer contact database for sales and marketing outreach  
+**What to Review**: Contact quality, data completeness, and GDPR compliance
+**Quality Score**: {quality_score:.1%} ({len(quality_issues)} issues identified)
+**Why Review Needed**: Verify contacts are real, reachable business professionals
+            """,
+            "strategic_plan": f"""
+**Business Impact**: Strategic roadmap for business growth and operations
+**What to Review**: Goals alignment, resource allocation, and timeline feasibility  
+**Quality Score**: {quality_score:.1%} ({len(quality_issues)} issues identified)
+**Why Review Needed**: Ensure plan is actionable and aligned with business objectives
+            """,
+            "financial_plan": f"""
+**Business Impact**: Financial projections and budget planning
+**What to Review**: Revenue forecasts, cost estimates, and investment requirements
+**Quality Score**: {quality_score:.1%} ({len(quality_issues)} issues identified) 
+**Why Review Needed**: Verify financial assumptions are realistic and well-justified
+            """
+        }
+        
+        return descriptions.get(asset_type, f"""
+**Business Impact**: {asset_type.replace('_', ' ').title()} deliverable ready for use
+**What to Review**: Content completeness, accuracy, and business relevance
+**Quality Score**: {quality_score:.1%} ({len(quality_issues)} issues identified)
+**Why Review Needed**: Ensure deliverable meets business requirements and quality standards
+        """).strip()
+
+    async def _has_duplicate_request(self, checkpoint: VerificationCheckpoint) -> bool:
+        """Check if similar verification request already exists"""
         
         try:
+            from database import get_human_feedback_requests
+            
+            # Get pending requests for this workspace
+            pending_requests = await get_human_feedback_requests(checkpoint.workspace_id, "pending")
+            
+            # Check for duplicates based on asset type and similar context
+            for request in pending_requests:
+                # Same asset type verification
+                if (request.get("context", {}).get("asset_type") == checkpoint.asset_type and
+                    request.get("request_type") == checkpoint.verification_type):
+                    
+                    # Same workspace verification within last hour
+                    from datetime import datetime, timedelta
+                    created_time = request.get("created_at")
+                    if created_time:
+                        try:
+                            created_dt = datetime.fromisoformat(created_time.replace('Z', '+00:00'))
+                            if datetime.now() - created_dt < timedelta(hours=1):
+                                return True
+                        except:
+                            pass
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking for duplicate requests: {e}")
+            return False
+
+    def _create_deliverable_preview(self, deliverable_data: Dict[str, Any], max_items: int = 5) -> Dict[str, Any]:
+        """Create a comprehensive preview of deliverable data for human review"""
+        
+        preview = {
+            "content_for_review": {},
+            "summary": {},
+            "metadata": {}
+        }
+        
+        try:
+            # Skip technical metadata but show business content
+            skip_keys = {"quality_validation", "enhancement_required", "task_metadata", "verification_required"}
+            
             for key, value in deliverable_data.items():
-                if key in ["quality_validation", "enhancement_required", "task_metadata"]:
-                    continue  # Skip metadata
+                if key in skip_keys:
+                    # Store metadata separately
+                    preview["metadata"][key] = value
+                    continue
                 
-                if isinstance(value, list):
-                    # Show first few items of lists
-                    preview[key] = {
-                        "type": "list",
-                        "total_items": len(value),
-                        "sample_items": value[:max_items],
-                        "has_more": len(value) > max_items
-                    }
-                elif isinstance(value, dict):
-                    # Show summary of dict objects
-                    preview[key] = {
-                        "type": "object", 
-                        "total_keys": len(value),
-                        "sample_keys": list(value.keys())[:max_items],
-                        "has_more": len(value) > max_items
-                    }
-                elif isinstance(value, str):
-                    # Truncate long strings
-                    if len(value) > 200:
-                        preview[key] = {
-                            "type": "text",
-                            "preview": value[:200] + "...",
-                            "full_length": len(value)
-                        }
+                # Format content based on type for human-readable display
+                if isinstance(value, list) and value:
+                    # Show actual content of lists, especially for email sequences
+                    preview["content_for_review"][key] = self._format_list_content(key, value, max_items)
+                    preview["summary"][key] = f"Lista con {len(value)} elementi"
+                    
+                elif isinstance(value, dict) and value:
+                    # Show formatted dict content
+                    preview["content_for_review"][key] = self._format_dict_content(key, value, max_items)
+                    preview["summary"][key] = f"Oggetto con {len(value)} proprietà"
+                    
+                elif isinstance(value, str) and value.strip():
+                    # Show full text content for strings
+                    if len(value) > 1000:
+                        preview["content_for_review"][key] = value[:1000] + "\n\n... [contenuto troncato] ..."
+                        preview["summary"][key] = f"Testo ({len(value)} caratteri, troncato)"
                     else:
-                        preview[key] = value
-                else:
-                    preview[key] = value
+                        preview["content_for_review"][key] = value
+                        preview["summary"][key] = f"Testo ({len(value)} caratteri)"
+                        
+                elif value is not None:
+                    preview["content_for_review"][key] = value
+                    preview["summary"][key] = f"{type(value).__name__}: {str(value)[:50]}..."
+            
+            # If no content found, show a message
+            if not preview["content_for_review"]:
+                preview["content_for_review"]["note"] = "Nessun contenuto visibile trovato nel deliverable"
             
         except Exception as e:
             logger.error(f"Error creating deliverable preview: {e}")
-            preview = {"error": "Could not create preview", "original_keys": list(deliverable_data.keys())}
+            preview = {
+                "content_for_review": {"error": "Errore nella creazione del preview"},
+                "summary": {"error": str(e)},
+                "metadata": {"original_keys": list(deliverable_data.keys())}
+            }
         
         return preview
+    
+    def _format_list_content(self, key: str, items: list, max_items: int) -> Dict[str, Any]:
+        """Format list content for human review"""
+        
+        formatted = {
+            "total_count": len(items),
+            "items": []
+        }
+        
+        # Special formatting for email sequences
+        if any(email_key in key.lower() for email_key in ["email", "sequence", "sequenz", "campaign"]):
+            for i, item in enumerate(items[:max_items]):
+                if isinstance(item, dict):
+                    # Format email sequence item
+                    email_preview = {}
+                    if "subject" in item:
+                        email_preview["subject"] = item["subject"]
+                    if "body" in item:
+                        email_preview["body"] = item["body"][:300] + "..." if len(str(item["body"])) > 300 else item["body"]
+                    if "call_to_action" in item:
+                        email_preview["call_to_action"] = item["call_to_action"]
+                    if "send_delay" in item:
+                        email_preview["timing"] = item["send_delay"]
+                    
+                    formatted["items"].append({
+                        "sequence_number": i + 1,
+                        "content": email_preview if email_preview else item
+                    })
+                else:
+                    formatted["items"].append({
+                        "sequence_number": i + 1,
+                        "content": str(item)[:200] + "..." if len(str(item)) > 200 else str(item)
+                    })
+        
+        # Special formatting for contacts
+        elif any(contact_key in key.lower() for contact_key in ["contact", "contatt", "lead", "prospect"]):
+            for i, item in enumerate(items[:max_items]):
+                if isinstance(item, dict):
+                    contact_preview = {}
+                    if "name" in item:
+                        contact_preview["name"] = item["name"]
+                    if "email" in item:
+                        contact_preview["email"] = item["email"]
+                    if "company" in item:
+                        contact_preview["company"] = item["company"]
+                    if "role" in item or "job_title" in item:
+                        contact_preview["role"] = item.get("role", item.get("job_title", ""))
+                    
+                    formatted["items"].append(contact_preview if contact_preview else item)
+                else:
+                    formatted["items"].append(str(item))
+        
+        # General list formatting
+        else:
+            for item in items[:max_items]:
+                if isinstance(item, dict):
+                    # Show key-value pairs for dict items
+                    formatted["items"].append({k: str(v)[:100] + "..." if len(str(v)) > 100 else v for k, v in item.items()})
+                else:
+                    formatted["items"].append(str(item)[:200] + "..." if len(str(item)) > 200 else str(item))
+        
+        if len(items) > max_items:
+            formatted["note"] = f"Mostrando {max_items} di {len(items)} elementi"
+        
+        return formatted
+    
+    def _format_dict_content(self, key: str, data: dict, max_items: int) -> Dict[str, Any]:
+        """Format dict content for human review"""
+        
+        formatted = {}
+        shown_items = 0
+        
+        for k, v in data.items():
+            if shown_items >= max_items:
+                break
+                
+            if isinstance(v, (str, int, float, bool)):
+                if isinstance(v, str) and len(v) > 300:
+                    formatted[k] = v[:300] + "..."
+                else:
+                    formatted[k] = v
+            elif isinstance(v, list):
+                formatted[k] = f"Lista con {len(v)} elementi: {str(v[:2])}..." if len(v) > 2 else v
+            elif isinstance(v, dict):
+                formatted[k] = f"Oggetto con {len(v)} proprietà: {list(v.keys())[:3]}..."
+            else:
+                formatted[k] = str(v)[:100] + "..." if len(str(v)) > 100 else str(v)
+            
+            shown_items += 1
+        
+        if len(data) > max_items:
+            formatted["_note"] = f"Mostrando {max_items} di {len(data)} proprietà"
+        
+        return formatted
     
     async def process_verification_response(
         self,
@@ -629,8 +859,30 @@ class HumanVerificationSystem:
                     from database import get_task
                     task = await get_task(task_id)
                     if task and task.get("result"):
+                        # Update goal progress
                         await _update_goal_progress_from_task_completion(task_id, task["result"])
                         logger.info(f"🎯 GOAL PROGRESS UPDATED: Task {task_id} progress applied to workspace goals")
+                        
+                        # Also trigger asset extraction for deliverable system
+                        try:
+                            from deliverable_system.concrete_asset_extractor import ConcreteAssetExtractor
+                            asset_extractor = ConcreteAssetExtractor()
+                            
+                            # Extract assets from the verified task
+                            extracted_assets = await asset_extractor.extract_from_task_result(
+                                task_id=task_id,
+                                task_result=task.get("result", {}),
+                                task_name=task.get("name", ""),
+                                workspace_id=task.get("workspace_id")
+                            )
+                            
+                            if extracted_assets:
+                                logger.info(f"📦 ASSET EXTRACTION: Extracted {len(extracted_assets)} assets from verified task {task_id}")
+                            else:
+                                logger.debug(f"📦 ASSET EXTRACTION: No assets extracted from verified task {task_id}")
+                                
+                        except Exception as asset_error:
+                            logger.warning(f"Asset extraction failed for verified task {task_id}: {asset_error}")
                 
                 elif action_type == "create_enhancement_task":
                     # Create enhancement task for rejected deliverables

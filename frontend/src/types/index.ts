@@ -331,12 +331,24 @@ export interface ExecutorDetailedStats {
 export interface FeedbackRequest {
   id: string;
   workspace_id: string;
-  request_type: 'task_approval' | 'strategy_review' | 'intervention_required' | 'priority_decision' | 'resource_allocation';
+  request_type: 'task_approval' | 'strategy_review' | 'intervention_required' | 'priority_decision' | 'resource_allocation' | 'critical_asset_verification';
   title: string;
   description: string;
   proposed_actions: ProposedAction[];
-  context: Record<string, any>;
-  priority: 'low' | 'medium' | 'high';
+  context: {
+    verification_checkpoint_id?: string;
+    asset_type?: string;
+    verification_criteria?: string[];
+    verification_questions?: any[];
+    quality_assessment?: any;
+    deliverable_preview?: {
+      content_for_review: Record<string, any>;
+      summary: Record<string, string>;
+      metadata: Record<string, any>;
+    };
+    [key: string]: any;
+  };
+  priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'pending' | 'approved' | 'rejected' | 'modified' | 'expired';
   created_at: string;
   expires_at: string;
