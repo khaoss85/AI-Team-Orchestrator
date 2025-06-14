@@ -90,18 +90,23 @@ class WorkspaceMemory:
                 return None
             
             # Create insight
-            insight = WorkspaceInsight(
-                id=uuid4(),
-                workspace_id=workspace_id,
-                task_id=task_id,
-                agent_role=agent_role,
-                insight_type=insight_type,
-                content=content,
-                relevance_tags=relevance_tags or [],
-                confidence_score=confidence_score,
-                expires_at=expires_at,
-                created_at=datetime.now()
-            )
+            insight_data = {
+                "id": uuid4(),
+                "workspace_id": workspace_id,
+                "agent_role": agent_role,
+                "insight_type": insight_type,
+                "content": content,
+                "relevance_tags": relevance_tags or [],
+                "confidence_score": confidence_score,
+                "expires_at": expires_at,
+                "created_at": datetime.now()
+            }
+            
+            # Add task_id only if provided
+            if task_id is not None:
+                insight_data["task_id"] = task_id
+                
+            insight = WorkspaceInsight(**insight_data)
             
             # Store in database
             await self._insert_insight_to_db(insight)

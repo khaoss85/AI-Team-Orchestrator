@@ -407,6 +407,8 @@ IMPORTANT: Keep the exact same JSON structure, only replace placeholder/generic 
                     r'\[Company\]': 'TechFlow Solutions',
                     r'\{company\}': 'TechFlow Solutions',
                     r'\{product\}': 'TechFlow CRM',
+                    r'\{firstName\}': 'Marco',
+                    r'\{lastName\}': 'Rossi',
                     r'example\.com': 'techflow.io',
                     r'your company': 'TechFlow Solutions',
                     r'your product': 'TechFlow CRM'
@@ -417,6 +419,8 @@ IMPORTANT: Keep the exact same JSON structure, only replace placeholder/generic 
                     r'\[Company\]': 'FinanceMax Analytics',
                     r'\{company\}': 'FinanceMax Analytics',
                     r'\{product\}': 'FinanceMax Pro',
+                    r'\{firstName\}': 'Alessandro',
+                    r'\{lastName\}': 'Bianchi',
                     r'example\.com': 'financemax.com',
                     r'your company': 'FinanceMax Analytics',
                     r'your product': 'FinanceMax Pro'
@@ -427,6 +431,8 @@ IMPORTANT: Keep the exact same JSON structure, only replace placeholder/generic 
                     r'\[Company\]': 'BusinessEdge Solutions',
                     r'\{company\}': 'BusinessEdge Solutions',
                     r'\{product\}': 'BusinessEdge Platform',
+                    r'\{firstName\}': 'Giulia',
+                    r'\{lastName\}': 'Verdi',
                     r'example\.com': 'businessedge.com',
                     r'your company': 'BusinessEdge Solutions',
                     r'your product': 'BusinessEdge Platform'
