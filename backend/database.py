@@ -189,32 +189,78 @@ def safe_json_serialize(data: Any) -> str:
 
 async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
     """
-    🎯 Automatically create workspace_goals records from goal text
+    🤖 AI-DRIVEN WORKSPACE GOALS CREATION
     
-    This function parses the workspace goal text and creates numerical 
-    workspace_goals records that enable the goal-driven system.
+    Uses the new AI-driven goal extractor to create workspace_goals records from goal text.
+    Eliminates duplicates and provides semantic understanding.
     """
     try:
         # Import here to avoid circular imports
+        from ai_quality_assurance.ai_goal_extractor import extract_and_create_workspace_goals
+        from models import GoalMetricType, GoalStatus
+        from uuid import uuid4
+        from datetime import datetime
+        
+        # 🤖 Use AI-driven goal extraction with semantic understanding
+        logger.info(f"🤖 AI-DRIVEN GOAL EXTRACTION from text: {goal_text}")
+        workspace_goals_data = await extract_and_create_workspace_goals(workspace_id, goal_text)
+        
+        logger.info(f"🎯 AI extracted {len(workspace_goals_data)} unique goals (no duplicates)")
+        
+        # Insert goals into database
+        created_goals = []
+        for goal_data in workspace_goals_data:
+            try:
+                # Add database-specific fields
+                goal_data.update({
+                    "id": str(uuid4()),
+                    "status": GoalStatus.ACTIVE.value,
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat()
+                })
+                
+                result = supabase.table("workspace_goals").insert(goal_data).execute()
+                if result.data:
+                    created_goals.append(result.data[0])
+                    logger.info(f"✅ Created AI goal: {goal_data['metric_type']} = {goal_data['target_value']} {goal_data['unit']}")
+                
+            except Exception as goal_error:
+                logger.warning(f"Failed to create workspace goal from AI extraction {goal_data}: {goal_error}")
+        
+        if created_goals:
+            logger.info(f"🤖 AI-created {len(created_goals)} smart workspace goals for workspace {workspace_id}")
+        else:
+            logger.info(f"📋 No numerical goals detected by AI in workspace goal text for {workspace_id}")
+        
+        return created_goals
+        
+    except Exception as e:
+        logger.error(f"Error in AI-driven workspace goals creation: {e}")
+        # Fallback to old system if AI extraction fails
+        logger.warning("🔄 Falling back to pattern-based goal extraction")
+        return await _auto_create_workspace_goals_fallback(workspace_id, goal_text)
+
+async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: str):
+    """
+    📊 FALLBACK: Pattern-based workspace goals creation (legacy system)
+    
+    Used when AI-driven extraction fails, preserves original functionality.
+    """
+    try:
         from ai_quality_assurance.goal_validator import goal_validator
         from models import GoalMetricType, GoalStatus
         from uuid import uuid4
         from datetime import datetime
         
-        # Extract numerical requirements from goal text
-        print(f"🎯 DEBUGGING: Extracting goals from text: {goal_text}")
-        logger.info(f"🎯 Extracting goals from text: {goal_text}")
+        logger.info(f"📊 FALLBACK: Pattern-based goal extraction from text: {goal_text}")
         requirements = await goal_validator._extract_goal_requirements(goal_text)
-        print(f"📊 DEBUGGING: Found {len(requirements)} requirements: {requirements}")
-        logger.info(f"📊 Found {len(requirements)} requirements: {requirements}")
+        logger.info(f"📊 FALLBACK: Found {len(requirements)} requirements")
         
         created_goals = []
         for req in requirements:
             try:
-                # Map requirement type to GoalMetricType
                 metric_type = _map_requirement_to_metric_type(req.get('type', 'general'))
                 
-                # Create workspace goal record
                 goal_data = {
                     "id": str(uuid4()),
                     "workspace_id": workspace_id,
@@ -231,20 +277,15 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
                 result = supabase.table("workspace_goals").insert(goal_data).execute()
                 if result.data:
                     created_goals.append(result.data[0])
-                    logger.info(f"✅ Created workspace goal: {metric_type.value} = {req['target_value']} {req.get('unit', '')}")
+                    logger.info(f"📊 FALLBACK: Created goal: {metric_type.value} = {req['target_value']} {req.get('unit', '')}")
                 
             except Exception as goal_error:
-                logger.warning(f"Failed to create workspace goal from requirement {req}: {goal_error}")
-        
-        if created_goals:
-            logger.info(f"🎯 Auto-created {len(created_goals)} workspace goals for workspace {workspace_id}")
-        else:
-            logger.info(f"📋 No numerical goals detected in workspace goal text for {workspace_id}")
+                logger.warning(f"FALLBACK: Failed to create workspace goal from requirement {req}: {goal_error}")
         
         return created_goals
         
     except Exception as e:
-        logger.error(f"Error auto-creating workspace goals: {e}")
+        logger.error(f"Error in fallback workspace goals creation: {e}")
         return []
 
 def _map_requirement_to_metric_type(req_type: str) -> 'GoalMetricType':

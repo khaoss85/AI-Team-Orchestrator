@@ -3,7 +3,7 @@
 import React, { use } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ProjectNavigationTabs } from '@/components/ProjectNavigationTabs';
+import ProjectNavigationTabs from '@/components/ProjectNavigationTabs';
 
 interface Props {
   children: React.ReactNode;

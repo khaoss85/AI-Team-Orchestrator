@@ -50,10 +50,10 @@ class WorkspaceMemory:
     async def store_insight(
         self, 
         workspace_id: UUID, 
-        task_id: UUID,
-        agent_role: str,
-        insight_type: InsightType,
-        content: str,
+        task_id: Optional[UUID] = None,
+        agent_role: str = "system",
+        insight_type: InsightType = InsightType.DISCOVERY,
+        content: str = "",
         relevance_tags: List[str] = None,
         confidence_score: float = 1.0,
         ttl_days: Optional[int] = None
@@ -228,6 +228,20 @@ class WorkspaceMemory:
         4. Strategic oversight preserved for coordinator
         """
         try:
+            # 🎯 CONVERT TASK OBJECT TO DICT IF NEEDED
+            if current_task and isinstance(current_task, Task):
+                current_task_dict = {
+                    "name": current_task.name,
+                    "type": current_task.task_type,
+                    "phase": current_task.project_phase,
+                    "description": current_task.description,
+                    "goal_id": current_task.goal_id,
+                    "metric_type": current_task.metric_type,
+                    "contribution_expected": current_task.contribution_expected,
+                    "success_criteria": current_task.success_criteria
+                }
+                current_task = current_task_dict
+            
             # 🎯 GOAL-DRIVEN FILTERING
             insight_types = ["success_pattern", "constraint", "discovery"]
             relevance_tags = []

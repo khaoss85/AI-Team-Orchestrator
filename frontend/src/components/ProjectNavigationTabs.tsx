@@ -9,51 +9,44 @@ interface Props {
   className?: string;
 }
 
-export const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = '' }) => {
+const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = '' }) => {
   const pathname = usePathname();
 
   const tabs = [
     {
       id: 'overview',
-      label: 'Overview',
+      label: 'Deliverable',
       href: `/projects/${projectId}`,
-      icon: '🏠',
-      description: 'Project dashboard'
+      icon: '🎯',
+      description: 'Risultati concreti'
     },
     {
       id: 'assets',
-      label: 'Assets & Deliverables',
+      label: 'Asset Management',
       href: `/projects/${projectId}/assets`,
       icon: '📦',
-      description: 'Components, deliverables & feedback'
+      description: 'Gestione asset avanzata'
     },
     {
-      id: 'ai-management',
-      label: 'AI Management',
-      href: `/projects/${projectId}/ai-management`,
-      icon: '🤖',
-      description: 'Real-time AI features'
-    },
-    {
-      id: 'tasks',
-      label: 'Tasks',
-      href: `/projects/${projectId}/tasks`,
-      icon: '✅',
-      description: 'Task logs & performance'
+      id: 'progress',
+      label: 'Progresso',
+      href: `/projects/${projectId}/progress`,
+      icon: '📊',
+      description: 'Obiettivi e avanzamento'
     },
     {
       id: 'team',
       label: 'Team',
       href: `/projects/${projectId}/team`,
       icon: '👥',
-      description: 'Agents & collaboration'
+      description: 'Agenti e collaborazione'
     },
     {
       id: 'settings',
-      label: 'Settings',
+      label: 'Impostazioni',
       href: `/projects/${projectId}/settings`,
       icon: '⚙️',
-      description: 'Project configuration'
+      description: 'Configurazione progetto'
     }
   ];
 
@@ -90,3 +83,5 @@ export const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = 
     </div>
   );
 };
+
+export default ProjectNavigationTabs;

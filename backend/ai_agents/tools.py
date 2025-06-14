@@ -901,13 +901,27 @@ class WorkspaceMemoryTools:
             
             # Validate workspace_id
             try:
+                # Handle common invalid workspace IDs
+                if workspace_id in ["default", "unknown", "", "none", "null"]:
+                    logger.warning(f"Invalid workspace_id provided: '{workspace_id}', using fallback")
+                    return f"Warning: No valid workspace context available (workspace_id: '{workspace_id}')"
+                
                 workspace_uuid = UUID(workspace_id)
             except ValueError as e:
-                logger.error(f"Invalid workspace_id format: {workspace_id}")
-                return f"Error: Invalid workspace_id format: {workspace_id}"
+                logger.error(f"Invalid workspace_id format: {workspace_id} - {e}")
+                return f"Warning: Cannot access workspace context due to invalid ID format: '{workspace_id}'"
             
-            # Get relevant context
-            context = await workspace_memory.get_relevant_context(workspace_uuid, mock_task)
+            # Get relevant context - convert Task to dict
+            task_dict = {
+                "id": str(mock_task.id),
+                "workspace_id": str(mock_task.workspace_id),
+                "name": mock_task.name,
+                "description": mock_task.description,
+                "priority": mock_task.priority,
+                "status": mock_task.status,
+                "type": "standard"
+            }
+            context = await workspace_memory.get_relevant_context(workspace_uuid, task_dict)
             
             if context:
                 logger.info(f"📋 Agent got relevant context for task: {current_task_name}")

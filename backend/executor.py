@@ -681,17 +681,27 @@ class TaskExecutor(AssetCoordinationMixin):
                 task_dict_from_queue: Optional[Dict] = None
                 
                 try:
-                    # La coda contiene tuple (AgentManager, dict del task)
-                    manager, task_dict_from_queue = await asyncio.wait_for(
+                    # Get item from queue
+                    queue_item = await asyncio.wait_for(
                         self.task_queue.get(), timeout=1.0
                     )
+                    
+                    # Handle shutdown sentinel
+                    if queue_item is None:
+                        self.task_queue.task_done()
+                        logger.info(f"Anti-loop worker {worker_id} received termination signal")
+                        break
+                    
+                    # Unpack tuple (AgentManager, dict del task)
+                    manager, task_dict_from_queue = queue_item
+                    
                 except asyncio.TimeoutError:
                     continue
 
-                if task_dict_from_queue is None:  # Segnale di terminazione
+                if task_dict_from_queue is None:  # Additional safety check
                     self.task_queue.task_done()
-                    logger.info(f"Anti-loop worker {worker_id} received termination signal")
-                    break
+                    logger.info(f"Anti-loop worker {worker_id} received empty task dict")
+                    continue
                 
                 task_id = task_dict_from_queue.get("id", "UnknownID")
                 task_name = task_dict_from_queue.get("name", "Unnamed Task")

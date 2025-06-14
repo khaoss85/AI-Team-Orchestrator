@@ -709,7 +709,7 @@ class WorkspaceInsight(BaseModel):
     """Insight estratto da task execution per workspace memory"""
     id: Optional[UUID] = PydanticField(default=None, description="ID univoco dell'insight")
     workspace_id: UUID = PydanticField(..., description="ID del workspace")
-    task_id: UUID = PydanticField(..., description="ID del task sorgente")
+    task_id: Optional[UUID] = PydanticField(default=None, description="ID del task sorgente (opzionale)")
     agent_role: str = PydanticField(..., description="Ruolo dell'agente che ha generato l'insight")
     insight_type: InsightType = PydanticField(..., description="Tipo di insight")
     content: str = PydanticField(..., max_length=200, description="Contenuto dell'insight (max 200 chars)")

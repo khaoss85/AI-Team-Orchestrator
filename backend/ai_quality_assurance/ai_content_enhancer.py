@@ -66,7 +66,12 @@ class AIContentEnhancer:
                     content, business_context
                 )
                 if enhanced_content:
-                    logger.info("🤖 AI ENHANCED: Content transformed to business-ready")
+                    # Calculate enhancement effectiveness for auto-approval
+                    enhancement_rate = self._calculate_enhancement_rate(content, enhanced_content)
+                    if enhancement_rate >= 0.80:  # 80% placeholder reduction = auto-approve
+                        logger.info(f"🤖 AI ENHANCED: Content auto-approved ({enhancement_rate*100:.1f}% enhancement)")
+                    else:
+                        logger.info(f"🤖 AI ENHANCED: Content enhanced ({enhancement_rate*100:.1f}% improvement)")
                     return enhanced_content, True
             
             # 4. Fallback: Pattern-based enhancement
@@ -295,7 +300,7 @@ CONTENT TO ENHANCE:
 {content_str}
 
 ENHANCEMENT INSTRUCTIONS:
-1. Replace ALL placeholders like [Product], [Company], {firstName} with realistic business examples
+1. Replace ALL placeholders like [Product], [Company], {{firstName}} with realistic business examples
 2. Replace generic company names (Acme Corp, Example Inc) with realistic industry-specific names
 3. Replace generic email addresses with realistic business email patterns
 4. Replace generic phone numbers with realistic business phone formats
@@ -349,7 +354,7 @@ IMPORTANT: Keep the exact same JSON structure, only replace placeholder/generic 
             # Check structure preservation
             def get_structure(obj, path=""):
                 if isinstance(obj, dict):
-                    return {k: get_structure(v, f"{path}.{k}") for k in obj.keys()}
+                    return {k: get_structure(obj[k], f"{path}.{k}") for k in obj.keys()}
                 elif isinstance(obj, list):
                     return [get_structure(obj[0] if obj else {}, f"{path}[0]")]
                 else:
@@ -453,3 +458,29 @@ IMPORTANT: Keep the exact same JSON structure, only replace placeholder/generic 
         except Exception as e:
             logger.error(f"Pattern enhancement error: {e}")
             return content
+    
+    def _calculate_enhancement_rate(self, original: Dict[str, Any], enhanced: Dict[str, Any]) -> float:
+        """Calculate content enhancement effectiveness rate"""
+        try:
+            original_str = json.dumps(original, default=str).lower()
+            enhanced_str = json.dumps(enhanced, default=str).lower()
+            
+            # Count placeholders
+            placeholder_patterns = [r'\[.*?\]', r'\{.*?\}', 'placeholder', 'example', 'sample']
+            
+            original_placeholders = sum(
+                len(re.findall(pattern, original_str)) for pattern in placeholder_patterns
+            )
+            enhanced_placeholders = sum(
+                len(re.findall(pattern, enhanced_str)) for pattern in placeholder_patterns
+            )
+            
+            if original_placeholders == 0:
+                return 1.0  # No placeholders to enhance
+            
+            reduction_rate = (original_placeholders - enhanced_placeholders) / original_placeholders
+            return max(0.0, reduction_rate)
+            
+        except Exception as e:
+            logger.error(f"Enhancement rate calculation error: {e}")
+            return 0.0
