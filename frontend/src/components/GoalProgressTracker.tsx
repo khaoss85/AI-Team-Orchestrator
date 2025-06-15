@@ -25,6 +25,7 @@ interface GoalProgressTrackerProps {
   showValidation?: boolean;
   autoRefresh?: boolean;
   className?: string;
+  onViewAssets?: () => void; // Optional callback to view project assets
 }
 
 interface ValidationStatus {
@@ -38,7 +39,8 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   workspaceId,
   showValidation = true,
   autoRefresh = false,
-  className = ''
+  className = '',
+  onViewAssets
 }) => {
   const [goals, setGoals] = useState<WorkspaceGoal[]>([]);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus | null>(null);
@@ -48,7 +50,8 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
 
   const fetchGoals = async () => {
     try {
-      const response = await api.workspaceGoals.getAll(workspaceId, { status: 'active' });
+      // Fetch ALL goals (not just active ones) to show completed goals in recap
+      const response = await api.workspaceGoals.getAll(workspaceId);
       if (response.success) {
         // Calculate completion percentages
         const goalsWithProgress = response.goals.map((goal: any) => ({
@@ -56,7 +59,17 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
           completion_pct: goal.target_value > 0 ? (goal.current_value / goal.target_value * 100) : 0,
           gap_value: goal.target_value - goal.current_value
         }));
-        setGoals(goalsWithProgress);
+        
+        // Sort goals: active first, then completed, then others
+        const sortedGoals = goalsWithProgress.sort((a: any, b: any) => {
+          if (a.status === 'active' && b.status !== 'active') return -1;
+          if (b.status === 'active' && a.status !== 'active') return 1;
+          if (a.status === 'completed' && b.status !== 'completed') return -1;
+          if (b.status === 'completed' && a.status !== 'completed') return 1;
+          return 0;
+        });
+        
+        setGoals(sortedGoals);
       }
     } catch (err) {
       console.error('Error fetching goals:', err);
@@ -157,8 +170,15 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
     );
   }
 
+  // Calculate overall progress based on active and completed goals
+  const activeGoals = goals.filter(g => g.status === 'active');
+  const completedGoals = goals.filter(g => g.status === 'completed');
+  
   const overallProgress = goals.length > 0 
-    ? goals.reduce((sum, goal) => sum + goal.completion_pct!, 0) / goals.length 
+    ? (
+        (activeGoals.reduce((sum, goal) => sum + goal.completion_pct!, 0) + (completedGoals.length * 100)) 
+        / goals.length
+      )
     : 0;
 
   return (
@@ -167,9 +187,16 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center">
-              🎯 Goal Progress Overview
-            </h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-lg font-semibold flex items-center">
+                🎯 Goal Progress Overview
+              </h2>
+              {completedGoals.length > 0 && (
+                <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded border border-green-200">
+                  {completedGoals.length} Completed
+                </span>
+              )}
+            </div>
             <button 
               onClick={refreshData}
               disabled={refreshing}
@@ -219,19 +246,19 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-green-50 rounded-lg">
                 <div className="text-lg font-bold text-green-700">
-                  {goals.filter(g => g.completion_pct! >= 100).length}
+                  {goals.filter(g => g.status === 'completed').length}
                 </div>
                 <div className="text-xs text-green-600">Completed</div>
               </div>
               <div className="p-3 bg-blue-50 rounded-lg">
                 <div className="text-lg font-bold text-blue-700">
-                  {goals.filter(g => g.completion_pct! >= 50 && g.completion_pct! < 100).length}
+                  {goals.filter(g => g.status === 'active' && g.completion_pct! >= 50).length}
                 </div>
                 <div className="text-xs text-blue-600">In Progress</div>
               </div>
               <div className="p-3 bg-yellow-50 rounded-lg">
                 <div className="text-lg font-bold text-yellow-700">
-                  {goals.filter(g => g.completion_pct! < 50).length}
+                  {goals.filter(g => g.status === 'active' && g.completion_pct! < 50).length}
                 </div>
                 <div className="text-xs text-yellow-600">Behind</div>
               </div>
@@ -243,7 +270,9 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       {/* Individual Goals */}
       <div className="space-y-3">
         {goals.map((goal) => (
-          <div key={goal.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div key={goal.id} className={`bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow ${
+            goal.status === 'completed' ? 'border-green-200 bg-green-50' : ''
+          }`}>
             <div className="p-4">
               <div className="space-y-3">
                 {/* Goal Header */}
@@ -252,18 +281,29 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                     <span className={`text-lg ${getGoalStatusColor(goal)}`}>
                       {goal.status === 'completed' ? '✅' : goal.completion_pct! < 30 ? '⚠️' : goal.completion_pct! < 70 ? '🕐' : '📈'}
                     </span>
-                    <h3 className="font-medium text-gray-900">
+                    <h3 className={`font-medium ${goal.status === 'completed' ? 'text-green-900' : 'text-gray-900'}`}>
                       {formatMetricType(goal.metric_type)}
                     </h3>
-                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded border">
+                    <span className={`px-2 py-1 text-xs rounded border ${
+                      goal.status === 'completed' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}>
                       Priority {goal.priority}
                     </span>
+                    {goal.status === 'completed' && (
+                      <span className="px-2 py-1 text-xs bg-green-200 text-green-800 rounded border border-green-300 font-medium">
+                        COMPLETED
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold">
+                    <div className={`text-lg font-bold ${goal.status === 'completed' ? 'text-green-800' : ''}`}>
                       {goal.current_value} / {goal.target_value}
                     </div>
-                    <div className="text-xs text-gray-500">{goal.unit}</div>
+                    <div className={`text-xs ${goal.status === 'completed' ? 'text-green-600' : 'text-gray-500'}`}>
+                      {goal.unit}
+                    </div>
                   </div>
                 </div>
 
@@ -288,7 +328,7 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                 {/* Goal Details */}
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <div className="flex items-center space-x-4">
-                    {goal.gap_value! > 0 && (
+                    {goal.status !== 'completed' && goal.gap_value! > 0 && (
                       <span className="flex items-center">
                         ⬆️ {goal.gap_value} remaining
                       </span>
@@ -298,14 +338,27 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                         Last updated: {new Date(goal.last_progress_date).toLocaleDateString()}
                       </span>
                     )}
+                    {goal.status === 'completed' && (
+                      <span className="flex items-center text-green-600">
+                        🎉 Goal achieved! 
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
-                    {goal.completion_pct! > 90 && (
+                    {goal.status === 'completed' && onViewAssets && (
+                      <button
+                        onClick={onViewAssets}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-xs font-medium border border-blue-200 transition-colors"
+                      >
+                        📦 View Assets
+                      </button>
+                    )}
+                    {goal.status !== 'completed' && goal.completion_pct! > 90 && (
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
                         Almost Done!
                       </span>
                     )}
-                    {goal.completion_pct! < 30 && (
+                    {goal.status !== 'completed' && goal.completion_pct! < 30 && (
                       <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
                         Needs Attention
                       </span>
@@ -342,8 +395,8 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       {goals.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6 text-center text-gray-500">
           <div className="text-4xl mb-2">🎯</div>
-          <p className="font-medium">No active goals found for this workspace.</p>
-          <p className="text-sm">Goals will appear here once they are created.</p>
+          <p className="font-medium">No goals found for this workspace.</p>
+          <p className="text-sm">Goals will appear here once they are created and will remain visible even after completion.</p>
         </div>
       )}
     </div>

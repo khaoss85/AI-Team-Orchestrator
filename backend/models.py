@@ -415,7 +415,7 @@ class DirectorTeamProposalResponse(BaseModel):
 # --- Tool Outputs ---
 class TaskExecutionOutput(BaseModel):
     task_id: str = PydanticField(description="ID of the task")  
-    status: Literal["completed", "failed", "requires_handoff"] = PydanticField(default="completed", description="Task completion status")
+    status: Literal["completed", "failed", "requires_handoff", "in_progress"] = PydanticField(default="completed", description="Task completion status")
     summary: str = PydanticField(description="Summary of work performed")  
     detailed_results_json: Optional[str] = PydanticField(default="", description="Detailed structured results as JSON string")
     next_steps: Optional[List[str]] = PydanticField(default_factory=list, description="Suggested next actions")

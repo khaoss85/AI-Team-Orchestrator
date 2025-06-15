@@ -495,7 +495,7 @@ class WorkspaceMemory:
             insight = WorkspaceInsight(
                 id=UUID(row["id"]),
                 workspace_id=UUID(row["workspace_id"]),
-                task_id=UUID(row["task_id"]),
+                task_id=UUID(row["task_id"]) if row["task_id"] is not None else None,
                 agent_role=row["agent_role"],
                 insight_type=InsightType(row["insight_type"]),
                 content=row["content"],

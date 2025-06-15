@@ -135,6 +135,61 @@ class AIGoalValidator:
             logger.error(f"Error in goal validation: {e}", exc_info=True)
             return []
     
+    async def validate_database_goals_achievement(
+        self, 
+        workspace_goals: List[Dict],
+        completed_tasks: List[Dict],
+        workspace_id: str
+    ) -> List[GoalValidationResult]:
+        """
+        AI-driven validation of database workspace goals achievement
+        This method includes goal_id in validation results for corrective task creation
+        """
+        try:
+            logger.info(f"🎯 Validating {len(workspace_goals)} database goals for workspace {workspace_id}")
+            
+            # Extract achievements from completed tasks
+            actual_achievements = await self._extract_task_achievements(completed_tasks)
+            
+            validation_results = []
+            
+            for goal in workspace_goals:
+                goal_id = goal.get("id")
+                metric_type = goal.get("metric_type", "unknown")
+                target_value = goal.get("target_value", 0)
+                current_value = goal.get("current_value", 0)
+                unit = goal.get("unit", "")
+                
+                # Create requirement from database goal
+                requirement = {
+                    'type': metric_type,
+                    'target_value': target_value,
+                    'unit': unit,
+                    'domain': 'database_goal',
+                    'context': f"{target_value} {unit} {metric_type}",
+                    'is_percentage': '%' in unit,
+                    'is_minimum': False,  # Database goals are exact targets
+                    'goal_id': goal_id  # Include goal_id for corrective tasks
+                }
+                
+                # Validate this specific goal
+                result = await self._validate_single_database_goal(
+                    requirement, actual_achievements, goal, workspace_id
+                )
+                
+                validation_results.append(result)
+            
+            # Log validation summary
+            critical_failures = [r for r in validation_results if r.severity == ValidationSeverity.CRITICAL]
+            if critical_failures:
+                logger.warning(f"🚨 CRITICAL database goal validation failures for workspace {workspace_id}: {len(critical_failures)} issues")
+            
+            return validation_results
+            
+        except Exception as e:
+            logger.error(f"Error in database goal validation: {e}", exc_info=True)
+            return []
+    
     async def _extract_goal_requirements(self, workspace_goal: str) -> List[Dict[str, Any]]:
         """
         AI-powered extraction of measurable requirements from workspace goal
@@ -538,7 +593,90 @@ Return ONLY the numeric value from the most semantically appropriate category, n
                 'target': target_value,
                 'actual': actual_value,
                 'type': req_type,
-                'unit': requirement['unit']
+                'unit': requirement['unit'],
+                'goal_id': requirement.get('goal_id')  # Include goal_id if available
+            }
+        )
+    
+    async def _validate_single_database_goal(
+        self, 
+        requirement: Dict[str, Any], 
+        achievements: Dict[str, Any],
+        goal: Dict[str, Any],
+        workspace_id: str
+    ) -> GoalValidationResult:
+        """
+        🤖 AI-DRIVEN DATABASE GOAL VALIDATION
+        
+        Validates a specific database goal and includes goal_id in extracted_metrics
+        """
+        req_type = requirement['type']
+        target_value = requirement['target_value']
+        goal_id = requirement.get('goal_id')
+        current_value = goal.get('current_value', 0)
+        
+        # Use current_value from database as primary, but also check achievements
+        actual_value = await self._map_requirement_to_achievement_universal(
+            req_type, requirement, achievements, ""
+        )
+        
+        # Combine database current_value with calculated achievements
+        # Take the maximum to account for both database tracking and task analysis
+        actual_value = max(current_value, actual_value)
+        
+        # Calculate gap
+        if target_value > 0:
+            gap_percentage = max(0, (target_value - actual_value) / target_value * 100)
+        else:
+            gap_percentage = 0
+        
+        # Determine validation result (database goals are exact targets)
+        is_valid = actual_value >= target_value
+        
+        # Determine severity
+        if gap_percentage >= 80:
+            severity = ValidationSeverity.CRITICAL
+        elif gap_percentage >= 50:
+            severity = ValidationSeverity.HIGH
+        elif gap_percentage >= 20:
+            severity = ValidationSeverity.MEDIUM
+        else:
+            severity = ValidationSeverity.LOW
+        
+        # Generate AI-driven recommendations
+        recommendations = await self._generate_recommendations(
+            requirement, actual_value, target_value, gap_percentage
+        )
+        
+        # Calculate confidence based on data quality
+        confidence = self._calculate_confidence(achievements, requirement)
+        
+        # Add database-specific context to recommendations
+        if not is_valid:
+            recommendations.insert(0, 
+                f"🎯 DATABASE GOAL GAP: Current value {current_value}, target {target_value} {requirement['unit']}"
+            )
+        
+        return GoalValidationResult(
+            is_valid=is_valid,
+            severity=severity,
+            confidence=confidence,
+            target_requirement=f"{target_value} {requirement['unit']}",
+            actual_achievement=f"{actual_value} {requirement['unit']}",
+            gap_percentage=gap_percentage,
+            validation_message=self._generate_validation_message(
+                requirement, actual_value, target_value, is_valid
+            ),
+            recommendations=recommendations,
+            extracted_metrics={
+                'target': target_value,
+                'actual': actual_value,
+                'current_value': current_value,
+                'type': req_type,
+                'unit': requirement['unit'],
+                'goal_id': goal_id,  # This is the key fix - include goal_id
+                'metric_type': req_type,
+                'workspace_id': workspace_id
             }
         )
     

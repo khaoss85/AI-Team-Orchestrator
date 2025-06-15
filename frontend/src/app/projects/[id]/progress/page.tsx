@@ -113,6 +113,10 @@ export default function ProjectProgressPage({ params: paramsPromise }: Props) {
           workspaceId={id}
           showValidation={true}
           autoRefresh={true}
+          onViewAssets={() => {
+            // Navigate to the main project page to view assets
+            window.location.href = `/projects/${id}#deliverables`;
+          }}
         />
         <GoalValidationDashboard 
           workspaceId={id}

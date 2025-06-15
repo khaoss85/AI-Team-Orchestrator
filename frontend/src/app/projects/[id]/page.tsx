@@ -76,6 +76,16 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
     fetchWorkspace()
     fetchMissionControl()
     
+    // Handle hash fragment navigation for goal->asset linking
+    if (window.location.hash === '#deliverables') {
+      setTimeout(() => {
+        const deliverablesSection = document.querySelector('[data-section="deliverables"]');
+        if (deliverablesSection) {
+          deliverablesSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500); // Small delay to ensure components are loaded
+    }
+    
     // Simplified refresh interval
     const interval = setInterval(() => {
       fetchMissionControl()
@@ -179,16 +189,25 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
         workspaceId={id}
         showValidation={true}
         autoRefresh={true}
+        onViewAssets={() => {
+          // Scroll to the deliverables section when View Assets is clicked
+          const deliverablesSection = document.querySelector('[data-section="deliverables"]');
+          if (deliverablesSection) {
+            deliverablesSection.scrollIntoView({ behavior: 'smooth' });
+          }
+        }}
       />
 
       {/* Main Content: Focus on Concrete Deliverables */}
-      <ConcreteDeliverablesOverview 
-        workspaceId={id}
-        finalDeliverables={finalDeliverables}
-        assets={assets}
-        onViewAsset={handleViewAssetDetails}
-        onDownloadAsset={handleDownloadAsset}
-      />
+      <div data-section="deliverables">
+        <ConcreteDeliverablesOverview 
+          workspaceId={id}
+          finalDeliverables={finalDeliverables}
+          assets={assets}
+          onViewAsset={handleViewAssetDetails}
+          onDownloadAsset={handleDownloadAsset}
+        />
+      </div>
 
       {/* Mission Control - Simplified */}
       <MissionControlSection

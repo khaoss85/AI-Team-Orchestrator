@@ -1,6 +1,6 @@
 # backend/routes/goal_validation.py
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/goal-validation", tags=["goal-validation"])
 
 @router.get("/{workspace_id}/validate", response_model=Dict[str, Any])
-async def validate_workspace_goals(workspace_id: UUID):
+async def validate_workspace_goals(
+    workspace_id: UUID, 
+    use_database_goals: bool = Query(True, description="Use database goals for validation (includes goal_id)")
+):
     """
     AI-driven validation of workspace goal achievement
     Cross-domain scalable validation system
@@ -46,9 +49,23 @@ async def validate_workspace_goals(workspace_id: UUID):
             }
         
         # Perform AI-driven goal validation
-        validations = await goal_validator.validate_workspace_goal_achievement(
-            workspace_goal, completed_tasks, str(workspace_id)
-        )
+        if use_database_goals:
+            # Get database goals for validation (includes goal_id for corrective tasks)
+            database_goals = await _get_workspace_database_goals(str(workspace_id))
+            if database_goals:
+                validations = await goal_validator.validate_database_goals_achievement(
+                    database_goals, completed_tasks, str(workspace_id)
+                )
+            else:
+                # Fallback to workspace goal text if no database goals
+                validations = await goal_validator.validate_workspace_goal_achievement(
+                    workspace_goal, completed_tasks, str(workspace_id)
+                )
+        else:
+            # Use original method with workspace goal text
+            validations = await goal_validator.validate_workspace_goal_achievement(
+                workspace_goal, completed_tasks, str(workspace_id)
+            )
         
         # Calculate overall metrics
         overall_achievement = _calculate_overall_achievement(validations)
@@ -311,6 +328,26 @@ def _calculate_overall_achievement(validations: List) -> float:
     
     achievement_scores = [1.0 - (v.gap_percentage / 100) for v in validations]
     return sum(achievement_scores) / len(achievement_scores)
+
+async def _get_workspace_database_goals(workspace_id: str) -> List[Dict]:
+    """Get database goals for validation (includes goal_id)"""
+    try:
+        from database import supabase
+        from models import GoalStatus
+        
+        response = supabase.table("workspace_goals").select("*").eq(
+            "workspace_id", workspace_id
+        ).eq(
+            "status", GoalStatus.ACTIVE.value
+        ).execute()
+        
+        goals = response.data or []
+        logger.info(f"📋 Found {len(goals)} active database goals for workspace {workspace_id}")
+        return goals
+        
+    except Exception as e:
+        logger.error(f"Error getting database goals: {e}")
+        return []
 
 def _infer_current_phase(tasks: List[Dict]) -> str:
     """Infer current phase from task patterns"""
