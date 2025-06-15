@@ -119,7 +119,18 @@ class AIContentEnhancer:
         generic_indicators = [
             'john doe', 'jane smith', 'example.com', 'acme corp',
             'lorem ipsum', 'placeholder', 'sample data',
-            'test company', 'demo data', 'fake data'
+            'test company', 'demo data', 'fake data',
+            # Common fake names from test logs
+            'david blue', 'sarah red', 'james yellow', 'olivia purple',
+            'william orange', 'sophia pink', 'daniel cyan', 'isabella magenta',
+            'matthew lime', 'emma teal', 'alexander violet', 'mia indigo',
+            'ethan gold', 'ava silver', 'liam bronze', 'charlotte copper',
+            'noah platinum', 'amelia diamond', 'mason emerald', 'lucas ruby',
+            'sophia jade', 'benjamin pearl', 'isabella opal', 'ethan topaz',
+            'mia quartz', 'alexander amethyst', 'emma garnet', 'daniel onyx',
+            # Common fake company names
+            'techflow solutions', 'datatech solutions', 'innovate corp',
+            'example company', 'sample corp', 'test inc'
         ]
         
         for indicator in generic_indicators:

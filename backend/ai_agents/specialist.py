@@ -1653,6 +1653,14 @@ class SpecialistAgent(Generic[T]):
                     data["detailed_results_json"] = json.dumps(data["detailed_results_json"])
                 except (TypeError, ValueError):
                     data["detailed_results_json"] = str(data["detailed_results_json"])
+            
+            # Check size and truncate if needed
+            if data["detailed_results_json"] and len(data["detailed_results_json"]) > 45000:
+                logger.warning(f"Task {task.id}: detailed_results_json is {len(data['detailed_results_json'])} chars, truncating")
+                from output_chunking_helper import OutputChunker
+                data["detailed_results_json"] = OutputChunker.truncate_if_needed(
+                    data["detailed_results_json"], f"task_{task.id}_results"
+                )
         
         # Validate and fix status enum values
         valid_statuses = ["completed", "failed", "in_progress", "pending"]
