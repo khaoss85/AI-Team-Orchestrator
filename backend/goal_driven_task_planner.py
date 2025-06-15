@@ -298,9 +298,18 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             ).single().execute()
             
             goal = WorkspaceGoal(**response.data)
+            workspace_id = str(goal.workspace_id)
             
             # Calculate corrective action needed
             remaining_gap = goal.remaining_value
+            
+            # 🎯 INTELLIGENT AGENT ROLE SELECTION
+            # Get available agents in workspace to assign to existing roles only
+            selected_agent_role = await self._select_best_available_agent_role(
+                workspace_id=workspace_id,
+                task_type="corrective_action",
+                required_skills=["rapid_execution", "goal_achievement"]
+            )
             
             # 🎯 CREATE URGENT CORRECTIVE TASK
             corrective_task = {
@@ -328,18 +337,130 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     "validation_method": "immediate_numerical_verification"
                 },
                 "agent_requirements": {
-                    "role": "expert_specialist",
+                    "role": selected_agent_role["role"],  # Use actual available agent role
+                    "agent_id": selected_agent_role.get("agent_id"),  # Direct assignment if possible
                     "skills": ["rapid_execution", "goal_achievement"],
-                    "seniority": "expert"
+                    "seniority": selected_agent_role.get("seniority", "expert"),
+                    "selection_strategy": selected_agent_role.get("strategy", "availability_based")
                 }
             }
             
-            logger.warning(f"🚨 Created CRITICAL corrective task for goal {goal_id}: {corrective_task['name']}")
+            logger.warning(
+                f"🚨 Created CRITICAL corrective task for goal {goal_id}: {corrective_task['name']} "
+                f"-> Assigned to role '{selected_agent_role['role']}' "
+                f"({selected_agent_role.get('strategy', 'unknown')} strategy)"
+            )
             return corrective_task
             
         except Exception as e:
             logger.error(f"Error creating corrective task: {e}")
             return {}
+    
+    async def _select_best_available_agent_role(
+        self,
+        workspace_id: str,
+        task_type: str = "corrective_action",
+        required_skills: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        🎯 INTELLIGENT AGENT ROLE SELECTION
+        
+        Selects the best available agent role from existing agents in workspace.
+        Ensures corrective tasks are only assigned to agents that actually exist.
+        """
+        try:
+            # Get all available agents in workspace
+            response = supabase.table("agents").select("*").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "status", "active"
+            ).execute()
+            
+            available_agents = response.data or []
+            
+            if not available_agents:
+                logger.error(f"❌ No active agents found in workspace {workspace_id}")
+                # Return fallback that will fail gracefully
+                return {
+                    "role": "no_agents_available",
+                    "strategy": "fallback_failure",
+                    "error": "No active agents in workspace"
+                }
+            
+            logger.info(f"📋 Found {len(available_agents)} active agents in workspace {workspace_id}")
+            
+            # 🎯 STRATEGY 1: Look for high-seniority agents first
+            expert_agents = [
+                agent for agent in available_agents
+                if agent.get("seniority", "").lower() in ["expert", "senior"]
+            ]
+            
+            if expert_agents:
+                selected_agent = expert_agents[0]
+                logger.info(f"✅ Selected expert/senior agent: {selected_agent.get('name')} ({selected_agent.get('role')})")
+                return {
+                    "role": selected_agent["role"],
+                    "agent_id": selected_agent["id"],
+                    "seniority": selected_agent.get("seniority", "expert"),
+                    "strategy": "seniority_based",
+                    "agent_name": selected_agent.get("name")
+                }
+            
+            # 🎯 STRATEGY 2: Look for management/coordination roles
+            manager_keywords = ["manager", "coordinator", "director", "lead", "pm", "project"]
+            manager_agents = [
+                agent for agent in available_agents
+                if any(keyword in agent.get("role", "").lower() for keyword in manager_keywords)
+            ]
+            
+            if manager_agents:
+                selected_agent = manager_agents[0]
+                logger.info(f"✅ Selected manager agent: {selected_agent.get('name')} ({selected_agent.get('role')})")
+                return {
+                    "role": selected_agent["role"],
+                    "agent_id": selected_agent["id"],
+                    "seniority": selected_agent.get("seniority", "senior"),
+                    "strategy": "management_role_based",
+                    "agent_name": selected_agent.get("name")
+                }
+            
+            # 🎯 STRATEGY 3: Look for specialist roles that can handle diverse tasks
+            specialist_keywords = ["specialist", "engineer", "developer", "analyst", "consultant"]
+            specialist_agents = [
+                agent for agent in available_agents
+                if any(keyword in agent.get("role", "").lower() for keyword in specialist_keywords)
+            ]
+            
+            if specialist_agents:
+                selected_agent = specialist_agents[0]
+                logger.info(f"✅ Selected specialist agent: {selected_agent.get('name')} ({selected_agent.get('role')})")
+                return {
+                    "role": selected_agent["role"],
+                    "agent_id": selected_agent["id"],
+                    "seniority": selected_agent.get("seniority", "junior"),
+                    "strategy": "specialist_role_based",
+                    "agent_name": selected_agent.get("name")
+                }
+            
+            # 🎯 STRATEGY 4: Use any available agent as last resort
+            selected_agent = available_agents[0]
+            logger.warning(f"⚠️ Using any available agent as fallback: {selected_agent.get('name')} ({selected_agent.get('role')})")
+            return {
+                "role": selected_agent["role"],
+                "agent_id": selected_agent["id"],
+                "seniority": selected_agent.get("seniority", "junior"),
+                "strategy": "any_available_fallback",
+                "agent_name": selected_agent.get("name")
+            }
+            
+        except Exception as e:
+            logger.error(f"Error selecting agent role for corrective task: {e}")
+            # Return safe fallback that executor can handle
+            return {
+                "role": "task_assignment_failed",
+                "strategy": "error_fallback",
+                "error": str(e)
+            }
     
     async def update_goal_progress(
         self, 

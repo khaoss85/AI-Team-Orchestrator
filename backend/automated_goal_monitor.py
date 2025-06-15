@@ -122,16 +122,16 @@ class AutomatedGoalMonitor:
             # 1. Get completed tasks for validation
             completed_tasks = await self._get_completed_tasks(workspace_id)
             
-            # 2. Get workspace goal for validation
-            workspace_goal = await self._get_workspace_goal_text(workspace_id)
+            # 2. Get database goals for validation (includes goal_id)
+            workspace_goals = await self._get_workspace_database_goals(workspace_id)
             
-            if not workspace_goal:
-                logger.warning(f"No workspace goal found for {workspace_id}")
+            if not workspace_goals:
+                logger.warning(f"No database goals found for workspace {workspace_id}")
                 return []
             
-            # 3. 🎯 RUN GOAL VALIDATION
-            validation_results = await goal_validator.validate_workspace_goal_achievement(
-                workspace_goal=workspace_goal,
+            # 3. 🎯 RUN DATABASE GOAL VALIDATION (includes goal_id in results)
+            validation_results = await goal_validator.validate_database_goals_achievement(
+                workspace_goals=workspace_goals,
                 completed_tasks=completed_tasks,
                 workspace_id=workspace_id
             )
@@ -189,6 +189,23 @@ class AutomatedGoalMonitor:
             logger.error(f"Error getting workspace goal: {e}")
             return ""
     
+    async def _get_workspace_database_goals(self, workspace_id: str) -> List[Dict]:
+        """Get database goals for validation (includes goal_id)"""
+        try:
+            response = supabase.table("workspace_goals").select("*").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "status", GoalStatus.ACTIVE.value
+            ).execute()
+            
+            goals = response.data or []
+            logger.info(f"📋 Found {len(goals)} active database goals for workspace {workspace_id}")
+            return goals
+            
+        except Exception as e:
+            logger.error(f"Error getting database goals: {e}")
+            return []
+    
     async def _update_validation_timestamps(self, workspace_id: str):
         """Update last_validation_at for all active goals in workspace"""
         try:
@@ -213,6 +230,19 @@ class AutomatedGoalMonitor:
         
         for task_data in corrective_tasks:
             try:
+                agent_requirements = task_data.get("agent_requirements", {})
+                
+                # Handle intelligent agent assignment
+                assigned_agent_id = agent_requirements.get("agent_id")
+                assigned_role = agent_requirements.get("role", "specialist")
+                selection_strategy = agent_requirements.get("selection_strategy", "fallback")
+                
+                # Log agent assignment strategy
+                if assigned_agent_id:
+                    logger.info(f"🎯 Direct agent assignment: {assigned_agent_id} ({assigned_role}) via {selection_strategy}")
+                else:
+                    logger.info(f"🎭 Role-based assignment: {assigned_role} via {selection_strategy}")
+                
                 # Prepare task for database insertion
                 db_task = {
                     "workspace_id": workspace_id,
@@ -220,7 +250,8 @@ class AutomatedGoalMonitor:
                     "description": task_data["description"],
                     "status": "pending",
                     "priority": "high",  # All corrective tasks are high priority
-                    "assigned_to_role": task_data.get("agent_requirements", {}).get("role", "specialist"),
+                    "assigned_to_role": assigned_role,
+                    "agent_id": assigned_agent_id,  # Direct assignment if available
                     "estimated_effort_hours": task_data.get("estimated_duration_hours", 2),
                     "deadline": (datetime.now() + timedelta(hours=24)).isoformat(),  # 24hr deadline
                     
@@ -237,7 +268,8 @@ class AutomatedGoalMonitor:
                         "created_by": "automated_goal_monitor",
                         "urgency_reason": task_data.get("urgency_reason"),
                         "memory_context": task_data.get("memory_context"),
-                        "agent_requirements": task_data.get("agent_requirements"),
+                        "agent_requirements": agent_requirements,
+                        "agent_selection_strategy": selection_strategy,
                         "completion_requirements": task_data.get("completion_requirements")
                     }
                 }
@@ -249,9 +281,12 @@ class AutomatedGoalMonitor:
                     created_task = response.data[0]
                     created_tasks.append(created_task)
                     
+                    # Enhanced logging with agent assignment details
+                    assignment_info = f"agent_id={assigned_agent_id}" if assigned_agent_id else f"role={assigned_role}"
                     logger.warning(
                         f"🚨 CORRECTIVE TASK CREATED: {created_task['name']} "
-                        f"(ID: {created_task['id']}) for workspace {workspace_id}"
+                        f"(ID: {created_task['id']}) -> {assignment_info} "
+                        f"(strategy: {selection_strategy}) for workspace {workspace_id}"
                     )
                 
             except Exception as e:

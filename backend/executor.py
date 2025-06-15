@@ -794,8 +794,48 @@ class TaskExecutor(AssetCoordinationMixin):
                 and agent.get("status") == "active"
             ]
 
+            # If no exact role match, try fallback strategies
             if not compatible_agents:
-                logger.warning(f"No active agent found for role '{role}' in workspace {workspace_id} to assign task {task_dict.get('id')}")
+                logger.warning(f"No exact role match for '{role}' in workspace {workspace_id}. Trying fallback strategies...")
+                
+                # Strategy 1: If role is 'expert', find any expert-level agent
+                if role.lower() == "expert":
+                    compatible_agents = [
+                        agent for agent in agents_in_db
+                        if agent.get("seniority", "").lower() == "expert"
+                        and agent.get("status") == "active"
+                    ]
+                    if compatible_agents:
+                        logger.info(f"Found expert agent by seniority: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                
+                # Strategy 2: If role contains 'specialist', find any specialist
+                elif "specialist" in role.lower():
+                    compatible_agents = [
+                        agent for agent in agents_in_db
+                        if "specialist" in agent.get("role", "").lower()
+                        and agent.get("status") == "active"
+                    ]
+                    if compatible_agents:
+                        logger.info(f"Found specialist agent: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                
+                # Strategy 3: Find any high-seniority active agent
+                if not compatible_agents:
+                    for seniority in ["expert", "senior"]:
+                        compatible_agents = [
+                            agent for agent in agents_in_db
+                            if agent.get("seniority", "").lower() == seniority
+                            and agent.get("status") == "active"
+                        ]
+                        if compatible_agents:
+                            logger.info(f"Found {seniority} agent as fallback: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                            break
+
+            if not compatible_agents:
+                # Check if this is a special error role from intelligent agent selection
+                if role in ["no_agents_available", "task_assignment_failed"]:
+                    logger.error(f"❌ Agent selection failed for task {task_dict.get('id')} in workspace {workspace_id}: {role}")
+                else:
+                    logger.error(f"❌ No active agent found for role '{role}' in workspace {workspace_id} (including fallbacks) to assign task {task_dict.get('id')}. Task will be skipped.")
                 return None
 
             # Logica di selezione: per ora il primo, ma potrebbe essere più complessa
