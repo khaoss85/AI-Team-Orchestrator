@@ -24,28 +24,23 @@ class ConcreteAssetExtractor:
     def __init__(self):
         self.smart_evaluator = smart_evaluator
         
-        # Pattern per identificare asset concreti per tipo
-        self.concrete_patterns = {
-            "content_calendar": {
-                "required": ["date", "content", "caption", "hashtag"],
-                "patterns": [r"\d{1,2}[/-]\d{1,2}", r"#\w+", r"@\w+"]
-            },
-            "contact_database": {
-                "required": ["name", "email", "company"],
-                "patterns": [r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"]
-            },
-            "email_templates": {
-                "required": ["subject", "body", "call_to_action"],
-                "patterns": [r"\{[\w_]+\}", r"https?://"]
-            },
-            "training_program": {
-                "required": ["exercise", "sets", "reps", "day"],
-                "patterns": [r"\d+x\d+", r"day\s*\d+", r"\d+\s*(kg|lbs|min|sec)"]
-            },
-            "financial_model": {
-                "required": ["category", "amount", "date"],
-                "patterns": [r"[\$€]\s*\d+", r"\d+[.,]\d{2}", r"\d{4}"]
-            }
+        # 🌍 UNIVERSAL PATTERNS: Dynamically generated based on deliverable type
+        # No longer hardcoded to specific business domains
+        self.concrete_patterns = {}
+        
+        # Universal validation patterns that work across industries
+        self.universal_validation_patterns = {
+            "email_format": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+            "date_format": r"\d{1,2}[/-]\d{1,2}[/-]?\d{0,4}",
+            "time_format": r"\d{1,2}:\d{2}",
+            "currency_format": r"[\$€£¥]\s*\d+[.,]?\d*",
+            "percentage_format": r"\d+[.,]?\d*\s*%",
+            "phone_format": r"[\+]?\d{1,4}?[-\s]?\d{1,15}",
+            "url_format": r"https?://[\w\.-]+",
+            "hashtag_format": r"#\w+",
+            "mention_format": r"@\w+",
+            "quantity_format": r"\d+\s*(x|times|reps|sets|pieces|items)",
+            "measurement_format": r"\d+[.,]?\d*\s*(kg|lbs|cm|inches|meters|feet|min|sec|hours)"
         }
     
     async def extract_concrete_assets(
@@ -93,8 +88,8 @@ class ConcreteAssetExtractor:
             task_assets = await self._extract_from_task(task, deliverable_type)
             
             for asset in task_assets:
-                # Valida concretezza
-                if await self._validate_concreteness(asset, workspace_goal):
+                # 🌍 UNIVERSAL VALIDATION: Check asset concreteness without domain bias
+                if await self._validate_universal_concreteness(asset, workspace_goal, deliverable_type):
                     # 🎯 Calculate business actionability
                     business_actionability = self._calculate_business_actionability(asset, task, workspace_goal)
                     
@@ -645,6 +640,121 @@ class ConcreteAssetExtractor:
                 })
         
         return assets
+    
+    async def _validate_universal_concreteness(
+        self,
+        asset: Dict[str, Any],
+        workspace_goal: str,
+        deliverable_type: str
+    ) -> bool:
+        """
+        🌍 UNIVERSAL VALIDATION: Validates asset concreteness without domain bias
+        Works for any industry or business domain
+        """
+        
+        # AI-driven validation with smart evaluator
+        is_concrete = self.smart_evaluator.validate_asset_concreteness(
+            asset.get('data', {})
+        )
+        
+        if not is_concrete:
+            return False
+        
+        # Universal validation patterns based on data structure
+        data = asset.get('data', {})
+        asset_type = asset.get('type')
+        
+        # Check for universal concreteness indicators
+        if isinstance(data, dict):
+            # Look for specific, actionable content
+            text_content = ' '.join(str(v) for v in data.values() if isinstance(v, str))
+            
+            # Universal indicators of concrete content
+            concrete_indicators = [
+                len(text_content) > 50,  # Has substantial content
+                not self._has_placeholder_content(text_content),  # No placeholders
+                self._has_specific_details(text_content),  # Has specific details
+                self._matches_deliverable_patterns(data, deliverable_type)  # Matches expected patterns
+            ]
+            
+            return sum(concrete_indicators) >= 3  # At least 3 out of 4 criteria
+        
+        elif isinstance(data, list) and len(data) > 0:
+            # Validate list-based assets (contacts, items, etc.)
+            valid_items = sum(
+                1 for item in data
+                if isinstance(item, dict) and 
+                self._validate_item_completeness(item, deliverable_type)
+            )
+            
+            # Require at least 3 valid items or 80% of items to be valid
+            min_threshold = max(3, int(len(data) * 0.8))
+            return valid_items >= min_threshold
+        
+        return True  # Default permissive for other data types
+    
+    def _has_placeholder_content(self, text: str) -> bool:
+        """🌍 Check for universal placeholder patterns"""
+        placeholder_patterns = [
+            '[placeholder]', '{placeholder}', '<placeholder>',
+            'your company', 'insert here', 'add your', 'customize this',
+            'fill in', 'lorem ipsum', 'example text', 'sample data'
+        ]
+        text_lower = text.lower()
+        return any(pattern in text_lower for pattern in placeholder_patterns)
+    
+    def _has_specific_details(self, text: str) -> bool:
+        """🌍 Check for specific, actionable details"""
+        # Universal patterns that indicate specificity
+        specific_patterns = [
+            r'\d+[.,]\d+',  # Numbers with decimals
+            r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}',  # Dates
+            r'\d{1,2}:\d{2}',  # Times
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # Emails
+            r'https?://[\w\.-]+',  # URLs
+            r'\$\d+|€\d+|£\d+',  # Currency amounts
+        ]
+        
+        import re
+        return any(re.search(pattern, text) for pattern in specific_patterns)
+    
+    def _matches_deliverable_patterns(self, data: Dict, deliverable_type: str) -> bool:
+        """🌍 Check if data matches expected patterns for deliverable type"""
+        # Apply universal validation patterns based on type
+        data_str = json.dumps(data, default=str).lower()
+        
+        # Universal pattern matching based on deliverable intent
+        if 'contact' in deliverable_type:
+            return bool(re.search(self.universal_validation_patterns['email_format'], data_str))
+        elif 'email' in deliverable_type:
+            return any(keyword in data_str for keyword in ['subject', 'body', 'message'])
+        elif 'content' in deliverable_type or 'calendar' in deliverable_type:
+            return any(keyword in data_str for keyword in ['content', 'post', 'caption', 'title'])
+        elif 'financial' in deliverable_type or 'budget' in deliverable_type:
+            return bool(re.search(self.universal_validation_patterns['currency_format'], data_str))
+        elif 'training' in deliverable_type or 'program' in deliverable_type:
+            return bool(re.search(self.universal_validation_patterns['measurement_format'], data_str))
+        
+        return True  # Default permissive for unknown types
+    
+    def _validate_item_completeness(self, item: Dict, deliverable_type: str) -> bool:
+        """🌍 Validate individual item completeness based on universal criteria"""
+        if not isinstance(item, dict):
+            return False
+        
+        # Universal completeness criteria
+        has_content = any(isinstance(v, str) and len(v) > 5 for v in item.values())
+        has_structure = len(item.keys()) >= 2  # At least 2 fields
+        
+        # Type-specific validation without hardcoding
+        if 'contact' in deliverable_type:
+            return has_content and any('@' in str(v) for v in item.values())  # Has email
+        elif 'email' in deliverable_type:
+            return has_content and len(str(item)) > 50  # Substantial content
+        elif 'content' in deliverable_type:
+            return has_content and len(str(item)) > 30  # Reasonable content length
+        
+        return has_content and has_structure
     
     async def _validate_concreteness(
         self,

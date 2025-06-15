@@ -10,16 +10,23 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 class DeliverableType(str, Enum):
-    CONTACT_DATABASE = "contact_database"
-    EMAIL_SEQUENCE = "email_sequence" 
-    CONTENT_CALENDAR = "content_calendar"
-    BUSINESS_ANALYSIS = "business_analysis"
-    STRATEGIC_PLAN = "strategic_plan"
-    FINANCIAL_PLAN = "financial_plan"
-    TECHNICAL_DELIVERABLE = "technical_deliverable"
-    PROCESS_DOCUMENT = "process_document"
-    MARKETING_CAMPAIGN = "marketing_campaign"
-    GENERIC_DELIVERABLE = "generic_deliverable"
+    # 🌍 UNIVERSAL DELIVERABLE TYPES (not B2B/SaaS biased)
+    CONTACT_DATABASE = "contact_database"  # Any contact collection
+    EMAIL_SEQUENCE = "email_sequence"      # Any email communication
+    CONTENT_CALENDAR = "content_calendar"  # Any content planning
+    BUSINESS_ANALYSIS = "business_analysis" # Any business analysis
+    STRATEGIC_PLAN = "strategic_plan"      # Any strategic planning
+    FINANCIAL_PLAN = "financial_plan"      # Any financial planning
+    TECHNICAL_DELIVERABLE = "technical_deliverable" # Any technical output
+    PROCESS_DOCUMENT = "process_document"  # Any process documentation
+    TRAINING_PROGRAM = "training_program"  # Educational/fitness/skill programs
+    RESEARCH_REPORT = "research_report"    # Any research findings
+    PROJECT_PROPOSAL = "project_proposal"  # Any project proposals
+    DATA_ANALYSIS = "data_analysis"        # Any data analysis
+    WORKFLOW_DESIGN = "workflow_design"    # Any workflow or process design
+    RESOURCE_LIST = "resource_list"        # Any curated list of resources
+    TEMPLATE_COLLECTION = "template_collection" # Any template or framework set
+    GENERIC_DELIVERABLE = "generic_deliverable" # Universal fallback
 
 class ValidationLevel(str, Enum):
     MINIMAL = "minimal"      # Basic structure check
