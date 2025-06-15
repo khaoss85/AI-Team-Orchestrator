@@ -97,22 +97,38 @@ class AIGoalExtractor:
         # Fallback to pattern matching
         return self._pattern_extract_goals(goal_text)
     
+    def prepare_goal_data_for_db(self, goal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        🎯 Prepare AI goal data for database insertion with full schema support
+        All AI columns are now supported in the updated schema
+        """
+        return goal_data  # Schema is now complete, no filtering needed
+
     async def _ai_extract_goals(self, goal_text: str) -> List[ExtractedGoal]:
         """
         🤖 Usa AI per estrarre goal con comprensione semantica
         """
         
         prompt = f"""Analyze this business goal and extract SPECIFIC, MEASURABLE objectives.
+Think creatively about how to make abstract goals concrete and actionable.
+Consider the specific industry context and avoid defaulting to generic metrics.
 Avoid duplicates - each metric should be extracted only once.
 
 GOAL TEXT: "{goal_text}"
+
+IMPORTANT: If the goal is abstract (like "innovate", "be agile", "grow"), translate it into 
+industry-appropriate metrics. For example:
+- "Innovate" → new products launched, R&D investment %, patents filed
+- "Be agile" → sprint velocity, time to market, deployment frequency  
+- "Improve quality" → defect rate, customer satisfaction score, uptime %
+- "Grow" → revenue growth %, new customers, market share %
 
 Extract goals in this exact JSON format:
 {{
     "goals": [
         {{
             "goal_type": "deliverable|metric|quality|timeline|quantity",
-            "metric_type": "quality_score|deliverables|timeline_days",
+            "metric_type": "quality_score|deliverables|timeline_days|contacts|email_sequences",
             "target_value": numeric_value,
             "unit": "specific unit of measurement",
             "description": "clear description of what needs to be achieved",
@@ -129,16 +145,17 @@ Extract goals in this exact JSON format:
 
 RULES:
 1. Extract each unique goal only ONCE
-2. For "50 contatti ICP" -> deliverable type, value=50, unit="ICP contacts"
-3. For "3 sequenze email" -> deliverable type, value=3, unit="email sequences"  
-4. For "open-rate ≥ 30%" -> quality type, value=30, unit="open rate %"
-5. For "Click-to-rate 10%" -> quality type, value=10, unit="click rate %"
-6. For "6 settimane" -> timeline type, value=6, unit="weeks"
+2. For "50 contatti ICP" -> deliverable type, value=50, unit="ICP contacts", metric_type="contacts"
+3. For "3 sequenze email" -> deliverable type, value=3, unit="email sequences", metric_type="email_sequences"
+4. For "open-rate ≥ 30%" -> quality type, value=30, unit="open rate %", metric_type="quality_score"
+5. For "Click-to-rate 10%" -> quality type, value=10, unit="click rate %", metric_type="quality_score"
+6. For "6 settimane" -> timeline type, value=6, unit="weeks", metric_type="timeline_days"
 7. Use metric_type mapping:
-   - Contact/lead generation = "deliverables"
-   - Email sequences/content = "deliverables"
+   - Contact/lead generation = "contacts"
+   - Email sequences/campaigns = "email_sequences"
    - Performance metrics (%, rates) = "quality_score"
    - Time constraints = "timeline_days"
+   - Generic deliverables = "deliverables"
 
 Be specific and avoid generic descriptions. Each goal must be actionable and measurable."""
 
@@ -251,8 +268,9 @@ Be specific and avoid generic descriptions. Each goal must be actionable and mea
         consolidated = {}
         
         for goal in goals:
-            # Create consolidation key based on metric_type
-            key = goal.metric_type
+            # Create consolidation key based on metric_type + unit for better granularity
+            # This ensures "50 contatti ICP" and "3 sequenze email" remain separate
+            key = f"{goal.metric_type}_{goal.unit}_{goal.target_value}"
             
             if key not in consolidated:
                 consolidated[key] = goal
@@ -324,34 +342,41 @@ async def extract_and_create_workspace_goals(workspace_id: str, goal_text: str) 
                 "current_value": 0.0,
                 "unit": goal.unit,
                 "description": goal.description,
+                "source_goal_text": goal_text,
+                # AI-specific fields (may be excluded if columns don't exist)
+                "goal_type": goal.goal_type.value,
                 "is_percentage": goal.is_percentage,
                 "is_minimum": goal.is_minimum,
-                "semantic_context": goal.semantic_context,
+                "semantic_context": goal.semantic_context or {},
                 "confidence": goal.confidence
             }
+            
+            # 🎯 AI goal data ready for full schema
             workspace_goals.append(workspace_goal)
         
         return workspace_goals
         
     except Exception as e:
         logger.error(f"Goal extraction failed: {e}")
-        # Return minimal fallback goals
-        return [
+        # Return minimal fallback goals (schema-safe)
+        fallback_goals = [
             {
                 "workspace_id": workspace_id,
                 "metric_type": "quality_score",
                 "target_value": 50.0,
                 "current_value": 0.0,
                 "unit": "points",
-                "description": "Achieve quality target"
+                "description": "Achieve quality target",
+                "source_goal_text": goal_text
             },
             {
                 "workspace_id": workspace_id,
                 "metric_type": "deliverables",
                 "target_value": 3.0,
                 "current_value": 0.0,
-                "unit": "items",
-                "description": "Complete deliverables"
+                "unit": "items", 
+                "description": "Complete deliverables",
+                "source_goal_text": goal_text
             },
             {
                 "workspace_id": workspace_id,
@@ -359,6 +384,9 @@ async def extract_and_create_workspace_goals(workspace_id: str, goal_text: str) 
                 "target_value": 42.0,
                 "current_value": 0.0,
                 "unit": "days",
-                "description": "Complete within timeline"
+                "description": "Complete within timeline",
+                "source_goal_text": goal_text
             }
         ]
+        
+        return fallback_goals

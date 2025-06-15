@@ -578,9 +578,9 @@ async def get_project_deliverables(workspace_id: UUID):
                 score = 1
                 task_name = task.get("name", "")
                 
-                # Penalty for AI-generated deliverables
+                # BOOST for AI-generated deliverables - these are what users need!
                 if "🤖 AI INTELLIGENT DELIVERABLE" in task_name:
-                    score -= 0.5
+                    score += 1.0
                 
                 # Boost for completed tasks
                 if task.get("status") == "completed":
@@ -1172,12 +1172,15 @@ def _is_system_task(task_name: str, context_data: Dict) -> bool:
         if creation_type in system_creation_types:
             return True
             
-        # Skip PM coordination/planning tasks
+        # Skip only PM coordination/planning tasks, NOT final deliverables
         if (context_data.get("planning_task_marker") or 
             context_data.get("pm_coordination_task") or
-            context_data.get("is_implementation_planning") or
-            context_data.get("is_final_deliverable") and "AI INTELLIGENT" in task_name):
+            context_data.get("is_implementation_planning")):
             return True
+            
+        # NEVER skip final deliverables - these are what users need!
+        if context_data.get("is_final_deliverable"):
+            return False
     
     return False
 

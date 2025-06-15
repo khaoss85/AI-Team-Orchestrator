@@ -62,13 +62,20 @@ class WorkspaceMemory:
         Store a workspace insight with anti-pollution controls
         """
         try:
-            # 🚨 ANTI-POLLUTION: Validate input
-            if len(content.strip()) < 10:
-                logger.debug(f"Insight too short, skipping: {content[:50]}")
+            # 🚨 ANTI-POLLUTION: Validate input with adaptive thresholds
+            # Get workspace context to adjust thresholds for early tasks
+            current_count = await self._get_workspace_insight_count(workspace_id)
+            
+            # Lower thresholds for early tasks (first 5 insights)
+            min_length = 5 if current_count < 5 else 10
+            min_confidence = 0.1 if current_count < 5 else self.min_confidence_threshold
+            
+            if len(content.strip()) < min_length:
+                logger.debug(f"Insight too short ({len(content.strip())} < {min_length}), skipping: {content[:50]}")
                 return None
                 
-            if confidence_score < self.min_confidence_threshold:
-                logger.debug(f"Confidence too low ({confidence_score}), skipping insight")
+            if confidence_score < min_confidence:
+                logger.debug(f"Confidence too low ({confidence_score} < {min_confidence}), skipping insight")
                 return None
             
             # Truncate content to 200 chars max
@@ -83,7 +90,7 @@ class WorkspaceMemory:
             
             # 🚨 ANTI-POLLUTION: Check workspace insight count
             await self._cleanup_old_insights(workspace_id)
-            current_count = await self._get_workspace_insight_count(workspace_id)
+            # current_count already retrieved above for adaptive thresholds
             
             if current_count >= self.max_insights_per_workspace:
                 logger.warning(f"Workspace {workspace_id} at max insights ({current_count}), skipping storage")
@@ -114,7 +121,9 @@ class WorkspaceMemory:
             # Clear cache for this workspace
             self._clear_workspace_cache(workspace_id)
             
-            logger.info(f"✅ Stored insight: {insight_type.value} for workspace {workspace_id}")
+            # Handle both enum and string types for insight_type
+            insight_type_value = insight_type.value if hasattr(insight_type, 'value') else str(insight_type)
+            logger.info(f"✅ Stored insight: {insight_type_value} for workspace {workspace_id}")
             return insight
             
         except Exception as e:
@@ -434,7 +443,7 @@ class WorkspaceMemory:
         data = {
             "id": str(insight.id),
             "workspace_id": str(insight.workspace_id),
-            "task_id": str(insight.task_id),
+            "task_id": str(insight.task_id) if insight.task_id is not None else None,
             "agent_role": insight.agent_role,
             "insight_type": insight.insight_type.value,
             "content": insight.content,

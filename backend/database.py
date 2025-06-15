@@ -619,9 +619,9 @@ async def create_task(
             check_name_lower = clean_name.lower().strip()
             for t in existing_tasks:
                 if t.get("name", "").lower().strip() == check_name_lower and \
-                   t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]:
+                   t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value, TaskStatus.COMPLETED.value]:
                     logger.warning(
-                        f"Duplicate task name detected in workspace {workspace_id}: '{clean_name}' already exists as {t.get('id')}"
+                        f"Duplicate task name detected in workspace {workspace_id}: '{clean_name}' already exists as {t.get('id')} (status: {t.get('status')})"
                     )
                     return t
         except Exception as dup_err:

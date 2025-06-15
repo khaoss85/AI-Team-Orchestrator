@@ -1621,11 +1621,11 @@ class IntelligentDeliverableAggregator:
             # Path 1: Alta completion rate (mantenuto)
             high_completion = completion_rate >= self.readiness_threshold and completed_count >= self.min_completed_tasks
             
-            # Path 2: Asset-oriented projects - aggressivo per lead generation
-            asset_focused = completed_count >= 2 and completion_rate >= 0.4 and len(pending) <= 6
+            # Path 2: Asset-oriented projects - MOLTO più aggressivo per deliverable immediati
+            asset_focused = completed_count >= 1 and completion_rate >= 0.25 and len(pending) <= 8
             
-            # Path 3: Quick wins per progetti concrete
-            quick_wins = completed_count >= 3 and len([t for t in completed if self._has_structured_output(t)]) >= 2
+            # Path 3: Quick wins per progetti concreti - anche con 1 solo task con output
+            quick_wins = completed_count >= 1 and len([t for t in completed if self._has_structured_output(t)]) >= 1
             
             # Path 4: Progetti lunghi con sostanziale completamento  
             substantial_work = completed_count >= 8 and completion_rate >= 0.5
@@ -1636,11 +1636,15 @@ class IntelligentDeliverableAggregator:
             # Path 6: Time-based per progetti running
             time_based = await self._time_based_readiness_check(workspace_id, completed_count)
             
-            is_ready = any([high_completion, asset_focused, quick_wins, substantial_work, quality_threshold, time_based])
+            # Path 7: EMERGENCY - qualsiasi task completato con output strutturato
+            emergency_deliverable = any(self._has_structured_output(t) for t in completed) and completed_count >= 1
+            
+            is_ready = any([high_completion, asset_focused, quick_wins, substantial_work, quality_threshold, time_based, emergency_deliverable])
             
             logger.info(f"🤖 READINESS: {completed_count}/{total_tasks} completed ({completion_rate:.2f}), "
                        f"Paths: [HiComp:{high_completion}, AssetFoc:{asset_focused}, QuickWins:{quick_wins}, "
-                       f"Subst:{substantial_work}, Qual:{quality_threshold}, Time:{time_based}] = {is_ready}")
+                       f"Subst:{substantial_work}, Qual:{quality_threshold}, Time:{time_based}, "
+                       f"Emergency:{emergency_deliverable}] = {is_ready}")
             
             return is_ready
             

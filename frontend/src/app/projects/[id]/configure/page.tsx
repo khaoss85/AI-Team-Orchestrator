@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace, DirectorTeamProposal, AgentSeniority } from '@/types';
 import TeamExplanationAnimation from '@/components/TeamExplanationAnimation';
+import { GoalConfirmation } from '@/components/orchestration/GoalConfirmation';
+import { useGoalPreview } from '@/hooks/useGoalPreview';
 
 
 type Props = {
@@ -25,8 +27,21 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   const [proposal, setProposal] = useState<DirectorTeamProposal | null>(null);
   const [userFeedback, setUserFeedback] = useState<string>('');
   const [showFeedbackInput, setShowFeedbackInput] = useState<boolean>(false);
+  const [goalsConfirmed, setGoalsConfirmed] = useState(false);
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
+  
+  // Hook for goal preview functionality
+  const {
+    isLoading: goalPreviewLoading,
+    extractedGoals,
+    originalGoal,
+    previewGoals,
+    confirmGoals,
+    editGoal,
+    removeGoal,
+    reset: resetGoals,
+  } = useGoalPreview(id);
 
   useEffect(() => {
     const fetchWorkspace = async () => {
@@ -60,8 +75,29 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     }
   }, [id]); // Usa 'id' risolto come dipendenza
 
+  // Handle goal preview when workspace has a goal
+  useEffect(() => {
+    if (workspace?.goal && !goalsConfirmed && extractedGoals.length === 0) {
+      previewGoals(workspace.goal);
+    }
+  }, [workspace?.goal, goalsConfirmed, extractedGoals.length, previewGoals]);
+
+  const handleConfirmGoals = async (goals: any[]) => {
+    const success = await confirmGoals(goals);
+    if (success) {
+      setGoalsConfirmed(true);
+    }
+  };
+
+  const handleReprocessGoals = async () => {
+    if (workspace?.goal) {
+      resetGoals();
+      await previewGoals(workspace.goal);
+    }
+  };
+
   const handleCreateProposal = async () => {
-    if (!workspace) return;
+    if (!workspace || !goalsConfirmed) return;
 
     try {
       setProposalLoading(true);
@@ -213,9 +249,14 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
   return (
     <div className="container mx-auto max-w-4xl">
-      <h1 className="text-2xl font-semibold mb-1">Configura Team di Agenti</h1>
+      <h1 className="text-2xl font-semibold mb-1">
+        {!goalsConfirmed ? 'Conferma Obiettivi del Progetto' : 'Configura Team di Agenti'}
+      </h1>
       <p className="text-gray-600 mb-6">
-        Il direttore virtuale analizzerà il tuo progetto e proporrà un team di agenti ottimale.
+        {!goalsConfirmed 
+          ? "L'AI ha analizzato il tuo obiettivo. Conferma o modifica i target prima di procedere."
+          : "Il direttore virtuale proporrà un team di agenti ottimale per raggiungere i tuoi obiettivi."
+        }
       </p>
 
       {error && (
@@ -268,27 +309,48 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
             </div>
           </div>
 
-          {!proposal && (
-            <div className="mt-4">
-              <button
-                onClick={handleCreateProposal}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
-                disabled={proposalLoading}
-              >
-                {proposalLoading ? (
-                  <>
-                    <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                    Generazione proposta...
-                  </>
-                ) : (
-                  'Genera Proposta Team'
-                )}
-              </button>
-              <p className="mt-2 text-xs text-gray-500">
-                Il direttore analizzerà il tuo progetto e proporrà un team di agenti ottimale.
-              </p>
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Goal Confirmation Section */}
+      {workspace && extractedGoals.length > 0 && !goalsConfirmed && (
+        <div className="mb-6">
+          <GoalConfirmation
+            goals={extractedGoals}
+            originalGoal={originalGoal}
+            onConfirm={handleConfirmGoals}
+            onEdit={editGoal}
+            onRemove={removeGoal}
+            onReprocess={handleReprocessGoals}
+            isLoading={goalPreviewLoading}
+          />
+        </div>
+      )}
+
+      {/* Show proposal generation button only after goals are confirmed */}
+      {workspace && goalsConfirmed && !proposal && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-2">Genera Team di Agenti</h2>
+          <p className="text-gray-600 mb-4">
+            Ora che gli obiettivi sono confermati, possiamo procedere a creare il team perfetto per raggiungerli.
+          </p>
+          <button
+            onClick={handleCreateProposal}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+            disabled={proposalLoading}
+          >
+            {proposalLoading ? (
+              <>
+                <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
+                Generazione proposta...
+              </>
+            ) : (
+              'Genera Proposta Team'
+            )}
+          </button>
+          <p className="mt-2 text-xs text-gray-500">
+            Il direttore analizzerà gli obiettivi confermati e proporrà un team di agenti ottimale.
+          </p>
         </div>
       )}
           

@@ -636,7 +636,8 @@ class DeliverableMarkupProcessor:
             if "subtitle" in fields:
                 html_parts.append(f"<h4>{fields['subtitle']}</h4>")
             if "content" in fields:
-                html_parts.append(f"<p>{fields['content'].replace('\n', '<br>')}</p>")
+                content_with_breaks = fields['content'].replace('\n', '<br>')
+                html_parts.append(f"<p>{content_with_breaks}</p>")
             if "action" in fields:
                 html_parts.append(f"<strong>Action:</strong> {fields['action']}")
             html_parts.append('</div>')

@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
+import logging
 
 from database import supabase
 from models import (
@@ -18,7 +19,159 @@ from models import (
     GoalStatus
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["workspace-goals"])
+
+# Initialize AI Goal Extractor
+goal_extractor = None
+try:
+    from ai_quality_assurance.ai_goal_extractor import AIGoalExtractor
+    goal_extractor = AIGoalExtractor()
+    logger.info("✅ AI Goal Extractor initialized in routes")
+except Exception as e:
+    logger.error(f"Failed to initialize AI Goal Extractor: {e}")
+
+@router.post("/workspaces/{workspace_id}/goals/preview")
+async def preview_goals(
+    workspace_id: str,
+    request: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Preview AI-extracted goals without saving to database
+    Returns simplified goal breakdown for user confirmation
+    """
+    try:
+        goal_text = request.get("goal", "")
+        if not goal_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Goal text is required"
+            )
+        
+        if not goal_extractor:
+            raise HTTPException(
+                status_code=503,
+                detail="AI Goal Extractor not available"
+            )
+        
+        # Extract goals using AI
+        extracted_goals = await goal_extractor.extract_goals_from_text(goal_text)
+        
+        logger.info(f"🔍 Extracted {len(extracted_goals)} goals. First goal type: {type(extracted_goals[0]) if extracted_goals else 'None'}")
+        
+        # Simplify for frontend display
+        simplified_goals = []
+        for goal in extracted_goals:
+            # Handle both dict and dataclass objects
+            if hasattr(goal, '__dict__'):  # dataclass
+                simplified_goals.append({
+                    "id": f"preview_{len(simplified_goals)}",  # Temporary ID
+                    "value": goal.target_value,
+                    "unit": goal.unit,
+                    "type": goal.metric_type,
+                    "description": _generate_simple_description_from_dataclass(goal),
+                    "confidence": goal.confidence,
+                    "editable": True
+                })
+            else:  # dict
+                simplified_goals.append({
+                    "id": f"preview_{len(simplified_goals)}",  # Temporary ID
+                    "value": goal.get("target_value", 0),
+                    "unit": goal.get("unit", ""),
+                    "type": goal.get("metric_type", "deliverables"),
+                    "description": _generate_simple_description(goal),
+                    "confidence": goal.get("confidence", 0.9),
+                    "editable": True
+                })
+        
+        return {
+            "success": True,
+            "original_goal": goal_text,
+            "extracted_goals": simplified_goals,
+            "message": f"Ho identificato {len(simplified_goals)} obiettivi"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error previewing goals: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error extracting goals: {str(e)}"
+        )
+
+@router.post("/workspaces/{workspace_id}/goals/confirm")
+async def confirm_goals(
+    workspace_id: str,
+    request: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Confirm and save user-approved goals to database
+    """
+    try:
+        confirmed_goals = request.get("goals", [])
+        
+        if not confirmed_goals:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one goal is required"
+            )
+        
+        # Save confirmed goals to database (update existing or create new)
+        saved_goals = []
+        
+        for goal in confirmed_goals:
+            metric_type = goal.get("type", "deliverables")
+            
+            # Check if goal with this metric_type already exists
+            existing_response = supabase.table("workspace_goals").select("*").eq(
+                "workspace_id", str(workspace_id)
+            ).eq("metric_type", metric_type).execute()
+            
+            goal_data = {
+                "target_value": float(goal.get("value", 0)),
+                "unit": goal.get("unit", ""),
+                "description": goal.get("description", ""),
+                "priority": 1,  # Default priority
+                "metadata": {
+                    "user_confirmed": True,
+                    "original_extraction": goal.get("id", "").startswith("preview_"),
+                    "confidence": float(goal.get("confidence", 0.9))
+                }
+            }
+            
+            if existing_response.data:
+                # Update existing goal
+                result = supabase.table("workspace_goals").update(goal_data).eq(
+                    "workspace_id", str(workspace_id)
+                ).eq("metric_type", metric_type).execute()
+                logger.info(f"✅ Updated existing goal: {metric_type}")
+            else:
+                # Create new goal
+                goal_data.update({
+                    "workspace_id": str(workspace_id),
+                    "metric_type": metric_type
+                })
+                result = supabase.table("workspace_goals").insert(goal_data).execute()
+                logger.info(f"✅ Created new goal: {metric_type}")
+            
+            if result.data:
+                saved_goals.append(result.data[0])
+        
+        return {
+            "success": True,
+            "saved_goals": len(saved_goals),
+            "message": f"✅ {len(saved_goals)} obiettivi confermati"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error confirming goals: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error saving goals: {str(e)}"
+        )
 
 @router.post("/workspaces/{workspace_id}/goals")
 async def create_workspace_goal(
@@ -362,3 +515,39 @@ def _calculate_urgency_score(goal: Dict[str, Any], completion_pct: float) -> flo
         pass
     
     return base_urgency * priority_multiplier * time_urgency
+
+def _generate_simple_description(goal: Dict[str, Any]) -> str:
+    """Generate simple Italian description for goal"""
+    metric_type = goal.get("metric_type", "")
+    target_value = goal.get("target_value", 0)
+    unit = goal.get("unit", "")
+    
+    # Simple descriptions in Italian
+    if "contact" in unit.lower() or "contatti" in unit.lower():
+        return f"Raccogliere {int(target_value)} contatti qualificati"
+    elif "email" in unit.lower() or "sequence" in unit.lower():
+        return f"Creare {int(target_value)} sequenze email"
+    elif "%" in unit:
+        return f"Raggiungere {target_value}% di {metric_type}"
+    elif "day" in unit.lower() or "week" in unit.lower() or "giorni" in unit.lower():
+        return f"Completare in {target_value} {unit}"
+    else:
+        return f"Raggiungere {target_value} {unit}"
+
+def _generate_simple_description_from_dataclass(goal) -> str:
+    """Generate simple Italian description for goal from dataclass"""
+    metric_type = goal.metric_type
+    target_value = goal.target_value
+    unit = goal.unit
+    
+    # Simple descriptions in Italian
+    if "contact" in unit.lower() or "contatti" in unit.lower():
+        return f"Raccogliere {int(target_value)} contatti qualificati"
+    elif "email" in unit.lower() or "sequence" in unit.lower():
+        return f"Creare {int(target_value)} sequenze email"
+    elif "%" in unit:
+        return f"Raggiungere {target_value}% di {metric_type}"
+    elif "day" in unit.lower() or "week" in unit.lower() or "giorni" in unit.lower():
+        return f"Completare in {target_value} {unit}"
+    else:
+        return f"Raggiungere {target_value} {unit}"

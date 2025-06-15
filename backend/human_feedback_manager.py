@@ -186,7 +186,18 @@ class HumanFeedbackManager:
             # Controllo scadenza con gestione errori
             try:
                 if hasattr(request, 'expires_at') and isinstance(request.expires_at, datetime):
-                    if request.expires_at < datetime.now():
+                    # Fix timezone comparison - ensure both datetime objects are timezone-aware
+                    now = datetime.now()
+                    if request.expires_at.tzinfo is not None and now.tzinfo is None:
+                        # Make now timezone-aware to match request.expires_at
+                        from datetime import timezone
+                        now = now.replace(tzinfo=timezone.utc)
+                    elif request.expires_at.tzinfo is None and now.tzinfo is not None:
+                        # Make request.expires_at timezone-aware
+                        from datetime import timezone
+                        request.expires_at = request.expires_at.replace(tzinfo=timezone.utc)
+                    
+                    if request.expires_at < now:
                         status = FeedbackStatus.EXPIRED
                         logger.warning(f"Request {request_id} has expired")
                 else:
