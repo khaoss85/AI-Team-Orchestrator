@@ -108,7 +108,26 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
   }
 
   const handleViewAssetDetails = (asset: any) => {
-    setSelectedAsset(asset)
+    // ✅ COMPATIBILITY: Convert unified asset to ActionableAsset format
+    const actionableAsset = {
+      asset_name: asset.name || asset.asset_name || 'Asset',
+      name: asset.name || asset.asset_name || 'Asset',
+      asset_data: asset.content || asset.asset_data || {},
+      source_task_id: asset.sourceTaskId || '',
+      extraction_method: asset.extraction_method || 'unified',
+      validation_score: asset.quality_scores?.overall || 0.8,
+      actionability_score: asset.business_actionability || 0.8,
+      ready_to_use: asset.ready_to_use || true,
+      // Keep original data for debugging
+      _original: asset
+    }
+    
+    console.log('🔍 [handleViewAssetDetails] Converting asset:', {
+      original: asset,
+      converted: actionableAsset
+    });
+    
+    setSelectedAsset(actionableAsset)
     setShowAssetDetails(true)
   }
 

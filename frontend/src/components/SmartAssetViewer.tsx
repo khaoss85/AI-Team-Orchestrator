@@ -24,14 +24,15 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
   
   // Check if asset has markup content
   useEffect(() => {
-    if (asset.asset_data?._processed_markup) {
-      setProcessedMarkup(asset.asset_data._processed_markup);
+    const assetData = asset.asset_data || asset.content || {};
+    if (assetData._processed_markup) {
+      setProcessedMarkup(assetData._processed_markup);
     }
   }, [asset]);
 
   const getAssetTypeInfo = (assetName: string, assetData: any) => {
-    // Smart icon detection based on content
-    const nameLower = assetName.toLowerCase();
+    // Smart icon detection based on content - handle undefined/null assetName
+    const nameLower = (assetName || '').toLowerCase();
     let icon = '📋'; // default
     
     if (nameLower.includes('calendar') || nameLower.includes('schedule')) icon = '📅';
@@ -55,13 +56,24 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
     };
   };
 
-  const typeInfo = getAssetTypeInfo(asset.asset_name, asset.asset_data);
+  const typeInfo = getAssetTypeInfo(asset.asset_name || asset.name || 'Asset', asset.asset_data || asset.content);
 
   // Universal smart content renderer 
   const renderAssetContent = () => {
+    // ✅ COMPATIBILITY: Handle both backend structures
+    // Backend returns: asset.content, Frontend expects: asset.asset_data
+    const assetData = asset.asset_data || asset.content || {};
+    
+    console.log('🔍 [SmartAssetViewer] Asset data debug:', {
+      hasAssetData: !!asset.asset_data,
+      hasContent: !!asset.content,
+      assetDataKeys: Object.keys(asset.asset_data || {}),
+      contentKeys: Object.keys(asset.content || {}),
+      finalAssetData: assetData
+    });
 
     // ✅ PRIORITY 1: Check for pre-rendered HTML from dual output format
-    if (asset.asset_data?.rendered_html) {
+    if (assetData?.rendered_html) {
       return (
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg mb-4">
@@ -70,21 +82,21 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
           </div>
           <div 
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: asset.asset_data.rendered_html }} 
+            dangerouslySetInnerHTML={{ __html: assetData.rendered_html }} 
           />
         </div>
       );
     }
 
     // ✅ PRIORITY 2: Smart detection of array-based content (generic approach)
-    const arrayFields = Object.entries(asset.asset_data || {}).filter(([key, value]) => 
+    const arrayFields = Object.entries(assetData || {}).filter(([key, value]) => 
       Array.isArray(value) && value.length > 0 && typeof value[0] === 'object'
     );
     
     if (arrayFields.length > 0) {
       const [fieldName, fieldData] = arrayFields[0]; // Use the first array field
       const additionalData = Object.fromEntries(
-        Object.entries(asset.asset_data || {}).filter(([key, value]) => !Array.isArray(value))
+        Object.entries(assetData || {}).filter(([key, value]) => !Array.isArray(value))
       );
       
       console.log(`🔍 SmartAssetViewer: Using GenericArrayViewer for ${fieldName} with ${fieldData.length} items`);
@@ -94,14 +106,54 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
           items={fieldData} 
           fieldName={fieldName}
           additionalData={additionalData}
-          assetName={asset.asset_name}
+          assetName={asset.asset_name || asset.name || 'Asset'}
         />
       );
     }
 
+    // ✅ PRIORITY 2: Check for rendered_html from rich deliverables
+    if (assetData?.rendered_html) {
+      const renderedHtml = assetData.rendered_html;
+      const visualSummary = assetData?.visual_summary;
+      const actionableInsights = assetData?.actionable_insights || [];
+      
+      return (
+        <div className="space-y-4">
+          {visualSummary && (
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <h4 className="font-semibold text-green-800 mb-2">🎯 Executive Summary</h4>
+              <p className="text-green-700">{visualSummary}</p>
+            </div>
+          )}
+          
+          <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+            <h4 className="font-semibold text-gray-800 mb-4">📄 Business-Ready Content</h4>
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
+          </div>
+          
+          {actionableInsights.length > 0 && (
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h4 className="font-semibold text-blue-800 mb-3">💡 Actionable Insights</h4>
+              <ul className="space-y-2">
+                {actionableInsights.map((insight: string, idx: number) => (
+                  <li key={idx} className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    <span className="text-blue-700">{insight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ✅ PRIORITY 3: Check for structured_content from dual output
-    if (asset.asset_data?.structured_content) {
-      const structuredContent = asset.asset_data.structured_content;
+    if (assetData?.structured_content) {
+      const structuredContent = assetData.structured_content;
       
       return (
         <div className="space-y-4">
@@ -129,14 +181,13 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
       );
     }
     
-    const data = asset.asset_data;
-    
-    if (!data || typeof data !== 'object') {
+    // ✅ FINAL FALLBACK: Use the compatible assetData we defined above
+    if (!assetData || typeof assetData !== 'object') {
       return <div className="text-gray-500">No data available for this asset</div>;
     }
 
     // Check if data has markup strings
-    const hasMarkupStrings = Object.values(data).some(value => 
+    const hasMarkupStrings = Object.values(assetData).some(value => 
       typeof value === 'string' && value.includes('## TABLE:')
     );
     
@@ -148,7 +199,7 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
     }
 
     // ✅ FALLBACK: Universal approach for legacy data
-    const entries = Object.entries(data).filter(([key]) => 
+    const entries = Object.entries(assetData).filter(([key]) => 
       key !== '_processed_markup' && 
       key !== 'rendered_html' && 
       key !== 'structured_content'
@@ -265,7 +316,7 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
             <div className="bg-gray-900 rounded-lg p-4 overflow-auto">
               <h3 className="text-white font-medium mb-3">Raw Asset Data</h3>
               <pre className="text-green-400 text-sm overflow-auto max-h-96">
-                {JSON.stringify(asset.asset_data, null, 2)}
+                {JSON.stringify(asset.asset_data || asset.content, null, 2)}
               </pre>
             </div>
           )}
