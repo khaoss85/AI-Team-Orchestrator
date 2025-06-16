@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import type { ActionableAsset } from '@/types';
 import StructuredAssetRenderer from './StructuredAssetRenderer';
 import GenericArrayViewer from './GenericArrayViewer';
+import { useAssetRefinementStatus } from '@/hooks/useAssetRefinementStatus';
 
 interface SmartAssetViewerProps {
   asset: ActionableAsset;
@@ -19,8 +20,17 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
   onDownload,
   onRefine
 }) => {
-  const [activeView, setActiveView] = useState<'visual' | 'data' | 'usage'>('visual');
+  const [activeView, setActiveView] = useState<'visual' | 'data' | 'usage' | 'requests'>('visual');
   const [processedMarkup, setProcessedMarkup] = useState<any>(null);
+  const [refinementFeedback, setRefinementFeedback] = useState('');
+  const [refinementLoading, setRefinementLoading] = useState(false);
+  const [showEnhancementDetails, setShowEnhancementDetails] = useState(false);
+  
+  // Get workspace ID from URL
+  const workspaceId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : '';
+  
+  // Get refinement status for this asset
+  const refinementStatus = useAssetRefinementStatus(workspaceId, asset.asset_name || asset.name);
   
   // Check if asset has markup content
   useEffect(() => {
@@ -29,6 +39,95 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
       setProcessedMarkup(assetData._processed_markup);
     }
   }, [asset]);
+
+  // Load saved draft feedback
+  useEffect(() => {
+    const draftKey = `asset-refinement-draft-${asset.asset_name || asset.name}`;
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      setRefinementFeedback(savedDraft);
+    }
+  }, [asset.asset_name, asset.name]);
+
+  // Save draft as user types
+  useEffect(() => {
+    if (refinementFeedback.trim()) {
+      const draftKey = `asset-refinement-draft-${asset.asset_name || asset.name}`;
+      localStorage.setItem(draftKey, refinementFeedback);
+    }
+  }, [refinementFeedback, asset.asset_name, asset.name]);
+
+  // Handle refinement submission
+  const handleRefinementSubmit = async () => {
+    if (!refinementFeedback.trim()) return;
+    
+    try {
+      setRefinementLoading(true);
+      
+      const taskId = asset.source_task_id || asset.sourceTaskId || 'unknown-task-id';
+      const workspaceId = window.location.pathname.split('/')[2]; // Extract from URL
+      
+      const refinementPayload = {
+        asset_data: asset.asset_data || asset.content,
+        asset_name: asset.asset_name || asset.name,
+        user_feedback: refinementFeedback,
+        refinement_type: 'user_requested_improvement',
+        workspace_id: workspaceId
+      };
+
+      console.log('📤 [SmartAssetViewer] Sending refinement request:', refinementPayload);
+      
+      const response = await fetch(`http://localhost:8000/improvement/asset-refinement/${taskId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(refinementPayload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('📥 [SmartAssetViewer] Refinement response:', result);
+        
+        // Clear draft and reset form
+        const draftKey = `asset-refinement-draft-${asset.asset_name || asset.name}`;
+        localStorage.removeItem(draftKey);
+        setRefinementFeedback('');
+        
+        // Refresh the refinement status immediately
+        console.log('🔄 Refreshing refinement status after submission');
+        await refinementStatus.refresh();
+        
+        // Show nice success message instead of alert
+        const successDiv = document.createElement('div');
+        successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        successDiv.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span>✅</span>
+            <span>Refinement request submitted successfully!</span>
+          </div>
+        `;
+        document.body.appendChild(successDiv);
+        setTimeout(() => document.body.removeChild(successDiv), 4000);
+        
+      } else {
+        throw new Error(`Failed to start refinement: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ [Asset Refinement] Error:', error);
+      // Show error message
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      errorDiv.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span>❌</span>
+          <span>Failed to request refinement</span>
+        </div>
+      `;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => document.body.removeChild(errorDiv), 4000);
+    } finally {
+      setRefinementLoading(false);
+    }
+  };
 
   const getAssetTypeInfo = (assetName: string, assetData: any) => {
     // Smart icon detection based on content - handle undefined/null assetName
@@ -309,6 +408,11 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
             {[
               { key: 'visual', label: '👁️ Visual View', desc: 'Formatted view' },
               { key: 'usage', label: '💡 Usage Guide', desc: 'How to use' },
+              { 
+                key: 'requests', 
+                label: `💬 Requests ${refinementStatus.totalRefinements > 0 ? `(${refinementStatus.totalRefinements})` : ''}`, 
+                desc: refinementStatus.pendingRefinements.length > 0 ? `${refinementStatus.pendingRefinements.length} pending` : 'Improve asset'
+              },
               { key: 'data', label: '🔧 Raw Data', desc: 'Technical view' }
             ].map((tab) => (
               <button
@@ -331,6 +435,173 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {activeView === 'visual' && renderAssetContent()}
           {activeView === 'usage' && renderUsageInstructions()}
+          {activeView === 'requests' && (
+            <div className="space-y-6">
+              {/* Enhancement Status - Minimal */}
+              {refinementStatus.isLoading ? (
+                <div className="text-center py-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400 mx-auto"></div>
+                </div>
+              ) : refinementStatus.totalRefinements > 0 ? (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 mb-4">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setShowEnhancementDetails(!showEnhancementDetails)}
+                      className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-blue-600">🔄</span>
+                      <span className="text-sm font-medium text-blue-800 underline">
+                        {refinementStatus.pendingRefinements.length > 0 
+                          ? `${refinementStatus.pendingRefinements.length} enhancement${refinementStatus.pendingRefinements.length > 1 ? 's' : ''} in progress`
+                          : `${refinementStatus.completedRefinements.length} enhancement${refinementStatus.completedRefinements.length > 1 ? 's' : ''} in history`
+                        }
+                      </span>
+                      <span className="text-blue-600 text-xs">{showEnhancementDetails ? '▼' : '▶'}</span>
+                    </button>
+                    {refinementStatus.totalRefinements > 0 && (
+                      <span className="text-xs text-blue-600">
+                        Total: {refinementStatus.totalRefinements}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Enhancement Details Dropdown */}
+                  {showEnhancementDetails && (
+                    <div className="mt-3 pt-3 border-t border-blue-200 space-y-2">
+                      {refinementStatus.pendingRefinements.length > 0 && (
+                        <div>
+                          <h6 className="text-xs font-semibold text-blue-700 mb-1">In Progress:</h6>
+                          {refinementStatus.pendingRefinements.map((task) => (
+                            <div key={task.id} className="bg-white rounded p-2 mb-1 text-xs">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-700">{task.name.replace('🔄 ENHANCE: ', '')}</div>
+                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback}"</div>
+                                </div>
+                                <div className="text-orange-600 text-xs ml-2">{task.status}</div>
+                              </div>
+                              <div className="text-gray-400 mt-1">
+                                {new Date(task.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {refinementStatus.completedRefinements.length > 0 && (
+                        <div>
+                          <h6 className="text-xs font-semibold text-gray-700 mb-1">History:</h6>
+                          {refinementStatus.completedRefinements.map((task) => (
+                            <div key={task.id} className={`rounded p-2 mb-1 text-xs ${
+                              task.status === 'completed' ? 'bg-green-50' : 'bg-red-50'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-700">{task.name.replace('🔄 ENHANCE: ', '')}</div>
+                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback}"</div>
+                                </div>
+                                <div className={`text-xs ml-2 ${
+                                  task.status === 'completed' ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {task.status === 'completed' ? '✓' : '❌'} {task.status}
+                                </div>
+                              </div>
+                              <div className="text-gray-400 mt-1">
+                                {new Date(task.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              
+              {/* Asset Version Info - Minimal */}
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-600">📝</span>
+                    <span className="text-sm text-gray-700">Version 1.0</span>
+                    {asset.source_task_id && asset.source_task_id !== 'unknown-task-id' && (
+                      <span className="text-xs text-gray-500">• From task completion</span>
+                    )}
+                  </div>
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+                </div>
+              </div>
+
+              {/* Request Changes Form */}
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-4 border border-orange-200">
+                <h4 className="font-semibold text-orange-800 mb-3">💬 Request Improvements</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      What would you like to improve or change?
+                    </label>
+                    <textarea
+                      value={refinementFeedback}
+                      onChange={(e) => setRefinementFeedback(e.target.value)}
+                      disabled={refinementLoading}
+                      placeholder="Describe the improvements you'd like to see. Be as specific as possible. For example:&#10;&#10;• Add more detailed information&#10;• Include additional data fields&#10;• Improve content quality&#10;• Expand the scope&#10;• Change the format or structure"
+                      className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      rows={6}
+                    />
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="text-xs text-gray-500">
+                        💡 Be specific to get better results
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {refinementFeedback.length}/1000
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <h5 className="font-medium text-blue-800 mb-2">💡 Tips for better results:</h5>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Be specific about what data or information to add</li>
+                      <li>• Mention quality improvements you want to see</li>
+                      <li>• Specify if you want more items/entries</li>
+                      <li>• Describe the format or structure changes needed</li>
+                    </ul>
+                  </div>
+
+                  {refinementLoading && (
+                    <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                      <div className="flex items-center space-x-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-500"></div>
+                        <div>
+                          <div className="font-medium text-yellow-800">Processing your request...</div>
+                          <div className="text-sm text-yellow-600">The AI team is working on your enhancement</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleRefinementSubmit}
+                    disabled={refinementLoading || !refinementFeedback.trim()}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:from-orange-600 hover:to-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    {refinementLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🚀</span>
+                        <span>Submit Improvement Request</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {activeView === 'data' && (
             <div className="bg-gray-900 rounded-lg p-4 overflow-auto">
               <h3 className="text-white font-medium mb-3">Raw Asset Data</h3>
@@ -352,8 +623,12 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
               <span>Download Asset</span>
             </button>
             <button
-              onClick={() => onRefine?.(asset)}
-              className="flex-1 bg-orange-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-700 transition flex items-center justify-center space-x-2"
+              onClick={() => setActiveView('requests')}
+              className={`flex-1 py-3 px-4 rounded-lg font-medium transition flex items-center justify-center space-x-2 ${
+                activeView === 'requests' 
+                  ? 'bg-orange-200 text-orange-800 border border-orange-300' 
+                  : 'bg-orange-600 text-white hover:bg-orange-700'
+              }`}
             >
               <span>💬</span>
               <span>Request Changes</span>

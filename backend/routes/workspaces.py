@@ -437,3 +437,40 @@ async def create_workspace_goals(workspace_id: UUID):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Failed to create workspace goals: {str(e)}"
         )
+
+@router.get("/{workspace_id}/tasks", status_code=status.HTTP_200_OK)
+async def get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None):
+    """Get tasks for a workspace, optionally filtered by task type"""
+    try:
+        from database import list_tasks
+        
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        # Get all tasks for the workspace
+        all_tasks = await list_tasks(str(workspace_id))
+        
+        # Filter by task_type if provided
+        if task_type:
+            filtered_tasks = [
+                task for task in all_tasks 
+                if (task.get("task_type") == task_type or 
+                    task.get("context_data", {}).get("task_type") == task_type or
+                    task.get("creation_type") == task_type)
+            ]
+        else:
+            filtered_tasks = all_tasks
+        
+        logger.info(f"📋 Retrieved {len(filtered_tasks)} tasks for workspace {workspace_id} (filter: {task_type})")
+        
+        return filtered_tasks
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting workspace tasks: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Failed to get workspace tasks: {str(e)}"
+        )

@@ -1,0 +1,218 @@
+{
+  "workspace_id": "947fc559-c6dc-4cec-8479-cd5603b469ed",
+  "workspace_goal": "Develop comprehensive Instagram growth strategy",
+  "assets": {
+    "content_strategy": {
+      "id": "content_strategy",
+      "name": "Content Strategy Document",
+      "type": "content_strategy",
+      "versions": 3,
+      "lastModified": "2025-06-16T13:25:16.548646",
+      "sourceTaskId": "20c767d3-ad06-4400-8adb-ad90211b618c",
+      "ready_to_use": true,
+      "quality_scores": {
+        "overall": 0.92,
+        "completeness": 0.95,
+        "accuracy": 0.89,
+        "business_relevance": 0.94
+      },
+      "content": {
+        "rendered_html": "<h1>Content Strategy</h1><p>Comprehensive Instagram growth strategy...</p>",
+        "structured_content": {
+          "executive_summary": "Data-driven strategy to achieve 200+ weekly followers",
+          "content_pillars": [
+            "Educational",
+            "Inspirational",
+            "Community",
+            "Product Reviews"
+          ],
+          "posting_schedule": "4x daily at optimal times"
+        },
+        "has_ai_enhancement": true,
+        "enhancement_source": "ai_enhanced"
+      },
+      "version_history": [
+        {
+          "version": "v3.0",
+          "created_at": "2025-06-16T13:25:16.548646",
+          "created_by": "Expert Strategy Consultant",
+          "task_name": "Final Comprehensive Strategy - Asset 3",
+          "task_id": "e9142972-5526-499b-8572-734f646df633",
+          "quality_scores": {
+            "overall": 0.92
+          },
+          "changes_summary": "Final version with comprehensive content and 90-day implementation roadmap"
+        },
+        {
+          "version": "v2.0",
+          "created_at": "2025-06-14T13:25:16.548646",
+          "created_by": "Senior Strategy Analyst",
+          "task_name": "Enhanced Content Strategy - Asset 2",
+          "task_id": "5bbf8967-a5a5-4a3d-ad7f-99d09417c252",
+          "quality_scores": {
+            "overall": 0.85
+          },
+          "changes_summary": "Enhanced version with competitor analysis and engagement tactics"
+        },
+        {
+          "version": "v1.0",
+          "created_at": "2025-06-11T13:25:16.548646",
+          "created_by": "Content Strategist",
+          "task_name": "Create Initial Content Strategy",
+          "task_id": "6ff5f4ed-437c-4119-ad40-820d5f52aa8c",
+          "quality_scores": {
+            "overall": 0.75
+          },
+          "changes_summary": "Initial version with core content structure"
+        }
+      ],
+      "related_tasks": [
+        {
+          "id": "eea58156-35ba-4d96-9e69-3adc09d5a6b3",
+          "name": "Final Comprehensive Strategy - Asset 3",
+          "version": 3,
+          "updated_at": "2025-06-16T13:25:16.548646",
+          "status": "completed",
+          "sourceTask": {
+            "id": "d42abce7-cb9f-434c-b1c4-b621525a97d8",
+            "name": "Final Comprehensive Strategy - Asset 3",
+            "assigned_to_role": "Expert Strategy Consultant",
+            "created_at": "2025-06-16T13:25:16.548646",
+            "result": {
+              "summary": "Comprehensive content strategy with 90-day implementation roadmap"
+            }
+          }
+        },
+        {
+          "id": "d9ec5cc2-67d7-4a86-8620-b9a65680d377",
+          "name": "Enhanced Content Strategy - Asset 2",
+          "version": 2,
+          "updated_at": "2025-06-14T13:25:16.548646",
+          "status": "completed",
+          "sourceTask": {
+            "id": "4224cf92-d7cb-4280-94d7-d774b1c62e28",
+            "name": "Enhanced Content Strategy - Asset 2",
+            "assigned_to_role": "Senior Strategy Analyst",
+            "created_at": "2025-06-14T13:25:16.548646",
+            "result": {
+              "summary": "Enhanced content strategy with competitor insights"
+            }
+          }
+        },
+        {
+          "id": "31ba2d6b-b075-4049-b5a5-4db55894368b",
+          "name": "Create Initial Content Strategy",
+          "version": 1,
+          "updated_at": "2025-06-11T13:25:16.548646",
+          "status": "completed",
+          "sourceTask": {
+            "id": "7b490dfb-aa41-4db0-848d-02dc1e1d90a0",
+            "name": "Create Initial Content Strategy",
+            "assigned_to_role": "Content Strategist",
+            "created_at": "2025-06-11T13:25:16.548646",
+            "result": {
+              "summary": "Initial content strategy document"
+            }
+          }
+        }
+      ]
+    },
+    "contact_database": {
+      "id": "contact_database",
+      "name": "ICP Contact List",
+      "type": "contact_database",
+      "versions": 2,
+      "lastModified": "2025-06-16T01:25:16.548646",
+      "sourceTaskId": "4f5e831f-b86b-4f09-8b09-48024995d2fd",
+      "ready_to_use": true,
+      "quality_scores": {
+        "overall": 0.88,
+        "completeness": 0.9,
+        "accuracy": 0.85,
+        "business_relevance": 0.89
+      },
+      "content": {
+        "structured_content": {
+          "contacts": [
+            {
+              "name": "Mike Johnson",
+              "role": "Bodybuilding Coach",
+              "followers": "250K"
+            },
+            {
+              "name": "Sarah Williams",
+              "role": "Fitness Influencer",
+              "followers": "500K"
+            }
+          ],
+          "total_contacts": 150,
+          "qualified_leads": 120
+        },
+        "has_ai_enhancement": true,
+        "enhancement_source": "contact_list_renderer"
+      },
+      "version_history": [
+        {
+          "version": "v2.0",
+          "created_at": "2025-06-16T01:25:16.548646",
+          "created_by": "Senior Research Lead",
+          "task_name": "Expand Contact Database - Enhanced Asset",
+          "task_id": "2e32d845-1e92-4398-a056-6211657b0cac",
+          "quality_scores": {
+            "overall": 0.88
+          },
+          "changes_summary": "Expanded database with 150 qualified leads"
+        },
+        {
+          "version": "v1.0",
+          "created_at": "2025-06-13T13:25:16.548646",
+          "created_by": "Research Analyst",
+          "task_name": "Build Initial Contact Database",
+          "task_id": "df090382-2474-4266-a5e6-bb27bd261e9e",
+          "quality_scores": {
+            "overall": 0.75
+          },
+          "changes_summary": "Initial contact database with 50 leads"
+        }
+      ],
+      "related_tasks": [
+        {
+          "id": "d34ea7b4-516c-49d1-83c1-f11ddc8feaf5",
+          "name": "Expand Contact Database - Enhanced Asset",
+          "version": 2,
+          "updated_at": "2025-06-16T01:25:16.548646",
+          "status": "completed",
+          "sourceTask": {
+            "id": "e0f1e020-c3da-4462-88d4-f4c94e27845e",
+            "name": "Expand Contact Database - Enhanced Asset",
+            "assigned_to_role": "Senior Research Lead",
+            "created_at": "2025-06-16T01:25:16.548646",
+            "result": {
+              "summary": "Expanded contact database with 150 qualified leads"
+            }
+          }
+        },
+        {
+          "id": "d200d1d1-b726-465b-97a5-752f93ffc370",
+          "name": "Build Initial Contact Database",
+          "version": 1,
+          "updated_at": "2025-06-13T13:25:16.548646",
+          "status": "completed",
+          "sourceTask": {
+            "id": "5d27555f-95aa-4b05-acc2-1da8b96096ba",
+            "name": "Build Initial Contact Database",
+            "assigned_to_role": "Research Analyst",
+            "created_at": "2025-06-13T13:25:16.548646",
+            "result": {
+              "summary": "Initial contact database with 50 leads"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "asset_count": 2,
+  "total_versions": 5,
+  "processing_timestamp": "2025-06-16T13:25:16.548718",
+  "data_source": "mock_test_data"
+}

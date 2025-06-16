@@ -79,6 +79,21 @@ app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router)
 app.include_router(deliverables_router)
 
+# Add API prefix compatibility for frontend
+# Import the specific endpoint function we need
+from routes.workspaces import get_workspace_tasks
+from fastapi import APIRouter
+from uuid import UUID
+
+api_router = APIRouter(prefix="/api/workspaces", tags=["api-compatibility"])
+
+@api_router.get("/{workspace_id}/tasks")
+async def api_get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None):
+    """API-prefixed version of get_workspace_tasks for frontend compatibility"""
+    return await get_workspace_tasks(workspace_id, task_type)
+
+app.include_router(api_router)
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():

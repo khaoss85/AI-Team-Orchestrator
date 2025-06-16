@@ -48,6 +48,8 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
   // Asset viewer state
   const [selectedAsset, setSelectedAsset] = useState<any>(null)
   const [showAssetDetails, setShowAssetDetails] = useState(false)
+  
+  // Asset refinement now handled directly in SmartAssetViewer as a tab
 
   const fetchMissionControl = async () => {
     try {
@@ -144,6 +146,14 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
     URL.revokeObjectURL(url)
   }
 
+  const handleRefineAsset = (asset: any) => {
+    // Refinement is now handled directly in SmartAssetViewer as a tab
+    // This function is kept for compatibility but does nothing
+    console.log('🔄 [Asset Refinement] Refinement is now integrated as tab in asset viewer')
+  }
+
+  // Refinement functions removed - now handled directly in SmartAssetViewer
+
   const handleWorkspaceUpdate = (updatedWorkspace: Workspace) => {
     setWorkspace(updatedWorkspace)
     fetchMissionControl()
@@ -200,8 +210,6 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <ProjectNavigationTabs projectId={id} />
 
       {/* Goal Progress - Prominent Display */}
       <GoalProgressTracker 
@@ -256,12 +264,11 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
           asset={selectedAsset}
           onClose={() => setShowAssetDetails(false)}
           onDownload={handleDownloadAsset}
-          onRefine={() => {
-            // Asset refinement functionality
-            console.log('Asset refinement requested for:', selectedAsset.name)
-          }}
+          onRefine={handleRefineAsset}
         />
       )}
+
+      {/* Asset Refinement Modal - Now integrated into SmartAssetViewer as a tab */}
     </div>
   )
 }

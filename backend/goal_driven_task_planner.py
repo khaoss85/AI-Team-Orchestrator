@@ -311,6 +311,11 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                 required_skills=["rapid_execution", "goal_achievement"]
             )
             
+            # Skip task creation if no agents available
+            if selected_agent_role is None:
+                logger.warning(f"⚠️ No agents available in workspace {workspace_id} - skipping corrective task creation")
+                return {}
+            
             # 🎯 CREATE URGENT CORRECTIVE TASK
             corrective_task = {
                 "goal_id": str(goal.id),
@@ -379,13 +384,9 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             available_agents = response.data or []
             
             if not available_agents:
-                logger.error(f"❌ No active agents found in workspace {workspace_id}")
-                # Return fallback that will fail gracefully
-                return {
-                    "role": "no_agents_available",
-                    "strategy": "fallback_failure",
-                    "error": "No active agents in workspace"
-                }
+                logger.warning(f"⚠️ No active agents found in workspace {workspace_id} - skipping task creation")
+                # Return None to indicate no task should be created
+                return None
             
             logger.info(f"📋 Found {len(available_agents)} active agents in workspace {workspace_id}")
             

@@ -471,32 +471,13 @@ export default function ProjectAssetsPage({ params: paramsPromise }: Props) {
                   )}
 
                   {assetViewTab === 'history' && (
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                      <div className="p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Version History</h3>
-                        <div className="space-y-4">
-                          {selectedAsset.version_history?.map((version: any, index: number) => (
-                            <div key={version.version} className={`p-4 rounded-lg border ${index === 0 ? 'border-green-200 bg-green-50' : 'border-gray-200'}`}>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-semibold text-gray-900">{version.version}</span>
-                                  {index === 0 && (
-                                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                      Current
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-sm text-gray-500">
-                                  {new Date(version.created_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-1">{version.changes_summary}</p>
-                              <p className="text-xs text-gray-500">By {version.created_by}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <AssetHistoryPanel 
+                      assetId={selectedAssetId}
+                      workspaceId={workspaceId}
+                      relatedTasks={selectedAsset.related_tasks}
+                      assetName={selectedAsset.name}
+                      className="shadow-sm"
+                    />
                   )}
 
                   {assetViewTab === 'dependencies' && (

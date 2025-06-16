@@ -59,6 +59,13 @@ class UnifiedAssetManager:
                 completed_tasks, workspace_goal, deliverable_type
             )
             
+            logger.info(f"🔍 [UnifiedAssets] Raw assets extracted: {len(raw_assets)}")
+            for asset_id, asset in raw_assets.items():
+                if not asset_id.startswith('_'):
+                    logger.info(f"   - Asset: {asset_id}, Type: {asset.get('type', 'unknown')}, Has metadata: {bool(asset.get('metadata'))}")
+                    if asset.get('metadata'):
+                        logger.info(f"     Source task ID: {asset['metadata'].get('source_task_id', 'None')}")
+            
             # Fallback: Check deliverables table for assets if extraction returns 0
             if not raw_assets or len(raw_assets) == 0:
                 logger.info("🔄 No assets extracted from tasks, checking deliverables table...")
@@ -80,7 +87,7 @@ class UnifiedAssetManager:
             
             # Filter out metadata and group assets by semantic similarity and add versioning
             filtered_assets = {k: v for k, v in raw_assets.items() if not k.startswith('_')}
-            grouped_assets = self._group_and_version_assets(filtered_assets, tasks)
+            grouped_assets = self._group_and_version_assets(filtered_assets, completed_tasks)
             
             # Process each asset group with AI content enhancement
             processed_assets = await self._process_assets_with_ai(grouped_assets, workspace_goal)
