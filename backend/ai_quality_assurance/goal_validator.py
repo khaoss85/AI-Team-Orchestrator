@@ -439,6 +439,12 @@ class AIGoalValidator:
             if req_type == 'items':
                 # Any countable items created
                 return achievements.get('items_created', 0)
+            elif req_type == 'contacts':
+                # Contact generation achievements - prioritize items_created for contact lists
+                return achievements.get('items_created', achievements.get('data_processed', 0))
+            elif req_type == 'email_sequences':
+                # Email sequence achievements - prioritize deliverables_completed
+                return achievements.get('deliverables_completed', achievements.get('metrics_achieved', 0))
             elif req_type == 'metric':
                 # Any measurable results achieved
                 metrics = achievements.get('metrics_achieved', [])

@@ -406,6 +406,7 @@ export interface TaskAnalysisResponse {
 
 export interface ActionableAsset {
   asset_name: string;  // Keep snake_case for API consistency
+  name?: string;       // Alternative name field for compatibility
   asset_data: Record<string, any>;
   source_task_id: string;
   extraction_method: string;

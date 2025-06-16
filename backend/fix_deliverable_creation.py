@@ -103,23 +103,28 @@ async def force_create_deliverable(workspace_id: str, goals: list, tasks: list):
                     'created_at': task['created_at']
                 })
     
-    # Create aggregate deliverable content
-    goal_descriptions = [f"• {goal['description']} ({goal['current_value']}/{goal['target_value']} {goal['unit']})" for goal in goals]
+    # AI-DRIVEN deliverable content generation (instead of hardcoded templates)
+    from ai_quality_assurance.ai_content_enhancer import AIContentEnhancer
     
-    deliverable_content = {
+    # Create dynamic content using AI
+    enhancer = AIContentEnhancer()
+    
+    # Generate AI-driven deliverable structure
+    raw_content = {
         'workspace_goal': workspace_goal,
-        'completed_goals': goal_descriptions,
+        'goals_data': goals,
         'task_results': task_results,
-        'achievement_summary': f"Successfully completed {len(goals)} project goals with {len(task_results)} deliverable outputs",
-        'key_deliverables': [
-            {
-                'type': 'goal_completion_report',
-                'title': 'Project Goal Achievement Report',
-                'description': f'Comprehensive completion of {len(goals)} project objectives',
-                'status': 'completed'
-            }
-        ]
+        'completion_context': f"{len(goals)} project objectives completed with {len(task_results)} deliverable outputs"
     }
+    
+    # Use AI to enhance and structure the deliverable content
+    enhanced_content = await enhancer.enhance_deliverable_content(
+        workspace_id=workspace_id,
+        raw_content=raw_content,
+        deliverable_type='final_completion_report'
+    )
+    
+    deliverable_content = enhanced_content
     
     # Create deliverable record
     deliverable_data = {

@@ -59,8 +59,28 @@ class UnifiedAssetManager:
                 completed_tasks, workspace_goal, deliverable_type
             )
             
-            # Group assets by semantic similarity and add versioning
-            grouped_assets = self._group_and_version_assets(raw_assets, tasks)
+            # Fallback: Check deliverables table for assets if extraction returns 0
+            if not raw_assets or len(raw_assets) == 0:
+                logger.info("🔄 No assets extracted from tasks, checking deliverables table...")
+                try:
+                    from database import get_deliverables
+                    deliverables = await get_deliverables(workspace_id)
+                    
+                    for deliverable in deliverables:
+                        if deliverable.get("content") and isinstance(deliverable["content"], dict):
+                            # Extract assets from deliverable content
+                            deliverable_assets = self._extract_assets_from_deliverable_content(
+                                deliverable["content"], deliverable["type"], deliverable["title"]
+                            )
+                            raw_assets.extend(deliverable_assets)
+                            logger.info(f"📦 Extracted {len(deliverable_assets)} assets from deliverable: {deliverable['title']}")
+                
+                except Exception as e:
+                    logger.warning(f"Failed to extract from deliverables table: {e}")
+            
+            # Filter out metadata and group assets by semantic similarity and add versioning
+            filtered_assets = {k: v for k, v in raw_assets.items() if not k.startswith('_')}
+            grouped_assets = self._group_and_version_assets(filtered_assets, tasks)
             
             # Process each asset group with AI content enhancement
             processed_assets = await self._process_assets_with_ai(grouped_assets, workspace_goal)
@@ -358,14 +378,53 @@ class UnifiedAssetManager:
         try:
             asset_data = asset.get("data", {})
             
-            # Check if already has rendered HTML
-            if asset.get("rendered_html"):
+            # Check if already has rendered HTML (either at root level or in data)
+            rendered_html = asset.get("rendered_html") or asset_data.get("rendered_html")
+            if rendered_html:
                 return {
-                    "rendered_html": asset["rendered_html"],
+                    "rendered_html": rendered_html,
                     "structured_content": asset_data,
                     "has_ai_enhancement": True,
                     "enhancement_source": "pre_rendered"
                 }
+            
+            # 🎯 NEW: Special handling for contact_database with detailed contacts
+            if asset.get("type") == "contact_database" and asset_data.get("contacts"):
+                contacts = asset_data["contacts"]
+                if contacts and len(contacts) > 0:
+                    # Generate HTML table for contacts
+                    contact_html = self.markup_processor._render_contacts_list(contacts)
+                    return {
+                        "rendered_html": contact_html,
+                        "structured_content": asset_data,
+                        "actionable_sections": [{
+                            "type": "contacts",
+                            "title": f"Contact Database ({len(contacts)} contacts)",
+                            "html": contact_html,
+                            "count": len(contacts)
+                        }],
+                        "has_ai_enhancement": True,
+                        "enhancement_source": "contact_list_renderer"
+                    }
+            
+            # 🎯 NEW: Special handling for email sequences with detailed data
+            if asset.get("type") == "email_sequence_strategy" and asset_data.get("sequences"):
+                sequences = asset_data["sequences"]
+                if sequences and len(sequences) > 0:
+                    # Generate HTML for sequences
+                    sequences_html = self.markup_processor._render_email_sequences(sequences)
+                    return {
+                        "rendered_html": sequences_html,
+                        "structured_content": asset_data,
+                        "actionable_sections": [{
+                            "type": "email_sequences",
+                            "title": f"Email Sequences ({len(sequences)} sequences)",
+                            "html": sequences_html,
+                            "count": len(sequences)
+                        }],
+                        "has_ai_enhancement": True,
+                        "enhancement_source": "email_sequence_renderer"
+                    }
             
             # Check if has structured content that can be enhanced
             if asset_data and isinstance(asset_data, dict):
@@ -396,6 +455,87 @@ class UnifiedAssetManager:
                 "has_ai_enhancement": False,
                 "enhancement_source": "error_fallback"
             }
+    
+    def _extract_assets_from_deliverable_content(self, content: dict, deliverable_type: str, title: str) -> List[Dict[str, Any]]:
+        """Extract assets from deliverable table content"""
+        assets = []
+        
+        try:
+            # Try to extract from AI-enhanced deliverable content structure
+            if isinstance(content, dict):
+                
+                # Look for deliverable_assets (from AI-driven content)
+                if "deliverable_assets" in content:
+                    deliverable_assets = content["deliverable_assets"]
+                    if isinstance(deliverable_assets, list):
+                        for asset_data in deliverable_assets:
+                            if isinstance(asset_data, dict):
+                                asset_name = asset_data.get("name", "business_asset")
+                                asset_value = asset_data.get("value", asset_data)
+                                
+                                assets.append({
+                                    "type": self._infer_asset_type_from_name(asset_name),
+                                    "data": asset_value,
+                                    "source": "deliverable_table_content",
+                                    "confidence": 0.8,
+                                    "asset_name": asset_name
+                                })
+                
+                # Look for direct asset fields
+                if "project_summary" in content:
+                    assets.append({
+                        "type": "project_report",
+                        "data": {
+                            "summary": content["project_summary"],
+                            "achievements": content.get("key_achievements", []),
+                            "impact": content.get("business_impact", {})
+                        },
+                        "source": "deliverable_table_project_summary",
+                        "confidence": 0.9,
+                        "asset_name": "project_completion_report"
+                    })
+                
+                # Look for implementation roadmap
+                if "implementation_roadmap" in content:
+                    assets.append({
+                        "type": "implementation_guide",
+                        "data": content["implementation_roadmap"],
+                        "source": "deliverable_table_roadmap", 
+                        "confidence": 0.85,
+                        "asset_name": "implementation_roadmap"
+                    })
+                
+                # Generic fallback for any structured content
+                if not assets and content:
+                    assets.append({
+                        "type": "business_document",
+                        "data": content,
+                        "source": "deliverable_table_generic",
+                        "confidence": 0.7,
+                        "asset_name": f"deliverable_{deliverable_type}"
+                    })
+                    
+                logger.info(f"📦 Extracted {len(assets)} assets from deliverable content")
+                
+        except Exception as e:
+            logger.error(f"Error extracting assets from deliverable content: {e}")
+            
+        return assets
+    
+    def _infer_asset_type_from_name(self, name: str) -> str:
+        """Infer asset type from asset name"""
+        name_lower = name.lower()
+        
+        if "contact" in name_lower or "lead" in name_lower:
+            return "contact_database"
+        elif "email" in name_lower or "sequence" in name_lower:
+            return "email_templates"
+        elif "report" in name_lower or "analysis" in name_lower:
+            return "business_report"
+        elif "guide" in name_lower or "roadmap" in name_lower:
+            return "implementation_guide"
+        else:
+            return "business_asset"
     
     def _create_version_history(self, versions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Create version history from asset versions"""

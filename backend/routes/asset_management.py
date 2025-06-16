@@ -167,9 +167,12 @@ async def extract_concrete_assets(workspace_id: UUID):
             completed_tasks, workspace_goal, deliverable_type
         )
         
+        # Filter out metadata and convert to list of assets
+        asset_list = [asset for key, asset in extracted_assets.items() if not key.startswith('_')]
+        
         # Evaluate quality
         quality_metrics = await smart_evaluator.evaluate_deliverable_quality(
-            {"assets": list(extracted_assets.values())}, workspace_goal
+            {"assets": asset_list}, workspace_goal
         )
         
         return {

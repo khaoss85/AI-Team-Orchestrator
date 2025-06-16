@@ -240,6 +240,99 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
         logger.warning("🔄 Falling back to pattern-based goal extraction")
         return await _auto_create_workspace_goals_fallback(workspace_id, goal_text)
 
+# =====================================================
+# 📦 DELIVERABLES CRUD OPERATIONS
+# =====================================================
+
+async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
+    """Create a new deliverable record"""
+    try:
+        logger.info(f"📝 Creating deliverable for workspace {workspace_id}")
+        
+        create_data = {
+            'workspace_id': workspace_id,
+            **deliverable_data
+        }
+        
+        result = supabase.table('deliverables').insert(create_data).execute()
+        
+        if result.data:
+            deliverable = result.data[0]
+            logger.info(f"✅ Created deliverable with ID: {deliverable['id']}")
+            return deliverable
+        else:
+            raise Exception(f"Failed to create deliverable: {result}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error creating deliverable: {e}")
+        raise
+
+async def get_deliverables(workspace_id: str) -> List[dict]:
+    """Get all deliverables for a workspace"""
+    try:
+        result = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id).order('created_at', desc=True).execute()
+        deliverables = result.data or []
+        
+        logger.info(f"📦 Found {len(deliverables)} deliverables for workspace {workspace_id}")
+        return deliverables
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching deliverables: {e}")
+        raise
+
+async def get_deliverable_by_id(deliverable_id: str) -> Optional[dict]:
+    """Get a specific deliverable by ID"""
+    try:
+        result = supabase.table('deliverables').select('*').eq('id', deliverable_id).execute()
+        
+        if result.data:
+            deliverable = result.data[0]
+            logger.info(f"📦 Found deliverable {deliverable_id}")
+            return deliverable
+        else:
+            logger.warning(f"❌ Deliverable {deliverable_id} not found")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Error fetching deliverable {deliverable_id}: {e}")
+        raise
+
+async def update_deliverable(deliverable_id: str, update_data: dict) -> dict:
+    """Update a deliverable"""
+    try:
+        logger.info(f"🔄 Updating deliverable {deliverable_id}")
+        
+        result = supabase.table('deliverables').update(update_data).eq('id', deliverable_id).execute()
+        
+        if result.data:
+            deliverable = result.data[0]
+            logger.info(f"✅ Updated deliverable {deliverable_id}")
+            return deliverable
+        else:
+            raise Exception(f"Deliverable {deliverable_id} not found")
+            
+    except Exception as e:
+        logger.error(f"❌ Error updating deliverable {deliverable_id}: {e}")
+        raise
+
+async def delete_deliverable(deliverable_id: str) -> bool:
+    """Delete a deliverable"""
+    try:
+        logger.info(f"🗑️ Deleting deliverable {deliverable_id}")
+        
+        result = supabase.table('deliverables').delete().eq('id', deliverable_id).execute()
+        
+        if result.data:
+            logger.info(f"✅ Deleted deliverable {deliverable_id}")
+            return True
+        else:
+            logger.warning(f"❌ Deliverable {deliverable_id} not found for deletion")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Error deleting deliverable {deliverable_id}: {e}")
+        raise
+
 async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: str):
     """
     📊 FALLBACK: Pattern-based workspace goals creation (legacy system)
@@ -1927,12 +2020,21 @@ UNIVERSAL ACHIEVEMENT CATEGORIES:
 - deliverables_completed: Count of completed deliverables/outputs (documents, strategies, plans, etc.)
 - metrics_achieved: Count of measurable outcomes/results achieved
 
+SPECIFIC PATTERNS TO PRIORITIZE:
+- Contact lists, ICP contacts, lead databases → items_created (count the contacts)
+- Email sequences, email campaigns, email templates → deliverables_completed  
+- Email performance metrics (open rates, click rates) → metrics_achieved
+- Business reports, analyses, strategies → deliverables_completed
+- Data records, entries, processed files → data_processed
+
 ANALYSIS INSTRUCTIONS:
 1. Look for QUANTITIES and COUNTS in the data
 2. Identify what was CREATED, PROCESSED, or COMPLETED
 3. Count measurable achievements regardless of domain
-4. Ignore technical metadata, focus on business outcomes
-5. Be conservative - only count clear, measurable results
+4. For CONTACT-related achievements: prioritize items_created count
+5. For EMAIL SEQUENCE achievements: prioritize deliverables_completed count
+6. Ignore technical metadata, focus on business outcomes
+7. Be conservative - only count clear, measurable results
 
 Respond with this exact JSON format:
 {{

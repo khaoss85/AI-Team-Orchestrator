@@ -48,21 +48,39 @@ async def validate_workspace_goals(
                 "validation_timestamp": datetime.now().isoformat()
             }
         
-        # Perform AI-driven goal validation
-        if use_database_goals:
-            # Get database goals for validation (includes goal_id for corrective tasks)
-            database_goals = await _get_workspace_database_goals(str(workspace_id))
-            if database_goals:
-                validations = await goal_validator.validate_database_goals_achievement(
-                    database_goals, completed_tasks, str(workspace_id)
-                )
-            else:
-                # Fallback to workspace goal text if no database goals
+        # Perform AI-driven goal validation - ALWAYS prioritize database goals
+        database_goals = await _get_workspace_database_goals(str(workspace_id))
+        
+        if database_goals:
+            logger.info(f"🎯 Using database goals validation for {len(database_goals)} goals")
+            validations = await goal_validator.validate_database_goals_achievement(
+                database_goals, completed_tasks, str(workspace_id)
+            )
+        elif use_database_goals:
+            # Try to create database goals from workspace text if they don't exist
+            logger.info("🔄 No database goals found, attempting to create from workspace text")
+            try:
+                from database import auto_create_workspace_goals
+                created_goals = await auto_create_workspace_goals(str(workspace_id), workspace_goal)
+                if created_goals:
+                    logger.info(f"✅ Created {len(created_goals)} database goals, re-running validation")
+                    validations = await goal_validator.validate_database_goals_achievement(
+                        created_goals, completed_tasks, str(workspace_id)
+                    )
+                else:
+                    # Final fallback to workspace text
+                    logger.warning("⚠️ Falling back to workspace text validation")
+                    validations = await goal_validator.validate_workspace_goal_achievement(
+                        workspace_goal, completed_tasks, str(workspace_id)
+                    )
+            except Exception as e:
+                logger.error(f"Failed to create database goals: {e}")
                 validations = await goal_validator.validate_workspace_goal_achievement(
                     workspace_goal, completed_tasks, str(workspace_id)
                 )
         else:
-            # Use original method with workspace goal text
+            # Use original method with workspace goal text (deprecated path)
+            logger.warning("⚠️ Using deprecated workspace text validation - consider upgrading to database goals")
             validations = await goal_validator.validate_workspace_goal_achievement(
                 workspace_goal, completed_tasks, str(workspace_id)
             )
@@ -98,6 +116,25 @@ async def validate_workspace_goals(
             "total_validations": len(validations),
             "critical_issues": len(critical_issues),
             "high_priority_issues": len(high_issues),
+            # Frontend expects 'validation_results' not 'validations'
+            "validation_results": [
+                {
+                    # Frontend field name mappings
+                    "target_requirement": v.target_requirement,
+                    "actual_achievement": v.actual_achievement,
+                    "achievement_percentage": round(100 - v.gap_percentage, 1),  # Calculate achievement percentage
+                    "gap_percentage": round(v.gap_percentage, 1),
+                    "severity": v.severity.value,
+                    "is_valid": v.is_valid,
+                    "confidence": round(v.confidence, 2),
+                    "message": v.validation_message,
+                    "recommendations": v.recommendations[:3],  # Top 3 recommendations
+                    "validation_details": v.extracted_metrics,  # Frontend expects this field
+                    "extracted_metrics": v.extracted_metrics
+                }
+                for v in validations
+            ],
+            # Keep original field for backward compatibility
             "validations": [
                 {
                     "requirement": v.target_requirement,
@@ -159,11 +196,17 @@ async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_p
             "current_phase": current_phase,
             "target_phase": target_phase,
             "gate_status": gate_result.gate_status.value,
+            # Frontend field mappings for quality gate
+            "can_transition": gate_result.can_proceed,
+            "readiness_score": round(gate_result.gate_confidence * 100, 1),  # Convert to percentage
+            "missing_requirements": gate_result.blocking_issues,
+            "quality_issues": gate_result.warnings,
+            "recommendations": gate_result.recommendations,
+            # Keep original fields for backward compatibility
             "can_proceed": gate_result.can_proceed,
             "gate_confidence": round(gate_result.gate_confidence, 2),
             "blocking_issues": gate_result.blocking_issues,
             "warnings": gate_result.warnings,
-            "recommendations": gate_result.recommendations,
             "next_actions": gate_result.next_actions,
             "validation_details": [
                 {
@@ -218,6 +261,13 @@ async def check_project_completion_readiness(workspace_id: UUID):
         return {
             "workspace_id": str(workspace_id),
             "workspace_goal": workspace_goal,
+            # Frontend field mappings for completion readiness
+            "ready_for_completion": readiness_result.can_proceed,
+            "completion_score": round(readiness_result.gate_confidence * 100, 1),  # Convert to percentage
+            "missing_deliverables": readiness_result.blocking_issues,
+            "quality_concerns": readiness_result.warnings,
+            "final_recommendations": readiness_result.recommendations,
+            # Keep original structure for backward compatibility
             "completion_readiness": {
                 "status": readiness_result.gate_status.value,
                 "can_complete": readiness_result.can_proceed,
@@ -337,8 +387,8 @@ async def _get_workspace_database_goals(workspace_id: str) -> List[Dict]:
         
         response = supabase.table("workspace_goals").select("*").eq(
             "workspace_id", workspace_id
-        ).eq(
-            "status", GoalStatus.ACTIVE.value
+        ).in_(
+            "status", [GoalStatus.ACTIVE.value, GoalStatus.COMPLETED.value]
         ).execute()
         
         goals = response.data or []

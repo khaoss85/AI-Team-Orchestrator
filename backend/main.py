@@ -34,6 +34,7 @@ from routes.utils import router as utils_router
 from routes.unified_assets import router as unified_assets_router
 from routes.goal_validation import router as goal_validation_router
 from routes.workspace_goals import router as workspace_goals_router
+from routes.deliverables import router as deliverables_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -76,6 +77,7 @@ app.include_router(ai_content_router)
 app.include_router(utils_router)
 app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router)
+app.include_router(deliverables_router)
 
 # Health check endpoint
 @app.get("/health")

@@ -388,7 +388,7 @@ export const api = {
     // 🆕 ENHANCED: Project Deliverables with Asset Support
     getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverablesExtended> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/projects/${workspaceId}/deliverables`);
+        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}`);
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`API error: ${response.status} - ${errorText}`);
@@ -467,7 +467,7 @@ export const api = {
     // 🔥 NEW: Trigger final deliverable creation
     triggerFinalDeliverable: async (workspaceId: string): Promise<FinalizationResponse> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/create-deliverable`, {
+        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -483,7 +483,7 @@ export const api = {
     // 🔥 NEW: Force project finalization (emergency)
     forceFinalization: async (workspaceId: string, reason?: string): Promise<FinalizationResponse> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/force-finalize`, {
+        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}/force-finalize`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

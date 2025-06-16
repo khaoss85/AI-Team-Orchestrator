@@ -69,7 +69,10 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
       hasContent: !!asset.content,
       assetDataKeys: Object.keys(asset.asset_data || {}),
       contentKeys: Object.keys(asset.content || {}),
-      finalAssetData: assetData
+      finalAssetData: assetData,
+      finalAssetDataSize: Object.keys(assetData).length,
+      assetDataType: typeof assetData,
+      fullAssetStructure: asset
     });
 
     // ✅ PRIORITY 1: Check for pre-rendered HTML from dual output format
@@ -183,6 +186,13 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
     
     // ✅ FINAL FALLBACK: Use the compatible assetData we defined above
     if (!assetData || typeof assetData !== 'object') {
+      console.log('❌ [SmartAssetViewer] No data available - Debug:', {
+        assetData,
+        assetDataType: typeof assetData,
+        assetDataKeys: assetData ? Object.keys(assetData) : 'null/undefined',
+        condition1: !assetData,
+        condition2: typeof assetData !== 'object'
+      });
       return <div className="text-gray-500">No data available for this asset</div>;
     }
 
@@ -202,14 +212,23 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
     const entries = Object.entries(assetData).filter(([key]) => 
       key !== '_processed_markup' && 
       key !== 'rendered_html' && 
-      key !== 'structured_content'
+      key !== 'structured_content' &&
+      key !== '_original'
     );
     
     if (entries.length === 0) {
+      console.log('⚠️ [SmartAssetViewer] No entries found, showing fallback with asset info');
       return (
         <div className="text-center py-8 text-gray-500">
           <p>Asset extraction in progress...</p>
           <p className="text-sm mt-2">Please check back in a few moments.</p>
+          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
+            <h4 className="font-medium mb-2">Debug Info:</h4>
+            <p className="text-xs">Asset Name: {asset.asset_name || asset.name || 'Unknown'}</p>
+            <p className="text-xs">Has asset_data: {!!asset.asset_data ? 'Yes' : 'No'}</p>
+            <p className="text-xs">Has content: {!!asset.content ? 'Yes' : 'No'}</p>
+            <p className="text-xs">Ready to use: {asset.ready_to_use ? 'Yes' : 'No'}</p>
+          </div>
         </div>
       );
     }

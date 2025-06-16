@@ -185,7 +185,7 @@ class DeliverableMarkupProcessor:
         return html
     
     def _render_email_sequences(self, sequences) -> str:
-        """Renderizza sequenze email in HTML strutturato"""
+        """Renderizza sequenze email in HTML strutturato con dettagli email"""
         if not isinstance(sequences, list) or not sequences:
             return "<p>No email sequences available</p>"
         
@@ -195,24 +195,153 @@ class DeliverableMarkupProcessor:
             name = sequence.get("name", f"Sequence {i}")
             emails = sequence.get("emails", 0)
             focus = sequence.get("focus", "")
+            detailed_emails = sequence.get("detailed_emails", [])
             
             html += f"""
-            <div class="sequence-card border border-gray-200 rounded-lg p-4">
+            <div class="sequence-card border border-gray-200 rounded-lg p-6">
                 <h4 class="text-lg font-semibold text-gray-900 mb-2">{name}</h4>
-                <div class="grid grid-cols-2 gap-4 text-sm">
+                <div class="grid grid-cols-2 gap-4 text-sm mb-4">
                     <div><strong>Emails:</strong> {emails}</div>
                     <div><strong>Target:</strong> ≥30% open rate, ≥10% click rate</div>
                 </div>
-                <p class="text-gray-600 mt-2">{focus}</p>
-                <div class="mt-3 flex space-x-2">
-                    <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Ready for Hubspot</span>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Optimized for SaaS</span>
+                <p class="text-gray-600 mb-4">{focus}</p>
+                <div class="mb-4 flex space-x-2">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Ready for Implementation</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Business-Ready</span>
                 </div>
-            </div>
             """
+            
+            # Add detailed items if available (UNIVERSAL - works for emails, sections, exercises, etc.)
+            detailed_items = sequence.get("detailed_emails") or sequence.get("detailed_items", [])
+            if detailed_items:
+                html += '<div class="detailed-items mt-4">'
+                html += f'<h5 class="text-md font-medium text-gray-800 mb-3">📋 Detailed {sequence.get("detailed_items_name", "Items")}</h5>'
+                html += '<div class="space-y-4">'
+                
+                for item in detailed_items:
+                    # Universal item rendering - works for ANY content type
+                    item_title = self._get_universal_item_title(item)
+                    item_type = item.get("type", "")
+                    item_description = self._get_universal_item_description(item)
+                    item_content = self._get_universal_item_content(item)
+                    item_action = self._get_universal_item_action(item)
+                    
+                    html += f"""
+                    <div class="item-detail border-l-4 border-blue-400 pl-4 py-2 bg-gray-50 rounded">
+                        <div class="flex items-center justify-between mb-2">
+                            <h6 class="font-medium text-gray-900">{item_title}</h6>
+                            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">{item_type}</span>
+                        </div>
+                        <div class="text-sm space-y-2">
+                            {item_description}
+                            <div class="bg-white p-3 rounded border">
+                                {item_content}
+                            </div>
+                            {item_action}
+                        </div>
+                    </div>
+                    """
+                
+                html += '</div></div>'
+            
+            html += '</div>'
         
         html += '</div>'
         return html
+    
+    def _get_universal_item_title(self, item: Dict[str, Any]) -> str:
+        """Universal item title extraction - works for any content type"""
+        # Try different title fields based on content type
+        title_fields = [
+            "title", "subject", "heading", "exercise_name", "step_name", 
+            "component_name", "lesson_title", "section_title"
+        ]
+        
+        for field in title_fields:
+            if field in item and item[field]:
+                # Add sequence/position info if available
+                position_info = ""
+                if "email_number" in item:
+                    position_info = f"Email {item['email_number']}"
+                elif "section_number" in item:
+                    position_info = f"Section {item['section_number']}"
+                elif "exercise_number" in item:
+                    position_info = f"Exercise {item['exercise_number']}"
+                elif "step" in item:
+                    position_info = f"Step {item['step']}"
+                elif "lesson" in item:
+                    position_info = f"Lesson {item['lesson']}"
+                elif "sequence_position" in item:
+                    position_info = f"Item {item['sequence_position']}"
+                
+                # Add timing info if available
+                timing_info = ""
+                if "day" in item:
+                    timing_info = f" • Day {item['day']}"
+                elif "duration" in item:
+                    timing_info = f" • {item['duration']}"
+                
+                return f"{position_info}{timing_info}: {item[field]}" if position_info else item[field]
+        
+        return "Content Item"
+    
+    def _get_universal_item_description(self, item: Dict[str, Any]) -> str:
+        """Universal item description extraction"""
+        # Try different description fields
+        desc_fields = ["preview", "description", "instructions", "summary"]
+        
+        for field in desc_fields:
+            if field in item and item[field]:
+                return f"<div><strong>Description:</strong> {item[field]}</div>"
+        
+        return ""
+    
+    def _get_universal_item_content(self, item: Dict[str, Any]) -> str:
+        """Universal item content extraction and formatting"""
+        content_html = "<strong>Content:</strong><br>"
+        
+        # Email-specific content
+        if "content" in item:
+            content = item["content"].replace('\n', '<br>')
+            content_html += f'<div class="mt-2 text-gray-700">{content}</div>'
+        
+        # Blog/article content
+        elif "heading" in item and "word_count" in item:
+            content_html += f'<div class="mt-2 text-gray-700">Section content ({item["word_count"]} words)</div>'
+        
+        # Workout/exercise content
+        elif "exercise_name" in item and "intensity" in item:
+            content_html += f'<div class="mt-2 text-gray-700">Intensity: {item["intensity"]}</div>'
+            if "instructions" in item:
+                content_html += f'<div class="text-gray-600">{item["instructions"]}</div>'
+        
+        # Recipe steps
+        elif "step_name" in item and "instructions" in item:
+            content_html += f'<div class="mt-2 text-gray-700">{item["instructions"]}</div>'
+        
+        # Generic content
+        elif "details" in item:
+            content_html += f'<div class="mt-2 text-gray-700">{item["details"]}</div>'
+        
+        else:
+            content_html += '<div class="mt-2 text-gray-700">Ready for implementation</div>'
+        
+        return content_html
+    
+    def _get_universal_item_action(self, item: Dict[str, Any]) -> str:
+        """Universal item action/CTA extraction"""
+        # Try different action fields
+        action_fields = ["call_to_action", "cta", "action", "next_step"]
+        
+        for field in action_fields:
+            if field in item and item[field]:
+                return f'<div><strong>Action:</strong> <span class="text-blue-600">{item[field]}</span></div>'
+        
+        # Content-type specific defaults
+        if "priority" in item:
+            return f'<div><strong>Priority:</strong> <span class="text-blue-600">{item["priority"]}</span></div>'
+        
+        return '<div><strong>Status:</strong> <span class="text-green-600">Ready to implement</span></div>'
     
     def _render_workflow(self, workflow_data) -> str:
         """Renderizza workflow/automation in HTML"""

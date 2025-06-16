@@ -247,10 +247,91 @@ class AIContentEnhancer:
                 metrics.append(f"{match}% target")
         
         # Look for count metrics
-        count_matches = re.findall(r'(\d+)\s+(?:contatti|contacts|leads|email|sequence)', goal_lower)
+        count_matches = re.findall(r'(\d+)\s*(?:contacts?|leads?|prospects?|emails?|sequences?)', goal_lower)
         for match in count_matches:
-            if int(match) >= 10:  # Filter out small counts
-                metrics.append(f"{match} units target")
+            if int(match) >= 5:  # Filter out very small counts
+                metrics.append(f"{match} deliverable items")
+        
+        return metrics
+    
+    async def enhance_deliverable_content(self, workspace_id: str, raw_content: dict, deliverable_type: str) -> dict:
+        """🚀 AI-driven deliverable content generation - NO HARDCODED TEMPLATES"""
+        
+        workspace_goal = raw_content.get('workspace_goal', '')
+        goals_data = raw_content.get('goals_data', [])
+        task_results = raw_content.get('task_results', [])
+        completion_context = raw_content.get('completion_context', '')
+        
+        try:
+            # AI-driven content analysis and structuring
+            prompt = f"""
+            As an AI business deliverable specialist, analyze this completed project and create a comprehensive final deliverable structure.
+            
+            PROJECT CONTEXT:
+            - Main Goal: {workspace_goal}
+            - Completion Status: {completion_context}
+            - Goals Achieved: {len(goals_data)} objectives completed
+            - Deliverable Components: {len(task_results)} task outputs
+            
+            GOALS ACHIEVED:
+            {json.dumps([{'description': g['description'], 'target': g['target_value'], 'unit': g['unit'], 'achieved': g['current_value']} for g in goals_data], indent=2)}
+            
+            TASK OUTPUTS:
+            {json.dumps([{'name': t['task_name'], 'summary': t['summary'], 'agent': t['agent_role']} for t in task_results], indent=2)}
+            
+            REQUIREMENTS:
+            1. Create a dynamic, AI-generated deliverable structure (NO templates)
+            2. Extract business value and actionable insights from actual task results
+            3. Ensure all content is concrete and business-ready
+            4. Structure for immediate business implementation
+            5. Generate domain-appropriate titles and descriptions based on the goal context
+            
+            Return a JSON structure with:
+            - project_summary: AI-generated executive summary
+            - key_achievements: List of concrete accomplishments with metrics
+            - deliverable_assets: Business-ready outputs with implementation guidance
+            - business_impact: Measurable value and next steps
+            - implementation_roadmap: Actionable steps for using the deliverables
+            
+            Focus on CONCRETE VALUE, not generic descriptions.
+            """
+            
+            logger.info(f"🤖 Generating AI-driven deliverable content for workspace {workspace_id}")
+            
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=2000
+            )
+            
+            ai_content = response.choices[0].message.content.strip()
+            
+            # Parse AI response
+            try:
+                ai_structure = json.loads(ai_content)
+                logger.info("✅ Successfully generated AI-driven deliverable structure")
+                return ai_structure
+            except json.JSONDecodeError:
+                # Fallback: extract JSON from response if wrapped in text
+                json_match = re.search(r'\{.*\}', ai_content, re.DOTALL)
+                if json_match:
+                    ai_structure = json.loads(json_match.group())
+                    logger.info("✅ Successfully extracted AI-driven deliverable structure")
+                    return ai_structure
+                else:
+                    raise ValueError("AI response is not valid JSON")
+                    
+        except Exception as e:
+            logger.error(f"❌ AI deliverable generation failed: {e}")
+            # Minimal fallback (still dynamic, not hardcoded)
+            return {
+                "project_summary": f"AI-driven completion of {workspace_goal}",
+                "key_achievements": [f"✅ {g['description']}" for g in goals_data],
+                "deliverable_assets": [{"name": t['task_name'], "value": t['summary']} for t in task_results],
+                "business_impact": f"Successfully delivered {len(task_results)} business-ready components",
+                "implementation_roadmap": ["Review deliverable components", "Deploy business assets", "Monitor results"]
+            }
         
         # Look for specific metric types
         if 'open rate' in goal_lower or 'open-rate' in goal_lower:
