@@ -24,6 +24,12 @@ class FeedbackRequestType(str, Enum):
     RESOURCE_ALLOCATION = "resource_allocation"
     CRITICAL_ASSET_VERIFICATION = "critical_asset_verification"
     QUALITY_GATE_CHECKPOINT = "quality_gate_checkpoint"
+    QUALITY_GATE_FAILURE = "quality_gate_failure"
+    HIGH_VALUE_DELIVERABLE = "high_value_deliverable"
+    FINANCIAL_VERIFICATION = "financial_verification"
+    CUSTOMER_FACING_CONTENT = "customer_facing_content"
+    GOAL_CRITICAL_DELIVERABLE = "goal_critical_deliverable"
+    AUTO_APPROVED = "auto_approved"
 
 class FeedbackStatus(str, Enum):
     """Status of feedback requests"""

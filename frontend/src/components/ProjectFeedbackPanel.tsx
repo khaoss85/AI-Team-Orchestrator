@@ -27,7 +27,7 @@ const ProjectFeedbackPanel: React.FC<ProjectFeedbackPanelProps> = ({
       const response = await fetch(`http://localhost:8000/human-feedback/pending?workspace_id=${workspaceId}`)
       if (response.ok) {
         const data = await response.json()
-        setPendingCount(data.pending_requests?.length || 0)
+        setPendingCount((data || []).length)  // Fix: API returns array directly, not wrapped in object
       }
     } catch (error) {
       console.error('Error fetching pending count:', error)

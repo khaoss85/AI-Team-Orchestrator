@@ -30,7 +30,7 @@ const FeedbackNotificationBadge: React.FC<FeedbackNotificationBadgeProps> = ({
       const response = await fetch(`http://localhost:8000/human-feedback/pending?workspace_id=${workspaceId}`)
       if (response.ok) {
         const data = await response.json()
-        const requests = data.pending_requests || []
+        const requests = data || []  // Fix: API returns array directly, not wrapped in object
         setPendingCount(requests.length)
         
         // Count urgent requests (critical and high priority)

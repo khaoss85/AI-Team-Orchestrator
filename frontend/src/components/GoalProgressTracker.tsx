@@ -18,6 +18,17 @@ interface WorkspaceGoal {
   completion_pct?: number;
   gap_value?: number;
   urgency_score?: number;
+  semantic_context?: {
+    deliverable_type?: string;
+    business_value?: string;
+    acceptance_criteria?: string[];
+    execution_phase?: string;
+    autonomy_level?: string;
+    autonomy_reason?: string;
+    available_tools?: string[];
+    human_input_required?: string[];
+    is_strategic_deliverable?: boolean;
+  };
 }
 
 interface GoalProgressTrackerProps {
@@ -48,6 +59,7 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
   const fetchGoals = async () => {
     try {
@@ -183,6 +195,43 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
     return description;
   };
 
+  const getAutonomyInfo = (autonomyLevel: string | undefined) => {
+    switch (autonomyLevel) {
+      case 'autonomous':
+        return { 
+          icon: '🤖', 
+          label: 'Autonomo', 
+          color: 'bg-green-100 text-green-800',
+          description: 'AI può completare autonomamente'
+        };
+      case 'assisted':
+        return { 
+          icon: '🤝', 
+          label: 'Assistito', 
+          color: 'bg-yellow-100 text-yellow-800',
+          description: 'Richiede supervisione umana'
+        };
+      case 'human_required':
+        return { 
+          icon: '👤', 
+          label: 'Umano', 
+          color: 'bg-red-100 text-red-800',
+          description: 'Richiede intervento umano diretto'
+        };
+      default:
+        return { 
+          icon: '❓', 
+          label: 'Da analizzare', 
+          color: 'bg-gray-100 text-gray-600',
+          description: 'Autonomia non ancora determinata'
+        };
+    }
+  };
+
+  const toggleGoalExpansion = (goalId: string) => {
+    setExpandedGoalId(expandedGoalId === goalId ? null : goalId);
+  };
+
   if (loading) {
     return (
       <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
@@ -310,31 +359,284 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       {/* Compact Summary - Show only when not expanded */}
       {!expanded && goals.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="text-sm text-gray-600 space-y-2">
+          <div className="text-sm text-gray-600 space-y-3">
             <div className="flex items-center justify-between">
               <span>📋 Todo List ({goals.length} obiettivi)</span>
               <span className="text-xs text-gray-500">Clicca "Dettagli" per visualizzazione completa</span>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {goals.slice(0, 3).map((goal) => (
-                <div key={goal.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs">
-                      {goal.status === 'completed' ? '✅' : goal.completion_pct! < 30 ? '⚠️' : '📊'}
-                    </span>
-                    <span className="text-sm font-medium">{formatMetricType(goal.metric_type)}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {goal.current_value}/{goal.target_value} {goal.unit}
-                  </div>
+            
+            {(() => {
+              // Separate goals into metrics and deliverables
+              const metrics = goals.filter(goal => 
+                !goal.unit.includes('deliverable') && 
+                ['contacts', 'engagement_rate', 'conversion_rate', 'revenue', 'users'].includes(goal.metric_type)
+              );
+              const deliverables = goals.filter(goal => 
+                goal.unit.includes('deliverable') || 
+                !['contacts', 'engagement_rate', 'conversion_rate', 'revenue', 'users'].includes(goal.metric_type)
+              );
+              
+              // Show up to 5 total goals (prioritize showing at least some of each type)
+              const goalsToShow = [];
+              
+              // Add up to 3 metrics first
+              goalsToShow.push(...metrics.slice(0, 3));
+              
+              // Add deliverables to fill up to 5 total
+              const remainingSlots = 5 - goalsToShow.length;
+              goalsToShow.push(...deliverables.slice(0, remainingSlots));
+              
+              // If we still have slots and more metrics, add them
+              if (goalsToShow.length < 5 && metrics.length > 3) {
+                const additionalSlots = 5 - goalsToShow.length;
+                goalsToShow.push(...metrics.slice(3, 3 + additionalSlots));
+              }
+              
+              return (
+                <div className="space-y-3">
+                  {/* Final Metrics Section */}
+                  {metrics.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-blue-600 mb-2">🎯 Metriche Finali</h4>
+                      <div className="grid grid-cols-1 gap-1">
+                        {goalsToShow.filter(goal => metrics.includes(goal)).map((goal) => (
+                          <div key={goal.id} className="bg-blue-50 rounded border border-blue-100 overflow-hidden transition-all duration-200">
+                            <div 
+                              className="flex items-center justify-between p-2 cursor-pointer hover:bg-blue-100 transition-colors group"
+                              onClick={() => toggleGoalExpansion(goal.id)}
+                            >
+                              <div className="flex items-center space-x-2 flex-1">
+                                <span className="text-xs">
+                                  {goal.status === 'completed' ? '✅' : goal.completion_pct! < 30 ? '⚠️' : '📊'}
+                                </span>
+                                <span className="text-sm font-medium">{formatMetricType(goal.metric_type)}</span>
+                                <span className="text-xs text-blue-400 group-hover:text-blue-600 transition-colors">
+                                  clicca per dettagli
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600 font-medium">
+                                {goal.current_value}/{goal.target_value} {goal.unit}
+                              </div>
+                            </div>
+                            
+                            {/* Expanded Details con animazione smooth */}
+                            <div className={`transition-all duration-300 ease-in-out ${
+                              expandedGoalId === goal.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                            } overflow-hidden`}>
+                              <div className="px-3 pb-3 border-t border-blue-200 bg-blue-25">
+                                <div className="space-y-3 pt-3">
+                                  <div className="text-xs text-gray-700">
+                                    <strong>📝 Descrizione:</strong> {goal.description}
+                                  </div>
+                                  
+                                  {/* Progress Bar visuale */}
+                                  <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-xs font-medium text-gray-700">📈 Progresso</span>
+                                      <span className="text-xs font-bold text-blue-600">{goal.completion_pct?.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-blue-100 rounded-full h-2">
+                                      <div 
+                                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min(goal.completion_pct || 0, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    {goal.gap_value && goal.gap_value > 0 && (
+                                      <div className="text-xs text-gray-600 mt-1">
+                                        🎯 Mancano ancora <strong>{goal.gap_value} {goal.unit}</strong> per completare
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {goal.semantic_context?.autonomy_level && (
+                                    <div className="bg-white rounded p-2 border border-blue-200">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <span className="text-xs font-medium">🤖 Modalità Esecuzione:</span>
+                                        <span className={`px-2 py-1 text-xs rounded ${getAutonomyInfo(goal.semantic_context.autonomy_level).color}`}>
+                                          {getAutonomyInfo(goal.semantic_context.autonomy_level).icon} {getAutonomyInfo(goal.semantic_context.autonomy_level).label}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-gray-600">
+                                        {getAutonomyInfo(goal.semantic_context.autonomy_level).description}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {goal.semantic_context?.business_value && (
+                                    <div className="text-xs text-gray-700 bg-white rounded p-2 border border-blue-200">
+                                      <strong>💰 Valore Business:</strong> {goal.semantic_context.business_value}
+                                    </div>
+                                  )}
+                                  
+                                  {goal.semantic_context?.execution_phase && (
+                                    <div className="text-xs text-gray-600">
+                                      <strong>⏱️ Fase Progetto:</strong> {goal.semantic_context.execution_phase}
+                                    </div>
+                                  )}
+
+                                  {/* Informazioni aggiuntive per l'utente */}
+                                  <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 border-l-2 border-blue-300">
+                                    <strong>ℹ️ Info:</strong> Questo obiettivo viene aggiornato automaticamente quando i task correlati vengono completati dal team di agenti.
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Strategic Deliverables Section */}
+                  {deliverables.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-green-600 mb-2">📋 Asset Strategici</h4>
+                      <div className="grid grid-cols-1 gap-1">
+                        {goalsToShow.filter(goal => deliverables.includes(goal)).map((goal) => (
+                          <div key={goal.id} className="bg-green-50 rounded border border-green-100 overflow-hidden transition-all duration-200">
+                            <div 
+                              className="flex items-center justify-between p-2 cursor-pointer hover:bg-green-100 transition-colors group"
+                              onClick={() => toggleGoalExpansion(goal.id)}
+                            >
+                              <div className="flex items-center space-x-2 flex-1">
+                                <span className="text-xs">
+                                  {goal.status === 'completed' ? '✅' : goal.completion_pct! < 30 ? '⚠️' : '📊'}
+                                </span>
+                                <span className="text-sm font-medium">{formatMetricType(goal.metric_type)}</span>
+                                <span className="text-xs text-green-400 group-hover:text-green-600 transition-colors">
+                                  clicca per dettagli
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600 font-medium">
+                                {goal.current_value}/{goal.target_value} {goal.unit}
+                              </div>
+                            </div>
+                            
+                            {/* Expanded Details con animazione smooth */}
+                            <div className={`transition-all duration-300 ease-in-out ${
+                              expandedGoalId === goal.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                            } overflow-hidden`}>
+                              <div className="px-3 pb-3 border-t border-green-200 bg-green-25">
+                                <div className="space-y-3 pt-3">
+                                  <div className="text-xs text-gray-700">
+                                    <strong>📝 Descrizione:</strong> {goal.description}
+                                  </div>
+                                  
+                                  {/* Progress Bar visuale */}
+                                  <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-xs font-medium text-gray-700">📈 Progresso</span>
+                                      <span className="text-xs font-bold text-green-600">{goal.completion_pct?.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-green-100 rounded-full h-2">
+                                      <div 
+                                        className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min(goal.completion_pct || 0, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    {goal.gap_value && goal.gap_value > 0 && (
+                                      <div className="text-xs text-gray-600 mt-1">
+                                        🎯 Mancano ancora <strong>{goal.gap_value} {goal.unit}</strong> per completare
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {goal.semantic_context?.deliverable_type && (
+                                    <div className="text-xs text-green-600 bg-white rounded p-2 border border-green-200">
+                                      <strong>🔧 Tipo Asset:</strong> {goal.semantic_context.deliverable_type}
+                                    </div>
+                                  )}
+
+                                  {goal.semantic_context?.autonomy_level && (
+                                    <div className="bg-white rounded p-2 border border-green-200">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <span className="text-xs font-medium">🤖 Modalità Esecuzione:</span>
+                                        <span className={`px-2 py-1 text-xs rounded ${getAutonomyInfo(goal.semantic_context.autonomy_level).color}`}>
+                                          {getAutonomyInfo(goal.semantic_context.autonomy_level).icon} {getAutonomyInfo(goal.semantic_context.autonomy_level).label}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-gray-600">
+                                        {getAutonomyInfo(goal.semantic_context.autonomy_level).description}
+                                      </div>
+                                      {goal.semantic_context?.autonomy_reason && (
+                                        <div className="text-xs text-gray-500 mt-1 italic">
+                                          "{goal.semantic_context.autonomy_reason}"
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {goal.semantic_context?.business_value && (
+                                    <div className="text-xs text-gray-700 bg-white rounded p-2 border border-green-200">
+                                      <strong>💰 Valore Business:</strong> {goal.semantic_context.business_value}
+                                    </div>
+                                  )}
+                                  
+                                  {goal.semantic_context?.execution_phase && (
+                                    <div className="text-xs text-gray-600">
+                                      <strong>⏱️ Fase Progetto:</strong> {goal.semantic_context.execution_phase}
+                                    </div>
+                                  )}
+
+                                  {goal.semantic_context?.acceptance_criteria && goal.semantic_context.acceptance_criteria.length > 0 && (
+                                    <div className="bg-white rounded p-2 border border-green-200">
+                                      <div className="text-xs text-gray-600 mb-1">
+                                        <strong>✅ Criteri di Successo:</strong>
+                                      </div>
+                                      <ul className="text-xs text-gray-600 space-y-1">
+                                        {goal.semantic_context.acceptance_criteria.slice(0, 3).map((criteria: string, idx: number) => (
+                                          <li key={idx} className="flex items-start">
+                                            <span className="text-green-500 mr-1">•</span>
+                                            <span>{criteria}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {/* Strumenti AI disponibili */}
+                                  {goal.semantic_context?.available_tools && goal.semantic_context.available_tools.length > 0 && (
+                                    <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                                      <div className="text-xs text-blue-700 mb-1">
+                                        <strong>🛠️ Strumenti AI Utilizzati:</strong>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {goal.semantic_context.available_tools.map((tool: string, idx: number) => (
+                                          <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                            {tool}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Input umano richiesto */}
+                                  {goal.semantic_context?.human_input_required && goal.semantic_context.human_input_required.length > 0 && (
+                                    <div className="bg-yellow-50 rounded p-2 border border-yellow-200">
+                                      <div className="text-xs text-yellow-700 mb-1">
+                                        <strong>👤 Input Umano Necessario:</strong>
+                                      </div>
+                                      <div className="text-xs text-yellow-600">
+                                        {goal.semantic_context.human_input_required.join(', ')}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Informazioni aggiuntive per l'utente */}
+                                  <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 border-l-2 border-green-300">
+                                    <strong>ℹ️ Info:</strong> Questo asset verrà creato automaticamente dal team di agenti quando i prerequisiti saranno soddisfatti.
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {goals.length > 3 && (
-                <div className="text-center text-xs text-gray-500 pt-1">
-                  ...e altri {goals.length - 3} obiettivi
-                </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}

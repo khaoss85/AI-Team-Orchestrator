@@ -20,6 +20,9 @@ interface FeedbackRequest {
     deliverable_data?: any
     quality_assessment?: any
     workspace_goal?: string
+    workspace_name?: string
+    why_review_needed?: string
+    key_content?: string
   }
 }
 
@@ -34,6 +37,7 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
   const [loading, setLoading] = useState(true)
   const [selectedRequest, setSelectedRequest] = useState<FeedbackRequest | null>(null)
   const [filter, setFilter] = useState<'all' | 'urgent' | 'medium' | 'low'>('all')
+  const [workspaceNames, setWorkspaceNames] = useState<{[key: string]: string}>({})
 
   useEffect(() => {
     fetchFeedbackRequests()
@@ -48,7 +52,28 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
-        setRequests(data.pending_requests || [])
+        const requestsData = data || []
+        setRequests(requestsData)
+        
+        // Fetch workspace names for global view
+        if (!workspaceId && requestsData.length > 0) {
+          const uniqueWorkspaceIds = [...new Set(requestsData.map(r => r.workspace_id))]
+          const workspaceNamesMap = {}
+          
+          for (const wsId of uniqueWorkspaceIds) {
+            try {
+              const wsResponse = await fetch(`http://localhost:8000/api/workspaces/${wsId}`)
+              if (wsResponse.ok) {
+                const wsData = await wsResponse.json()
+                workspaceNamesMap[wsId] = wsData.name || `Progetto ${wsId.slice(0, 8)}`
+              }
+            } catch (err) {
+              workspaceNamesMap[wsId] = `Progetto ${wsId.slice(0, 8)}`
+            }
+          }
+          
+          setWorkspaceNames(workspaceNamesMap)
+        }
       }
     } catch (error) {
       console.error('Error fetching feedback requests:', error)
@@ -133,18 +158,33 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
 
   const extractDeliverablePreview = (request: FeedbackRequest) => {
     const deliverable = request.context?.deliverable_data
-    if (!deliverable) return null
-
-    // Extract meaningful preview content
-    const summary = deliverable.summary || deliverable.description || ''
-    const title = deliverable.title || deliverable.name || request.title
+    const workspaceName = workspaceNames[request.workspace_id] || `Progetto ${request.workspace_id.slice(0, 8)}`
+    
+    // Parse description to extract key fields - prioritize "What to Review"
+    const description = request.description || ''
+    
+    // Extract "What to Review" (prioritized) or "Why Review Needed" as fallback
+    const whatToReviewMatch = description.match(/\*\*What to Review\*\*[:\s]*([^\*]+)/)
+    const whyReviewMatch = description.match(/\*\*Why Review Needed\*\*[:\s]*([^\*]+)/)
+    
+    const reviewReason = whatToReviewMatch 
+      ? whatToReviewMatch[1].trim().replace(/\n/g, ' ').slice(0, 100) + (whatToReviewMatch[1].length > 100 ? '...' : '')
+      : whyReviewMatch 
+        ? whyReviewMatch[1].trim().replace(/\n/g, ' ').slice(0, 100) + (whyReviewMatch[1].length > 100 ? '...' : '')
+        : "Il team AI ha completato questo lavoro e necessita della tua verifica"
+    
+    // Extract clean title from Business Impact or fallback
+    const businessImpactMatch = description.match(/\*\*Business Impact\*\*[:\s]*([^\*]+)/)
+    const cleanTitle = businessImpactMatch
+      ? businessImpactMatch[1].trim().slice(0, 70) + (businessImpactMatch[1].length > 70 ? '...' : '')
+      : request.title.replace('Review ', '').replace(' Deliverable', '').replace('Validate ', '')
     
     return {
-      title,
-      summary: summary.slice(0, 200) + (summary.length > 200 ? '...' : ''),
+      title: cleanTitle,
+      workspaceName,
+      whyReviewNeeded: reviewReason,
       quality_score: request.context?.quality_assessment?.overall_score,
-      ready_for_use: request.context?.quality_assessment?.ready_for_use,
-      key_points: deliverable.key_insights || deliverable.next_steps || []
+      ready_for_use: request.context?.quality_assessment?.ready_for_use
     }
   }
 
@@ -171,6 +211,22 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
+            {/* Breadcrumb navigation for filtered view */}
+            {workspaceId && (
+              <div className="flex items-center space-x-2 mb-2">
+                <button
+                  onClick={() => window.location.href = '/human-feedback'}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>Tutti i progetti</span>
+                </button>
+                <span className="text-gray-400">→</span>
+                <span className="text-sm text-gray-600">Questo progetto</span>
+              </div>
+            )}
             <h1 className="text-2xl font-bold text-gray-900">
               {workspaceId ? 'Project Deliverables Ready for Review' : 'Feedback Dashboard'}
             </h1>
@@ -217,78 +273,147 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
           <p className="text-gray-600">No pending reviews at the moment.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredRequests.map(request => {
-            const preview = extractDeliverablePreview(request)
-            const timeRemaining = getTimeRemaining(request.expires_at)
-            
-            return (
-              <div
-                key={request.id}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => setSelectedRequest(request)}
-              >
-                {/* Priority Badge */}
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(request.priority)}`}>
-                    {getPriorityIcon(request.priority)} {request.priority.toUpperCase()}
-                  </span>
-                  <span className="text-sm text-gray-500">{timeRemaining}</span>
-                </div>
-
-                {/* Title */}
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  {preview?.title || request.title}
-                </h3>
-
-                {/* Quality Score */}
-                {preview?.quality_score && (
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Quality Score</span>
-                      <span className={`font-medium ${preview.quality_score > 0.8 ? 'text-green-600' : preview.quality_score > 0.6 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {Math.round(preview.quality_score * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                      <div 
-                        className={`h-2 rounded-full ${preview.quality_score > 0.8 ? 'bg-green-500' : preview.quality_score > 0.6 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${preview.quality_score * 100}%` }}
-                      ></div>
-                    </div>
+        <div className="space-y-6">
+          {/* Group requests by workspace for tree view */}
+          {Object.entries(
+            filteredRequests.reduce((groups, request) => {
+              const workspaceName = workspaceNames[request.workspace_id] || `Progetto ${request.workspace_id.slice(0, 8)}`
+              if (!groups[request.workspace_id]) {
+                groups[request.workspace_id] = {
+                  name: workspaceName,
+                  requests: []
+                }
+              }
+              groups[request.workspace_id].requests.push(request)
+              return groups
+            }, {} as Record<string, { name: string; requests: FeedbackRequest[] }>)
+          ).map(([workspaceId, group]) => (
+            <div key={workspaceId} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              {/* Workspace Header */}
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-lg">📁</span>
+                    <h3 className="font-medium text-gray-900">{group.name}</h3>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {group.requests.length} {group.requests.length === 1 ? 'review' : 'reviews'}
+                    </span>
                   </div>
-                )}
-
-                {/* Summary */}
-                {preview?.summary && (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                    {preview.summary}
-                  </p>
-                )}
-
-                {/* Key Points */}
-                {preview?.key_points && preview.key_points.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Key deliverables:</p>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      {preview.key_points.slice(0, 3).map((point, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="text-blue-500 mr-2">•</span>
-                          <span className="line-clamp-1">{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Actions Preview */}
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>{request.proposed_actions?.length || 0} actions proposed</span>
-                  <span className="text-blue-600 hover:text-blue-800">Click to review →</span>
+                  {/* Show urgent count for this workspace */}
+                  {group.requests.filter(r => ['critical', 'high'].includes(r.priority)).length > 0 && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      {group.requests.filter(r => ['critical', 'high'].includes(r.priority)).length} urgenti
+                    </span>
+                  )}
                 </div>
               </div>
-            )
-          })}
+
+              {/* Request List */}
+              <div className="divide-y divide-gray-100">
+                {group.requests
+                  .sort((a, b) => {
+                    // Sort by priority: critical > high > medium > low
+                    const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
+                    return priorityOrder[b.priority] - priorityOrder[a.priority]
+                  })
+                  .map(request => {
+                    const preview = extractDeliverablePreview(request)
+                    const timeRemaining = getTimeRemaining(request.expires_at)
+                    
+                    return (
+                      <div
+                        key={request.id}
+                        className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedRequest(request)}
+                      >
+                        <div className="flex items-center justify-between">
+                          {/* Left side: Priority + Title + Description */}
+                          <div className="flex items-center space-x-4 flex-1 min-w-0">
+                            {/* Priority indicator */}
+                            <div className="flex-shrink-0">
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${getPriorityColor(request.priority)}`}>
+                                {getPriorityIcon(request.priority)}
+                              </span>
+                            </div>
+                            
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <h4 className="text-sm font-medium text-gray-900 truncate">
+                                  {preview?.title}
+                                </h4>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(request.priority)}`}>
+                                  {request.priority.toUpperCase()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 truncate">
+                                {preview?.whyReviewNeeded}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right side: Metrics + Time */}
+                          <div className="flex items-center space-x-4 flex-shrink-0">
+                            {/* Quality Score with working tooltip */}
+                            {preview?.quality_score && (
+                              <div className="text-center group relative">
+                                <div 
+                                  className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                    preview.quality_score > 0.7 ? 'bg-green-100 text-green-700' : 
+                                    preview.quality_score > 0.5 ? 'bg-yellow-100 text-yellow-700' : 
+                                    'bg-red-100 text-red-700'
+                                  }`}
+                                >
+                                  {Math.round(preview.quality_score * 100)}%
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">qualità</div>
+                                
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 w-64">
+                                  <div className="font-semibold mb-1">Punteggio Qualità:</div>
+                                  <div>• >70% = Ottimo</div>
+                                  <div>• 50-70% = Buono</div>
+                                  <div>• &lt;50% = Richiede miglioramenti</div>
+                                  <div className="mt-1 text-gray-300">Basato su completezza, accuratezza e usabilità</div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Time remaining with working tooltip */}
+                            <div className="text-center min-w-0 group relative">
+                              <div 
+                                className={`text-sm font-medium ${
+                                  timeRemaining === 'Expired' ? 'text-red-600' :
+                                  timeRemaining.includes('h') ? 'text-gray-900' : 'text-orange-600'
+                                }`}
+                              >
+                                {timeRemaining === 'Expired' ? '⏰' : 
+                                 timeRemaining.includes('h') ? timeRemaining.split(' ')[0] : timeRemaining.split('m')[0] + 'm'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {timeRemaining === 'Expired' ? 'scaduto' : 'rimasti'}
+                              </div>
+                              
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 w-48">
+                                Tempo rimasto per approvare prima della scadenza automatica
+                              </div>
+                            </div>
+                            
+                            {/* Action arrow */}
+                            <div className="text-blue-600 hover:text-blue-800">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -299,6 +424,8 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
           onClose={() => setSelectedRequest(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          workspaceId={workspaceId}
+          workspaceNames={workspaceNames}
         />
       )}
     </div>
@@ -311,7 +438,9 @@ const ReviewModal: React.FC<{
   onClose: () => void
   onApprove: (id: string, feedback?: string) => void
   onReject: (id: string, reason: string) => void
-}> = ({ request, onClose, onApprove, onReject }) => {
+  workspaceId?: string
+  workspaceNames: {[key: string]: string}
+}> = ({ request, onClose, onApprove, onReject, workspaceId, workspaceNames }) => {
   const [feedback, setFeedback] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectionForm, setShowRejectionForm] = useState(false)
@@ -357,86 +486,218 @@ const ReviewModal: React.FC<{
 
         {/* Content */}
         <div className="p-6">
-          {/* Why Review Needed */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-blue-900 mb-2">🤔 Why does this need your review?</h3>
-            <p className="text-blue-800">{request.description}</p>
+          {/* Project Info per vista globale */}
+          {!workspaceId && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <span className="text-gray-600 mr-2">📁</span>
+                <div>
+                  <p className="font-medium text-gray-900">Progetto: {workspaceNames[request.workspace_id] || `Progetto ${request.workspace_id.slice(0, 8)}`}</p>
+                  <p className="text-sm text-gray-600">ID: {request.workspace_id}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* What to Review and Why - COMPLETO */}
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            {(() => {
+              const description = request.description || ''
+              const whatToReviewMatch = description.match(/\*\*What to Review\*\*[:\s]*([^\*]+)/)
+              const whyReviewMatch = description.match(/\*\*Why Review Needed\*\*[:\s]*([^\*]+)/)
+              
+              return (
+                <>
+                  {whatToReviewMatch && (
+                    <div className="mb-3">
+                      <h3 className="font-medium text-blue-900 mb-2 flex items-center">
+                        <span className="mr-2">🔍</span>
+                        Cosa verificare
+                      </h3>
+                      <div className="text-blue-800 leading-relaxed">
+                        {whatToReviewMatch[1].trim().replace(/\n/g, ' ')}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {whyReviewMatch && (
+                    <div>
+                      <h3 className="font-medium text-blue-900 mb-2 flex items-center">
+                        <span className="mr-2">💡</span>
+                        Perché serve la tua review
+                      </h3>
+                      <div className="text-blue-800 leading-relaxed">
+                        {whyReviewMatch[1].trim().replace(/\n/g, ' ')}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!whatToReviewMatch && !whyReviewMatch && (
+                    <div>
+                      <h3 className="font-medium text-blue-900 mb-2 flex items-center">
+                        <span className="mr-2">🔍</span>
+                        Review richiesta
+                      </h3>
+                      <div className="text-blue-800 leading-relaxed">
+                        {request.context?.why_review_needed || 
+                         "Controlla il contenuto generato dal team AI per assicurarti che rispetti i tuoi standard di qualità."}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
-          {/* Summary */}
-          {preview.summary && (
-            <div className="mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">📋 Summary</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700">{preview.summary}</p>
-              </div>
+          {/* Quality Analysis & Technical Details */}
+          <details className="mb-6 border border-gray-200 rounded-lg">
+            <summary className="cursor-pointer p-4 font-medium text-gray-700 hover:bg-gray-50 flex items-center">
+              <svg className="w-4 h-4 mr-2 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              📊 Analisi Qualità & Dettagli Tecnici
+            </summary>
+            <div className="p-4 border-t border-gray-200 space-y-4">
+              {/* Quality Breakdown */}
+              {request.context?.quality_assessment && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-3 flex items-center">
+                    <span className="mr-2">🎯</span>
+                    Breakdown Punteggio Qualità ({Math.round((request.context.quality_assessment.overall_score || 0) * 100)}%)
+                  </h4>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>📄 Completezza contenuto:</span>
+                      <span className="font-medium">{request.context.quality_assessment.quality_issues?.includes('placeholder_data') ? '❌ Dati placeholder' : '✅ Dati completi'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>🎯 Usabilità business:</span>
+                      <span className="font-medium">{request.context.quality_assessment.ready_for_use ? '✅ Pronto per uso' : '⚠️ Richiede modifiche'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>💼 Conformità requisiti:</span>
+                      <span className="font-medium">{request.context.quality_assessment.needs_enhancement ? '⚠️ Miglioramenti necessari' : '✅ Conforme'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>🔍 Problemi identificati:</span>
+                      <span className="font-medium">{request.context.quality_assessment.quality_issues?.length || 0}</span>
+                    </div>
+                  </div>
+                  
+                  {request.context.quality_assessment.improvement_suggestions && (
+                    <div className="mt-3">
+                      <h5 className="font-medium text-blue-800 mb-2">💡 Suggerimenti miglioramento:</h5>
+                      <ul className="text-sm space-y-1">
+                        {request.context.quality_assessment.improvement_suggestions.slice(0, 3).map((suggestion, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                            <span className="text-blue-700">{suggestion.slice(0, 120)}...</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Summary */}
+              {preview.summary && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-800 mb-2">📝 Summary Task</h4>
+                  <p className="text-gray-700 text-sm">{preview.summary}</p>
+                </div>
+              )}
+              
+              {/* Next Steps */}
+              {preview.next_steps && preview.next_steps.length > 0 && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="font-medium text-green-800 mb-2">🎯 Next Steps</h4>
+                  <ul className="space-y-1 text-sm">
+                    {preview.next_steps.map((step, index) => (
+                      <li key={index} className="flex items-start text-green-700">
+                        <span className="text-green-500 mr-2 mt-0.5">✓</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Raw JSON - minimized */}
+              {Object.keys(detailedContent).length > 0 && (
+                <details className="bg-gray-800 rounded-lg">
+                  <summary className="cursor-pointer p-3 text-white text-sm font-medium">
+                    🔧 Dati Tecnici Raw (JSON)
+                  </summary>
+                  <div className="p-3 max-h-40 overflow-y-auto">
+                    <pre className="text-xs text-green-400 font-mono">
+                      {JSON.stringify(detailedContent, null, 2)}
+                    </pre>
+                  </div>
+                </details>
+              )}
             </div>
-          )}
+          </details>
 
-          {/* Deliverable Content */}
-          {Object.keys(detailedContent).length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">📄 Deliverable Content</h3>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {JSON.stringify(detailedContent, null, 2)}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {/* Next Steps */}
-          {preview.next_steps && preview.next_steps.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">🎯 Proposed Next Steps</h3>
-              <ul className="space-y-2">
-                {preview.next_steps.map((step, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="text-green-500 mr-3 mt-1">✓</span>
-                    <span className="text-gray-700">{step}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Proposed Actions */}
+          {/* Proposed Actions - MIGLIORATO */}
           {request.proposed_actions && request.proposed_actions.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">⚡ Proposed Actions</h3>
+              <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                <span className="mr-2">⚡</span>
+                Azioni Proposte dal Team AI
+              </h3>
               <div className="space-y-3">
                 {request.proposed_actions.map((action, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-3">
-                    <h4 className="font-medium text-gray-800">{action.action}</h4>
-                    <p className="text-gray-600 text-sm mt-1">{action.description}</p>
+                  <div key={index} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex items-start">
+                      <div className="text-green-500 mr-3 mt-1">
+                        {index === 0 ? '✅' : '📋'}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-green-800 mb-1">{action.action}</h4>
+                        <p className="text-green-700 text-sm leading-relaxed">{action.description}</p>
+                        {index === 0 && (
+                          <span className="inline-block mt-2 px-2 py-1 bg-green-200 text-green-800 text-xs font-medium rounded">
+                            Azione Principale
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600 flex items-center">
+                  <span className="mr-2">💡</span>
+                  <strong>Suggerimento:</strong> Approva se le azioni ti sembrano corrette, oppure rifiuta specificando cosa dovrebbe essere cambiato.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Feedback Form */}
+          {/* Commenti aggiuntivi (opzionale) */}
           <div className="mb-6">
-            <h3 className="font-medium text-gray-900 mb-3">💬 Your Feedback (Optional)</h3>
+            <h3 className="font-medium text-gray-900 mb-3">💬 Commenti aggiuntivi (opzionale)</h3>
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Add any comments or suggestions..."
+              placeholder="Aggiungi commenti o suggerimenti..."
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows={3}
+              rows={2}
             />
           </div>
 
-          {/* Rejection Form */}
+          {/* Form rifiuto */}
           {showRejectionForm && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-medium text-red-900 mb-3">❌ Reason for Rejection</h3>
+              <h3 className="font-medium text-red-900 mb-3">❌ Motivo del rifiuto</h3>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please explain why this deliverable needs to be improved..."
+                placeholder="Spiega cosa deve essere migliorato..."
                 className="w-full p-3 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                rows={3}
+                rows={2}
                 required
               />
             </div>
@@ -444,37 +705,37 @@ const ReviewModal: React.FC<{
         </div>
 
         {/* Actions */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
-          <div className="flex space-x-4">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+          <div className="flex space-x-3">
             {!showRejectionForm ? (
               <>
                 <button
                   onClick={() => onApprove(request.id, feedback)}
-                  className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
                 >
-                  ✅ Approve & Continue
+                  ✅ Approva
                 </button>
                 <button
                   onClick={() => setShowRejectionForm(true)}
-                  className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
                 >
-                  ❌ Request Changes
+                  ❌ Rifiuta
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => setShowRejectionForm(false)}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Annulla
                 </button>
                 <button
                   onClick={() => rejectionReason.trim() && onReject(request.id, rejectionReason)}
                   disabled={!rejectionReason.trim()}
-                  className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Submit Rejection
+                  Conferma Rifiuto
                 </button>
               </>
             )}

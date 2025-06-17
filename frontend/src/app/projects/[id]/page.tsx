@@ -207,7 +207,7 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
             <div className="flex flex-col items-center">
               <FeedbackNotificationBadge
                 workspaceId={id}
-                onClick={() => setShowFeedbackPanel(true)}
+                onClick={() => window.location.href = `/human-feedback?workspace_id=${id}`}
                 className="mb-2"
               />
               <div className="text-xs text-gray-500 text-center">Review<br/>Requests</div>
