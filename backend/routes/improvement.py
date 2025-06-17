@@ -106,7 +106,9 @@ async def request_asset_refinement(task_id: str, refinement_request: Dict[str, A
                     f"Enhance {asset_name} based on user feedback",
                     "Maintain original structure but improve content quality",
                     "Address all user concerns and suggestions",
-                    "Ensure business-ready output"
+                    "Ensure business-ready output",
+                    "Keep JSON output concise and under 80KB limit",
+                    "Focus on key improvements rather than verbose details"
                 ]
             }
         }

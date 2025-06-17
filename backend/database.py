@@ -499,9 +499,8 @@ async def create_workspace(name: str, description: Optional[str], user_id: str, 
         result = supabase.table("workspaces").insert(data).execute() # Rimossa await
         created_workspace = result.data[0] if result.data and len(result.data) > 0 else None
         
-        # 🎯 AUTO-CREATE WORKSPACE GOALS: Parse goal for numerical targets
-        if created_workspace and goal:
-            await _auto_create_workspace_goals(created_workspace["id"], goal)
+        # 🎯 GOALS CREATION DELAYED: Goals will be created when user reaches /configure page
+        logger.info("⚠️ Workspace goals creation delayed - will be done in /configure page")
         
         return created_workspace
     except Exception as e:
@@ -889,6 +888,17 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
     """
     data_to_update = {"status": status, "updated_at": datetime.now().isoformat()}
     
+    # CRITICAL FIX: Extract task field updates from result_payload
+    # This handles cases where task fields like agent_id need to be updated
+    if result_payload is not None:
+        # List of task fields that can be updated via result_payload
+        task_field_keys = ["agent_id", "assigned_to_role", "priority", "estimated_effort_hours", "deadline"]
+        
+        for field_key in task_field_keys:
+            if field_key in result_payload:
+                data_to_update[field_key] = result_payload[field_key]
+                logger.info(f"Task {task_id}: Updating {field_key} = {result_payload[field_key]}")
+    
     # 🎯 STEP 1: QUALITY VALIDATION FOR COMPLETED TASKS
     if status == "completed" and result_payload is not None:
         try:
@@ -978,22 +988,29 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                     # Quality sufficient for potential verification - create checkpoint
                     from human_verification_system import human_verification_system
                     
-                    verification_checkpoint = await human_verification_system.create_verification_checkpoint(
-                        workspace_id=workspace_id,
-                        task_id=task_id,
-                        task_name=task_name,
-                        asset_type=asset_type,
-                        deliverable_data=result_payload,
-                        quality_assessment={
-                            "overall_score": quality_assessment.overall_score,
-                            "ready_for_use": quality_assessment.ready_for_use,
-                            "needs_enhancement": quality_assessment.needs_enhancement,
-                            "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
-                            "enhancement_priority": quality_assessment.enhancement_priority,
-                            "improvement_suggestions": quality_assessment.improvement_suggestions
-                        },
-                        context={"workspace_goal": workspace_goal}
-                    )
+                    # 🚫 CRITICAL FIX: Check if verification checkpoint already exists for this task
+                    existing_checkpoint = human_verification_system.get_checkpoint_by_task_id(task_id)
+                    if existing_checkpoint:
+                        logger.info(f"🔄 DUPLICATE PREVENTED: Task {task_id} already has verification checkpoint {existing_checkpoint.id}")
+                        # Use existing checkpoint instead of creating new one
+                        verification_checkpoint = existing_checkpoint
+                    else:
+                        verification_checkpoint = await human_verification_system.create_verification_checkpoint(
+                            workspace_id=workspace_id,
+                            task_id=task_id,
+                            task_name=task_name,
+                            asset_type=asset_type,
+                            deliverable_data=result_payload,
+                            quality_assessment={
+                                "overall_score": quality_assessment.overall_score,
+                                "ready_for_use": quality_assessment.ready_for_use,
+                                "needs_enhancement": quality_assessment.needs_enhancement,
+                                "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
+                                "enhancement_priority": quality_assessment.enhancement_priority,
+                                "improvement_suggestions": quality_assessment.improvement_suggestions
+                            },
+                            context={"workspace_goal": workspace_goal}
+                        )
                     
                     if verification_checkpoint:
                         # Human verification required - set status to pending_verification

@@ -208,6 +208,28 @@ class RobustJSONParser:
         # Fallback: primo {
         return text.find('{')
     
+    def _find_last_valid_json_position(self, json_text: str) -> int:
+        """Trova l'ultima posizione valida prima del truncating"""
+        # Cerca l'ultima virgola seguita da spazio o newline
+        last_comma = -1
+        for i in range(len(json_text) - 1, -1, -1):
+            if json_text[i] == ',' and i < len(json_text) - 1:
+                next_char = json_text[i + 1]
+                if next_char in [' ', '\n', '\t', '\r']:
+                    last_comma = i + 1
+                    break
+        
+        # Se non troviamo una virgola valida, cerca l'ultima chiusura di stringa completa
+        if last_comma == -1:
+            for i in range(len(json_text) - 1, -1, -1):
+                if json_text[i] == '"' and i > 0 and json_text[i-1] != '\\':
+                    # Verifica che sia una chiusura valida contando le quotes precedenti
+                    quotes_before = json_text[:i].count('"') - json_text[:i].count('\\"')
+                    if quotes_before % 2 == 1:  # Numero dispari = questa è una chiusura
+                        return i + 1
+        
+        return max(0, last_comma)
+    
     def _repair_truncated_json_basic(self, json_fragment: str) -> Optional[str]:
         """Riparazione base di JSON troncato"""
         if not json_fragment.strip():
@@ -216,6 +238,11 @@ class RobustJSONParser:
         # Assicura che inizi con {
         if not json_fragment.strip().startswith('{'):
             return None
+        
+        # Trova l'ultima posizione valida del JSON
+        last_valid_pos = self._find_last_valid_json_position(json_fragment)
+        if last_valid_pos > 0:
+            json_fragment = json_fragment[:last_valid_pos]
         
         # Conta parentesi graffe per bilanciare
         open_braces = json_fragment.count('{')
@@ -428,6 +455,7 @@ class RobustJSONParser:
         
         # CAMPO OBBLIGATORIO: status
         if "status" not in result or not result["status"]:
+            # Default to "completed" for enhancement tasks, unless there are clear failure indicators
             result["status"] = "completed"
             logger.warning(f"Missing status in parsed result - defaulted to: completed")
         

@@ -417,7 +417,7 @@ class TaskExecutionOutput(BaseModel):
     task_id: str = PydanticField(description="ID of the task")  
     status: Literal["completed", "failed", "requires_handoff", "in_progress"] = PydanticField(default="completed", description="Task completion status")
     summary: str = PydanticField(max_length=2000, description="Summary of work performed")  
-    detailed_results_json: Optional[str] = PydanticField(default="", max_length=50000, description="Detailed structured results as JSON string (max 50KB)")
+    detailed_results_json: Optional[str] = PydanticField(default="", max_length=100000, description="Detailed structured results as JSON string (max 100KB)")
     next_steps: Optional[List[str]] = PydanticField(default_factory=list, description="Suggested next actions")
     suggested_handoff_target_role: Optional[str] = PydanticField(default="", description="Role to hand off to if required")
     resources_consumed_json: Optional[str] = PydanticField(default="", max_length=5000, description="Resource usage as JSON string")

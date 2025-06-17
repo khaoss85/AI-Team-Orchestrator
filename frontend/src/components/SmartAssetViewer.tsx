@@ -6,6 +6,7 @@ import type { ActionableAsset } from '@/types';
 import StructuredAssetRenderer from './StructuredAssetRenderer';
 import GenericArrayViewer from './GenericArrayViewer';
 import { useAssetRefinementStatus } from '@/hooks/useAssetRefinementStatus';
+import EnhancementTaskMonitorWebSocket from './EnhancementTaskMonitorWebSocket';
 
 interface SmartAssetViewerProps {
   asset: ActionableAsset;
@@ -25,6 +26,8 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
   const [refinementFeedback, setRefinementFeedback] = useState('');
   const [refinementLoading, setRefinementLoading] = useState(false);
   const [showEnhancementDetails, setShowEnhancementDetails] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [showTaskMonitor, setShowTaskMonitor] = useState(false);
   
   // Get workspace ID from URL
   const workspaceId = typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : '';
@@ -92,6 +95,13 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
         localStorage.removeItem(draftKey);
         setRefinementFeedback('');
         
+        // Extract task ID from response for monitoring
+        if (result.enhancement_task_id) {
+          setCurrentTaskId(result.enhancement_task_id);
+          setShowTaskMonitor(true);
+          console.log('🔍 Starting task monitoring for:', result.enhancement_task_id);
+        }
+        
         // Refresh the refinement status immediately
         console.log('🔄 Refreshing refinement status after submission');
         await refinementStatus.refresh();
@@ -102,7 +112,7 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
         successDiv.innerHTML = `
           <div class="flex items-center space-x-2">
             <span>✅</span>
-            <span>Refinement request submitted successfully!</span>
+            <span>Enhancement task created! Monitoring progress...</span>
           </div>
         `;
         document.body.appendChild(successDiv);
@@ -127,6 +137,32 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
     } finally {
       setRefinementLoading(false);
     }
+  };
+
+  // Handle task completion
+  const handleTaskCompleted = async (taskId: string, result: any) => {
+    console.log('🎉 Enhancement task completed:', taskId, result);
+    
+    // Refresh refinement status to show the completed task
+    await refinementStatus.refresh();
+    
+    // Show completion notification
+    const successDiv = document.createElement('div');
+    successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    successDiv.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <span>🎉</span>
+        <span>Enhancement completed! Asset has been updated.</span>
+      </div>
+    `;
+    document.body.appendChild(successDiv);
+    setTimeout(() => document.body.removeChild(successDiv), 5000);
+    
+    // Hide task monitor after completion
+    setTimeout(() => {
+      setShowTaskMonitor(false);
+      setCurrentTaskId(null);
+    }, 10000); // Keep visible for 10 seconds to show final result
   };
 
   const getAssetTypeInfo = (assetName: string, assetData: any) => {
@@ -437,6 +473,15 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
           {activeView === 'usage' && renderUsageInstructions()}
           {activeView === 'requests' && (
             <div className="space-y-6">
+              {/* Task Monitor for Active Enhancement */}
+              {showTaskMonitor && currentTaskId && (
+                <EnhancementTaskMonitorWebSocket
+                  workspaceId={workspaceId}
+                  taskId={currentTaskId}
+                  onTaskCompleted={handleTaskCompleted}
+                />
+              )}
+              
               {/* Enhancement Status - Minimal */}
               {refinementStatus.isLoading ? (
                 <div className="text-center py-2">
@@ -476,7 +521,7 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-700">{task.name.replace('🔄 ENHANCE: ', '')}</div>
-                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback}"</div>
+                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback || task.context_data?.user_feedback || 'Nessuna descrizione'}"</div>
                                 </div>
                                 <div className="text-orange-600 text-xs ml-2">{task.status}</div>
                               </div>
@@ -498,7 +543,7 @@ const SmartAssetViewer: React.FC<SmartAssetViewerProps> = ({
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-700">{task.name.replace('🔄 ENHANCE: ', '')}</div>
-                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback}"</div>
+                                  <div className="text-gray-500 italic mt-1">"{task.metadata?.user_feedback || task.context_data?.user_feedback || 'Nessuna descrizione'}"</div>
                                 </div>
                                 <div className={`text-xs ml-2 ${
                                   task.status === 'completed' ? 'text-green-600' : 'text-red-600'

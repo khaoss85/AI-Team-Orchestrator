@@ -31,6 +31,36 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize AI Goal Extractor: {e}")
 
+@router.get("/workspaces/{workspace_id}/goals/progress")
+async def get_goal_extraction_progress(workspace_id: str) -> Dict[str, Any]:
+    """Get real-time progress of goal extraction process"""
+    try:
+        # This would be enhanced to track actual progress
+        # For now, return a simple status
+        goals_response = supabase.table("workspace_goals").select("*").eq("workspace_id", workspace_id).execute()
+        
+        if goals_response.data:
+            return {
+                "status": "completed",
+                "progress": 100,
+                "message": "Analisi completata",
+                "goals_count": len(goals_response.data)
+            }
+        else:
+            return {
+                "status": "in_progress", 
+                "progress": 50,
+                "message": "Analisi in corso...",
+                "goals_count": 0
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "progress": 0,
+            "message": f"Errore durante l'analisi: {str(e)}",
+            "goals_count": 0
+        }
+
 @router.post("/workspaces/{workspace_id}/goals/preview")
 async def preview_goals(
     workspace_id: str,
@@ -54,41 +84,88 @@ async def preview_goals(
                 detail="AI Goal Extractor not available"
             )
         
-        # Extract goals using AI
-        extracted_goals = await goal_extractor.extract_goals_from_text(goal_text)
+        # Get workspace context for strategic decomposition
+        workspace_context = await _get_workspace_context(workspace_id)
+        
+        # Extract goals using AI with strategic decomposition
+        extracted_goals = await goal_extractor.extract_goals_from_text(goal_text, workspace_context)
         
         logger.info(f"🔍 Extracted {len(extracted_goals)} goals. First goal type: {type(extracted_goals[0]) if extracted_goals else 'None'}")
         
-        # Simplify for frontend display
-        simplified_goals = []
+        # Separate final metrics from strategic deliverables for better UX
+        final_metrics = []
+        strategic_deliverables = []
+        
         for goal in extracted_goals:
             # Handle both dict and dataclass objects
             if hasattr(goal, '__dict__'):  # dataclass
-                simplified_goals.append({
-                    "id": f"preview_{len(simplified_goals)}",  # Temporary ID
+                goal_data = {
+                    "id": f"preview_{len(final_metrics) + len(strategic_deliverables)}",
                     "value": goal.target_value,
                     "unit": goal.unit,
                     "type": goal.metric_type,
                     "description": _generate_simple_description_from_dataclass(goal),
                     "confidence": goal.confidence,
-                    "editable": True
-                })
+                    "editable": True,
+                    "semantic_context": goal.semantic_context or {}
+                }
+                
+                # Check if this is a strategic deliverable or final metric
+                if hasattr(goal, 'semantic_context') and goal.semantic_context and goal.semantic_context.get('is_strategic_deliverable'):
+                    goal_data["deliverable_type"] = goal.semantic_context.get('deliverable_type', '')
+                    goal_data["business_value"] = goal.semantic_context.get('business_value', '')
+                    goal_data["acceptance_criteria"] = goal.semantic_context.get('acceptance_criteria', [])
+                    goal_data["execution_phase"] = goal.semantic_context.get('execution_phase', '')
+                    # AI Autonomy fields
+                    goal_data["autonomy_level"] = goal.semantic_context.get('autonomy_level', 'autonomous')
+                    goal_data["autonomy_reason"] = goal.semantic_context.get('autonomy_reason', '')
+                    goal_data["available_tools"] = goal.semantic_context.get('available_tools', [])
+                    goal_data["human_input_required"] = goal.semantic_context.get('human_input_required', [])
+                    strategic_deliverables.append(goal_data)
+                else:
+                    final_metrics.append(goal_data)
             else:  # dict
-                simplified_goals.append({
-                    "id": f"preview_{len(simplified_goals)}",  # Temporary ID
+                goal_data = {
+                    "id": f"preview_{len(final_metrics) + len(strategic_deliverables)}",
                     "value": goal.get("target_value", 0),
                     "unit": goal.get("unit", ""),
                     "type": goal.get("metric_type", "deliverables"),
                     "description": _generate_simple_description(goal),
                     "confidence": goal.get("confidence", 0.9),
-                    "editable": True
-                })
+                    "editable": True,
+                    "semantic_context": goal.get("semantic_context", {})
+                }
+                
+                # Check semantic context for strategic deliverable markers
+                context = goal.get("semantic_context", {})
+                if context.get('is_strategic_deliverable'):
+                    goal_data["deliverable_type"] = context.get('deliverable_type', '')
+                    goal_data["business_value"] = context.get('business_value', '')
+                    goal_data["acceptance_criteria"] = context.get('acceptance_criteria', [])
+                    goal_data["execution_phase"] = context.get('execution_phase', '')
+                    # AI Autonomy fields
+                    goal_data["autonomy_level"] = context.get('autonomy_level', 'autonomous')
+                    goal_data["autonomy_reason"] = context.get('autonomy_reason', '')
+                    goal_data["available_tools"] = context.get('available_tools', [])
+                    goal_data["human_input_required"] = context.get('human_input_required', [])
+                    strategic_deliverables.append(goal_data)
+                else:
+                    final_metrics.append(goal_data)
+        
+        total_goals = len(final_metrics) + len(strategic_deliverables)
         
         return {
             "success": True,
             "original_goal": goal_text,
-            "extracted_goals": simplified_goals,
-            "message": f"Ho identificato {len(simplified_goals)} obiettivi"
+            "final_metrics": final_metrics,
+            "strategic_deliverables": strategic_deliverables,
+            "extracted_goals": final_metrics + strategic_deliverables,  # For backward compatibility
+            "summary": {
+                "total_goals": total_goals,
+                "final_metrics_count": len(final_metrics),
+                "strategic_deliverables_count": len(strategic_deliverables)
+            },
+            "message": f"Ho identificato {len(final_metrics)} metriche finali e {len(strategic_deliverables)} deliverable strategici"
         }
         
     except HTTPException:
@@ -540,14 +617,101 @@ def _generate_simple_description_from_dataclass(goal) -> str:
     target_value = goal.target_value
     unit = goal.unit
     
-    # Simple descriptions in Italian
-    if "contact" in unit.lower() or "contatti" in unit.lower():
-        return f"Raccogliere {int(target_value)} contatti qualificati"
+    # Check if it's a strategic deliverable
+    if hasattr(goal, 'semantic_context') and goal.semantic_context and goal.semantic_context.get('is_strategic_deliverable'):
+        deliverable_type = goal.semantic_context.get('deliverable_type', '')
+        if deliverable_type == 'contact_list':
+            return f"Lista di {int(target_value)} contatti ICP qualificati"
+        elif deliverable_type == 'email_sequence':
+            return f"Sequenza email per nurturing e conversioni"
+        elif deliverable_type == 'email_performance_monitoring':
+            return f"Framework di monitoraggio performance email"
+        elif deliverable_type == 'audience_analysis':
+            return f"Analisi completa del target audience"
+        else:
+            return goal.description if hasattr(goal, 'description') else f"Creare {deliverable_type.replace('_', ' ')}"
+    
+    # Final metrics descriptions
+    if metric_type == "contacts":
+        return f"Raccogliere {int(target_value)} contatti ICP qualificati"
+    elif metric_type == "conversion_rate":
+        if "open" in unit.lower():
+            return f"Raggiungere {target_value}% di open rate nelle email"
+        else:
+            return f"Raggiungere {target_value}% di tasso di conversione"
+    elif metric_type == "engagement_rate":
+        return f"Raggiungere {target_value}% di click-through rate"
     elif "email" in unit.lower() or "sequence" in unit.lower():
         return f"Creare {int(target_value)} sequenze email"
-    elif "%" in unit:
+    elif "%" in unit or "percentage" in unit.lower():
         return f"Raggiungere {target_value}% di {metric_type}"
     elif "day" in unit.lower() or "week" in unit.lower() or "giorni" in unit.lower():
         return f"Completare in {target_value} {unit}"
     else:
         return f"Raggiungere {target_value} {unit}"
+
+async def _get_workspace_context(workspace_id: str) -> Dict[str, Any]:
+    """
+    🏢 Recupera contesto del workspace per la decomposizione strategica
+    """
+    try:
+        # Get workspace basic info
+        workspace_response = supabase.table("workspaces").select("*").eq("id", workspace_id).execute()
+        
+        workspace_context = {}
+        
+        if workspace_response.data:
+            workspace = workspace_response.data[0]
+            workspace_context.update({
+                "workspace_name": workspace.get("name", ""),
+                "workspace_description": workspace.get("description", ""),
+                "original_goal": workspace.get("goal", ""),
+                "workspace_status": workspace.get("status", ""),
+                "created_at": workspace.get("created_at", "")
+            })
+        
+        # Get existing agents for capability context
+        agents_response = supabase.table("agents").select("role, seniority, description").eq("workspace_id", workspace_id).execute()
+        
+        if agents_response.data:
+            workspace_context["existing_agents"] = [
+                {
+                    "role": agent.get("role", ""),
+                    "seniority": agent.get("seniority", ""),
+                    "description": agent.get("description", "")
+                }
+                for agent in agents_response.data
+            ]
+        
+        # Get existing tasks for current work context
+        tasks_response = supabase.table("tasks").select("name, description, status").eq("workspace_id", workspace_id).limit(10).execute()
+        
+        if tasks_response.data:
+            workspace_context["recent_tasks"] = [
+                {
+                    "name": task.get("name", ""),
+                    "description": task.get("description", ""),
+                    "status": task.get("status", "")
+                }
+                for task in tasks_response.data
+            ]
+        
+        # Get existing goals to avoid duplication
+        goals_response = supabase.table("workspace_goals").select("metric_type, target_value, description").eq("workspace_id", workspace_id).execute()
+        
+        if goals_response.data:
+            workspace_context["existing_goals"] = [
+                {
+                    "metric_type": goal.get("metric_type", ""),
+                    "target_value": goal.get("target_value", 0),
+                    "description": goal.get("description", "")
+                }
+                for goal in goals_response.data
+            ]
+        
+        logger.info(f"🏢 Workspace context for {workspace_id}: {len(workspace_context.get('existing_agents', []))} agents, {len(workspace_context.get('existing_goals', []))} goals")
+        return workspace_context
+        
+    except Exception as e:
+        logger.error(f"Failed to get workspace context: {e}")
+        return {}

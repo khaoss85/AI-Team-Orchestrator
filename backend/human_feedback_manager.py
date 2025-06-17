@@ -23,6 +23,7 @@ class FeedbackRequestType(str, Enum):
     PRIORITY_DECISION = "priority_decision"
     RESOURCE_ALLOCATION = "resource_allocation"
     CRITICAL_ASSET_VERIFICATION = "critical_asset_verification"
+    QUALITY_GATE_CHECKPOINT = "quality_gate_checkpoint"
 
 class FeedbackStatus(str, Enum):
     """Status of feedback requests"""

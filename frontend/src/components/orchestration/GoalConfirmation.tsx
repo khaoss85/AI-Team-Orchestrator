@@ -11,10 +11,28 @@ interface ExtractedGoal {
   description: string;
   confidence: number;
   editable: boolean;
+  // Strategic deliverable fields
+  deliverable_type?: string;
+  business_value?: string;
+  acceptance_criteria?: string[];
+  execution_phase?: string;
+  semantic_context?: any;
+  // AI Autonomy fields
+  autonomy_level?: string;
+  autonomy_reason?: string;
+  available_tools?: string[];
+  human_input_required?: string[];
 }
 
 interface GoalConfirmationProps {
   goals: ExtractedGoal[];
+  finalMetrics?: ExtractedGoal[];
+  strategicDeliverables?: ExtractedGoal[];
+  goalSummary?: {
+    total_goals: number;
+    final_metrics_count: number;
+    strategic_deliverables_count: number;
+  };
   originalGoal: string;
   onConfirm: (goals: ExtractedGoal[]) => void;
   onEdit: (index: number, goal: ExtractedGoal) => void;
@@ -25,6 +43,9 @@ interface GoalConfirmationProps {
 
 export function GoalConfirmation({
   goals,
+  finalMetrics = [],
+  strategicDeliverables = [],
+  goalSummary,
   originalGoal,
   onConfirm,
   onEdit,
@@ -61,6 +82,21 @@ export function GoalConfirmation({
     return 'Bassa';
   };
 
+  const getAutonomyInfo = (autonomyLevel?: string) => {
+    switch (autonomyLevel) {
+      case 'autonomous':
+        return { icon: '🤖', label: 'Autonomo', color: 'bg-green-100 text-green-800', description: 'AI può completare autonomamente' };
+      case 'assisted':
+        return { icon: '🤝', label: 'Assistito', color: 'bg-yellow-100 text-yellow-800', description: 'AI + input umano' };
+      case 'human_required':
+        return { icon: '👥', label: 'Umano', color: 'bg-red-100 text-red-800', description: 'Richiede lavoro umano' };
+      case 'tool_upgradeable':
+        return { icon: '🔧', label: 'Upgradabile', color: 'bg-blue-100 text-blue-800', description: 'Diventerà autonomo con nuovi tools' };
+      default:
+        return { icon: '🤖', label: 'Autonomo', color: 'bg-green-100 text-green-800', description: 'AI può completare autonomamente' };
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
@@ -69,8 +105,15 @@ export function GoalConfirmation({
           Conferma Obiettivi
         </h3>
         <p className="text-sm text-gray-600 mt-2">
-          L&apos;AI ha analizzato il tuo obiettivo e lo ha suddiviso in metriche misurabili
+          L&apos;AI ha analizzato il tuo obiettivo usando decomposizione strategica
         </p>
+        {goalSummary && (
+          <div className="flex gap-4 text-xs text-gray-500 mt-2">
+            <span>{goalSummary.final_metrics_count} metriche finali</span>
+            <span>•</span>
+            <span>{goalSummary.strategic_deliverables_count} deliverable strategici</span>
+          </div>
+        )}
       </div>
       
       <div className="p-6 space-y-4">
@@ -81,9 +124,146 @@ export function GoalConfirmation({
           </p>
         </div>
 
-        {/* Extracted Goals */}
-        <div className="space-y-3">
-          {goals.map((goal, index) => (
+        {/* Final Metrics Section */}
+        {finalMetrics && finalMetrics.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-md font-semibold text-blue-600 flex items-center gap-2">
+              🎯 Metriche Finali da Raggiungere
+            </h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Questi sono gli obiettivi quantificabili che definiranno il successo del progetto
+            </p>
+            {finalMetrics.map((goal, index) => (
+              <div
+                key={goal.id}
+                className="p-4 border rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors border-blue-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl font-bold text-blue-600">
+                        {goal.value}
+                      </span>
+                      <span className="font-medium">{goal.unit}</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        📊 Metrica
+                      </span>
+                    </div>
+                    
+                    <p className="text-sm text-gray-700 font-medium">{goal.description}</p>
+                    
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-500">Confidenza:</span>
+                      <span className={`text-xs font-medium ${getConfidenceColor(goal.confidence)}`}>
+                        {getConfidenceLabel(goal.confidence)} ({Math.round(goal.confidence * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Strategic Deliverables Section */}
+        {strategicDeliverables && strategicDeliverables.length > 0 && (
+          <div className="space-y-3 mt-6">
+            <h4 className="text-md font-semibold text-green-600 flex items-center gap-2">
+              📋 Asset Strategici da Creare
+            </h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Questi deliverable saranno creati dagli agenti AI per raggiungere le metriche finali
+            </p>
+            {strategicDeliverables.map((goal, index) => {
+              const autonomyInfo = getAutonomyInfo(goal.autonomy_level);
+              return (
+              <div
+                key={goal.id}
+                className="p-4 border rounded-lg bg-green-50 hover:bg-green-100 transition-colors border-green-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        🔧 {goal.deliverable_type || 'Asset'}
+                      </span>
+                      
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${autonomyInfo.color}`}>
+                        {autonomyInfo.icon} {autonomyInfo.label}
+                      </span>
+                      
+                      {goal.execution_phase && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          📅 {goal.execution_phase}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm text-gray-700 font-medium mb-2">{goal.description}</p>
+                    
+                    {goal.business_value && (
+                      <p className="text-xs text-gray-600 mb-2">
+                        <strong>Valore Business:</strong> {goal.business_value}
+                      </p>
+                    )}
+                    
+                    {/* Autonomy Details */}
+                    {goal.autonomy_reason && (
+                      <p className="text-xs text-gray-600 mb-2">
+                        <strong>Modalità di Esecuzione:</strong> {goal.autonomy_reason}
+                      </p>
+                    )}
+                    
+                    {goal.human_input_required && goal.human_input_required.length > 0 && (
+                      <p className="text-xs text-red-600 mb-2">
+                        <strong>Input Umano Richiesto:</strong> {goal.human_input_required.join(', ')}
+                      </p>
+                    )}
+                    
+                    {goal.available_tools && goal.available_tools.length > 0 && (
+                      <p className="text-xs text-blue-600 mb-2">
+                        <strong>Strumenti AI Utilizzati:</strong> {goal.available_tools.join(', ')}
+                      </p>
+                    )}
+                    
+                    {goal.autonomy_level === 'tool_upgradeable' && (
+                      <p className="text-xs text-blue-600 mb-2">
+                        <strong>🔧 Tool Roadmap:</strong> Diventerà autonomo quando svilupperemo l'integrazione diretta con i sistemi esterni
+                      </p>
+                    )}
+
+                    {goal.acceptance_criteria && goal.acceptance_criteria.length > 0 && (
+                      <div className="text-xs text-gray-600">
+                        <strong>Criteri di Accettazione:</strong>
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          {goal.acceptance_criteria.slice(0, 3).map((criteria, idx) => (
+                            <li key={idx}>{criteria}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-500">Confidenza:</span>
+                      <span className={`text-xs font-medium ${getConfidenceColor(goal.confidence)}`}>
+                        {getConfidenceLabel(goal.confidence)} ({Math.round(goal.confidence * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Fallback: All Goals (backward compatibility) */}
+        {(!finalMetrics || finalMetrics.length === 0) && (!strategicDeliverables || strategicDeliverables.length === 0) && (
+          <div className="space-y-3">
+            <h4 className="text-md font-semibold text-gray-600">
+              Obiettivi Estratti
+            </h4>
+            {goals.map((goal, index) => (
             <div
               key={goal.id}
               className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -156,7 +336,8 @@ export function GoalConfirmation({
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">

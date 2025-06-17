@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional, Union
 from uuid import UUID
 import logging
 import json
+import os
 
 from models import (
     DirectorConfig,
@@ -19,6 +20,8 @@ from models import (
     HandoffProposalCreate 
 )
 from ai_agents.director import DirectorAgent
+from ai_agents.director_enhanced import EnhancedDirectorAgent
+from database import supabase
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
@@ -27,10 +30,22 @@ router = APIRouter(prefix="/director", tags=["director"])
 async def create_team_proposal(config: DirectorConfig):
     """
     Create a team proposal for a workspace based on goals and constraints
+    Enhanced to use strategic goals when available
     """
     try:
-        director = DirectorAgent()
-        proposal = await director.create_team_proposal(config)
+        # Check if enhanced director is enabled and workspace has strategic goals
+        use_enhanced_director = os.getenv("ENABLE_ENHANCED_DIRECTOR", "true").lower() == "true"
+        strategic_goals = await _get_strategic_goals(str(config.workspace_id)) if use_enhanced_director else None
+        
+        if use_enhanced_director and strategic_goals:
+            logger.info(f"🎯 Using enhanced director with strategic goals for workspace {config.workspace_id}")
+            director = EnhancedDirectorAgent()
+            proposal = await director.create_proposal_with_goals(config, strategic_goals)
+        else:
+            reason = "enhanced director disabled" if not use_enhanced_director else "no strategic goals available"
+            logger.info(f"Using standard director for workspace {config.workspace_id} ({reason})")
+            director = DirectorAgent()
+            proposal = await director.create_team_proposal(config)
         
         # Salva la proposta nel database
         # proposal.model_dump(mode='json', by_alias=True) per assicurare che gli alias "from"/"to" siano usati
@@ -198,3 +213,71 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to approve team proposal: {str(e)}"
         )
+
+async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
+    """Get strategic goals and deliverables for workspace"""
+    try:
+        # Get workspace goals with semantic context
+        goals_response = supabase.table("workspace_goals").select("*").eq(
+            "workspace_id", workspace_id
+        ).execute()
+        
+        if not goals_response.data:
+            return None
+        
+        goals = goals_response.data
+        
+        # Separate final metrics from strategic deliverables
+        final_metrics = []
+        strategic_deliverables = []
+        
+        for goal in goals:
+            metadata = goal.get("metadata", {})
+            if metadata.get("semantic_context", {}).get("is_strategic_deliverable"):
+                # This is a strategic deliverable
+                semantic_context = metadata.get("semantic_context", {})
+                strategic_deliverables.append({
+                    "name": goal.get("description", ""),
+                    "deliverable_type": semantic_context.get("deliverable_type", ""),
+                    "business_value": semantic_context.get("business_value", ""),
+                    "acceptance_criteria": semantic_context.get("acceptance_criteria", []),
+                    "execution_phase": semantic_context.get("execution_phase", ""),
+                    "autonomy_level": semantic_context.get("autonomy_level", "autonomous"),
+                    "autonomy_reason": semantic_context.get("autonomy_reason", ""),
+                    "available_tools": semantic_context.get("available_tools", []),
+                    "human_input_required": semantic_context.get("human_input_required", []),
+                    "priority": goal.get("priority", 1),
+                    "target_value": goal.get("target_value", 1),
+                    "unit": goal.get("unit", "deliverable")
+                })
+            else:
+                # This is a final metric
+                final_metrics.append({
+                    "metric_type": goal.get("metric_type", ""),
+                    "target_value": goal.get("target_value", 0),
+                    "unit": goal.get("unit", ""),
+                    "description": goal.get("description", ""),
+                    "priority": goal.get("priority", 1)
+                })
+        
+        if not strategic_deliverables and not final_metrics:
+            return None
+        
+        # Extract execution phases from deliverables
+        execution_phases = list(set([
+            d.get("execution_phase", "Implementation") 
+            for d in strategic_deliverables 
+            if d.get("execution_phase")
+        ]))
+        
+        return {
+            "final_metrics": final_metrics,
+            "strategic_deliverables": strategic_deliverables,
+            "execution_phases": execution_phases,
+            "total_deliverables": len(strategic_deliverables),
+            "total_metrics": len(final_metrics)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting strategic goals for workspace {workspace_id}: {e}")
+        return None

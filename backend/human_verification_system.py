@@ -91,6 +91,13 @@ class HumanVerificationSystem:
             "financial analysis", "client proposal"
         ]
     
+    def get_checkpoint_by_task_id(self, task_id: str) -> Optional[VerificationCheckpoint]:
+        """🔍 Get existing checkpoint for a task to prevent duplicates"""
+        for checkpoint in self.verification_checkpoints.values():
+            if checkpoint.task_id == task_id and checkpoint.status == VerificationStatus.PENDING:
+                return checkpoint
+        return None
+    
     async def create_verification_checkpoint(
         self,
         workspace_id: str,

@@ -47,6 +47,7 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchGoals = async () => {
     try {
@@ -148,7 +149,38 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   };
 
   const formatMetricType = (type: string): string => {
-    return type.replace(/_/g, ' ').toUpperCase();
+    // Convert metric types to user-friendly names
+    const typeMap: Record<string, string> = {
+      'email_sequences': 'Sequenze Email',
+      'deliverables': 'Deliverable', 
+      'engagement_rate': 'Tasso Engagement',
+      'contacts': 'Contatti ICP',
+      'conversion_rate': 'Tasso Conversione',
+      'revenue': 'Ricavi',
+      'users': 'Utenti',
+      'content_calendar': 'Calendario Contenuti',
+      'strategy_document': 'Documento Strategico',
+      'performance_monitoring': 'Monitoraggio Performance'
+    };
+    
+    return typeMap[type] || type.replace(/_/g, ' ').split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
+  const formatDescription = (description: string, goal: WorkspaceGoal): string => {
+    // If description is too generic, create a more specific one
+    if (description.toLowerCase().includes('create') && description.length < 50) {
+      const friendlyType = formatMetricType(goal.metric_type);
+      return `Completare ${friendlyType} per il progetto`;
+    }
+    
+    // Truncate very long descriptions
+    if (description.length > 80) {
+      return description.substring(0, 77) + '...';
+    }
+    
+    return description;
   };
 
   if (loading) {
@@ -197,13 +229,21 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                 </span>
               )}
             </div>
-            <button 
-              onClick={refreshData}
-              disabled={refreshing}
-              className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              {refreshing ? '🔄' : '↻'} Refresh
-            </button>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => setExpanded(!expanded)}
+                className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50"
+              >
+                {expanded ? '📋 Compatta' : '📊 Dettagli'}
+              </button>
+              <button 
+                onClick={refreshData}
+                disabled={refreshing}
+                className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                {refreshing ? '🔄' : '↻'} Refresh
+              </button>
+            </div>
           </div>
         </div>
         <div className="p-4">
@@ -267,9 +307,42 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
         </div>
       </div>
 
-      {/* Individual Goals */}
-      <div className="space-y-3">
-        {goals.map((goal) => (
+      {/* Compact Summary - Show only when not expanded */}
+      {!expanded && goals.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="text-sm text-gray-600 space-y-2">
+            <div className="flex items-center justify-between">
+              <span>📋 Todo List ({goals.length} obiettivi)</span>
+              <span className="text-xs text-gray-500">Clicca "Dettagli" per visualizzazione completa</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {goals.slice(0, 3).map((goal) => (
+                <div key={goal.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs">
+                      {goal.status === 'completed' ? '✅' : goal.completion_pct! < 30 ? '⚠️' : '📊'}
+                    </span>
+                    <span className="text-sm font-medium">{formatMetricType(goal.metric_type)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {goal.current_value}/{goal.target_value} {goal.unit}
+                  </div>
+                </div>
+              ))}
+              {goals.length > 3 && (
+                <div className="text-center text-xs text-gray-500 pt-1">
+                  ...e altri {goals.length - 3} obiettivi
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Individual Goals - Show only when expanded */}
+      {expanded && (
+        <div className="space-y-3">
+          {goals.map((goal) => (
           <div key={goal.id} className={`bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow ${
             goal.status === 'completed' ? 'border-green-200 bg-green-50' : ''
           }`}>
@@ -310,7 +383,7 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                 {/* Progress Bar */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-gray-600">{goal.description}</span>
+                    <span className="text-sm text-gray-600">{formatDescription(goal.description, goal)}</span>
                     <span className="text-sm font-medium">{goal.completion_pct!.toFixed(1)}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -369,7 +442,8 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Recommendations */}
       {validationStatus?.recommendations.length > 0 && (

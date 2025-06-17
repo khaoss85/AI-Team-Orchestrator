@@ -1085,3 +1085,117 @@ async def get_deliverable_readiness_status(workspace_id: UUID):
             "error": str(e),
             "checked_at": datetime.now().isoformat()
         }
+
+@router.get("/task/{task_id}/status", response_model=Dict[str, Any])
+async def get_task_detailed_status(task_id: str):
+    """Get detailed status of a specific task for monitoring"""
+    try:
+        from database import supabase
+        
+        # Get task details
+        task_response = supabase.table("tasks").select("*").eq("id", task_id).execute()
+        if not task_response.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        
+        task = task_response.data[0]
+        
+        # Get agent details if assigned
+        agent_info = None
+        if task.get("agent_id"):
+            agent_response = supabase.table("agents").select("*").eq("id", task["agent_id"]).execute()
+            if agent_response.data:
+                agent = agent_response.data[0]
+                agent_info = {
+                    "id": agent["id"],
+                    "name": agent.get("name", "Unknown"),
+                    "role": agent.get("role", "Unknown"),
+                    "status": agent.get("status", "Unknown")
+                }
+        
+        # Calculate execution time
+        created_at = datetime.fromisoformat(task["created_at"].replace("Z", "+00:00"))
+        updated_at = datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))
+        execution_time = (updated_at - created_at).total_seconds()
+        
+        return {
+            "id": task["id"],
+            "name": task["name"],
+            "status": task["status"],
+            "description": task.get("description", ""),
+            "created_at": task["created_at"],
+            "updated_at": task["updated_at"],
+            "execution_time_seconds": execution_time,
+            "result": task.get("result"),
+            "context_data": task.get("context_data", {}),
+            "agent_info": agent_info,
+            "workspace_id": task["workspace_id"],
+            "priority": task.get("priority"),
+            "assigned_to_role": task.get("assigned_to_role"),
+            "progress_details": {
+                "is_enhancement_task": task.get("context_data", {}).get("task_type") == "asset_enhancement",
+                "user_feedback": task.get("context_data", {}).get("user_feedback"),
+                "original_task_id": task.get("context_data", {}).get("original_task_id"),
+                "asset_name": task.get("context_data", {}).get("asset_data", {}).get("name")
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting task status for {task_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get task status: {str(e)}")
+
+@router.get("/workspace/{workspace_id}/enhancement-tasks", response_model=List[Dict[str, Any]])
+async def get_workspace_enhancement_tasks(workspace_id: UUID, status_filter: Optional[str] = None):
+    """Get all enhancement tasks for a workspace with detailed status"""
+    try:
+        workspace = await get_workspace(str(workspace_id))
+        if not workspace:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+        from database import supabase
+        
+        # Query enhancement tasks
+        query = supabase.table("tasks").select("*").eq("workspace_id", str(workspace_id))
+        
+        # Filter by context_data task_type
+        response = query.execute()
+        
+        enhancement_tasks = []
+        for task in response.data:
+            context_data = task.get("context_data", {})
+            if context_data.get("task_type") == "asset_enhancement":
+                if status_filter is None or task["status"] == status_filter:
+                    # Get agent info
+                    agent_info = None
+                    if task.get("agent_id"):
+                        agent_response = supabase.table("agents").select("*").eq("id", task["agent_id"]).execute()
+                        if agent_response.data:
+                            agent = agent_response.data[0]
+                            agent_info = {
+                                "name": agent.get("name", "Unknown"),
+                                "role": agent.get("role", "Unknown")
+                            }
+                    
+                    enhancement_tasks.append({
+                        "id": task["id"],
+                        "name": task["name"],
+                        "status": task["status"],
+                        "created_at": task["created_at"],
+                        "updated_at": task["updated_at"],
+                        "user_feedback": context_data.get("user_feedback"),
+                        "asset_name": context_data.get("asset_data", {}).get("name"),
+                        "agent_info": agent_info,
+                        "result": task.get("result")
+                    })
+        
+        # Sort by creation date (newest first)
+        enhancement_tasks.sort(key=lambda x: x["created_at"], reverse=True)
+        
+        return enhancement_tasks
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting enhancement tasks for workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get enhancement tasks: {str(e)}")

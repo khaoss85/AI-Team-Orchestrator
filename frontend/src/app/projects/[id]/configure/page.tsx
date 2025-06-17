@@ -7,6 +7,7 @@ import { Workspace, DirectorTeamProposal, AgentSeniority } from '@/types';
 import TeamExplanationAnimation from '@/components/TeamExplanationAnimation';
 import { GoalConfirmation } from '@/components/orchestration/GoalConfirmation';
 import { useGoalPreview } from '@/hooks/useGoalPreview';
+import { ProgressIndicator } from '@/components/ui/ProgressIndicator';
 
 
 type Props = {
@@ -28,6 +29,13 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   const [userFeedback, setUserFeedback] = useState<string>('');
   const [showFeedbackInput, setShowFeedbackInput] = useState<boolean>(false);
   const [goalsConfirmed, setGoalsConfirmed] = useState(false);
+  
+  // Progress tracking state
+  const [progressState, setProgressState] = useState({
+    progress: 0,
+    message: 'Inizializzazione...',
+    status: 'analyzing'
+  });
 
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
   
@@ -35,12 +43,20 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   const {
     isLoading: goalPreviewLoading,
     extractedGoals,
+    finalMetrics,
+    strategicDeliverables,
+    goalSummary,
     originalGoal,
+    progressStatus,
+    showProgress,
     previewGoals,
     confirmGoals,
     editGoal,
     removeGoal,
     reset: resetGoals,
+    startProgressMonitoring,
+    setExtractedGoals,
+    setOriginalGoal,
   } = useGoalPreview(id);
 
   useEffect(() => {
@@ -75,12 +91,62 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     }
   }, [id]); // Usa 'id' risolto come dipendenza
 
+  // Progress monitoring is now handled by useGoalPreview hook
+
   // Handle goal preview when workspace has a goal
   useEffect(() => {
-    if (workspace?.goal && !goalsConfirmed && extractedGoals.length === 0) {
-      previewGoals(workspace.goal);
-    }
-  }, [workspace?.goal, goalsConfirmed, extractedGoals.length, previewGoals]);
+    const checkExistingGoalsAndStart = async () => {
+      if (workspace?.goal && !goalsConfirmed && extractedGoals.length === 0) {
+        // First check if goals already exist from previous analysis
+        try {
+          console.log('🔍 Checking for existing goals...');
+          const response = await api.workspaces.getGoals(workspace.id);
+          
+          if (response && response.success && response.goals && response.goals.length > 0) {
+            // Goals already exist, convert them to the format expected by GoalConfirmation
+            console.log('✅ Found existing goals, loading them directly');
+            
+            const convertedGoals = response.goals.map((goal: any, index: number) => ({
+              id: `existing_${index}`,
+              value: goal.target_value,
+              unit: goal.unit,
+              type: goal.metric_type,
+              description: goal.description,
+              confidence: goal.confidence || 0.9,
+              editable: true,
+              // Preserve strategic deliverable data if available
+              deliverable_type: goal.semantic_context?.deliverable_type,
+              business_value: goal.semantic_context?.business_value,
+              acceptance_criteria: goal.semantic_context?.acceptance_criteria,
+              execution_phase: goal.semantic_context?.execution_phase,
+              autonomy_level: goal.semantic_context?.autonomy_level,
+              autonomy_reason: goal.semantic_context?.autonomy_reason,
+              available_tools: goal.semantic_context?.available_tools,
+              human_input_required: goal.semantic_context?.human_input_required,
+              semantic_context: goal.semantic_context
+            }));
+            
+            // Set goals directly without progress monitoring
+            setExtractedGoals(convertedGoals);
+            setOriginalGoal(workspace.goal);
+            console.log('✅ Existing goals loaded, ready for confirmation');
+            return;
+          }
+        } catch (error) {
+          console.log('⚠️ No existing goals found or API error, starting fresh analysis');
+        }
+
+        // No existing goals, start fresh goal extraction
+        console.log('🔄 Starting fresh goal extraction and preview process');
+        const cleanup = startProgressMonitoring();
+        previewGoals(workspace.goal);
+        
+        return cleanup;
+      }
+    };
+    
+    checkExistingGoalsAndStart();
+  }, [workspace?.goal, workspace?.id, goalsConfirmed, extractedGoals.length, previewGoals, startProgressMonitoring]);
 
   const handleConfirmGoals = async (goals: any[]) => {
     const success = await confirmGoals(goals);
@@ -92,6 +158,8 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   const handleReprocessGoals = async () => {
     if (workspace?.goal) {
       resetGoals();
+      // Reset progress state and start monitoring
+      setProgressState({ progress: 0, message: 'Inizializzazione...', status: 'analyzing' });
       await previewGoals(workspace.goal);
     }
   };
@@ -103,12 +171,27 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       setProposalLoading(true);
       setError(null);
 
+      // Build enhanced goal description with extracted goals
+      const enhancedGoalDescription = (() => {
+        if (!extractedGoals.length) {
+          return workspace.goal || 'Completare il progetto con successo';
+        }
+        
+        const goalsSummary = extractedGoals.map(goal => 
+          `${goal.description} (${goal.value} ${goal.unit})`
+        ).join(', ');
+        
+        return `${workspace.goal}\n\nObiettivi Specifici: ${goalsSummary}`;
+      })();
+
       const directorConfig = {
         workspace_id: workspace.id,
-        goal: workspace.goal || 'Completare il progetto con successo',
+        goal: enhancedGoalDescription,
         budget_constraint: workspace.budget || { max_amount: 1000, currency: 'EUR' },
         user_id: workspace.user_id,
-        user_feedback: userFeedback || undefined
+        user_feedback: userFeedback || undefined,
+        // Include extracted goals for Enhanced Director
+        extracted_goals: extractedGoals.length > 0 ? extractedGoals : undefined
       };
 
       console.log('🚀 Creating proposal with config:', directorConfig);
@@ -120,7 +203,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
       const apiPromise = api.director.createProposal(directorConfig);
       
-      const data = await Promise.race([apiPromise, timeoutPromise]);
+      const data = await Promise.race([apiPromise, timeoutPromise]) as DirectorTeamProposal;
       
       console.log('✅ Received proposal data:', data);
       
@@ -312,11 +395,35 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
         </div>
       )}
 
+      {/* Progress Indicator during goal analysis */}
+      {workspace && goalPreviewLoading && extractedGoals.length === 0 && (
+        <div className="mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4 text-center">Analisi AI degli Obiettivi</h2>
+            <p className="text-gray-600 mb-6 text-center">
+              La nostra AI sta analizzando il tuo obiettivo per creare un piano dettagliato e identificare i deliverable strategici.
+            </p>
+            <ProgressIndicator
+              progress={progressState.progress}
+              message={progressState.message}
+              status={progressState.status}
+              className="mb-4"
+            />
+            <div className="text-sm text-gray-500 text-center mt-4">
+              Questo processo può richiedere alcuni secondi per garantire un'analisi accurata.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Goal Confirmation Section */}
       {workspace && extractedGoals.length > 0 && !goalsConfirmed && (
         <div className="mb-6">
           <GoalConfirmation
             goals={extractedGoals}
+            finalMetrics={finalMetrics}
+            strategicDeliverables={strategicDeliverables}
+            goalSummary={goalSummary}
             originalGoal={originalGoal}
             onConfirm={handleConfirmGoals}
             onEdit={editGoal}

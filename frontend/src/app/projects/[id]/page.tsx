@@ -12,6 +12,8 @@ import GoalProgressTracker from '@/components/GoalProgressTracker'
 import MissionControlSection from '@/components/redesign/MissionControlSection'
 import InteractionPanel from '@/components/redesign/InteractionPanel'
 import SmartAssetViewer from '@/components/SmartAssetViewer'
+import FeedbackNotificationBadge from '@/components/FeedbackNotificationBadge'
+import ProjectFeedbackPanel from '@/components/ProjectFeedbackPanel'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -48,6 +50,9 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
   // Asset viewer state
   const [selectedAsset, setSelectedAsset] = useState<any>(null)
   const [showAssetDetails, setShowAssetDetails] = useState(false)
+  
+  // Feedback panel state
+  const [showFeedbackPanel, setShowFeedbackPanel] = useState(false)
   
   // Asset refinement now handled directly in SmartAssetViewer as a tab
 
@@ -197,15 +202,28 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
             )}
           </div>
           
-          <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">{assetCount}</div>
-            <div className="text-sm text-gray-500">Asset Pronti</div>
-            {finalDeliverablesCount > 0 && (
-              <div className="mt-2">
-                <div className="text-lg font-semibold text-green-600">{finalDeliverablesCount}</div>
-                <div className="text-xs text-green-500">Deliverable Finali</div>
-              </div>
-            )}
+          <div className="flex items-start space-x-6">
+            {/* Feedback Notification */}
+            <div className="flex flex-col items-center">
+              <FeedbackNotificationBadge
+                workspaceId={id}
+                onClick={() => setShowFeedbackPanel(true)}
+                className="mb-2"
+              />
+              <div className="text-xs text-gray-500 text-center">Review<br/>Requests</div>
+            </div>
+            
+            {/* Project Stats */}
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600">{assetCount}</div>
+              <div className="text-sm text-gray-500">Asset Pronti</div>
+              {finalDeliverablesCount > 0 && (
+                <div className="mt-2">
+                  <div className="text-lg font-semibold text-green-600">{finalDeliverablesCount}</div>
+                  <div className="text-xs text-green-500">Deliverable Finali</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -269,6 +287,13 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
       )}
 
       {/* Asset Refinement Modal - Now integrated into SmartAssetViewer as a tab */}
+
+      {/* Project Feedback Panel */}
+      <ProjectFeedbackPanel
+        workspaceId={id}
+        isOpen={showFeedbackPanel}
+        onClose={() => setShowFeedbackPanel(false)}
+      />
     </div>
   )
 }

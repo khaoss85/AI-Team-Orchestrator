@@ -28,7 +28,18 @@ from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 from utils.project_settings import get_project_settings
+
 logger = logging.getLogger(__name__)
+
+# Import WebSocket functions for real-time updates
+try:
+    from routes.websocket import broadcast_task_status_update
+    WEBSOCKET_AVAILABLE = True
+    logger.info("✅ WebSocket real-time updates available in TaskExecutor")
+except ImportError as e:
+    logger.warning(f"⚠️ WebSocket not available in TaskExecutor: {e}")
+    WEBSOCKET_AVAILABLE = False
+    broadcast_task_status_update = None
 
 try:
     from config.quality_system_config import QualitySystemConfig
@@ -45,6 +56,33 @@ except ImportError as e:
 # === ENHANCED FINALIZATION PRIORITY CONFIGURATIONS ===
 FINALIZATION_TASK_PRIORITY_BOOST = int(os.getenv("FINALIZATION_TASK_PRIORITY_BOOST", "1000"))
 ENABLE_SMART_PRIORITIZATION = os.getenv("ENABLE_SMART_PRIORITIZATION", "true").lower() == "true"
+
+# === WEBSOCKET NOTIFICATION HELPER ===
+async def notify_task_status_change(task_id: str, new_status: str, task_data: Optional[Dict] = None):
+    """Send real-time notification of task status change via WebSocket"""
+    if WEBSOCKET_AVAILABLE and broadcast_task_status_update:
+        try:
+            # Get fresh task data if not provided
+            if not task_data:
+                task_data = await get_task(task_id)
+            
+            if task_data:
+                # Prepare notification payload
+                notification_data = {
+                    "id": task_id,
+                    "status": new_status,
+                    "name": task_data.get("name", "Unknown Task"),
+                    "updated_at": datetime.now().isoformat(),
+                    "workspace_id": task_data.get("workspace_id"),
+                    "agent_id": task_data.get("agent_id"),
+                    "result": task_data.get("result")
+                }
+                
+                # Send WebSocket notification
+                await broadcast_task_status_update(task_id, notification_data)
+                logger.debug(f"📡 WebSocket notification sent for task {task_id}: {new_status}")
+        except Exception as e:
+            logger.error(f"❌ Failed to send WebSocket notification for task {task_id}: {e}")
 
 # === ENHANCED PRIORITY SCORING FUNCTION ===
 def get_task_priority_score_enhanced(task_data):
@@ -353,6 +391,8 @@ class AssetCoordinationMixin:
                         "pending",
                         {"priority_boost": "asset_oriented", "boosted_at": datetime.now().isoformat()}
                     )
+                    # Send WebSocket notification
+                    await notify_task_status_change(task["id"], "pending", task)
                 except Exception as e:
                     logger.warning(f"Failed to boost priority for asset task {task['id']}: {e}")
 
@@ -857,6 +897,8 @@ class TaskExecutor(AssetCoordinationMixin):
                 status=task_dict.get("status", TaskStatus.PENDING.value),
                 result_payload=update_payload
             )
+            # Send WebSocket notification
+            await notify_task_status_change(task_dict["id"], task_dict.get("status", TaskStatus.PENDING.value), updated_task)
             
             if updated_task:
                 logger.info(f"Task {task_dict['id']} DB record updated with agent_id {agent_id_to_assign}")
@@ -929,6 +971,8 @@ class TaskExecutor(AssetCoordinationMixin):
         
         try:
             await update_task_status(task_id, status_to_set, completion_result)
+            # Send WebSocket notification
+            await notify_task_status_change(task_id, status_to_set)
             logger.info(f"Forcibly finalized task {task_id} as {status_to_set}: {reason}")
             if workspace_id:
                 self.task_completion_tracker[workspace_id].add(task_id)
@@ -1028,6 +1072,8 @@ class TaskExecutor(AssetCoordinationMixin):
                 TaskStatus.IN_PROGRESS.value,
                 result_payload={"status_detail": "Execution started by anti-loop worker"}
             )
+            # Send WebSocket notification
+            await notify_task_status_change(task_id, TaskStatus.IN_PROGRESS.value)
 
             # Recupera dati agente dal DB
             agent_data_db = await get_agent(agent_id)

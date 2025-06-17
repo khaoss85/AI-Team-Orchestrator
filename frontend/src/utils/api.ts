@@ -957,6 +957,19 @@ export const api = {
       }
     },
 
+    // Get workspace goals
+    getGoals: async (id: string): Promise<{ goals: any[]; summary?: any }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/goals`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
     // 🔥 NEW: Get workspace settings
     getSettings: async (id: string): Promise<{
       success: boolean;
