@@ -1299,11 +1299,29 @@ async def get_active_workspaces():
         raise
 
 async def get_workspaces_with_pending_tasks():
-    """Get workspace IDs that have pending tasks"""
+    """Get workspace IDs that have pending tasks AND are not paused"""
     try:
-        result = supabase.table("tasks").select("workspace_id").eq("status", "pending").execute()
-        workspace_ids = list(set([task["workspace_id"] for task in result.data])) if result.data else []
-        return workspace_ids
+        # Get workspaces with pending tasks, but exclude paused workspaces
+        result = supabase.table("tasks").select("workspace_id, workspaces!inner(id, status)").eq("status", "pending").execute()
+        
+        if not result.data:
+            return []
+            
+        # Filter out paused workspaces
+        active_workspace_ids = []
+        for task in result.data:
+            workspace = task.get("workspaces")
+            if workspace and workspace.get("status") != "paused":
+                active_workspace_ids.append(task["workspace_id"])
+        
+        # Remove duplicates and return
+        unique_workspace_ids = list(set(active_workspace_ids))
+        
+        if len(unique_workspace_ids) != len(result.data):
+            paused_count = len(result.data) - len(unique_workspace_ids)
+            logger.info(f"⏸️ Skipped {paused_count} tasks from paused workspaces")
+        
+        return unique_workspace_ids
     except Exception as e:
         logger.error(f"Error getting workspaces with pending tasks: {e}")
         raise

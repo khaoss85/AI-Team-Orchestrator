@@ -60,6 +60,57 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+  
+  // Team control states
+  const [workspaceStatus, setWorkspaceStatus] = useState<'active' | 'paused' | 'completed' | 'created'>('active');
+  const [teamControlLoading, setTeamControlLoading] = useState(false);
+
+  const fetchWorkspaceStatus = async () => {
+    try {
+      const response = await api.workspaces.get(workspaceId);
+      if (response.status) {
+        setWorkspaceStatus(response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching workspace status:', error);
+    }
+  };
+
+  const handlePauseTeam = async () => {
+    setTeamControlLoading(true);
+    try {
+      const response = await api.workspaces.pause(workspaceId);
+      if (response.success) {
+        setWorkspaceStatus('paused');
+        await refreshData(); // Refresh goals and validation
+      } else {
+        setError('Errore durante la pausa del team');
+      }
+    } catch (error) {
+      console.error('Error pausing team:', error);
+      setError('Errore durante la pausa del team');
+    } finally {
+      setTeamControlLoading(false);
+    }
+  };
+
+  const handleResumeTeam = async () => {
+    setTeamControlLoading(true);
+    try {
+      const response = await api.workspaces.resume(workspaceId);
+      if (response.success) {
+        setWorkspaceStatus('active');
+        await refreshData(); // Refresh goals and validation
+      } else {
+        setError('Errore durante il riavvio del team');
+      }
+    } catch (error) {
+      console.error('Error resuming team:', error);
+      setError('Errore durante il riavvio del team');
+    } finally {
+      setTeamControlLoading(false);
+    }
+  };
 
   const fetchGoals = async () => {
     try {
@@ -123,22 +174,22 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
 
   const refreshData = async () => {
     setRefreshing(true);
-    await Promise.all([fetchGoals(), fetchValidation()]);
+    await Promise.all([fetchGoals(), fetchValidation(), fetchWorkspaceStatus()]);
     setRefreshing(false);
   };
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchGoals(), fetchValidation()]);
+      await Promise.all([fetchGoals(), fetchValidation(), fetchWorkspaceStatus()]);
       setLoading(false);
     };
 
     loadData();
 
-    // Auto-refresh every 5 minutes if enabled
+    // Auto-refresh every 10 minutes if enabled (reduced to prevent rate limiting)
     if (autoRefresh) {
-      const interval = setInterval(refreshData, 5 * 60 * 1000);
+      const interval = setInterval(refreshData, 10 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [workspaceId, showValidation, autoRefresh]);
@@ -279,6 +330,27 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
               )}
             </div>
             <div className="flex items-center space-x-2">
+              {/* Team Control Buttons */}
+              {workspaceStatus === 'active' ? (
+                <button 
+                  onClick={handlePauseTeam}
+                  disabled={teamControlLoading}
+                  className="px-3 py-1 text-sm border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50 disabled:opacity-50 transition-colors"
+                  title="Metti in pausa le attività del team"
+                >
+                  {teamControlLoading ? '⏳' : '⏸️'} Pausa Team
+                </button>
+              ) : workspaceStatus === 'paused' ? (
+                <button 
+                  onClick={handleResumeTeam}
+                  disabled={teamControlLoading}
+                  className="px-3 py-1 text-sm border border-green-300 text-green-700 rounded-md hover:bg-green-50 disabled:opacity-50 transition-colors"
+                  title="Riavvia le attività del team"
+                >
+                  {teamControlLoading ? '⏳' : '▶️'} Riavvia Team
+                </button>
+              ) : null}
+              
               <button 
                 onClick={() => setExpanded(!expanded)}
                 className="px-3 py-1 text-sm border rounded-md hover:bg-gray-50"
@@ -300,12 +372,26 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
             {/* Overall Progress Bar */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Overall Progress</span>
+                <span className="text-sm font-medium flex items-center gap-2">
+                  Overall Progress
+                  {workspaceStatus === 'paused' && (
+                    <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded border border-orange-200">
+                      ⏸️ Team in Pausa
+                    </span>
+                  )}
+                  {workspaceStatus === 'active' && (
+                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded border border-green-200">
+                      ▶️ Team Attivo
+                    </span>
+                  )}
+                </span>
                 <span className="text-sm text-gray-600">{overallProgress.toFixed(1)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    workspaceStatus === 'paused' ? 'bg-orange-500' : 'bg-blue-600'
+                  }`}
                   style={{ width: `${Math.min(overallProgress, 100)}%` }}
                 ></div>
               </div>
