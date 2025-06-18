@@ -134,7 +134,7 @@ class GoalDrivenProjectManager:
                 "goals_data": [
                     {
                         "id": str(goal.id),
-                        "metric_type": goal.metric_type.value,
+                        "metric_type": goal.metric_type,
                         "target": goal.target_value,
                         "current": goal.current_value,
                         "completion_pct": goal.completion_percentage,

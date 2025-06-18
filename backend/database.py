@@ -1421,11 +1421,22 @@ async def create_human_feedback_request(
     proposed_actions: List[Dict],
     context: Dict,
     priority: str = "medium",
-    timeout_hours: int = 24
+    timeout_hours: int = 24,
+    task_id: Optional[str] = None  # 🎯 GOAL UPDATE FIX: Add task_id parameter
 ) -> Optional[Dict]:
-    """Create a human feedback request in the database"""
+    """
+    Create a human feedback request in the database
+    
+    🎯 GOAL UPDATE FIX: Now includes task_id to link verification requests to tasks
+    Schema workaround: stores task_id in context since task_id column doesn't exist
+    """
     try:
         expires_at = datetime.now() + timedelta(hours=timeout_hours)
+        
+        # 🎯 GOAL UPDATE FIX: Store task_id in context since column doesn't exist
+        if task_id:
+            context = context.copy() if context else {}
+            context["task_id"] = task_id
         
         data = {
             "workspace_id": workspace_id,
@@ -1437,6 +1448,7 @@ async def create_human_feedback_request(
             "priority": priority,
             "timeout_hours": timeout_hours,
             "expires_at": expires_at.isoformat()
+            # Note: task_id stored in context instead of separate column
         }
         
         result = supabase.table("human_feedback_requests").insert(data).execute()
@@ -1470,7 +1482,12 @@ async def update_human_feedback_request(
     status: str,
     response: Dict
 ) -> Optional[Dict]:
-    """Update a human feedback request with response"""
+    """
+    Update a human feedback request with response
+    
+    🎯 GOAL UPDATE FIX: When verification is approved, also complete the associated task
+    to trigger goal progress updates that were previously blocked.
+    """
     try:
         data = {
             "status": status,
@@ -1478,8 +1495,77 @@ async def update_human_feedback_request(
             "responded_at": datetime.now().isoformat()
         }
         
+        # Update the feedback request
         result = supabase.table("human_feedback_requests").update(data).eq("id", request_id).execute()
-        return result.data[0] if result.data and len(result.data) > 0 else None
+        updated_request = result.data[0] if result.data and len(result.data) > 0 else None
+        
+        # 🎯 GOAL UPDATE FIX: Complete associated task when verification is approved
+        if updated_request and status == "approved":
+            try:
+                # Get the feedback request to find the associated task
+                # Check both direct task_id field and context.task_id (schema workaround)
+                task_id = updated_request.get("task_id")
+                if not task_id and updated_request.get("context"):
+                    task_id = updated_request.get("context", {}).get("task_id")
+                
+                if task_id:
+                    # Get the current task to check if it's in pending_verification
+                    task = await get_task(task_id)
+                    
+                    if task and task.get("status") == "pending_verification":
+                        logger.info(f"🎯 VERIFICATION APPROVED: Completing task {task_id} to trigger goal updates")
+                        
+                        # Complete the task - this will trigger goal updates
+                        # Use the stored result from when the task was originally completed
+                        stored_result = task.get("result", {})
+                        
+                        # Add verification approval metadata to the result
+                        if isinstance(stored_result, dict):
+                            stored_result["verification_approved_at"] = datetime.now().isoformat()
+                            stored_result["verification_response"] = response
+                        
+                        # Update task status to completed - bypass verification to avoid loops
+                        # Use direct database update to avoid re-triggering verification
+                        update_data = {
+                            "status": "completed",
+                            "updated_at": datetime.now().isoformat()
+                        }
+                        
+                        # Add verification approval metadata to the result
+                        if isinstance(stored_result, dict):
+                            stored_result["verification_approved_at"] = datetime.now().isoformat()
+                            stored_result["verification_response"] = response
+                            update_data["result"] = stored_result
+                        
+                        # Direct database update to avoid re-triggering verification
+                        db_result = supabase.table("tasks").update(update_data).eq("id", task_id).execute()
+                        
+                        if db_result.data:
+                            logger.info(f"📝 Task {task_id} status updated to completed via direct database update")
+                            # Manually trigger goal updates since we bypassed update_task_status
+                            await _update_goal_progress_from_task_completion(task_id, stored_result)
+                        else:
+                            logger.error(f"❌ Failed to update task {task_id} status to completed")
+                            if hasattr(db_result, 'error') and db_result.error:
+                                logger.error(f"Database error: {db_result.error}")
+                            # Still try to trigger goal updates even if task status update failed
+                            await _update_goal_progress_from_task_completion(task_id, stored_result)
+                        
+                        logger.info(f"✅ GOAL UPDATE FIX: Task {task_id} completed after verification approval")
+                    else:
+                        if task:
+                            logger.debug(f"Task {task_id} is in status '{task.get('status')}', not pending_verification")
+                        else:
+                            logger.warning(f"Task {task_id} not found for approved verification {request_id}")
+                else:
+                    logger.debug(f"No task_id found in feedback request {request_id}")
+                    
+            except Exception as task_completion_error:
+                logger.error(f"Error completing task after verification approval: {task_completion_error}")
+                # Don't fail the feedback update if task completion fails
+        
+        return updated_request
+        
     except Exception as e:
         logger.error(f"Error updating human feedback request: {e}")
         raise

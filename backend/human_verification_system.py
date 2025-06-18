@@ -544,7 +544,8 @@ class HumanVerificationSystem:
                 proposed_actions=proposed_actions,
                 context=context,
                 priority=checkpoint.priority.value,
-                timeout_hours=checkpoint.timeout_hours
+                timeout_hours=checkpoint.timeout_hours,
+                task_id=checkpoint.task_id  # 🎯 GOAL UPDATE FIX: Pass task_id to link verification to task
             )
             
             if request:

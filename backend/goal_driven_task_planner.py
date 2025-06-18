@@ -238,7 +238,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             for task_data in result.get("tasks", []):
                 task = {
                     "goal_id": str(goal.id),
-                    "metric_type": goal.metric_type.value,
+                    "metric_type": goal.metric_type if isinstance(goal.metric_type, str) else goal.metric_type.value,
                     "name": task_data["name"],
                     "description": task_data["description"],
                     "type": task_data.get("type", "goal_driven"),
