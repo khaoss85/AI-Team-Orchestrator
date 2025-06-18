@@ -37,10 +37,24 @@ async def create_team_proposal(config: DirectorConfig):
         use_enhanced_director = os.getenv("ENABLE_ENHANCED_DIRECTOR", "true").lower() == "true"
         strategic_goals = await _get_strategic_goals(str(config.workspace_id)) if use_enhanced_director else None
         
-        if use_enhanced_director and strategic_goals:
-            logger.info(f"🎯 Using enhanced director with strategic goals for workspace {config.workspace_id}")
+        # Check if we have extracted_goals from frontend (user-confirmed goals)
+        frontend_goals = getattr(config, 'extracted_goals', None)
+        
+        if use_enhanced_director and (strategic_goals or frontend_goals):
+            logger.info(f"🎯 Using enhanced director for workspace {config.workspace_id}")
+            
+            # If we have frontend goals (user-confirmed), prioritize them over database goals
+            goals_to_use = strategic_goals
+            if frontend_goals:
+                logger.info(f"✅ Using {len(frontend_goals)} user-confirmed goals from frontend")
+                logger.info(f"Frontend goals sample: {[g.get('description', g.get('type', 'Unknown'))[:50] for g in frontend_goals[:2]]}")
+                goals_to_use = await _convert_frontend_goals_to_strategic_format(frontend_goals)
+                logger.info(f"Converted to: {goals_to_use.get('total_deliverables', 0)} deliverables, {goals_to_use.get('total_metrics', 0)} metrics")
+            elif strategic_goals:
+                logger.info(f"📊 Using {len(strategic_goals.get('strategic_deliverables', []))} strategic goals from database")
+            
             director = EnhancedDirectorAgent()
-            proposal = await director.create_proposal_with_goals(config, strategic_goals)
+            proposal = await director.create_proposal_with_goals(config, goals_to_use)
         else:
             reason = "enhanced director disabled" if not use_enhanced_director else "no strategic goals available"
             logger.info(f"Using standard director for workspace {config.workspace_id} ({reason})")
@@ -213,6 +227,72 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to approve team proposal: {str(e)}"
         )
+
+async def _convert_frontend_goals_to_strategic_format(frontend_goals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Convert frontend extracted_goals to strategic goals format"""
+    try:
+        final_metrics = []
+        strategic_deliverables = []
+        
+        for goal in frontend_goals:
+            goal_data = {
+                "metric_type": goal.get("type", ""),
+                "target_value": goal.get("value", 0),
+                "unit": goal.get("unit", ""),
+                "description": goal.get("description", ""),
+                "priority": 1,  # Default priority for frontend goals
+                "confidence": goal.get("confidence", 0.9)
+            }
+            
+            # Check if this is a strategic deliverable
+            if goal.get("deliverable_type") or goal.get("semantic_context", {}).get("is_strategic_deliverable"):
+                deliverable_data = {
+                    "name": goal.get("description", ""),
+                    "deliverable_type": goal.get("deliverable_type", goal.get("type", "")),
+                    "business_value": goal.get("business_value", ""),
+                    "acceptance_criteria": goal.get("acceptance_criteria", []),
+                    "execution_phase": goal.get("execution_phase", "Implementation"),
+                    "autonomy_level": goal.get("autonomy_level", "autonomous"),
+                    "autonomy_reason": goal.get("autonomy_reason", ""),
+                    "available_tools": goal.get("available_tools", []),
+                    "human_input_required": goal.get("human_input_required", []),
+                    "priority": 1,
+                    "target_value": goal.get("value", 1),
+                    "unit": goal.get("unit", "deliverable")
+                }
+                strategic_deliverables.append(deliverable_data)
+            else:
+                final_metrics.append(goal_data)
+        
+        # Extract execution phases
+        execution_phases = list(set([
+            d.get("execution_phase", "Implementation") 
+            for d in strategic_deliverables 
+            if d.get("execution_phase")
+        ]))
+        
+        if not execution_phases:
+            execution_phases = ["Implementation"]
+        
+        return {
+            "final_metrics": final_metrics,
+            "strategic_deliverables": strategic_deliverables,
+            "execution_phases": execution_phases,
+            "total_deliverables": len(strategic_deliverables),
+            "total_metrics": len(final_metrics),
+            "source": "frontend_confirmed"  # Marker to indicate source
+        }
+        
+    except Exception as e:
+        logger.error(f"Error converting frontend goals to strategic format: {e}")
+        return {
+            "final_metrics": [],
+            "strategic_deliverables": [],
+            "execution_phases": ["Implementation"],
+            "total_deliverables": 0,
+            "total_metrics": 0,
+            "source": "frontend_error"
+        }
 
 async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
     """Get strategic goals and deliverables for workspace"""

@@ -55,18 +55,32 @@ export function GoalConfirmation({
 }: GoalConfirmationProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [editDescription, setEditDescription] = useState<string>('');
+  const [editField, setEditField] = useState<'value' | 'description'>('value');
 
-  const handleEditStart = (index: number) => {
+  const handleEditStart = (index: number, field: 'value' | 'description' = 'value') => {
     setEditingIndex(index);
-    setEditValue(goals[index].value.toString());
+    setEditField(field);
+    if (field === 'value') {
+      setEditValue(finalMetrics[index].value.toString());
+    } else {
+      setEditDescription(finalMetrics[index].description);
+    }
   };
 
   const handleEditSave = (index: number) => {
+    const goalToUpdate = finalMetrics[index];
     const updatedGoal = {
-      ...goals[index],
-      value: parseFloat(editValue) || goals[index].value
+      ...goalToUpdate,
+      value: editField === 'value' ? (parseFloat(editValue) || goalToUpdate.value) : goalToUpdate.value,
+      description: editField === 'description' ? editDescription : goalToUpdate.description
     };
-    onEdit(index, updatedGoal);
+    
+    // Find the actual index in the main goals array
+    const goalIndex = goals.findIndex(g => g.id === goalToUpdate.id);
+    if (goalIndex !== -1) {
+      onEdit(goalIndex, updatedGoal);
+    }
     setEditingIndex(null);
   };
 
@@ -141,16 +155,82 @@ export function GoalConfirmation({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-2xl font-bold text-blue-600">
-                        {goal.value}
-                      </span>
-                      <span className="font-medium">{goal.unit}</span>
+                      {editingIndex === index ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-20 px-2 py-1 text-xl font-bold text-blue-600 border border-blue-300 rounded focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleEditSave(index)}
+                            className="text-green-600 hover:text-green-800"
+                          >
+                            <CheckCircle2 className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => setEditingIndex(null)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-2xl font-bold text-blue-600">
+                            {goal.value}
+                          </span>
+                          <span className="font-medium">{goal.unit}</span>
+                          <button
+                            onClick={() => handleEditStart(index)}
+                            className="text-gray-500 hover:text-blue-600 transition-colors"
+                            title="Modifica valore"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         📊 Metrica
                       </span>
                     </div>
                     
-                    <p className="text-sm text-gray-700 font-medium">{goal.description}</p>
+                    {editingIndex === index && editField === 'description' ? (
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="text"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="flex-1 px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleEditSave(index)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingIndex(null)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-700 font-medium flex-1">{goal.description}</p>
+                        <button
+                          onClick={() => handleEditStart(index, 'description')}
+                          className="text-gray-500 hover:text-blue-600 transition-colors"
+                          title="Modifica descrizione"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                     
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-xs text-gray-500">Confidenza:</span>

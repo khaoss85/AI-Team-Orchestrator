@@ -74,7 +74,13 @@ class GoalStatus(str, Enum):
     PAUSED = "paused"
     CANCELLED = "cancelled"
 
+# 🌍 REMOVED: GoalMetricType enum is now DEPRECATED
+# This was anti-agnostic and anti-scalable - hardcoded business logic
+# metric_type is now a free-form string field to support universal goals
+
+# Legacy enum kept for backward compatibility only - DO NOT USE
 class GoalMetricType(str, Enum):
+    """DEPRECATED: This enum violates our agnostic principles. Use free-form strings instead."""
     CONTACTS = "contacts"
     EMAIL_SEQUENCES = "email_sequences"
     CONTENT_PIECES = "content_pieces"
@@ -263,7 +269,7 @@ class TaskCreate(BaseModel):
     
     # 🎯 Goal-driven task fields (Step 2: Goal-Driven Task Planner)
     goal_id: Optional[UUID] = PydanticField(None, description="Associated workspace goal")
-    metric_type: Optional[GoalMetricType] = PydanticField(None, description="Goal metric this task contributes to")
+    metric_type: Optional[str] = PydanticField(None, description="Goal metric this task contributes to")
     contribution_expected: Optional[float] = PydanticField(None, description="Expected numerical contribution to goal")
     numerical_target: Optional[Dict[str, Any]] = PydanticField(None, description="Specific numerical validation criteria")
     is_corrective: bool = PydanticField(False, description="Whether this is a corrective task for goal gap")
@@ -288,7 +294,7 @@ class TaskUpdate(BaseModel):
     
     # Goal-driven task fields
     goal_id: Optional[UUID] = None
-    metric_type: Optional[GoalMetricType] = None
+    metric_type: Optional[str] = None
     contribution_expected: Optional[float] = None
     numerical_target: Optional[Dict[str, Any]] = None
     is_corrective: Optional[bool] = None
@@ -316,7 +322,7 @@ class Task(BaseModel):
     
     # Goal-driven task fields
     goal_id: Optional[UUID] = None
-    metric_type: Optional[GoalMetricType] = None
+    metric_type: Optional[str] = None
     contribution_expected: Optional[float] = None
     numerical_target: Optional[Dict[str, Any]] = None
     is_corrective: bool = False
@@ -379,6 +385,7 @@ class DirectorConfig(BaseModel):
     budget_constraint: Dict[str, Any]
     user_id: UUID
     user_feedback: Optional[str] = None
+    extracted_goals: Optional[List[Dict[str, Any]]] = None  # User-confirmed goals from frontend
 
 class DirectorTeamProposal(BaseModel):
     workspace_id: UUID
@@ -493,7 +500,7 @@ class DeliverableFeedback(BaseModel):
 # --- Workspace Goals Models (Step 1: Goal Decomposition) ---
 class WorkspaceGoalCreate(BaseModel):
     workspace_id: UUID
-    metric_type: GoalMetricType
+    metric_type: str  # 🌍 UNIVERSAL: Now accepts any string for agnostic goal types
     target_value: float = PydanticField(..., gt=0, description="Numerical target to achieve")
     unit: str = ""
     description: Optional[str] = None
@@ -515,7 +522,7 @@ class WorkspaceGoalUpdate(BaseModel):
 class WorkspaceGoal(BaseModel):
     id: UUID
     workspace_id: UUID
-    metric_type: GoalMetricType
+    metric_type: str  # 🌍 UNIVERSAL: Now accepts any string for agnostic goal types
     target_value: float
     current_value: float = 0
     unit: str = ""

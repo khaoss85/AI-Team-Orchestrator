@@ -31,12 +31,26 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize AI Goal Extractor: {e}")
 
+# Track goal extraction progress in memory
+goal_extraction_progress = {}
+
 @router.get("/workspaces/{workspace_id}/goals/progress")
 async def get_goal_extraction_progress(workspace_id: str) -> Dict[str, Any]:
     """Get real-time progress of goal extraction process"""
     try:
-        # This would be enhanced to track actual progress
-        # For now, return a simple status
+        # Check if we have progress tracking for this workspace
+        if workspace_id in goal_extraction_progress:
+            progress_data = goal_extraction_progress[workspace_id]
+            
+            # Clean up completed progress after 5 minutes
+            if progress_data.get("status") == "completed":
+                elapsed = (datetime.now() - progress_data.get("completed_at", datetime.now())).seconds
+                if elapsed > 300:  # 5 minutes
+                    del goal_extraction_progress[workspace_id]
+            
+            return progress_data
+        
+        # Check if goals already exist (previously extracted)
         goals_response = supabase.table("workspace_goals").select("*").eq("workspace_id", workspace_id).execute()
         
         if goals_response.data:
@@ -44,21 +58,25 @@ async def get_goal_extraction_progress(workspace_id: str) -> Dict[str, Any]:
                 "status": "completed",
                 "progress": 100,
                 "message": "Analisi completata",
-                "goals_count": len(goals_response.data)
+                "goals_count": len(goals_response.data),
+                "phase": "done"
             }
         else:
+            # No active extraction and no existing goals
             return {
-                "status": "in_progress", 
-                "progress": 50,
-                "message": "Analisi in corso...",
-                "goals_count": 0
+                "status": "idle", 
+                "progress": 0,
+                "message": "In attesa di avviare l'analisi...",
+                "goals_count": 0,
+                "phase": "waiting"
             }
     except Exception as e:
         return {
             "status": "error",
             "progress": 0,
             "message": f"Errore durante l'analisi: {str(e)}",
-            "goals_count": 0
+            "goals_count": 0,
+            "phase": "error"
         }
 
 @router.post("/workspaces/{workspace_id}/goals/preview")
@@ -84,17 +102,56 @@ async def preview_goals(
                 detail="AI Goal Extractor not available"
             )
         
+        # Initialize progress tracking
+        goal_extraction_progress[workspace_id] = {
+            "status": "in_progress",
+            "progress": 10,
+            "message": "Inizializzazione analisi AI...",
+            "goals_count": 0,
+            "phase": "initializing",
+            "started_at": datetime.now()
+        }
+        
+        # Update progress: Getting workspace context
+        goal_extraction_progress[workspace_id].update({
+            "progress": 20,
+            "message": "Analisi del contesto del workspace...",
+            "phase": "context_analysis"
+        })
+        
         # Get workspace context for strategic decomposition
         workspace_context = await _get_workspace_context(workspace_id)
         
+        # Update progress: Starting AI extraction
+        goal_extraction_progress[workspace_id].update({
+            "progress": 35,
+            "message": "Decomposizione strategica in corso...",
+            "phase": "strategic_decomposition"
+        })
+        
         # Extract goals using AI with strategic decomposition
         extracted_goals = await goal_extractor.extract_goals_from_text(goal_text, workspace_context)
+        
+        # Update progress: Processing results
+        goal_extraction_progress[workspace_id].update({
+            "progress": 70,
+            "message": f"Elaborazione di {len(extracted_goals)} obiettivi identificati...",
+            "phase": "processing_goals",
+            "goals_count": len(extracted_goals)
+        })
         
         logger.info(f"🔍 Extracted {len(extracted_goals)} goals. First goal type: {type(extracted_goals[0]) if extracted_goals else 'None'}")
         
         # Separate final metrics from strategic deliverables for better UX
         final_metrics = []
         strategic_deliverables = []
+        
+        # Update progress: Categorizing goals
+        goal_extraction_progress[workspace_id].update({
+            "progress": 85,
+            "message": "Categorizzazione obiettivi e deliverable...",
+            "phase": "categorizing"
+        })
         
         for goal in extracted_goals:
             # Handle both dict and dataclass objects
@@ -154,6 +211,17 @@ async def preview_goals(
         
         total_goals = len(final_metrics) + len(strategic_deliverables)
         
+        # Update progress: Completed
+        goal_extraction_progress[workspace_id].update({
+            "status": "preview_ready",
+            "progress": 95,
+            "message": "Analisi completata! Pronto per la conferma.",
+            "phase": "preview_ready",
+            "goals_count": total_goals,
+            "final_metrics_count": len(final_metrics),
+            "strategic_deliverables_count": len(strategic_deliverables)
+        })
+        
         return {
             "success": True,
             "original_goal": goal_text,
@@ -169,9 +237,24 @@ async def preview_goals(
         }
         
     except HTTPException:
+        # Update progress with error
+        if workspace_id in goal_extraction_progress:
+            goal_extraction_progress[workspace_id].update({
+                "status": "error",
+                "progress": 0,
+                "phase": "error"
+            })
         raise
     except Exception as e:
         logger.error(f"Error previewing goals: {e}")
+        # Update progress with error
+        if workspace_id in goal_extraction_progress:
+            goal_extraction_progress[workspace_id].update({
+                "status": "error",
+                "progress": 0,
+                "message": f"Errore: {str(e)}",
+                "phase": "error"
+            })
         raise HTTPException(
             status_code=500,
             detail=f"Error extracting goals: {str(e)}"
@@ -198,9 +281,27 @@ async def confirm_goals(
         saved_goals = []
         
         for goal in confirmed_goals:
-            metric_type = goal.get("type", "deliverables")
+            # 🎯 IMPROVED: Create unique metric_type for each deliverable/goal
+            base_metric_type = goal.get("type", "deliverables")
+            goal_description = goal.get("description", "")
             
-            # Check if goal with this metric_type already exists
+            # Generate unique metric_type based on content for deliverables
+            if base_metric_type == "deliverables":
+                # Create semantic identifier from description for uniqueness
+                import re
+                clean_desc = re.sub(r'[^a-zA-Z0-9\s]', '', goal_description.lower())
+                words = clean_desc.split()[:3]  # First 3 significant words
+                if words:
+                    semantic_id = "_".join(words)
+                    metric_type = f"deliverable_{semantic_id}"
+                else:
+                    # Fallback to index-based if no good words
+                    metric_type = f"deliverable_{len(saved_goals) + 1}"
+            else:
+                # Keep original metric_type for non-deliverable goals (metrics, timelines, etc.)
+                metric_type = base_metric_type
+            
+            # Check if goal with this EXACT metric_type already exists
             existing_response = supabase.table("workspace_goals").select("*").eq(
                 "workspace_id", str(workspace_id)
             ).eq("metric_type", metric_type).execute()
@@ -213,27 +314,49 @@ async def confirm_goals(
                 "metadata": {
                     "user_confirmed": True,
                     "original_extraction": goal.get("id", "").startswith("preview_"),
-                    "confidence": float(goal.get("confidence", 0.9))
+                    "confidence": float(goal.get("confidence", 0.9)),
+                    "base_type": base_metric_type,  # Keep track of original type
+                    "semantic_context": goal.get("semantic_context", {}),
+                    # Store deliverable-specific metadata if available
+                    "deliverable_type": goal.get("deliverable_type", ""),
+                    "business_value": goal.get("business_value", ""),
+                    "acceptance_criteria": goal.get("acceptance_criteria", []),
+                    "execution_phase": goal.get("execution_phase", ""),
+                    "autonomy_level": goal.get("autonomy_level", "autonomous"),
+                    "autonomy_reason": goal.get("autonomy_reason", ""),
+                    "available_tools": goal.get("available_tools", []),
+                    "human_input_required": goal.get("human_input_required", [])
                 }
             }
             
             if existing_response.data:
-                # Update existing goal
+                # Update existing goal (should be rare now with unique metric_types)
                 result = supabase.table("workspace_goals").update(goal_data).eq(
                     "workspace_id", str(workspace_id)
                 ).eq("metric_type", metric_type).execute()
                 logger.info(f"✅ Updated existing goal: {metric_type}")
             else:
-                # Create new goal
+                # Create new goal (most common case now)
                 goal_data.update({
                     "workspace_id": str(workspace_id),
                     "metric_type": metric_type
                 })
                 result = supabase.table("workspace_goals").insert(goal_data).execute()
-                logger.info(f"✅ Created new goal: {metric_type}")
+                logger.info(f"✅ Created new goal: {metric_type} -> {goal_description[:50]}...")
             
             if result.data:
                 saved_goals.append(result.data[0])
+        
+        # Mark progress as completed
+        if workspace_id in goal_extraction_progress:
+            goal_extraction_progress[workspace_id] = {
+                "status": "completed",
+                "progress": 100,
+                "message": f"✅ {len(saved_goals)} obiettivi salvati con successo!",
+                "phase": "done",
+                "goals_count": len(saved_goals),
+                "completed_at": datetime.now()
+            }
         
         return {
             "success": True,
@@ -242,9 +365,25 @@ async def confirm_goals(
         }
         
     except HTTPException:
+        # Update progress with error
+        if workspace_id in goal_extraction_progress:
+            goal_extraction_progress[workspace_id].update({
+                "status": "error",
+                "progress": 0,
+                "message": "Errore nel salvataggio degli obiettivi",
+                "phase": "error"
+            })
         raise
     except Exception as e:
         logger.error(f"Error confirming goals: {e}")
+        # Update progress with error
+        if workspace_id in goal_extraction_progress:
+            goal_extraction_progress[workspace_id].update({
+                "status": "error",
+                "progress": 0,
+                "message": f"Errore: {str(e)}",
+                "phase": "error"
+            })
         raise HTTPException(
             status_code=500,
             detail=f"Error saving goals: {str(e)}"
@@ -298,7 +437,8 @@ async def create_workspace_goal(
 async def get_workspace_goals(
     workspace_id: str,
     status: Optional[str] = Query(None, description="Filter by status"),
-    metric_type: Optional[str] = Query(None, description="Filter by metric type")
+    metric_type: Optional[str] = Query(None, description="Filter by metric type"),
+    deliverables_only: Optional[bool] = Query(False, description="Return only deliverable goals")
 ) -> Dict[str, Any]:
     """Get all goals for a workspace with optional filtering"""
     try:
@@ -315,6 +455,23 @@ async def get_workspace_goals(
         
         response = query.execute()
         goals = response.data or []
+        
+        # Filter for deliverables only if requested
+        if deliverables_only:
+            goals = [g for g in goals if g["metric_type"].startswith("deliverable_") or g["metric_type"] == "deliverables"]
+        
+        # Separate deliverables from other metrics for better organization
+        deliverable_goals = []
+        metric_goals = []
+        
+        for goal in goals:
+            # Check if this is a deliverable based on metric_type or metadata
+            if (goal["metric_type"].startswith("deliverable_") or 
+                goal["metric_type"] == "deliverables" or
+                (goal.get("metadata", {}).get("base_type") == "deliverables")):
+                deliverable_goals.append(goal)
+            else:
+                metric_goals.append(goal)
         
         # Calculate summary statistics
         total_goals = len(goals)
@@ -333,12 +490,17 @@ async def get_workspace_goals(
         return {
             "success": True,
             "goals": goals,
+            "deliverable_goals": deliverable_goals,
+            "metric_goals": metric_goals,
             "summary": {
                 "total_goals": total_goals,
+                "deliverable_goals_count": len(deliverable_goals),
+                "metric_goals_count": len(metric_goals),
                 "active_goals": active_goals,
                 "completed_goals": completed_goals,
                 "overall_progress_pct": round(overall_progress, 1)
-            }
+            },
+            "message": f"Found {len(deliverable_goals)} deliverables and {len(metric_goals)} metrics"
         }
         
     except Exception as e:

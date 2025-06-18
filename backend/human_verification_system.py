@@ -98,6 +98,15 @@ class HumanVerificationSystem:
                 return checkpoint
         return None
     
+    def get_checkpoint_by_workspace_and_asset(self, workspace_id: str, asset_type: str) -> Optional[VerificationCheckpoint]:
+        """🔍 Get existing checkpoint by workspace and asset type to prevent workspace-level duplicates"""
+        for checkpoint in self.verification_checkpoints.values():
+            if (checkpoint.workspace_id == workspace_id and 
+                checkpoint.asset_type == asset_type and 
+                checkpoint.status == VerificationStatus.PENDING):
+                return checkpoint
+        return None
+    
     async def create_verification_checkpoint(
         self,
         workspace_id: str,
@@ -112,6 +121,25 @@ class HumanVerificationSystem:
         🎯 CREATE VERIFICATION CHECKPOINT - Determines if human verification is needed
         """
         try:
+            # 🚫 ENHANCED DUPLICATE PREVENTION: Check multiple levels
+            
+            # Level 1: Check by task_id
+            existing_task_checkpoint = self.get_checkpoint_by_task_id(task_id)
+            if existing_task_checkpoint:
+                logger.info(f"🔄 DUPLICATE PREVENTED (TASK): Task {task_id} already has checkpoint {existing_task_checkpoint.id}")
+                return existing_task_checkpoint
+            
+            # Level 2: Check by workspace + asset type (prevents workspace-level duplicates)
+            existing_workspace_checkpoint = self.get_checkpoint_by_workspace_and_asset(workspace_id, asset_type)
+            if existing_workspace_checkpoint:
+                logger.info(f"🔄 DUPLICATE PREVENTED (WORKSPACE): Workspace {workspace_id} already has {asset_type} checkpoint {existing_workspace_checkpoint.id}")
+                return existing_workspace_checkpoint
+            
+            # Level 3: Check database for pending requests
+            if await self._has_duplicate_request_enhanced(workspace_id, task_id, asset_type):
+                logger.info(f"🔄 DUPLICATE PREVENTED (DATABASE): Similar request already exists for workspace {workspace_id}")
+                return None
+            
             # Determine if this deliverable needs human verification
             needs_verification, priority, verification_type = await self._assess_verification_need(
                 task_name, asset_type, deliverable_data, quality_assessment
@@ -151,7 +179,7 @@ class HumanVerificationSystem:
             # Store checkpoint
             self.verification_checkpoints[checkpoint.id] = checkpoint
             
-            # Create human feedback request in database
+            # Create human feedback request in database with final duplicate check
             await self._create_database_feedback_request(checkpoint)
             
             logger.warning(f"🚨 VERIFICATION REQUIRED: {verification_type} for task {task_id} "
@@ -469,9 +497,12 @@ class HumanVerificationSystem:
         try:
             from database import create_human_feedback_request
             
-            # Check for duplicate requests first
-            if await self._has_duplicate_request(checkpoint):
-                logger.info(f"🔄 DUPLICATE REQUEST DETECTED: Skipping verification request for task {checkpoint.task_id}")
+            # Final duplicate check before database creation
+            if await self._has_duplicate_request_enhanced(checkpoint.workspace_id, checkpoint.task_id, checkpoint.asset_type):
+                logger.info(f"🔄 FINAL DUPLICATE CHECK: Skipping verification request for task {checkpoint.task_id}")
+                # Remove from in-memory storage since we're not creating the DB request
+                if checkpoint.id in self.verification_checkpoints:
+                    del self.verification_checkpoints[checkpoint.id]
                 return
             
             # Prepare proposed actions
@@ -606,35 +637,61 @@ class HumanVerificationSystem:
         """).strip()
 
     async def _has_duplicate_request(self, checkpoint: VerificationCheckpoint) -> bool:
-        """Check if similar verification request already exists"""
+        """Check if similar verification request already exists (legacy method)"""
+        return await self._has_duplicate_request_enhanced(
+            checkpoint.workspace_id, 
+            checkpoint.task_id, 
+            checkpoint.asset_type
+        )
+    
+    async def _has_duplicate_request_enhanced(self, workspace_id: str, task_id: str, asset_type: str) -> bool:
+        """Enhanced duplicate detection with multiple criteria"""
         
         try:
             from database import get_human_feedback_requests
             
             # Get pending requests for this workspace
-            pending_requests = await get_human_feedback_requests(checkpoint.workspace_id, "pending")
+            pending_requests = await get_human_feedback_requests(workspace_id, "pending")
             
-            # Check for duplicates based on asset type and similar context
+            # Check for duplicates with enhanced criteria
             for request in pending_requests:
-                # Same asset type verification
-                if (request.get("context", {}).get("asset_type") == checkpoint.asset_type and
-                    request.get("request_type") == checkpoint.verification_type):
-                    
-                    # Same workspace verification within last hour
+                request_context = request.get("context", {})
+                
+                # Enhanced matching criteria:
+                # 1. Same asset type
+                # 2. Same workspace 
+                # 3. Recent creation (within 2 hours instead of 1)
+                # 4. Check for task_id or similar verification context
+                
+                if request_context.get("asset_type") == asset_type:
+                    # Check time window (extended to 2 hours for better detection)
                     from datetime import datetime, timedelta
                     created_time = request.get("created_at")
                     if created_time:
                         try:
                             created_dt = datetime.fromisoformat(created_time.replace('Z', '+00:00'))
-                            if datetime.now() - created_dt < timedelta(hours=1):
-                                return True
-                        except:
-                            pass
+                            time_diff = datetime.now() - created_dt
+                            
+                            # Within 2 hours is considered duplicate
+                            if time_diff < timedelta(hours=2):
+                                # Additional checks for same asset type duplicates
+                                if asset_type in ["contact_database", "email_sequence", "financial_plan"]:
+                                    logger.info(f"🔄 ENHANCED DUPLICATE DETECTED: {asset_type} request exists within {time_diff}")
+                                    return True
+                                    
+                                # For other assets, also check verification checkpoint ID or task context
+                                if (request_context.get("verification_checkpoint_id") or 
+                                    request_context.get("task_id") == task_id):
+                                    logger.info(f"🔄 ENHANCED DUPLICATE DETECTED: Task or checkpoint match found")
+                                    return True
+                        except Exception as parse_error:
+                            logger.debug(f"Error parsing date: {parse_error}")
+                            continue
             
             return False
             
         except Exception as e:
-            logger.error(f"Error checking for duplicate requests: {e}")
+            logger.error(f"Error in enhanced duplicate checking: {e}")
             return False
 
     def _create_deliverable_preview(self, deliverable_data: Dict[str, Any], max_items: int = 5) -> Dict[str, Any]:

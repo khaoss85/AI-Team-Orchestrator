@@ -10,49 +10,232 @@ logger = logging.getLogger(__name__)
 
 class DeliverableMarkupProcessor:
     """
-    Processa e valida markup strutturato nei deliverables
-    Converte markup in strutture dati facilmente renderizzabili nel frontend
+    🤖 AI-DRIVEN DISPLAY PROCESSOR
+    Converte contenuto in display instructions universali e agnostiche
+    Rispetta i pilastri: Universal, Scalable, AI-driven, Non-hardcoded
     """
     
     def __init__(self):
-        # Pattern per identificare diversi tipi di markup
-        self.table_pattern = re.compile(r'## TABLE: (.*?)\n(.*?)## END_TABLE', re.DOTALL)
-        self.card_pattern = re.compile(r'## CARD: (.*?)\n(.*?)## END_CARD', re.DOTALL)
-        self.timeline_pattern = re.compile(r'## TIMELINE: (.*?)\n(.*?)## END_TIMELINE', re.DOTALL)
-        self.metric_pattern = re.compile(r'## METRIC: (.*?)\n(.*?)## END_METRIC', re.DOTALL)
+        # 🤖 AI-DRIVEN: No hardcoded patterns, dynamic generation only
+        self.ai_display_generator = None
+        try:
+            import os
+            if os.getenv("OPENAI_API_KEY"):
+                from openai import AsyncOpenAI
+                self.ai_display_generator = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                logger.info("✅ AI Display Generator available")
+        except ImportError:
+            logger.warning("⚠️ AI not available, falling back to universal structural analysis")
         
         # Cache per performance
         self.processed_cache = {}
     
-    def process_deliverable_content(self, raw_content: Any) -> Dict[str, Any]:
+    async def process_deliverable_content(self, raw_content: Any) -> Dict[str, Any]:
         """
-        Converte contenuto con markup in struttura dati utilizzabile
-        Gestisce sia stringhe che dict con campi markup
+        🤖 AI-DRIVEN CONTENT PROCESSING - Universal & Agnostic
+        Generates display instructions instead of hardcoded markup
         """
         
         try:
-            # 🎯 PRIORITY: Check for actionable business content first
-            if isinstance(raw_content, dict):
-                # Check for high-value actionable content
-                if self._contains_actionable_content(raw_content):
-                    return self._process_actionable_dict_content(raw_content)
-                else:
-                    return self._process_dict_content(raw_content)
+            # Step 1: Analyze content structure universally
+            content_analysis = await self._analyze_content_structure(raw_content)
             
-            # Se è una stringa, processa direttamente
-            if isinstance(raw_content, str):
-                return self._process_string_content(raw_content)
+            # Step 2: Generate AI-driven display instructions
+            display_instructions = await self._generate_display_instructions(content_analysis, raw_content)
             
-            # Altri tipi, converte in stringa
-            content_str = str(raw_content)
-            return self._process_string_content(content_str)
+            # Step 3: Enhance with the processed content
+            result = {
+                "_display_format": display_instructions,
+                "content_analysis": content_analysis,
+                "raw_content": raw_content,
+                "processed": True,
+                "processing_method": "ai_driven" if self.ai_display_generator else "universal_structural"
+            }
+            
+            return result
             
         except Exception as e:
-            logger.error(f"Error processing markup content: {e}")
+            logger.error(f"Error processing deliverable content: {e}")
             return {
                 "error": str(e),
                 "raw_content": raw_content,
-                "processed": False
+                "processed": False,
+                "_display_format": {
+                    "type": "raw",
+                    "content": str(raw_content)
+                }
+            }
+    
+    async def _analyze_content_structure(self, content: Any) -> Dict[str, Any]:
+        """
+        🌍 UNIVERSAL CONTENT ANALYZER - Works for any data structure
+        No hardcoded business logic, purely structural analysis
+        """
+        analysis = {
+            "content_type": type(content).__name__,
+            "has_lists": False,
+            "has_nested_objects": False,
+            "has_key_value_pairs": False,
+            "estimated_complexity": "simple",
+            "detected_patterns": [],
+            "data_density": 0,
+            "actionable_score": 0
+        }
+        
+        if isinstance(content, dict):
+            analysis["has_key_value_pairs"] = True
+            analysis["data_density"] = len(content)
+            
+            # Detect nested structures
+            for key, value in content.items():
+                if isinstance(value, (list, dict)):
+                    analysis["has_nested_objects"] = True
+                if isinstance(value, list) and len(value) > 3:
+                    analysis["has_lists"] = True
+                    analysis["actionable_score"] += 10
+                
+                # Pattern detection (universal, not business-specific)
+                if isinstance(value, list):
+                    analysis["detected_patterns"].append(f"list_of_{len(value)}_items")
+                if isinstance(value, dict) and len(value) > 3:
+                    analysis["detected_patterns"].append("structured_object")
+        
+        elif isinstance(content, list):
+            analysis["has_lists"] = True
+            analysis["data_density"] = len(content)
+            if len(content) > 5:
+                analysis["actionable_score"] += 15
+        
+        # Calculate complexity
+        if analysis["data_density"] > 10 or analysis["has_nested_objects"]:
+            analysis["estimated_complexity"] = "complex"
+        elif analysis["data_density"] > 3 or analysis["has_lists"]:
+            analysis["estimated_complexity"] = "medium"
+        
+        return analysis
+    
+    async def _generate_display_instructions(self, analysis: Dict[str, Any], content: Any) -> Dict[str, Any]:
+        """
+        🤖 AI-DRIVEN DISPLAY INSTRUCTIONS GENERATOR
+        Creates universal display format based on content structure
+        """
+        
+        if self.ai_display_generator:
+            return await self._generate_ai_display_instructions(analysis, content)
+        else:
+            return self._generate_universal_display_instructions(analysis, content)
+    
+    async def _generate_ai_display_instructions(self, analysis: Dict[str, Any], content: Any) -> Dict[str, Any]:
+        """
+        🤖 Uses AI to generate optimal display format for any content type
+        """
+        try:
+            # Create AI prompt for display instructions
+            prompt = f"""
+You are a universal content display formatter. Given this content analysis and raw content, generate display instructions that will render the content in the most user-friendly way.
+
+Content Analysis:
+{json.dumps(analysis, indent=2)}
+
+Raw Content:
+{json.dumps(content, indent=2) if isinstance(content, (dict, list)) else str(content)[:1000]}
+
+Generate a JSON response with display_instructions that include:
+1. "type": The best display type (structured_list, table, cards, text, etc.)
+2. "title": A descriptive title for the content
+3. "sections": Array of sections with their display properties
+4. Make it universal - don't assume specific business domains
+
+Respond only with valid JSON in this format:
+{{
+  "type": "structured_list",
+  "title": "Generated Title",
+  "sections": [
+    {{
+      "title": "Section Name",
+      "type": "list|text|key_value",
+      "content": "content here",
+      "items": ["item1", "item2"] // for lists
+    }}
+  ]
+}}
+"""
+            
+            response = await self.ai_display_generator.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1000
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            
+            # Parse AI response
+            try:
+                return json.loads(ai_response)
+            except json.JSONDecodeError:
+                logger.warning("AI generated invalid JSON, falling back to universal")
+                return self._generate_universal_display_instructions(analysis, content)
+                
+        except Exception as e:
+            logger.error(f"AI display generation failed: {e}")
+            return self._generate_universal_display_instructions(analysis, content)
+    
+    def _generate_universal_display_instructions(self, analysis: Dict[str, Any], content: Any) -> Dict[str, Any]:
+        """
+        🌍 UNIVERSAL DISPLAY GENERATOR - Works without AI
+        Pure structural analysis, no business logic
+        """
+        
+        if isinstance(content, dict):
+            # Generate structured list format for objects
+            sections = []
+            
+            for key, value in content.items():
+                if key.startswith('_'):  # Skip meta fields
+                    continue
+                    
+                section = {
+                    "title": key.replace('_', ' ').title(),
+                    "key": key
+                }
+                
+                if isinstance(value, list):
+                    section["type"] = "list"
+                    section["items"] = [str(item) for item in value[:10]]  # Limit for display
+                    if len(value) > 10:
+                        section["items"].append(f"... and {len(value) - 10} more items")
+                elif isinstance(value, dict):
+                    section["type"] = "key_value"
+                    section["content"] = {k: str(v) for k, v in list(value.items())[:5]}
+                else:
+                    section["type"] = "text"
+                    section["content"] = str(value)
+                
+                sections.append(section)
+            
+            return {
+                "type": "structured_list",
+                "title": "Structured Content",
+                "sections": sections
+            }
+        
+        elif isinstance(content, list):
+            return {
+                "type": "structured_list",
+                "title": f"List of {len(content)} Items",
+                "sections": [{
+                    "title": "Items",
+                    "type": "list",
+                    "items": [str(item) for item in content[:20]]  # Limit for display
+                }]
+            }
+        
+        else:
+            return {
+                "type": "text",
+                "title": "Content",
+                "content": str(content)
             }
     
     def _contains_actionable_content(self, content_dict: Dict) -> bool:

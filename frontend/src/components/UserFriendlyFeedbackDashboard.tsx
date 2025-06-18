@@ -294,7 +294,10 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">📁</span>
-                    <h3 className="font-medium text-gray-900">{group.name}</h3>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{group.name}</h3>
+                      <p className="text-xs text-gray-500">ID: {workspaceId.slice(0, 8)}</p>
+                    </div>
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {group.requests.length} {group.requests.length === 1 ? 'review' : 'reviews'}
                     </span>
@@ -492,8 +495,13 @@ const ReviewModal: React.FC<{
               <div className="flex items-center">
                 <span className="text-gray-600 mr-2">📁</span>
                 <div>
-                  <p className="font-medium text-gray-900">Progetto: {workspaceNames[request.workspace_id] || `Progetto ${request.workspace_id.slice(0, 8)}`}</p>
-                  <p className="text-sm text-gray-600">ID: {request.workspace_id}</p>
+                  <p className="font-medium text-gray-900">
+                    {workspaceNames[request.workspace_id] 
+                      ? `${workspaceNames[request.workspace_id]} (${request.workspace_id.slice(0, 8)})`
+                      : `Progetto ${request.workspace_id.slice(0, 8)}`
+                    }
+                  </p>
+                  <p className="text-sm text-gray-600">Workspace ID: {request.workspace_id}</p>
                 </div>
               </div>
             </div>
@@ -549,96 +557,265 @@ const ReviewModal: React.FC<{
             })()}
           </div>
 
-          {/* Quality Analysis & Technical Details */}
-          <details className="mb-6 border border-gray-200 rounded-lg">
-            <summary className="cursor-pointer p-4 font-medium text-gray-700 hover:bg-gray-50 flex items-center">
-              <svg className="w-4 h-4 mr-2 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-              📊 Analisi Qualità & Dettagli Tecnici
-            </summary>
-            <div className="p-4 border-t border-gray-200 space-y-4">
-              {/* Quality Breakdown */}
-              {request.context?.quality_assessment && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-3 flex items-center">
-                    <span className="mr-2">🎯</span>
-                    Breakdown Punteggio Qualità ({Math.round((request.context.quality_assessment.overall_score || 0) * 100)}%)
-                  </h4>
+          {/* Contenuto da Validare */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+              <span className="mr-2">📄</span>
+              Contenuto da Validare
+            </h3>
+            <div className="bg-white rounded-lg p-4 border">
+              {(() => {
+                // Extract content from multiple possible sources - prioritize actual deliverable content
+                const checkpointData = request.context?.checkpoint_data
+                const deliverablePreview = request.context?.deliverable_preview
+                const verificationContext = request.context?.verification_context
+                const deliverableData = request.context?.deliverable_data
+                const keyContent = request.context?.key_content
+                
+                // Priority 1: Checkpoint data (most accurate for deliverables)
+                if (checkpointData) {
+                  const content = checkpointData.content || checkpointData.deliverable_content || checkpointData
                   
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>📄 Completezza contenuto:</span>
-                      <span className="font-medium">{request.context.quality_assessment.quality_issues?.includes('placeholder_data') ? '❌ Dati placeholder' : '✅ Dati completi'}</span>
+                  return (
+                    <div className="space-y-4">
+                      {checkpointData.title && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800 mb-2 flex items-center">
+                            <span className="mr-2">🎯</span>
+                            Deliverable: {checkpointData.title}
+                          </h4>
+                        </div>
+                      )}
+                      
+                      {content?.summary && (
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-3">
+                          <h4 className="text-sm font-medium text-blue-800 mb-1">📋 Riassunto:</h4>
+                          <p className="text-sm text-blue-700 leading-relaxed">{content.summary}</p>
+                        </div>
+                      )}
+                      
+                      {content?.detailed_results_json && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800 mb-2">🔍 Contenuto Dettagliato:</h4>
+                          <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border max-h-64 overflow-y-auto">
+                            {(() => {
+                              try {
+                                const parsed = JSON.parse(content.detailed_results_json)
+                                
+                                // 🤖 AI-DRIVEN CONTENT DISPLAY - Universal & Agnostic
+                                // Check if AI has provided pre-formatted display instructions
+                                if (parsed._display_format || parsed.display_instructions) {
+                                  const displayInstructions = parsed._display_format || parsed.display_instructions
+                                  
+                                  // AI-generated markup rendering
+                                  if (displayInstructions.type === 'structured_list') {
+                                    return (
+                                      <div className="space-y-3">
+                                        {displayInstructions.title && (
+                                          <div><strong>{displayInstructions.title}</strong></div>
+                                        )}
+                                        {displayInstructions.sections?.map((section, idx) => (
+                                          <div key={idx}>
+                                            {section.title && <strong>{section.title}:</strong>}
+                                            {section.type === 'list' && (
+                                              <ul className="ml-4 mt-1">
+                                                {section.items.map((item, itemIdx) => (
+                                                  <li key={itemIdx}>• {item}</li>
+                                                ))}
+                                              </ul>
+                                            )}
+                                            {section.type === 'text' && (
+                                              <div>{section.content}</div>
+                                            )}
+                                            {section.type === 'key_value' && (
+                                              <div>{section.key}: {section.value}</div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  if (displayInstructions.type === 'markdown') {
+                                    return (
+                                      <div 
+                                        className="prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{
+                                          __html: displayInstructions.content.replace(/\n/g, '<br/>')
+                                        }}
+                                      />
+                                    )
+                                  }
+                                }
+                                
+                                // 🔄 UNIVERSAL CONTENT RENDERER - Analyzes any JSON structure
+                                // No hardcoded business logic, purely structural analysis
+                                const renderUniversalContent = (obj, level = 0) => {
+                                  if (typeof obj === 'string') {
+                                    return <div className="text-sm">{obj}</div>
+                                  }
+                                  
+                                  if (Array.isArray(obj)) {
+                                    return (
+                                      <ul className="ml-4 space-y-1">
+                                        {obj.map((item, idx) => (
+                                          <li key={idx} className="flex items-start">
+                                            <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                                            <span>{typeof item === 'object' ? renderUniversalContent(item, level + 1) : item}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )
+                                  }
+                                  
+                                  if (typeof obj === 'object' && obj !== null) {
+                                    return (
+                                      <div className={`space-y-2 ${level > 0 ? 'ml-4' : ''}`}>
+                                        {Object.entries(obj).map(([key, value]) => {
+                                          // Skip internal/meta fields
+                                          if (key.startsWith('_') || key === 'metadata') return null
+                                          
+                                          const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                                          
+                                          return (
+                                            <div key={key}>
+                                              <strong className="text-gray-800">{displayKey}:</strong>
+                                              <div className="mt-1">
+                                                {renderUniversalContent(value, level + 1)}
+                                              </div>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  return <span>{String(obj)}</span>
+                                }
+                                
+                                // Apply universal renderer to any structured content
+                                return (
+                                  <div className="max-h-64 overflow-y-auto">
+                                    {renderUniversalContent(parsed)}
+                                  </div>
+                                )
+                                
+                              } catch {
+                                // Fallback: Raw content display
+                                return (
+                                  <div className="text-gray-600 max-h-64 overflow-y-auto">
+                                    <pre className="text-xs whitespace-pre-wrap">
+                                      {content.detailed_results_json.substring(0, 800)}
+                                      {content.detailed_results_json.length > 800 ? '\n...\n[contenuto troncato]' : ''}
+                                    </pre>
+                                  </div>
+                                )
+                              }
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {content?.next_steps?.items && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800 mb-1">🎯 Prossimi Passi:</h4>
+                          <ul className="text-sm text-gray-700 space-y-1">
+                            {content.next_steps.items.map((step, idx) => (
+                              <li key={idx} className="flex items-start">
+                                <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span>🎯 Usabilità business:</span>
-                      <span className="font-medium">{request.context.quality_assessment.ready_for_use ? '✅ Pronto per uso' : '⚠️ Richiede modifiche'}</span>
+                  )
+                }
+                
+                // Priority 2: Deliverable preview
+                if (deliverablePreview?.content_for_review) {
+                  const content = deliverablePreview.content_for_review
+                  return (
+                    <div className="space-y-3">
+                      {content.summary && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800 mb-1">📋 Riassunto del Deliverable:</h4>
+                          <p className="text-sm text-gray-700 leading-relaxed">{content.summary}</p>
+                        </div>
+                      )}
+                      
+                      {content.detailed_results_json && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-800 mb-1">🔍 Dettaglio Contenuto:</h4>
+                          <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
+                            {content.detailed_results_json.substring(0, 400)}...
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span>💼 Conformità requisiti:</span>
-                      <span className="font-medium">{request.context.quality_assessment.needs_enhancement ? '⚠️ Miglioramenti necessari' : '✅ Conforme'}</span>
+                  )
+                }
+                
+                // Priority 3: Verification context
+                if (verificationContext) {
+                  return (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-800 mb-1">🔐 Contesto di Verifica:</h4>
+                      <div className="text-sm text-gray-700 bg-yellow-50 p-3 rounded border">
+                        {JSON.stringify(verificationContext, null, 2).substring(0, 300)}...
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>🔍 Problemi identificati:</span>
-                      <span className="font-medium">{request.context.quality_assessment.quality_issues?.length || 0}</span>
+                  )
+                }
+                
+                // Priority 4: Key content
+                if (keyContent) {
+                  return (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-800 mb-1">🔑 Contenuto Chiave:</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">{keyContent}</p>
                     </div>
+                  )
+                }
+                
+                // Priority 5: Generic deliverable data
+                if (deliverableData) {
+                  return (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-800 mb-1">📦 Dati Deliverable:</h4>
+                      {deliverableData.title && (
+                        <p className="text-sm"><strong>Titolo:</strong> {deliverableData.title}</p>
+                      )}
+                      {deliverableData.summary && (
+                        <p className="text-sm"><strong>Summary:</strong> {deliverableData.summary}</p>
+                      )}
+                    </div>
+                  )
+                }
+                
+                // Fallback: No content available
+                return (
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">📋 Contenuto non ancora disponibile</p>
+                    <p className="text-xs mt-1">Il deliverable è ancora in elaborazione</p>
+                    
+                    {/* Debug info for development */}
+                    <details className="mt-3 text-left">
+                      <summary className="text-xs text-gray-400 cursor-pointer">Debug: Mostra dati disponibili</summary>
+                      <pre className="text-xs text-gray-400 mt-2 bg-gray-100 p-2 rounded overflow-x-auto">
+                        {JSON.stringify({
+                          context_keys: Object.keys(request.context || {}),
+                          request_type: request.request_type,
+                          title: request.title
+                        }, null, 2)}
+                      </pre>
+                    </details>
                   </div>
-                  
-                  {request.context.quality_assessment.improvement_suggestions && (
-                    <div className="mt-3">
-                      <h5 className="font-medium text-blue-800 mb-2">💡 Suggerimenti miglioramento:</h5>
-                      <ul className="text-sm space-y-1">
-                        {request.context.quality_assessment.improvement_suggestions.slice(0, 3).map((suggestion, idx) => (
-                          <li key={idx} className="flex items-start">
-                            <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                            <span className="text-blue-700">{suggestion.slice(0, 120)}...</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Summary */}
-              {preview.summary && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-800 mb-2">📝 Summary Task</h4>
-                  <p className="text-gray-700 text-sm">{preview.summary}</p>
-                </div>
-              )}
-              
-              {/* Next Steps */}
-              {preview.next_steps && preview.next_steps.length > 0 && (
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h4 className="font-medium text-green-800 mb-2">🎯 Next Steps</h4>
-                  <ul className="space-y-1 text-sm">
-                    {preview.next_steps.map((step, index) => (
-                      <li key={index} className="flex items-start text-green-700">
-                        <span className="text-green-500 mr-2 mt-0.5">✓</span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {/* Raw JSON - minimized */}
-              {Object.keys(detailedContent).length > 0 && (
-                <details className="bg-gray-800 rounded-lg">
-                  <summary className="cursor-pointer p-3 text-white text-sm font-medium">
-                    🔧 Dati Tecnici Raw (JSON)
-                  </summary>
-                  <div className="p-3 max-h-40 overflow-y-auto">
-                    <pre className="text-xs text-green-400 font-mono">
-                      {JSON.stringify(detailedContent, null, 2)}
-                    </pre>
-                  </div>
-                </details>
-              )}
+                )
+              })()}
             </div>
-          </details>
+          </div>
 
           {/* Proposed Actions - MIGLIORATO */}
           {request.proposed_actions && request.proposed_actions.length > 0 && (

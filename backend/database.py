@@ -199,7 +199,7 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
         from ai_quality_assurance.ai_goal_extractor import extract_and_create_workspace_goals
         from models import GoalMetricType, GoalStatus
         from uuid import uuid4
-        from datetime import datetime
+        # datetime already imported globally
         
         # 🤖 Use AI-driven goal extraction with semantic understanding
         logger.info(f"🤖 AI-DRIVEN GOAL EXTRACTION from text: {goal_text}")
@@ -343,7 +343,7 @@ async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: st
         from ai_quality_assurance.goal_validator import goal_validator
         from models import GoalMetricType, GoalStatus
         from uuid import uuid4
-        from datetime import datetime
+        # datetime already imported globally
         
         logger.info(f"📊 FALLBACK: Pattern-based goal extraction from text: {goal_text}")
         requirements = await goal_validator._extract_goal_requirements(goal_text)
@@ -988,29 +988,73 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                     # Quality sufficient for potential verification - create checkpoint
                     from human_verification_system import human_verification_system
                     
-                    # 🚫 CRITICAL FIX: Check if verification checkpoint already exists for this task
+                    # 🚫 ENHANCED DUPLICATE PREVENTION: Multi-level check
                     existing_checkpoint = human_verification_system.get_checkpoint_by_task_id(task_id)
+                    existing_workspace_checkpoint = human_verification_system.get_checkpoint_by_workspace_and_asset(workspace_id, asset_type)
+                    
                     if existing_checkpoint:
-                        logger.info(f"🔄 DUPLICATE PREVENTED: Task {task_id} already has verification checkpoint {existing_checkpoint.id}")
-                        # Use existing checkpoint instead of creating new one
+                        logger.info(f"🔄 DUPLICATE PREVENTED (TASK): Task {task_id} already has verification checkpoint {existing_checkpoint.id}")
                         verification_checkpoint = existing_checkpoint
+                    elif existing_workspace_checkpoint:
+                        logger.info(f"🔄 DUPLICATE PREVENTED (WORKSPACE): Workspace {workspace_id} already has {asset_type} checkpoint {existing_workspace_checkpoint.id}")
+                        verification_checkpoint = existing_workspace_checkpoint
                     else:
-                        verification_checkpoint = await human_verification_system.create_verification_checkpoint(
-                            workspace_id=workspace_id,
-                            task_id=task_id,
-                            task_name=task_name,
-                            asset_type=asset_type,
-                            deliverable_data=result_payload,
-                            quality_assessment={
-                                "overall_score": quality_assessment.overall_score,
-                                "ready_for_use": quality_assessment.ready_for_use,
-                                "needs_enhancement": quality_assessment.needs_enhancement,
-                                "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
-                                "enhancement_priority": quality_assessment.enhancement_priority,
-                                "improvement_suggestions": quality_assessment.improvement_suggestions
-                            },
-                            context={"workspace_goal": workspace_goal}
-                        )
+                        # Additional check: look for recent pending database requests
+                        try:
+                            recent_requests = await get_human_feedback_requests(workspace_id, "pending")
+                            has_recent_similar = False
+                            
+                            for request in recent_requests:
+                                if (request.get("context", {}).get("asset_type") == asset_type and
+                                    request.get("created_at")):
+                                    try:
+                                        # datetime already imported globally
+                                        created_dt = datetime.fromisoformat(request["created_at"].replace('Z', '+00:00'))
+                                        if datetime.now() - created_dt < timedelta(hours=1):
+                                            has_recent_similar = True
+                                            logger.info(f"🔄 DUPLICATE PREVENTED (DATABASE): Recent {asset_type} request exists for workspace {workspace_id}")
+                                            break
+                                    except Exception:
+                                        continue
+                            
+                            if has_recent_similar:
+                                verification_checkpoint = None
+                            else:
+                                verification_checkpoint = await human_verification_system.create_verification_checkpoint(
+                                    workspace_id=workspace_id,
+                                    task_id=task_id,
+                                    task_name=task_name,
+                                    asset_type=asset_type,
+                                    deliverable_data=result_payload,
+                                    quality_assessment={
+                                        "overall_score": quality_assessment.overall_score,
+                                        "ready_for_use": quality_assessment.ready_for_use,
+                                        "needs_enhancement": quality_assessment.needs_enhancement,
+                                        "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
+                                        "enhancement_priority": quality_assessment.enhancement_priority,
+                                        "improvement_suggestions": quality_assessment.improvement_suggestions
+                                    },
+                                    context={"workspace_goal": workspace_goal}
+                                )
+                        except Exception as db_check_error:
+                            logger.warning(f"Database duplicate check failed: {db_check_error}")
+                            # Fallback to creating checkpoint if database check fails
+                            verification_checkpoint = await human_verification_system.create_verification_checkpoint(
+                                workspace_id=workspace_id,
+                                task_id=task_id,
+                                task_name=task_name,
+                                asset_type=asset_type,
+                                deliverable_data=result_payload,
+                                quality_assessment={
+                                    "overall_score": quality_assessment.overall_score,
+                                    "ready_for_use": quality_assessment.ready_for_use,
+                                    "needs_enhancement": quality_assessment.needs_enhancement,
+                                    "quality_issues": [issue.value for issue in quality_assessment.quality_issues],
+                                    "enhancement_priority": quality_assessment.enhancement_priority,
+                                    "improvement_suggestions": quality_assessment.improvement_suggestions
+                                },
+                                context={"workspace_goal": workspace_goal}
+                            )
                     
                     if verification_checkpoint:
                         # Human verification required - set status to pending_verification

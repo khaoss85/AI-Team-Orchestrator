@@ -53,7 +53,8 @@ class EnhancedDirectorAgent(DirectorAgent):
             goal=enhanced_goal,
             budget_constraint=config.budget_constraint,
             user_id=config.user_id,
-            user_feedback=config.user_feedback
+            user_feedback=config.user_feedback,
+            extracted_goals=config.extracted_goals  # Pass through extracted goals
         )
         
         # Add strategic context to the proposal generation
@@ -208,6 +209,12 @@ class EnhancedDirectorAgent(DirectorAgent):
         
         # Create enhanced rationale with strategic information
         strategic_context = []
+        
+        # Indicate source of goals
+        goal_source = strategic_goals.get('source', 'database')
+        if goal_source == 'frontend_confirmed':
+            strategic_context.append("obiettivi confermati dall'utente")
+        
         if deliverable_count > 0:
             strategic_context.append(f"{deliverable_count} deliverable strategici identificati")
         

@@ -379,10 +379,36 @@ export function useGoalPreview(workspaceId: string) {
   }, [workspaceId, toast]);
 
   const editGoal = useCallback((index: number, updatedGoal: ExtractedGoal) => {
+    const goalId = updatedGoal.id;
+    
+    // Update extractedGoals (main array)
     setExtractedGoals(prev => {
+      const actualIndex = prev.findIndex(g => g.id === goalId);
+      if (actualIndex === -1) return prev;
+      
       const newGoals = [...prev];
-      newGoals[index] = updatedGoal;
+      newGoals[actualIndex] = updatedGoal;
       return newGoals;
+    });
+    
+    // Update finalMetrics if this goal exists there
+    setFinalMetrics(prev => {
+      const metricIndex = prev.findIndex(m => m.id === goalId);
+      if (metricIndex === -1) return prev;
+      
+      const newMetrics = [...prev];
+      newMetrics[metricIndex] = updatedGoal;
+      return newMetrics;
+    });
+    
+    // Update strategicDeliverables if this goal exists there
+    setStrategicDeliverables(prev => {
+      const deliverableIndex = prev.findIndex(d => d.id === goalId);
+      if (deliverableIndex === -1) return prev;
+      
+      const newDeliverables = [...prev];
+      newDeliverables[deliverableIndex] = updatedGoal;
+      return newDeliverables;
     });
   }, []);
 
