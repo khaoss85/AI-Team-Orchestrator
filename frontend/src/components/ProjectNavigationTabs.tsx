@@ -21,6 +21,13 @@ const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = '' }) =
       description: 'Risultati concreti'
     },
     {
+      id: 'conversation',
+      label: 'Chat AI',
+      href: `/projects/${projectId}/conversation`,
+      icon: '💬',
+      description: 'Interfaccia conversazionale'
+    },
+    {
       id: 'assets',
       label: 'Asset Management',
       href: `/projects/${projectId}/assets`,

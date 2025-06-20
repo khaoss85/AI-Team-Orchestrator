@@ -54,13 +54,26 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
         )
 
 @router.get("/{workspace_id}", response_model=List[Agent])
-async def get_workspace_agents(workspace_id: UUID):
+async def get_workspace_agents(workspace_id: str):
     """Get all agents in a workspace"""
     try:
-        agents_data = await db_list_agents(str(workspace_id))
+        # Validate UUID format
+        try:
+            UUID(workspace_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid workspace ID format: {workspace_id}"
+            )
+        
+        agents_data = await db_list_agents(workspace_id)
         
         # Deserializza i campi JSON prima della validazione Pydantic
         for agent in agents_data:
+            # Map legacy status values to current enum
+            if agent.get('status') == 'available':
+                agent['status'] = 'active'
+            
             # Deserializza llm_config se è una stringa
             if isinstance(agent.get('llm_config'), str):
                 try:

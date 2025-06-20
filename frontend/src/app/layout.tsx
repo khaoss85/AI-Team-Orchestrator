@@ -2,10 +2,8 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
 import { NotificationService } from "@/components/NotificationService";
-
+import LayoutWrapper from "@/components/LayoutWrapper";
 
 export const metadata: Metadata = {
   title: "AI Team Orchestrator",
@@ -21,15 +19,9 @@ export default function RootLayout({
     <html lang="it">
       <body>
         <NotificationService>
-          <div className="flex h-screen bg-gray-50">
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <Header />
-              <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                {children}
-              </main>
-            </div>
-          </div>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </NotificationService>
       </body>
     </html>

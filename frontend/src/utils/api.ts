@@ -2056,4 +2056,104 @@ export const api = {
       }
     },
   },
+
+  // Document Management API
+  documents: {
+    // Upload a document
+    upload: async (
+      workspaceId: string,
+      fileData: string, // base64
+      filename: string,
+      sharingScope: string = 'team',
+      description?: string,
+      tags?: string[]
+    ): Promise<{
+      success: boolean;
+      document: {
+        id: string;
+        filename: string;
+        file_size: number;
+        mime_type: string;
+        sharing_scope: string;
+        vector_store_id: string;
+        upload_date: string;
+      };
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_data: fileData,
+            filename,
+            sharing_scope: sharingScope,
+            description,
+            tags
+          }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // List documents
+    list: async (workspaceId: string, scope?: string): Promise<{
+      documents: Array<{
+        id: string;
+        filename: string;
+        file_size: number;
+        mime_type: string;
+        upload_date: string;
+        uploaded_by: string;
+        sharing_scope: string;
+        description?: string;
+        tags: string[];
+      }>;
+      total: number;
+    }> => {
+      try {
+        const url = new URL(`${API_BASE_URL}/documents/${workspaceId}`);
+        if (scope) url.searchParams.append('scope', scope);
+        
+        const response = await fetch(url.toString());
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Delete a document
+    delete: async (workspaceId: string, documentId: string): Promise<{
+      success: boolean;
+      message: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/${documentId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Get vector stores
+    getVectorStores: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      vector_store_ids: string[];
+      count: number;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/vector-stores`);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
 };

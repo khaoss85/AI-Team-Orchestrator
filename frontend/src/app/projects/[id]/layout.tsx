@@ -15,12 +15,13 @@ export default function ProjectLayout({ children, params: paramsPromise }: Props
   const projectId = params.id;
   const pathname = usePathname();
   
-  // Nascondi il menu per la pagina di configurazione
+  // Nascondi il menu per la pagina di configurazione e conversational
   const isConfigurePage = pathname.includes('/configure');
+  const isConversationPage = pathname.includes('/conversation');
 
   return (
     <div>
-      {!isConfigurePage && (
+      {!isConfigurePage && !isConversationPage && (
         <>
           {/* Project Navigation with Breadcrumb */}
           <div className="bg-white border-b border-gray-200">

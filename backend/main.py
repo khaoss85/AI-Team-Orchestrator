@@ -36,6 +36,8 @@ from routes.goal_validation import router as goal_validation_router
 from routes.workspace_goals import router as workspace_goals_router
 from routes.deliverables import router as deliverables_router
 from routes.websocket import router as websocket_router
+from routes.conversation import router as conversation_router
+from routes.documents import router as documents_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -76,10 +78,12 @@ app.include_router(delegation_router)
 app.include_router(unified_assets_router)
 app.include_router(ai_content_router)
 app.include_router(utils_router)
+app.include_router(documents_router)
 app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router)
 app.include_router(deliverables_router)
 app.include_router(websocket_router)
+app.include_router(conversation_router)
 
 # Add API prefix compatibility for frontend
 # Import the specific endpoint function we need

@@ -10,6 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@tailwindcss/line-clamp": "^0.4.4",
     "lucide-react": "^0.515.0",
     "next": "15.3.2",
     "react": "^19.0.0",

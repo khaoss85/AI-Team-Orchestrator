@@ -1064,6 +1064,18 @@ class SpecialistAgent(Generic[T]):
             ]
         )
         
+        # 🔧 OPENAI SDK TOOLS - Available to all agents
+        if SDK_AVAILABLE:
+            # Add WebSearchTool for all agents
+            try:
+                tools_list.append(WebSearchTool())
+                logger.info(f"Agent {self.agent_data.name} equipped with OpenAI SDK WebSearchTool")
+            except Exception as e:
+                logger.warning(f"Could not add WebSearchTool to {self.agent_data.name}: {e}")
+            
+            # Note: FileSearchTool requires vector_store_ids, so we'll add it conditionally below
+            # Future SDK tools like CodeInterpreterTool can be added here when available
+        
         # 🧠 WORKSPACE MEMORY TOOLS - Available to all agents
         try:
             from ai_agents.tools import WorkspaceMemoryTools
@@ -1114,9 +1126,9 @@ class SpecialistAgent(Generic[T]):
                 if isinstance(tool_config, dict):
                     tool_type = tool_config.get("type", "").lower()
                     if tool_type == "web_search":
-                        tools_list.append(WebSearchTool())
-                        logger.info(
-                            f"Agent {self.agent_data.name} equipped with WebSearchTool."
+                        # Skip - WebSearchTool already added for all agents above
+                        logger.debug(
+                            f"Agent {self.agent_data.name}: web_search already equipped via SDK."
                         )
                     elif tool_type == "file_search":
                         vs_ids = getattr(self.agent_data, "vector_store_ids", [])

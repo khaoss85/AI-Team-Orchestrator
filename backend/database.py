@@ -39,6 +39,11 @@ except Exception as e:
     logger.error(f"Error creating Supabase client: {e}")
     raise
 
+# Compatibility function for conversational AI components
+def get_supabase_client() -> Client:
+    """Get the Supabase client instance"""
+    return supabase
+
 # Retry decorator for Supabase operations
 def supabase_retry(max_attempts: int = 3, backoff_factor: float = 2.0):
     """

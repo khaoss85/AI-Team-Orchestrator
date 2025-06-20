@@ -58,14 +58,38 @@ async def retrieve_data(workspace_id: UUID, key: str):
     This is a macro tool that can be called by agents.
     """
     try:
-        # In a real implementation, this would retrieve data from the database
+        # PRODUCTION: Retrieve actual data from database
         logger.info(f"Retrieving data for workspace {workspace_id}, key '{key}'")
         
-        # Placeholder data
-        data = {
-            "placeholder": "This is placeholder data",
-            "timestamp": "2023-05-01T12:00:00Z"
-        }
+        from database import get_supabase_client
+        supabase = get_supabase_client()
+        
+        # Query workspace context data
+        result = supabase.table("workspace_context")\
+            .select("*")\
+            .eq("workspace_id", workspace_id)\
+            .eq("context_key", key)\
+            .execute()
+        
+        if result.data:
+            data = result.data[0].get("context_value", {})
+        else:
+            # Return workspace info if specific key not found
+            workspace_result = supabase.table("workspaces")\
+                .select("*")\
+                .eq("id", workspace_id)\
+                .execute()
+            
+            if workspace_result.data:
+                data = {
+                    "workspace_info": workspace_result.data[0],
+                    "message": f"No specific data found for key '{key}', returning workspace info"
+                }
+            else:
+                data = {
+                    "error": f"Workspace {workspace_id} not found",
+                    "key": key
+                }
         
         return {
             "success": True,

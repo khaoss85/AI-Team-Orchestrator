@@ -1,19 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, use } from 'react'
-import Link from 'next/link'
 import { api } from '@/utils/api'
-import type { Workspace, Agent, FeedbackRequest, TaskAnalysisResponse } from '@/types'
-import { useProjectDeliverables } from '@/hooks/useProjectDeliverables'
-import { useUnifiedAssets } from '@/hooks/useUnifiedAssets'
-import ProjectNavigationTabs from '@/components/ProjectNavigationTabs'
-import ConcreteDeliverablesOverview from '@/components/ConcreteDeliverablesOverview'
-import GoalProgressTracker from '@/components/GoalProgressTracker'
-import MissionControlSection from '@/components/redesign/MissionControlSection'
-import InteractionPanel from '@/components/redesign/InteractionPanel'
-import SmartAssetViewer from '@/components/SmartAssetViewer'
-import FeedbackNotificationBadge from '@/components/FeedbackNotificationBadge'
-import ProjectFeedbackPanel from '@/components/ProjectFeedbackPanel'
+import type { Workspace } from '@/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -27,78 +16,8 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Simplified data hooks - focus only on deliverables and assets
-  const {
-    finalDeliverables,
-    hasFinalDeliverables,
-    finalDeliverablesCount,
-    loading: deliverablesLoading
-  } = useProjectDeliverables(id)
-
-  const {
-    assets,
-    assetCount,
-    loading: assetsLoading
-  } = useUnifiedAssets(id)
-
-  // Mission control data (simplified)
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [feedback, setFeedback] = useState<FeedbackRequest[]>([])
-  const [taskAnalysis, setTaskAnalysis] = useState<TaskAnalysisResponse | null>(null)
-  const [missionLoading, setMissionLoading] = useState(true)
-
-  // Asset viewer state
-  const [selectedAsset, setSelectedAsset] = useState<any>(null)
-  const [showAssetDetails, setShowAssetDetails] = useState(false)
-  
-  // Feedback panel state
-  const [showFeedbackPanel, setShowFeedbackPanel] = useState(false)
-  
-  // Asset refinement now handled directly in SmartAssetViewer as a tab
-
-  const fetchMissionControl = async () => {
-    try {
-      setMissionLoading(true)
-      
-      const [agentsData, feedbackData, analysisData] = await Promise.all([
-        api.agents.list(id).catch(() => []),
-        api.humanFeedback.getPendingRequests(id).catch(() => []),
-        api.monitoring.getTaskAnalysis(id).catch(() => null)
-      ])
-      
-      setAgents(agentsData || [])
-      setFeedback(feedbackData || [])
-      setTaskAnalysis(analysisData || null)
-    } catch (e: any) {
-      console.error('Mission control fetch error:', e)
-      setAgents([])
-      setFeedback([])
-      setTaskAnalysis(null)
-    } finally {
-      setMissionLoading(false)
-    }
-  }
-
   useEffect(() => {
     fetchWorkspace()
-    fetchMissionControl()
-    
-    // Handle hash fragment navigation for goal->asset linking
-    if (window.location.hash === '#deliverables') {
-      setTimeout(() => {
-        const deliverablesSection = document.querySelector('[data-section="deliverables"]');
-        if (deliverablesSection) {
-          deliverablesSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 500); // Small delay to ensure components are loaded
-    }
-    
-    // Simplified refresh interval
-    const interval = setInterval(() => {
-      fetchMissionControl()
-    }, 30000) // Every 30 seconds
-    
-    return () => clearInterval(interval)
   }, [id])
 
   const fetchWorkspace = async () => {
@@ -107,64 +26,15 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
       const data = await api.workspaces.get(id)
       setWorkspace(data)
       setError(null)
-    } catch (e: any) {
-      setError(e.message || 'Impossibile caricare il progetto')
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Impossibile caricare il progetto'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleViewAssetDetails = (asset: any) => {
-    // ✅ COMPATIBILITY: Convert unified asset to ActionableAsset format
-    const actionableAsset = {
-      asset_name: asset.name || asset.asset_name || 'Asset',
-      name: asset.name || asset.asset_name || 'Asset',
-      asset_data: asset.content || asset.asset_data || {},
-      source_task_id: asset.sourceTaskId || '',
-      extraction_method: asset.extraction_method || 'unified',
-      validation_score: asset.quality_scores?.overall || 0.8,
-      actionability_score: asset.business_actionability || 0.8,
-      ready_to_use: asset.ready_to_use || true,
-      // Keep original data for debugging
-      _original: asset
-    }
-    
-    console.log('🔍 [handleViewAssetDetails] Converting asset:', {
-      original: asset,
-      converted: actionableAsset
-    });
-    
-    setSelectedAsset(actionableAsset)
-    setShowAssetDetails(true)
-  }
-
-  const handleDownloadAsset = (asset: any) => {
-    const assetContent = JSON.stringify(asset.asset_data || asset.content, null, 2)
-    const blob = new Blob([assetContent], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${asset.asset_name || asset.name}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const handleRefineAsset = (asset: any) => {
-    // Refinement is now handled directly in SmartAssetViewer as a tab
-    // This function is kept for compatibility but does nothing
-    console.log('🔄 [Asset Refinement] Refinement is now integrated as tab in asset viewer')
-  }
-
-  // Refinement functions removed - now handled directly in SmartAssetViewer
-
-  const handleWorkspaceUpdate = (updatedWorkspace: Workspace) => {
-    setWorkspace(updatedWorkspace)
-    fetchMissionControl()
-  }
-
-  if (loading || deliverablesLoading || assetsLoading) {
+  if (loading) {
     return (
       <div className="container mx-auto py-20 text-center">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
@@ -181,119 +51,22 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
     )
   }
 
+  // 🚀 REDIRECT TO CONVERSATIONAL INTERFACE
+  // The new default is the conversational interface
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-      {/* Project Header - Simplified */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{workspace.name}</h1>
-            <p className="text-gray-600 mt-2">{workspace.goal}</p>
-            {workspace.status && (
-              <span className={`inline-block mt-3 px-3 py-1 rounded-full text-sm font-medium ${
-                workspace.status === 'active' ? 'bg-green-100 text-green-800' :
-                workspace.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
-                {workspace.status === 'active' ? '🚀 Attivo' :
-                 workspace.status === 'completed' ? '✅ Completato' :
-                 '⏳ In preparazione'}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-start space-x-6">
-            {/* Feedback Notification */}
-            <div className="flex flex-col items-center">
-              <FeedbackNotificationBadge
-                workspaceId={id}
-                onClick={() => window.location.href = `/human-feedback?workspace_id=${id}`}
-                className="mb-2"
-              />
-              <div className="text-xs text-gray-500 text-center">Review<br/>Requests</div>
-            </div>
-            
-            {/* Project Stats */}
-            <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">{assetCount}</div>
-              <div className="text-sm text-gray-500">Asset Pronti</div>
-              {finalDeliverablesCount > 0 && (
-                <div className="mt-2">
-                  <div className="text-lg font-semibold text-green-600">{finalDeliverablesCount}</div>
-                  <div className="text-xs text-green-500">Deliverable Finali</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="text-4xl mb-4">🚀</div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          Redirecting to Conversational Interface
+        </h2>
+        <p className="text-gray-600 mb-4">
+          We&apos;re switching you to the new AI-driven conversational interface...
+        </p>
+        <script dangerouslySetInnerHTML={{
+          __html: `window.location.href = '/projects/${id}/conversation'`
+        }} />
       </div>
-
-
-      {/* Goal Progress - Prominent Display */}
-      <GoalProgressTracker 
-        workspaceId={id}
-        showValidation={true}
-        autoRefresh={true}
-        onViewAssets={() => {
-          // Scroll to the deliverables section when View Assets is clicked
-          const deliverablesSection = document.querySelector('[data-section="deliverables"]');
-          if (deliverablesSection) {
-            deliverablesSection.scrollIntoView({ behavior: 'smooth' });
-          }
-        }}
-      />
-
-      {/* Main Content: Focus on Concrete Deliverables */}
-      <div data-section="deliverables">
-        <ConcreteDeliverablesOverview 
-          workspaceId={id}
-          finalDeliverables={finalDeliverables}
-          assets={assets}
-          onViewAsset={handleViewAssetDetails}
-          onDownloadAsset={handleDownloadAsset}
-        />
-      </div>
-
-      {/* Mission Control - Simplified */}
-      <MissionControlSection
-        workspaceId={id}
-        agents={agents}
-        feedback={feedback}
-        taskAnalysis={taskAnalysis}
-        budgetData={null}
-        loading={missionLoading}
-        error={null}
-        onRefresh={fetchMissionControl}
-      />
-
-      {/* Team Interaction Panel */}
-      {workspace && (
-        <InteractionPanel 
-          workspace={workspace}
-          onWorkspaceUpdate={handleWorkspaceUpdate}
-          hasFinalDeliverables={hasFinalDeliverables}
-          finalDeliverablesCount={finalDeliverablesCount}
-        />
-      )}
-
-      {/* Asset Viewer Modal */}
-      {showAssetDetails && selectedAsset && (
-        <SmartAssetViewer
-          asset={selectedAsset}
-          onClose={() => setShowAssetDetails(false)}
-          onDownload={handleDownloadAsset}
-          onRefine={handleRefineAsset}
-        />
-      )}
-
-      {/* Asset Refinement Modal - Now integrated into SmartAssetViewer as a tab */}
-
-      {/* Project Feedback Panel */}
-      <ProjectFeedbackPanel
-        workspaceId={id}
-        isOpen={showFeedbackPanel}
-        onClose={() => setShowFeedbackPanel(false)}
-      />
     </div>
   )
 }

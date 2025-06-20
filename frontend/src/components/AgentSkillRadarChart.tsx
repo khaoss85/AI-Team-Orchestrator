@@ -24,7 +24,7 @@ const AgentSkillRadarChart: React.FC<AgentSkillRadarChartProps> = ({
   colorScheme = 'agent'
 }) => {
   // Assicuriamoci di avere sempre esattamente 6 dimensioni per il radar chart
-  const normalizedSkills = skills.slice(0, 6);
+  const normalizedSkills = (skills || []).slice(0, 6);
   
   // Padding per rendere il grafico più leggibile
   const paddingSize = size * 0.15;
