@@ -23,7 +23,7 @@ export interface TeamActivity {
 
 export interface DeliverableArtifact {
   id: string
-  type: 'deliverable' | 'progress' | 'team_status' | 'configuration'
+  type: 'deliverable' | 'progress' | 'team_status' | 'configuration' | 'feedback' | 'knowledge'
   title: string
   description?: string
   status: 'ready' | 'in_progress' | 'completed'

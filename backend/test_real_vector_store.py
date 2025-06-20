@@ -26,14 +26,23 @@ async def test_real_vector_store():
         if document_manager.openai_client:
             print("✅ OpenAI client initialized with Beta headers")
             
-            # Check if vector store API is available
+            # Check if vector store API is available via HTTP
             try:
-                # Try to list existing vector stores
-                stores = document_manager.openai_client.beta.vector_stores.list(limit=5)
-                print(f"✅ Vector Stores API accessible, found {len(stores.data)} existing stores")
+                import requests
+                response = requests.get(
+                    f"{document_manager.base_url}/vector_stores?limit=5",
+                    headers=document_manager.headers,
+                    timeout=10
+                )
                 
-                for store in stores.data:
-                    print(f"   📁 {store.name} (ID: {store.id})")
+                if response.status_code == 200:
+                    stores = response.json()
+                    print(f"✅ Vector Stores API accessible via HTTP, found {len(stores.get('data', []))} existing stores")
+                    
+                    for store in stores.get('data', [])[:3]:
+                        print(f"   📁 {store.get('name', 'Unnamed')} (ID: {store.get('id', 'Unknown')})")
+                else:
+                    print(f"❌ Vector Stores HTTP API returned: {response.status_code}")
                     
             except Exception as e:
                 print(f"❌ Vector Stores API test failed: {e}")
@@ -142,12 +151,22 @@ async def test_real_vector_store():
                 print(f"📁 Vector Store: {vs['name']}")
                 print(f"   ID: {vs_id}")
                 
-                # Check status in OpenAI
+                # Check status in OpenAI via HTTP
                 try:
-                    store_info = document_manager.openai_client.beta.vector_stores.retrieve(vs_id)
-                    print(f"   Status: {store_info.status}")
-                    print(f"   File count: {store_info.file_counts}")
-                    print(f"   Usage bytes: {store_info.usage_bytes}")
+                    import requests
+                    response = requests.get(
+                        f"{document_manager.base_url}/vector_stores/{vs_id}",
+                        headers=document_manager.headers,
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        store_info = response.json()
+                        print(f"   Status: {store_info.get('status', 'unknown')}")
+                        print(f"   File count: {store_info.get('file_counts', {})}")
+                        print(f"   Usage bytes: {store_info.get('usage_bytes', 0)}")
+                    else:
+                        print(f"   ❌ Could not retrieve store info: HTTP {response.status_code}")
                 except Exception as e:
                     print(f"   ❌ Could not retrieve store info: {e}")
         

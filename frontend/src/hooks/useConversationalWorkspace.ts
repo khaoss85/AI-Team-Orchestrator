@@ -17,6 +17,8 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [teamActivities, setTeamActivities] = useState<TeamActivity[]>([])
   const [artifacts, setArtifacts] = useState<DeliverableArtifact[]>([])
   const [workspaceContext, setWorkspaceContext] = useState<WorkspaceContext | null>(null)
+  const [thinkingSteps, setThinkingSteps] = useState<any[]>([])
+  const [suggestedActions, setSuggestedActions] = useState<any[]>([])
   
   // UI state
   const [loading, setLoading] = useState(true)
@@ -326,7 +328,7 @@ export function useConversationalWorkspace(workspaceId: string) {
         messageId
       })
 
-      const response = await fetch(`http://localhost:8000/api/conversation/workspaces/${workspaceContext.id}/chat`, {
+      const response = await fetch(`http://localhost:8000/api/conversation/workspaces/${workspaceContext.id}/chat/thinking`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -355,6 +357,32 @@ export function useConversationalWorkspace(workspaceId: string) {
       const apiResult = await response.json()
       console.log('✅ [sendMessage] API response received:', apiResult)
 
+      // Extract thinking process from artifacts
+      let extractedThinkingSteps: any[] = []
+      let extractedSuggestedActions: any[] = []
+      
+      if (apiResult.response.artifacts && apiResult.response.artifacts.length > 0) {
+        console.log('🎨 [sendMessage] AI provided artifacts:', apiResult.response.artifacts)
+        
+        // Find thinking process artifact
+        const thinkingArtifact = apiResult.response.artifacts.find((artifact: any) => 
+          artifact.type === 'thinking_process'
+        )
+        
+        if (thinkingArtifact && thinkingArtifact.content?.steps) {
+          extractedThinkingSteps = thinkingArtifact.content.steps
+          console.log('🧠 [sendMessage] Found thinking steps:', extractedThinkingSteps.length)
+        }
+        
+        await loadArtifacts()
+      }
+      
+      // Extract suggested actions from response
+      if (apiResult.response.suggested_actions && apiResult.response.suggested_actions.length > 0) {
+        extractedSuggestedActions = apiResult.response.suggested_actions
+        console.log('⚡ [sendMessage] Found suggested actions:', extractedSuggestedActions.length)
+      }
+
       // Add AI response message
       const aiMessage: ConversationMessage = {
         id: apiResult.message_id || (Date.now() + 1).toString(),
@@ -365,17 +393,17 @@ export function useConversationalWorkspace(workspaceId: string) {
           teamMember: 'AI Assistant',
           processing_time: apiResult.processing_time_ms,
           message_type: apiResult.response.message_type,
-          conversation_id: apiResult.conversation_id
+          conversation_id: apiResult.conversation_id,
+          thinking_steps: extractedThinkingSteps,
+          suggested_actions: extractedSuggestedActions
         }
       }
 
       setMessages(prev => [...prev, aiMessage])
-
-      // Handle any artifacts from the AI response
-      if (apiResult.response.artifacts && apiResult.response.artifacts.length > 0) {
-        console.log('🎨 [sendMessage] AI provided artifacts:', apiResult.response.artifacts)
-        await loadArtifacts()
-      }
+      
+      // Store thinking steps and suggested actions for UI display
+      setThinkingSteps(extractedThinkingSteps)
+      setSuggestedActions(extractedSuggestedActions)
 
       // Handle confirmation requests
       if (apiResult.response.needs_confirmation) {
@@ -476,6 +504,8 @@ export function useConversationalWorkspace(workspaceId: string) {
     console.log('🔄 [handleSetActiveChat] Switching to chat:', chat.id, chat.title)
     setActiveChat(chat)
     setTeamActivities([]) // Clear activities
+    setThinkingSteps([]) // Clear thinking steps
+    setSuggestedActions([]) // Clear suggested actions
     
     // Load chat-specific data first, then clear messages only if loading succeeds
     try {
@@ -675,19 +705,67 @@ export function useConversationalWorkspace(workspaceId: string) {
 
         case 'knowledge-base':
           // Load knowledge-specific artifacts
-          chatArtifacts.push({
-            id: 'knowledge-insights',
-            type: 'knowledge',
-            title: 'Knowledge Insights',
-            description: 'Relevant insights and best practices',
-            status: 'ready',
-            content: {
-              insights: [],
-              bestPractices: [],
-              learnings: []
-            },
-            lastUpdated: new Date().toISOString()
-          })
+          try {
+            console.log('📚 [loadChatSpecificArtifacts] Fetching knowledge insights for workspace:', workspaceId)
+            const response = await fetch(`http://localhost:8000/api/conversation/workspaces/${workspaceId}/knowledge-insights`)
+            
+            if (response.ok) {
+              const knowledgeData = await response.json()
+              console.log('✅ [loadChatSpecificArtifacts] Knowledge insights loaded:', knowledgeData)
+              
+              chatArtifacts.push({
+                id: 'knowledge-insights',
+                type: 'knowledge',
+                title: 'Knowledge Insights',
+                description: `${knowledgeData.total_insights} insights available`,
+                status: 'ready',
+                content: {
+                  insights: knowledgeData.insights || [],
+                  bestPractices: knowledgeData.bestPractices || [],
+                  learnings: knowledgeData.learnings || [],
+                  summary: knowledgeData.summary || {
+                    recent_discoveries: [],
+                    key_constraints: [],
+                    success_patterns: [],
+                    top_tags: []
+                  }
+                },
+                lastUpdated: new Date().toISOString()
+              })
+            } else {
+              console.warn('⚠️ [loadChatSpecificArtifacts] Failed to load knowledge insights:', response.status)
+              // Fallback to empty knowledge base
+              chatArtifacts.push({
+                id: 'knowledge-insights',
+                type: 'knowledge',
+                title: 'Knowledge Insights',
+                description: 'No insights available yet',
+                status: 'ready',
+                content: {
+                  insights: [],
+                  bestPractices: [],
+                  learnings: []
+                },
+                lastUpdated: new Date().toISOString()
+              })
+            }
+          } catch (error) {
+            console.error('❌ [loadChatSpecificArtifacts] Error loading knowledge insights:', error)
+            // Fallback to empty knowledge base
+            chatArtifacts.push({
+              id: 'knowledge-insights',
+              type: 'knowledge',
+              title: 'Knowledge Insights',
+              description: 'Relevant insights and best practices',
+              status: 'ready',
+              content: {
+                insights: [],
+                bestPractices: [],
+                learnings: []
+              },
+              lastUpdated: new Date().toISOString()
+            })
+          }
           break
 
         case 'available-tools':
@@ -765,6 +843,8 @@ export function useConversationalWorkspace(workspaceId: string) {
           timestamp: msg.created_at,
           metadata: {
             teamMember: msg.role === 'user' ? 'You' : 'AI Assistant',
+            thinking_steps: msg.metadata?.thinking_steps || [],
+            deep_analysis: msg.metadata?.deep_analysis,
             ...(msg.metadata || {})
           }
         }))
@@ -823,6 +903,8 @@ export function useConversationalWorkspace(workspaceId: string) {
           timestamp: msg.created_at,
           metadata: {
             teamMember: msg.role === 'user' ? 'You' : 'AI Assistant',
+            thinking_steps: msg.metadata?.thinking_steps || [],
+            deep_analysis: msg.metadata?.deep_analysis,
             ...(msg.metadata || {})
           }
         }))
@@ -909,6 +991,8 @@ export function useConversationalWorkspace(workspaceId: string) {
     teamActivities,
     artifacts,
     workspaceContext,
+    thinkingSteps,
+    suggestedActions,
     loading, // Initial loading only
     sendingMessage, // Separate message sending state
     error,

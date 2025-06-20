@@ -17,6 +17,8 @@ export default function ConversationPage() {
     teamActivities,
     artifacts,
     workspaceContext,
+    thinkingSteps,
+    suggestedActions,
     loading,
     sendingMessage,
     error,
@@ -68,6 +70,8 @@ export default function ConversationPage() {
         messages={messages}
         teamActivities={teamActivities}
         artifacts={artifacts}
+        thinkingSteps={thinkingSteps}
+        suggestedActions={suggestedActions}
         artifactsPanelCollapsed={artifactsPanelCollapsed}
         sendingMessage={sendingMessage}
         onSetActiveChat={setActiveChat}

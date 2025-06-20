@@ -83,7 +83,8 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
                 "success": True,
                 "workspace_status": workspace.data[0]["status"] if workspace.data else "unknown",
                 "team_members": len(agents.data),
-                "agents": agents.data
+                "agents": agents.data,
+                "message": f"Team has {len(agents.data)} members, workspace status: {workspace.data[0]['status'] if workspace.data else 'unknown'}"
             }
         except Exception as e:
             logger.error(f"Error getting team status: {e}")
@@ -124,43 +125,138 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
                 # Fallback to simple implementation if service not available
                 goal_service = None
             
-            if goal_id:
-                # Get specific goal
-                goal = self.db_client.table("goals")\
-                    .select("*")\
-                    .eq("id", goal_id)\
-                    .eq("workspace_id", workspace_id)\
-                    .execute()
-                goals_data = goal.data
-            else:
-                # Get all goals
-                goals = self.db_client.table("goals")\
-                    .select("*")\
-                    .eq("workspace_id", workspace_id)\
-                    .execute()
-                goals_data = goals.data
-            
-            results = []
-            for goal in goals_data:
-                # Use existing progress calculation if available
-                progress = goal.get("completion_percentage", 0)
+            # Check if goals table exists first
+            try:
+                if goal_id:
+                    # Get specific goal
+                    goal = self.db_client.table("goals")\
+                        .select("*")\
+                        .eq("id", goal_id)\
+                        .eq("workspace_id", workspace_id)\
+                        .execute()
+                    goals_data = goal.data
+                else:
+                    # Get all goals
+                    goals = self.db_client.table("goals")\
+                        .select("*")\
+                        .eq("workspace_id", workspace_id)\
+                        .execute()
+                    goals_data = goals.data
                 
-                results.append({
-                    "goal_id": goal["id"],
-                    "title": goal["title"],
-                    "status": goal["status"],
-                    "progress": f"{progress:.0f}%",
-                    "description": goal.get("description", "")
-                })
-            
-            return {
-                "success": True,
-                "goals": results,
-                "message": f"Found {len(results)} goal(s) with progress information"
-            }
+                results = []
+                for goal in goals_data:
+                    # Use existing progress calculation if available
+                    progress = goal.get("completion_percentage", 0)
+                    
+                    results.append({
+                        "goal_id": goal["id"],
+                        "title": goal["title"],
+                        "status": goal["status"],
+                        "progress": f"{progress:.0f}%",
+                        "description": goal.get("description", "")
+                    })
+                
+                return {
+                    "success": True,
+                    "goals": results,
+                    "message": f"Found {len(results)} goal(s) with progress information"
+                }
+                
+            except Exception as table_error:
+                # Handle case where goals table doesn't exist
+                if "does not exist" in str(table_error) or "42P01" in str(table_error):
+                    return {
+                        "success": True,
+                        "goals": [],
+                        "message": "Goals system not yet initialized for this workspace. The team is working on general workspace objectives without specific tracked goals."
+                    }
+                else:
+                    # Re-raise other database errors
+                    raise table_error
         except Exception as e:
             logger.error(f"Error getting goal progress: {e}")
             return {"success": False, "message": str(e)}
+    
+    async def get_project_status(self, workspace_id: str) -> Dict[str, Any]:
+        """Get comprehensive project status combining team, tasks, and deliverables"""
+        try:
+            # Get team status
+            team_status = await self.get_team_status(workspace_id)
+            
+            # Get tasks summary
+            try:
+                tasks = self.db_client.table("tasks")\
+                    .select("status")\
+                    .eq("workspace_id", workspace_id)\
+                    .execute()
+                
+                task_summary = {}
+                for task in tasks.data:
+                    status = task.get("status", "unknown")
+                    task_summary[status] = task_summary.get(status, 0) + 1
+                    
+            except Exception:
+                task_summary = {"info": "Task data not available"}
+            
+            # Get deliverables
+            try:
+                deliverables_result = await self.get_deliverables(workspace_id, "all")
+                deliverables_count = len(deliverables_result.get("deliverables", [])) if deliverables_result.get("success") else 0
+            except Exception:
+                deliverables_count = 0
+            
+            # Get goals (safely)
+            try:
+                goals_result = await self.get_goal_progress(workspace_id)
+                goals_info = goals_result.get("message", "Goals status unavailable")
+                goals_count = len(goals_result.get("goals", [])) if goals_result.get("success") else 0
+            except Exception:
+                goals_info = "Goals system not available"
+                goals_count = 0
+            
+            # Compose comprehensive status
+            status_parts = []
+            
+            # Team info
+            if team_status.get("success"):
+                team_count = team_status.get("team_members", 0)
+                workspace_status = team_status.get("workspace_status", "unknown")
+                status_parts.append(f"Team: {team_count} members, workspace status: {workspace_status}")
+            
+            # Tasks info
+            if task_summary and "info" not in task_summary:
+                task_details = []
+                for status, count in task_summary.items():
+                    task_details.append(f"{count} {status}")
+                if task_details:
+                    status_parts.append(f"Tasks: {', '.join(task_details)}")
+            
+            # Deliverables info
+            if deliverables_count > 0:
+                status_parts.append(f"Deliverables: {deliverables_count} completed")
+            else:
+                status_parts.append("Deliverables: none completed yet")
+            
+            # Goals info
+            if goals_count > 0:
+                status_parts.append(f"Goals: {goals_count} tracked")
+            else:
+                status_parts.append(f"Goals: {goals_info}")
+            
+            return {
+                "success": True,
+                "message": "\n".join(status_parts),
+                "details": {
+                    "team": team_status,
+                    "tasks": task_summary,
+                    "deliverables_count": deliverables_count,
+                    "goals_count": goals_count
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting project status: {e}")
+            return {"success": False, "message": f"Could not retrieve project status: {str(e)}"}
     
     async def get_deliverables(self, workspace_id: str, filter_type: str = "all") -> Dict[str, Any]:
         """SCALABLE: Uses existing API endpoints"""

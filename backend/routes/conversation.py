@@ -4,9 +4,10 @@ Provides domain-agnostic endpoints for AI-driven project management
 """
 
 import logging
+import json
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -137,6 +138,105 @@ async def send_chat_message(
         logger.error(f"Error processing chat message: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to process message: {str(e)}")
 
+@router.post("/workspaces/{workspace_id}/chat/thinking", response_model=ChatMessageResponse)
+async def send_chat_message_with_thinking(
+    workspace_id: str,
+    request: ChatMessageRequest
+) -> ChatMessageResponse:
+    """
+    Send a message with real-time thinking process (for demonstration purposes).
+    Note: This endpoint simulates the thinking process but doesn't stream it.
+    For real-time thinking, use the WebSocket endpoint.
+    """
+    start_time = datetime.now()
+    
+    try:
+        # Initialize conversational agent
+        agent = ConversationalAgent(workspace_id, request.chat_id)
+        
+        # Store thinking steps for response
+        thinking_steps = []
+        
+        async def thinking_callback(thinking_data):
+            thinking_steps.append({
+                **thinking_data,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        
+        # Process message with thinking
+        response = await agent.process_message_with_thinking(
+            user_message=request.message,
+            message_id=request.message_id,
+            thinking_callback=thinking_callback
+        )
+        
+        # Add thinking steps to response metadata
+        response.artifacts = response.artifacts or []
+        response.artifacts.append({
+            "type": "thinking_process",
+            "title": "AI Thinking Process",
+            "content": {
+                "steps": thinking_steps,
+                "total_steps": len(thinking_steps)
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
+        
+        return ChatMessageResponse(
+            message_id=request.message_id or str(uuid4()),
+            response=response,
+            conversation_id=f"{workspace_id}_{request.chat_id}",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            processing_time_ms=processing_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Error processing thinking message: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process thinking message: {str(e)}")
+
+@router.post("/workspaces/{workspace_id}/execute-action")
+async def execute_suggested_action(
+    workspace_id: str,
+    action_request: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Execute a suggested action (tool) from the AI response.
+    This makes the suggested actions actually clickable and executable.
+    """
+    try:
+        # Extract action details
+        tool_name = action_request.get("tool")
+        parameters = action_request.get("parameters", {})
+        chat_id = action_request.get("chat_id", "general")
+        
+        if not tool_name:
+            raise HTTPException(status_code=400, detail="Tool name is required")
+        
+        # Initialize agent to use tool execution
+        agent = ConversationalAgent(workspace_id, chat_id)
+        await agent._load_context()
+        
+        # Execute the tool
+        tool_result = await agent._parse_and_execute_tool(f"EXECUTE_TOOL: {tool_name} {json.dumps(parameters)}")
+        
+        return {
+            "success": True,
+            "tool": tool_name,
+            "result": tool_result,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error executing action {action_request.get('tool', 'unknown')}: {e}")
+        return {
+            "success": False,
+            "tool": action_request.get("tool", "unknown"),
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
 @router.get("/workspaces/{workspace_id}/history", response_model=List[Dict[str, Any]])
 async def get_conversation_history(
     workspace_id: str,
@@ -150,11 +250,14 @@ async def get_conversation_history(
     """
     try:
         supabase = get_supabase_client()
+        conversation_identifier = f"{workspace_id}_{chat_id}"
+        
+        logger.info(f"Fetching conversation history for: {conversation_identifier}")
         
         # Build query using the main table (matching what conversational_simple.py uses)
         query = supabase.table("conversation_messages")\
             .select("*")\
-            .eq("conversation_identifier", f"{workspace_id}_{chat_id}")\
+            .eq("conversation_identifier", conversation_identifier)\
             .order("created_at", desc=True)\
             .limit(limit)
         
@@ -163,14 +266,36 @@ async def get_conversation_history(
         
         result = query.execute()
         
+        logger.info(f"Query result for {conversation_identifier}: {len(result.data or [])} messages found")
+        
+        # Check if no messages found - this might be due to RLS policy issues
+        if not result.data:
+            logger.warning(f"No messages found for conversation: {conversation_identifier}")
+            
+            # Try to count total messages to see if they exist but are blocked by RLS
+            try:
+                count_result = supabase.table("conversation_messages")\
+                    .select("id", count="exact")\
+                    .eq("conversation_identifier", conversation_identifier)\
+                    .execute()
+                logger.info(f"Total message count for {conversation_identifier}: {count_result.count}")
+            except Exception as count_error:
+                logger.error(f"Error counting messages: {count_error}")
+        
         # Reverse to get chronological order
         messages = list(reversed(result.data or []))
         
         return messages
         
     except Exception as e:
-        logger.error(f"Error fetching conversation history: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch history: {str(e)}")
+        logger.error(f"Error fetching conversation history for {workspace_id}_{chat_id}: {e}")
+        
+        # Provide more specific error information
+        error_detail = str(e)
+        if "row-level security policy" in error_detail.lower():
+            error_detail = f"Database access denied due to security policy. This might be due to authentication issues. Original error: {error_detail}"
+        
+        raise HTTPException(status_code=500, detail=f"Failed to fetch history: {error_detail}")
 
 @router.get("/workspaces/{workspace_id}/summary", response_model=ConversationSummaryResponse)
 async def get_conversation_summary(
@@ -437,16 +562,23 @@ async def websocket_chat(websocket: WebSocket, workspace_id: str, chat_id: str =
                 continue
             
             try:
-                # Send typing indicator
-                await websocket.send_json({
-                    "type": "typing",
-                    "message": "AI is thinking..."
-                })
+                # Define thinking callback for real-time updates
+                async def thinking_callback(thinking_data):
+                    await websocket.send_json({
+                        "type": "thinking",
+                        "message_id": message_id,
+                        "thinking_data": thinking_data,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
                 
-                # Process message
-                response = await agent.process_message(message, message_id)
+                # Process message with thinking steps
+                response = await agent.process_message_with_thinking(
+                    message, 
+                    message_id, 
+                    thinking_callback=thinking_callback
+                )
                 
-                # Send response
+                # Send final response
                 await websocket.send_json({
                     "type": "message",
                     "message_id": message_id,
@@ -684,6 +816,101 @@ async def _execute_confirmed_action(confirmation: Dict[str, Any]) -> Dict[str, A
         return {"success": False, "error": str(e)}
 
 # Health Check
+@router.get("/workspaces/{workspace_id}/knowledge-insights")
+async def get_knowledge_insights(workspace_id: str) -> Dict[str, Any]:
+    """
+    Get knowledge insights for a workspace including best practices and learnings.
+    """
+    try:
+        from workspace_memory import workspace_memory
+        from models import MemoryQueryRequest, InsightType
+        
+        # Get workspace memory summary
+        summary = await workspace_memory.get_workspace_summary(UUID(workspace_id))
+        
+        # Query specific types of insights
+        best_practices_query = MemoryQueryRequest(
+            query="best practices success patterns",
+            insight_types=[InsightType.SUCCESS_PATTERN],
+            limit=10
+        )
+        best_practices_response = await workspace_memory.query_insights(UUID(workspace_id), best_practices_query)
+        
+        learnings_query = MemoryQueryRequest(
+            query="lessons learned failures constraints",
+            insight_types=[InsightType.FAILURE_LESSON, InsightType.CONSTRAINT],
+            limit=10
+        )
+        learnings_response = await workspace_memory.query_insights(UUID(workspace_id), learnings_query)
+        
+        discoveries_query = MemoryQueryRequest(
+            query="discoveries optimizations",
+            insight_types=[InsightType.DISCOVERY, InsightType.OPTIMIZATION],
+            limit=10
+        )
+        discoveries_response = await workspace_memory.query_insights(UUID(workspace_id), discoveries_query)
+        
+        return {
+            "workspace_id": workspace_id,
+            "total_insights": summary.total_insights,
+            "insights": [
+                {
+                    "id": str(insight.id),
+                    "type": insight.insight_type.value,
+                    "content": insight.content,
+                    "confidence": insight.confidence_score,
+                    "created_at": insight.created_at.isoformat(),
+                    "tags": insight.relevance_tags
+                }
+                for insight in discoveries_response.insights
+            ],
+            "bestPractices": [
+                {
+                    "id": str(insight.id),
+                    "content": insight.content,
+                    "confidence": insight.confidence_score,
+                    "created_at": insight.created_at.isoformat()
+                }
+                for insight in best_practices_response.insights
+            ],
+            "learnings": [
+                {
+                    "id": str(insight.id),
+                    "type": insight.insight_type.value,
+                    "content": insight.content,
+                    "confidence": insight.confidence_score,
+                    "created_at": insight.created_at.isoformat()
+                }
+                for insight in learnings_response.insights
+            ],
+            "summary": {
+                "recent_discoveries": summary.recent_discoveries[:5],
+                "key_constraints": summary.key_constraints[:5],
+                "success_patterns": summary.success_patterns[:5],
+                "top_tags": summary.top_tags[:10]
+            }
+        }
+        
+    except ImportError:
+        # Fallback if workspace_memory is not available
+        logger.warning("Workspace memory not available, returning empty insights")
+        return {
+            "workspace_id": workspace_id,
+            "total_insights": 0,
+            "insights": [],
+            "bestPractices": [],
+            "learnings": [],
+            "summary": {
+                "recent_discoveries": [],
+                "key_constraints": [],
+                "success_patterns": [],
+                "top_tags": []
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching knowledge insights: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch knowledge insights: {str(e)}")
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint for conversation service"""

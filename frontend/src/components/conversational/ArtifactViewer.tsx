@@ -5,6 +5,7 @@ import { DeliverableArtifact } from './types'
 import TeamOverviewArtifact from './TeamOverviewArtifact'
 import ConfigurationArtifact from './ConfigurationArtifact'
 import FeedbackRequestsArtifact from './FeedbackRequestsArtifact'
+import KnowledgeInsightsArtifact from './KnowledgeInsightsArtifact'
 
 interface ArtifactViewerProps {
   artifact: DeliverableArtifact
@@ -30,6 +31,7 @@ export default function ArtifactViewer({
       case 'team_status': return '👥'
       case 'configuration': return '⚙️'
       case 'feedback': return '💬'
+      case 'knowledge': return '💡'
       default: return '📄'
     }
   }
@@ -211,6 +213,19 @@ function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewPro
               lastUpdated: new Date().toISOString()
             })
           }
+        }}
+      />
+    )
+  }
+
+  if (artifact.type === 'knowledge' && workspaceId) {
+    return (
+      <KnowledgeInsightsArtifact
+        knowledgeData={artifact.content}
+        workspaceId={workspaceId}
+        onInsightAction={(action, insight) => {
+          console.log('Knowledge insight action:', action, insight)
+          // Handle insight actions (apply learning, find similar, etc.)
         }}
       />
     )

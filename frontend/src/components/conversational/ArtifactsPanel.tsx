@@ -26,11 +26,11 @@ export default function ArtifactsPanel({
   onSendMessage
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
-  const [activeTab, setActiveTab] = useState<'thinking' | 'artifacts' | 'documents' | 'viewer'>('thinking')
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'viewer'>('artifacts')
 
   // Auto-switch to artifacts when new ones arrive
   React.useEffect(() => {
-    if (artifacts.length > 0 && activeTab === 'thinking') {
+    if (artifacts.length > 0) {
       setActiveTab('artifacts')
     }
   }, [artifacts.length])
@@ -71,7 +71,8 @@ export default function ArtifactsPanel({
                 {artifact.type === 'deliverable' ? '📦' : 
                  artifact.type === 'progress' ? '📊' : 
                  artifact.type === 'team_status' ? '👥' : 
-                 artifact.type === 'feedback' ? '💬' : '⚙️'}
+                 artifact.type === 'feedback' ? '💬' : 
+                 artifact.type === 'knowledge' ? '💡' : '⚙️'}
               </span>
             </div>
           ))}
@@ -100,13 +101,6 @@ export default function ArtifactsPanel({
         {/* Tabs */}
         <div className="flex space-x-1 mt-3">
           <TabButton
-            active={activeTab === 'thinking'}
-            onClick={() => setActiveTab('thinking')}
-            icon="🧠"
-            label="Thinking"
-            count={teamActivities.length}
-          />
-          <TabButton
             active={activeTab === 'artifacts'}
             onClick={() => setActiveTab('artifacts')}
             icon="📋"
@@ -132,10 +126,6 @@ export default function ArtifactsPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'thinking' && (
-          <TeamThinkingStream activities={teamActivities} />
-        )}
-
         {activeTab === 'artifacts' && (
           <ArtifactsList
             artifacts={artifacts}
@@ -256,6 +246,7 @@ function ArtifactCard({ artifact, onClick }: ArtifactCardProps) {
       case 'team_status': return '👥'
       case 'configuration': return '⚙️'
       case 'feedback': return '💬'
+      case 'knowledge': return '💡'
       default: return '📄'
     }
   }

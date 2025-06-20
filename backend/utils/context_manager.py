@@ -420,7 +420,7 @@ class ConversationContextManager:
                 .select("*")\
                 .eq("workspace_id", self.workspace_id)\
                 .eq("status", "completed")\
-                .order("completed_at", desc=True)\
+                .order("created_at", desc=True)\
                 .limit(20)\
                 .execute()
             

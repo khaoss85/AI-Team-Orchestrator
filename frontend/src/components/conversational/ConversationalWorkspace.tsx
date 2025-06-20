@@ -14,6 +14,8 @@ interface ConversationalWorkspaceProps {
   messages: ConversationMessage[]
   teamActivities: TeamActivity[]
   artifacts: DeliverableArtifact[]
+  thinkingSteps: any[]
+  suggestedActions: any[]
   artifactsPanelCollapsed: boolean
   sendingMessage: boolean
   onSetActiveChat: (chat: Chat) => void
@@ -32,6 +34,8 @@ export default function ConversationalWorkspace({
   messages,
   teamActivities,
   artifacts,
+  thinkingSteps,
+  suggestedActions,
   artifactsPanelCollapsed,
   sendingMessage,
   onSetActiveChat,
@@ -121,6 +125,8 @@ export default function ConversationalWorkspace({
           activeChat={activeChat}
           messages={messages}
           teamActivities={teamActivities}
+          thinkingSteps={thinkingSteps}
+          suggestedActions={suggestedActions}
           onSendMessage={onSendMessage}
           loading={sendingMessage}
           workspaceId={workspaceId}

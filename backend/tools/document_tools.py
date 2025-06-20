@@ -43,9 +43,11 @@ class DocumentUploadTool:
             except Exception as e:
                 return f"❌ Error decoding file data: {str(e)}"
             
-            # Validate file size (max 50MB)
-            if len(file_content) > 50 * 1024 * 1024:
-                return "❌ Error: File size exceeds 50MB limit"
+            # Validate file size (limit to 5MB for chat uploads to avoid token limits)
+            max_size_mb = 5
+            max_size_bytes = max_size_mb * 1024 * 1024
+            if len(file_content) > max_size_bytes:
+                return f"❌ Error: File size ({len(file_content) / (1024*1024):.1f}MB) exceeds {max_size_mb}MB limit for chat uploads. Please use the API endpoint for larger files."
             
             # Validate filename
             if not filename or filename.startswith('.'):
