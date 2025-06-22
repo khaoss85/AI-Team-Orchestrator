@@ -958,7 +958,7 @@ Use tools to gather additional data for deeper analysis when needed.
                 "parameters": {}
             },
             "pause_team": {
-                "description": "Pause all team activities",
+                "description": "Pause all team activities and task execution. Current tasks will complete gracefully but no new tasks will start.",
                 "parameters": {}
             },
             "update_team_skills": {
@@ -1086,18 +1086,111 @@ Use tools to gather additional data for deeper analysis when needed.
                 )
                 
             elif tool_name == "start_team":
-                # SCALABLE: Use service layer
-                return await workspace_service.update_workspace_status(
-                    workspace_id=self.workspace_id,
-                    status="active"
-                )
+                # 🚀 AUTO-START: Trigger immediate goal analysis and task generation
+                logger.info(f"🎯 Manual team start requested for workspace {self.workspace_id}")
+                
+                try:
+                    # First set workspace to active
+                    status_result = await workspace_service.update_workspace_status(
+                        workspace_id=self.workspace_id,
+                        status="active"
+                    )
+                    
+                    # Check if workspace has goals and team
+                    supabase = get_supabase_client()
+                    
+                    # Check for active goals
+                    goals_response = supabase.table("workspace_goals").select("id").eq(
+                        "workspace_id", self.workspace_id
+                    ).eq("status", "active").execute()
+                    
+                    # Check for active agents  
+                    agents_response = supabase.table("agents").select("id").eq(
+                        "workspace_id", self.workspace_id
+                    ).execute()
+                    
+                    if not goals_response.data:
+                        return {
+                            "success": False,
+                            "message": "❌ Cannot start team: No active goals found. Please confirm project goals first.",
+                            "action_required": "confirm_goals"
+                        }
+                    
+                    if not agents_response.data:
+                        return {
+                            "success": False, 
+                            "message": "❌ Cannot start team: No agents found. Please approve team proposal first.",
+                            "action_required": "approve_team"
+                        }
+                    
+                    # Trigger immediate goal analysis and task creation
+                    from automated_goal_monitor import automated_goal_monitor
+                    import asyncio
+                    
+                    asyncio.create_task(automated_goal_monitor._trigger_immediate_goal_analysis(self.workspace_id))
+                    
+                    return {
+                        "success": True,
+                        "message": f"✅ Team started successfully! Auto-start triggered for {len(goals_response.data)} goals with {len(agents_response.data)} agents.",
+                        "goals_count": len(goals_response.data),
+                        "agents_count": len(agents_response.data),
+                        "auto_start_triggered": True
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error in manual team start: {e}")
+                    return {
+                        "success": False,
+                        "message": f"❌ Error starting team: {str(e)}",
+                        "error": str(e)
+                    }
                 
             elif tool_name == "pause_team":
-                # SCALABLE: Use service layer
-                return await workspace_service.update_workspace_status(
-                    workspace_id=self.workspace_id,
-                    status="paused"
-                )
+                # 🛑 PAUSE TEAM: Stop task execution and update workspace status
+                logger.info(f"🛑 Team pause requested for workspace {self.workspace_id}")
+                
+                try:
+                    # Update workspace status to paused
+                    status_result = await workspace_service.update_workspace_status(
+                        workspace_id=self.workspace_id,
+                        status="paused"
+                    )
+                    
+                    # Get current team and task information
+                    supabase = get_supabase_client()
+                    
+                    # Check current agents
+                    agents_response = supabase.table("agents").select("id, name, status").eq(
+                        "workspace_id", self.workspace_id
+                    ).execute()
+                    
+                    # Check active tasks
+                    tasks_response = supabase.table("tasks").select("id, name, status").eq(
+                        "workspace_id", self.workspace_id
+                    ).in_("status", ["pending", "in_progress"]).execute()
+                    
+                    # Update agent statuses to paused
+                    if agents_response.data:
+                        supabase.table("agents").update({"status": "paused"}).eq(
+                            "workspace_id", self.workspace_id
+                        ).execute()
+                    
+                    return {
+                        "success": True,
+                        "message": f"✅ Team paused successfully! {len(agents_response.data)} agents paused, {len(tasks_response.data)} active tasks will complete but no new tasks will start.",
+                        "agents_paused": len(agents_response.data),
+                        "active_tasks": len(tasks_response.data),
+                        "workspace_status": "paused",
+                        "note": "Current tasks will complete gracefully. Use 'start_team' to resume operations."
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error pausing team: {e}")
+                    return {
+                        "success": False,
+                        "message": f"❌ Error pausing team: {str(e)}",
+                        "error": str(e)
+                    }
                 
             elif tool_name == "show_team_status":
                 # SCALABLE: Use service layer

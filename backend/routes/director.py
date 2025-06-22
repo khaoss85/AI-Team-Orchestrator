@@ -211,13 +211,45 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
                 except Exception as e_handoff:
                     logger.error(f"Error during DB creation of handoff from {source_agent_name} to {target_agent_name}: {e_handoff}", exc_info=True)
         
+        # 🚀 AUTO-START: When team is approved, check if goals exist and trigger task generation
+        # This mirrors the behavior in routes/proposals.py to ensure consistency
+        logger.info(f"🎯 Team approved for workspace {workspace_id}, checking for goals...")
+        
+        auto_start_message = "Team approved and agents created. Handoffs processed."
+        try:
+            # Check if workspace has confirmed goals
+            goals_response = supabase.table("workspace_goals").select("id").eq(
+                "workspace_id", str(workspace_id)
+            ).eq("status", "active").execute()
+            
+            if goals_response.data and len(goals_response.data) > 0:
+                logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
+                
+                from automated_goal_monitor import automated_goal_monitor
+                import asyncio
+                
+                # Trigger immediate goal analysis and task creation
+                asyncio.create_task(automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id)))
+                
+                auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
+                logger.info("✅ Auto-start triggered after team approval via director endpoint")
+            else:
+                logger.warning(f"⚠️ No active goals found for workspace {workspace_id}")
+                auto_start_message = "Team approved. Please confirm goals to start task execution."
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger auto-start after team approval: {e}")
+            # Don't fail the approval, just log the warning
+            auto_start_message = "Team approved (auto-start check failed, see logs)"
+
         return {
             "status": "success",
-            "message": "Team approved and agents created. Handoffs processed.",
+            "message": auto_start_message,
             "workspace_id": str(workspace_id),
             "proposal_id": str(proposal_id),
             "created_agent_ids": [str(agent['id']) for agent in created_agents_db], # Assicura stringhe
-            "created_handoff_ids": [str(handoff['id']) for handoff in created_handoffs_db if handoff and 'id' in handoff] # Assicura stringhe e che id esista
+            "created_handoff_ids": [str(handoff['id']) for handoff in created_handoffs_db if handoff and 'id' in handoff], # Assicura stringhe e che id esista
+            "auto_start_triggered": len(goals_response.data) > 0 if 'goals_response' in locals() else False
         }
     except HTTPException:
         raise
