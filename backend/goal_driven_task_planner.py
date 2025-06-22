@@ -81,6 +81,48 @@ class GoalDrivenTaskPlanner:
             logger.error(f"Error generating goal-driven tasks: {e}")
             return []
     
+    async def plan_tasks_for_goal(
+        self, 
+        workspace_goal: Dict[str, Any], 
+        workspace_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        🚀 PUBLIC METHOD: Plan tasks for a specific goal
+        
+        This is called by the immediate goal analysis trigger to start the team.
+        """
+        try:
+            # Convert dict to WorkspaceGoal object
+            goal = WorkspaceGoal(**workspace_goal)
+            
+            # Generate tasks using the internal method
+            tasks = await self._generate_tasks_for_goal(goal)
+            
+            # Create tasks in database and trigger execution
+            created_tasks = []
+            for task_data in tasks:
+                # Add workspace_id and execution metadata
+                task_data.update({
+                    "workspace_id": workspace_id,
+                    "status": TaskStatus.PENDING.value,
+                    "created_at": datetime.now().isoformat(),
+                    "is_goal_driven": True,
+                    "auto_generated": True
+                })
+                
+                # Insert into database
+                response = supabase.table("tasks").insert(task_data).execute()
+                if response.data:
+                    created_tasks.extend(response.data)
+                    logger.info(f"✅ Created task: {task_data['name']}")
+            
+            logger.info(f"🎯 Successfully created {len(created_tasks)} tasks for goal {goal.metric_type}")
+            return created_tasks
+            
+        except Exception as e:
+            logger.error(f"Error planning tasks for goal: {e}")
+            return []
+    
     async def _get_unmet_goals(self, workspace_id: UUID) -> List[WorkspaceGoal]:
         """Recupera goal attivi non completati per il workspace"""
         try:
@@ -342,7 +384,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     "validation_method": "immediate_numerical_verification"
                 },
                 "agent_requirements": {
-                    "role": selected_agent_role["role"],  # Use actual available agent role
+                    "role": str(selected_agent_role["role"]) if hasattr(selected_agent_role["role"], 'value') else selected_agent_role["role"],
                     "agent_id": selected_agent_role.get("agent_id"),  # Direct assignment if possible
                     "skills": ["rapid_execution", "goal_achievement"],
                     "seniority": selected_agent_role.get("seniority", "expert"),
@@ -350,9 +392,10 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                 }
             }
             
+            role_str = str(selected_agent_role["role"]) if hasattr(selected_agent_role["role"], 'value') else selected_agent_role["role"]
             logger.warning(
                 f"🚨 Created CRITICAL corrective task for goal {goal_id}: {corrective_task['name']} "
-                f"-> Assigned to role '{selected_agent_role['role']}' "
+                f"-> Assigned to role '{role_str}' "
                 f"({selected_agent_role.get('strategy', 'unknown')} strategy)"
             )
             return corrective_task

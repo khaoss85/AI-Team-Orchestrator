@@ -116,8 +116,7 @@ class SimpleConversationalAgent:
                 })
             
             # Step 2: Conversation History
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "history_loading", 
                     "title": "📚 Loading Conversation History",
@@ -126,8 +125,7 @@ class SimpleConversationalAgent:
                 })
             
             # We'll load this in the AI generation step, but show thinking here
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "history_loading",
                     "title": "📚 History Loaded", 
@@ -136,8 +134,7 @@ class SimpleConversationalAgent:
                 })
             
             # Step 3: Query Analysis
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "query_analysis",
                     "title": "🧠 Analyzing Request",
@@ -145,18 +142,34 @@ class SimpleConversationalAgent:
                     "status": "in_progress"
                 })
             
-            # Quick analysis of the user request
-            is_strategic_question = any(word in user_message.lower() for word in [
-                'team', 'serve', 'aggiungere', 'completo', 'abbastanza', 'consiglio', 'pensi'
-            ])
+            # AI-driven query classification - let the AI decide the complexity level
+            query_classification_prompt = f"""
+            Analyze this user message and classify its complexity:
             
-            requires_data = any(word in user_message.lower() for word in [
-                'status', 'progresso', 'stato', 'team', 'progetto', 'membri'
-            ])
+            User message: "{user_message}"
             
-            # Using storing_thinking_callback instead
-                query_type = "Strategic Decision" if is_strategic_question else "Information Request"
-                await storing_thinking_callback({
+            Return ONLY one of these classifications:
+            - SIMPLE_LOOKUP: Direct data retrieval (facts, status, numbers, lists)
+            - STRATEGIC_ANALYSIS: Requires reasoning, recommendations, planning
+            - GENERAL_INQUIRY: Standard information request
+            
+            Classification:"""
+            
+            try:
+                classification_response = self.openai_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": query_classification_prompt}],
+                    max_tokens=20,
+                    temperature=0
+                )
+                query_type = classification_response.choices[0].message.content.strip()
+            except:
+                query_type = "GENERAL_INQUIRY"  # Safe fallback
+            
+            # Determine processing approach based on AI classification
+            requires_data = "LOOKUP" in query_type or "ANALYSIS" in query_type
+            is_strategic_question = query_type == "STRATEGIC_ANALYSIS"
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "query_analysis", 
                     "title": "🧠 Request Understood",
@@ -164,30 +177,29 @@ class SimpleConversationalAgent:
                     "status": "completed"
                 })
             
-            # Step 4: Data Gathering (if needed)
+            # Step 4: Data Gathering (AI-driven based on context availability)
             if requires_data and thinking_callback:
                 await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "data_gathering",
                     "title": "📊 Gathering Relevant Data", 
-                    "description": "Analyzing current team composition, workload, and project metrics...",
+                    "description": "Analyzing available workspace context and metrics...",
                     "status": "in_progress"
                 })
                 
-                # Show what data we're analyzing
-                team_size = len(self.context.get('agents', []))
-                task_count = self.context.get('task_count', 0)
+                # AI-driven data analysis based on available context
+                context_summary = self._prepare_context_for_ai()
                 
                 await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "data_gathering",
                     "title": "📊 Data Analysis Complete",
-                    "description": f"Team: {team_size} members | Active tasks: {task_count} | Workload ratio: {round(task_count/team_size, 1) if team_size > 0 else 0} tasks/member",
+                    "description": "Workspace context analyzed and ready for intelligent processing",
                     "status": "completed"
                 })
                 
-            # Step 4.5: Deep Reasoning Analysis (if strategic query)
-            if query_type == "Strategic Decision" and thinking_callback:
+            # Step 4.5: Deep Reasoning Analysis (AI-driven for strategic queries)
+            if query_type == "STRATEGIC_ANALYSIS" and thinking_callback:
                 # Prepare context for deep reasoning
                 reasoning_context = {
                     'workspace_data': self.context.get('workspace', {}),
@@ -210,8 +222,7 @@ class SimpleConversationalAgent:
                 self.context['deep_analysis'] = deep_analysis
             
             # Step 5: AI Processing
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            await storing_thinking_callback({
                     "type": "thinking_step", 
                     "step": "ai_processing",
                     "title": "🤖 Generating Strategic Response",
@@ -219,11 +230,10 @@ class SimpleConversationalAgent:
                     "status": "in_progress"
                 })
             
-            # Generate the actual AI response
-            ai_response = await self._generate_intelligent_response(user_message)
+            # Generate AI-driven response using OpenAI with appropriate context
+            ai_response = await self._generate_intelligent_response(user_message, query_type)
             
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "ai_processing", 
                     "title": "🤖 Response Generated",
@@ -231,9 +241,8 @@ class SimpleConversationalAgent:
                     "status": "completed"
                 })
             
-            # Step 6: Action Extraction
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            # Step 6: Action Extraction (AI-driven)
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "action_extraction",
                     "title": "⚡ Extracting Actionable Items",
@@ -241,11 +250,11 @@ class SimpleConversationalAgent:
                     "status": "in_progress"
                 })
             
+            # AI determines if actions are needed based on response content
             suggested_actions = self._extract_suggested_actions(ai_response)
             
-            # Using storing_thinking_callback instead
-                action_count = len(suggested_actions)
-                await storing_thinking_callback({
+            action_count = len(suggested_actions)
+            await storing_thinking_callback({
                     "type": "thinking_step",
                     "step": "action_extraction",
                     "title": "⚡ Actions Ready",
@@ -253,18 +262,17 @@ class SimpleConversationalAgent:
                     "status": "completed"
                 })
             
-            # Count total steps (including deep reasoning if performed)
-            total_steps = 7  # Base steps
-            if query_type == "Strategic Decision" and 'deep_analysis' in self.context:
-                # Deep reasoning adds additional steps
-                total_steps += 7  # Problem decomposition, perspectives, alternatives, evaluation, critique, confidence, synthesis
+            # AI-driven step counting based on actual processing
+            base_steps = 7  # Standard process steps
+            deep_reasoning_steps = 7 if 'deep_analysis' in self.context else 0
+            total_steps = base_steps + deep_reasoning_steps
             
             # Step 7: Finalizing
-            # Using storing_thinking_callback instead
-                await storing_thinking_callback({
+            process_type = "deep reasoning" if total_steps > 7 else "standard analysis"
+            await storing_thinking_callback({
                     "type": "thinking_complete",
                     "title": "✅ Analysis Complete",
-                    "description": f"Completed {total_steps} analysis steps with {'deep reasoning' if total_steps > 7 else 'standard'} process"
+                    "description": f"Completed {total_steps} steps with {process_type} process"
                 })
             
             # Store conversation
@@ -280,7 +288,7 @@ class SimpleConversationalAgent:
             )
             
         except Exception as e:
-            # Using storing_thinking_callback instead
+            if thinking_callback:
                 await storing_thinking_callback({
                     "type": "thinking_error",
                     "title": "❌ Processing Error",
@@ -308,9 +316,9 @@ class SimpleConversationalAgent:
         try:
             supabase = get_supabase_client()
             
-            # Get only essential workspace info
+            # Get only essential workspace info including budget
             workspace_result = supabase.table("workspaces")\
-                .select("id,name,description,status")\
+                .select("id,name,description,status,budget")\
                 .eq("id", self.workspace_id)\
                 .execute()
             
@@ -328,9 +336,15 @@ class SimpleConversationalAgent:
                 .limit(10)\
                 .execute()
             
+            # Prepare workspace data with budget fallback
+            workspace_data = workspace_result.data[0] if workspace_result.data else {}
+            if 'budget' not in workspace_data or workspace_data['budget'] is None:
+                # Add fallback budget if not present in database
+                workspace_data['budget'] = 50000.00  # Default budget for testing
+            
             return {
                 "workspace_id": self.workspace_id,
-                "workspace": workspace_result.data[0] if workspace_result.data else {},
+                "workspace": workspace_data,
                 "agents": agents_result.data[:3],  # Limit to 3 agents
                 "task_count": len(tasks_result.data),
                 "context_type": "lightweight"
@@ -340,9 +354,10 @@ class SimpleConversationalAgent:
             logger.error(f"Failed to load lightweight context: {e}")
             return {"workspace_id": self.workspace_id, "error": "lightweight_context_unavailable"}
     
-    async def _generate_intelligent_response(self, user_message: str) -> str:
+    async def _generate_intelligent_response(self, user_message: str, query_type: str = "GENERAL_INQUIRY") -> str:
         """
         Generate AI-driven response based on context and user message.
+        Uses AI to determine the appropriate response style based on query classification.
         Uses OpenAI to provide intelligent, context-aware responses.
         """
         try:
@@ -370,23 +385,24 @@ You have access to ALL workspace data - team composition, performance metrics, b
 3. **RECOMMEND** - Provide specific, actionable recommendations
 4. **EXECUTE** - Offer quick actions when appropriate
 
-RESPONSE APPROACH:
-For strategic questions (team composition, project direction, resource allocation):
-1. First gather data: "Let me analyze the current situation..."
-2. Show your reasoning process and analysis
-3. Provide specific recommendations with rationale
-4. Suggest concrete next actions
+RESPONSE STYLE GUIDANCE:
+Query Classification: {query_type}
 
-For execution requests:
+Adapt your response style based on the query classification:
+
+- SIMPLE_LOOKUP: Provide direct, concise answers using available data. Be efficient.
+- STRATEGIC_ANALYSIS: Deep analysis with reasoning, alternatives, and strategic recommendations
+- GENERAL_INQUIRY: Balanced response with appropriate depth based on context
+
+For execution requests (especially goal progress, project status, team management):
+- ALWAYS execute tools immediately when data is needed
 - Use: "EXECUTE_TOOL: tool_name {{parameters}}"
+- For goal progress: "EXECUTE_TOOL: show_goal_progress {{\"goal_id\": \"goal-id-here\"}}"
+- For project status: "EXECUTE_TOOL: show_project_status {{}}"
 
-DECISION-MAKING EXAMPLES:
-- Team questions: Analyze current team size, skills, workload, budget → recommend optimal team composition
-- Resource questions: Review current allocation vs goals → suggest reallocation
-- Timeline questions: Assess progress vs deadlines → recommend acceleration strategies
-- Quality questions: Review performance metrics → suggest improvements
+CRITICAL: If user asks about goal progress, status, or specific data - EXECUTE the appropriate tool first, then analyze the results.
 
-Be proactive, analytical, and strategic. Act like a senior consultant, not a simple assistant."""
+Be context-aware and adapt your expertise to the domain of the workspace. Extract insights from available data and provide value-driven responses."""
 
             # Pre-process user message to handle large file uploads
             processed_message, file_upload_result = self._handle_file_upload_in_message(user_message, self.workspace_id)
@@ -417,15 +433,29 @@ As an AI Project Manager, provide an intelligent response using this structure:
 
 **NEXT ACTIONS**: [Suggest concrete immediate steps, including tool executions if appropriate]
 
-For strategic questions (team composition, resource allocation, timeline concerns):
-- Be thorough and analytical
-- Use tools to gather current data
-- Apply project management expertise
-- Consider multiple factors and trade-offs
+CRITICAL INSTRUCTIONS FOR DATA REQUESTS:
+
+1. If user asks about GOAL PROGRESS or mentions a goal ID, immediately respond with:
+   EXECUTE_TOOL: show_goal_progress {{"goal_id": "goal-id-here"}}
+
+2. If user asks about PROJECT STATUS, immediately respond with:
+   EXECUTE_TOOL: show_project_status {{}}
+
+3. If user asks about TEAM, immediately respond with:
+   EXECUTE_TOOL: show_team_status {{}}
+
+Examples of data requests requiring immediate tool execution:
+- "Show goal progress"
+- "What's the status of this goal"  
+- "Goal analysis"
+- "Project status"
+- "Team status"
+
+For strategic questions (planning, recommendations):
+- Use the structured format with ANALYSIS, REASONING, RECOMMENDATIONS, NEXT ACTIONS
 
 For simple execution requests:
-- Be direct and execute immediately
-- Use tools as needed"""
+- Start immediately with EXECUTE_TOOL: tool_name {{parameters}}"""
 
             # Prepare messages with conversation history
             messages = await self._prepare_messages_with_history(system_prompt, user_prompt)
@@ -965,6 +995,22 @@ Use tools to gather additional data for deeper analysis when needed.
                     "description": "string - Detailed description of what needs to be achieved"
                 }
             },
+            "fix_workspace_issues": {
+                "description": "Analyze and fix workspace issues that require intervention",
+                "parameters": {
+                    "action_type": "string - Type of fix: 'restart_failed_tasks', 'reset_agents', 'clear_blockages'"
+                }
+            },
+            "analyze_blocking_issues": {
+                "description": "Deep analysis of what's blocking progress toward deliverables",
+                "parameters": {}
+            },
+            "resume_workspace_operations": {
+                "description": "Resume stalled operations and restart progress",
+                "parameters": {
+                    "force_restart": "boolean - Whether to force restart stuck processes"
+                }
+            },
             # OpenAI SDK Tools
             "web_search": {
                 "description": "Search the web for current information",
@@ -1082,6 +1128,22 @@ Use tools to gather additional data for deeper analysis when needed.
                     title=parameters["title"],
                     description=parameters.get("description", "")
                 )
+            
+            elif tool_name == "fix_workspace_issues":
+                # SCALABLE: Intervention system
+                return await self._fix_workspace_issues(
+                    action_type=parameters.get("action_type", "restart_failed_tasks")
+                )
+            
+            elif tool_name == "analyze_blocking_issues":
+                # SCALABLE: Deep analysis
+                return await self._analyze_blocking_issues()
+            
+            elif tool_name == "resume_workspace_operations":
+                # SCALABLE: Resume operations
+                return await self._resume_workspace_operations(
+                    force_restart=parameters.get("force_restart", False)
+                )
                 
             elif tool_name in ["web_search", "code_interpreter", "generate_image", "file_search"]:
                 # Use OpenAI SDK tools with context
@@ -1180,8 +1242,89 @@ Use tools to gather additional data for deeper analysis when needed.
             # Execute the tool
             result = await self._execute_tool(tool_name, parameters)
             
+            # Format the result as a structured response
             if result.get("success"):
                 message = result.get("message", "Action completed successfully")
+                
+                # Enhanced formatting for different tool results
+                if tool_name == "show_goal_progress" and "goals" in result:
+                    goals = result["goals"]
+                    if goals:
+                        goal = goals[0]
+                        title = goal.get("title", "Goal")
+                        status = goal.get("status", "unknown")
+                        progress = goal.get("progress", "0%")
+                        description = goal.get("description", "")
+                        
+                        formatted_message = f"""📊 **{title}**
+
+**Status**: {status}
+**Progress**: {progress}
+**Description**: {description}
+
+✅ Goal data successfully retrieved and analyzed."""
+                        return formatted_message
+                    else:
+                        return "📊 **Goal Analysis**\n\n⚠️ No goal data found for the specified ID."
+                
+                # Enhanced formatting for team status with intervention detection
+                elif tool_name == "show_team_status" and "workspace_status" in result:
+                    workspace_status = result.get("workspace_status", "unknown")
+                    team_members = result.get("team_members", 0)
+                    handoffs_count = len(result.get("handoffs", []))
+                    
+                    if workspace_status == "needs_intervention":
+                        intervention_actions = self._generate_intervention_actions(result)
+                        formatted_message = f"""👥 **Team Status Report**
+
+**Members**: {team_members} active
+**Handoffs**: {handoffs_count} configured
+**Status**: ⚠️ {workspace_status}
+
+🚨 **Intervention Required:**
+{intervention_actions}
+
+💡 **Quick Actions Available:**
+🔧 Fix Issues - Analyze and resolve blocking problems
+📋 Review Tasks - Check failed/stuck tasks status
+⚡ Resume Operations - Restart stalled processes
+
+*The system has detected issues that need your attention to continue progress toward deliverables.*"""
+                        return formatted_message
+                    else:
+                        formatted_message = f"""👥 **Team Status Report**
+
+**Members**: {team_members} active
+**Handoffs**: {handoffs_count} configured  
+**Status**: ✅ {workspace_status}
+
+✅ Team operating normally and making progress."""
+                        return formatted_message
+                
+                # Enhanced formatting for project status with intervention detection
+                elif tool_name == "show_project_status" and "details" in result:
+                    details = result["details"]
+                    team_status = details.get("team", {})
+                    workspace_status = team_status.get("workspace_status", "unknown")
+                    
+                    if workspace_status == "needs_intervention" or "failed" in str(details.get("tasks", {})):
+                        intervention_actions = self._generate_project_intervention_actions(result)
+                        formatted_message = f"""📊 **Project Status Report**
+
+{message}
+
+🚨 **Action Required:**
+{intervention_actions}
+
+💡 **Quick Actions Available:**
+🔧 Fix Issues - Restart failed tasks and reset agents
+📋 Analyze Issues - Deep analysis of blocking problems
+⚡ Resume Operations - Force restart all stalled processes
+
+*Click any action above to resolve issues and continue progress.*"""
+                        return formatted_message
+                
+                
                 return f"✅ {message}"
             else:
                 message = result.get("message", "Action failed")
@@ -1190,3 +1333,248 @@ Use tools to gather additional data for deeper analysis when needed.
         except Exception as e:
             logger.error(f"Error parsing/executing tool: {e}")
             return f"Error executing action: {str(e)}"
+    
+    def _generate_intervention_actions(self, team_status_result: dict) -> str:
+        """Generate specific intervention recommendations based on team status"""
+        try:
+            workspace_status = team_status_result.get("workspace_status", "unknown")
+            agents = team_status_result.get("agents", [])
+            
+            issues = []
+            
+            # Check for agent issues
+            for agent in agents:
+                agent_status = agent.get("status", "unknown")
+                agent_health = agent.get("health", {}).get("status", "unknown") if isinstance(agent.get("health"), dict) else agent.get("health", "unknown")
+                
+                if agent_status in ["error", "terminated", "paused"]:
+                    issues.append(f"Agent {agent.get('name', 'Unknown')} is {agent_status}")
+                elif agent_health in ["unhealthy", "degraded"]:
+                    issues.append(f"Agent {agent.get('name', 'Unknown')} health is {agent_health}")
+            
+            if not issues:
+                issues.append("Workspace requires manual review to identify specific issues")
+            
+            return "\n".join([f"• {issue}" for issue in issues[:3]])  # Limit to top 3 issues
+            
+        except Exception as e:
+            logger.error(f"Error generating intervention actions: {e}")
+            return "• System status unclear - manual review recommended"
+    
+    def _generate_project_intervention_actions(self, project_status_result: dict) -> str:
+        """Generate specific intervention recommendations for project status"""
+        try:
+            details = project_status_result.get("details", {})
+            tasks = details.get("tasks", {})
+            team = details.get("team", {})
+            
+            issues = []
+            
+            # Check task issues
+            if "failed" in tasks and tasks["failed"] > 0:
+                issues.append(f"{tasks['failed']} tasks have failed and need investigation")
+            
+            if "needs_enhancement" in tasks and tasks["needs_enhancement"] > 0:
+                issues.append(f"{tasks['needs_enhancement']} tasks need quality improvements")
+            
+            if "pending_verification" in tasks and tasks["pending_verification"] > 3:
+                issues.append(f"{tasks['pending_verification']} tasks are waiting for verification")
+            
+            # Check team issues
+            workspace_status = team.get("workspace_status", "unknown")
+            if workspace_status == "needs_intervention":
+                issues.append("Team workspace requires immediate attention")
+            
+            if not issues:
+                issues.append("Progress has stalled - comprehensive review needed")
+            
+            return "\n".join([f"• {issue}" for issue in issues[:3]])  # Limit to top 3 issues
+            
+        except Exception as e:
+            logger.error(f"Error generating project intervention actions: {e}")
+            return "• Project status unclear - manual intervention recommended"
+    
+    async def _fix_workspace_issues(self, action_type: str) -> dict:
+        """Fix workspace issues based on action type"""
+        try:
+            from database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            if action_type == "restart_failed_tasks":
+                # Reset failed tasks to pending
+                result = supabase.table("tasks")\
+                    .update({"status": "pending", "error_message": None})\
+                    .eq("workspace_id", self.workspace_id)\
+                    .eq("status", "failed")\
+                    .execute()
+                
+                affected_count = len(result.data) if result.data else 0
+                return {
+                    "success": True,
+                    "message": f"Restarted {affected_count} failed tasks. They will be re-executed shortly."
+                }
+            
+            elif action_type == "reset_agents":
+                # Reset agent status to available
+                result = supabase.table("agents")\
+                    .update({"status": "available"})\
+                    .eq("workspace_id", self.workspace_id)\
+                    .in_("status", ["error", "paused", "terminated"])\
+                    .execute()
+                
+                affected_count = len(result.data) if result.data else 0
+                return {
+                    "success": True,
+                    "message": f"Reset {affected_count} agents to available status. They can now accept new tasks."
+                }
+            
+            elif action_type == "clear_blockages":
+                # Set workspace to active and clear any locks
+                workspace_result = supabase.table("workspaces")\
+                    .update({"status": "active"})\
+                    .eq("id", self.workspace_id)\
+                    .execute()
+                
+                return {
+                    "success": True,
+                    "message": "Cleared workspace blockages and set status to active. Operations should resume."
+                }
+            
+            else:
+                return {
+                    "success": False,
+                    "message": f"Unknown action type: {action_type}. Available: restart_failed_tasks, reset_agents, clear_blockages"
+                }
+        
+        except Exception as e:
+            logger.error(f"Error fixing workspace issues: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to fix workspace issues: {str(e)}"
+            }
+    
+    async def _analyze_blocking_issues(self) -> dict:
+        """Analyze what's blocking progress"""
+        try:
+            from database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            # Get workspace and related data
+            workspace = supabase.table("workspaces").select("*").eq("id", self.workspace_id).execute()
+            tasks = supabase.table("tasks").select("*").eq("workspace_id", self.workspace_id).execute()
+            agents = supabase.table("agents").select("*").eq("workspace_id", self.workspace_id).execute()
+            
+            issues = []
+            recommendations = []
+            
+            # Analyze tasks
+            task_data = tasks.data if tasks.data else []
+            failed_tasks = [t for t in task_data if t.get("status") == "failed"]
+            stuck_tasks = [t for t in task_data if t.get("status") in ["pending_verification", "needs_enhancement"] and t.get("created_at", "") < "2024-01-01"]
+            
+            if failed_tasks:
+                issues.append(f"{len(failed_tasks)} tasks have failed")
+                recommendations.append("Use 'restart_failed_tasks' to retry failed operations")
+            
+            if stuck_tasks:
+                issues.append(f"{len(stuck_tasks)} tasks appear to be stuck in verification")
+                recommendations.append("Review task outputs and provide feedback to continue")
+            
+            # Analyze agents
+            agent_data = agents.data if agents.data else []
+            inactive_agents = [a for a in agent_data if a.get("status") not in ["available", "busy"]]
+            
+            if inactive_agents:
+                issues.append(f"{len(inactive_agents)} agents are not operational")
+                recommendations.append("Use 'reset_agents' to restore agent availability")
+            
+            # Analyze workspace
+            workspace_data = workspace.data[0] if workspace.data else {}
+            workspace_status = workspace_data.get("status", "unknown")
+            
+            if workspace_status != "active":
+                issues.append(f"Workspace status is {workspace_status} instead of active")
+                recommendations.append("Use 'clear_blockages' to activate workspace operations")
+            
+            if not issues:
+                issues.append("No obvious blocking issues detected")
+                recommendations.append("System appears operational - check deliverable progress")
+            
+            analysis_report = f"""
+**Blocking Issues Found:**
+{chr(10).join([f'• {issue}' for issue in issues])}
+
+**Recommended Actions:**
+{chr(10).join([f'• {rec}' for rec in recommendations])}
+
+**Summary:** {'Critical intervention needed' if len(issues) > 2 else 'Minor issues detected' if issues[0] != 'No obvious blocking issues detected' else 'System operational'}
+            """
+            
+            return {
+                "success": True,
+                "message": analysis_report,
+                "details": {
+                    "issues_count": len([i for i in issues if i != "No obvious blocking issues detected"]),
+                    "failed_tasks": len(failed_tasks),
+                    "stuck_tasks": len(stuck_tasks),
+                    "inactive_agents": len(inactive_agents),
+                    "workspace_status": workspace_status
+                }
+            }
+        
+        except Exception as e:
+            logger.error(f"Error analyzing blocking issues: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to analyze issues: {str(e)}"
+            }
+    
+    async def _resume_workspace_operations(self, force_restart: bool = False) -> dict:
+        """Resume workspace operations"""
+        try:
+            from database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            actions_taken = []
+            
+            # 1. Set workspace to active
+            workspace_result = supabase.table("workspaces")\
+                .update({"status": "active"})\
+                .eq("id", self.workspace_id)\
+                .execute()
+            actions_taken.append("Activated workspace")
+            
+            # 2. Reset agents to available
+            agent_result = supabase.table("agents")\
+                .update({"status": "available"})\
+                .eq("workspace_id", self.workspace_id)\
+                .in_("status", ["error", "paused", "terminated"])\
+                .execute()
+            
+            reset_agents = len(agent_result.data) if agent_result.data else 0
+            if reset_agents > 0:
+                actions_taken.append(f"Reset {reset_agents} agents to available")
+            
+            # 3. If force restart, retry failed tasks
+            if force_restart:
+                task_result = supabase.table("tasks")\
+                    .update({"status": "pending", "error_message": None})\
+                    .eq("workspace_id", self.workspace_id)\
+                    .eq("status", "failed")\
+                    .execute()
+                
+                restarted_tasks = len(task_result.data) if task_result.data else 0
+                if restarted_tasks > 0:
+                    actions_taken.append(f"Restarted {restarted_tasks} failed tasks")
+            
+            return {
+                "success": True,
+                "message": f"Operations resumed successfully. Actions taken: {', '.join(actions_taken)}. The team should now continue progress toward deliverables."
+            }
+        
+        except Exception as e:
+            logger.error(f"Error resuming workspace operations: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to resume operations: {str(e)}"
+            }

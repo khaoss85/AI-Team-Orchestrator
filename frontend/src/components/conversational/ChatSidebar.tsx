@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Chat, WorkspaceContext } from './types'
 
 interface ChatSidebarProps {
@@ -11,6 +12,8 @@ interface ChatSidebarProps {
   onChatSelect: (chat: Chat) => void
   onCreateChat: (objective: string) => Promise<void>
   onArchiveChat: (chatId: string) => Promise<void>
+  onReactivateChat?: (chatId: string) => Promise<void>
+  onRenameChat?: (chatId: string, newName: string) => Promise<void>
   onToggleCollapse: () => void
 }
 
@@ -54,6 +57,8 @@ export default function ChatSidebar({
   onChatSelect,
   onCreateChat,
   onArchiveChat,
+  onReactivateChat,
+  onRenameChat,
   onToggleCollapse
 }: ChatSidebarProps) {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -116,15 +121,15 @@ export default function ChatSidebar({
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => window.history.back()}
+            <Link
+              href="/projects"
               className="p-1 text-gray-600 hover:bg-gray-100 rounded"
-              title="Back to project dashboard"
+              title="Back to projects list"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-            </button>
+            </Link>
             <h1 className="text-lg font-semibold text-gray-900 truncate">
               {workspaceContext.name}
             </h1>
@@ -189,6 +194,7 @@ export default function ChatSidebar({
                 isActive={activeChat?.id === chat.id}
                 onClick={() => onChatSelect(chat)}
                 onArchive={() => onArchiveChat(chat.id)}
+                onRename={onRenameChat ? (newName) => onRenameChat(chat.id, newName) : undefined}
               />
             ))}
             {activeObjectives.length === 0 && (
@@ -213,6 +219,8 @@ export default function ChatSidebar({
                   isActive={false}
                   onClick={() => onChatSelect(chat)}
                   isArchived
+                  onReactivate={onReactivateChat ? () => onReactivateChat(chat.id) : undefined}
+                  onRename={onRenameChat ? (newName) => onRenameChat(chat.id, newName) : undefined}
                 />
               ))}
               {archivedChats.length > 3 && (
@@ -266,11 +274,24 @@ interface ChatItemProps {
   isArchived?: boolean
   onClick: () => void
   onArchive?: () => void
+  onReactivate?: () => void
+  onRename?: (newName: string) => void
   feedbackCount?: number
   urgentCount?: number
 }
 
-function ChatItem({ chat, isActive, isArchived, onClick, onArchive, feedbackCount, urgentCount }: ChatItemProps) {
+function ChatItem({ chat, isActive, isArchived, onClick, onArchive, onReactivate, onRename, feedbackCount, urgentCount }: ChatItemProps) {
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [newName, setNewName] = useState(chat.title)
+
+  const handleRename = () => {
+    if (newName.trim() && newName !== chat.title && onRename) {
+      onRename(newName.trim())
+      setShowRenameModal(false)
+    }
+  }
+
   return (
     <div className={`
       group relative p-2 rounded-lg cursor-pointer transition-colors
@@ -282,12 +303,30 @@ function ChatItem({ chat, isActive, isArchived, onClick, onArchive, feedbackCoun
       }
     `}>
       <div onClick={onClick} className="flex items-center space-x-2 w-full">
-        <span className="text-sm flex-shrink-0">
-          {chat.icon || (chat.type === 'fixed' ? '📌' : '🎯')}
-        </span>
+        {/* Goal progress indicator instead of icon */}
+        {chat.id.startsWith('goal-') ? (
+          <div className="flex-shrink-0 w-3 h-3 rounded-full" title={`Goal ${chat.status || 'unknown'}`}>
+            {(() => {
+              const progress = chat.objective?.progress || 0
+              if (progress >= 100) return <div className="w-3 h-3 bg-green-500 rounded-full" />
+              if (progress >= 1) return <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
+              return <div className="w-3 h-3 bg-red-500 rounded-full" />
+            })()}
+          </div>
+        ) : (
+          <span className="text-sm flex-shrink-0">
+            {chat.icon || (chat.type === 'fixed' ? '📌' : '🎯')}
+          </span>
+        )}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-medium truncate flex items-center">
             {chat.title}
+            {/* Progress percentage for goals */}
+            {chat.id.startsWith('goal-') && chat.objective?.progress !== undefined && (
+              <div className="ml-2 text-xs text-gray-500">
+                {Math.round(chat.objective.progress)}%
+              </div>
+            )}
           </div>
           {chat.lastActivity && (
             <div className="text-xs opacity-75 truncate">
@@ -317,20 +356,118 @@ function ChatItem({ chat, isActive, isArchived, onClick, onArchive, feedbackCoun
         )}
       </div>
       
-      {/* Archive button for dynamic chats */}
-      {chat.type === 'dynamic' && !isArchived && onArchive && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onArchive()
-          }}
-          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition-opacity"
-          title="Archive chat"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4 4-4" />
-          </svg>
-        </button>
+      {/* Options dropdown for goal chats */}
+      {(chat.id.startsWith('goal-') || chat.type === 'dynamic') && (
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowDropdown(!showDropdown)
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600"
+            title="Goal options"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+          </button>
+          
+          {/* Dropdown Menu */}
+          {showDropdown && (
+            <div className="absolute right-0 top-6 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowRenameModal(true)
+                  setShowDropdown(false)
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+              >
+                ✏️ Rename
+              </button>
+              
+              {isArchived && onReactivate ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onReactivate()
+                    setShowDropdown(false)
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-xs text-green-700 hover:bg-green-50"
+                >
+                  🔄 Reactivate
+                </button>
+              ) : (
+                onArchive && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onArchive()
+                      setShowDropdown(false)
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                  >
+                    🗄️ Archive
+                  </button>
+                )
+              )}
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowDropdown(false)
+                }}
+                className="w-full px-3 py-1.5 text-left text-xs text-gray-500 hover:bg-gray-100"
+              >
+                ❌ Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Rename Modal */}
+      {showRenameModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-4 w-full max-w-sm">
+            <h3 className="text-sm font-semibold mb-3">Rename Goal</h3>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter new name"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename()
+                if (e.key === 'Escape') setShowRenameModal(false)
+              }}
+            />
+            <div className="flex justify-end space-x-2 mt-3">
+              <button
+                onClick={() => setShowRenameModal(false)}
+                className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRename}
+                disabled={!newName.trim() || newName === chat.title}
+                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Click outside to close dropdown */}
+      {showDropdown && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowDropdown(false)}
+        />
       )}
     </div>
   )

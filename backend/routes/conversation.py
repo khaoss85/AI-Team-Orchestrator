@@ -215,16 +215,38 @@ async def execute_suggested_action(
             raise HTTPException(status_code=400, detail="Tool name is required")
         
         # Initialize agent to use tool execution
-        agent = ConversationalAgent(workspace_id, chat_id)
+        from ai_agents.conversational_simple import SimpleConversationalAgent
+        agent = SimpleConversationalAgent(workspace_id, chat_id)
         await agent._load_context()
         
-        # Execute the tool
-        tool_result = await agent._parse_and_execute_tool(f"EXECUTE_TOOL: {tool_name} {json.dumps(parameters)}")
+        # Execute the tool directly to get the full result dict
+        logger.info(f"🔧 [execute_suggested_action] Executing tool: {tool_name} with params: {parameters}")
+        tool_result = await agent._execute_tool(tool_name, parameters)
+        logger.info(f"📊 [execute_suggested_action] Tool result: {tool_result}")
+        logger.info(f"📊 [execute_suggested_action] Tool result type: {type(tool_result)}")
+        
+        # Create a follow-up message in the chat with the result
+        if tool_result and isinstance(tool_result, dict):
+            # Extract message from the tool result
+            message = tool_result.get("message", "Action completed successfully")
+            status_icon = "✅" if tool_result.get("success", True) else "❌"
+            
+            # Store the action execution as an AI message in the conversation
+            follow_up_message = f"{status_icon} **Action Executed: {tool_name.replace('_', ' ').title()}**\n\n{message}"
+            
+            # Store this as an AI message
+            await agent._store_message(
+                get_supabase_client(),
+                follow_up_message,
+                "assistant",
+                f"action_{tool_name}_{int(datetime.now().timestamp())}"
+            )
         
         return {
-            "success": True,
+            "success": tool_result.get("success", True) if isinstance(tool_result, dict) else True,
             "tool": tool_name,
             "result": tool_result,
+            "message": tool_result.get("message", "Action completed successfully") if isinstance(tool_result, dict) else str(tool_result),
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         

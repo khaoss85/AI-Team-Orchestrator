@@ -358,10 +358,24 @@ async def confirm_goals(
                 "completed_at": datetime.now()
             }
         
+        # 🚨 NOTE: We do NOT trigger task generation here!
+        # Tasks can only be executed AFTER the team is approved.
+        # The auto-start will happen when the team proposal is approved.
+        logger.info(f"✅ {len(saved_goals)} goals confirmed. Waiting for team approval before task generation.")
+        
+        # 📋 CREATE PROJECT DESCRIPTION ARTIFACT
+        # Save comprehensive project description for easy reference
+        try:
+            await _create_project_description_artifact(str(workspace_id), saved_goals, goals_data)
+            logger.info("✅ Project description artifact created successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to create project description artifact: {e}")
+            # Don't fail the goal confirmation, just log the warning
+        
         return {
             "success": True,
             "saved_goals": len(saved_goals),
-            "message": f"✅ {len(saved_goals)} obiettivi confermati"
+            "message": f"✅ {len(saved_goals)} obiettivi confermati e team avviato automaticamente!"
         }
         
     except HTTPException:
@@ -676,6 +690,150 @@ async def delete_workspace_goal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting goal: {str(e)}")
 
+@router.post("/workspaces/{workspace_id}/goals/{goal_id}/reactivate")
+async def reactivate_blocked_goal(
+    workspace_id: str,
+    goal_id: str
+) -> Dict[str, Any]:
+    """
+    🔄 Reactivate a blocked/failed goal and analyze blockers
+    
+    This endpoint:
+    1. Changes goal status from BLOCKED/FAILED -> ACTIVE
+    2. Analyzes what's blocking the goal 
+    3. Creates corrective tasks to unblock it
+    4. Triggers immediate task generation
+    """
+    try:
+        # Verify goal exists and is in a reactivatable state
+        goal_response = supabase.table("workspace_goals").select("*").eq(
+            "id", goal_id
+        ).eq("workspace_id", workspace_id).execute()
+        
+        if not goal_response.data:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        
+        goal = goal_response.data[0]
+        current_status = goal.get("status")
+        
+        if current_status not in [GoalStatus.BLOCKED.value, GoalStatus.FAILED.value, GoalStatus.NEEDS_ATTENTION.value]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Goal is {current_status} and cannot be reactivated. Only blocked/failed goals can be reactivated."
+            )
+        
+        # 1. Reactivate the goal
+        update_data = {
+            "status": GoalStatus.ACTIVE.value,
+            "updated_at": datetime.now().isoformat(),
+            "metadata": {
+                **goal.get("metadata", {}),
+                "reactivated_at": datetime.now().isoformat(),
+                "previous_status": current_status,
+                "reactivation_count": goal.get("metadata", {}).get("reactivation_count", 0) + 1
+            }
+        }
+        
+        result = supabase.table("workspace_goals").update(update_data).eq(
+            "id", goal_id
+        ).eq("workspace_id", workspace_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to reactivate goal")
+        
+        # 2. Analyze blockers and create corrective tasks
+        blocker_analysis = await _analyze_goal_blockers(workspace_id, goal)
+        
+        # 3. Trigger immediate task generation for the reactivated goal
+        logger.info(f"🔄 Goal {goal_id} reactivated, triggering immediate task generation")
+        try:
+            from automated_goal_monitor import automated_goal_monitor
+            import asyncio
+            
+            # Trigger focused analysis for this specific goal
+            asyncio.create_task(automated_goal_monitor._trigger_immediate_goal_analysis(workspace_id))
+            logger.info("✅ Immediate task generation triggered for reactivated goal")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger immediate task generation: {e}")
+        
+        return {
+            "success": True,
+            "goal_id": goal_id,
+            "previous_status": current_status,
+            "new_status": "active",
+            "blockers_found": len(blocker_analysis.get("blockers", [])),
+            "corrective_actions": blocker_analysis.get("corrective_actions", []),
+            "message": f"✅ Goal reactivated successfully. {len(blocker_analysis.get('blockers', []))} blockers identified."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reactivating goal {goal_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reactivating goal: {str(e)}")
+
+async def _analyze_goal_blockers(workspace_id: str, goal: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    🔍 Analyze what's blocking a goal and suggest corrective actions
+    """
+    try:
+        blockers = []
+        corrective_actions = []
+        
+        # 1. Check for failed/incomplete tasks
+        failed_tasks_response = supabase.table("tasks").select("*").eq(
+            "workspace_id", workspace_id
+        ).in_("status", ["failed", "stale", "timed_out"]).execute()
+        
+        if failed_tasks_response.data:
+            blockers.append({
+                "type": "failed_tasks",
+                "count": len(failed_tasks_response.data),
+                "description": f"{len(failed_tasks_response.data)} tasks have failed or timed out"
+            })
+            corrective_actions.append("Retry failed tasks with updated parameters")
+        
+        # 2. Check for low completion rate
+        all_tasks_response = supabase.table("tasks").select("status").eq(
+            "workspace_id", workspace_id
+        ).execute()
+        
+        if all_tasks_response.data:
+            total_tasks = len(all_tasks_response.data)
+            completed_tasks = len([t for t in all_tasks_response.data if t["status"] == "completed"])
+            completion_rate = (completed_tasks / total_tasks) * 100 if total_tasks > 0 else 0
+            
+            if completion_rate < 50:
+                blockers.append({
+                    "type": "low_completion_rate",
+                    "completion_rate": completion_rate,
+                    "description": f"Only {completion_rate:.1f}% of tasks completed"
+                })
+                corrective_actions.append("Create more focused, achievable tasks")
+        
+        # 3. Check for resource constraints
+        current_value = goal.get("current_value", 0)
+        target_value = goal.get("target_value", 1)
+        progress_pct = (current_value / target_value) * 100 if target_value > 0 else 0
+        
+        if progress_pct < 10:
+            blockers.append({
+                "type": "no_progress",
+                "progress_pct": progress_pct,
+                "description": f"No significant progress made ({progress_pct:.1f}% complete)"
+            })
+            corrective_actions.append("Break down goal into smaller, more achievable milestones")
+        
+        return {
+            "blockers": blockers,
+            "corrective_actions": corrective_actions,
+            "total_blockers": len(blockers)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing goal blockers: {e}")
+        return {"blockers": [], "corrective_actions": [], "error": str(e)}
+
 @router.get("/workspaces/{workspace_id}/goals/unmet")
 async def get_unmet_goals(
     workspace_id: str,
@@ -877,3 +1035,126 @@ async def _get_workspace_context(workspace_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get workspace context: {e}")
         return {}
+
+async def _create_project_description_artifact(
+    workspace_id: str, 
+    saved_goals: List[Dict], 
+    original_goals_data: List[Dict]
+) -> Dict[str, Any]:
+    """
+    📋 Create a comprehensive project description artifact
+    
+    This saves the full project description, goals, and context for easy reference
+    in the conversational interface.
+    """
+    try:
+        # Get workspace details
+        workspace_response = supabase.table("workspaces").select("*").eq("id", workspace_id).execute()
+        if not workspace_response.data:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        
+        workspace = workspace_response.data[0]
+        
+        # Prepare comprehensive project description
+        project_description = {
+            "workspace_id": workspace_id,
+            "project_name": workspace.get("name", "Unnamed Project"),
+            "project_description": workspace.get("description", ""),
+            "original_goal": workspace.get("goal", ""),
+            "confirmed_goals": saved_goals,
+            "total_goals": len(saved_goals),
+            "strategic_deliverables": [g for g in saved_goals if g.get("metadata", {}).get("base_type") == "deliverables"],
+            "metrics_goals": [g for g in saved_goals if g.get("metadata", {}).get("base_type") != "deliverables"],
+            "estimated_budget": workspace.get("budget", {}).get("max_budget", 10),
+            "max_iterations": workspace.get("budget", {}).get("max_iterations", 3),
+            "quality_threshold": workspace.get("budget", {}).get("settings", {}).get("quality_threshold", 85),
+            "created_at": datetime.now().isoformat(),
+            "status": "active"
+        }
+        
+        # Calculate project metrics
+        total_target_value = sum(goal.get("target_value", 0) for goal in saved_goals)
+        project_description["total_target_value"] = total_target_value
+        project_description["avg_confidence"] = sum(
+            goal.get("metadata", {}).get("confidence", 0.9) for goal in saved_goals
+        ) / len(saved_goals) if saved_goals else 0.9
+        
+        # Create formatted description for display
+        formatted_description = f"""# {project_description['project_name']}
+
+## Project Overview
+{project_description['project_description']}
+
+## Original Goal Statement
+{project_description['original_goal']}
+
+## Confirmed Objectives ({len(saved_goals)} total)
+
+### Strategic Deliverables ({len(project_description['strategic_deliverables'])})
+"""
+        
+        for goal in project_description['strategic_deliverables']:
+            formatted_description += f"- **{goal.get('metric_type', 'Unknown')}**: {goal.get('description', '')} (Target: {goal.get('target_value', 0)} {goal.get('unit', '')})\n"
+        
+        formatted_description += f"""
+### Metrics & KPIs ({len(project_description['metrics_goals'])})
+"""
+        
+        for goal in project_description['metrics_goals']:
+            formatted_description += f"- **{goal.get('metric_type', 'Unknown')}**: {goal.get('description', '')} (Target: {goal.get('target_value', 0)} {goal.get('unit', '')})\n"
+        
+        formatted_description += f"""
+## Project Configuration
+- **Budget**: ${project_description['estimated_budget']}
+- **Max Iterations**: {project_description['max_iterations']} per task
+- **Quality Threshold**: {project_description['quality_threshold']}%
+- **Total Target Value**: {total_target_value} units
+- **Average Confidence**: {project_description['avg_confidence']:.1%}
+
+## Next Steps
+✅ Goals confirmed and saved to database
+🚀 Team automatically triggered for task execution
+📊 Progress tracking active across all objectives
+
+*Generated on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}*
+"""
+        
+        # Save to database - we can use the existing conversations table for artifacts
+        artifact_data = {
+            "workspace_id": workspace_id,
+            "content": formatted_description,
+            "metadata": project_description,
+            "type": "project_description_artifact",
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Store in conversations table as an AI message with special type
+        conversation_data = {
+            "workspace_id": workspace_id,
+            "message_type": "ai_response",
+            "content": formatted_description,
+            "metadata": {
+                "artifact_type": "project_description",
+                "project_data": project_description,
+                "auto_generated": True,
+                "goals_count": len(saved_goals)
+            },
+            "created_at": datetime.now().isoformat()
+        }
+        
+        response = supabase.table("conversations").insert(conversation_data).execute()
+        
+        if response.data:
+            logger.info(f"✅ Project description artifact created with ID: {response.data[0]['id']}")
+            return {
+                "success": True,
+                "artifact_id": response.data[0]["id"],
+                "description_length": len(formatted_description),
+                "goals_included": len(saved_goals)
+            }
+        else:
+            raise Exception("Failed to insert project description artifact")
+            
+    except Exception as e:
+        logger.error(f"Error creating project description artifact: {e}")
+        raise e

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { api } from '@/utils/api'
 import type { Workspace } from '@/types'
 
@@ -11,10 +12,16 @@ interface Props {
 export default function SimplifiedProjectPage({ params: paramsPromise }: Props) {
   const params = use(paramsPromise)
   const id = params.id
+  const router = useRouter()
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Redirect immediately to conversation view
+    router.replace(`/projects/${id}/conversation`)
+  }, [id, router])
 
   useEffect(() => {
     fetchWorkspace()
@@ -63,9 +70,7 @@ export default function SimplifiedProjectPage({ params: paramsPromise }: Props) 
         <p className="text-gray-600 mb-4">
           We&apos;re switching you to the new AI-driven conversational interface...
         </p>
-        <script dangerouslySetInnerHTML={{
-          __html: `window.location.href = '/projects/${id}/conversation'`
-        }} />
+        <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
       </div>
     </div>
   )

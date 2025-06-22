@@ -14,6 +14,7 @@ interface ConversationPanelProps {
   thinkingSteps: any[]
   suggestedActions: any[]
   onSendMessage: (message: string) => Promise<void>
+  onRefreshMessages?: () => Promise<void>
   loading: boolean
   workspaceId: string
 }
@@ -25,6 +26,7 @@ export default function ConversationPanel({
   thinkingSteps,
   suggestedActions,
   onSendMessage,
+  onRefreshMessages,
   loading,
   workspaceId
 }: ConversationPanelProps) {
@@ -233,8 +235,12 @@ export default function ConversationPanel({
           <ActionButtonsPanel
             actions={suggestedActions}
             workspaceId={workspaceId}
-            onActionExecuted={(result) => {
+            onActionExecuted={async (result) => {
               console.log('Action executed:', result)
+              // Refresh messages to show the action result
+              if (onRefreshMessages) {
+                await onRefreshMessages()
+              }
             }}
           />
         </div>

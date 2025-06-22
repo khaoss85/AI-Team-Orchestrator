@@ -23,7 +23,36 @@ async def approve_proposal(proposal_id: UUID) -> Dict[str, Any]:
 
         await update_team_proposal_status(str(proposal_id), "approved")
         await log_proposal_decision(proposal["workspace_id"], str(proposal_id), "approved")
-        return {"success": True, "message": "Proposal approved"}
+        
+        # 🚀 AUTO-START: When team is approved, check if goals exist and trigger task generation
+        workspace_id = proposal["workspace_id"]
+        logger.info(f"🎯 Team approved for workspace {workspace_id}, checking for goals...")
+        
+        try:
+            # First check if workspace has confirmed goals
+            from database import supabase
+            goals_response = supabase.table("workspace_goals").select("id").eq(
+                "workspace_id", str(workspace_id)
+            ).eq("status", "active").execute()
+            
+            if goals_response.data and len(goals_response.data) > 0:
+                logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
+                
+                from automated_goal_monitor import automated_goal_monitor
+                import asyncio
+                
+                # Trigger immediate goal analysis and task creation
+                asyncio.create_task(automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id)))
+                
+                return {"success": True, "message": f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"}
+            else:
+                logger.warning(f"⚠️ No active goals found for workspace {workspace_id}")
+                return {"success": True, "message": "Team approved. Please confirm goals to start task execution."}
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to trigger auto-start after team approval: {e}")
+            # Don't fail the approval, just log the warning
+            return {"success": True, "message": "Team approved (auto-start check failed)"}
     except HTTPException:
         raise
     except Exception as e:

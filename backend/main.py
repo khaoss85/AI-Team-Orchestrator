@@ -86,8 +86,8 @@ app.include_router(websocket_router)
 app.include_router(conversation_router)
 
 # Add API prefix compatibility for frontend
-# Import the specific endpoint function we need
-from routes.workspaces import get_workspace_tasks
+# Import the specific endpoint functions we need
+from routes.workspaces import get_workspace_tasks, delete_workspace_by_id
 from fastapi import APIRouter
 from uuid import UUID
 
@@ -97,6 +97,11 @@ api_router = APIRouter(prefix="/api/workspaces", tags=["api-compatibility"])
 async def api_get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None):
     """API-prefixed version of get_workspace_tasks for frontend compatibility"""
     return await get_workspace_tasks(workspace_id, task_type)
+
+@api_router.delete("/{workspace_id}", status_code=status.HTTP_200_OK)
+async def api_delete_workspace(workspace_id: UUID):
+    """API-prefixed version of delete_workspace for frontend compatibility"""
+    return await delete_workspace_by_id(workspace_id)
 
 app.include_router(api_router)
 

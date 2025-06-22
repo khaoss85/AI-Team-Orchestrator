@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { api } from '@/utils/api'
 
 interface ConfigurationArtifactProps {
   configuration: any
@@ -13,7 +14,8 @@ export default function ConfigurationArtifact({
   workspaceId, 
   onConfigUpdate 
 }: ConfigurationArtifactProps) {
-  const [activeView, setActiveView] = useState<'general' | 'goals' | 'budget' | 'advanced'>('general')
+  const [activeView, setActiveView] = useState<'general' | 'goals' | 'budget' | 'advanced' | 'danger'>('general')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   if (!configuration) {
     return (
@@ -85,6 +87,12 @@ export default function ConfigurationArtifact({
             label="Advanced"
             icon="🔧"
           />
+          <ViewTab
+            active={activeView === 'danger'}
+            onClick={() => setActiveView('danger')}
+            label="Danger"
+            icon="⚠️"
+          />
         </div>
       </div>
 
@@ -105,7 +113,60 @@ export default function ConfigurationArtifact({
         {activeView === 'advanced' && (
           <AdvancedConfigTab configuration={configuration} />
         )}
+        
+        {activeView === 'danger' && (
+          <DangerZoneTab 
+            configuration={configuration} 
+            workspaceId={workspaceId}
+            showDeleteConfirm={showDeleteConfirm}
+            setShowDeleteConfirm={setShowDeleteConfirm}
+          />
+        )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-red-600 mb-4">Delete Workspace</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete "{configuration.name || 'this workspace'}"? 
+              This will permanently delete all tasks, agents, goals, and deliverables associated with this project.
+              <br /><br />
+              <strong>This action cannot be undone.</strong>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    // Use the same API call as the working Settings page
+                    const success = await api.workspaces.delete(workspaceId)
+                    
+                    if (success) {
+                      // Redirect to projects page
+                      window.location.href = '/projects'
+                    } else {
+                      alert('Failed to delete workspace. Please try again.')
+                    }
+                  } catch (error) {
+                    console.error('Error deleting workspace:', error)
+                    alert('Error deleting workspace. Please try again.')
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Delete Workspace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -376,6 +437,95 @@ function AdvancedConfigTab({ configuration }: { configuration: any }) {
         <pre className="text-xs text-gray-600 overflow-x-auto bg-white p-3 rounded border">
           {JSON.stringify(configuration, null, 2)}
         </pre>
+      </div>
+    </div>
+  )
+}
+
+// Danger Zone Tab
+function DangerZoneTab({ 
+  configuration, 
+  workspaceId,
+  showDeleteConfirm,
+  setShowDeleteConfirm
+}: { 
+  configuration: any
+  workspaceId: string
+  showDeleteConfirm: boolean
+  setShowDeleteConfirm: (show: boolean) => void
+}) {
+  return (
+    <div className="p-4 space-y-6">
+      {/* Warning Header */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center space-x-2 mb-2">
+          <span className="text-red-600 text-lg">⚠️</span>
+          <h4 className="text-lg font-semibold text-red-600">Danger Zone</h4>
+        </div>
+        <p className="text-red-700 text-sm">
+          Actions in this section are permanent and cannot be undone. Please proceed with extreme caution.
+        </p>
+      </div>
+
+      {/* Delete Workspace Section */}
+      <div className="bg-white border border-red-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">Delete Workspace</h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Permanently delete this workspace and all associated data including:
+            </p>
+            <ul className="text-xs text-gray-500 space-y-1 mb-4">
+              <li>• All tasks and their execution history</li>
+              <li>• All team members and their configurations</li>
+              <li>• All goals and progress tracking</li>
+              <li>• All deliverables and project assets</li>
+              <li>• All conversation history and artifacts</li>
+              <li>• All feedback requests and quality assessments</li>
+            </ul>
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-yellow-600">⚠️</span>
+                <span className="text-yellow-800 text-sm font-medium">
+                  This action cannot be undone and will affect all team members.
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="ml-4">
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Delete Workspace
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Workspace Info */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <h4 className="font-medium text-gray-900 mb-3">Workspace Information</h4>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-gray-600">Name:</span>
+            <span className="ml-2 font-medium">{configuration.name || 'Untitled'}</span>
+          </div>
+          <div>
+            <span className="text-gray-600">ID:</span>
+            <span className="ml-2 font-mono text-xs">{workspaceId}</span>
+          </div>
+          <div>
+            <span className="text-gray-600">Created:</span>
+            <span className="ml-2">
+              {configuration.created_at ? new Date(configuration.created_at).toLocaleDateString() : 'Unknown'}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-600">Status:</span>
+            <span className="ml-2 capitalize">{configuration.status || 'Unknown'}</span>
+          </div>
+        </div>
       </div>
     </div>
   )

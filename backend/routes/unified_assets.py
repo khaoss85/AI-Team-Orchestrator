@@ -436,7 +436,7 @@ class UnifiedAssetManager:
             # Check if has structured content that can be enhanced
             if asset_data and isinstance(asset_data, dict):
                 # Use markup processor first
-                processed_markup = self.markup_processor.process_deliverable_content(asset_data)
+                processed_markup = await self.markup_processor.process_deliverable_content(asset_data)
                 
                 if processed_markup.get("has_structured_content"):
                     return {

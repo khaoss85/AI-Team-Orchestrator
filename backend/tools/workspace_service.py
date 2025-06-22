@@ -46,21 +46,37 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
     async def add_team_member(self, workspace_id: str, role: str, seniority: str = "senior", skills: List[str] = None) -> Dict[str, Any]:
         """SCALABLE: Reuses existing logic, no duplication"""
         try:
+            # Generate comprehensive agent data
+            agent_name = f"{role.title()} Specialist"
+            first_name = role.title()
+            last_name = "Specialist"
+            
             new_agent = {
                 "workspace_id": workspace_id,
-                "name": f"{role.title()} Specialist",
+                "name": agent_name,
+                "first_name": first_name,
+                "last_name": last_name,
                 "role": role,
                 "seniority": seniority,
-                "skills": skills or [],
-                "status": "idle",
-                "utilization_percentage": 0
+                "status": "created",
+                "description": f"AI-generated {role} specialist for enhanced project capabilities",
+                "system_prompt": f"You are a {seniority} {role} specialist. Provide expert guidance in {role} related tasks and collaborate effectively with the team.",
+                "llm_config": {
+                    "model": "gpt-4",
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                },
+                "can_create_tools": False,
+                "background_story": f"Experienced {seniority}-level {role} with expertise in supporting project goals and team collaboration."
             }
             
             result = self.db_client.table("agents").insert(new_agent).execute()
+            agent_data = result.data[0] if result.data else None
             return {
                 "success": True,
-                "message": f"Added new {role} to the team",
-                "agent": result.data[0] if result.data else None
+                "message": f"Successfully added {new_agent['name']} ({seniority} {role}) to the team",
+                "data": agent_data,
+                "details": f"New team member created with ID: {agent_data['id'] if agent_data else 'N/A'}. Status: {agent_data['status'] if agent_data else 'unknown'}"
             }
         except Exception as e:
             logger.error(f"Error adding team member: {e}")
@@ -78,13 +94,25 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
                 .select("*")\
                 .eq("id", workspace_id)\
                 .execute()
+            
+            # Also fetch handoffs for team collaboration info
+            try:
+                handoffs = self.db_client.table("handoffs")\
+                    .select("*")\
+                    .eq("workspace_id", workspace_id)\
+                    .execute()
+                handoffs_data = handoffs.data
+            except Exception as handoff_error:
+                logger.warning(f"Could not fetch handoffs: {handoff_error}")
+                handoffs_data = []
                 
             return {
                 "success": True,
                 "workspace_status": workspace.data[0]["status"] if workspace.data else "unknown",
                 "team_members": len(agents.data),
                 "agents": agents.data,
-                "message": f"Team has {len(agents.data)} members, workspace status: {workspace.data[0]['status'] if workspace.data else 'unknown'}"
+                "handoffs": handoffs_data,
+                "message": f"Team has {len(agents.data)} members, {len(handoffs_data)} handoffs, workspace status: {workspace.data[0]['status'] if workspace.data else 'unknown'}"
             }
         except Exception as e:
             logger.error(f"Error getting team status: {e}")
@@ -129,7 +157,7 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
             try:
                 if goal_id:
                     # Get specific goal
-                    goal = self.db_client.table("goals")\
+                    goal = self.db_client.table("workspace_goals")\
                         .select("*")\
                         .eq("id", goal_id)\
                         .eq("workspace_id", workspace_id)\
@@ -137,21 +165,24 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
                     goals_data = goal.data
                 else:
                     # Get all goals
-                    goals = self.db_client.table("goals")\
+                    goals = self.db_client.table("workspace_goals")\
                         .select("*")\
                         .eq("workspace_id", workspace_id)\
                         .execute()
                     goals_data = goals.data
                 
+                logger.info(f"📊 [get_goal_progress] Raw goals data: {goals_data}")
+                
                 results = []
                 for goal in goals_data:
+                    logger.info(f"🎯 [get_goal_progress] Processing goal: {goal}")
                     # Use existing progress calculation if available
                     progress = goal.get("completion_percentage", 0)
                     
                     results.append({
                         "goal_id": goal["id"],
-                        "title": goal["title"],
-                        "status": goal["status"],
+                        "title": goal.get("title") or goal.get("name") or goal.get("goal_title") or f"Goal {goal['id']}",
+                        "status": goal.get("status", "unknown"),
                         "progress": f"{progress:.0f}%",
                         "description": goal.get("description", "")
                     })
@@ -175,6 +206,7 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
                     raise table_error
         except Exception as e:
             logger.error(f"Error getting goal progress: {e}")
+            logger.error(f"Exception type: {type(e)}")
             return {"success": False, "message": str(e)}
     
     async def get_project_status(self, workspace_id: str) -> Dict[str, Any]:

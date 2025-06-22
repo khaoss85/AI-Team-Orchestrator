@@ -177,28 +177,60 @@ export function useConversationalWorkspace(workspaceId: string) {
   // Load dynamic chats from storage/API
   const loadDynamicChats = useCallback(async (): Promise<Chat[]> => {
     try {
-      // Load goals from API to create dynamic chats
-      const goals = await api.workspaceGoals.getAll(workspaceId).catch(() => [])
+      // Load goals from API to create dynamic chats (load ALL goals, not just active ones)
+      console.log('🎯 [initializeWorkspace] Loading goals for workspace:', workspaceId)
+      const goals = await api.workspaceGoals.getAll(workspaceId, {}).catch((error) => {
+        console.error('❌ [initializeWorkspace] Failed to load goals:', error)
+        return []
+      })
       
-      // Ensure goals is always an array before mapping
-      const goalsArray = Array.isArray(goals) ? goals : []
+      console.log('📊 [initializeWorkspace] Goals loaded:', goals)
+      
+      // Extract goals array from API response (API returns {success, goals, deliverable_goals, metric_goals})
+      const goalsArray = Array.isArray(goals) ? goals : (goals?.goals || [])
+      
+      console.log('📋 [initializeWorkspace] Goals array:', goalsArray)
       
       // Create chat objects for each goal - AGNOSTIC: configurable format
-      const goalChats: Chat[] = goalsArray.map((goal: any) => ({
-        id: goal.chat_id || `goal-${goal.id}`, // AGNOSTIC: Use goal.chat_id if provided
-        type: 'dynamic' as const,
-        title: goal.title,
-        icon: goal.icon || '🎯', // AGNOSTIC: Use goal.icon if provided
-        status: (goal.status === 'active' ? 'active' : 'inactive') as const, // AGNOSTIC: Map status
-        objective: {
-          id: goal.id,
-          description: goal.description || goal.title,
-          targetDate: goal.target_date,
-          progress: goal.completion_percentage || 0
-        },
-        messageCount: 0,
-        lastMessageDate: goal.updated_at || goal.created_at
-      }))
+      const goalChats: Chat[] = goalsArray.map((goal: any) => {
+        console.log('🔧 [initializeWorkspace] Processing goal for chat:', goal)
+        
+        // Extract meaningful title from available fields, prioritizing user-renamed titles
+        const meaningfulTitle = 
+          goal.metadata?.custom_title ||  // User-renamed title has highest priority
+          goal.title || 
+          goal.name || 
+          goal.goal_title || 
+          goal.description?.substring(0, 50) || 
+          goal.metric_type?.replace('_', ' ') || 
+          goal.target_metric || 
+          `Goal ${goal.id.substring(0, 8)}`
+        
+        console.log('📝 [initializeWorkspace] Goal title extracted:', meaningfulTitle)
+        
+        // Calculate progress based on current vs target value
+        const calculatedProgress = goal.target_value > 0 
+          ? (goal.current_value / goal.target_value) * 100 
+          : 0
+        
+        return {
+          id: goal.chat_id || `goal-${goal.id}`, // AGNOSTIC: Use goal.chat_id if provided
+          type: 'dynamic' as const,
+          title: meaningfulTitle,
+          icon: goal.icon || '🎯', // AGNOSTIC: Use goal.icon if provided
+          status: (goal.status === 'active' ? 'active' : goal.status === 'completed' ? 'completed' : 'inactive') as const,
+          objective: {
+            id: goal.id,
+            description: goal.description || goal.title || goal.name || meaningfulTitle,
+            targetDate: goal.target_date,
+            progress: Math.min(calculatedProgress, 100) // Cap at 100%
+          },
+          messageCount: 0,
+          lastMessageDate: goal.updated_at || goal.created_at
+        }
+      })
+      
+      console.log('🎯 [initializeWorkspace] Goal chats created:', goalChats)
       
       // Also load any manually created dynamic chats from localStorage
       const stored = localStorage.getItem(`workspace-chats-${workspaceId}`)
@@ -499,6 +531,75 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [chats, activeChat, saveDynamicChats])
 
+  // Reactivate a chat
+  const reactivateChat = useCallback(async (chatId: string) => {
+    console.log('🔄 [reactivateChat] Reactivating chat:', chatId)
+    
+    // Update local state
+    const updatedChats = chats.map(chat => 
+      chat.id === chatId ? { ...chat, status: 'active' as const } : chat
+    )
+    setChats(updatedChats)
+    saveDynamicChats(updatedChats)
+    
+    // If it's a goal, try to update the database status too
+    if (chatId.startsWith('goal-')) {
+      try {
+        const goalId = chatId.replace('goal-', '')
+        const response = await fetch(`http://localhost:8000/api/workspaces/${workspaceId}/goals/${goalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' })
+        })
+        
+        if (response.ok) {
+          console.log('✅ [reactivateChat] Goal reactivated in database')
+        } else {
+          console.warn('⚠️ [reactivateChat] Failed to update goal status in database')
+        }
+      } catch (error) {
+        console.error('❌ [reactivateChat] Error updating goal status:', error)
+      }
+    }
+  }, [chats, workspaceId, saveDynamicChats])
+
+  // Rename a chat
+  const renameChat = useCallback(async (chatId: string, newName: string) => {
+    console.log('✏️ [renameChat] Renaming chat:', chatId, 'to:', newName)
+    
+    // Update local state
+    const updatedChats = chats.map(chat => 
+      chat.id === chatId ? { ...chat, title: newName } : chat
+    )
+    setChats(updatedChats)
+    saveDynamicChats(updatedChats)
+    
+    // If it's a goal, try to update the database too
+    if (chatId.startsWith('goal-')) {
+      try {
+        const goalId = chatId.replace('goal-', '')
+        const response = await fetch(`http://localhost:8000/api/workspaces/${workspaceId}/goals/${goalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            metadata: { 
+              user_renamed: true, 
+              custom_title: newName 
+            }
+          })
+        })
+        
+        if (response.ok) {
+          console.log('✅ [renameChat] Goal renamed in database')
+        } else {
+          console.warn('⚠️ [renameChat] Failed to update goal name in database')
+        }
+      } catch (error) {
+        console.error('❌ [renameChat] Error updating goal name:', error)
+      }
+    }
+  }, [chats, workspaceId, saveDynamicChats])
+
   // Switch active chat
   const handleSetActiveChat = useCallback(async (chat: Chat) => {
     console.log('🔄 [handleSetActiveChat] Switching to chat:', chat.id, chat.title)
@@ -534,32 +635,57 @@ export function useConversationalWorkspace(workspaceId: string) {
     try {
       switch (chat.id) {
         case 'team-management':
-          // Load team-specific artifacts
+          // Load team-specific artifacts with handoffs
           if (workspaceContext?.team && workspaceContext.team.length > 0) {
             console.log('👥 [loadChatSpecificArtifacts] Creating team artifact with team:', workspaceContext.team)
+            
+            // Also load handoffs for the team
+            let handoffsData = []
+            try {
+              handoffsData = await api.handoffs.list(workspaceId)
+              console.log('🤝 [loadChatSpecificArtifacts] Loaded handoffs:', handoffsData)
+            } catch (handoffError) {
+              console.warn('⚠️ [loadChatSpecificArtifacts] Could not load handoffs:', handoffError)
+            }
+            
             chatArtifacts.push({
               id: 'team-overview',
               type: 'team_status',
               title: 'Team Overview',
-              description: `${workspaceContext.team.length} active team members`,
+              description: `${workspaceContext.team.length} active team members, ${handoffsData.length} handoffs`,
               status: 'ready',
-              content: workspaceContext.team,
+              content: {
+                agents: workspaceContext.team,
+                handoffs: handoffsData,
+                team_members: workspaceContext.team.length,
+                success: true
+              },
               lastUpdated: new Date().toISOString()
             })
           } else {
             console.log('⚠️ [loadChatSpecificArtifacts] No team data available, trying direct API call')
-            // Fallback: try loading team directly from API
+            // Fallback: try loading team and handoffs directly from API
             try {
-              const teamData = await api.agents.list(workspaceId)
+              const [teamData, handoffsData] = await Promise.all([
+                api.agents.list(workspaceId),
+                api.handoffs.list(workspaceId).catch(() => [])
+              ])
               console.log('👥 [loadChatSpecificArtifacts] Direct API team data:', teamData)
+              console.log('🤝 [loadChatSpecificArtifacts] Direct API handoffs data:', handoffsData)
+              
               if (teamData && teamData.length > 0) {
                 chatArtifacts.push({
                   id: 'team-overview',
                   type: 'team_status',
                   title: 'Team Overview',
-                  description: `${teamData.length} active team members`,
+                  description: `${teamData.length} active team members, ${handoffsData.length} handoffs`,
                   status: 'ready',
-                  content: teamData,
+                  content: {
+                    agents: teamData,
+                    handoffs: handoffsData,
+                    team_members: teamData.length,
+                    success: true
+                  },
                   lastUpdated: new Date().toISOString()
                 })
               }
@@ -923,13 +1049,100 @@ export function useConversationalWorkspace(workspaceId: string) {
         console.log('✅ [loadDynamicChatData] LocalStorage messages loaded:', localMessages)
         setMessages(localMessages)
       } else {
-        setMessages([])
+        // For goal chats, start with welcome message and auto-trigger goal analysis
+        if (chat.id.startsWith('goal-')) {
+          const goalWelcomeMessage: ConversationMessage = {
+            id: `welcome-${chat.id}`,
+            type: 'team',
+            content: `🎯 **Goal Progress Analysis**\n\nLet me analyze the current progress for: **${chat.title}**\n\nI'll check task execution, deliverables, and team performance for this objective.`,
+            timestamp: new Date().toISOString(),
+            metadata: {
+              teamMember: 'AI Assistant'
+            }
+          }
+          
+          setMessages([goalWelcomeMessage])
+          
+          // Auto-trigger goal progress analysis with thinking capture
+          setTimeout(async () => {
+            try {
+              const goalId = chat.id.replace('goal-', '')
+              console.log('🎯 [Auto-trigger] Starting goal analysis for:', goalId)
+              
+              // Clear previous thinking steps before starting new analysis
+              setThinkingSteps([])
+              setSuggestedActions([])
+              
+              // Use the thinking endpoint to capture reasoning steps
+              const response = await fetch(`http://localhost:8000/api/conversation/workspaces/${workspaceId}/chat/thinking`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  message: `Show detailed progress for goal ${goalId}`,
+                  chat_id: chat.id,
+                  message_id: `auto-goal-analysis-${Date.now()}`
+                })
+              })
+              
+              if (response.ok) {
+                const result = await response.json()
+                console.log('✅ [Auto-trigger] Goal analysis response received:', result)
+                
+                // Extract and display thinking steps
+                if (result.response.artifacts) {
+                  const thinkingArtifact = result.response.artifacts.find(a => a.type === 'thinking_process')
+                  if (thinkingArtifact && thinkingArtifact.content.steps) {
+                    console.log('🧠 [Auto-trigger] Thinking steps found:', thinkingArtifact.content.steps.length)
+                    setThinkingSteps(thinkingArtifact.content.steps)
+                  }
+                }
+                
+                // Extract suggested actions
+                if (result.response.suggested_actions) {
+                  console.log('⚡ [Auto-trigger] Suggested actions found:', result.response.suggested_actions.length)
+                  setSuggestedActions(result.response.suggested_actions)
+                }
+                
+                // Add the AI response message
+                const aiMessage: ConversationMessage = {
+                  id: result.message_id || `auto-analysis-${Date.now()}`,
+                  type: 'team',
+                  content: result.response.message,
+                  timestamp: result.timestamp || new Date().toISOString(),
+                  metadata: {
+                    teamMember: 'AI Assistant',
+                    processing_time: result.processing_time_ms,
+                    message_type: 'goal_analysis',
+                    auto_triggered: true
+                  }
+                }
+                
+                setMessages(prev => [...prev, aiMessage])
+                
+              } else {
+                console.error('❌ [Auto-trigger] Goal analysis failed:', response.status)
+                // Fallback to regular message
+                await sendMessage(`Show detailed progress for goal ${goalId} including tasks, deliverables and team performance`)
+              }
+            } catch (error) {
+              console.error('❌ [Auto-trigger] Failed to auto-trigger goal analysis:', error)
+              // Fallback to regular message
+              try {
+                await sendMessage(`Show detailed progress for goal ${goalId} including tasks, deliverables and team performance`)
+              } catch (fallbackError) {
+                console.error('❌ [Auto-trigger] Fallback also failed:', fallbackError)
+              }
+            }
+          }, 1500)
+        } else {
+          setMessages([])
+        }
       }
     } catch (error) {
       console.error('❌ [loadDynamicChatData] Failed to load chat messages:', error)
       setMessages([])
     }
-  }, [workspaceId])
+  }, [workspaceId, sendMessage])
 
   // Save messages when they change (for dynamic chats)
   useEffect(() => {
@@ -1002,7 +1215,10 @@ export function useConversationalWorkspace(workspaceId: string) {
     sendMessage,
     createDynamicChat,
     archiveChat,
-    refreshData
+    reactivateChat,
+    renameChat,
+    refreshData,
+    refreshMessages: () => activeChat ? loadDynamicChatData(activeChat) : Promise.resolve()
   }
 }
 

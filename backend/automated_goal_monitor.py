@@ -234,7 +234,9 @@ class AutomatedGoalMonitor:
                 
                 # Handle intelligent agent assignment
                 assigned_agent_id = agent_requirements.get("agent_id")
-                assigned_role = agent_requirements.get("role", "specialist")
+                raw_role = agent_requirements.get("role", "specialist")
+                # Handle enum values safely
+                assigned_role = str(raw_role) if hasattr(raw_role, 'value') else raw_role
                 selection_strategy = agent_requirements.get("selection_strategy", "fallback")
                 
                 # Log agent assignment strategy
@@ -320,6 +322,64 @@ class AutomatedGoalMonitor:
                 "timestamp": datetime.now().isoformat()
             }
     
+    async def _trigger_immediate_goal_analysis(self, workspace_id: str) -> Dict[str, Any]:
+        """
+        🚀 IMMEDIATE GOAL ANALYSIS & TASK GENERATION
+        
+        This is called when goals are confirmed to immediately start the team.
+        Creates initial tasks based on confirmed goals without waiting for the 20-minute cycle.
+        """
+        logger.info(f"🎯 IMMEDIATE goal analysis triggered for workspace {workspace_id}")
+        
+        try:
+            # 1. Get newly created goals from the workspace
+            response = supabase.table("workspace_goals").select("*").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "status", GoalStatus.ACTIVE.value
+            ).execute()
+            
+            workspace_goals = response.data
+            if not workspace_goals:
+                logger.warning(f"No active goals found for immediate analysis in workspace {workspace_id}")
+                return {"success": False, "reason": "no_active_goals"}
+            
+            # 2. Use goal-driven task planner to create initial tasks
+            from goal_driven_task_planner import goal_driven_task_planner
+            
+            initial_tasks = []
+            for goal in workspace_goals:
+                logger.info(f"🎯 Creating tasks for goal: {goal['metric_type']} (target: {goal['target_value']})")
+                
+                # Generate tasks for this specific goal
+                goal_tasks = await goal_driven_task_planner.plan_tasks_for_goal(
+                    workspace_goal=goal,
+                    workspace_id=workspace_id
+                )
+                
+                initial_tasks.extend(goal_tasks)
+            
+            # 3. Log success
+            logger.info(f"✅ Immediate analysis complete: {len(initial_tasks)} tasks created for {len(workspace_goals)} goals")
+            
+            return {
+                "success": True,
+                "workspace_id": workspace_id,
+                "goals_processed": len(workspace_goals),
+                "tasks_created": len(initial_tasks),
+                "tasks": initial_tasks,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error in immediate goal analysis for workspace {workspace_id}: {e}")
+            return {
+                "success": False,
+                "workspace_id": workspace_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
+
     async def get_monitoring_status(self) -> Dict[str, Any]:
         """Get current monitoring status and statistics"""
         try:

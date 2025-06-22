@@ -22,8 +22,11 @@ interface ConversationalWorkspaceProps {
   onSendMessage: (message: string) => Promise<void>
   onCreateDynamicChat: (objective: string) => Promise<void>
   onArchiveChat: (chatId: string) => Promise<void>
+  onReactivateChat?: (chatId: string) => Promise<void>
+  onRenameChat?: (chatId: string, newName: string) => Promise<void>
   onToggleArtifactsPanel: () => void
   onRefreshData: () => Promise<void>
+  onRefreshMessages?: () => Promise<void>
 }
 
 export default function ConversationalWorkspace({
@@ -42,8 +45,11 @@ export default function ConversationalWorkspace({
   onSendMessage,
   onCreateDynamicChat,
   onArchiveChat,
+  onReactivateChat,
+  onRenameChat,
   onToggleArtifactsPanel,
-  onRefreshData
+  onRefreshData,
+  onRefreshMessages
 }: ConversationalWorkspaceProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -115,6 +121,8 @@ export default function ConversationalWorkspace({
           onChatSelect={onSetActiveChat}
           onCreateChat={onCreateDynamicChat}
           onArchiveChat={onArchiveChat}
+          onReactivateChat={onReactivateChat}
+          onRenameChat={onRenameChat}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
       </div>
@@ -128,6 +136,7 @@ export default function ConversationalWorkspace({
           thinkingSteps={thinkingSteps}
           suggestedActions={suggestedActions}
           onSendMessage={onSendMessage}
+          onRefreshMessages={onRefreshMessages}
           loading={sendingMessage}
           workspaceId={workspaceId}
         />

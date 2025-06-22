@@ -6,6 +6,7 @@ import TeamOverviewArtifact from './TeamOverviewArtifact'
 import ConfigurationArtifact from './ConfigurationArtifact'
 import FeedbackRequestsArtifact from './FeedbackRequestsArtifact'
 import KnowledgeInsightsArtifact from './KnowledgeInsightsArtifact'
+import ProjectDescriptionArtifact from './ProjectDescriptionArtifact'
 
 interface ArtifactViewerProps {
   artifact: DeliverableArtifact
@@ -163,15 +164,23 @@ interface ContentViewProps {
 function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewProps) {
   // Use specialized components for specific artifact types
   if (artifact.type === 'team_status' && workspaceId) {
+    // Extract team data and handoffs from artifact content
+    const teamData = Array.isArray(artifact.content) ? artifact.content : artifact.content?.agents || []
+    const handoffsData = artifact.content?.handoffs || []
+    
     return (
       <TeamOverviewArtifact 
-        team={artifact.content}
+        team={teamData}
+        handoffs={handoffsData}
         workspaceId={workspaceId}
         onTeamUpdate={(updatedTeam) => {
           if (onArtifactUpdate) {
             onArtifactUpdate({
               ...artifact,
-              content: updatedTeam,
+              content: {
+                ...artifact.content,
+                agents: updatedTeam
+              },
               lastUpdated: new Date().toISOString()
             })
           }
@@ -227,6 +236,20 @@ function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewPro
           console.log('Knowledge insight action:', action, insight)
           // Handle insight actions (apply learning, find similar, etc.)
         }}
+      />
+    )
+  }
+
+  if (artifact.type === 'project_description' && workspaceId) {
+    // Extract project data from artifact metadata or content
+    const projectData = artifact.content?.metadata?.project_data || artifact.content?.project_data || {}
+    const content = artifact.content?.content || artifact.content || ''
+    
+    return (
+      <ProjectDescriptionArtifact
+        projectData={projectData}
+        content={content}
+        workspaceId={workspaceId}
       />
     )
   }

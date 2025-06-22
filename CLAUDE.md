@@ -31,8 +31,8 @@ Create `backend/.env` with:
 - `USE_ASSET_FIRST_DELIVERABLE=true` - Enable asset-oriented output generation
 - `PREVENT_DUPLICATE_DELIVERABLES=true` - Prevent duplicate deliverable creation
 - `MAX_DELIVERABLES_PER_WORKSPACE=3` - Maximum deliverables per workspace
-- `DELIVERABLE_READINESS_THRESHOLD=50` - Minimum completion % for deliverable creation
-- `MIN_COMPLETED_TASKS_FOR_DELIVERABLE=1` - Minimum completed tasks before deliverable
+- `DELIVERABLE_READINESS_THRESHOLD=100` - Minimum completion % for deliverable creation (100% = goal fully achieved)
+- `MIN_COMPLETED_TASKS_FOR_DELIVERABLE=2` - Minimum completed tasks before deliverable
 - `DELIVERABLE_CHECK_COOLDOWN_SECONDS=30` - Cooldown between deliverable checks
 
 ### Task & Phase Management

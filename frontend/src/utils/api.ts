@@ -869,7 +869,7 @@ export const api = {
     
     delete: async (id: string): Promise<boolean> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
           method: 'DELETE',
         });
         if (!response.ok) {

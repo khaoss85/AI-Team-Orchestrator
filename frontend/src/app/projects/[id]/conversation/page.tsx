@@ -1,12 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import ConversationalWorkspace from '@/components/conversational/ConversationalWorkspace'
 import { useConversationalWorkspace } from '@/hooks/useConversationalWorkspace'
 
 export default function ConversationPage() {
   const params = useParams()
+  const router = useRouter()
   const workspaceId = params.id as string
   const [artifactsPanelCollapsed, setArtifactsPanelCollapsed] = useState(false)
 
@@ -26,7 +28,10 @@ export default function ConversationPage() {
     sendMessage,
     createDynamicChat,
     archiveChat,
-    refreshData
+    reactivateChat,
+    renameChat,
+    refreshData,
+    refreshMessages
   } = useConversationalWorkspace(workspaceId)
 
   if (loading) {
@@ -78,8 +83,11 @@ export default function ConversationPage() {
         onSendMessage={sendMessage}
         onCreateDynamicChat={createDynamicChat}
         onArchiveChat={archiveChat}
+        onReactivateChat={reactivateChat}
+        onRenameChat={renameChat}
         onToggleArtifactsPanel={() => setArtifactsPanelCollapsed(!artifactsPanelCollapsed)}
         onRefreshData={refreshData}
+        onRefreshMessages={refreshMessages}
       />
     </div>
   )

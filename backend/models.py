@@ -73,6 +73,9 @@ class GoalStatus(str, Enum):
     COMPLETED = "completed"
     PAUSED = "paused"
     CANCELLED = "cancelled"
+    BLOCKED = "blocked"        # Goal is blocked by dependencies or issues
+    FAILED = "failed"          # Goal has failed and needs intervention
+    NEEDS_ATTENTION = "needs_attention"  # Goal requires manual review
 
 # 🌍 REMOVED: GoalMetricType enum is now DEPRECATED
 # This was anti-agnostic and anti-scalable - hardcoded business logic

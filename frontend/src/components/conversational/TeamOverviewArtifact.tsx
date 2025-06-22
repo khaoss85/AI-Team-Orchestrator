@@ -40,12 +40,14 @@ const getHealthColor = (health?: string) => {
 interface TeamOverviewArtifactProps {
   team: any[]
   workspaceId: string
+  handoffs?: any[]
   onTeamUpdate?: (updatedTeam: any[]) => void
 }
 
 export default function TeamOverviewArtifact({ 
   team, 
   workspaceId, 
+  handoffs = [],
   onTeamUpdate 
 }: TeamOverviewArtifactProps) {
   const [selectedAgent, setSelectedAgent] = useState<any>(null)
@@ -54,19 +56,30 @@ export default function TeamOverviewArtifact({
   const [activeView, setActiveView] = useState<'overview' | 'agents' | 'skills'>('overview')
 
   const handleEditAgent = (agent: any) => {
+    console.log('🔧 [TeamOverviewArtifact] Opening edit modal for agent:', agent.id)
+    console.log('🔧 [TeamOverviewArtifact] Available handoffs:', handoffs?.length || 0)
+    console.log('🔧 [TeamOverviewArtifact] Available team members:', team?.length || 0)
     setEditingAgent(agent)
     setIsEditModalOpen(true)
   }
 
-  const handleAgentUpdate = (updatedAgent: any) => {
-    if (onTeamUpdate) {
-      const updatedTeam = team.map(agent => 
-        agent.id === updatedAgent.id ? updatedAgent : agent
-      )
-      onTeamUpdate(updatedTeam)
+  const handleAgentUpdate = async (agentId: string, updates: Partial<any>) => {
+    try {
+      // Find the agent and apply updates
+      const updatedAgent = { ...team.find(agent => agent.id === agentId), ...updates }
+      
+      if (onTeamUpdate) {
+        const updatedTeam = team.map(agent => 
+          agent.id === agentId ? updatedAgent : agent
+        )
+        onTeamUpdate(updatedTeam)
+      }
+      setIsEditModalOpen(false)
+      setEditingAgent(null)
+    } catch (error) {
+      console.error('Error updating agent:', error)
+      // Keep modal open on error
     }
-    setIsEditModalOpen(false)
-    setEditingAgent(null)
   }
 
   const teamDimensions = calculateTeamDimensions(team)
@@ -122,6 +135,7 @@ export default function TeamOverviewArtifact({
         {activeView === 'agents' && (
           <TeamMembersTab 
             team={team} 
+            handoffs={handoffs}
             onSelectAgent={setSelectedAgent}
             onEditAgent={handleEditAgent}
           />
@@ -135,9 +149,10 @@ export default function TeamOverviewArtifact({
       {/* Agent Edit Modal */}
       {isEditModalOpen && editingAgent && (
         <AgentEditModal
-          agent={editingAgent}
-          workspaceId={workspaceId}
           isOpen={isEditModalOpen}
+          agent={editingAgent}
+          allAgents={team}
+          allHandoffs={handoffs}
           onClose={() => setIsEditModalOpen(false)}
           onSave={handleAgentUpdate}
         />
@@ -231,13 +246,20 @@ function TeamOverviewTab({ team, teamDimensions }: { team: any[], teamDimensions
 // Team Members Tab
 function TeamMembersTab({ 
   team, 
+  handoffs = [],
   onSelectAgent, 
   onEditAgent 
 }: { 
   team: any[], 
+  handoffs?: any[],
   onSelectAgent: (agent: any) => void,
   onEditAgent: (agent: any) => void
 }) {
+  
+  const getAgentHandoffs = (agentId: string) => {
+    if (!handoffs) return [];
+    return handoffs.filter(h => h.source_agent_id === agentId || h.target_agent_id === agentId);
+  };
   return (
     <div className="p-4 space-y-4">
       {team.map((agent) => (
@@ -373,6 +395,45 @@ function TeamMembersTab({
               </div>
             </div>
           )}
+
+          {/* Handoffs Information */}
+          {(() => {
+            const agentHandoffs = getAgentHandoffs(agent.id)
+            return agentHandoffs.length > 0 && (
+              <div className="border-t pt-3 mt-3">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Handoffs ({agentHandoffs.length})</h4>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {agentHandoffs.map((handoff) => {
+                    const isSource = handoff.source_agent_id === agent.id
+                    const otherAgentId = isSource ? handoff.target_agent_id : handoff.source_agent_id
+                    const otherAgent = team.find(a => a.id === otherAgentId)
+                    
+                    return (
+                      <div key={handoff.id} className={`p-2 rounded text-xs ${
+                        isSource ? 'bg-yellow-50 text-yellow-800' : 'bg-green-50 text-green-800'
+                      }`}>
+                        <div className="flex items-center space-x-1">
+                          <span className="font-medium">
+                            {isSource ? '→' : '←'} {otherAgent?.name || 'Unknown Agent'}
+                          </span>
+                          <span className={`px-1 py-0.5 rounded text-xs ${
+                            isSource ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'
+                          }`}>
+                            {isSource ? 'OUT' : 'IN'}
+                          </span>
+                        </div>
+                        {handoff.description && (
+                          <p className="text-xs text-gray-600 mt-1 truncate" title={handoff.description}>
+                            {handoff.description}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Cost Information */}
           {agent.seniority && (

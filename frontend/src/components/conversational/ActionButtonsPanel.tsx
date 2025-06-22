@@ -24,6 +24,8 @@ export default function ActionButtonsPanel({
   const [executingAction, setExecutingAction] = useState<string | null>(null)
   const [executedActions, setExecutedActions] = useState<Set<string>>(new Set())
   const [actionResults, setActionResults] = useState<Record<string, any>>({})
+  const [showResults, setShowResults] = useState(true)
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
 
   // Filter out executed actions
   const availableActions = actions.filter(action => !executedActions.has(action.tool))
@@ -121,30 +123,94 @@ export default function ActionButtonsPanel({
       )}
       
       {/* Action Results */}
-      {hasResults && (
+      {hasResults && showResults && (
         <div className="space-y-2">
-          <div className="text-sm font-medium text-gray-700 mb-2">Action Results:</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700">Action Results:</div>
+            <button
+              onClick={() => setShowResults(false)}
+              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              title="Close results"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Close
+            </button>
+          </div>
           {Object.entries(actionResults).map(([tool, result]) => {
             const action = actions.find(a => a.tool === tool)
+            const isExpanded = expandedResults.has(tool)
             return (
               <div key={tool} className="bg-white border border-green-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {action?.label || tool}
-                  </span>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">✓</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {action?.label || tool}
+                    </span>
+                  </div>
+                  {(result.data || result.details) && (
+                    <button
+                      onClick={() => {
+                        const newExpanded = new Set(expandedResults)
+                        if (isExpanded) {
+                          newExpanded.delete(tool)
+                        } else {
+                          newExpanded.add(tool)
+                        }
+                        setExpandedResults(newExpanded)
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      {isExpanded ? 'Hide Details' : 'Show Details'}
+                      <svg className={`w-3 h-3 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-gray-600 mb-2">
                   {result.message || 'Action completed successfully'}
                 </div>
-                {result.data && (
-                  <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    <pre>{JSON.stringify(result.data, null, 2)}</pre>
+                {isExpanded && (result.data || result.details) && (
+                  <div className="mt-2 space-y-2">
+                    {result.data && (
+                      <div className="bg-gray-50 border rounded p-2">
+                        <div className="text-xs font-medium text-gray-700 mb-1">Data:</div>
+                        <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+                          {typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {result.details && (
+                      <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                        <div className="text-xs font-medium text-blue-700 mb-1">Details:</div>
+                        <div className="text-xs text-blue-600">{result.details}</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )
           })}
+        </div>
+      )}
+      
+      {/* Show Results Button (when hidden) */}
+      {hasResults && !showResults && (
+        <div className="text-center">
+          <button
+            onClick={() => setShowResults(true)}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 mx-auto"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Show Action Results ({Object.keys(actionResults).length})
+          </button>
         </div>
       )}
     </div>
