@@ -1,0 +1,122 @@
+{
+  "test_started": "2025-06-22T11:59:57.691204",
+  "steps": {
+    "1_health_check": {
+      "success": true,
+      "timestamp": "2025-06-22T11:59:57.727318",
+      "data": {
+        "status": "ok",
+        "version": "0.1.0"
+      },
+      "error": null
+    },
+    "2_create_workspace": {
+      "success": true,
+      "timestamp": "2025-06-22T11:59:57.807967",
+      "data": {
+        "id": "1d7ac631-e7bc-4908-88ed-330e2c19e0ec",
+        "name": "Test E2E Auto-Start Workspace",
+        "description": "Raccogliere 500 contatti ICP (CMO/CTO di aziende SaaS europee) e suggerire almeno 3 sequenze email da impostare su Hubspot",
+        "user_id": "71e2342a-a7fa-456a-837f-70a8528d94de",
+        "status": "created",
+        "goal": "Generate 500 ICP contacts and create 3 email sequences for European SaaS companies",
+        "budget": null,
+        "created_at": "2025-06-22T09:59:57.782446Z",
+        "updated_at": "2025-06-22T09:59:57.782446Z"
+      },
+      "error": null
+    },
+    "3_extract_goals": {
+      "success": true,
+      "timestamp": "2025-06-22T12:00:44.313745",
+      "data": {
+        "total_goals": 7,
+        "strategic_deliverables": 5,
+        "final_metrics": 2
+      },
+      "error": null
+    },
+    "4_confirm_goals": {
+      "success": true,
+      "timestamp": "2025-06-22T12:00:45.434137",
+      "data": {
+        "confirmed_goals": 7,
+        "message": "\u2705 7 obiettivi confermati e team avviato automaticamente!"
+      },
+      "error": null
+    },
+    "5_generate_team_proposal": {
+      "success": true,
+      "timestamp": "2025-06-22T12:01:03.720069",
+      "data": {
+        "id": "7fa37d36-4dd5-4898-8906-8de05dd39ce9",
+        "workspace_id": "1d7ac631-e7bc-4908-88ed-330e2c19e0ec",
+        "agents": [
+          {
+            "workspace_id": "1d7ac631-e7bc-4908-88ed-330e2c19e0ec",
+            "name": "ProjectManager",
+            "first_name": null,
+            "last_name": null,
+            "role": "Project Manager",
+            "seniority": "senior",
+            "description": "Fallback: Manages project execution, coordinates team, ensures efficient completion.",
+            "system_prompt": "You are a Project Manager. Your expertise covers: project planning, team coordination.\nKEY PRINCIPLES:\n1. Execute tasks within your defined area of expertise with precision and high quality.\n2. Provide concrete, actionable results and complete deliverables directly.\n3. Do NOT delegate tasks back to the Project Manager that fall within your expertise. Escalate to the Project Manager ONLY for critical roadblocks, tasks clearly outside your scope (after attempting to clarify), or for significant project-level decisions.\n4. Focus on task completion and quality, minimizing unnecessary coordination overhead.\n5. Collaborate directly with other specialists when interdependent tasks arise, keeping the Project Manager informed of significant progress and critical interactions that may impact the project timeline or scope.",
+            "llm_config": {
+              "model": "gpt-4.1-mini",
+              "temperature": 0.3
+            },
+            "tools": [
+              {
+                "type": "web_search",
+                "name": "web_search",
+                "description": "Enables searching the web for current information."
+              },
+              {
+                "type": "file_search",
+                "name": "file_search",
+                "description": "Enables searching through provided documents and knowledge base."
+              }
+            ],
+            "can_create_tools": false,
+            "personality_traits": null,
+            "communication_style": null,
+            "hard_skills": null,
+            "soft_skills": null,
+            "background_story": null
+          }
+        ],
+        "handoffs": [],
+        "estimated_cost": {
+          "total_estimated_cost": 450,
+          "currency": "EUR",
+          "breakdown_by_agent": {
+            "ProjectManager": 450
+          }
+        },
+        "rationale": "Fallback minimal team due to an issue in proposal generation. Please review. | Strategic Enhancement: obiettivi confermati dall'utente, 5 deliverable strategici identificati, autonomia AI: 5 che richiedono assistenza, deliverable assegnati: ProjectManager.",
+        "user_feedback": null,
+        "created_at": "2025-06-22T10:01:03.694298Z",
+        "status": "pending"
+      },
+      "error": null
+    },
+    "6_approve_team": {
+      "success": true,
+      "timestamp": "2025-06-22T12:01:04.047720",
+      "data": {
+        "success": true,
+        "message": "Team approved and auto-start triggered for 7 goals!"
+      },
+      "error": null
+    },
+    "7_verify_auto_start_trigger": {
+      "success": false,
+      "timestamp": "2025-06-22T12:01:39.911697",
+      "data": null,
+      "error": "No tasks were generated. Debug info: {'workspace_status': 'created', 'manual_trigger_response': 'Team approved and auto-start triggered for 7 goals!'}"
+    }
+  },
+  "errors": [],
+  "success": false,
+  "test_completed": "2025-06-22T12:01:39.911728"
+}

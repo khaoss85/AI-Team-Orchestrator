@@ -1,0 +1,23 @@
+{
+  "test_started": "2025-06-22T11:42:59.292806",
+  "steps": {
+    "1_health_check": {
+      "success": true,
+      "timestamp": "2025-06-22T11:42:59.300262",
+      "data": {
+        "status": "ok",
+        "version": "0.1.0"
+      },
+      "error": null
+    },
+    "2_create_workspace": {
+      "success": false,
+      "timestamp": "2025-06-22T11:42:59.302560",
+      "data": "422 Client Error: Unprocessable Content for url: http://localhost:8000/workspaces/",
+      "error": "422 Client Error: Unprocessable Content for url: http://localhost:8000/workspaces/"
+    }
+  },
+  "errors": [],
+  "success": false,
+  "test_completed": "2025-06-22T11:42:59.302569"
+}

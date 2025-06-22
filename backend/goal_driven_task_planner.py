@@ -104,10 +104,15 @@ class GoalDrivenTaskPlanner:
                 # Add workspace_id and execution metadata
                 task_data.update({
                     "workspace_id": workspace_id,
-                    "status": TaskStatus.PENDING.value,
+                    "status": "pending",  # Direct string instead of enum.value
                     "created_at": datetime.now().isoformat(),
-                    "is_goal_driven": True,
-                    "auto_generated": True
+                    "context_data": {
+                        **(task_data.get("context_data", {})),
+                        "is_goal_driven": True,
+                        "auto_generated": True,
+                        "generated_by": "goal_driven_task_planner",
+                        "goal_analysis_timestamp": datetime.now().isoformat()
+                    }
                 })
                 
                 # Insert into database
@@ -280,7 +285,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             for task_data in result.get("tasks", []):
                 task = {
                     "goal_id": str(goal.id),
-                    "metric_type": goal.metric_type if isinstance(goal.metric_type, str) else goal.metric_type.value,
+                    "metric_type": str(goal.metric_type),  # Simplified conversion to string
                     "name": task_data["name"],
                     "description": task_data["description"],
                     "type": task_data.get("type", "goal_driven"),
@@ -291,7 +296,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     "required_skills": task_data.get("required_skills", []),
                     "deliverable_type": task_data.get("deliverable_type", "project_output"),
                     "numerical_target": {
-                        "metric": goal.metric_type.value,
+                        "metric": str(goal.metric_type),  # Simplified conversion to string
                         "target": task_data.get("contribution_expected", gap / len(result["tasks"])),
                         "unit": goal.unit,
                         "validation_method": "manual_verification"
@@ -361,8 +366,8 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             # 🎯 CREATE URGENT CORRECTIVE TASK
             corrective_task = {
                 "goal_id": str(goal.id),
-                "metric_type": goal.metric_type.value,
-                "name": f"🚨 URGENT: Close {gap_percentage:.1f}% gap in {goal.metric_type.value}",
+                "metric_type": str(goal.metric_type),
+                "name": f"🚨 URGENT: Close {gap_percentage:.1f}% gap in {str(goal.metric_type)}",
                 "description": f"Critical corrective action required. Current gap: {remaining_gap} {goal.unit}. Must achieve target within 24 hours.",
                 "type": "corrective_action",
                 "priority": 1,  # Highest priority
@@ -378,7 +383,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     "No theoretical or analytical outputs"
                 ],
                 "numerical_target": {
-                    "metric": goal.metric_type.value,
+                    "metric": str(goal.metric_type),
                     "target": remaining_gap,
                     "unit": goal.unit,
                     "validation_method": "immediate_numerical_verification"

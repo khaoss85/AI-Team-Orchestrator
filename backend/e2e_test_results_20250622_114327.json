@@ -1,0 +1,39 @@
+{
+  "test_started": "2025-06-22T11:43:27.479182",
+  "steps": {
+    "1_health_check": {
+      "success": true,
+      "timestamp": "2025-06-22T11:43:27.485874",
+      "data": {
+        "status": "ok",
+        "version": "0.1.0"
+      },
+      "error": null
+    },
+    "2_create_workspace": {
+      "success": true,
+      "timestamp": "2025-06-22T11:43:27.563346",
+      "data": {
+        "id": "f524e641-49fd-45ae-85bb-755952cf0599",
+        "name": "Test E2E Auto-Start Workspace",
+        "description": "Raccogliere 500 contatti ICP (CMO/CTO di aziende SaaS europee) e suggerire almeno 3 sequenze email da impostare su Hubspot",
+        "user_id": "07c4cfd0-eae8-4897-8d12-457ab50aa9c8",
+        "status": "created",
+        "goal": "Generate 500 ICP contacts and create 3 email sequences for European SaaS companies",
+        "budget": null,
+        "created_at": "2025-06-22T09:43:27.544291Z",
+        "updated_at": "2025-06-22T09:43:27.544291Z"
+      },
+      "error": null
+    },
+    "3_extract_goals": {
+      "success": false,
+      "timestamp": "2025-06-22T11:43:27.564891",
+      "data": null,
+      "error": "404 Client Error: Not Found for url: http://localhost:8000/workspace-goals/f524e641-49fd-45ae-85bb-755952cf0599/extract"
+    }
+  },
+  "errors": [],
+  "success": false,
+  "test_completed": "2025-06-22T11:43:27.564898"
+}
