@@ -484,9 +484,11 @@ For simple execution requests:
                 file_error = f"\n\n❌ File upload failed: {file_upload_result.get('message', 'Unknown error')}"
                 ai_response += file_error
             
-            # Check if the AI wants to execute a tool
-            if ai_response.startswith("EXECUTE_TOOL:"):
-                tool_response = await self._parse_and_execute_tool(ai_response)
+            # Check if the AI wants to execute a tool (search anywhere in response)
+            import re
+            execute_tool_match = re.search(r'EXECUTE_TOOL:\s*(\w+)\s*({.*?})?', ai_response)
+            if execute_tool_match:
+                tool_response = await self._parse_and_execute_tool_from_match(execute_tool_match)
                 return tool_response
             
             # Parse structured response for thinking artifacts
@@ -1398,8 +1400,70 @@ Use tools to gather additional data for deeper analysis when needed.
             descriptions.append(f"- {tool_name}: {tool_info['description']} ({param_str})")
         return "\n".join(descriptions)
     
+    async def _parse_and_execute_tool_from_match(self, match) -> str:
+        """Parse tool execution from regex match and execute the tool"""
+        try:
+            tool_name = match.group(1)
+            params_str = match.group(2) or "{}"
+            
+            print(f"🔧 [_parse_and_execute_tool_from_match] Executing tool: {tool_name}")
+            print(f"🔧 [_parse_and_execute_tool_from_match] Parameters: {params_str}")
+            
+            # Parse parameters
+            try:
+                parameters = json.loads(params_str)
+            except Exception as e:
+                print(f"❌ [_parse_and_execute_tool_from_match] JSON parse error: {e}")
+                parameters = {}
+            
+            # Execute the tool
+            result = await self._execute_tool(tool_name, parameters)
+            
+            # Format the result as a structured response
+            if result.get("success"):
+                message = result.get("message", "Action completed successfully")
+                
+                # Enhanced formatting for different tool results
+                if tool_name == "show_goal_progress" and "goals" in result:
+                    goals = result["goals"]
+                    if goals:
+                        goal = goals[0]
+                        title = goal.get("title", "Goal")
+                        status = goal.get("status", "unknown")
+                        progress = goal.get("progress", "0%")
+                        description = goal.get("description", "")
+                        
+                        formatted_message = f"""📊 **{title}**
+
+**Status**: {status}
+**Progress**: {progress}
+**Description**: {description}
+
+{message}"""
+                        return formatted_message
+                
+                elif tool_name == "generate_image" and "image_url" in result:
+                    image_url = result["image_url"]
+                    prompt = parameters.get("prompt", "Generated image")
+                    return f"""🎨 **Image Generated Successfully**
+
+**Prompt**: {prompt}
+
+![Generated Image]({image_url})
+
+{message}"""
+                
+                return f"✅ **Tool Executed Successfully**\n\n{message}"
+            else:
+                error_msg = result.get("message", "Tool execution failed")
+                return f"❌ **Tool Execution Failed**\n\n{error_msg}"
+                
+        except Exception as e:
+            print(f"❌ [_parse_and_execute_tool_from_match] Error: {e}")
+            return f"❌ **Error executing tool**: {str(e)}"
+
     async def _parse_and_execute_tool(self, ai_response: str) -> str:
-        """Parse tool execution request and execute the tool"""
+        """Parse tool execution request and execute the tool (legacy method)"""
         try:
             # Extract tool name and parameters
             import re
@@ -1407,17 +1471,11 @@ Use tools to gather additional data for deeper analysis when needed.
             if not match:
                 return "Error parsing tool execution request."
             
-            tool_name = match.group(1)
-            params_str = match.group(2) or "{}"
+            return await self._parse_and_execute_tool_from_match(match)
             
-            # Parse parameters
-            try:
-                parameters = json.loads(params_str)
-            except:
-                parameters = {}
-            
-            # Execute the tool
-            result = await self._execute_tool(tool_name, parameters)
+        except Exception as e:
+            logger.error(f"Failed to parse and execute tool: {e}")
+            return f"Error executing tool: {str(e)}"
             
             # Format the result as a structured response
             if result.get("success"):
