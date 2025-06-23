@@ -34,6 +34,7 @@ class AgentStatus(str, Enum):
     CREATED = "created"
     INITIALIZING = "initializing"
     ACTIVE = "active"
+    AVAILABLE = "available"  # 🔧 FIX: Add missing status that exists in database
     PAUSED = "paused"
     ERROR = "error"
     TERMINATED = "terminated"
@@ -65,6 +66,7 @@ class HealthStatus(str, Enum):
 
 class AgentSeniority(str, Enum):
     JUNIOR = "junior"
+    INTERMEDIATE = "intermediate"  # Added for flexible team composition
     SENIOR = "senior"
     EXPERT = "expert"
 
@@ -77,24 +79,8 @@ class GoalStatus(str, Enum):
     FAILED = "failed"          # Goal has failed and needs intervention
     NEEDS_ATTENTION = "needs_attention"  # Goal requires manual review
 
-# 🌍 REMOVED: GoalMetricType enum is now DEPRECATED
-# This was anti-agnostic and anti-scalable - hardcoded business logic
-# metric_type is now a free-form string field to support universal goals
-
-# Legacy enum kept for backward compatibility only - DO NOT USE
-class GoalMetricType(str, Enum):
-    """DEPRECATED: This enum violates our agnostic principles. Use free-form strings instead."""
-    CONTACTS = "contacts"
-    EMAIL_SEQUENCES = "email_sequences"
-    CONTENT_PIECES = "content_pieces"
-    CAMPAIGNS = "campaigns"
-    REVENUE = "revenue"
-    CONVERSION_RATE = "conversion_rate"
-    ENGAGEMENT_RATE = "engagement_rate"
-    QUALITY_SCORE = "quality_score"
-    DELIVERABLES = "deliverables"
-    TASKS_COMPLETED = "tasks_completed"
-    TIMELINE_DAYS = "timeline_days"
+# 🌍 UNIVERSAL METRIC TYPES: No hardcoded business enums - AI-driven classification only
+# All metric types are now free-form strings classified by AI for true universality
 
 
 # --- Workspace Models ---

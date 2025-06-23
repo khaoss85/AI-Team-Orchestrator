@@ -202,7 +202,7 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
     try:
         # Import here to avoid circular imports
         from ai_quality_assurance.ai_goal_extractor import extract_and_create_workspace_goals
-        from models import GoalMetricType, GoalStatus
+        from models import GoalStatus
         from uuid import uuid4
         # datetime already imported globally
         
@@ -346,7 +346,7 @@ async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: st
     """
     try:
         from ai_quality_assurance.goal_validator import goal_validator
-        from models import GoalMetricType, GoalStatus
+        from models import GoalStatus
         from uuid import uuid4
         # datetime already imported globally
         
@@ -386,107 +386,28 @@ async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: st
         logger.error(f"Error in fallback workspace goals creation: {e}")
         return []
 
-def _map_requirement_to_metric_type(req_type: str) -> 'GoalMetricType':
+
+def _map_requirement_to_metric_type(req_type: str) -> str:
     """
-    🧠 AI-DRIVEN DYNAMIC MAPPING - Completely scalable metric type mapping
+    🌍 UNIVERSAL AI-DRIVEN MAPPING - Zero hardcoded business logic
     
-    Maps any requirement type to appropriate GoalMetricType enum values,
-    supporting unlimited domains and use cases.
+    Uses universal pattern classification to map requirement types to universal metric categories,
+    supporting truly unlimited domains and use cases without business-specific hardcoding.
     """
-    from models import GoalMetricType
+    req_type_lower = req_type.lower().strip()
     
-    # 🎯 UNIVERSAL MAPPING SYSTEM - Handles any domain
-    universal_mapping = {
-        # 📊 CREATION & PRODUCTION
-        'deliverables': GoalMetricType.DELIVERABLES,
-        'content_pieces': GoalMetricType.CONTENT_PIECES,
-        'products': GoalMetricType.DELIVERABLES,
-        'items': GoalMetricType.DELIVERABLES,
-        'features': GoalMetricType.DELIVERABLES,
-        'courses': GoalMetricType.CONTENT_PIECES,
-        'lessons': GoalMetricType.CONTENT_PIECES,
-        
-        # 📈 COLLECTION & ACQUISITION
-        'contacts': GoalMetricType.CONTACTS,
-        'leads': GoalMetricType.CONTACTS,
-        'data_points': GoalMetricType.CONTACTS,
-        'resources': GoalMetricType.DELIVERABLES,
-        
-        # 📧 COMMUNICATION & CAMPAIGNS
-        'email_sequences': GoalMetricType.EMAIL_SEQUENCES,
-        'campaigns': GoalMetricType.CAMPAIGNS,
-        'communications': GoalMetricType.CAMPAIGNS,
-        'messages': GoalMetricType.EMAIL_SEQUENCES,
-        
-        # 💰 FINANCIAL METRICS
-        'financial': GoalMetricType.REVENUE,
-        'revenue': GoalMetricType.REVENUE,
-        'costs': GoalMetricType.REVENUE,
-        'budget': GoalMetricType.REVENUE,
-        'roi': GoalMetricType.REVENUE,
-        
-        # 📊 PERFORMANCE & QUALITY
-        'percentage': GoalMetricType.CONVERSION_RATE,
-        'conversion_rate': GoalMetricType.CONVERSION_RATE,
-        'quality_score': GoalMetricType.QUALITY_SCORE,
-        'performance_metrics': GoalMetricType.QUALITY_SCORE,
-        'engagement_rate': GoalMetricType.ENGAGEMENT_RATE,
-        
-        # ⏰ TEMPORAL METRICS
-        'temporal': GoalMetricType.TIMELINE_DAYS,
-        'timeline_days': GoalMetricType.TIMELINE_DAYS,
-        'deadlines': GoalMetricType.TIMELINE_DAYS,
-        'milestones': GoalMetricType.TIMELINE_DAYS,
-        
-        # 🏃‍♂️ HEALTH & FITNESS
-        'workouts': GoalMetricType.TASKS_COMPLETED,  # Map to tasks as proxy
-        'exercises': GoalMetricType.TASKS_COMPLETED,
-        'health_metrics': GoalMetricType.QUALITY_SCORE,
-        
-        # 💻 TECHNOLOGY & DEVELOPMENT
-        'deployments': GoalMetricType.DELIVERABLES,
-        'integrations': GoalMetricType.DELIVERABLES,
-        'apis': GoalMetricType.DELIVERABLES,
-        
-        # 🎓 EDUCATION & LEARNING
-        'certifications': GoalMetricType.DELIVERABLES,
-        'skills': GoalMetricType.QUALITY_SCORE,
-        
-        # 🔄 FALLBACK MAPPINGS
-        'general': GoalMetricType.DELIVERABLES,
-        'creation': GoalMetricType.DELIVERABLES,
-        'collection': GoalMetricType.CONTACTS,
-        'performance': GoalMetricType.QUALITY_SCORE,
-        'communication': GoalMetricType.EMAIL_SEQUENCES,
-        'technology': GoalMetricType.DELIVERABLES,
-        'education': GoalMetricType.CONTENT_PIECES,
-        'health': GoalMetricType.QUALITY_SCORE
-    }
-    
-    # 🎯 Smart fallback: try exact match first, then partial matches
-    req_type_lower = req_type.lower()
-    
-    # Direct match
-    if req_type_lower in universal_mapping:
-        return universal_mapping[req_type_lower]
-    
-    # Partial match - find best substring match
-    for mapping_key, metric_type in universal_mapping.items():
-        if mapping_key in req_type_lower or req_type_lower in mapping_key:
-            return metric_type
-    
-    # Ultimate fallback - choose based on req_type characteristics
-    if 'rate' in req_type_lower or '%' in req_type_lower:
-        return GoalMetricType.CONVERSION_RATE
-    elif 'time' in req_type_lower or 'day' in req_type_lower:
-        return GoalMetricType.TIMELINE_DAYS
-    elif 'contact' in req_type_lower or 'lead' in req_type_lower:
-        return GoalMetricType.CONTACTS
-    elif 'email' in req_type_lower or 'message' in req_type_lower:
-        return GoalMetricType.EMAIL_SEQUENCES
+    # Universal pattern-based classification (no domain-specific hardcoding)
+    if any(word in req_type_lower for word in ['rate', '%', 'conversion', 'performance', 'quality', 'score']):
+        return "quality_measures"
+    elif any(word in req_type_lower for word in ['time', 'day', 'deadline', 'timeline', 'duration']):
+        return "time_based_metrics"
+    elif any(word in req_type_lower for word in ['engage', 'interact', 'response', 'participation']):
+        return "engagement_metrics"
+    elif any(word in req_type_lower for word in ['complete', 'finish', 'done', 'progress']):
+        return "completion_metrics"
     else:
-        return GoalMetricType.DELIVERABLES  # Most generic fallback
-    
+        return "quantified_outputs"  # Universal fallback for countable items
+
 # Database operations
 async def create_workspace(name: str, description: Optional[str], user_id: str, goal: Optional[str] = None, budget: Optional[Dict[str, Any]] = None):
     try:

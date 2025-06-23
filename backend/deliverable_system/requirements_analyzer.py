@@ -201,7 +201,7 @@ class DeliverableRequirementsAnalyzer:
         }
         
         for agent in agents:
-            if agent.get("status") == "active":
+            if agent.get("status") == "available":
                 role = agent.get("role", "").lower()
                 seniority = agent.get("seniority", "junior")
                 

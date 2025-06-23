@@ -19,7 +19,7 @@ import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database import supabase
-from models import WorkspaceGoal, WorkspaceGoalCreate, GoalMetricType, GoalStatus
+from models import WorkspaceGoal, WorkspaceGoalCreate, GoalStatus
 from goal_driven_task_planner import goal_driven_task_planner
 from goal_driven_project_manager import create_goal_driven_pm
 from automated_goal_monitor import automated_goal_monitor
@@ -63,7 +63,7 @@ async def test_1_goal_decomposition():
     goals_to_create = [
         {
             "workspace_id": TEST_WORKSPACE_ID,
-            "metric_type": GoalMetricType.CONTACTS,
+            "metric_type": "quantified_outputs",
             "target_value": 50,
             "unit": "contacts",
             "description": "Collect 50 ICP contacts (CMO/CTO di aziende SaaS europee)",
@@ -78,7 +78,7 @@ async def test_1_goal_decomposition():
         },
         {
             "workspace_id": TEST_WORKSPACE_ID,
-            "metric_type": GoalMetricType.EMAIL_SEQUENCES,
+            "metric_type": "quantified_outputs",
             "target_value": 3,
             "unit": "sequences",
             "description": "Create 3 email sequences for B2B outreach",

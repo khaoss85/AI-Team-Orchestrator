@@ -215,10 +215,10 @@ class ConversationalAgent:
                     })
             
             if focus_area == "overall" or focus_area == "team":
-                active_agents = len([agent for agent in team if agent.get("status") == "active"])
-                analysis["metrics"]["team_size"] = active_agents
+                available_agents = len([agent for agent in team if agent.get("status") == "available"])
+                analysis["metrics"]["team_size"] = available_agents
                 
-                if active_agents < 3:
+                if available_agents < 3:
                     analysis["recommendations"].append({
                         "type": "team",
                         "priority": "medium",

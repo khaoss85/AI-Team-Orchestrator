@@ -83,6 +83,23 @@ export default function ConversationBubble({ message }: ConversationBubbleProps)
                       }}
                     />
                   </div>
+                ),
+                a: ({href, children}) => (
+                  <a 
+                    href={href} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                    onClick={(e) => {
+                      // Allow copy on right-click or ctrl+click
+                      if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        navigator.clipboard.writeText(href || '');
+                      }
+                    }}
+                  >
+                    {children}
+                  </a>
                 )
               }}
             >

@@ -113,27 +113,34 @@ class AgentManager:
 
     async def _validate_and_create_agents(self, raw_agents: List[Dict]) -> List[AgentModelPydantic]:
         """Valida e crea SpecialistAgent con gestione errori robusta"""
+        logger.info(f"Starting validation of {len(raw_agents)} raw agents")
         valid_agents: List[AgentModelPydantic] = []
         
-        for agent_data in raw_agents:
+        for i, agent_data in enumerate(raw_agents):
             try:
+                logger.debug(f"Validating agent {i+1}/{len(raw_agents)}: {agent_data.get('name', 'Unknown')} (ID: {agent_data.get('id', '?')})")
                 # Validazione Pydantic
                 agent_model = AgentModelPydantic.model_validate(agent_data)
                 valid_agents.append(agent_model)
+                logger.debug(f"✅ Successfully validated agent: {agent_model.name}")
             except Exception as e:
                 logger.error(
-                    f"Validazione fallita per agent ID {agent_data.get('id','?')}: {e}",
+                    f"❌ Validazione fallita per agent ID {agent_data.get('id','?')}, name: {agent_data.get('name', 'Unknown')}: {e}",
                     exc_info=True
                 )
                 # Continua con gli altri agenti invece di fallire completamente
 
         if not valid_agents:
+            logger.warning("No valid agents after Pydantic validation")
             return []
+
+        logger.info(f"Successfully validated {len(valid_agents)}/{len(raw_agents)} agents")
 
         # Creazione SpecialistAgent con gestione errori
         successful_agents = []
-        for agent_model in valid_agents:
+        for i, agent_model in enumerate(valid_agents):
             try:
+                logger.debug(f"Creating SpecialistAgent {i+1}/{len(valid_agents)}: {agent_model.name} (ID: {agent_model.id})")
                 # Crea SpecialistAgent passando tutti gli agenti per handoff
                 specialist = SpecialistAgent(
                     agent_data=agent_model,
@@ -141,14 +148,16 @@ class AgentManager:
                 )
                 self.agents[agent_model.id] = specialist
                 successful_agents.append(agent_model)
-                logger.info(f"Creato SpecialistAgent per {agent_model.name} (ID: {agent_model.id})")
+                logger.info(f"✅ Creato SpecialistAgent per {agent_model.name} (ID: {agent_model.id})")
             except Exception as e:
                 logger.error(
-                    f"Errore creazione SpecialistAgent {agent_model.id} ({agent_model.name}): {e}",
+                    f"❌ Errore creazione SpecialistAgent {agent_model.id} ({agent_model.name}): {e}",
                     exc_info=True
                 )
                 # Continua comunque con altri agenti
 
+        logger.info(f"Successfully created {len(successful_agents)}/{len(valid_agents)} SpecialistAgents")
+        logger.info(f"Initialized agent IDs: {[str(aid) for aid in self.agents.keys()]}")
         return successful_agents
 
     async def _initial_health_check(self):
@@ -271,11 +280,20 @@ class AgentManager:
             specialist = self.agents.get(agent_uuid)
             
             if not specialist:
+                available_agent_list = list(str(aid) for aid in self.agents.keys())
                 error_detail = {
                     "detail": "agent_not_found",
-                    "available_agents": list(str(aid) for aid in self.agents.keys()),
-                    "requested_agent": str(agent_uuid)
+                    "available_agents": available_agent_list,
+                    "requested_agent": str(agent_uuid),
+                    "total_initialized_agents": len(self.agents),
+                    "initialization_time": self.initialization_time.isoformat() if self.initialization_time else None
                 }
+                
+                logger.error(f"🚨 AGENT NOT FOUND - Task {task_id} requires agent {agent_uuid} but it's not initialized")
+                logger.error(f"   Available agents ({len(self.agents)}): {available_agent_list}")
+                logger.error(f"   Manager initialized at: {self.initialization_time}")
+                logger.error(f"   Task details - Name: {task.name}, Status: {task.status}")
+                
                 await self._handle_task_failure(
                     task_id_str,
                     f"Agent {agent_uuid} non inizializzato nel manager",

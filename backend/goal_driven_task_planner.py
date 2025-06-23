@@ -4,12 +4,12 @@ import json
 import logging
 import asyncio
 import os
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Union
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from models import (
-    WorkspaceGoal, GoalMetricType, GoalStatus, TaskStatus,
+    WorkspaceGoal, GoalStatus, TaskStatus,
     WorkspaceGoalProgress
 )
 from database import supabase
@@ -95,15 +95,49 @@ class GoalDrivenTaskPlanner:
             # Convert dict to WorkspaceGoal object
             goal = WorkspaceGoal(**workspace_goal)
             
+            # 🛡️ DUPLICATE PREVENTION: Check if tasks already exist for this goal
+            existing_tasks_response = supabase.table("tasks").select("id, name").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "goal_id", str(goal.id)
+            ).execute()
+            
+            existing_tasks = existing_tasks_response.data or []
+            if existing_tasks:
+                logger.info(f"🔄 Goal {goal.metric_type} already has {len(existing_tasks)} tasks - skipping duplicate creation")
+                return existing_tasks
+            
             # Generate tasks using the internal method
             tasks = await self._generate_tasks_for_goal(goal)
             
+            # Get available agents for task assignment (agents change to "available" after start_team)
+            agents_response = supabase.table("agents").select("*").eq("workspace_id", workspace_id).eq("status", "available").execute()
+            available_agents = agents_response.data or []
+            
+            if not available_agents:
+                logger.warning(f"⚠️ No available agents found for workspace {workspace_id} - tasks will be created unassigned")
+            
             # Create tasks in database and trigger execution
             created_tasks = []
+            agent_index = 0  # Round-robin assignment
+            
             for task_data in tasks:
+                # Assign agent if available (round-robin)
+                assigned_agent_id = None
+                assigned_agent_role = None
+                
+                if available_agents:
+                    assigned_agent = available_agents[agent_index % len(available_agents)]
+                    assigned_agent_id = assigned_agent["id"]
+                    assigned_agent_role = assigned_agent.get("role")
+                    agent_index += 1
+                    logger.info(f"🎯 Assigning task '{task_data['name']}' to agent {assigned_agent.get('name')} ({assigned_agent_role})")
+                
                 # Add workspace_id and execution metadata
                 task_data.update({
                     "workspace_id": workspace_id,
+                    "agent_id": assigned_agent_id,  # 🔧 FIX: Assign agent_id to prevent orphaned tasks
+                    "assigned_to_role": assigned_agent_role,
                     "status": "pending",  # Direct string instead of enum.value
                     "created_at": datetime.now().isoformat(),
                     "context_data": {
@@ -111,7 +145,8 @@ class GoalDrivenTaskPlanner:
                         "is_goal_driven": True,
                         "auto_generated": True,
                         "generated_by": "goal_driven_task_planner",
-                        "goal_analysis_timestamp": datetime.now().isoformat()
+                        "goal_analysis_timestamp": datetime.now().isoformat(),
+                        "assigned_agent_name": available_agents[agent_index-1].get('name') if available_agents else None
                     }
                 })
                 
@@ -300,14 +335,20 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     }
                 }
                 
+                # 🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification (universal)
+                compatible_metric_type = await self._classify_metric_type_ai(str(goal.metric_type))
+                
                 task = {
                     "goal_id": str(goal.id),
-                    "metric_type": str(goal.metric_type),
+                    "metric_type": compatible_metric_type,
                     "name": task_data["name"],
                     "description": task_data["description"],
-                    "priority": task_data.get("priority", 3),
+                    "priority": self._convert_numeric_priority(task_data.get("priority", 3)),
                     "contribution_expected": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                    "context_data": context_data
+                    "context_data": {
+                        **context_data,
+                        "original_metric_type": str(goal.metric_type)  # Preserve original for future use
+                    }
                 }
                 tasks.append(task)
                 
@@ -336,15 +377,97 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             }
         }
         
+        # 🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification (universal)
+        compatible_metric_type = await self._classify_metric_type_ai(str(goal.metric_type))
+        
         return [{
             "goal_id": str(goal.id),
-            "metric_type": goal.metric_type.value,
+            "metric_type": compatible_metric_type,
             "name": f"Achieve {gap} {goal.unit}",
             "description": f"Work towards achieving {gap} {goal.unit} for goal: {goal.description}",
-            "priority": 3,
+            "priority": "low",
             "contribution_expected": gap,
-            "context_data": context_data
+            "context_data": {
+                **context_data,
+                "original_metric_type": str(goal.metric_type)
+            }
         }]
+    
+    def _convert_numeric_priority(self, priority: Union[int, str]) -> str:
+        """
+        Convert numeric priority to string priority for Pydantic validation
+        """
+        if isinstance(priority, str) and priority in ["low", "medium", "high"]:
+            return priority
+            
+        # Convert numeric to string
+        priority_map = {
+            1: "high",
+            2: "medium", 
+            3: "low",
+            4: "low",
+            5: "low"
+        }
+        
+        if isinstance(priority, int):
+            return priority_map.get(priority, "low")
+        elif isinstance(priority, str) and priority.isdigit():
+            return priority_map.get(int(priority), "low")
+        else:
+            return "low"  # Default fallback
+    
+    async def _classify_metric_type_ai(self, universal_metric_type: str) -> str:
+        """
+        🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification
+        Uses LLM reasoning to classify metric types universally without hard-coding business domains
+        """
+        try:
+            from utils.model_settings_factory import create_model_settings
+            import openai
+            
+            # Create LLM client for classification
+            model_settings = create_model_settings()
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            # AI-driven classification prompt (universal, no domain bias)
+            classification_prompt = f"""
+You are a universal metric type classifier. Given a metric type string, classify it into a generic category.
+
+Metric to classify: "{universal_metric_type}"
+
+Classify into ONE of these universal categories based on the content meaning:
+- "quantified_outputs" (countable deliverables, items, units produced)
+- "quality_measures" (scores, ratings, performance indicators)  
+- "time_based_metrics" (deadlines, duration, timeline goals)
+- "engagement_metrics" (interactions, responses, participation rates)
+- "completion_metrics" (percentage complete, milestones achieved)
+
+Return ONLY the category name, no explanation.
+"""
+            
+            response = await client.chat.completions.acreate(
+                model=model_settings.model,
+                messages=[{"role": "user", "content": classification_prompt}],
+                max_tokens=50,
+                temperature=0.1  # Low temperature for consistent classification
+            )
+            
+            ai_classification = response.choices[0].message.content.strip()
+            
+            # Validate AI response is one of expected categories
+            valid_categories = ["quantified_outputs", "quality_measures", "time_based_metrics", 
+                              "engagement_metrics", "completion_metrics"]
+            
+            if ai_classification in valid_categories:
+                logger.info(f"🤖 AI classified '{universal_metric_type}' → '{ai_classification}'")
+                return ai_classification
+            else:
+                logger.warning(f"🤖 AI returned invalid category '{ai_classification}', falling back to universal default")
+                return "quantified_outputs"  # Universal fallback
+                
+        except Exception as e:
+            logger.warning(f"🤖 AI classification failed for '{universal_metric_type}': {e}, using universal fallback")
+            return "quantified_outputs"  # Universal fallback
     
     async def create_corrective_task(
         self, 
@@ -377,9 +500,32 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                 required_skills=["rapid_execution", "goal_achievement"]
             )
             
-            # Skip task creation if no agents available
+            # 🚨 CRITICAL ERROR: No agents available for corrective task creation
             if selected_agent_role is None:
-                logger.warning(f"⚠️ No agents available in workspace {workspace_id} - skipping corrective task creation")
+                logger.error(f"🚨 CRITICAL: No agents available in workspace {workspace_id} for corrective task creation")
+                
+                # This should not happen in a healthy workspace - alert the issue
+                try:
+                    from database import supabase
+                    alert_data = {
+                        "workspace_id": workspace_id,
+                        "type": "system",
+                        "message": "CRITICAL: Corrective task creation failed - no agents available",
+                        "metadata": {
+                            "alert_type": "corrective_task_failure",
+                            "issue_type": "NO_AGENTS_FOR_CORRECTIVE_TASK",
+                            "description": f"Goal-driven task planner could not create corrective task due to no available agents in workspace {workspace_id}",
+                            "severity": "critical",
+                            "requires_intervention": True,
+                            "detected_at": datetime.now().isoformat(),
+                            "component": "goal_driven_task_planner"
+                        },
+                        "created_at": datetime.now().isoformat()
+                    }
+                    supabase.table("logs").insert(alert_data).execute()
+                except Exception as e:
+                    logger.error(f"Failed to create alert for no-agents issue: {e}")
+                
                 return {}
             
             # 🎯 CREATE URGENT CORRECTIVE TASK
@@ -417,7 +563,7 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                 "metric_type": str(goal.metric_type),
                 "name": f"🚨 URGENT: Close {gap_percentage:.1f}% gap in {str(goal.metric_type)}",
                 "description": f"Critical corrective action required. Current gap: {remaining_gap} {goal.unit}. Must achieve target within 24 hours.",
-                "priority": 1,  # Highest priority
+                "priority": "high",  # Highest priority
                 "contribution_expected": remaining_gap,
                 "context_data": context_data
             }
@@ -451,17 +597,17 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             response = supabase.table("agents").select("*").eq(
                 "workspace_id", workspace_id
             ).eq(
-                "status", "active"
+                "status", "available"
             ).execute()
             
             available_agents = response.data or []
             
             if not available_agents:
-                logger.warning(f"⚠️ No active agents found in workspace {workspace_id} - skipping task creation")
+                logger.warning(f"⚠️ No available agents found in workspace {workspace_id} - skipping task creation")
                 # Return None to indicate no task should be created
                 return None
             
-            logger.info(f"📋 Found {len(available_agents)} active agents in workspace {workspace_id}")
+            logger.info(f"📋 Found {len(available_agents)} available agents in workspace {workspace_id}")
             
             # 🎯 STRATEGY 1: Look for high-seniority agents first
             expert_agents = [

@@ -446,13 +446,13 @@ class AssetEnhancementOrchestrator:
                 logger.error(f"No agents found in workspace {workspace_id}")
                 return None
 
-            active_agents = [a for a in agents if a.get("status") == "active"]
-            if not active_agents:
-                logger.error(f"No active agents in workspace {workspace_id}")
+            available_agents = [a for a in agents if a.get("status") == "available"]
+            if not available_agents:
+                logger.error(f"No available agents in workspace {workspace_id}")
                 return None
 
             # Priority 1: Explicit Project Manager
-            for agent in active_agents:
+            for agent in available_agents:
                 role_lower = (agent.get("role") or "").lower()
                 if "project manager" in role_lower:
                     logger.info(f"✅ Found explicit PM: {agent['name']}")
@@ -460,7 +460,7 @@ class AssetEnhancementOrchestrator:
 
             # Priority 2: Management roles
             management_keywords = ["manager", "coordinator", "director", "lead", "pm"]
-            for agent in active_agents:
+            for agent in available_agents:
                 role_lower = (agent.get("role") or "").lower()
                 if any(keyword in role_lower for keyword in management_keywords):
                     logger.info(
@@ -471,7 +471,7 @@ class AssetEnhancementOrchestrator:
             # Priority 3: Expert/Senior agents
             senior_agents = [
                 a
-                for a in active_agents
+                for a in available_agents
                 if a.get("seniority", "").lower() in ["expert", "senior"]
             ]
             if senior_agents:
@@ -487,8 +487,8 @@ class AssetEnhancementOrchestrator:
                 )
                 return selected_agent
 
-            # Priority 4: Any active agent (last resort)
-            fallback_agent = active_agents[0]
+            # Priority 4: Any available agent (last resort)
+            fallback_agent = available_agents[0]
             logger.warning(
                 f"⚠️ FALLBACK: Using any agent as PM: {fallback_agent['name']}"
             )
@@ -1154,10 +1154,10 @@ Include validation notes in summary explaining changes made.
 
         try:
             agents = await list_agents(workspace_id)
-            active_agents = [a for a in agents if a.get("status") == "active"]
+            available_agents = [a for a in agents if a.get("status") == "available"]
 
-            if not active_agents:
-                logger.error(f"No active agents in workspace {workspace_id}")
+            if not available_agents:
+                logger.error(f"No available agents in workspace {workspace_id}")
                 return None
 
             # Determina asset type
@@ -1166,7 +1166,7 @@ Include validation notes in summary explaining changes made.
             # Scoring algorithm migliorato
             candidates = []
 
-            for agent in active_agents:
+            for agent in available_agents:
                 score = self._calculate_agent_suitability_score(
                     agent, asset_type, asset_name, quality_assessment
                 )
@@ -1196,7 +1196,7 @@ Include validation notes in summary explaining changes made.
                 logger.warning(
                     f"⚠️ No suitable specialist found for {asset_name}, using fallback"
                 )
-                return active_agents[0]  # Fallback
+                return available_agents[0]  # Fallback
 
         except Exception as e:
             logger.error(f"❌ Error finding specialist: {e}", exc_info=True)

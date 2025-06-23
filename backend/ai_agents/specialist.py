@@ -81,6 +81,11 @@ except ImportError:
         class FileSearchTool:  # type: ignore
             pass
 
+        class AgentOutputSchema:  # type: ignore
+            def __init__(self, schema_class, strict_json_schema=True):
+                self.schema_class = schema_class
+                self.strict_json_schema = strict_json_schema
+
     MaxTurnsExceeded = Exception
     AgentsException = Exception
     UserError = Exception
@@ -632,7 +637,12 @@ class SpecialistAgent(Generic[T]):
         * Write a `specific_request_for_target` detailing what the next agent should do.
     4.  DO NOT create new general tasks or delegate work that you should be doing. The Project Manager handles task breakdown and assignment.
     5.  Always provide a comprehensive final summary of the work you performed and a clear status ('completed', 'failed', or 'requires_handoff') as per the TaskExecutionOutput schema.
-    6.  If a task is too complex or leads to multiple turns without clear resolution, simplify your approach, provide the best partial but concrete result you can, and mark the task as 'completed' with notes on limitations.
+    6.  🔄 LOOP PREVENTION (PILLAR 1 & 2 COMPLIANCE): If a task is complex or you're taking multiple turns:
+        * After 3-4 attempts, SIMPLIFY your approach immediately
+        * Provide the BEST partial result you can with current information
+        * Mark as 'completed' with clear documentation of what was achieved
+        * NEVER continue trying the same approach repeatedly
+        * Focus on CONCRETE deliverables over perfect completeness
 
     🔧 TOOL USAGE FOR DATA GATHERING:
     7.  When your task requires specific data (competitor metrics, account analytics, market research), PRIORITIZE using your available tools before making assumptions.
@@ -1822,10 +1832,14 @@ class SpecialistAgent(Generic[T]):
                     1, len(input_text.split()) * 1.3
                 )  # Stima approssimativa
 
-                # Ottieni il modello usato
-                model_name = self.agent.model
+                # Ottieni il modello usato (con fallback per OpenAI Agent compatibility)
+                model_name = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
 
-                max_turns_for_agent = 10
+                # 🧩 PILLAR 1 & 2 COMPLIANCE: AI-driven max_turns configuration
+                # Default to higher turns for complex goal-driven tasks
+                max_turns_for_agent = 25  # Increased from 10 to prevent goal-driven task failures
+                
+                # Allow AI-driven configuration override from llm_config
                 if (
                     isinstance(self.agent_data.llm_config, dict)
                     and "max_turns_override" in self.agent_data.llm_config
@@ -1833,6 +1847,24 @@ class SpecialistAgent(Generic[T]):
                     max_turns_for_agent = self.agent_data.llm_config[
                         "max_turns_override"
                     ]
+                
+                # 🎯 PILLAR 5: Goal-driven adaptive max_turns based on task complexity
+                # Increase max_turns for corrective/goal-driven tasks that need more iterations
+                if hasattr(task, 'is_corrective') and task.is_corrective:
+                    max_turns_for_agent = max(max_turns_for_agent, 30)  # Ensure corrective tasks have enough turns
+                    logger.info(f"🎯 Increased max_turns to {max_turns_for_agent} for corrective task {task.id}")
+                
+                # 📚 PILLAR 6: Memory-driven configuration (use learned patterns)
+                try:
+                    # Check if this task type has historically needed more turns
+                    from workspace_memory import workspace_memory
+                    task_type = getattr(task, 'metric_type', 'unknown')
+                    complexity_hint = await workspace_memory.get_task_complexity_hint(task.workspace_id, task_type)
+                    if complexity_hint and complexity_hint.get('needs_more_turns', False):
+                        max_turns_for_agent = max(max_turns_for_agent, 40)
+                        logger.info(f"🧠 Memory-driven: Increased max_turns to {max_turns_for_agent} for complex {task_type} task")
+                except Exception as e:
+                    logger.debug(f"Memory-driven max_turns adjustment failed: {e}")
 
                 agent_run_result = await asyncio.wait_for(
                     Runner.run(
@@ -2293,7 +2325,7 @@ class SpecialistAgent(Generic[T]):
                 timeout_result = timeout_result_obj.model_dump()
                 timeout_result["trace_id_for_run"] = trace_id_val
                 timeout_result["execution_time_seconds"] = round(elapsed_time, 2)
-                timeout_result["model_used"] = self.agent.model
+                timeout_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
                 timeout_result["status_detail"] = "timed_out_by_agent_system"
                 await update_task_status(
                     task_id=str(task.id),
@@ -2323,7 +2355,7 @@ class SpecialistAgent(Generic[T]):
                 max_turns_result = max_turns_result_obj.model_dump()
                 max_turns_result["trace_id_for_run"] = trace_id_val
                 max_turns_result["execution_time_seconds"] = round(elapsed_time, 2)
-                max_turns_result["model_used"] = self.agent.model
+                max_turns_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
                 max_turns_result["status_detail"] = "failed_max_turns"
                 await update_task_status(
                     task_id=str(task.id),
@@ -2358,7 +2390,7 @@ class SpecialistAgent(Generic[T]):
                 unhandled_error_result["execution_time_seconds"] = round(
                     elapsed_time, 2
                 )
-                unhandled_error_result["model_used"] = self.agent.model
+                unhandled_error_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
                 unhandled_error_result["status_detail"] = "failed_unhandled_exception"
                 await update_task_status(
                     task_id=str(task.id),

@@ -493,7 +493,7 @@ async def get_conversation_context(workspace_id: str, chat_id: str = "general") 
                 },
                 "team_summary": {
                     "total_members": len(context_data["team_data"]),
-                    "active_members": len([a for a in context_data["team_data"] if a.get("status") == "active"])
+                    "active_members": len([a for a in context_data["team_data"] if a.get("status") == "available"])
                 },
                 "activity_summary": {
                     "recent_tasks": len(context_data["recent_tasks"]),

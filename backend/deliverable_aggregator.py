@@ -1887,8 +1887,8 @@ class IntelligentDeliverableAggregator:
         if not agents:
             return None
         
-        active_agents = [a for a in agents if a.get("status") == "active"]
-        if not active_agents:
+        available_agents = [a for a in agents if a.get("status") == "available"]
+        if not available_agents:
             return None
         
         # Analisi intelligente delle requirements
@@ -1900,7 +1900,7 @@ class IntelligentDeliverableAggregator:
         # Scoring intelligente e context-aware
         scored_agents = []
         
-        for agent in active_agents:
+        for agent in available_agents:
             role = (agent.get("role", "") or "").lower()
             name = (agent.get("name", "") or "").lower()
             seniority = agent.get("seniority", "junior")

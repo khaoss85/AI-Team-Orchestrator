@@ -80,7 +80,7 @@ class PMOrchestrationTools:
                         "description_summary": (agent_data_dict.get("description", "")[:100] + "..." 
                                                if agent_data_dict.get("description", "") else "No description")
                     }
-                    if agent_data_dict.get("status") == "active":
+                    if agent_data_dict.get("status") == "available":
                         active_agents_info.append(agent_info)
                     else:
                         inactive_agents_info.append(agent_info)
@@ -95,7 +95,7 @@ class PMOrchestrationTools:
                     "active_team_members": active_agents_info,
                     "usage_instructions": {
                         "for_task_assignment": "When using 'create_and_assign_sub_task', you MUST provide the 'agent_name' from the 'active_team_members' list for the 'target_agent_role' parameter. Do NOT use the 'exact_role' for assignment.",
-                        "example_assignment": "If an active agent is listed as agent_name: 'ContentWriterBot', then for 'create_and_assign_sub_task', set target_agent_role='ContentWriterBot'."
+                        "example_assignment": "If an available agent is listed as agent_name: 'ContentWriterBot', then for 'create_and_assign_sub_task', set target_agent_role='ContentWriterBot'."
                     }
                 }
                 if inactive_agents_info:
@@ -155,7 +155,7 @@ class PMOrchestrationTools:
                         existing_agent_id_in_task = existing_task_dict.get("agent_id")
                         existing_assigned_role_in_task = existing_task_dict.get("assigned_to_role", "") 
                         
-                        target_agent_object_for_new_task = next((ag for ag in agents_in_db if ag.get("name", "").lower() == target_agent_role.lower() and ag.get("status") == "active"), None)
+                        target_agent_object_for_new_task = next((ag for ag in agents_in_db if ag.get("name", "").lower() == target_agent_role.lower() and ag.get("status") == "available"), None)
 
                         if target_agent_object_for_new_task:
                             if existing_agent_id_in_task == target_agent_object_for_new_task.get("id"):
@@ -180,18 +180,18 @@ class PMOrchestrationTools:
                                 "error": "Likely duplicate task detected (similar name, target agent/role, and phase)."
                             })
                 
-                target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "active"), None)
+                target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "available"), None)
                 
                 if not target_agent:
                     available_agents_summary = [
                         {"name": a.get("name"), "role": a.get("role"), "status": a.get("status")}
                         for a in agents_in_db
                     ]
-                    error_msg = f"Agent Assignment Error: No ACTIVE agent found with the EXACT name '{target_agent_role}'. Ensure the name matches an active agent from 'get_team_roles_and_status'."
+                    error_msg = f"Agent Assignment Error: No AVAILABLE agent found with the EXACT name '{target_agent_role}'. Ensure the name matches an available agent from 'get_team_roles_and_status'."
                     logger.warning(f"{error_msg}. Workspace: {workspace_id_str}. Available agents for reference: {available_agents_summary}")
                     return json.dumps({
                         "success": False, "task_id": None, "error": error_msg,
-                        "suggestion": "Call 'get_team_roles_and_status' again to verify the exact 'agent_name' of an ACTIVE agent.",
+                        "suggestion": "Call 'get_team_roles_and_status' again to verify the exact 'agent_name' of an AVAILABLE agent.",
                         "available_agents_summary": available_agents_summary
                     })
                 

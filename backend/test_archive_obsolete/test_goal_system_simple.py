@@ -13,7 +13,7 @@ import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database import supabase
-from models import GoalMetricType
+# Universal metric types - no hardcoded business enums
 
 async def test_basic_setup():
     """Test base per verificare che le tabelle esistano e siano accessibili"""

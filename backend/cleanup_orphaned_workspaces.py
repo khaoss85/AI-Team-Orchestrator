@@ -48,7 +48,7 @@ class OrphanedWorkspaceCleanup:
                         'agent_count': len(agents),
                         'task_count': len(tasks),
                         'tasks': tasks,
-                        'created_days_ago': (datetime.now() - datetime.fromisoformat(workspace['created_at'].replace('Z', '+00:00'))).days
+                        'created_days_ago': self._calculate_days_ago(workspace['created_at'])
                     })
             
             return orphaned
@@ -153,6 +153,23 @@ class OrphanedWorkspaceCleanup:
                 cleaned_count += 1
         
         return cleaned_count
+    
+    def _calculate_days_ago(self, timestamp_str: str) -> int:
+        """Calculate days ago from a timestamp string"""
+        try:
+            # Handle different timestamp formats
+            if timestamp_str.endswith('Z'):
+                timestamp_str = timestamp_str[:-1] + '+00:00'
+            elif not timestamp_str.endswith('+00:00') and 'T' in timestamp_str:
+                if '+' not in timestamp_str:
+                    timestamp_str += '+00:00'
+            
+            created_time = datetime.fromisoformat(timestamp_str)
+            now = datetime.now(created_time.tzinfo)  # Use same timezone
+            return (now - created_time).days
+        except Exception as e:
+            print(f"Warning: Could not parse timestamp {timestamp_str}: {e}")
+            return 0
 
 async def main():
     import argparse

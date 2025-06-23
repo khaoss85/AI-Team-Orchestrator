@@ -165,6 +165,8 @@ export function useConversationalWorkspace(workspaceId: string) {
       
       // Load initial artifacts
       await loadArtifacts()
+      
+      // 🔧 FIX: Goal progress will be refreshed via useEffect after refreshGoalProgress is defined
 
     } catch (err: any) {
       console.error('Failed to initialize workspace:', err)
@@ -555,8 +557,14 @@ export function useConversationalWorkspace(workspaceId: string) {
       setTeamActivities([])
     } finally {
       setSendingMessage(false)
+      
+      // 🔧 FIX: Refresh goal progress after any message that might affect it
+      // This helps ensure sidebar reflects any goal updates from AI actions
+      setTimeout(() => {
+        refreshGoalProgress()
+      }, 1000) // Small delay to let backend updates propagate
     }
-  }, [activeChat, workspaceContext, loadArtifacts])
+  }, [activeChat, workspaceContext, loadArtifacts, refreshGoalProgress])
 
   // AI-driven dynamic chat creation
   const createDynamicChat = useCallback(async (objective: string) => {
@@ -1407,16 +1415,74 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [workspaceContext, activeChat, loadChatSpecificArtifacts])
 
-  // Auto-refresh artifacts periodically
+  // Function to refresh goal progress in sidebar
+  const refreshGoalProgress = useCallback(async () => {
+    try {
+      console.log('🔄 [refreshGoalProgress] Refreshing goal progress in sidebar...')
+      
+      // Fetch fresh goal data
+      const response = await api.workspaceGoals.getAll(workspaceId, {})
+      const freshGoals = response?.goals || []
+      
+      if (freshGoals.length === 0) {
+        console.log('📋 [refreshGoalProgress] No goals found, skipping progress refresh')
+        return
+      }
+      
+      // Update chat progress for goal-based chats
+      setChats(prevChats => prevChats.map(chat => {
+        if (chat.type === 'dynamic' && chat.objective) {
+          // Find the corresponding fresh goal data
+          const freshGoal = freshGoals.find(goal => goal.id === chat.objective?.id)
+          
+          if (freshGoal) {
+            // Calculate fresh progress
+            const freshProgress = freshGoal.target_value > 0 
+              ? (freshGoal.current_value / freshGoal.target_value) * 100 
+              : 0
+            
+            console.log(`📊 [refreshGoalProgress] Updated progress for "${chat.title}": ${chat.objective.progress}% → ${Math.min(freshProgress, 100)}%`)
+            
+            return {
+              ...chat,
+              objective: {
+                ...chat.objective,
+                progress: Math.min(freshProgress, 100) // Cap at 100%
+              },
+              status: freshGoal.status === 'completed' ? 'completed' : 
+                      freshGoal.status === 'active' ? 'active' : 'inactive'
+            }
+          }
+        }
+        return chat
+      }))
+      
+    } catch (error) {
+      console.error('❌ [refreshGoalProgress] Failed to refresh goal progress:', error)
+    }
+  }, [workspaceId])
+
+  // Initial goal progress refresh after workspace loads
+  useEffect(() => {
+    if (!loading && workspaceContext) {
+      console.log('🔄 [useEffect] Workspace loaded, triggering initial goal progress refresh...')
+      setTimeout(() => {
+        refreshGoalProgress()
+      }, 1000) // Small delay to let all data settle
+    }
+  }, [loading, workspaceContext, refreshGoalProgress])
+
+  // Auto-refresh artifacts and goal progress periodically
   useEffect(() => {
     const interval = setInterval(() => {
       if (!loading && workspaceContext) {
         loadArtifacts()
+        refreshGoalProgress() // 🔧 FIX: Also refresh goal progress in sidebar
       }
     }, 30000) // Every 30 seconds
 
     return () => clearInterval(interval)
-  }, [loading, workspaceContext, loadArtifacts])
+  }, [loading, workspaceContext, loadArtifacts, refreshGoalProgress])
 
   return {
     // State
@@ -1440,6 +1506,7 @@ export function useConversationalWorkspace(workspaceId: string) {
     reactivateChat,
     renameChat,
     refreshData,
+    refreshGoalProgress, // 🔧 FIX: Export goal progress refresh function
     refreshMessages: () => activeChat ? loadDynamicChatData(activeChat) : Promise.resolve()
   }
 }

@@ -244,7 +244,7 @@ async def get_team_expansion_suggestions(workspace_id: UUID):
         
         # Recupera team corrente
         agents = await db_list_agents(str(workspace_id))
-        current_roles = [agent["role"] for agent in agents if agent.get("status") == "active"]
+        current_roles = [agent["role"] for agent in agents if agent.get("status") == "available"]
         
         suggestions = []
         
@@ -273,7 +273,7 @@ async def get_team_expansion_suggestions(workspace_id: UUID):
         # Suggerimenti per cross-training esistenti
         cross_training_suggestions = []
         for agent in agents:
-            if agent.get("status") == "active":
+            if agent.get("status") == "available":
                 # Trova le delegazioni fallite che potrebbero essere gestite con training
                 compatible_roles = _find_compatible_missing_roles(agent["role"], bottlenecks)
                 if compatible_roles:
