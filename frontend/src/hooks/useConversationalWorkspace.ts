@@ -314,7 +314,27 @@ export function useConversationalWorkspace(workspaceId: string) {
       // This prevents cluttering the general artifacts view
 
       console.log('📦 [loadArtifacts] Final artifacts:', artifacts)
-      setArtifacts(artifacts)
+      
+      // Preserve existing inline artifacts (like tools_overview) when loading
+      setArtifacts(prev => {
+        console.log('📦 [loadArtifacts] Previous artifacts count:', prev.length)
+        
+        // Find inline artifacts that should be preserved
+        const inlineArtifacts = prev.filter(artifact => 
+          artifact.id === 'available-tools' || 
+          artifact.id === 'project-description'
+        )
+        
+        console.log('📦 [loadArtifacts] Preserving inline artifacts:', inlineArtifacts.length)
+        
+        // Merge new artifacts with preserved inline artifacts
+        const existingIds = new Set(inlineArtifacts.map(a => a.id))
+        const newArtifacts = artifacts.filter(a => !existingIds.has(a.id))
+        const mergedArtifacts = [...inlineArtifacts, ...newArtifacts]
+        
+        console.log('📦 [loadArtifacts] Merged artifacts count:', mergedArtifacts.length)
+        return mergedArtifacts
+      })
     } catch (error) {
       console.error('Failed to load artifacts:', error)
     }
@@ -431,10 +451,12 @@ export function useConversationalWorkspace(workspaceId: string) {
             
             setArtifacts(prev => {
               console.log('🎯 [sendMessage] Previous artifacts count:', prev.length)
+              console.log('🎯 [sendMessage] Previous artifacts:', prev.map(a => ({id: a.id, type: a.type})))
               const filtered = prev.filter(a => a.id !== 'available-tools')
               const newArtifacts = [...filtered, toolsArtifact]
               console.log('🎯 [sendMessage] New artifacts count:', newArtifacts.length)
-              console.log('🎯 [sendMessage] Tools artifact content in state:', toolsArtifact.content)
+              console.log('🎯 [sendMessage] Tools artifact content tools count:', toolsArtifact.content?.tools?.length || 0)
+              console.log('🎯 [sendMessage] Adding artifact with ID:', toolsArtifact.id)
               return newArtifacts
             })
           } else if (artifactType === 'project_description') {
