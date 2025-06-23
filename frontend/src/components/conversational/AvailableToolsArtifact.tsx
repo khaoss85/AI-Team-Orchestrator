@@ -48,11 +48,6 @@ export default function AvailableToolsArtifact({
   const [activeTab, setActiveTab] = useState<'tools' | 'integrations'>('tools')
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
 
-  // Debug logging
-  console.log('🛠️ [AvailableToolsArtifact] Received toolsData:', toolsData)
-  console.log('🛠️ [AvailableToolsArtifact] Tools count:', toolsData?.tools?.length || 0)
-  console.log('🛠️ [AvailableToolsArtifact] Categories:', Object.keys(toolsData?.categories || {}))
-  console.log('🛠️ [AvailableToolsArtifact] Integrations count:', toolsData?.integrations?.length || 0)
 
   const handleToolExecute = (toolName: string, parameters?: Record<string, any>) => {
     if (onToolExecute) {
@@ -68,13 +63,6 @@ export default function AvailableToolsArtifact({
         <p className="text-gray-600 text-sm">
           <span className="font-medium">{toolsData?.tools?.length || 0}</span> native tools available
         </p>
-        {/* Debug info */}
-        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <div>Debug: toolsData type: {typeof toolsData}</div>
-          <div>Debug: toolsData keys: {toolsData ? Object.keys(toolsData).join(', ') : 'null'}</div>
-          <div>Debug: tools property: {toolsData?.tools ? 'exists' : 'missing'}</div>
-          <div>Debug: tools length: {toolsData?.tools?.length || 'N/A'}</div>
-        </div>
       </div>
 
       {/* Simplified Tabs */}
@@ -147,15 +135,11 @@ interface ToolsTabProps {
 }
 
 function ToolsTab({ categories, expandedCategory, onToggleCategory, onToolExecute }: ToolsTabProps) {
-  console.log('🔧 [ToolsTab] Categories received:', categories)
-  console.log('🔧 [ToolsTab] Categories count:', Object.keys(categories || {}).length)
-  
   if (!categories || Object.keys(categories).length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         <div className="text-2xl mb-2">🔧</div>
         <div>No tool categories available</div>
-        <div className="text-xs mt-2">Debug: categories = {JSON.stringify(categories)}</div>
       </div>
     )
   }
