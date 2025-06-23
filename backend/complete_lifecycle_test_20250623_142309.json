@@ -1,0 +1,25 @@
+{
+  "test_type": "complete_lifecycle",
+  "execution_time": {
+    "start": "2025-06-23T14:21:27.584083",
+    "end": "2025-06-23T14:23:09.011380",
+    "duration_seconds": 101.427297
+  },
+  "metrics": {
+    "steps_completed": 8,
+    "total_steps": 10,
+    "goals_created": 3,
+    "goals_completed": 0,
+    "tasks_created": 0,
+    "tasks_completed": 0,
+    "quality_iterations": 0,
+    "deliverables_created": 0,
+    "final_success": false
+  },
+  "workspace_id": "12a97663-a9c1-4501-8763-1b534e0d9a69",
+  "goals_extracted": 0,
+  "team_agents": 3,
+  "tasks_generated": 0,
+  "completed_tasks": 0,
+  "deliverables": 0
+}
