@@ -146,6 +146,7 @@ export default function AvailableToolsArtifact({
             expandedCategory={expandedCategory}
             onToggleCategory={setExpandedCategory}
             onToolExecute={handleToolExecute}
+            onToolClick={handleToolClick}
             slashCommands={toolsData.slash_commands || []}
           />
         )}
@@ -239,9 +240,10 @@ interface ToolsTabProps {
   expandedCategory: string | null
   onToggleCategory: (category: string | null) => void
   onToolExecute: (toolName: string, parameters?: Record<string, any>) => void
+  onToolClick: (tool: ToolData) => void
 }
 
-function ToolsTab({ categories, expandedCategory, onToggleCategory, onToolExecute }: ToolsTabProps) {
+function ToolsTab({ categories, expandedCategory, onToggleCategory, onToolExecute, onToolClick }: ToolsTabProps) {
   if (!categories || Object.keys(categories).length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
