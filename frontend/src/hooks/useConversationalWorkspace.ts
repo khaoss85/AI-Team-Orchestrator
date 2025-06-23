@@ -326,9 +326,9 @@ export function useConversationalWorkspace(workspaceId: string) {
 
     setSendingMessage(true)
     
-    // Add user message immediately
+    // Add user message immediately with guaranteed unique ID
     const userMessage: ConversationMessage = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'user',
       content,
       timestamp: new Date().toISOString()
@@ -393,6 +393,63 @@ export function useConversationalWorkspace(workspaceId: string) {
       let extractedThinkingSteps: any[] = []
       let extractedSuggestedActions: any[] = []
       
+      // First check if message contains inline artifacts
+      // Fixed: Use a more comprehensive pattern that handles nested JSON
+      const artifactPattern = /\*\*ARTIFACT:(\w+):(.*?)\*\*(?!\*)/gs
+      let match
+      const inlineArtifacts: any[] = []
+      
+      while ((match = artifactPattern.exec(apiResult.response.message)) !== null) {
+        const [fullMatch, artifactType, artifactData] = match
+        console.log('🔍 [sendMessage] Extracting artifact:', artifactType)
+        console.log('🔍 [sendMessage] Raw artifact data length:', artifactData.length)
+        console.log('🔍 [sendMessage] Raw artifact data preview:', artifactData.substring(0, 100))
+        try {
+          const parsedData = JSON.parse(artifactData)
+          console.log('📦 [sendMessage] Successfully parsed inline artifact:', artifactType)
+          console.log('📦 [sendMessage] Parsed data keys:', Object.keys(parsedData))
+          if (artifactType === 'tools_overview') {
+            console.log('🛠️ [sendMessage] Tools count in parsed data:', parsedData.tools?.length || 0)
+          }
+          
+          if (artifactType === 'tools_overview') {
+            // Update the available-tools artifact
+            const toolsArtifact: DeliverableArtifact = {
+              id: 'available-tools',
+              type: 'tools',
+              title: 'Available Tools',
+              description: 'Tools and integrations available to the team',
+              status: 'ready',
+              content: parsedData,
+              lastUpdated: new Date().toISOString()
+            }
+            setArtifacts(prev => {
+              const filtered = prev.filter(a => a.id !== 'available-tools')
+              return [...filtered, toolsArtifact]
+            })
+          } else if (artifactType === 'project_description') {
+            // Handle project description artifacts
+            const projectArtifact: DeliverableArtifact = {
+              id: 'project-description',
+              type: 'project_description',
+              title: 'Project Overview',
+              description: 'AI-generated project analysis and objectives',
+              status: 'ready',
+              content: parsedData,
+              lastUpdated: new Date().toISOString()
+            }
+            setArtifacts(prev => {
+              const filtered = prev.filter(a => a.id !== 'project-description')
+              return [...filtered, projectArtifact]
+            })
+          }
+          
+          inlineArtifacts.push({ type: artifactType, data: parsedData })
+        } catch (e) {
+          console.error('❌ [sendMessage] Failed to parse inline artifact:', artifactType, e)
+        }
+      }
+      
       if (apiResult.response.artifacts && apiResult.response.artifacts.length > 0) {
         console.log('🎨 [sendMessage] AI provided artifacts:', apiResult.response.artifacts)
         
@@ -415,11 +472,15 @@ export function useConversationalWorkspace(workspaceId: string) {
         console.log('⚡ [sendMessage] Found suggested actions:', extractedSuggestedActions.length)
       }
 
-      // Add AI response message
+      // Remove inline artifact patterns from the message for cleaner display
+      let cleanedMessage = apiResult.response.message
+      cleanedMessage = cleanedMessage.replace(/\*\*ARTIFACT:(\w+):(.+?)\*\*/g, '')
+      
+      // Add AI response message with guaranteed unique ID
       const aiMessage: ConversationMessage = {
-        id: apiResult.message_id || (Date.now() + 1).toString(),
+        id: apiResult.message_id || `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: 'team',
-        content: apiResult.response.message,
+        content: cleanedMessage,
         timestamp: apiResult.timestamp || new Date().toISOString(),
         metadata: {
           teamMember: 'AI Assistant',
@@ -449,9 +510,9 @@ export function useConversationalWorkspace(workspaceId: string) {
     } catch (error) {
       console.error('❌ [sendMessage] Failed to send message:', error)
       
-      // Add error message
+      // Add error message with guaranteed unique ID
       const errorMessage: ConversationMessage = {
-        id: (Date.now() + 2).toString(),
+        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: 'system',
         content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
         timestamp: new Date().toISOString()
@@ -496,7 +557,7 @@ export function useConversationalWorkspace(workspaceId: string) {
       // Send initial AI greeting
       setTimeout(() => {
         const greetingMessage: ConversationMessage = {
-          id: Date.now().toString(),
+          id: `greeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           type: 'team',
           content: `Great! I understand you want to work on: "${objective}"\n\nLet me analyze this objective and propose how our team can help you achieve it. What specific aspects would you like to focus on first?`,
           timestamp: new Date().toISOString(),
@@ -912,21 +973,77 @@ export function useConversationalWorkspace(workspaceId: string) {
           break
 
         default:
-          // For dynamic chats, load objective-specific artifacts
+          // For dynamic chats, load objective-specific artifacts with full database data
           if (chat.type === 'dynamic' && chat.objective) {
-            chatArtifacts.push({
-              id: `objective-${chat.id}`,
-              type: 'objective',
-              title: chat.title,
-              description: chat.objective.description,
-              status: 'in_progress',
-              content: {
+            try {
+              // Load complete goal data from database including metadata
+              const goalId = chat.objective.id || chat.id.replace('goal-', '')
+              console.log('🎯 [loadChatSpecificArtifacts] Loading goal data for:', goalId)
+              
+              // First try to get the goal directly
+              let fullGoalData = null
+              try {
+                const goalResponse = await fetch(`http://localhost:8000/workspace-goals/${goalId}`)
+                if (goalResponse.ok) {
+                  fullGoalData = await goalResponse.json()
+                  console.log('📊 [loadChatSpecificArtifacts] Full goal data loaded:', fullGoalData)
+                }
+              } catch (error) {
+                console.warn('⚠️ [loadChatSpecificArtifacts] Could not load individual goal:', error)
+              }
+              
+              // Fallback: load all goals and find this one
+              if (!fullGoalData) {
+                const allGoals = await api.workspaceGoals.getAll(workspaceId, {})
+                const goalsArray = Array.isArray(allGoals) ? allGoals : (allGoals?.goals || [])
+                fullGoalData = goalsArray.find((g: any) => g.id === goalId || `goal-${g.id}` === chat.id)
+                console.log('📋 [loadChatSpecificArtifacts] Goal found in array:', fullGoalData)
+              }
+              
+              const content = {
                 objective: chat.objective,
-                progress: 0,
-                deliverables: []
-              },
-              lastUpdated: new Date().toISOString()
-            })
+                progress: fullGoalData ? Math.min((fullGoalData.current_value / fullGoalData.target_value) * 100, 100) : 0,
+                deliverables: [],
+                // Include full goal metadata
+                goal_data: fullGoalData,
+                metadata: fullGoalData?.metadata || {},
+                target_value: fullGoalData?.target_value,
+                current_value: fullGoalData?.current_value,
+                metric_type: fullGoalData?.metric_type,
+                status: fullGoalData?.status,
+                priority: fullGoalData?.priority,
+                created_at: fullGoalData?.created_at,
+                updated_at: fullGoalData?.updated_at
+              }
+              
+              chatArtifacts.push({
+                id: `objective-${chat.id}`,
+                type: 'objective',
+                title: chat.title,
+                description: chat.objective.description,
+                status: fullGoalData?.status === 'completed' ? 'completed' : 'in_progress',
+                content,
+                metadata: fullGoalData?.metadata || {},
+                lastUpdated: fullGoalData?.updated_at || new Date().toISOString()
+              })
+            } catch (error) {
+              console.error('❌ [loadChatSpecificArtifacts] Failed to load goal data:', error)
+              // Fallback to basic artifact
+              chatArtifacts.push({
+                id: `objective-${chat.id}`,
+                type: 'objective',
+                title: chat.title,
+                description: chat.objective.description,
+                status: 'in_progress',
+                content: {
+                  objective: chat.objective,
+                  progress: 0,
+                  deliverables: [],
+                  error: 'Could not load full goal data'
+                },
+                lastUpdated: new Date().toISOString()
+              })
+            }
           }
           break
       }
@@ -997,7 +1114,7 @@ export function useConversationalWorkspace(workspaceId: string) {
 
     if (welcomeMessages[chat.id]) {
       const welcomeMessage: ConversationMessage = {
-        id: `welcome-${chat.id}`,
+        id: `welcome-${chat.id}-${Date.now()}`,
         type: 'team',
         content: welcomeMessages[chat.id],
         timestamp: new Date().toISOString(),
@@ -1021,19 +1138,26 @@ export function useConversationalWorkspace(workspaceId: string) {
         const conversationHistory = await response.json()
         console.log('✅ [loadDynamicChatData] API conversation history loaded:', conversationHistory)
         
-        // Convert API messages to UI format
-        const convertedMessages: ConversationMessage[] = conversationHistory.map((msg: any) => ({
-          id: msg.message_id || msg.id,
-          type: msg.role === 'user' ? 'user' : 'team',
-          content: msg.content,
-          timestamp: msg.created_at,
-          metadata: {
-            teamMember: msg.role === 'user' ? 'You' : 'AI Assistant',
-            thinking_steps: msg.metadata?.thinking_steps || [],
-            deep_analysis: msg.metadata?.deep_analysis,
-            ...(msg.metadata || {})
-          }
-        }))
+        // Convert API messages to UI format with unique IDs and deduplication
+        const convertedMessages: ConversationMessage[] = conversationHistory
+          .map((msg: any, index: number) => ({
+            id: msg.message_id || msg.id || `msg-${msg.created_at}-${index}`,
+            type: msg.role === 'user' ? 'user' : 'team',
+            content: msg.content,
+            timestamp: msg.created_at,
+            metadata: {
+              teamMember: msg.role === 'user' ? 'You' : 'AI Assistant',
+              thinking_steps: msg.metadata?.thinking_steps || [],
+              deep_analysis: msg.metadata?.deep_analysis,
+              ...(msg.metadata || {})
+            }
+          }))
+          .filter((message, index, array) => {
+            // Remove duplicates based on ID
+            return array.findIndex(m => m.id === message.id) === index
+          })
+        
+        console.log('✅ [loadDynamicChatData] Converted messages (deduplicated):', convertedMessages.length)
         
         if (convertedMessages.length > 0) {
           setMessages(convertedMessages)
@@ -1052,7 +1176,7 @@ export function useConversationalWorkspace(workspaceId: string) {
         // For goal chats, start with welcome message and auto-trigger goal analysis
         if (chat.id.startsWith('goal-')) {
           const goalWelcomeMessage: ConversationMessage = {
-            id: `welcome-${chat.id}`,
+            id: `welcome-${chat.id}-${Date.now()}`,
             type: 'team',
             content: `🎯 **Goal Progress Analysis**\n\nLet me analyze the current progress for: **${chat.title}**\n\nI'll check task execution, deliverables, and team performance for this objective.`,
             timestamp: new Date().toISOString(),
@@ -1103,9 +1227,9 @@ export function useConversationalWorkspace(workspaceId: string) {
                   setSuggestedActions(result.response.suggested_actions)
                 }
                 
-                // Add the AI response message
+                // Add the AI response message with guaranteed unique ID
                 const aiMessage: ConversationMessage = {
-                  id: result.message_id || `auto-analysis-${Date.now()}`,
+                  id: result.message_id || `auto-analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                   type: 'team',
                   content: result.response.message,
                   timestamp: result.timestamp || new Date().toISOString(),
