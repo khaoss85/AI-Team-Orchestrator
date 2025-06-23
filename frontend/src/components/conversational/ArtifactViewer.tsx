@@ -7,6 +7,8 @@ import ConfigurationArtifact from './ConfigurationArtifact'
 import FeedbackRequestsArtifact from './FeedbackRequestsArtifact'
 import KnowledgeInsightsArtifact from './KnowledgeInsightsArtifact'
 import ProjectDescriptionArtifact from './ProjectDescriptionArtifact'
+import AvailableToolsArtifact from './AvailableToolsArtifact'
+import ObjectiveArtifact from './ObjectiveArtifact'
 
 interface ArtifactViewerProps {
   artifact: DeliverableArtifact
@@ -25,6 +27,12 @@ export default function ArtifactViewer({
 }: ArtifactViewerProps) {
   const [activeView, setActiveView] = useState<'content' | 'metadata' | 'actions'>('content')
 
+  // Check if this artifact type has a specialized component
+  const hasSpecializedComponent = [
+    'team_status', 'configuration', 'feedback', 'knowledge', 
+    'project_description', 'tools', 'objective'
+  ].includes(artifact.type)
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'deliverable': return '📦'
@@ -33,6 +41,8 @@ export default function ArtifactViewer({
       case 'configuration': return '⚙️'
       case 'feedback': return '💬'
       case 'knowledge': return '💡'
+      case 'tools': return '🛠️'
+      case 'objective': return '🎯'
       default: return '📄'
     }
   }
@@ -46,9 +56,44 @@ export default function ArtifactViewer({
     }
   }
 
+  // For specialized components, render with minimal header
+  if (hasSpecializedComponent) {
+    return (
+      <div className="h-full flex flex-col">
+        {/* Minimal Header for specialized components */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">{getTypeIcon(artifact.type)}</span>
+            <span className="text-sm text-gray-600">
+              {new Date(artifact.lastUpdated).toLocaleString()}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Direct specialized component content */}
+        <div className="flex-1 overflow-y-auto">
+          <ContentView 
+            artifact={artifact} 
+            workspaceId={workspaceId}
+            onArtifactUpdate={onArtifactUpdate}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // For generic artifacts, use full header with tabs
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
+      {/* Full Header for generic artifacts */}
       <div className="p-4 border-b">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-start space-x-3">
@@ -162,6 +207,12 @@ interface ContentViewProps {
 }
 
 function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewProps) {
+  // Check if this artifact type has a specialized component - if so, render without additional wrapper
+  const hasSpecializedComponent = [
+    'team_status', 'configuration', 'feedback', 'knowledge', 
+    'project_description', 'tools', 'objective'
+  ].includes(artifact.type)
+  
   // Use specialized components for specific artifact types
   if (artifact.type === 'team_status' && workspaceId) {
     // Extract team data and handoffs from artifact content
@@ -250,6 +301,32 @@ function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewPro
         projectData={projectData}
         content={content}
         workspaceId={workspaceId}
+      />
+    )
+  }
+
+  if (artifact.type === 'tools' && workspaceId) {
+    console.log('🛠️ [ArtifactViewer] Tools artifact content:', artifact.content)
+    console.log('🛠️ [ArtifactViewer] Full artifact:', artifact)
+    return (
+      <AvailableToolsArtifact
+        toolsData={artifact.content}
+        workspaceId={workspaceId}
+        onToolExecute={(toolName, parameters) => {
+          console.log('Tool execution requested:', toolName, parameters)
+          // In the future, this could trigger actual tool execution
+          // For now, just log the request
+        }}
+      />
+    )
+  }
+
+  if (artifact.type === 'objective' && workspaceId) {
+    return (
+      <ObjectiveArtifact
+        objectiveData={artifact.content}
+        workspaceId={workspaceId}
+        title={artifact.title}
       />
     )
   }
