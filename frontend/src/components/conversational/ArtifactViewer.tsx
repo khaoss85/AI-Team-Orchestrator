@@ -84,6 +84,7 @@ export default function ArtifactViewer({
             artifact={artifact} 
             workspaceId={workspaceId}
             onArtifactUpdate={onArtifactUpdate}
+            onSendMessage={onSendMessage}
           />
         </div>
       </div>
@@ -158,6 +159,7 @@ export default function ArtifactViewer({
             artifact={artifact} 
             workspaceId={workspaceId}
             onArtifactUpdate={onArtifactUpdate}
+            onSendMessage={onSendMessage}
           />
         )}
         
@@ -204,9 +206,10 @@ interface ContentViewProps {
   artifact: DeliverableArtifact
   workspaceId?: string
   onArtifactUpdate?: (updatedArtifact: DeliverableArtifact) => void
+  onSendMessage?: (message: string) => void
 }
 
-function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewProps) {
+function ContentView({ artifact, workspaceId, onArtifactUpdate, onSendMessage }: ContentViewProps) {
   // Check if this artifact type has a specialized component - if so, render without additional wrapper
   const hasSpecializedComponent = [
     'team_status', 'configuration', 'feedback', 'knowledge', 
