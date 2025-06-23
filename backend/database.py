@@ -488,7 +488,7 @@ async def create_agent(
             "name": name,
             "role": role,
             "seniority": seniority,
-            "status": "active",
+            "status": "available",  # 🔧 FIX: Use "available" status so agents can be found by task planner
             "health": {"status": "unknown", "last_update": datetime.now().isoformat()},
             "can_create_tools": can_create_tools
         }

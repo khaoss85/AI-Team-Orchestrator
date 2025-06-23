@@ -514,33 +514,74 @@ Be specific and avoid generic descriptions. Each goal must be actionable and mea
     
     def consolidate_goals(self, goals: List[ExtractedGoal]) -> List[ExtractedGoal]:
         """
-        🧠 Consolida goal duplicati o simili in goal unici
+        🧠 Consolida goal duplicati o simili in goal unici - ENHANCED VERSION
         """
         consolidated = {}
         
         for goal in goals:
-            # Create consolidation key based on metric_type + unit for better granularity
-            # This ensures "50 contatti ICP" and "3 sequenze email" remain separate
-            key = f"{goal.metric_type}_{goal.unit}_{goal.target_value}"
+            # 🔧 ENHANCED CONSOLIDATION: Merge goals with similar semantic meaning
+            # This prevents creating multiple goals for "contacts", "contact_list", "email_sequences"
+            
+            # Normalize metric type for better consolidation
+            normalized_metric = self._normalize_metric_type(goal.metric_type)
+            
+            # Create consolidation key with semantic normalization
+            key = f"{normalized_metric}_{goal.unit}"
             
             if key not in consolidated:
+                # Update metric_type to normalized version to prevent downstream duplicates
+                goal.metric_type = normalized_metric
                 consolidated[key] = goal
             else:
-                # Merge similar goals - take the higher value
+                # Merge similar goals - take the higher value and best description
                 existing = consolidated[key]
                 if goal.target_value > existing.target_value:
-                    consolidated[key] = goal
+                    # Update with higher target but keep best description
+                    existing.target_value = goal.target_value
+                    if len(goal.description) > len(existing.description):
+                        existing.description = goal.description
                 elif goal.confidence > existing.confidence:
-                    # Keep higher confidence goal
-                    consolidated[key] = goal
-                else:
-                    # Merge descriptions
-                    existing.description = f"{existing.description} + {goal.description}"
+                    # Keep higher confidence goal's description
+                    existing.description = goal.description
+                    existing.confidence = goal.confidence
+                
+                # Always merge semantic context for richer information
+                if existing.semantic_context and goal.semantic_context:
+                    existing.semantic_context.update(goal.semantic_context)
+                
+                logger.info(f"🔧 MERGED duplicate goal: {goal.metric_type} → {normalized_metric}")
         
         final_goals = list(consolidated.values())
-        logger.info(f"🎯 Consolidated {len(goals)} goals into {len(final_goals)} unique goals")
+        logger.info(f"🎯 ENHANCED: Consolidated {len(goals)} goals into {len(final_goals)} unique goals")
         
         return final_goals
+    
+    def _normalize_metric_type(self, metric_type: str) -> str:
+        """
+        🔧 Normalize similar metric types to prevent duplicates
+        """
+        # Normalize contact-related metrics
+        if metric_type in ["contacts", "contact_list", "contact_database"]:
+            return "contacts"
+        
+        # Normalize email-related metrics  
+        if metric_type in ["email_sequences", "email_sequence", "email_templates"]:
+            return "email_sequences"
+            
+        # Normalize setup/configuration metrics
+        if metric_type in ["hubspot_setup", "setup", "configuration"]:
+            return "hubspot_setup"
+            
+        # Normalize analysis metrics
+        if metric_type in ["audience_analysis", "analysis", "target_analysis"]:
+            return "audience_analysis"
+            
+        # Normalize monitoring metrics
+        if metric_type in ["performance_monitoring_framework", "monitoring", "tracking"]:
+            return "performance_monitoring_framework"
+        
+        # Return as-is for unique metrics
+        return metric_type
     
     def validate_goals(self, goals: List[ExtractedGoal]) -> List[ExtractedGoal]:
         """
