@@ -22,7 +22,8 @@ from database import (
     get_active_workspaces,
     get_workspaces_with_pending_tasks,
     update_workspace_status,
-    get_task
+    get_task,
+    supabase
 )
 from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
@@ -1582,9 +1583,20 @@ class TaskExecutor(AssetCoordinationMixin):
             if task_counts[TaskStatus.PENDING.value] > self.max_pending_tasks_per_workspace:
                 health_issues.append(f"Excessive pending: {task_counts[TaskStatus.PENDING.value]}/{self.max_pending_tasks_per_workspace}")
             
-            # Check velocità di creazione task
+            # 🎯 PILLAR 7: Intelligent task creation velocity monitoring
             creation_velocity = self._calculate_task_creation_velocity(all_tasks_db)
-            if creation_velocity > 5.0:
+            velocity_context = self._analyze_velocity_context(workspace_id, all_tasks_db, creation_velocity)
+            
+            # 🧠 Smart thresholds based on context
+            if velocity_context['is_legitimate_burst']:
+                # Allow legitimate initial task generation (team approval, goal analysis)
+                velocity_threshold = 50.0  # Much higher threshold for legitimate bursts
+                logger.info(f"🎯 Legitimate task burst detected for workspace {workspace_id}: {creation_velocity:.1f}/min (context: {velocity_context['context']})")
+            else:
+                # Normal operations - stricter threshold
+                velocity_threshold = 10.0  # Increased from 5.0 to be less sensitive
+            
+            if creation_velocity > velocity_threshold:
                 health_issues.append(f"High task creation: {creation_velocity:.1f}/min")
             
             # Check pattern ripetuti
@@ -1811,6 +1823,114 @@ class TaskExecutor(AssetCoordinationMixin):
             score -= min(pattern_analysis['failed_handoffs'] * 2, 10)
         
         return max(0.0, min(100.0, score))
+    
+    def _analyze_velocity_context(self, workspace_id: str, all_tasks_db: List[Dict], velocity: float) -> Dict[str, Any]:
+        """
+        🧠 PILLAR 7: Intelligent velocity context analysis
+        Distinguishes between legitimate task bursts and problematic runaway generation
+        """
+        if not all_tasks_db or velocity <= 10.0:
+            return {"is_legitimate_burst": False, "context": "normal_velocity"}
+        
+        # Analyze task creation pattern in the last 10 minutes
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        recent_cutoff = now - timedelta(minutes=10)
+        
+        recent_tasks = []
+        for task in all_tasks_db:
+            try:
+                created_at_str = task.get("created_at", "")
+                if created_at_str:
+                    # Handle both ISO format and timezone-aware formats
+                    if created_at_str.endswith('Z'):
+                        created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                    elif '+' in created_at_str or created_at_str.endswith('UTC'):
+                        created_at = datetime.fromisoformat(created_at_str.replace('UTC', '').strip())
+                    else:
+                        created_at = datetime.fromisoformat(created_at_str)
+                    
+                    if created_at >= recent_cutoff:
+                        recent_tasks.append(task)
+            except (ValueError, TypeError):
+                continue
+        
+        if not recent_tasks:
+            return {"is_legitimate_burst": False, "context": "no_recent_tasks"}
+        
+        # 🎯 LEGITIMATE BURST INDICATORS
+        
+        # 1. Initial Goal Analysis Pattern (multiple goals processed simultaneously)
+        goal_driven_tasks = [t for t in recent_tasks if t.get("context_data", {}).get("is_goal_driven")]
+        different_goals = set(t.get("goal_id") for t in goal_driven_tasks if t.get("goal_id"))
+        
+        if len(different_goals) >= 3 and len(goal_driven_tasks) >= 10:
+            return {
+                "is_legitimate_burst": True, 
+                "context": f"initial_goal_analysis_{len(different_goals)}_goals_{len(goal_driven_tasks)}_tasks"
+            }
+        
+        # 2. Team Approval Pattern (tasks created immediately after team approval)
+        auto_generated = [t for t in recent_tasks if t.get("context_data", {}).get("auto_generated")]
+        if len(auto_generated) >= 10 and len(recent_tasks) == len(auto_generated):
+            return {
+                "is_legitimate_burst": True,
+                "context": f"team_approval_burst_{len(auto_generated)}_auto_tasks"
+            }
+        
+        # 3. Strategic Decomposition Pattern (tasks with strategic context)
+        strategic_tasks = [t for t in recent_tasks if 
+                          t.get("context_data", {}).get("is_strategic_deliverable") or
+                          "strategic" in str(t.get("context_data", {})).lower()]
+        
+        if len(strategic_tasks) >= 8:
+            return {
+                "is_legitimate_burst": True,
+                "context": f"strategic_decomposition_{len(strategic_tasks)}_strategic_tasks"
+            }
+        
+        # 4. Check for agent assignment (legitimate tasks should have agents)
+        assigned_tasks = [t for t in recent_tasks if t.get("agent_id")]
+        assignment_ratio = len(assigned_tasks) / len(recent_tasks) if recent_tasks else 0
+        
+        if assignment_ratio >= 0.8:  # 80% of tasks have agents assigned
+            return {
+                "is_legitimate_burst": True,
+                "context": f"proper_assignment_{assignment_ratio:.1%}_assigned"
+            }
+        
+        # 🚨 RUNAWAY INDICATORS
+        
+        # 1. Duplicate task names
+        task_names = [t.get("name", "") for t in recent_tasks]
+        unique_names = set(task_names)
+        if len(unique_names) < len(task_names) * 0.5:  # Less than 50% unique names
+            return {
+                "is_legitimate_burst": False,
+                "context": f"duplicate_names_{len(unique_names)}_unique_of_{len(task_names)}_total"
+            }
+        
+        # 2. Too many orphaned tasks
+        orphaned_ratio = (len(recent_tasks) - len(assigned_tasks)) / len(recent_tasks)
+        if orphaned_ratio > 0.3:  # More than 30% orphaned
+            return {
+                "is_legitimate_burst": False,
+                "context": f"high_orphaned_{orphaned_ratio:.1%}_orphaned"
+            }
+        
+        # 3. No context data (may indicate template/fallback generation)
+        no_context_tasks = [t for t in recent_tasks if not t.get("context_data")]
+        if len(no_context_tasks) > len(recent_tasks) * 0.5:
+            return {
+                "is_legitimate_burst": False,
+                "context": f"missing_context_{len(no_context_tasks)}_of_{len(recent_tasks)}_no_context"
+            }
+        
+        # Default: not clearly legitimate
+        return {
+            "is_legitimate_burst": False,
+            "context": f"unclear_pattern_{len(recent_tasks)}_recent_tasks"
+        }
 
     async def periodic_runaway_check(self):
         """Controllo periodico per rilevare workspace in runaway"""
@@ -1833,14 +1953,42 @@ class TaskExecutor(AssetCoordinationMixin):
                 issues = health_status.get('health_issues', [])
                 pending = health_status.get('task_counts', {}).get(TaskStatus.PENDING.value, 0)
                 
-                # Condizioni critiche che richiedono pausa automatica
-                critical = (
-                    health_score < 30 or
-                    pending > (self.max_pending_tasks_per_workspace * 1.5) or
-                    any('high task creation rate' in i.lower() and 
-                        float(i.split(':')[-1].replace('/min', '').strip()) > 7.0 
-                        for i in issues if 'high task creation rate' in i.lower())
-                )
+                # 🧠 PILLAR 7: Intelligent critical condition detection
+                # Only pause for truly problematic patterns, not legitimate bursts
+                critical = False
+                
+                if health_score < 30:
+                    critical = True
+                elif pending > (self.max_pending_tasks_per_workspace * 2.0):  # Increased tolerance
+                    critical = True
+                else:
+                    # Check for runaway task creation (not legitimate bursts)
+                    for issue in issues:
+                        if 'high task creation' in issue.lower():
+                            try:
+                                # Extract velocity from issue like "High task creation: 1113.8/min"
+                                velocity_str = issue.split(':')[-1].replace('/min', '').strip()
+                                velocity = float(velocity_str)
+                                
+                                # Only critical if velocity is extreme AND no legitimate context found
+                                if velocity > 50.0:  # Much higher threshold
+                                    # Get velocity context for this workspace
+                                    all_tasks_response = supabase.table("tasks").select("*").eq(
+                                        "workspace_id", ws_id
+                                    ).order("created_at", desc=True).limit(100).execute()
+                                    
+                                    velocity_context = self._analyze_velocity_context(
+                                        ws_id, all_tasks_response.data or [], velocity
+                                    )
+                                    
+                                    if not velocity_context.get('is_legitimate_burst', False):
+                                        logger.warning(f"🚨 Runaway detected for {ws_id}: {velocity}/min, context: {velocity_context['context']}")
+                                        critical = True
+                                    else:
+                                        logger.info(f"🎯 Legitimate burst for {ws_id}: {velocity}/min, context: {velocity_context['context']}")
+                                        
+                            except (ValueError, IndexError, AttributeError):
+                                continue
 
                 if critical and ws_id not in self.workspace_auto_generation_paused:
                     reason = f"Runaway: Score={health_score}, Pending={pending}, Issues:{issues[:2]}"

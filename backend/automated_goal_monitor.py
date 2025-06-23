@@ -232,58 +232,11 @@ class AutomatedGoalMonitor:
     async def _classify_metric_type_ai(self, universal_metric_type: str) -> str:
         """
         🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification
-        Uses LLM reasoning to classify metric types universally without hard-coding business domains
+        Uses the same resilient multi-layered system as goal_driven_task_planner
         """
-        if not universal_metric_type:
-            return 'quantified_outputs'  # Universal fallback
-            
-        try:
-            from utils.model_settings_factory import create_model_settings
-            import openai
-            
-            # Create LLM client for classification
-            model_settings = create_model_settings()
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            # AI-driven classification prompt (universal, no domain bias)
-            classification_prompt = f"""
-You are a universal metric type classifier. Given a metric type string, classify it into a generic category.
-
-Metric to classify: "{universal_metric_type}"
-
-Classify into ONE of these universal categories based on the content meaning:
-- "quantified_outputs" (countable deliverables, items, units produced)
-- "quality_measures" (scores, ratings, performance indicators)  
-- "time_based_metrics" (deadlines, duration, timeline goals)
-- "engagement_metrics" (interactions, responses, participation rates)
-- "completion_metrics" (percentage complete, milestones achieved)
-
-Return ONLY the category name, no explanation.
-"""
-            
-            response = await client.chat.completions.acreate(
-                model=model_settings.model,
-                messages=[{"role": "user", "content": classification_prompt}],
-                max_tokens=50,
-                temperature=0.1  # Low temperature for consistent classification
-            )
-            
-            ai_classification = response.choices[0].message.content.strip()
-            
-            # Validate AI response is one of expected categories
-            valid_categories = ["quantified_outputs", "quality_measures", "time_based_metrics", 
-                              "engagement_metrics", "completion_metrics"]
-            
-            if ai_classification in valid_categories:
-                logger.info(f"🤖 AI classified '{universal_metric_type}' → '{ai_classification}'")
-                return ai_classification
-            else:
-                logger.warning(f"🤖 AI returned invalid category '{ai_classification}', falling back to universal default")
-                return "quantified_outputs"  # Universal fallback
-                
-        except Exception as e:
-            logger.warning(f"🤖 AI classification failed for '{universal_metric_type}': {e}, using universal fallback")
-            return "quantified_outputs"  # Universal fallback
+        # Delegate to the task planner's robust classification system
+        from goal_driven_task_planner import goal_driven_task_planner
+        return await goal_driven_task_planner._classify_metric_type_ai(universal_metric_type)
     
     async def _create_corrective_tasks(
         self, 
@@ -665,6 +618,35 @@ Return ONLY the category name, no explanation.
         logger.info(f"🎯 IMMEDIATE goal analysis triggered for workspace {workspace_id}")
         
         try:
+            # 🛡️ ENHANCED DUPLICATE PREVENTION: Use workspace status as a lock
+            workspace_response = supabase.table("workspaces").select("status").eq(
+                "id", workspace_id
+            ).single().execute()
+            
+            if not workspace_response.data:
+                logger.error(f"❌ Workspace {workspace_id} not found")
+                return {"success": False, "reason": "workspace_not_found"}
+            
+            current_status = workspace_response.data.get("status")
+            
+            # If workspace is already processing tasks, skip
+            if current_status == "processing_tasks":
+                logger.info(f"🔄 Workspace {workspace_id} is already processing tasks - skipping duplicate analysis")
+                return {
+                    "success": True,
+                    "workspace_id": workspace_id,
+                    "reason": "already_processing",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            # Set workspace status to processing to prevent concurrent task creation
+            supabase.table("workspaces").update({
+                "status": "processing_tasks",
+                "updated_at": datetime.now().isoformat()
+            }).eq("id", workspace_id).execute()
+            
+            logger.info(f"🔒 Locked workspace {workspace_id} for task generation")
+            
             # 🛡️ DUPLICATE PREVENTION: Check if tasks already exist for this workspace
             existing_tasks_response = supabase.table("tasks").select("id").eq(
                 "workspace_id", workspace_id
@@ -675,6 +657,13 @@ Return ONLY the category name, no explanation.
             existing_tasks = existing_tasks_response.data or []
             if len(existing_tasks) > 0:
                 logger.info(f"🔄 Workspace {workspace_id} already has {len(existing_tasks)} active tasks - skipping immediate goal analysis")
+                
+                # Reset workspace status
+                supabase.table("workspaces").update({
+                    "status": "active",
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", workspace_id).execute()
+                
                 return {
                     "success": True,
                     "workspace_id": workspace_id,
@@ -693,6 +682,13 @@ Return ONLY the category name, no explanation.
             workspace_goals = response.data
             if not workspace_goals:
                 logger.warning(f"No active goals found for immediate analysis in workspace {workspace_id}")
+                
+                # Reset workspace status
+                supabase.table("workspaces").update({
+                    "status": "active",
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", workspace_id).execute()
+                
                 return {"success": False, "reason": "no_active_goals"}
             
             # 2. Use goal-driven task planner to create initial tasks
@@ -710,7 +706,15 @@ Return ONLY the category name, no explanation.
                 
                 initial_tasks.extend(goal_tasks)
             
-            # 3. Log success
+            # 3. Reset workspace status to active after task creation
+            supabase.table("workspaces").update({
+                "status": "active",
+                "updated_at": datetime.now().isoformat()
+            }).eq("id", workspace_id).execute()
+            
+            logger.info(f"🔓 Unlocked workspace {workspace_id} after task generation")
+            
+            # 4. Log success
             logger.info(f"✅ Immediate analysis complete: {len(initial_tasks)} tasks created for {len(workspace_goals)} goals")
             
             return {
@@ -724,6 +728,17 @@ Return ONLY the category name, no explanation.
             
         except Exception as e:
             logger.error(f"❌ Error in immediate goal analysis for workspace {workspace_id}: {e}")
+            
+            # Always reset workspace status on error
+            try:
+                supabase.table("workspaces").update({
+                    "status": "active",
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", workspace_id).execute()
+                logger.info(f"🔓 Reset workspace {workspace_id} status after error")
+            except:
+                pass
+            
             return {
                 "success": False,
                 "workspace_id": workspace_id,

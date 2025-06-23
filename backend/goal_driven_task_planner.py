@@ -418,56 +418,151 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
     
     async def _classify_metric_type_ai(self, universal_metric_type: str) -> str:
         """
-        🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification
-        Uses LLM reasoning to classify metric types universally without hard-coding business domains
+        🌍 PILLAR 2 & 3 COMPLIANCE: Resilient Universal AI Classification
+        
+        Multi-layered classification system:
+        1. AI-driven semantic understanding (preferred)
+        2. Pattern-based semantic analysis (fallback) 
+        3. Universal default (ultimate fallback)
+        
+        Designed to work across all business domains without hard-coding
         """
+        if not universal_metric_type:
+            return self._get_semantic_fallback("")
+        
+        # 🤖 LAYER 1: AI-Driven Classification (Preferred)
+        ai_result = await self._attempt_ai_classification(universal_metric_type)
+        if ai_result:
+            return ai_result
+        
+        # 🧠 LAYER 2: Semantic Pattern Analysis (Intelligent Fallback)
+        semantic_result = self._classify_by_semantic_patterns(universal_metric_type)
+        if semantic_result != "quantified_outputs":  # Only use if we found a specific pattern
+            logger.info(f"🧠 Semantic classification: '{universal_metric_type}' → '{semantic_result}'")
+            return semantic_result
+        
+        # 🌍 LAYER 3: Universal Default (Ultimate Fallback)
+        fallback_result = self._get_semantic_fallback(universal_metric_type)
+        logger.info(f"🌍 Universal fallback: '{universal_metric_type}' → '{fallback_result}'")
+        return fallback_result
+    
+    async def _attempt_ai_classification(self, metric_type: str) -> Optional[str]:
+        """🤖 Attempt AI classification with robust error handling"""
         try:
             from utils.model_settings_factory import create_model_settings
             import openai
             
-            # Create LLM client for classification
-            model_settings = create_model_settings()
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            # AI-driven classification prompt (universal, no domain bias)
-            classification_prompt = f"""
-You are a universal metric type classifier. Given a metric type string, classify it into a generic category.
-
-Metric to classify: "{universal_metric_type}"
-
-Classify into ONE of these universal categories based on the content meaning:
-- "quantified_outputs" (countable deliverables, items, units produced)
-- "quality_measures" (scores, ratings, performance indicators)  
-- "time_based_metrics" (deadlines, duration, timeline goals)
-- "engagement_metrics" (interactions, responses, participation rates)
-- "completion_metrics" (percentage complete, milestones achieved)
-
-Return ONLY the category name, no explanation.
-"""
-            
-            response = await client.chat.completions.acreate(
-                model=model_settings.model,
-                messages=[{"role": "user", "content": classification_prompt}],
-                max_tokens=50,
-                temperature=0.1  # Low temperature for consistent classification
+            # 🔧 PILLAR 3: Robust model settings with guaranteed attributes
+            model_settings = create_model_settings(
+                model="gpt-4o-mini",
+                temperature=0.1,
+                max_tokens=50
             )
             
-            ai_classification = response.choices[0].message.content.strip()
+            # Verify we have required attributes
+            if not hasattr(model_settings, 'model'):
+                logger.warning(f"🤖 ModelSettings missing 'model' attribute, skipping AI classification")
+                return None
             
-            # Validate AI response is one of expected categories
+            # Create OpenAI client
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            if not client.api_key:
+                logger.warning(f"🤖 No OpenAI API key available, skipping AI classification")
+                return None
+            
+            # 🌍 PILLAR 2: Universal classification prompt (domain-agnostic)
+            classification_prompt = f"""Classify this metric type into ONE category:
+
+Metric: "{metric_type}"
+
+Categories:
+- "quantified_outputs" (counts, lists, deliverables)
+- "quality_measures" (scores, ratings, percentages)  
+- "time_based_metrics" (deadlines, durations)
+- "engagement_metrics" (interactions, responses)
+- "completion_metrics" (progress, milestones)
+
+Return ONLY the category name."""
+            
+            # 🔧 Use synchronous call (not async) for better reliability
+            response = client.chat.completions.create(
+                model=model_settings.model,
+                messages=[{"role": "user", "content": classification_prompt}],
+                max_tokens=model_settings.max_tokens,
+                temperature=model_settings.temperature
+            )
+            
+            ai_classification = response.choices[0].message.content.strip().lower()
+            
+            # Validate response
             valid_categories = ["quantified_outputs", "quality_measures", "time_based_metrics", 
                               "engagement_metrics", "completion_metrics"]
             
             if ai_classification in valid_categories:
-                logger.info(f"🤖 AI classified '{universal_metric_type}' → '{ai_classification}'")
+                logger.info(f"🤖 AI classified '{metric_type}' → '{ai_classification}'")
                 return ai_classification
             else:
-                logger.warning(f"🤖 AI returned invalid category '{ai_classification}', falling back to universal default")
-                return "quantified_outputs"  # Universal fallback
+                logger.warning(f"🤖 AI returned invalid category '{ai_classification}'")
+                return None
                 
         except Exception as e:
-            logger.warning(f"🤖 AI classification failed for '{universal_metric_type}': {e}, using universal fallback")
-            return "quantified_outputs"  # Universal fallback
+            logger.warning(f"🤖 AI classification failed for '{metric_type}': {e}")
+            return None
+    
+    def _classify_by_semantic_patterns(self, metric_type: str) -> str:
+        """
+        🧠 PILLAR 2: Semantic pattern-based classification (universal, no domain bias)
+        Uses linguistic patterns rather than business-specific keywords
+        """
+        metric_lower = metric_type.lower()
+        
+        # 📊 Quality/Performance indicators (scores, rates, percentages)
+        quality_patterns = ["score", "rate", "quality", "performance", "accuracy", 
+                          "efficiency", "satisfaction", "rating", "index"]
+        if any(pattern in metric_lower for pattern in quality_patterns):
+            return "quality_measures"
+        
+        # ⏰ Time-based indicators
+        time_patterns = ["time", "day", "week", "month", "duration", "deadline", 
+                        "timeline", "schedule", "period"]
+        if any(pattern in metric_lower for pattern in time_patterns):
+            return "time_based_metrics"
+        
+        # 🤝 Engagement indicators (interactions, responses)
+        engagement_patterns = ["engagement", "interaction", "response", "participation",
+                             "activity", "usage", "adoption", "retention"]
+        if any(pattern in metric_lower for pattern in engagement_patterns):
+            return "engagement_metrics"
+        
+        # ✅ Completion indicators (progress, milestones)
+        completion_patterns = ["completion", "progress", "milestone", "achievement",
+                             "success", "done", "finished", "accomplished"]
+        if any(pattern in metric_lower for pattern in completion_patterns):
+            return "completion_metrics"
+        
+        # 🌍 Default to quantified outputs for everything else
+        return "quantified_outputs"
+    
+    def _get_semantic_fallback(self, metric_type: str) -> str:
+        """
+        🌍 PILLAR 2: Universal semantic fallback based on content meaning
+        Last resort classification that works for any business domain
+        """
+        if not metric_type:
+            return "quantified_outputs"
+        
+        metric_lower = metric_type.lower()
+        
+        # Very broad semantic categories that apply universally
+        if any(word in metric_lower for word in ["list", "collection", "database", "contacts", "items"]):
+            return "quantified_outputs"
+        elif any(word in metric_lower for word in ["analysis", "report", "strategy", "framework"]):
+            return "completion_metrics" 
+        elif any(word in metric_lower for word in ["sequence", "template", "content", "document"]):
+            return "quantified_outputs"
+        else:
+            # Ultimate universal fallback
+            return "quantified_outputs"
     
     async def create_corrective_task(
         self, 

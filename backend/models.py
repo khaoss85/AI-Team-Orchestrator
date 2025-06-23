@@ -29,6 +29,7 @@ class WorkspaceStatus(str, Enum):
     COMPLETED = "completed"
     ERROR = "error"
     NEEDS_INTERVENTION = "needs_intervention"
+    PROCESSING_TASKS = "processing_tasks"  # 🔧 FIX: Add status for task generation lock
 
 class AgentStatus(str, Enum):
     CREATED = "created"
