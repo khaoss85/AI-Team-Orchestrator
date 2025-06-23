@@ -313,9 +313,21 @@ function ContentView({ artifact, workspaceId, onArtifactUpdate }: ContentViewPro
         toolsData={artifact.content}
         workspaceId={workspaceId}
         onToolExecute={(toolName, parameters) => {
-          console.log('Tool execution requested:', toolName, parameters)
-          // In the future, this could trigger actual tool execution
-          // For now, just log the request
+          console.log('🔧 Tool execution requested:', toolName, parameters)
+          
+          // Format tool execution as a message
+          const message = parameters && Object.keys(parameters).length > 0
+            ? `Execute ${toolName} with: ${Object.entries(parameters).map(([k, v]) => `${k}="${v}"`).join(', ')}`
+            : `Execute ${toolName}`
+          
+          console.log('📤 Sending tool execution message:', message)
+          
+          // Send the tool execution as a chat message
+          if (onSendMessage) {
+            onSendMessage(message)
+          } else {
+            console.warn('⚠️ No onSendMessage handler available')
+          }
         }}
       />
     )

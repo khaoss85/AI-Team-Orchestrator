@@ -47,12 +47,71 @@ export default function AvailableToolsArtifact({
 }: AvailableToolsArtifactProps) {
   const [activeTab, setActiveTab] = useState<'tools' | 'integrations'>('tools')
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
-
+  const [showParameterDialog, setShowParameterDialog] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<ToolData | null>(null)
+  const [parameterValues, setParameterValues] = useState<Record<string, string>>({})
 
   const handleToolExecute = (toolName: string, parameters?: Record<string, any>) => {
     if (onToolExecute) {
       onToolExecute(toolName, parameters)
     }
+  }
+
+  const handleToolClick = (tool: ToolData) => {
+    const hasParameters = Object.keys(tool.parameters || {}).length > 0
+    
+    if (hasParameters) {
+      // Show parameter dialog for tools that need parameters
+      setSelectedTool(tool)
+      setParameterValues({})
+      setShowParameterDialog(true)
+    } else {
+      // Execute directly for tools without parameters
+      executeToolDirectly(tool.name)
+    }
+  }
+
+  const executeToolDirectly = async (toolName: string, params?: Record<string, any>) => {
+    try {
+      console.log('🔧 [AvailableToolsArtifact] Executing tool:', toolName, params)
+      
+      // Send tool execution request via onToolExecute callback
+      if (onToolExecute) {
+        onToolExecute(toolName, params)
+      }
+      
+      console.log('✅ Tool execution requested via onToolExecute')
+      
+    } catch (error) {
+      console.error('❌ Failed to execute tool:', error)
+    }
+  }
+
+  const handleParameterSubmit = () => {
+    if (!selectedTool) return
+    
+    // Convert string values to appropriate types and validate
+    const processedParams: Record<string, any> = {}
+    
+    Object.keys(selectedTool.parameters || {}).forEach(paramName => {
+      const value = parameterValues[paramName]
+      if (value && value.trim() !== '') {
+        // Try to parse as JSON for arrays/objects, otherwise use as string
+        try {
+          if (value.startsWith('[') || value.startsWith('{')) {
+            processedParams[paramName] = JSON.parse(value)
+          } else {
+            processedParams[paramName] = value
+          }
+        } catch {
+          processedParams[paramName] = value
+        }
+      }
+    })
+    
+    executeToolDirectly(selectedTool.name, processedParams)
+    setShowParameterDialog(false)
+    setSelectedTool(null)
   }
 
   return (
@@ -98,6 +157,54 @@ export default function AvailableToolsArtifact({
           />
         )}
       </div>
+
+      {/* Parameter Dialog */}
+      {showParameterDialog && selectedTool && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Configure {selectedTool.label}</h3>
+            <p className="text-sm text-gray-600 mb-4">{selectedTool.description}</p>
+            
+            <div className="space-y-4">
+              {Object.entries(selectedTool.parameters || {}).map(([paramName, description]) => (
+                <div key={paramName}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {paramName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </label>
+                  <input
+                    type="text"
+                    value={parameterValues[paramName] || ''}
+                    onChange={(e) => setParameterValues(prev => ({
+                      ...prev,
+                      [paramName]: e.target.value
+                    }))}
+                    placeholder={String(description)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowParameterDialog(false)
+                  setSelectedTool(null)
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleParameterSubmit}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+              >
+                Execute
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -200,10 +307,10 @@ function ToolsTab({ categories, expandedCategory, onToggleCategory, onToolExecut
                         )}
                       </div>
                       <button
-                        onClick={() => onToolExecute(tool.name)}
+                        onClick={() => handleToolClick(tool)}
                         className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
                       >
-                        Execute
+                        {Object.keys(tool.parameters || {}).length > 0 ? 'Configure' : 'Execute'}
                       </button>
                     </div>
                   </div>
