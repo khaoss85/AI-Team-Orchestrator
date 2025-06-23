@@ -989,20 +989,34 @@ export function useConversationalWorkspace(workspaceId: string) {
           break
 
         case 'available-tools':
-          // Load tools-specific artifacts
-          chatArtifacts.push({
-            id: 'available-tools',
-            type: 'tools',
-            title: 'Available Tools',
-            description: 'Tools and integrations available to the team',
-            status: 'ready',
-            content: {
-              tools: [],
-              integrations: [],
-              capabilities: []
-            },
-            lastUpdated: new Date().toISOString()
-          })
+          // Check if we already have a populated tools artifact from inline parsing
+          const existingToolsArtifact = artifacts.find(a => 
+            a.id === 'available-tools' && 
+            a.content?.tools && 
+            Array.isArray(a.content.tools) && 
+            a.content.tools.length > 0
+          )
+          
+          if (existingToolsArtifact) {
+            console.log('🎯 [loadChatSpecificArtifacts] Found existing tools artifact with', existingToolsArtifact.content.tools.length, 'tools')
+            chatArtifacts.push(existingToolsArtifact)
+          } else {
+            console.log('🎯 [loadChatSpecificArtifacts] Creating empty tools artifact')
+            // Load tools-specific artifacts with empty state
+            chatArtifacts.push({
+              id: 'available-tools',
+              type: 'tools',
+              title: 'Available Tools',
+              description: 'Tools and integrations available to the team',
+              status: 'ready',
+              content: {
+                tools: [],
+                integrations: [],
+                capabilities: []
+              },
+              lastUpdated: new Date().toISOString()
+            })
+          }
           break
 
         default:
