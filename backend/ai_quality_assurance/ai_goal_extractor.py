@@ -206,10 +206,13 @@ Return JSON: {{"needs_strategic_decomposition": true/false, "reason": "explanati
                 logger.info(f"  🎯 Final metric goal: {goal.description}")
             
             # Step 3: Crea goal per ogni deliverable strategico
-            for deliverable in strategic_plan.required_deliverables:
+            for i, deliverable in enumerate(strategic_plan.required_deliverables):
                 # Converti deliverable in goal appropriato
                 goal_type = GoalType.DELIVERABLE
-                metric_type = "deliverables"
+                
+                # 🔧 FIX: Crea metric_type unico per ogni deliverable per evitare violazioni constraint
+                # Usa il deliverable_type come base per il metric_type
+                base_metric_type = deliverable.deliverable_type.value
                 
                 # Usa mapping più specifico basato sul tipo di deliverable
                 if deliverable.deliverable_type.value in ["content_calendar", "social_media_plan"]:
@@ -218,6 +221,12 @@ Return JSON: {{"needs_strategic_decomposition": true/false, "reason": "explanati
                     metric_type = "contacts" if "contact" in deliverable.deliverable_type.value else "email_sequences"
                 elif deliverable.deliverable_type.value in ["monitoring_system", "measurement_framework"]:
                     metric_type = "quality_score"
+                else:
+                    # Usa il deliverable_type direttamente come metric_type per garantire unicità
+                    metric_type = base_metric_type
+                    # Se il deliverable_type è troppo generico, aggiungi un suffisso basato sull'indice
+                    if base_metric_type == "strategy_document":
+                        metric_type = f"{base_metric_type}_{i+1}"
                 
                 goal = ExtractedGoal(
                     goal_type=goal_type,

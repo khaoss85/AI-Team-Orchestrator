@@ -342,6 +342,53 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [workspaceId, workspaceContext?.team])
 
+  // Function to refresh goal progress in sidebar
+  const refreshGoalProgress = useCallback(async () => {
+    try {
+      console.log('🔄 [refreshGoalProgress] Refreshing goal progress in sidebar...')
+      
+      // Fetch fresh goal data
+      const response = await api.workspaceGoals.getAll(workspaceId, {})
+      const freshGoals = response?.goals || []
+      
+      if (freshGoals.length === 0) {
+        console.log('📋 [refreshGoalProgress] No goals found, skipping progress refresh')
+        return
+      }
+      
+      // Update chat progress for goal-based chats
+      setChats(prevChats => prevChats.map(chat => {
+        if (chat.type === 'dynamic' && chat.objective) {
+          // Find the corresponding fresh goal data
+          const freshGoal = freshGoals.find(goal => goal.id === chat.objective?.id)
+          
+          if (freshGoal) {
+            // Calculate fresh progress
+            const freshProgress = freshGoal.target_value > 0 
+              ? (freshGoal.current_value / freshGoal.target_value) * 100 
+              : 0
+            
+            console.log(`📊 [refreshGoalProgress] Updated progress for "${chat.title}": ${chat.objective.progress}% → ${Math.min(freshProgress, 100)}%`)
+            
+            return {
+              ...chat,
+              objective: {
+                ...chat.objective,
+                progress: Math.min(freshProgress, 100) // Cap at 100%
+              },
+              status: freshGoal.status === 'completed' ? 'completed' : 
+                      freshGoal.status === 'active' ? 'active' : 'inactive'
+            }
+          }
+        }
+        return chat
+      }))
+      
+    } catch (error) {
+      console.error('❌ [refreshGoalProgress] Failed to refresh goal progress:', error)
+    }
+  }, [workspaceId])
+
   // Send message to AI team using real API
   const sendMessage = useCallback(async (content: string) => {
     if (!activeChat || !workspaceContext) return
@@ -1414,53 +1461,6 @@ export function useConversationalWorkspace(workspaceId: string) {
       loadChatSpecificArtifacts(activeChat)
     }
   }, [workspaceContext, activeChat, loadChatSpecificArtifacts])
-
-  // Function to refresh goal progress in sidebar
-  const refreshGoalProgress = useCallback(async () => {
-    try {
-      console.log('🔄 [refreshGoalProgress] Refreshing goal progress in sidebar...')
-      
-      // Fetch fresh goal data
-      const response = await api.workspaceGoals.getAll(workspaceId, {})
-      const freshGoals = response?.goals || []
-      
-      if (freshGoals.length === 0) {
-        console.log('📋 [refreshGoalProgress] No goals found, skipping progress refresh')
-        return
-      }
-      
-      // Update chat progress for goal-based chats
-      setChats(prevChats => prevChats.map(chat => {
-        if (chat.type === 'dynamic' && chat.objective) {
-          // Find the corresponding fresh goal data
-          const freshGoal = freshGoals.find(goal => goal.id === chat.objective?.id)
-          
-          if (freshGoal) {
-            // Calculate fresh progress
-            const freshProgress = freshGoal.target_value > 0 
-              ? (freshGoal.current_value / freshGoal.target_value) * 100 
-              : 0
-            
-            console.log(`📊 [refreshGoalProgress] Updated progress for "${chat.title}": ${chat.objective.progress}% → ${Math.min(freshProgress, 100)}%`)
-            
-            return {
-              ...chat,
-              objective: {
-                ...chat.objective,
-                progress: Math.min(freshProgress, 100) // Cap at 100%
-              },
-              status: freshGoal.status === 'completed' ? 'completed' : 
-                      freshGoal.status === 'active' ? 'active' : 'inactive'
-            }
-          }
-        }
-        return chat
-      }))
-      
-    } catch (error) {
-      console.error('❌ [refreshGoalProgress] Failed to refresh goal progress:', error)
-    }
-  }, [workspaceId])
 
   // Initial goal progress refresh after workspace loads
   useEffect(() => {

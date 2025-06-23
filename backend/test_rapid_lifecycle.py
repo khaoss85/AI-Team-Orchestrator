@@ -139,14 +139,25 @@ async def rapid_lifecycle_test():
         if all_tasks:
             from ai_agents.manager import AgentManager
             
-            # Take first task and create in database
+            # Get available agents for proper assignment
+            agents_response = supabase.table('agents').select('*').eq('workspace_id', workspace_id).eq('status', 'available').execute()
+            available_agents = agents_response.data or []
+            
+            if not available_agents:
+                logger.error("❌ No available agents found for task assignment")
+                return False
+            
+            # Take first task and create in database with proper agent assignment
             task_data = all_tasks[0]
+            assigned_agent = available_agents[0]  # Use first available agent
+            
             task_response = supabase.table('tasks').insert({
                 "workspace_id": workspace_id,
                 "name": task_data.get('name', 'Generated Task'),
                 "description": task_data.get('description', ''),
                 "status": "pending",
                 "priority": task_data.get('priority', 'medium'),
+                "agent_id": assigned_agent["id"],  # 🔧 FIX: Assign agent_id to prevent orphaned tasks
                 "assigned_to_role": task_data.get('assigned_to_role'),
                 "metric_type": task_data.get('metric_type'),
                 "contribution_expected": task_data.get('contribution_expected', 1.0),

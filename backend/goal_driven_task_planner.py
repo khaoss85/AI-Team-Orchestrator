@@ -146,7 +146,7 @@ class GoalDrivenTaskPlanner:
                         "auto_generated": True,
                         "generated_by": "goal_driven_task_planner",
                         "goal_analysis_timestamp": datetime.now().isoformat(),
-                        "assigned_agent_name": available_agents[agent_index-1].get('name') if available_agents else None
+                        "assigned_agent_name": assigned_agent.get('name') if available_agents else None
                     }
                 })
                 

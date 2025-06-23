@@ -243,28 +243,27 @@ class CompleteLifecycleTest:
                 logger.info(f"   Goal ID: {goal['id']}, Metric Type: {goal.get('metric_type', 'unknown')}")
                 
                 try:
-                    # Convert dict to WorkspaceGoal object for the planner
-                    from models import WorkspaceGoal
-                    from uuid import UUID
+                    # Ensure goal dict has all required fields for plan_tasks_for_goal
                     from datetime import datetime
                     
-                    goal_obj = WorkspaceGoal(
-                        id=UUID(goal['id']),
-                        workspace_id=UUID(goal['workspace_id']),
-                        metric_type=goal['metric_type'],
-                        target_value=goal['target_value'],
-                        current_value=goal.get('current_value', 0.0),
-                        unit=goal['unit'],
-                        description=goal['description'],
-                        priority=goal['priority'],
-                        status=goal['status'],
-                        created_at=datetime.now(),
-                        updated_at=datetime.now()
-                    )
+                    # Prepare goal dict with proper format for plan_tasks_for_goal
+                    goal_dict = {
+                        'id': goal['id'],  # Keep as string since plan_tasks_for_goal will convert
+                        'workspace_id': goal['workspace_id'],  # Keep as string
+                        'metric_type': goal['metric_type'],
+                        'target_value': goal['target_value'],
+                        'current_value': goal.get('current_value', 0.0),
+                        'unit': goal['unit'],
+                        'description': goal['description'],
+                        'priority': goal['priority'],
+                        'status': goal['status'],
+                        'created_at': goal.get('created_at') or datetime.now().isoformat(),
+                        'updated_at': goal.get('updated_at') or datetime.now().isoformat()
+                    }
                     
-                    # Generate tasks using the correct method
-                    tasks = await planner._generate_tasks_for_goal(goal_obj)
-                    logger.info(f"   Generated {len(tasks)} tasks for goal {i+1}")
+                    # Use the proper public method that creates tasks in database
+                    tasks = await planner.plan_tasks_for_goal(goal_dict, self.workspace_id)
+                    logger.info(f"   Created {len(tasks)} tasks in database for goal {i+1}")
                     all_tasks.extend(tasks)
                 except Exception as task_gen_error:
                     logger.error(f"   Failed to generate tasks for goal {i+1}: {task_gen_error}")
@@ -300,34 +299,23 @@ class CompleteLifecycleTest:
             if not init_success:
                 raise Exception("Failed to initialize AgentManager")
             
-            # Esegui i primi 3 task per test completo ma gestibile
-            tasks_to_execute = self.generated_tasks[:3]
+            # Get existing tasks from database (already created in Step 4)
+            tasks_response = supabase.table('tasks').select('*').eq('workspace_id', self.workspace_id).eq('status', 'pending').limit(3).execute()
+            existing_tasks = tasks_response.data or []
+            
+            if not existing_tasks:
+                logger.error("   No pending tasks found in database - Step 4 may have failed")
+                return False
+            
             completed_tasks = []
             quality_enhanced_tasks = []
             
-            for i, task_data in enumerate(tasks_to_execute):
+            for i, task_data in enumerate(existing_tasks):
                 task_name = task_data.get('name', f'Task {i+1}')
+                task_id = task_data['id']
                 logger.info(f"   Executing task {i+1}/3: {task_name[:50]}...")
                 
                 try:
-                    # Crea task nel database
-                    task_response = supabase.table('tasks').insert({
-                        "workspace_id": self.workspace_id,
-                        "name": task_data.get('name', f'Task {i+1}'),
-                        "description": task_data.get('description', ''),
-                        "status": "pending",
-                        "priority": task_data.get('priority', 'medium'),
-                        "assigned_to_role": task_data.get('assigned_to_role'),
-                        "goal_id": task_data.get('goal_id'),
-                        "metric_type": task_data.get('metric_type'),
-                        "contribution_expected": task_data.get('contribution_expected'),
-                        "context_data": task_data.get('context_data', {})
-                    }).execute()
-                    
-                    if not task_response.data:
-                        continue
-                    
-                    task_id = task_response.data[0]['id']
                     
                     # Esecuzione reale del task
                     result = await manager.execute_task(UUID(task_id))
