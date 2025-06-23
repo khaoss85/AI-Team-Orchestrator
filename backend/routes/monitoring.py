@@ -1199,3 +1199,173 @@ async def get_workspace_enhancement_tasks(workspace_id: UUID, status_filter: Opt
     except Exception as e:
         logger.error(f"Error getting enhancement tasks for workspace {workspace_id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get enhancement tasks: {str(e)}")
+
+# === WORKSPACE HEALTH & UNBLOCK ENDPOINTS ===
+
+class WorkspaceHealthStatus(BaseModel):
+    workspace_id: str
+    is_healthy: bool
+    status: str
+    issues: List[str]
+    suggestions: List[str]
+    task_counts: Dict[str, int]
+    agent_counts: Dict[str, int]
+    last_activity: Optional[str]
+    is_blocked: bool
+    block_reason: Optional[str]
+    can_unblock: bool
+
+@router.get("/workspace/{workspace_id}/health-status", response_model=WorkspaceHealthStatus)
+async def get_workspace_health_status(workspace_id: UUID):
+    """Get comprehensive workspace health status for frontend monitoring"""
+    try:
+        workspace_id_str = str(workspace_id)
+        
+        # Get workspace info
+        workspace_db = await get_workspace(workspace_id_str)
+        if not workspace_db:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        
+        workspace_status = workspace_db.get("status", "unknown")
+        
+        # Get detailed health check from executor
+        health_status = await task_executor.check_workspace_health(workspace_id_str)
+        
+        # Get task counts
+        tasks_db = await list_tasks(workspace_id_str)
+        task_counts = Counter(t.get("status") for t in tasks_db)
+        task_counts['total'] = len(tasks_db)
+        
+        # Get agent counts
+        agents_db = await db_list_agents(workspace_id_str)
+        agent_counts = Counter(a.get("status") for a in agents_db)
+        agent_counts['total'] = len(agents_db)
+        
+        # Determine if workspace is blocked
+        is_blocked = (
+            workspace_status in ["needs_intervention", "paused", "failed"] or
+            workspace_id_str in getattr(task_executor, 'workspace_auto_generation_paused', set())
+        )
+        
+        # Generate suggestions based on health issues
+        suggestions = []
+        health_issues = health_status.get('health_issues', [])
+        
+        if is_blocked:
+            suggestions.append("🔓 Workspace is blocked - click 'Unblock Workspace' to resume operations")
+        
+        if task_counts.get('pending', 0) > 20:
+            suggestions.append("⚡ High number of pending tasks - check agent availability")
+        
+        if agent_counts.get('available', 0) == 0:
+            suggestions.append("👥 No available agents - check agent status")
+        
+        if 'High task creation' in str(health_issues):
+            suggestions.append("🚀 High task creation detected - may be during team initialization")
+        
+        if not suggestions:
+            suggestions.append("✅ Workspace appears healthy")
+        
+        # Determine last activity
+        last_activity = None
+        if tasks_db:
+            latest_task = max(tasks_db, key=lambda t: t.get('updated_at', ''))
+            last_activity = latest_task.get('updated_at')
+        
+        # Determine block reason
+        block_reason = None
+        if is_blocked:
+            if workspace_status == "needs_intervention":
+                block_reason = "Workspace marked as needing manual intervention"
+            elif workspace_id_str in getattr(task_executor, 'workspace_auto_generation_paused', set()):
+                block_reason = "Auto-generation paused due to health issues"
+            else:
+                block_reason = f"Workspace status: {workspace_status}"
+        
+        return WorkspaceHealthStatus(
+            workspace_id=workspace_id_str,
+            is_healthy=health_status.get('is_healthy', True),
+            status=workspace_status,
+            issues=health_issues,
+            suggestions=suggestions,
+            task_counts=dict(task_counts),
+            agent_counts=dict(agent_counts),
+            last_activity=last_activity,
+            is_blocked=is_blocked,
+            block_reason=block_reason,
+            can_unblock=is_blocked  # Can unblock if it's blocked
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting workspace health status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get workspace health status: {str(e)}")
+
+@router.post("/workspace/{workspace_id}/unblock")
+async def unblock_workspace(workspace_id: UUID):
+    """Manually unblock a workspace and resume operations"""
+    try:
+        workspace_id_str = str(workspace_id)
+        
+        # Get current workspace status
+        workspace_db = await get_workspace(workspace_id_str)
+        if not workspace_db:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        
+        actions_taken = []
+        
+        # 1. Reset workspace status if needed
+        current_status = workspace_db.get("status")
+        if current_status in ["needs_intervention", "paused", "failed"]:
+            from database import supabase
+            from datetime import datetime
+            
+            supabase.table("workspaces").update({
+                "status": "active",
+                "updated_at": datetime.now().isoformat()
+            }).eq("id", workspace_id_str).execute()
+            
+            actions_taken.append(f"Reset workspace status from '{current_status}' to 'active'")
+        
+        # 2. Remove from auto-generation paused list
+        if hasattr(task_executor, 'workspace_auto_generation_paused'):
+            if workspace_id_str in task_executor.workspace_auto_generation_paused:
+                task_executor.workspace_auto_generation_paused.discard(workspace_id_str)
+                actions_taken.append("Removed from auto-generation paused list")
+        
+        # 3. Log the manual unblock action
+        try:
+            from database import supabase
+            from datetime import datetime
+            
+            supabase.table("logs").insert({
+                "workspace_id": workspace_id_str,
+                "type": "system",
+                "message": f"Manual workspace unblock performed",
+                "metadata": {
+                    "action": "manual_unblock",
+                    "actions_taken": actions_taken,
+                    "trigger": "frontend_request",
+                    "timestamp": datetime.now().isoformat()
+                },
+                "created_at": datetime.now().isoformat()
+            }).execute()
+        except Exception as e:
+            logger.warning(f"Failed to log unblock action: {e}")
+        
+        if not actions_taken:
+            actions_taken.append("Workspace was already unblocked")
+        
+        return {
+            "success": True,
+            "message": "Workspace unblock completed",
+            "actions_taken": actions_taken,
+            "workspace_id": workspace_id_str
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unblocking workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to unblock workspace: {str(e)}")

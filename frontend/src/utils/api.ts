@@ -644,6 +644,61 @@ export const api = {
       }
     },
 
+    // 🆕 NEW: Workspace health status monitoring
+    getWorkspaceHealthStatus: async (workspaceId: string): Promise<{
+      workspace_id: string;
+      status: 'healthy' | 'needs_intervention' | 'critical';
+      is_blocked: boolean;
+      last_activity: string;
+      health_score: number;
+      issues: Array<{
+        type: string;
+        severity: 'low' | 'medium' | 'high' | 'critical';
+        description: string;
+        detected_at: string;
+        auto_resolvable: boolean;
+      }>;
+      blocked_reasons: string[];
+      resolution_suggestions: string[];
+      performance_metrics: {
+        task_velocity: number;
+        agent_utilization: number;
+        error_rate: number;
+        avg_task_duration: number;
+      };
+      last_checked: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/health-status`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // 🆕 NEW: Manual workspace unblock
+    unblockWorkspace: async (workspaceId: string, reason?: string): Promise<{
+      success: boolean;
+      message: string;
+      previous_status: string;
+      new_status: string;
+      unblocked_at: string;
+      reason: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/unblock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason || 'Manual unblock from frontend' }),
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
     // 🆕 NEW: Asset Tracking
     getAssetTracking: async (workspaceId: string): Promise<AssetTrackingData> => {
       try {

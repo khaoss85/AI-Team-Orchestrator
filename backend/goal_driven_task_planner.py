@@ -601,7 +601,6 @@ Return ONLY the category name."""
                 
                 # This should not happen in a healthy workspace - alert the issue
                 try:
-                    from database import supabase
                     alert_data = {
                         "workspace_id": workspace_id,
                         "type": "system",

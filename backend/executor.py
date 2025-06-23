@@ -1590,14 +1590,19 @@ class TaskExecutor(AssetCoordinationMixin):
             # 🧠 Smart thresholds based on context
             if velocity_context['is_legitimate_burst']:
                 # Allow legitimate initial task generation (team approval, goal analysis)
-                velocity_threshold = 50.0  # Much higher threshold for legitimate bursts
+                # Ultra-high velocities (1000+ tasks/min) are normal during team initialization
+                velocity_threshold = 2000.0  # Very high threshold for legitimate bursts (2000 tasks/min)
                 logger.info(f"🎯 Legitimate task burst detected for workspace {workspace_id}: {creation_velocity:.1f}/min (context: {velocity_context['context']})")
             else:
                 # Normal operations - stricter threshold
-                velocity_threshold = 10.0  # Increased from 5.0 to be less sensitive
+                velocity_threshold = 15.0  # Increased from 10.0 to be less sensitive for normal ops
             
             if creation_velocity > velocity_threshold:
-                health_issues.append(f"High task creation: {creation_velocity:.1f}/min")
+                if velocity_context['is_legitimate_burst']:
+                    # Don't log warnings for legitimate bursts, just info
+                    logger.info(f"🎯 Legitimate task burst: {creation_velocity:.1f}/min (context: {velocity_context['context']}) - no health issue logged")
+                else:
+                    health_issues.append(f"High task creation: {creation_velocity:.1f}/min")
             
             # Check pattern ripetuti
             if pattern_analysis['repeated_patterns']:
@@ -1888,6 +1893,28 @@ class TaskExecutor(AssetCoordinationMixin):
                 "is_legitimate_burst": True,
                 "context": f"strategic_decomposition_{len(strategic_tasks)}_strategic_tasks"
             }
+        
+        # 3a. Ultra-High Velocity Team Initialization (1000+ tasks/min is legitimate during startup)
+        if velocity > 500:  # Very high velocity threshold
+            # Check for patterns that indicate legitimate team initialization
+            
+            # Pattern: Multiple goals with assigned agents (proper initialization)
+            goal_driven_with_agents = [t for t in recent_tasks if 
+                                     t.get("goal_id") and t.get("agent_id")]
+            
+            if len(goal_driven_with_agents) >= 15:  # Lots of goal-driven tasks with agents
+                return {
+                    "is_legitimate_burst": True,
+                    "context": f"ultra_high_velocity_initialization_{len(goal_driven_with_agents)}_assigned_goal_tasks"
+                }
+            
+            # Pattern: Tasks from same workspace in short timeframe (bulk generation)
+            workspace_consistency = len(set(t.get("workspace_id") for t in recent_tasks)) == 1
+            if workspace_consistency and len(recent_tasks) >= 20:
+                return {
+                    "is_legitimate_burst": True,
+                    "context": f"bulk_workspace_initialization_{len(recent_tasks)}_tasks_single_workspace"
+                }
         
         # 4. Check for agent assignment (legitimate tasks should have agents)
         assigned_tasks = [t for t in recent_tasks if t.get("agent_id")]

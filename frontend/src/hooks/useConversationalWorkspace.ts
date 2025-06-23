@@ -24,6 +24,10 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sendingMessage, setSendingMessage] = useState(false)
+  
+  // Workspace health monitoring state
+  const [workspaceHealthStatus, setWorkspaceHealthStatus] = useState<any>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
 
   // Initialize workspace and fixed chats
   const initializeWorkspace = useCallback(async () => {
@@ -388,6 +392,51 @@ export function useConversationalWorkspace(workspaceId: string) {
       console.error('❌ [refreshGoalProgress] Failed to refresh goal progress:', error)
     }
   }, [workspaceId])
+
+  // Function to check workspace health status
+  const checkWorkspaceHealth = useCallback(async () => {
+    try {
+      setHealthLoading(true)
+      console.log('🏥 [checkWorkspaceHealth] Checking workspace health status...')
+      
+      const healthStatus = await api.monitoring.getWorkspaceHealthStatus(workspaceId)
+      setWorkspaceHealthStatus(healthStatus)
+      
+      console.log('✅ [checkWorkspaceHealth] Health status updated:', healthStatus.status)
+      return healthStatus
+      
+    } catch (error) {
+      console.error('❌ [checkWorkspaceHealth] Failed to check workspace health:', error)
+      return null
+    } finally {
+      setHealthLoading(false)
+    }
+  }, [workspaceId])
+
+  // Function to manually unblock workspace
+  const unblockWorkspace = useCallback(async (reason?: string) => {
+    try {
+      console.log('🔓 [unblockWorkspace] Manually unblocking workspace...')
+      
+      const result = await api.monitoring.unblockWorkspace(workspaceId, reason)
+      
+      if (result.success) {
+        console.log('✅ [unblockWorkspace] Workspace unblocked successfully')
+        // Refresh health status after unblocking
+        await checkWorkspaceHealth()
+        // Also refresh goal progress
+        await refreshGoalProgress()
+        return { success: true, message: result.message }
+      } else {
+        console.error('❌ [unblockWorkspace] Failed to unblock workspace:', result.message)
+        return { success: false, message: result.message }
+      }
+      
+    } catch (error) {
+      console.error('❌ [unblockWorkspace] Error unblocking workspace:', error)
+      return { success: false, message: `Failed to unblock workspace: ${error.message}` }
+    }
+  }, [workspaceId, checkWorkspaceHealth, refreshGoalProgress])
 
   // Send message to AI team using real API
   const sendMessage = useCallback(async (content: string) => {
@@ -1472,17 +1521,28 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [loading, workspaceContext, refreshGoalProgress])
 
-  // Auto-refresh artifacts and goal progress periodically
+  // Auto-refresh artifacts, goal progress, and health status periodically
   useEffect(() => {
     const interval = setInterval(() => {
       if (!loading && workspaceContext) {
         loadArtifacts()
         refreshGoalProgress() // 🔧 FIX: Also refresh goal progress in sidebar
+        checkWorkspaceHealth() // 🆕 NEW: Check workspace health status
       }
     }, 30000) // Every 30 seconds
 
     return () => clearInterval(interval)
-  }, [loading, workspaceContext, loadArtifacts, refreshGoalProgress])
+  }, [loading, workspaceContext, loadArtifacts, refreshGoalProgress, checkWorkspaceHealth])
+
+  // Initial health check after workspace loads
+  useEffect(() => {
+    if (!loading && workspaceContext) {
+      console.log('🏥 [useEffect] Workspace loaded, triggering initial health check...')
+      setTimeout(() => {
+        checkWorkspaceHealth()
+      }, 2000) // Small delay to let workspace settle
+    }
+  }, [loading, workspaceContext, checkWorkspaceHealth])
 
   return {
     // State
@@ -1498,6 +1558,10 @@ export function useConversationalWorkspace(workspaceId: string) {
     sendingMessage, // Separate message sending state
     error,
     
+    // Health monitoring state
+    workspaceHealthStatus,
+    healthLoading,
+    
     // Actions
     setActiveChat: handleSetActiveChat,
     sendMessage,
@@ -1507,7 +1571,11 @@ export function useConversationalWorkspace(workspaceId: string) {
     renameChat,
     refreshData,
     refreshGoalProgress, // 🔧 FIX: Export goal progress refresh function
-    refreshMessages: () => activeChat ? loadDynamicChatData(activeChat) : Promise.resolve()
+    refreshMessages: () => activeChat ? loadDynamicChatData(activeChat) : Promise.resolve(),
+    
+    // Health monitoring actions
+    checkWorkspaceHealth,
+    unblockWorkspace
   }
 }
 

@@ -110,6 +110,13 @@ class AutomatedGoalMonitor:
             # 🚨 HEALTH CHECK: Filter out orphaned/incomplete workspaces
             healthy_workspace_ids = []
             for workspace_id in workspace_ids:
+                # First check if workspace still exists (prevent orphaned goals issue)
+                workspace_exists = await self._verify_workspace_exists(workspace_id)
+                if not workspace_exists:
+                    logger.warning(f"🗑️ Orphaned goals detected - workspace {workspace_id} doesn't exist, cleaning up goals")
+                    await self._cleanup_orphaned_goals(workspace_id)
+                    continue
+                    
                 is_healthy = await self._check_workspace_health(workspace_id)
                 if is_healthy:
                     healthy_workspace_ids.append(workspace_id)
@@ -122,6 +129,41 @@ class AutomatedGoalMonitor:
         except Exception as e:
             logger.error(f"Error getting workspaces for validation: {e}")
             return []
+    
+    async def _verify_workspace_exists(self, workspace_id: str) -> bool:
+        """Verify that a workspace still exists in the database"""
+        try:
+            response = supabase.table("workspaces").select("id").eq("id", workspace_id).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            logger.error(f"Error checking workspace existence for {workspace_id}: {e}")
+            return False
+    
+    async def _cleanup_orphaned_goals(self, workspace_id: str) -> None:
+        """Clean up goals for non-existent workspaces"""
+        try:
+            # Delete orphaned goals
+            result = supabase.table("workspace_goals").delete().eq("workspace_id", workspace_id).execute()
+            deleted_count = len(result.data) if result.data else 0
+            
+            logger.warning(f"🗑️ Cleaned up {deleted_count} orphaned goals for deleted workspace {workspace_id}")
+            
+            # Log cleanup action
+            supabase.table("logs").insert({
+                "workspace_id": None,  # No workspace reference since it's deleted
+                "type": "system",
+                "message": f"Cleaned up orphaned goals for deleted workspace {workspace_id}",
+                "metadata": {
+                    "action": "orphaned_goals_cleanup",
+                    "deleted_workspace_id": workspace_id,
+                    "goals_deleted": deleted_count,
+                    "component": "automated_goal_monitor"
+                },
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up orphaned goals for workspace {workspace_id}: {e}")
     
     async def _process_workspace_validation(self, workspace_id: str) -> List[Dict[str, Any]]:
         """Process goal validation for a single workspace"""
@@ -278,11 +320,14 @@ class AutomatedGoalMonitor:
                 original_metric_type = task_data.get("metric_type")
                 compatible_metric_type = await self._classify_metric_type_ai(original_metric_type) if original_metric_type else None
                 
-                # Prepare task for database insertion
+                # Prepare task for database insertion - defensive programming
+                task_name = task_data.get("name", f"Corrective action for {task_data.get('goal_id', 'unknown goal')}")
+                task_description = task_data.get("description", f"Automated corrective action to address goal validation failure")
+                
                 db_task = {
                     "workspace_id": workspace_id,
-                    "name": task_data["name"],
-                    "description": task_data["description"],
+                    "name": task_name,
+                    "description": task_description,
                     "status": "pending",
                     "priority": "high",  # All corrective tasks are high priority
                     "assigned_to_role": assigned_role,
@@ -350,13 +395,17 @@ class AutomatedGoalMonitor:
             workspace_status = workspace.get("status")
             workspace_name = workspace.get("name", "Unknown")
             
-            # 2. Check if workspace is in 'created' state (never initialized)
+            # 2. Check if workspace is in problematic states
             if workspace_status == "created":
                 await self._alert_workspace_issue(
                     workspace_id, 
                     "ORPHANED_WORKSPACE", 
                     f"Workspace '{workspace_name}' has goals but is still in 'created' status - likely from incomplete E2E test or failed initialization"
                 )
+                return False
+            
+            if workspace_status == "needs_intervention":
+                logger.info(f"🔧 Skipping workspace {workspace_id} - marked as needs_intervention")
                 return False
             
             # 3. Check if workspace has ANY agents (active or inactive)

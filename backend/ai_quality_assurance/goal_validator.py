@@ -1018,13 +1018,19 @@ Return as numbered list, one recommendation per line."""
                 # 2. 🎯 GENERATE CORRECTIVE TASK
                 corrective_task = await self._generate_corrective_task(failure, workspace_id)
                 
-                if corrective_task:
+                if corrective_task and corrective_task.get("name"):
                     corrective_tasks.append(corrective_task)
                     
                     # 3. 📊 LOG COURSE CORRECTION
                     logger.warning(
                         f"🔄 COURSE CORRECTION triggered for {failure.target_requirement}: "
                         f"Gap {failure.gap_percentage:.1f}%, Created task: {corrective_task['name']}"
+                    )
+                elif corrective_task:
+                    # Log when corrective task creation partially fails
+                    logger.warning(
+                        f"⚠️ Corrective task creation incomplete for {failure.target_requirement}: "
+                        f"Gap {failure.gap_percentage:.1f}%, but no task name - likely agent assignment failed"
                     )
                 
             except Exception as e:
