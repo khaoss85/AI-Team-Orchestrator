@@ -1001,21 +1001,72 @@ export function useConversationalWorkspace(workspaceId: string) {
             console.log('🎯 [loadChatSpecificArtifacts] Found existing tools artifact with', existingToolsArtifact.content.tools.length, 'tools')
             chatArtifacts.push(existingToolsArtifact)
           } else {
-            console.log('🎯 [loadChatSpecificArtifacts] Creating empty tools artifact')
-            // Load tools-specific artifacts with empty state
-            chatArtifacts.push({
-              id: 'available-tools',
-              type: 'tools',
-              title: 'Available Tools',
-              description: 'Tools and integrations available to the team',
-              status: 'ready',
-              content: {
-                tools: [],
-                integrations: [],
-                capabilities: []
-              },
-              lastUpdated: new Date().toISOString()
-            })
+            console.log('🎯 [loadChatSpecificArtifacts] Auto-requesting tools from backend')
+            // Automatically request tools from backend instead of showing empty artifact
+            try {
+              const response = await fetch(`http://localhost:8000/api/conversation/workspaces/${workspaceId}/chat`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  message: 'show available tools',
+                  chat_id: 'available-tools'
+                })
+              })
+              
+              if (response.ok) {
+                const data = await response.json()
+                const responseMessage = data.response?.message || ''
+                
+                // Parse inline artifacts from the response
+                const artifactPattern = /\*\*ARTIFACT:(\w+):(.+?)\*\*/g
+                let match
+                
+                while ((match = artifactPattern.exec(responseMessage)) !== null) {
+                  const [, artifactType, artifactData] = match
+                  if (artifactType === 'tools_overview') {
+                    try {
+                      const parsedData = JSON.parse(artifactData)
+                      console.log('🎯 [loadChatSpecificArtifacts] Auto-loaded tools:', parsedData.tools?.length || 0)
+                      
+                      chatArtifacts.push({
+                        id: 'available-tools',
+                        type: 'tools',
+                        title: 'Available Tools',
+                        description: 'Tools and integrations available to the team',
+                        status: 'ready',
+                        content: parsedData,
+                        lastUpdated: new Date().toISOString()
+                      })
+                      break
+                    } catch (e) {
+                      console.error('❌ Failed to parse auto-loaded tools:', e)
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to auto-load tools:', error)
+            }
+            
+            // Fallback to empty artifact if auto-loading failed
+            if (chatArtifacts.length === 0 || !chatArtifacts.find(a => a.id === 'available-tools')) {
+              console.log('🎯 [loadChatSpecificArtifacts] Creating empty tools artifact as fallback')
+              chatArtifacts.push({
+                id: 'available-tools',
+                type: 'tools',
+                title: 'Available Tools',
+                description: 'Tools and integrations available to the team',
+                status: 'ready',
+                content: {
+                  tools: [],
+                  integrations: [],
+                  capabilities: []
+                },
+                lastUpdated: new Date().toISOString()
+              })
+            }
           }
           break
 
