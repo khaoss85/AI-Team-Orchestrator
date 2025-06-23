@@ -82,24 +82,79 @@ const getDisplayFields = (items: any[]) => {
   // Priority fields to show first
   const priorityFields = ['title', 'name', 'date', 'caption', 'content', 'description', 'type'];
   const secondaryFields = ['hashtags', 'tags', 'category', 'status', 'engagement'];
+  // Special metadata fields for goals/objectives
+  const metadataFields = ['business_value', 'autonomy_reason', 'human_input_required', 'available_tools', 'acceptance_criteria', 'deliverable_type', 'autonomy_level', 'confidence'];
   
   const sortedFields = [
     ...priorityFields.filter(f => fields.includes(f)),
-    ...fields.filter(f => !priorityFields.includes(f) && !secondaryFields.includes(f)),
-    ...secondaryFields.filter(f => fields.includes(f))
+    ...fields.filter(f => !priorityFields.includes(f) && !secondaryFields.includes(f) && !metadataFields.includes(f)),
+    ...secondaryFields.filter(f => fields.includes(f)),
+    ...metadataFields.filter(f => fields.includes(f))
   ];
   
-  return sortedFields.slice(0, 5); // Show max 5 fields
+  return sortedFields.slice(0, 8); // Increased to show metadata fields
 };
 
 // Smart value formatting with better object rendering
 const formatValue = (value: any, key: string): React.ReactNode => {
   if (value === null || value === undefined) return 'N/A';
   
+  // Special formatting for metadata fields
+  if (key === 'autonomy_level') {
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        value === 'autonomous' 
+          ? 'bg-blue-100 text-blue-800' 
+          : 'bg-orange-100 text-orange-800'
+      }`}>
+        {value === 'autonomous' ? '🤖 Autonomo' : '🤝 Assistito'}
+      </span>
+    );
+  }
+  
+  if (key === 'confidence' && typeof value === 'number') {
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        value > 0.8 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-yellow-100 text-yellow-800'
+      }`}>
+        {value > 0.8 ? 'Alta Confidenza' : 'Media Confidenza'} ({Math.round(value * 100)}%)
+      </span>
+    );
+  }
+  
+  if (key === 'deliverable_type') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+        🔧 {value}
+      </span>
+    );
+  }
+  
   if (Array.isArray(value)) {
     if (key.toLowerCase().includes('hashtag')) {
       return value.join(' ');
     }
+    
+    // Special formatting for metadata arrays
+    if (['human_input_required', 'available_tools', 'acceptance_criteria'].includes(key)) {
+      if (value.length === 0) return <span className="text-gray-400 italic">Nessuno</span>;
+      
+      return (
+        <div className="space-y-1">
+          {value.slice(0, 3).map((item: string, idx: number) => (
+            <div key={idx} className="text-xs bg-gray-100 px-2 py-1 rounded">
+              • {item}
+            </div>
+          ))}
+          {value.length > 3 && (
+            <div className="text-xs text-gray-500">+ {value.length - 3} altri...</div>
+          )}
+        </div>
+      );
+    }
+    
     return value.slice(0, 3).join(', ') + (value.length > 3 ? `... (+${value.length - 3} more)` : '');
   }
   
@@ -225,17 +280,39 @@ const GenericArrayViewer: React.FC<GenericArrayViewerProps> = ({
                 const value = item[field];
                 if (!value) return null;
                 
+                const isMetadataField = ['business_value', 'autonomy_reason', 'human_input_required', 'available_tools', 'acceptance_criteria', 'deliverable_type', 'autonomy_level', 'confidence'].includes(field);
+                
                 return (
                   <div key={field} className="mb-2">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    <div className={`text-xs font-medium uppercase tracking-wide mb-1 ${
+                      isMetadataField ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
                       {field.replace(/_/g, ' ')}
+                      {isMetadataField && ' 📋'}
                     </div>
-                    <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded">
+                    <div className={`text-sm ${isMetadataField ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'} p-2 rounded`}>
                       {formatValue(value, field)}
                     </div>
                   </div>
                 );
               })}
+              
+              {/* Check for nested metadata object */}
+              {item.metadata && typeof item.metadata === 'object' && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-2">
+                    Additional Metadata 📋
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(item.metadata).map(([key, value]) => (
+                      <div key={key} className="text-xs">
+                        <span className="text-gray-600 font-medium">{key.replace(/_/g, ' ')}: </span>
+                        <span className="text-gray-700">{formatValue(value, key)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

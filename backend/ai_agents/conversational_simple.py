@@ -361,6 +361,10 @@ class SimpleConversationalAgent:
         Uses OpenAI to provide intelligent, context-aware responses.
         """
         try:
+            # Check if user is asking about available tools
+            if self._is_asking_about_tools(user_message):
+                return await self._generate_tools_artifact_response()
+            
             # Prepare context for AI
             context_summary = self._prepare_context_for_ai()
             
@@ -785,6 +789,13 @@ Use tools to gather additional data for deeper analysis when needed.
                     'seniority': 'senior'
                 },
                 'type': 'action'
+            },
+            'approve_all_feedback': {
+                'tool': 'approve_all_feedback',
+                'label': '✅ Approve All Feedback', 
+                'description': 'Approve all pending feedback requests',
+                'parameters': {},
+                'type': 'action'
             }
         }
         
@@ -800,6 +811,10 @@ Use tools to gather additional data for deeper analysis when needed.
         
         if any(phrase in ai_response.lower() for phrase in ["monitor", "check progress", "track"]):
             tools_mentioned.extend(["show_project_status", "show_goal_progress"])
+        
+        # Look for approve feedback patterns
+        if any(phrase in ai_response.lower() for phrase in ["approve.*feedback", "approve all", "execute_tool.*approve_all_feedback"]):
+            tools_mentioned.append("approve_all_feedback")
         
         # Convert to action objects
         for tool in set(tools_mentioned):  # Remove duplicates
@@ -959,6 +974,10 @@ Use tools to gather additional data for deeper analysis when needed.
             },
             "pause_team": {
                 "description": "Pause all team activities and task execution. Current tasks will complete gracefully but no new tasks will start.",
+                "parameters": {}
+            },
+            "approve_all_feedback": {
+                "description": "Approve all pending human feedback requests for this workspace",
                 "parameters": {}
             },
             "update_team_skills": {
@@ -1189,6 +1208,71 @@ Use tools to gather additional data for deeper analysis when needed.
                     return {
                         "success": False,
                         "message": f"❌ Error pausing team: {str(e)}",
+                        "error": str(e)
+                    }
+                
+            elif tool_name == "approve_all_feedback":
+                # 📋 APPROVE ALL FEEDBACK: Approve all pending human feedback requests
+                logger.info(f"📋 Mass feedback approval requested for workspace {self.workspace_id}")
+                
+                try:
+                    from human_feedback_manager import human_feedback_manager
+                    
+                    # Get all pending feedback requests for this workspace
+                    pending_requests = await human_feedback_manager.get_pending_requests(self.workspace_id)
+                    
+                    if not pending_requests:
+                        return {
+                            "success": True,
+                            "message": "✅ No pending feedback requests found.",
+                            "approved_count": 0
+                        }
+                    
+                    # Approve all pending requests
+                    approved_count = 0
+                    failed_count = 0
+                    
+                    for request in pending_requests:
+                        try:
+                            approval_response = {
+                                "approved": True,
+                                "comment": "Bulk approval via conversational agent",
+                                "auto_approved": True,
+                                "bulk_operation": True
+                            }
+                            
+                            from human_feedback_manager import FeedbackStatus
+                            
+                            success = await human_feedback_manager.respond_to_request(
+                                request_id=request["id"],
+                                response=approval_response,
+                                status=FeedbackStatus.APPROVED
+                            )
+                            
+                            if success:
+                                approved_count += 1
+                                logger.info(f"✅ Approved feedback request: {request['title']}")
+                            else:
+                                failed_count += 1
+                                logger.warning(f"❌ Failed to approve feedback request: {request['title']}")
+                                
+                        except Exception as e:
+                            failed_count += 1
+                            logger.error(f"Error approving feedback {request.get('id')}: {e}")
+                    
+                    return {
+                        "success": True,
+                        "message": f"✅ Bulk approval completed: {approved_count} approved, {failed_count} failed",
+                        "approved_count": approved_count,
+                        "failed_count": failed_count,
+                        "total_processed": len(pending_requests)
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error in bulk feedback approval: {e}")
+                    return {
+                        "success": False,
+                        "message": f"❌ Error approving feedback: {str(e)}",
                         "error": str(e)
                     }
                 
@@ -1671,3 +1755,140 @@ Use tools to gather additional data for deeper analysis when needed.
                 "success": False,
                 "message": f"Failed to resume operations: {str(e)}"
             }
+    
+    def _is_asking_about_tools(self, user_message: str) -> bool:
+        """Check if user is asking about available tools"""
+        tools_keywords = [
+            "available tools",
+            "what tools",
+            "list tools",
+            "show tools",
+            "tools available",
+            "what can you do",
+            "capabilities",
+            "available commands",
+            "slash commands",
+            "/"
+        ]
+        message_lower = user_message.lower()
+        return any(keyword in message_lower for keyword in tools_keywords)
+    
+    async def _generate_tools_artifact_response(self) -> str:
+        """Generate a properly formatted artifact response for available tools"""
+        # Get the tools from our tools_available dictionary
+        tools_list = []
+        
+        # Categorize tools
+        team_tools = []
+        project_tools = []
+        execution_tools = []
+        document_tools = []
+        openai_tools = []
+        
+        for tool_name, tool_info in self.tools_available.items():
+            tool_data = {
+                "name": tool_name,
+                "label": tool_name.replace('_', ' ').title(),
+                "description": tool_info["description"],
+                "parameters": tool_info["parameters"]
+            }
+            
+            # Categorize based on tool name
+            if tool_name in ["add_team_member", "start_team", "pause_team", "update_team_skills", "show_team_status"]:
+                team_tools.append(tool_data)
+            elif tool_name in ["show_project_status", "show_goal_progress", "create_goal", "show_deliverables"]:
+                project_tools.append(tool_data)
+            elif tool_name in ["approve_all_feedback", "fix_workspace_issues", "analyze_blocking_issues", "resume_workspace_operations"]:
+                execution_tools.append(tool_data)
+            elif tool_name in ["upload_document", "list_documents", "delete_document", "search_documents"]:
+                document_tools.append(tool_data)
+            elif tool_name in ["web_search", "code_interpreter", "generate_image", "file_search"]:
+                openai_tools.append(tool_data)
+            
+            tools_list.append(tool_data)
+        
+        # Create the artifact content
+        artifact_content = {
+            "tools": tools_list,
+            "categories": {
+                "team_management": {
+                    "title": "Team Management",
+                    "icon": "👥",
+                    "tools": team_tools
+                },
+                "project_monitoring": {
+                    "title": "Project Monitoring",
+                    "icon": "📊",
+                    "tools": project_tools
+                },
+                "execution_control": {
+                    "title": "Execution & Control",
+                    "icon": "⚡",
+                    "tools": execution_tools
+                },
+                "document_management": {
+                    "title": "Document Management",
+                    "icon": "📄",
+                    "tools": document_tools
+                },
+                "ai_capabilities": {
+                    "title": "AI Capabilities",
+                    "icon": "🤖",
+                    "tools": openai_tools
+                }
+            },
+            "slash_commands": [
+                {"command": "/help", "description": "Show available commands and tools"},
+                {"command": "/status", "description": "Show project status overview"},
+                {"command": "/team", "description": "View and manage team members"},
+                {"command": "/goals", "description": "View project goals and progress"},
+                {"command": "/approve", "description": "Approve all pending feedback"}
+            ],
+            "integrations": [
+                {"name": "OpenAI", "status": "active", "features": ["Web Search", "Code Interpreter", "Image Generation"]},
+                {"name": "Supabase", "status": "active", "features": ["Database", "Storage", "Real-time Updates"]}
+            ],
+            "capabilities": [
+                "Multi-agent orchestration and team management",
+                "Goal-driven task generation and monitoring",
+                "Real-time project status tracking",
+                "Document upload and knowledge management",
+                "AI-powered web search and analysis",
+                "Automated quality assurance and feedback loops",
+                "Budget tracking and resource management",
+                "Deliverable generation and asset creation"
+            ]
+        }
+        
+        # Format the response with the artifact
+        response = f"""# 🛠️ Available Tools and Capabilities
+
+I have access to a comprehensive set of tools to help manage your project. Here's what I can do:
+
+## 📋 Quick Overview
+
+**Total Tools**: {len(tools_list)} tools across 5 categories
+**Slash Commands**: 5 quick commands for common actions
+**AI Integrations**: OpenAI and Supabase backends
+**Core Capabilities**: 8 major feature areas
+
+## 🚀 Most Used Tools
+
+1. **show_project_status** - Get comprehensive project overview
+2. **show_team_status** - View current team and activities
+3. **approve_all_feedback** - Bulk approve pending requests
+4. **start_team** / **pause_team** - Control execution flow
+5. **show_goal_progress** - Track objective completion
+
+## 💡 Pro Tips
+
+- Use slash commands like `/status` for quick access
+- Tools can be executed by mentioning them in your request
+- I'll suggest relevant tools based on your questions
+- All tools integrate seamlessly with your workspace context
+
+**ARTIFACT:tools_overview:{json.dumps(artifact_content)}**
+
+Would you like me to execute any specific tool or explain how to use a particular feature?"""
+        
+        return response

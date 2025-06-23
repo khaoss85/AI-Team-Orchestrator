@@ -366,7 +366,7 @@ async def confirm_goals(
         # 📋 CREATE PROJECT DESCRIPTION ARTIFACT
         # Save comprehensive project description for easy reference
         try:
-            await _create_project_description_artifact(str(workspace_id), saved_goals, extracted_goals)
+            await _create_project_description_artifact(str(workspace_id), saved_goals, confirmed_goals)
             logger.info("✅ Project description artifact created successfully")
         except Exception as e:
             logger.warning(f"⚠️ Failed to create project description artifact: {e}")

@@ -283,24 +283,31 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
             tasks = []
             
             for task_data in result.get("tasks", []):
-                task = {
-                    "goal_id": str(goal.id),
-                    "metric_type": str(goal.metric_type),  # Simplified conversion to string
-                    "name": task_data["name"],
-                    "description": task_data["description"],
-                    "type": task_data.get("type", "goal_driven"),
-                    "priority": task_data.get("priority", 3),
-                    "contribution_expected": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                    "success_criteria": task_data.get("success_criteria", []),
+                # Store all metadata in context_data to avoid database schema issues
+                context_data = {
+                    "is_goal_driven": True,
+                    "auto_generated": True,
+                    "task_type": task_data.get("type", "goal_driven"),
+                    "deliverable_type": task_data.get("deliverable_type", "project_output"),
                     "estimated_duration_hours": task_data.get("estimated_duration_hours", 4),
                     "required_skills": task_data.get("required_skills", []),
-                    "deliverable_type": task_data.get("deliverable_type", "project_output"),
+                    "success_criteria": task_data.get("success_criteria", []),
                     "numerical_target": {
-                        "metric": str(goal.metric_type),  # Simplified conversion to string
+                        "metric": str(goal.metric_type),
                         "target": task_data.get("contribution_expected", gap / len(result["tasks"])),
                         "unit": goal.unit,
                         "validation_method": "manual_verification"
                     }
+                }
+                
+                task = {
+                    "goal_id": str(goal.id),
+                    "metric_type": str(goal.metric_type),
+                    "name": task_data["name"],
+                    "description": task_data["description"],
+                    "priority": task_data.get("priority", 3),
+                    "contribution_expected": task_data.get("contribution_expected", gap / len(result["tasks"])),
+                    "context_data": context_data
                 }
                 tasks.append(task)
                 
@@ -313,18 +320,30 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
     
     async def _fallback_generic_tasks(self, goal: WorkspaceGoal, gap: float) -> List[Dict[str, Any]]:
         """Fallback quando AI non è disponibile"""
+        context_data = {
+            "is_goal_driven": True,
+            "auto_generated": True,
+            "task_type": "generic_goal_task",
+            "deliverable_type": "goal_output",
+            "estimated_duration_hours": 8,
+            "required_skills": ["general_execution"],
+            "success_criteria": [f"Deliver {gap} {goal.unit}"],
+            "numerical_target": {
+                "metric": str(goal.metric_type),
+                "target": gap,
+                "unit": goal.unit,
+                "validation_method": "manual_verification"
+            }
+        }
+        
         return [{
             "goal_id": str(goal.id),
             "metric_type": goal.metric_type.value,
             "name": f"Achieve {gap} {goal.unit}",
             "description": f"Work towards achieving {gap} {goal.unit} for goal: {goal.description}",
-            "type": "generic_goal_task",
             "priority": 3,
             "contribution_expected": gap,
-            "success_criteria": [f"Deliver {gap} {goal.unit}"],
-            "estimated_duration_hours": 8,
-            "required_skills": ["general_execution"],
-            "deliverable_type": "goal_output"
+            "context_data": context_data
         }]
     
     async def create_corrective_task(
@@ -364,14 +383,10 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                 return {}
             
             # 🎯 CREATE URGENT CORRECTIVE TASK
-            corrective_task = {
-                "goal_id": str(goal.id),
-                "metric_type": str(goal.metric_type),
-                "name": f"🚨 URGENT: Close {gap_percentage:.1f}% gap in {str(goal.metric_type)}",
-                "description": f"Critical corrective action required. Current gap: {remaining_gap} {goal.unit}. Must achieve target within 24 hours.",
-                "type": "corrective_action",
-                "priority": 1,  # Highest priority
-                "contribution_expected": remaining_gap,
+            context_data = {
+                "is_goal_driven": True,
+                "auto_generated": True,
+                "task_type": "corrective_action",
                 "is_corrective": True,
                 "urgency": "critical",
                 "deadline_hours": 24,
@@ -395,6 +410,16 @@ Focus on the specific gap ({gap} {goal.unit}) and make tasks that directly contr
                     "seniority": selected_agent_role.get("seniority", "expert"),
                     "selection_strategy": selected_agent_role.get("strategy", "availability_based")
                 }
+            }
+            
+            corrective_task = {
+                "goal_id": str(goal.id),
+                "metric_type": str(goal.metric_type),
+                "name": f"🚨 URGENT: Close {gap_percentage:.1f}% gap in {str(goal.metric_type)}",
+                "description": f"Critical corrective action required. Current gap: {remaining_gap} {goal.unit}. Must achieve target within 24 hours.",
+                "priority": 1,  # Highest priority
+                "contribution_expected": remaining_gap,
+                "context_data": context_data
             }
             
             role_str = str(selected_agent_role["role"]) if hasattr(selected_agent_role["role"], 'value') else selected_agent_role["role"]

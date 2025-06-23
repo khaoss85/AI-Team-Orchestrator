@@ -19,6 +19,8 @@ export default function ConversationInput({
 }: ConversationInputProps) {
   const [input, setInput] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showSlashCommands, setShowSlashCommands] = useState(false)
+  const [filteredCommands, setFilteredCommands] = useState<any[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Quick actions based on chat type
@@ -71,6 +73,84 @@ export default function ConversationInput({
 
   const quickActions = getQuickActions()
 
+  // Available slash commands/tools
+  const slashCommands = [
+    {
+      command: '/show_project_status',
+      title: '📊 View Project Status',
+      description: 'Get comprehensive project overview',
+      example: 'Shows current project metrics and status'
+    },
+    {
+      command: '/show_team_status',
+      title: '👥 View Team Status',
+      description: 'See current team composition and activities',
+      example: 'Displays team members and their current tasks'
+    },
+    {
+      command: '/show_goal_progress',
+      title: '🎯 View Goal Progress',
+      description: 'Check progress on objectives',
+      example: 'Shows completion percentage for all goals'
+    },
+    {
+      command: '/show_deliverables',
+      title: '📦 View Deliverables',
+      description: 'See completed deliverables and assets',
+      example: 'Lists all project deliverables and their status'
+    },
+    {
+      command: '/approve_all_feedback',
+      title: '✅ Approve All Feedback',
+      description: 'Approve all pending feedback requests',
+      example: 'Bulk approves all waiting feedback items'
+    },
+    {
+      command: '/add_team_member',
+      title: '➕ Add Team Member',
+      description: 'Add a new member to the team',
+      example: 'Add team member with specific role and skills'
+    },
+    {
+      command: '/create_goal',
+      title: '🎯 Create Goal',
+      description: 'Create a new project goal',
+      example: 'Define new objectives for the project'
+    },
+    {
+      command: '/fix_workspace_issues',
+      title: '🔧 Fix Workspace Issues',
+      description: 'Restart failed tasks and resolve issues',
+      example: 'Automatically diagnose and fix common problems'
+    }
+  ]
+
+  // Handle slash command detection
+  useEffect(() => {
+    const trimmedInput = input.trim()
+    
+    if (trimmedInput.startsWith('/')) {
+      const commandQuery = trimmedInput.slice(1).toLowerCase()
+      
+      // If just "/", show all commands
+      if (commandQuery === '') {
+        setFilteredCommands(slashCommands)
+      } else {
+        // Filter commands based on query
+        const filtered = slashCommands.filter(cmd => 
+          cmd.command.toLowerCase().includes(`/${commandQuery}`) ||
+          cmd.title.toLowerCase().includes(commandQuery) ||
+          cmd.description.toLowerCase().includes(commandQuery)
+        )
+        setFilteredCommands(filtered)
+      }
+      setShowSlashCommands(true)
+    } else {
+      setShowSlashCommands(false)
+      setFilteredCommands([])
+    }
+  }, [input])
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -100,6 +180,21 @@ export default function ConversationInput({
       e.preventDefault()
       handleSend()
     }
+    
+    // Handle escape to close slash commands
+    if (e.key === 'Escape' && showSlashCommands) {
+      setShowSlashCommands(false)
+      setFilteredCommands([])
+    }
+  }
+
+  const handleSlashCommandSelect = (command: any) => {
+    // Convert slash command to natural language request
+    const naturalRequest = command.title.replace(/^[📊👥🎯📦✅➕🔧]\s*/, '')
+    setInput(naturalRequest)
+    setShowSlashCommands(false)
+    setFilteredCommands([])
+    textareaRef.current?.focus()
   }
 
   const handleQuickAction = (action: string) => {
@@ -126,14 +221,14 @@ export default function ConversationInput({
     
     if (activeChat.type === 'fixed') {
       switch (activeChat.systemType) {
-        case 'team': return 'Ask about team management...'
-        case 'configuration': return 'Request configuration changes...'
-        case 'knowledge': return 'Search knowledge base...'
-        case 'tools': return 'Ask about tools and capabilities...'
-        default: return 'Type your message...'
+        case 'team': return 'Ask about team management... (type / for tools)'
+        case 'configuration': return 'Request configuration changes... (type / for tools)'
+        case 'knowledge': return 'Search knowledge base... (type / for tools)'
+        case 'tools': return 'Ask about tools and capabilities... (type / for tools)'
+        default: return 'Type your message... (type / for tools)'
       }
     } else {
-      return 'Describe what you need or ask for updates...'
+      return 'Describe what you need or ask for updates... (type / for tools)'
     }
   }
 
@@ -205,6 +300,45 @@ export default function ConversationInput({
             {input.length > 500 && (
               <div className="absolute bottom-2 right-2 text-xs text-gray-400">
                 {input.length}/2000
+              </div>
+            )}
+
+            {/* Slash Commands Dropdown */}
+            {showSlashCommands && filteredCommands.length > 0 && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-10">
+                <div className="p-2 border-b border-gray-100 bg-gray-50">
+                  <div className="text-xs font-medium text-gray-600">Available Tools</div>
+                  <div className="text-xs text-gray-500">Click to select or continue typing</div>
+                </div>
+                {filteredCommands.map((command, index) => (
+                  <button
+                    key={command.command}
+                    onClick={() => handleSlashCommandSelect(command)}
+                    className="w-full text-left p-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="text-lg flex-shrink-0">
+                        {command.title.match(/^[📊👥🎯📦✅➕🔧]/)?.[0] || '🔧'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900">
+                          {command.title}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {command.description}
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1 font-mono">
+                          {command.command}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {filteredCommands.length === 0 && input.trim().startsWith('/') && (
+                  <div className="p-3 text-sm text-gray-500 text-center">
+                    No matching tools found
+                  </div>
+                )}
               </div>
             )}
           </div>

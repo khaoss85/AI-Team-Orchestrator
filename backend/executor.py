@@ -2187,9 +2187,12 @@ class TaskExecutor(AssetCoordinationMixin):
     ) -> str:
         """Crea descrizione strutturata per il task iniziale"""
         workspace_goal = workspace_dict.get('goal', 'No goal provided.')
-        workspace_budget = workspace_dict.get('budget', {})
+        workspace_budget = workspace_dict.get('budget') or {}
         
-        budget_str = f"{workspace_budget.get('max_amount', 'N/A')} {workspace_budget.get('currency', '')} (Strategy: {workspace_budget.get('strategy', 'standard')})"
+        if workspace_budget:
+            budget_str = f"{workspace_budget.get('max_amount', 'N/A')} {workspace_budget.get('currency', '')} (Strategy: {workspace_budget.get('strategy', 'standard')})"
+        else:
+            budget_str = "Not specified"
         
         description = f"""**PROJECT KICK-OFF: STRATEGIC PLANNING & TASK DEFINITION**
 

@@ -172,6 +172,11 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
         logger.info(f"Processing {len(proposal.handoffs)} handoff proposals for actual creation...")
         created_handoffs_db = []
         
+        # 🚀 ACTIVATE WORKSPACE: Update workspace status to active before processing handoffs
+        from database import update_workspace_status
+        await update_workspace_status(str(workspace_id), "active")
+        logger.info(f"✅ Workspace {workspace_id} activated successfully")
+        
         for handoff_proposal in proposal.handoffs: 
             # Accedi tramite i nomi dei campi definiti in HandoffProposalCreate
             source_agent_name = handoff_proposal.source_agent_name 

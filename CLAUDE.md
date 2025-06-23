@@ -88,6 +88,48 @@ API endpoints: `/improvement/start/{task_id}`, `/improvement/status/{task_id}`, 
 - Graceful degradation when SDK unavailable
 - Tools-within-tools paradigm for complex operations
 
+## Available Tools
+
+The conversational AI system provides access to various tools through natural language commands or slash commands (`/`). When users type `/` in the chat input, they can discover and use these tools:
+
+### Project Management Tools
+- **`show_project_status`** (📊): Get comprehensive project overview including metrics, goals, and current status
+- **`show_goal_progress`** (🎯): Check progress on specific objectives and goal completion percentages  
+- **`show_deliverables`** (📦): View completed deliverables, assets, and project outputs
+- **`create_goal`** (🎯): Create new project goals with specific metrics and targets
+
+### Team Management Tools  
+- **`show_team_status`** (👥): See current team composition, member activities, and workload distribution
+- **`add_team_member`** (➕): Add new team members with specific roles, skills, and seniority levels
+
+### Quality & Feedback Tools
+- **`approve_all_feedback`** (✅): Bulk approve all pending human feedback requests in the workspace
+
+### System Tools
+- **`fix_workspace_issues`** (🔧): Automatically diagnose and restart failed tasks, resolve common workspace issues
+
+### Tool Access Methods
+1. **Slash Commands**: Type `/` in any chat input to see available tools
+2. **Natural Language**: Describe what you want (e.g., "show me the project status")
+3. **Quick Actions**: Use context-specific action buttons in chat interfaces
+
+### Usage Notes
+- Tools are context-aware and adapt to the current workspace
+- Most tools provide real-time data from the database
+- Results are formatted for easy reading and include actionable insights
+- Tools can be chained together in conversations for complex workflows
+
+### Tool Maintenance Guidelines
+When adding new tools to the system, ensure you update these locations:
+
+1. **Backend Implementation**: Add tool logic to `backend/ai_agents/conversational_simple.py` in the `_execute_tool` method
+2. **Frontend Discovery**: Update the `slashCommands` array in `frontend/src/components/conversational/ConversationInput.tsx`
+3. **AI Suggestions**: Add tool to `actionable_tools` dictionary in `conversational_simple.py` `_extract_suggested_actions` method
+4. **Documentation**: Update this CLAUDE.md section with tool description and usage
+5. **Tool Registry**: Register in `backend/tools/registry.py` if applicable
+
+**Critical**: Always maintain consistency between the backend tool implementation and frontend discovery interface. Test both slash command discovery and natural language invocation.
+
 ## Key Files
 - `backend/main.py`: FastAPI app entry point
 - `backend/ai_agents/director.py`: Team proposal generation
@@ -95,3 +137,4 @@ API endpoints: `/improvement/start/{task_id}`, `/improvement/status/{task_id}`, 
 - `backend/improvement_loop.py`: Quality feedback system
 - `frontend/src/app/layout.tsx`: Main app layout
 - `frontend/src/components/orchestration/`: Core orchestration UI
+- `frontend/src/components/conversational/ConversationInput.tsx`: Slash command implementation

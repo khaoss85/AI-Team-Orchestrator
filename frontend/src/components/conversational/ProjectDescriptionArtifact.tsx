@@ -226,12 +226,63 @@ function ProjectGoalsTab({ projectData }: { projectData: any }) {
               <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">
-                      {goal.metric_type?.replace(/_/g, ' ') || 'Unnamed Goal'}
-                    </h5>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h5 className="font-medium text-gray-900">
+                        {goal.metric_type?.replace(/_/g, ' ') || 'Unnamed Goal'}
+                      </h5>
+                      {goal.metadata?.deliverable_type && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          🔧 {goal.metadata.deliverable_type}
+                        </span>
+                      )}
+                      {goal.metadata?.autonomy_level && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          goal.metadata.autonomy_level === 'autonomous' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {goal.metadata.autonomy_level === 'autonomous' ? '🤖 Autonomo' : '🤝 Assistito'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 mb-3">
                       {goal.description || 'No description available'}
                     </p>
+                    
+                    {goal.metadata?.business_value && (
+                      <p className="text-xs text-gray-600 mb-2">
+                        <strong>Valore Business:</strong> {goal.metadata.business_value}
+                      </p>
+                    )}
+                    
+                    {goal.metadata?.autonomy_reason && (
+                      <p className="text-xs text-gray-600 mb-2">
+                        <strong>Modalità di Esecuzione:</strong> {goal.metadata.autonomy_reason}
+                      </p>
+                    )}
+                    
+                    {goal.metadata?.human_input_required && goal.metadata.human_input_required.length > 0 && (
+                      <p className="text-xs text-red-600 mb-2">
+                        <strong>Input Umano Richiesto:</strong> {goal.metadata.human_input_required.join(', ')}
+                      </p>
+                    )}
+                    
+                    {goal.metadata?.available_tools && goal.metadata.available_tools.length > 0 && (
+                      <p className="text-xs text-blue-600 mb-2">
+                        <strong>Strumenti AI Utilizzati:</strong> {goal.metadata.available_tools.join(', ')}
+                      </p>
+                    )}
+                    
+                    {goal.metadata?.acceptance_criteria && goal.metadata.acceptance_criteria.length > 0 && (
+                      <div className="text-xs text-gray-600 mb-2">
+                        <strong>Criteri di Accettazione:</strong>
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          {goal.metadata.acceptance_criteria.slice(0, 3).map((criteria: string, idx: number) => (
+                            <li key={idx}>{criteria}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className="ml-4 text-right">
                     <div className="text-lg font-bold text-green-600">
@@ -261,12 +312,38 @@ function ProjectGoalsTab({ projectData }: { projectData: any }) {
               <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">
-                      {goal.metric_type?.replace(/_/g, ' ') || 'Unnamed Metric'}
-                    </h5>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h5 className="font-medium text-gray-900">
+                        {goal.metric_type?.replace(/_/g, ' ') || 'Unnamed Metric'}
+                      </h5>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        📊 Metrica
+                      </span>
+                      {goal.metadata?.confidence && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          goal.metadata.confidence > 0.8 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {goal.metadata.confidence > 0.8 ? 'Alta Confidenza' : 'Media Confidenza'} ({Math.round(goal.metadata.confidence * 100)}%)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 mb-3">
                       {goal.description || 'No description available'}
                     </p>
+                    
+                    {goal.metadata?.business_value && (
+                      <p className="text-xs text-gray-600 mb-2">
+                        <strong>Valore Business:</strong> {goal.metadata.business_value}
+                      </p>
+                    )}
+                    
+                    {goal.metadata?.semantic_context?.measurement_method && (
+                      <p className="text-xs text-blue-600 mb-2">
+                        <strong>Metodo di Misurazione:</strong> {goal.metadata.semantic_context.measurement_method}
+                      </p>
+                    )}
                   </div>
                   <div className="ml-4 text-right">
                     <div className="text-lg font-bold text-blue-600">

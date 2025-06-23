@@ -188,8 +188,8 @@ class E2EAutoStartTester:
             self.log_step("6_approve_team", False, None, "No team_id available from proposal generation")
             return False
         
-        # Approve the team proposal directly using the team_id
-        success, approve_data = self.make_request("POST", f"/proposals/{self.team_id}/approve")
+        # Approve the team proposal using the director endpoint
+        success, approve_data = self.make_request("POST", f"/director/approve/{self.workspace_id}?proposal_id={self.team_id}")
         if success:
             self.log_step("6_approve_team", True, approve_data)
             return True
