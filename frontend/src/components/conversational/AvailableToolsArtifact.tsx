@@ -309,7 +309,7 @@ function ToolsTab({ categories, expandedCategory, onToggleCategory, onToolExecut
                         )}
                       </div>
                       <button
-                        onClick={() => handleToolClick(tool)}
+                        onClick={() => onToolClick(tool)}
                         className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
                       >
                         {Object.keys(tool.parameters || {}).length > 0 ? 'Configure' : 'Execute'}
