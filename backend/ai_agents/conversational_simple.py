@@ -1442,16 +1442,48 @@ Use tools to gather additional data for deeper analysis when needed.
 {message}"""
                         return formatted_message
                 
-                elif tool_name == "generate_image" and "image_url" in result:
-                    image_url = result["image_url"]
+                elif tool_name == "generate_image":
                     prompt = parameters.get("prompt", "Generated image")
-                    return f"""🎨 **Image Generated Successfully**
+                    
+                    # Try to extract image URL from different possible result formats
+                    image_url = None
+                    if "image_url" in result:
+                        image_url = result["image_url"]
+                    elif "result" in result and isinstance(result["result"], dict):
+                        if "image_url" in result["result"]:
+                            image_url = result["result"]["image_url"]
+                        elif "url" in result["result"]:
+                            image_url = result["result"]["url"]
+                    elif "result" in result and isinstance(result["result"], str):
+                        # If result is a string, it might be the URL
+                        if "http" in result["result"]:
+                            image_url = result["result"]
+                    
+                    # Search for URL in the message if not found
+                    if not image_url and "message" in result:
+                        import re
+                        url_match = re.search(r'https?://[^\s]+', result["message"])
+                        if url_match:
+                            image_url = url_match.group()
+                    
+                    if image_url:
+                        return f"""🎨 **Image Generated Successfully**
 
 **Prompt**: {prompt}
 
 ![Generated Image]({image_url})
 
+**URL**: {image_url}
+
 {message}"""
+                    else:
+                        return f"""🎨 **Image Generation Result**
+
+**Prompt**: {prompt}
+
+{message}
+
+*Image URL not found in expected format. Please check the tool response.*"""
                 
                 return f"✅ **Tool Executed Successfully**\n\n{message}"
             else:

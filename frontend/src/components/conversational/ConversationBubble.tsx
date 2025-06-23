@@ -66,7 +66,24 @@ export default function ConversationBubble({ message }: ConversationBubbleProps)
                 li: ({children}) => <li className="ml-2">{children}</li>,
                 hr: () => <hr className="my-3 border-gray-200" />,
                 code: ({children}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">{children}</code>,
-                blockquote: ({children}) => <blockquote className="border-l-2 border-gray-300 pl-2 italic">{children}</blockquote>
+                blockquote: ({children}) => <blockquote className="border-l-2 border-gray-300 pl-2 italic">{children}</blockquote>,
+                img: ({src, alt}) => (
+                  <div className="my-4">
+                    <img 
+                      src={src} 
+                      alt={alt || 'Generated image'} 
+                      className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'text-red-500 text-sm p-2 bg-red-50 border border-red-200 rounded';
+                        errorDiv.textContent = `Failed to load image: ${alt || src}`;
+                        target.parentNode?.insertBefore(errorDiv, target);
+                      }}
+                    />
+                  </div>
+                )
               }}
             >
                 {message.content}
