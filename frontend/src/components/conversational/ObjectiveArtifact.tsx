@@ -66,7 +66,7 @@ export default function ObjectiveArtifact({
   }
 
   return (
-    <div className="">
+    <div className="p-6">
       {/* Minimal Header - Claude/ChatGPT style */}
       <div className="border-b border-gray-100 pb-4 mb-6">
         <div className="flex items-start justify-between">
@@ -136,7 +136,7 @@ export default function ObjectiveArtifact({
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-4">
+      <div className="">
         {activeTab === 'overview' && (
           <OverviewTab objectiveData={objectiveData} />
         )}
@@ -260,33 +260,108 @@ function MetadataTab({ metadata }: MetadataTabProps) {
     return (
       <div className="text-center text-gray-500 py-8">
         <div className="text-3xl mb-2">🏷️</div>
-        <div>No metadata available for this objective</div>
+        <div>No additional details available</div>
       </div>
     )
   }
 
-  return (
-    <div className="space-y-3">
-      <div className="text-sm text-gray-600 mb-4">
-        Additional metadata and custom properties for this objective:
-      </div>
-      {Object.entries(metadata).map(([key, value]) => (
-        <div key={key} className="border border-gray-200 rounded-lg p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h4 className="font-medium text-gray-900 capitalize">
-                {key.replace('_', ' ')}
-              </h4>
-              <div className="mt-2 text-sm text-gray-600">
-                {typeof value === 'object' ? (
-                  <pre className="bg-gray-50 p-2 rounded text-xs overflow-x-auto">
-                    {JSON.stringify(value, null, 2)}
-                  </pre>
-                ) : (
-                  <span>{String(value)}</span>
-                )}
-              </div>
+  // Helper function to format field names in a user-friendly way
+  const formatFieldName = (key: string): string => {
+    const fieldMappings: Record<string, string> = {
+      'business_value': 'Business Value',
+      'autonomy_level': 'Autonomy Level',
+      'autonomy_reason': 'AI Assistance Details',
+      'user_confirmed': 'User Confirmed',
+      'confidence': 'Confidence Level',
+      'available_tools': 'Available Tools',
+      'execution_phase': 'Execution Phase',
+      'deliverable_type': 'Deliverable Type',
+      'human_input_required': 'Human Input Required',
+      'acceptance_criteria': 'Acceptance Criteria',
+      'estimated_effort': 'Estimated Effort',
+      'full_description': 'Full Description',
+      'contributes_to_metrics': 'Contributes to Metrics',
+      'is_strategic_deliverable': 'Strategic Deliverable',
+      'semantic_context': 'Technical Details',
+      'base_type': 'Base Type',
+      'deliverables': 'Related Deliverables',
+      'original_extraction': 'Original Extraction'
+    }
+    return fieldMappings[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  // Helper function to format values in a user-friendly way
+  const formatValue = (value: any): JSX.Element => {
+    if (value === null || value === undefined) {
+      return <span className="text-gray-400 italic">Not specified</span>
+    }
+
+    if (typeof value === 'boolean') {
+      return (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          {value ? '✓ Yes' : '✗ No'}
+        </span>
+      )
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-gray-400 italic">None specified</span>
+      }
+      return (
+        <div className="space-y-1">
+          {value.map((item, index) => (
+            <div key={index} className="flex items-start space-x-2">
+              <span className="text-blue-500 mt-1">•</span>
+              <span className="text-sm">{String(item)}</span>
             </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (typeof value === 'object') {
+      // Don't show complex technical objects to users
+      return <span className="text-gray-400 italic">Technical configuration available</span>
+    }
+
+    if (typeof value === 'number') {
+      if (value >= 0 && value <= 1) {
+        return <span className="font-medium">{Math.round(value * 100)}%</span>
+      }
+      return <span className="font-medium">{value}</span>
+    }
+
+    // String values - format nicely
+    const stringValue = String(value)
+    if (stringValue.length > 200) {
+      return (
+        <div className="space-y-2">
+          <p className="text-sm leading-relaxed">{stringValue}</p>
+        </div>
+      )
+    }
+
+    return <span className="text-sm">{stringValue}</span>
+  }
+
+  // Filter out technical fields that users don't need to see
+  const userFriendlyFields = Object.entries(metadata).filter(([key, value]) => {
+    const hiddenFields = ['semantic_context', 'base_type', 'original_extraction']
+    return !hiddenFields.includes(key)
+  })
+
+  return (
+    <div className="space-y-4">
+      {userFriendlyFields.map(([key, value]) => (
+        <div key={key} className="bg-gray-50 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 mb-2">
+            {formatFieldName(key)}
+          </h4>
+          <div className="text-gray-700">
+            {formatValue(value)}
           </div>
         </div>
       ))}

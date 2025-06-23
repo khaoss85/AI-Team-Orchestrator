@@ -394,8 +394,8 @@ export function useConversationalWorkspace(workspaceId: string) {
       let extractedSuggestedActions: any[] = []
       
       // First check if message contains inline artifacts
-      // Fixed: Use a more comprehensive pattern that handles nested JSON
-      const artifactPattern = /\*\*ARTIFACT:(\w+):(.*?)\*\*(?!\*)/gs
+      // Using simple pattern that works - the issue was elsewhere
+      const artifactPattern = /\*\*ARTIFACT:(\w+):(.+?)\*\*/g
       let match
       const inlineArtifacts: any[] = []
       
@@ -413,6 +413,9 @@ export function useConversationalWorkspace(workspaceId: string) {
           }
           
           if (artifactType === 'tools_overview') {
+            console.log('🎯 [sendMessage] Creating tools artifact with data:', parsedData)
+            console.log('🎯 [sendMessage] Tools in parsed data:', parsedData.tools?.length || 0)
+            
             // Update the available-tools artifact
             const toolsArtifact: DeliverableArtifact = {
               id: 'available-tools',
@@ -423,9 +426,16 @@ export function useConversationalWorkspace(workspaceId: string) {
               content: parsedData,
               lastUpdated: new Date().toISOString()
             }
+            
+            console.log('🎯 [sendMessage] Created artifact:', toolsArtifact)
+            
             setArtifacts(prev => {
+              console.log('🎯 [sendMessage] Previous artifacts count:', prev.length)
               const filtered = prev.filter(a => a.id !== 'available-tools')
-              return [...filtered, toolsArtifact]
+              const newArtifacts = [...filtered, toolsArtifact]
+              console.log('🎯 [sendMessage] New artifacts count:', newArtifacts.length)
+              console.log('🎯 [sendMessage] Tools artifact content in state:', toolsArtifact.content)
+              return newArtifacts
             })
           } else if (artifactType === 'project_description') {
             // Handle project description artifacts
@@ -463,7 +473,8 @@ export function useConversationalWorkspace(workspaceId: string) {
           console.log('🧠 [sendMessage] Found thinking steps:', extractedThinkingSteps.length)
         }
         
-        await loadArtifacts()
+        // Don't call loadArtifacts() here as it overwrites inline artifacts
+        // await loadArtifacts()
       }
       
       // Extract suggested actions from response

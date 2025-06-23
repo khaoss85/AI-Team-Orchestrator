@@ -56,7 +56,7 @@ export default function AvailableToolsArtifact({
   }
 
   return (
-    <div className="">
+    <div className="p-6">
       {/* Minimal Header */}
       <div className="border-b border-gray-100 pb-4 mb-6">
         <h1 className="text-xl font-semibold text-gray-900 mb-2">Available Tools</h1>
@@ -80,7 +80,7 @@ export default function AvailableToolsArtifact({
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-4">
+      <div className="">
         {activeTab === 'tools' && (
           <ToolsTab 
             categories={toolsData.categories || {}} 
