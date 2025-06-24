@@ -699,6 +699,24 @@ export const api = {
       }
     },
 
+    // 🆕 NEW: Resume auto-generation for workspace
+    resumeAutoGeneration: async (workspaceId: string): Promise<{
+      success: boolean;
+      message: string;
+      actions_taken: string[];
+      workspace_id: string;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
+          method: 'POST',
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
     // 🆕 NEW: Asset Tracking
     getAssetTracking: async (workspaceId: string): Promise<AssetTrackingData> => {
       try {

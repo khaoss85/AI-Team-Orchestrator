@@ -24,6 +24,8 @@ export default function ConversationPage() {
     loading,
     sendingMessage,
     error,
+    workspaceHealthStatus,
+    healthLoading,
     setActiveChat,
     sendMessage,
     createDynamicChat,
@@ -31,7 +33,10 @@ export default function ConversationPage() {
     reactivateChat,
     renameChat,
     refreshData,
-    refreshMessages
+    refreshMessages,
+    checkWorkspaceHealth,
+    unblockWorkspace,
+    resumeAutoGeneration
   } = useConversationalWorkspace(workspaceId)
 
   if (loading) {
@@ -79,6 +84,8 @@ export default function ConversationPage() {
         suggestedActions={suggestedActions}
         artifactsPanelCollapsed={artifactsPanelCollapsed}
         sendingMessage={sendingMessage}
+        workspaceHealthStatus={workspaceHealthStatus}
+        healthLoading={healthLoading}
         onSetActiveChat={setActiveChat}
         onSendMessage={sendMessage}
         onCreateDynamicChat={createDynamicChat}
@@ -88,6 +95,9 @@ export default function ConversationPage() {
         onToggleArtifactsPanel={() => setArtifactsPanelCollapsed(!artifactsPanelCollapsed)}
         onRefreshData={refreshData}
         onRefreshMessages={refreshMessages}
+        onCheckWorkspaceHealth={checkWorkspaceHealth}
+        onUnblockWorkspace={unblockWorkspace}
+        onResumeAutoGeneration={resumeAutoGeneration}
       />
     </div>
   )

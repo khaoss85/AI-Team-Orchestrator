@@ -38,6 +38,7 @@ from routes.deliverables import router as deliverables_router
 from routes.websocket import router as websocket_router
 from routes.conversation import router as conversation_router
 from routes.documents import router as documents_router
+from routes.authentic_thinking import router as authentic_thinking_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -84,6 +85,7 @@ app.include_router(workspace_goals_router)
 app.include_router(deliverables_router)
 app.include_router(websocket_router)
 app.include_router(conversation_router)
+app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
 
 # Add API prefix compatibility for frontend
 # Import the specific endpoint functions we need

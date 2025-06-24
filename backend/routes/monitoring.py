@@ -1328,11 +1328,18 @@ async def unblock_workspace(workspace_id: UUID):
             
             actions_taken.append(f"Reset workspace status from '{current_status}' to 'active'")
         
-        # 2. Remove from auto-generation paused list
-        if hasattr(task_executor, 'workspace_auto_generation_paused'):
-            if workspace_id_str in task_executor.workspace_auto_generation_paused:
-                task_executor.workspace_auto_generation_paused.discard(workspace_id_str)
-                actions_taken.append("Removed from auto-generation paused list")
+        # 2. Resume auto-generation for workspace (this handles removal from paused list and status update)
+        if hasattr(task_executor, '_resume_auto_generation_for_workspace'):
+            if workspace_id_str in getattr(task_executor, 'workspace_auto_generation_paused', set()):
+                try:
+                    await task_executor._resume_auto_generation_for_workspace(workspace_id_str)
+                    actions_taken.append("Resumed auto-generation for workspace")
+                except Exception as e:
+                    logger.warning(f"Failed to resume auto-generation: {e}")
+                    # Fallback: manual removal from paused list
+                    if hasattr(task_executor, 'workspace_auto_generation_paused'):
+                        task_executor.workspace_auto_generation_paused.discard(workspace_id_str)
+                        actions_taken.append("Manually removed from auto-generation paused list")
         
         # 3. Log the manual unblock action
         try:
@@ -1369,3 +1376,57 @@ async def unblock_workspace(workspace_id: UUID):
     except Exception as e:
         logger.error(f"Error unblocking workspace {workspace_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to unblock workspace: {str(e)}")
+
+@router.post("/workspace/{workspace_id}/resume-auto-generation")
+async def resume_workspace_auto_generation(workspace_id: UUID):
+    """Force resume auto-generation for a workspace"""
+    try:
+        workspace_id_str = str(workspace_id)
+        logger.info(f"🔓 Manual resume auto-generation requested for workspace {workspace_id_str}")
+        
+        actions_taken = []
+        
+        # Check if workspace is in paused list
+        if hasattr(task_executor, 'workspace_auto_generation_paused'):
+            if workspace_id_str in task_executor.workspace_auto_generation_paused:
+                # Use the proper resume method
+                try:
+                    await task_executor._resume_auto_generation_for_workspace(workspace_id_str)
+                    actions_taken.append("Auto-generation resumed via executor method")
+                except Exception as e:
+                    logger.error(f"Failed to resume auto-generation via executor: {e}")
+                    # Fallback: manual removal
+                    task_executor.workspace_auto_generation_paused.discard(workspace_id_str)
+                    actions_taken.append("Manually removed from paused list")
+            else:
+                actions_taken.append("Workspace was not in paused list")
+        else:
+            actions_taken.append("Executor does not have paused list attribute")
+        
+        # Ensure workspace status is active
+        try:
+            from database import supabase, get_workspace
+            from datetime import datetime
+            
+            workspace = await get_workspace(workspace_id_str)
+            if workspace and workspace.get("status") != "active":
+                supabase.table("workspaces").update({
+                    "status": "active",
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", workspace_id_str).execute()
+                actions_taken.append(f"Updated workspace status to 'active'")
+        except Exception as e:
+            logger.warning(f"Failed to update workspace status: {e}")
+        
+        return {
+            "success": True,
+            "message": "Auto-generation resume completed",
+            "actions_taken": actions_taken,
+            "workspace_id": workspace_id_str
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resuming auto-generation for {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to resume auto-generation: {str(e)}")

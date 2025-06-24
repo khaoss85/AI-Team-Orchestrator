@@ -29,6 +29,258 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [workspaceHealthStatus, setWorkspaceHealthStatus] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
 
+  // 🎯 ENHANCED: Business Value Scoring Function
+  const calculateTaskBusinessValueScore = useCallback((task: any, goalData: any): number => {
+    let score = 0
+    const result = task.result || {}
+    
+    // High-value indicators from detailed results
+    if (result.detailed_results_json) {
+      try {
+        const detailed = typeof result.detailed_results_json === 'string' 
+          ? JSON.parse(result.detailed_results_json) 
+          : result.detailed_results_json
+        
+        // Rendered HTML = High business value (visual/interactive content)
+        if (detailed.rendered_html && detailed.rendered_html.length > 100) {
+          score += 40
+        }
+        
+        // Structured content = Medium-high business value
+        if (detailed.structured_content) {
+          score += 30
+        }
+        
+        // Direct deliverable/business content = High value
+        if (detailed.deliverable_content || detailed.business_content) {
+          score += 35
+        }
+        
+        // Strategy, guidelines, posts = Medium-high value
+        if (detailed.strategy || detailed.guidelines || detailed.posts) {
+          score += 25
+        }
+        
+      } catch (e) {
+        // Invalid JSON, reduce score
+        score -= 10
+      }
+    }
+    
+    // Analyze summary for business value indicators
+    const summary = result.summary || ''
+    if (summary) {
+      const businessKeywords = [
+        'document created', 'content generated', 'strategy developed',
+        'analysis completed', 'deliverable produced', 'template created',
+        'framework established', 'plan finalized', 'content delivered'
+      ]
+      
+      const lowValueKeywords = [
+        'sub-task has been created', 'task has been assigned',
+        'analysis will be conducted', 'plan has been created'
+      ]
+      
+      // Bonus for business-creating activities
+      if (businessKeywords.some(keyword => summary.toLowerCase().includes(keyword))) {
+        score += 20
+      }
+      
+      // Penalty for meta-task activities
+      if (lowValueKeywords.some(keyword => summary.toLowerCase().includes(keyword))) {
+        score = Math.max(5, score - 20)  // Cap minimum at 5
+      }
+    }
+    
+    // Length bonus for substantial content
+    const contentLength = (result.summary || '').length + 
+                         (result.detailed_results_json ? JSON.stringify(result.detailed_results_json).length : 0)
+    if (contentLength > 500) {
+      score += 5
+    }
+    
+    return Math.min(100, Math.max(0, score))
+  }, [])
+
+  // 🎯 ENHANCED: Business Value-Aware Content Extraction
+  const extractBusinessContentFromTasks = useCallback(async (completedTasks: any[], goalData: any) => {
+    try {
+      console.log('📝 [ENHANCED extractBusinessContentFromTasks] Processing', completedTasks.length, 'completed tasks for goal:', goalData?.description)
+      
+      // 🧠 PILLAR 7: Intelligent business content scoring and filtering
+      const scoredTasks = completedTasks.map((task: any) => {
+        const score = calculateTaskBusinessValueScore(task, goalData)
+        return { ...task, businessValueScore: score }
+      })
+      
+      // 🎯 ENHANCED: Separate high-value deliverable tasks from thinking/meta tasks
+      const highValueTasks = scoredTasks
+        .filter((task: any) => task.businessValueScore >= 40.0)
+        .sort((a: any, b: any) => b.businessValueScore - a.businessValueScore)
+        
+      // 🧠 ENHANCED: Extract thinking/planning tasks (20-39 score range)
+      const thinkingTasks = scoredTasks
+        .filter((task: any) => task.businessValueScore >= 20.0 && task.businessValueScore < 40.0)
+        .sort((a: any, b: any) => b.businessValueScore - a.businessValueScore)
+      
+      // 🗑️ Meta-tasks with very low value (<20) are considered ineffective
+      const metaTasks = scoredTasks
+        .filter((task: any) => task.businessValueScore < 20.0)
+      
+      console.log('📊 [ENHANCED] Task Analysis:', {
+        'High-Value (≥40)': highValueTasks.length,
+        'Thinking (20-39)': thinkingTasks.length, 
+        'Meta (<20)': metaTasks.length,
+        'Total': completedTasks.length
+      })
+      
+      if (highValueTasks.length === 0) {
+        // 🧠 ENHANCED: Check if we have thinking tasks to show instead
+        if (thinkingTasks.length > 0) {
+          console.info('🧠 [ENHANCED] No deliverables but found thinking tasks, showing as reasoning process')
+          
+          return {
+            type: 'thinking_only',
+            summary: `Goal completed through planning and analysis. ${thinkingTasks.length} thinking tasks provided strategic insights.`,
+            hasThinking: true,
+            thinkingTasks: thinkingTasks,
+            businessMetrics: {
+              totalTasksAnalyzed: completedTasks.length,
+              thinkingTasksFound: thinkingTasks.length,
+              averageThinkingScore: thinkingTasks.reduce((sum: number, task: any) => sum + task.businessValueScore, 0) / thinkingTasks.length,
+              ineffectiveMetaTasks: metaTasks.length
+            }
+          }
+        }
+        
+        // 🚨 ENHANCED: Pure meta-tasks warning (no thinking value either)
+        console.warn('⚠️ [ENHANCED] No business value found.', metaTasks.length, 'ineffective meta-tasks detected')
+        
+        return {
+          type: 'no_business_content',
+          summary: `No substantial business content found. ${metaTasks.length} tasks created sub-tasks but no deliverables.`,
+          businessValueWarning: true,
+          metaTasksCount: metaTasks.length,
+          totalTasks: completedTasks.length
+        }
+      }
+      
+      // 🎯 ENHANCED: Extract and structure business content from high-value tasks
+      const sections: any[] = []
+      const businessMetrics = {
+        totalTasksAnalyzed: completedTasks.length,
+        highValueTasksFound: highValueTasks.length,
+        averageBusinessScore: highValueTasks.reduce((sum: number, task: any) => sum + task.businessValueScore, 0) / highValueTasks.length,
+        contentTypes: [] as string[]
+      }
+      
+      for (const task of highValueTasks.slice(0, 5)) { // Limit to top 5 highest-value tasks
+        const result = task.result || {}
+        let content = ''
+        
+        // Try to get detailed results first
+        if (result.detailed_results_json) {
+          try {
+            let detailed = result.detailed_results_json
+            if (typeof detailed === 'string') {
+              detailed = JSON.parse(detailed)
+            }
+            
+            // Extract meaningful business content from detailed results
+            if (detailed.rendered_html) {
+              // Use rendered HTML for visual content
+              content = detailed.rendered_html
+            } else if (detailed.structured_content) {
+              // Format structured content nicely
+              if (Array.isArray(detailed.structured_content)) {
+                content = detailed.structured_content.map((item: any, index: number) => {
+                  if (typeof item === 'object') {
+                    return `**${item.title || `Item ${index + 1}`}**\n${item.caption || item.content || item.description || JSON.stringify(item, null, 2)}`
+                  }
+                  return String(item)
+                }).join('\n\n---\n\n')
+              } else {
+                content = JSON.stringify(detailed.structured_content, null, 2)
+              }
+            } else if (detailed.deliverable_content) {
+              content = detailed.deliverable_content
+            } else if (detailed.business_content) {
+              content = detailed.business_content
+            } else if (detailed.content) {
+              content = detailed.content
+            } else if (detailed.strategy) {
+              content = detailed.strategy
+            } else if (detailed.guidelines) {
+              content = detailed.guidelines
+            } else if (detailed.posts) {
+              content = Array.isArray(detailed.posts) ? detailed.posts.join('\n\n---\n\n') : detailed.posts
+            } else {
+              // Fallback: use summary only if no meaningful business content found
+              content = result.summary?.includes('Sub-task') ? 
+                'Business content not available in detailed results' : 
+                (result.summary || 'Content not available')
+            }
+          } catch (e) {
+            content = result.summary || 'Content parsing error'
+          }
+        } else {
+          content = result.summary || 'No content available'
+        }
+        
+        // Track content type for metrics
+        const contentType = result.detailed_results_json ? 
+          (JSON.parse(typeof result.detailed_results_json === 'string' ? result.detailed_results_json : JSON.stringify(result.detailed_results_json)).rendered_html ? 'HTML' :
+           JSON.parse(typeof result.detailed_results_json === 'string' ? result.detailed_results_json : JSON.stringify(result.detailed_results_json)).structured_content ? 'Structured' : 'Basic') : 'Summary'
+        
+        if (!businessMetrics.contentTypes.includes(contentType)) {
+          businessMetrics.contentTypes.push(contentType)
+        }
+        
+        sections.push({
+          title: task.name,
+          content: content,
+          created_at: task.created_at,
+          businessValueScore: task.businessValueScore,
+          contentType: contentType
+        })
+      }
+      
+      // 🎯 ENHANCED: Structure business document with quality metrics + thinking process
+      const businessDocument = {
+        summary: `Business deliverable for: ${goalData.description}`,
+        sections: sections,
+        businessMetrics: businessMetrics,
+        // 🧠 ENHANCED: Include thinking process when available
+        thinkingProcess: thinkingTasks.length > 0 ? {
+          summary: `Strategic planning involved ${thinkingTasks.length} thinking tasks`,
+          thinkingSteps: thinkingTasks.map((task: any) => ({
+            title: task.name,
+            reasoning: task.result?.summary || 'Strategic analysis completed',
+            businessValueScore: task.businessValueScore,
+            contentType: 'strategic_thinking',
+            created_at: task.created_at
+          })),
+          averageThinkingScore: thinkingTasks.reduce((sum: number, task: any) => sum + task.businessValueScore, 0) / thinkingTasks.length
+        } : null,
+        goal_info: {
+          name: goalData.description,
+          type: goalData.metric_type,
+          completion: `${goalData.current_value}/${goalData.target_value}`,
+          status: goalData.status
+        },
+        generated_at: new Date().toISOString(),
+        task_count: highValueTasks.length
+      }
+      
+      console.log('✅ [extractBusinessContentFromTasks] Generated business document with', sections.length, 'sections')
+      return businessDocument
+      
+    } catch (error) {
+      console.error('❌ [extractBusinessContentFromTasks] Error:', error)
+      return null
+    }
+  }, [])
+
   // Initialize workspace and fixed chats
   const initializeWorkspace = useCallback(async () => {
     try {
@@ -197,8 +449,33 @@ export function useConversationalWorkspace(workspaceId: string) {
       
       console.log('📋 [initializeWorkspace] Goals array:', goalsArray)
       
+      // 🎯 ENHANCED: Filter goals to show only those with real business value OR completion guarantee
+      const filteredGoals = goalsArray.filter((goal: any) => {
+        // If goal status indicates completed but pending review due to low business value, exclude it
+        if (goal.status === 'completed_pending_review') {
+          console.log('🚫 [initializeWorkspace] Excluding goal with low business value:', goal.description)
+          return false
+        }
+        
+        // 🔒 COMPLETION GUARANTEE: Always show goals with completion guarantee (user invested effort)
+        if (goal.metadata?.completion_guaranteed) {
+          console.log('🔒 [initializeWorkspace] Including completion-guaranteed goal:', goal.description)
+          return true
+        }
+        
+        // If goal is marked as completed but has no deliverables, it might be fake completion
+        if (goal.status === 'completed' && goal.deliverables_count === 0) {
+          console.log('⚠️ [initializeWorkspace] Warning: Completed goal with no deliverables:', goal.description)
+          // Still include it but mark it for user attention
+        }
+        
+        return true
+      })
+      
+      console.log('📊 [initializeWorkspace] Filtered goals (excluding low business value):', filteredGoals.length, 'of', goalsArray.length)
+      
       // Create chat objects for each goal - AGNOSTIC: configurable format
-      const goalChats: Chat[] = goalsArray.map((goal: any) => {
+      const goalChats: Chat[] = filteredGoals.map((goal: any) => {
         console.log('🔧 [initializeWorkspace] Processing goal for chat:', goal)
         
         // Extract meaningful title from available fields, prioritizing user-renamed titles
@@ -219,11 +496,23 @@ export function useConversationalWorkspace(workspaceId: string) {
           ? (goal.current_value / goal.target_value) * 100 
           : 0
         
+        // 🎯 ENHANCED: Add business value indicator and completion guarantee to the chat object
+        const hasBusinessValueWarning = goal.status === 'completed' && goal.deliverables_count === 0
+        const hasCompletionGuarantee = goal.metadata?.completion_guaranteed
+        
+        // 🔒 COMPLETION GUARANTEE: Special icon and status for guaranteed goals
+        let goalIcon = goal.icon || '🎯'
+        if (hasCompletionGuarantee) {
+          goalIcon = '🔒' // Lock icon indicates completion guarantee
+        } else if (hasBusinessValueWarning) {
+          goalIcon = '⚠️' // Warning icon for questionable completion
+        }
+        
         return {
           id: goal.chat_id || `goal-${goal.id}`, // AGNOSTIC: Use goal.chat_id if provided
           type: 'dynamic' as const,
           title: meaningfulTitle,
-          icon: goal.icon || '🎯', // AGNOSTIC: Use goal.icon if provided
+          icon: goalIcon,
           status: (goal.status === 'active' ? 'active' : goal.status === 'completed' ? 'completed' : 'inactive') as const,
           objective: {
             id: goal.id,
@@ -232,7 +521,10 @@ export function useConversationalWorkspace(workspaceId: string) {
             progress: Math.min(calculatedProgress, 100) // Cap at 100%
           },
           messageCount: 0,
-          lastMessageDate: goal.updated_at || goal.created_at
+          lastMessageDate: goal.updated_at || goal.created_at,
+          // 🎯 ENHANCED: Track business value warning and completion guarantee for UI display
+          businessValueWarning: hasBusinessValueWarning,
+          completionGuarantee: hasCompletionGuarantee
         }
       })
       
@@ -435,6 +727,32 @@ export function useConversationalWorkspace(workspaceId: string) {
     } catch (error) {
       console.error('❌ [unblockWorkspace] Error unblocking workspace:', error)
       return { success: false, message: `Failed to unblock workspace: ${error.message}` }
+    }
+  }, [workspaceId, checkWorkspaceHealth, refreshGoalProgress])
+
+  // Function to resume auto-generation for workspace
+  const resumeAutoGeneration = useCallback(async () => {
+    try {
+      console.log('🔄 [resumeAutoGeneration] Resuming auto-generation for workspace...')
+      
+      const result = await api.monitoring.resumeAutoGeneration(workspaceId)
+      
+      if (result.success) {
+        console.log('✅ [resumeAutoGeneration] Auto-generation resumed successfully')
+        console.log('🔧 [resumeAutoGeneration] Actions taken:', result.actions_taken)
+        // Refresh health status after resuming
+        await checkWorkspaceHealth()
+        // Also refresh goal progress
+        await refreshGoalProgress()
+        return { success: true, message: result.message }
+      } else {
+        console.error('❌ [resumeAutoGeneration] Failed to resume auto-generation:', result.message)
+        return { success: false, message: result.message }
+      }
+      
+    } catch (error) {
+      console.error('❌ [resumeAutoGeneration] Error resuming auto-generation:', error)
+      return { success: false, message: `Failed to resume auto-generation: ${error.message}` }
     }
   }, [workspaceId, checkWorkspaceHealth, refreshGoalProgress])
 
@@ -1202,10 +1520,78 @@ export function useConversationalWorkspace(workspaceId: string) {
                 console.log('📋 [loadChatSpecificArtifacts] Goal found in array:', fullGoalData)
               }
               
+              // Load deliverables for this specific goal
+              let goalDeliverables: any[] = []
+              try {
+                // Get all workspace deliverables and filter for this goal
+                const deliverablesResponse = await api.monitoring.getProjectDeliverables(workspaceId)
+                const allDeliverables = deliverablesResponse?.key_outputs || []
+                
+                // 🎯 FIXED: Get completed tasks SPECIFIC to this goal (not all workspace tasks)
+                const tasksResponse = await fetch(`http://localhost:8000/monitoring/workspace/${workspaceId}/tasks?status=completed`)
+                const tasksData = await tasksResponse.json()
+                const allCompletedTasks = tasksData?.tasks || []
+                
+                // 🔍 FILTER: Only tasks related to this specific goal
+                const goalSpecificTasks = allCompletedTasks.filter((task: any) => {
+                  // Match by goal description or goal-related keywords
+                  const goalKeywords = fullGoalData.description.toLowerCase().split(' ').filter(word => word.length > 3)
+                  const taskDescription = (task.description || '').toLowerCase()
+                  const taskName = (task.name || '').toLowerCase()
+                  
+                  // Check if task contains goal-specific keywords
+                  return goalKeywords.some(keyword => 
+                    taskDescription.includes(keyword) || taskName.includes(keyword)
+                  ) || 
+                  // Fallback: check if task mentions the goal directly
+                  taskDescription.includes(fullGoalData.description.toLowerCase()) ||
+                  taskName.includes(fullGoalData.description.toLowerCase())
+                })
+                
+                console.log(`🎯 [Goal-Specific] Found ${goalSpecificTasks.length} tasks for goal: "${fullGoalData.description}"`)
+                
+                // 📝 GENERATE: Business content from goal-specific tasks only
+                const goalSpecificBusinessContent = await extractBusinessContentFromTasks(goalSpecificTasks, fullGoalData)
+                
+                // 🎯 FIXED: Create deliverable specific to this goal (not all workspace deliverables)
+                if (fullGoalData?.status === 'completed' && goalSpecificBusinessContent) {
+                  // Generate a specific deliverable for this goal
+                  goalDeliverables = [{
+                    id: `goal-${fullGoalData.id}-deliverable`,
+                    title: `${fullGoalData.description} - Complete Analysis`,
+                    description: `Detailed deliverable specifically for: ${fullGoalData.description}`,
+                    type: 'goal_specific_deliverable',
+                    created_at: new Date().toISOString(),
+                    status: 'completed',
+                    content: goalSpecificBusinessContent
+                  }]
+                } else if (fullGoalData?.status === 'completed') {
+                  // Fallback: if no specific content, indicate completion but no deliverable
+                  goalDeliverables = [{
+                    id: `goal-${fullGoalData.id}-completion`,
+                    title: `${fullGoalData.description} - Completed`,
+                    description: `Goal completed but no substantial deliverable content found`,
+                    type: 'completion_notice',
+                    created_at: new Date().toISOString(),
+                    status: 'completed',
+                    content: {
+                      type: 'completion_only',
+                      summary: `Goal "${fullGoalData.description}" has been marked as completed.`,
+                      goalProgress: `${fullGoalData.current_value}/${fullGoalData.target_value}`,
+                      tasksAnalyzed: goalSpecificTasks.length
+                    }
+                  }]
+                }
+                
+                console.log('📦 [loadChatSpecificArtifacts] Goal deliverables loaded:', goalDeliverables.length)
+              } catch (error) {
+                console.error('❌ [loadChatSpecificArtifacts] Failed to load goal deliverables:', error)
+              }
+
               const content = {
                 objective: chat.objective,
                 progress: fullGoalData ? Math.min((fullGoalData.current_value / fullGoalData.target_value) * 100, 100) : 0,
-                deliverables: [],
+                deliverables: goalDeliverables,
                 // Include full goal metadata
                 goal_data: fullGoalData,
                 metadata: fullGoalData?.metadata || {},
@@ -1575,7 +1961,8 @@ export function useConversationalWorkspace(workspaceId: string) {
     
     // Health monitoring actions
     checkWorkspaceHealth,
-    unblockWorkspace
+    unblockWorkspace,
+    resumeAutoGeneration
   }
 }
 

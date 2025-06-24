@@ -67,8 +67,11 @@ export default function ChatSidebar({
 
   // Separate fixed and dynamic chats
   const fixedChats = chats.filter(chat => chat.type === 'fixed')
-  const activeObjectives = chats.filter(chat => chat.type === 'dynamic' && chat.status === 'active')
+  // Show ALL dynamic chats (active, completed, and in_progress) - not just active ones
+  const activeObjectives = chats.filter(chat => chat.type === 'dynamic' && chat.status !== 'archived')
   const archivedChats = chats.filter(chat => chat.status === 'archived')
+  
+  console.log('🎯 [ChatSidebar] chats:', chats.length, 'activeObjectives:', activeObjectives.length, 'archived:', archivedChats.length)
 
   const handleCreateChat = async () => {
     if (newObjective.trim()) {

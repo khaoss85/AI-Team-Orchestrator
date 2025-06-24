@@ -126,28 +126,23 @@ async def force_create_deliverable(workspace_id: str, goals: list, tasks: list):
     
     deliverable_content = enhanced_content
     
-    # Create deliverable record
-    deliverable_data = {
-        'workspace_id': workspace_id,
+    from database import create_deliverable
+
+    payload = {
         'type': 'final_report',
-        'title': f'Project Completion Report - {workspace.get("name", workspace_goal)[:50]}',
+        'title': f"Project Completion Report - {workspace.get('name', workspace_goal)[:50]}",
         'content': deliverable_content,
         'status': 'completed',
         'readiness_score': 100,
         'completion_percentage': 100,
         'business_value_score': 85,
-        'created_at': 'now()',
-        'updated_at': 'now()'
     }
-    
-    # Insert into database
-    result = supabase.table('deliverables').insert(deliverable_data).execute()
-    
-    if result.data:
-        logger.info(f"Created deliverable with ID: {result.data[0]['id']}")
-        return result.data[0]['id']
-    else:
-        raise Exception(f"Failed to insert deliverable: {result}")
+    created = await create_deliverable(workspace_id, payload)
+    deliverable_id = created.get('id')
+    if not deliverable_id:
+        raise Exception(f"Failed to create deliverable via helper: {created}")
+    logger.info(f"✅ Created deliverable with ID: {deliverable_id}")
+    return deliverable_id
 
 if __name__ == "__main__":
     asyncio.run(check_and_fix_deliverable_creation())

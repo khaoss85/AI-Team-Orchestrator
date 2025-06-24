@@ -23,7 +23,7 @@ export interface TeamActivity {
 
 export interface DeliverableArtifact {
   id: string
-  type: 'deliverable' | 'progress' | 'team_status' | 'configuration' | 'feedback' | 'knowledge'
+  type: 'deliverable' | 'progress' | 'team_status' | 'configuration' | 'feedback' | 'knowledge' | 'tools' | 'project_description'
   title: string
   description?: string
   status: 'ready' | 'in_progress' | 'completed'
@@ -42,12 +42,19 @@ export interface Chat {
   unreadCount?: number
   // For dynamic chats
   objective?: {
+    id?: string
     description: string
-    metrics: Record<string, number>
-    deadline?: Date
+    targetDate?: string
+    progress?: number
   }
+  messageCount?: number
+  lastMessageDate?: string
   // For fixed chats  
-  systemType?: 'team' | 'configuration' | 'knowledge' | 'tools'
+  systemType?: 'team' | 'configuration' | 'knowledge' | 'tools' | 'feedback'
+  // 🎯 ENHANCED: Business value tracking
+  businessValueWarning?: boolean
+  // 🔒 COMPLETION GUARANTEE: Goals with guaranteed completion
+  completionGuarantee?: boolean
 }
 
 export interface WorkspaceContext {

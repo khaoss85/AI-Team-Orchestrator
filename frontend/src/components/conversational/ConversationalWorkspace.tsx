@@ -18,6 +18,8 @@ interface ConversationalWorkspaceProps {
   suggestedActions: any[]
   artifactsPanelCollapsed: boolean
   sendingMessage: boolean
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
   onSetActiveChat: (chat: Chat) => void
   onSendMessage: (message: string) => Promise<void>
   onCreateDynamicChat: (objective: string) => Promise<void>
@@ -27,6 +29,9 @@ interface ConversationalWorkspaceProps {
   onToggleArtifactsPanel: () => void
   onRefreshData: () => Promise<void>
   onRefreshMessages?: () => Promise<void>
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
 }
 
 export default function ConversationalWorkspace({
@@ -41,6 +46,8 @@ export default function ConversationalWorkspace({
   suggestedActions,
   artifactsPanelCollapsed,
   sendingMessage,
+  workspaceHealthStatus,
+  healthLoading,
   onSetActiveChat,
   onSendMessage,
   onCreateDynamicChat,
@@ -49,7 +56,10 @@ export default function ConversationalWorkspace({
   onRenameChat,
   onToggleArtifactsPanel,
   onRefreshData,
-  onRefreshMessages
+  onRefreshMessages,
+  onCheckWorkspaceHealth,
+  onUnblockWorkspace,
+  onResumeAutoGeneration
 }: ConversationalWorkspaceProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -187,6 +197,11 @@ export default function ConversationalWorkspace({
           collapsed={artifactsPanelCollapsed}
           onToggleCollapse={onToggleArtifactsPanel}
           onSendMessage={onSendMessage}
+          workspaceHealthStatus={workspaceHealthStatus}
+          healthLoading={healthLoading}
+          onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+          onUnblockWorkspace={onUnblockWorkspace}
+          onResumeAutoGeneration={onResumeAutoGeneration}
         />
       </div>
     </div>

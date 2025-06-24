@@ -16,6 +16,11 @@ interface ArtifactViewerProps {
   onClose: () => void
   onArtifactUpdate?: (updatedArtifact: DeliverableArtifact) => void
   onSendMessage?: (message: string) => void
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
 }
 
 export default function ArtifactViewer({ 
@@ -23,7 +28,12 @@ export default function ArtifactViewer({
   workspaceId, 
   onClose, 
   onArtifactUpdate,
-  onSendMessage
+  onSendMessage,
+  workspaceHealthStatus,
+  healthLoading,
+  onCheckWorkspaceHealth,
+  onUnblockWorkspace,
+  onResumeAutoGeneration
 }: ArtifactViewerProps) {
   const [activeView, setActiveView] = useState<'content' | 'metadata' | 'actions'>('content')
 
@@ -85,6 +95,11 @@ export default function ArtifactViewer({
             workspaceId={workspaceId}
             onArtifactUpdate={onArtifactUpdate}
             onSendMessage={onSendMessage}
+            workspaceHealthStatus={workspaceHealthStatus}
+            healthLoading={healthLoading}
+            onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+            onUnblockWorkspace={onUnblockWorkspace}
+            onResumeAutoGeneration={onResumeAutoGeneration}
           />
         </div>
       </div>
@@ -160,6 +175,11 @@ export default function ArtifactViewer({
             workspaceId={workspaceId}
             onArtifactUpdate={onArtifactUpdate}
             onSendMessage={onSendMessage}
+            workspaceHealthStatus={workspaceHealthStatus}
+            healthLoading={healthLoading}
+            onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+            onUnblockWorkspace={onUnblockWorkspace}
+            onResumeAutoGeneration={onResumeAutoGeneration}
           />
         )}
         
@@ -207,9 +227,24 @@ interface ContentViewProps {
   workspaceId?: string
   onArtifactUpdate?: (updatedArtifact: DeliverableArtifact) => void
   onSendMessage?: (message: string) => void
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
 }
 
-function ContentView({ artifact, workspaceId, onArtifactUpdate, onSendMessage }: ContentViewProps) {
+function ContentView({ 
+  artifact, 
+  workspaceId, 
+  onArtifactUpdate, 
+  onSendMessage,
+  workspaceHealthStatus,
+  healthLoading,
+  onCheckWorkspaceHealth,
+  onUnblockWorkspace,
+  onResumeAutoGeneration
+}: ContentViewProps) {
   // Check if this artifact type has a specialized component - if so, render without additional wrapper
   const hasSpecializedComponent = [
     'team_status', 'configuration', 'feedback', 'knowledge', 
@@ -259,6 +294,11 @@ function ContentView({ artifact, workspaceId, onArtifactUpdate, onSendMessage }:
             })
           }
         }}
+        workspaceHealthStatus={workspaceHealthStatus}
+        healthLoading={healthLoading}
+        onUnblockWorkspace={onUnblockWorkspace}
+        onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+        onResumeAutoGeneration={onResumeAutoGeneration}
       />
     )
   }

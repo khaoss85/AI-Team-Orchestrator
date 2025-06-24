@@ -1745,9 +1745,38 @@ async def get_workspace_goals(workspace_id: str, status: Optional[str] = None) -
         logger.error(f"Error getting workspace goals: {e}", exc_info=True)
         raise
 
-async def update_goal_progress(goal_id: str, increment: float, task_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Update goal progress by incrementing current_value"""
+async def update_goal_progress(goal_id: str, increment: float, task_id: Optional[str] = None, task_business_context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """
+    🎯 ENHANCED: Update goal progress with business value awareness
+    
+    If task_business_context is provided, uses the enhanced goal-driven task planner
+    that calculates progress based on actual business value, not just numerical increments.
+    """
     try:
+        # 🎯 ENHANCED: Use business-aware progress calculation if context available
+        if task_business_context is not None:
+            try:
+                from goal_driven_task_planner import goal_driven_task_planner
+                from uuid import UUID
+                
+                # Use the enhanced progress calculation
+                success = await goal_driven_task_planner.update_goal_progress(
+                    goal_id=UUID(goal_id),
+                    progress_increment=increment,
+                    task_context=task_business_context
+                )
+                
+                if success:
+                    # Get updated goal to return
+                    goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
+                    return goal_result.data[0] if goal_result.data else None
+                else:
+                    logger.warning(f"Enhanced goal progress update failed for {goal_id}, falling back to standard method")
+                    
+            except Exception as e:
+                logger.warning(f"Enhanced goal progress update error for {goal_id}: {e}, falling back to standard method")
+        
+        # 🔄 FALLBACK: Original numerical progress calculation
         # Get current goal
         goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
         
@@ -1765,7 +1794,7 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
             "updated_at": datetime.now().isoformat()
         }
         
-        # Mark as completed if target reached
+        # Mark as completed if target reached (simple numerical check)
         if new_value >= goal["target_value"] and goal["status"] != "completed":
             update_data["status"] = "completed"
             update_data["completed_at"] = datetime.now().isoformat()

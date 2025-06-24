@@ -255,7 +255,7 @@ class GoalDrivenTaskPlanner:
             return await self._fallback_generic_tasks(goal, gap)
         
         try:
-            prompt = f"""You are a universal project management AI. Generate SPECIFIC, ACTIONABLE tasks to achieve this goal.
+            prompt = f"""You are a universal project management AI. Generate SPECIFIC, ACTIONABLE tasks that use REAL TOOLS to achieve this goal.
 
 GOAL CONTEXT:
 - Goal: {goal.description}
@@ -265,14 +265,24 @@ GOAL CONTEXT:
 - Workspace: {workspace_context.get('name', 'Unknown')}
 - Industry context: {workspace_context.get('description', 'Universal business')}
 
-IMPORTANT INSTRUCTIONS:
-1. Generate tasks that are SPECIFIC and ACTIONABLE (not generic like "research market")
-2. Make tasks appropriate for ANY industry (not just B2B/SaaS/marketing)
-3. Include concrete deliverables and success criteria
-4. Consider the specific metric type and gap to fill
-5. Tasks should be granular enough for someone to execute immediately
+AVAILABLE REAL TOOLS (use these instead of creating sub-tasks):
+- analyze_hashtags: For social media content analysis
+- create_social_content: Generate social media posts
+- create_content_strategy: Develop content strategies  
+- analyze_competitor_content: Research competitor strategies
+- generate_visual_content: Create visual assets
+- write_email_sequence: Create email marketing content
+- create_marketing_copy: Generate marketing materials
+- research_target_audience: Analyze customer segments
 
-Generate 1-3 specific tasks in this JSON format:
+🚨 CRITICAL INSTRUCTIONS:
+1. NEVER create tasks that just "create sub-tasks" or "assign to other agents"
+2. Use REAL TOOLS listed above to generate actual BUSINESS CONTENT
+3. Tasks must produce DELIVERABLE ASSETS (documents, images, strategies, etc.)
+4. Focus on using tools that create content, not meta-tasks
+5. Each task should result in a concrete deliverable the user can USE
+
+Generate 1-3 specific tasks that USE REAL TOOLS in this JSON format:
 {{
     "tasks": [
         {{
@@ -783,7 +793,10 @@ Return ONLY the category name."""
         task_context: Optional[Dict] = None
     ) -> bool:
         """
-        Aggiorna il progresso di un goal quando un task viene completato
+        🎯 ENHANCED: Content-Aware Goal Progress System
+        
+        Rispetta PILLAR 2 (Universal Business Domains) & PILLAR 7 (Intelligent Decision Making)
+        Progress viene calcolato basandosi su business value reale, non solo task count.
         """
         try:
             # Get current goal
@@ -795,30 +808,216 @@ Return ONLY the category name."""
             current_value = goal_data["current_value"]
             target_value = goal_data["target_value"]
             
-            # Calculate new value
-            new_value = min(current_value + progress_increment, target_value)
+            # 🧠 PILLAR 7: Intelligent progress calculation based on business value
+            adjusted_increment = await self._calculate_business_value_weighted_progress(
+                goal_id, progress_increment, task_context
+            )
             
-            # Update goal
+            # Calculate new value with business value consideration
+            new_value = min(current_value + adjusted_increment, target_value)
+            
+            # 🎯 ENHANCED: Track business content quality in metadata
+            business_content_score = await self._assess_business_content_quality(goal_id, task_context)
+            
+            # Update goal with enhanced metadata
             update_data = {
                 "current_value": new_value,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": datetime.now().isoformat(),
+                "metadata": {
+                    **(goal_data.get("metadata", {}) or {}),
+                    "business_content_score": business_content_score,
+                    "last_business_value_increment": adjusted_increment,
+                    "progress_calculation_method": "business_value_weighted",
+                    "content_quality_assessments": goal_data.get("metadata", {}).get("content_quality_assessments", [])[-9:] + [{
+                        "timestamp": datetime.now().isoformat(),
+                        "raw_increment": progress_increment,
+                        "adjusted_increment": adjusted_increment,
+                        "business_content_score": business_content_score,
+                        "task_context": {
+                            "task_id": task_context.get("task_id") if task_context else None,
+                            "has_business_content": task_context.get("has_business_content", False) if task_context else False
+                        }
+                    }]
+                }
             }
             
-            # Mark as completed if target reached
+            # 🎯 ENHANCED: Only mark as completed if business value threshold is met
             if new_value >= target_value:
-                update_data["status"] = GoalStatus.COMPLETED.value
-                update_data["completed_at"] = datetime.now().isoformat()
+                # Check if goal has sufficient business value to be truly completed
+                if business_content_score >= 70.0:  # Threshold for real completion
+                    update_data["status"] = GoalStatus.COMPLETED.value
+                    update_data["completed_at"] = datetime.now().isoformat()
+                    logger.info(f"🎯 Goal {goal_id} TRULY completed with business value score: {business_content_score:.1f}")
+                else:
+                    # Mark as technically complete but flag for business value review
+                    update_data["status"] = "completed_pending_review"
+                    update_data["metadata"]["completion_flag"] = "insufficient_business_value"
+                    update_data["metadata"]["business_value_review_required"] = True
+                    logger.warning(f"⚠️ Goal {goal_id} numerically complete but low business value: {business_content_score:.1f}")
             
             supabase.table("workspace_goals").update(update_data).eq(
                 "id", str(goal_id)
             ).execute()
             
-            logger.info(f"✅ Updated goal {goal_id} progress: {current_value} → {new_value} / {target_value}")
+            logger.info(f"✅ Updated goal {goal_id} progress: {current_value} → {new_value} / {target_value} (business score: {business_content_score:.1f})")
             return True
             
         except Exception as e:
             logger.error(f"Error updating goal progress: {e}")
             return False
+    
+    async def _calculate_business_value_weighted_progress(
+        self, 
+        goal_id: UUID, 
+        raw_increment: float, 
+        task_context: Optional[Dict]
+    ) -> float:
+        """
+        🧠 PILLAR 7: Calculate progress increment weighted by actual business value
+        
+        Analizza il contenuto del task per determinare quanto progresso "reale" rappresenta.
+        """
+        if not task_context:
+            return raw_increment * 0.3  # Penalizza task senza contesto
+        
+        try:
+            business_value_multiplier = 1.0
+            
+            # Check if task produced actual business content
+            has_business_content = task_context.get("has_business_content", False)
+            content_type = task_context.get("content_type", "unknown")
+            
+            if has_business_content:
+                # Bonus for actual business deliverables
+                if content_type in ["rendered_html", "structured_content", "business_document"]:
+                    business_value_multiplier = 1.2
+                elif content_type in ["deliverable_content", "actionable_output"]:
+                    business_value_multiplier = 1.1
+                else:
+                    business_value_multiplier = 1.0
+            else:
+                # Penalty for tasks that only create sub-tasks or metadata
+                task_result_summary = task_context.get("task_result_summary", "")
+                if any(phrase in task_result_summary.lower() for phrase in [
+                    "sub-task has been created", 
+                    "task has been assigned",
+                    "analysis will be conducted",
+                    "plan has been created"
+                ]):
+                    business_value_multiplier = 0.4  # Significant penalty for meta-tasks
+                else:
+                    business_value_multiplier = 0.7  # Moderate penalty for unclear content
+            
+            adjusted_increment = raw_increment * business_value_multiplier
+            
+            logger.debug(f"📊 Goal {goal_id} progress adjustment: {raw_increment} → {adjusted_increment} (multiplier: {business_value_multiplier})")
+            return adjusted_increment
+            
+        except Exception as e:
+            logger.error(f"Error calculating business value weighted progress: {e}")
+            return raw_increment * 0.5  # Conservative fallback
+    
+    async def _assess_business_content_quality(
+        self, 
+        goal_id: UUID, 
+        task_context: Optional[Dict]
+    ) -> float:
+        """
+        🎯 ENHANCED: Assess overall business content quality for a goal
+        
+        Analizza tutti i task completati per questo goal per calcolare uno score di qualità business.
+        """
+        try:
+            # Get all completed tasks for this goal
+            goal_tasks_response = supabase.table("tasks").select("*").eq(
+                "goal_id", str(goal_id)
+            ).eq(
+                "status", "completed"
+            ).execute()
+            
+            completed_tasks = goal_tasks_response.data or []
+            
+            if not completed_tasks:
+                return 0.0
+            
+            total_score = 0.0
+            scored_tasks = 0
+            
+            for task in completed_tasks:
+                task_score = self._score_task_business_value(task)
+                if task_score > 0:
+                    total_score += task_score
+                    scored_tasks += 1
+            
+            if scored_tasks == 0:
+                return 10.0  # Minimal score for goals with no scoreable content
+            
+            average_score = total_score / scored_tasks
+            
+            # Apply bonus for having multiple high-value tasks
+            if scored_tasks >= 3 and average_score >= 70:
+                average_score = min(100.0, average_score * 1.1)
+            
+            return round(average_score, 1)
+            
+        except Exception as e:
+            logger.error(f"Error assessing business content quality: {e}")
+            return 50.0  # Neutral fallback score
+    
+    def _score_task_business_value(self, task: Dict) -> float:
+        """
+        🎯 Score individual task business value based on result content
+        """
+        try:
+            result = task.get("result", {}) or {}
+            
+            # Check for high-value content types
+            if result.get("detailed_results_json"):
+                try:
+                    detailed = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
+                    
+                    score = 20.0  # Base score for having detailed results
+                    
+                    # Bonus for rendered content
+                    if detailed.get("rendered_html"):
+                        score += 30.0
+                    
+                    # Bonus for structured content
+                    if detailed.get("structured_content"):
+                        score += 25.0
+                    
+                    # Bonus for business-specific content
+                    if detailed.get("deliverable_content") or detailed.get("business_content"):
+                        score += 20.0
+                    
+                    # Check content length/quality
+                    content_length = len(str(detailed.get("rendered_html", "") + str(detailed.get("structured_content", ""))))
+                    if content_length > 500:
+                        score += 5.0
+                    
+                    return min(100.0, score)
+                    
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            # Check task result summary for business indicators
+            summary = result.get("summary", "")
+            if summary:
+                if any(phrase in summary.lower() for phrase in [
+                    "document created", "content generated", "strategy developed",
+                    "analysis completed", "deliverable produced"
+                ]):
+                    return 40.0
+                elif "sub-task" in summary.lower():
+                    return 10.0  # Low score for sub-task creation
+                else:
+                    return 25.0  # Neutral score for unclear summary
+            
+            return 15.0  # Minimal score for completed task with no clear value
+            
+        except Exception as e:
+            logger.error(f"Error scoring task business value: {e}")
+            return 0.0
 
 # Singleton instance
 goal_driven_task_planner = GoalDrivenTaskPlanner()

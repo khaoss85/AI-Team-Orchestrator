@@ -2,19 +2,30 @@
 
 import React, { useState } from 'react'
 import { api } from '@/utils/api'
+import { WorkspaceHealthMonitor } from '../WorkspaceHealthMonitor'
 
 interface ConfigurationArtifactProps {
   configuration: any
   workspaceId: string
   onConfigUpdate?: (updatedConfig: any) => void
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
 }
 
 export default function ConfigurationArtifact({ 
   configuration, 
   workspaceId, 
-  onConfigUpdate 
+  onConfigUpdate,
+  workspaceHealthStatus,
+  healthLoading,
+  onUnblockWorkspace,
+  onCheckWorkspaceHealth,
+  onResumeAutoGeneration
 }: ConfigurationArtifactProps) {
-  const [activeView, setActiveView] = useState<'general' | 'goals' | 'budget' | 'advanced' | 'danger'>('general')
+  const [activeView, setActiveView] = useState<'general' | 'goals' | 'budget' | 'health' | 'advanced' | 'danger'>('general')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   if (!configuration) {
@@ -82,6 +93,12 @@ export default function ConfigurationArtifact({
             icon="💰"
           />
           <ViewTab
+            active={activeView === 'health'}
+            onClick={() => setActiveView('health')}
+            label="Health"
+            icon="🏥"
+          />
+          <ViewTab
             active={activeView === 'advanced'}
             onClick={() => setActiveView('advanced')}
             label="Advanced"
@@ -108,6 +125,16 @@ export default function ConfigurationArtifact({
         
         {activeView === 'budget' && (
           <BudgetConfigTab configuration={configuration} />
+        )}
+        
+        {activeView === 'health' && (
+          <HealthConfigTab 
+            workspaceHealthStatus={workspaceHealthStatus}
+            healthLoading={healthLoading}
+            onUnblockWorkspace={onUnblockWorkspace}
+            onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+            onResumeAutoGeneration={onResumeAutoGeneration}
+          />
         )}
         
         {activeView === 'advanced' && (
@@ -527,6 +554,40 @@ function DangerZoneTab({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Health Configuration Tab
+function HealthConfigTab({ 
+  workspaceHealthStatus,
+  healthLoading,
+  onUnblockWorkspace,
+  onCheckWorkspaceHealth,
+  onResumeAutoGeneration
+}: {
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
+}) {
+  return (
+    <div className="p-4">
+      <div className="mb-4">
+        <h4 className="text-lg font-semibold text-gray-900 mb-2">Workspace Health Monitoring</h4>
+        <p className="text-sm text-gray-600">
+          Monitor your workspace health, identify issues, and take corrective actions to ensure smooth operation.
+        </p>
+      </div>
+      
+      <WorkspaceHealthMonitor
+        workspaceHealthStatus={workspaceHealthStatus}
+        healthLoading={healthLoading || false}
+        onUnblock={onUnblockWorkspace || (async () => ({ success: false, message: 'Not available' }))}
+        onRefresh={onCheckWorkspaceHealth || (async () => null)}
+        onResumeAutoGeneration={onResumeAutoGeneration}
+      />
     </div>
   )
 }

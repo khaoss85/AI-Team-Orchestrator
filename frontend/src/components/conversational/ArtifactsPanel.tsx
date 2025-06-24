@@ -5,6 +5,7 @@ import { DeliverableArtifact, TeamActivity, Chat } from './types'
 import TeamThinkingStream from './TeamThinkingStream'
 import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
+import AuthenticThinkingViewer from './AuthenticThinkingViewer'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -14,6 +15,11 @@ interface ArtifactsPanelProps {
   collapsed: boolean
   onToggleCollapse: () => void
   onSendMessage?: (message: string) => Promise<void>
+  workspaceHealthStatus?: any
+  healthLoading?: boolean
+  onCheckWorkspaceHealth?: () => Promise<any>
+  onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
+  onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
 }
 
 export default function ArtifactsPanel({
@@ -23,10 +29,15 @@ export default function ArtifactsPanel({
   workspaceId,
   collapsed,
   onToggleCollapse,
-  onSendMessage
+  onSendMessage,
+  workspaceHealthStatus,
+  healthLoading,
+  onCheckWorkspaceHealth,
+  onUnblockWorkspace,
+  onResumeAutoGeneration
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
-  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'viewer'>('artifacts')
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'thinking' | 'viewer'>('artifacts')
 
   // Auto-switch to artifacts when new ones arrive
   React.useEffect(() => {
@@ -108,6 +119,12 @@ export default function ArtifactsPanel({
             count={artifacts.length}
           />
           <TabButton
+            active={activeTab === 'thinking'}
+            onClick={() => setActiveTab('thinking')}
+            icon="🧠"
+            label="Thinking"
+          />
+          <TabButton
             active={activeTab === 'documents'}
             onClick={() => setActiveTab('documents')}
             icon="📁"
@@ -136,6 +153,29 @@ export default function ArtifactsPanel({
           />
         )}
 
+        {activeTab === 'thinking' && (
+          <div className="h-full overflow-auto">
+            {/* Show thinking process for current goal if available */}
+            {activeChat && activeChat.type === 'goal' && activeChat.metadata?.goalId ? (
+              <AuthenticThinkingViewer
+                goalId={activeChat.metadata.goalId}
+                workspaceId={workspaceId}
+              />
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                <div className="text-3xl mb-3">🧠</div>
+                <div className="text-lg font-medium mb-2">Thinking Process</div>
+                <div className="text-sm">
+                  Select a goal-based chat to view the authentic thinking process with todo list decomposition
+                </div>
+                <div className="mt-4 text-xs text-gray-400">
+                  Shows real system reasoning - not fake metadata
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'documents' && (
           <DocumentsSection 
             workspaceId={workspaceId}
@@ -156,6 +196,11 @@ export default function ArtifactsPanel({
               // TODO: Notify parent component of artifact update
             }}
             onSendMessage={onSendMessage}
+            workspaceHealthStatus={workspaceHealthStatus}
+            healthLoading={healthLoading}
+            onCheckWorkspaceHealth={onCheckWorkspaceHealth}
+            onUnblockWorkspace={onUnblockWorkspace}
+            onResumeAutoGeneration={onResumeAutoGeneration}
           />
         )}
       </div>

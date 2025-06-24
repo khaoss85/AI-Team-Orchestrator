@@ -444,11 +444,17 @@ class EnhancedTaskExecutor:
                 logger.warning(f"Goal-driven task {completed_task.id} completed but no measurable contribution detected")
                 return
             
-            # Update goal progress
+            # 🎯 ENHANCED: Create business context for goal progress update
+            task_business_context = await self._create_task_business_context(
+                completed_task, task_result, actual_contribution
+            )
+            
+            # Update goal progress with business context
             updated_goal = await update_goal_progress(
                 goal_id=str(goal_id),
                 increment=actual_contribution,
-                task_id=str(completed_task.id)
+                task_id=str(completed_task.id),
+                task_business_context=task_business_context
             )
             
             if updated_goal:
@@ -485,6 +491,111 @@ class EnhancedTaskExecutor:
                 
         except Exception as e:
             logger.error(f"Error handling goal progress update for task {completed_task.id}: {e}", exc_info=True)
+    
+    async def _create_task_business_context(
+        self, 
+        completed_task: Task, 
+        task_result: Dict[str, Any], 
+        contribution: float
+    ) -> Dict[str, Any]:
+        """
+        🎯 ENHANCED: Create business context for goal progress calculation
+        
+        Rispetta PILLAR 2 (Universal Business Domains) - analyzes business value universally.
+        """
+        try:
+            context = {
+                "task_id": str(completed_task.id),
+                "has_business_content": False,
+                "content_type": "unknown",
+                "task_result_summary": "",
+                "business_value_indicators": []
+            }
+            
+            # Analyze task result for business content
+            result_summary = task_result.get("summary", "")
+            context["task_result_summary"] = result_summary
+            
+            # Check for high-value business content indicators
+            if task_result.get("detailed_results_json"):
+                try:
+                    detailed = json.loads(task_result["detailed_results_json"]) if isinstance(task_result["detailed_results_json"], str) else task_result["detailed_results_json"]
+                    
+                    # Rendered content indicates high business value
+                    if detailed.get("rendered_html"):
+                        context["has_business_content"] = True
+                        context["content_type"] = "rendered_html"
+                        context["business_value_indicators"].append("rendered_html_content")
+                        
+                    # Structured content indicates medium-high business value  
+                    if detailed.get("structured_content"):
+                        context["has_business_content"] = True
+                        if context["content_type"] == "unknown":
+                            context["content_type"] = "structured_content"
+                        context["business_value_indicators"].append("structured_content")
+                        
+                    # Deliverable content indicates direct business value
+                    if detailed.get("deliverable_content") or detailed.get("business_content"):
+                        context["has_business_content"] = True
+                        context["content_type"] = "business_document"
+                        context["business_value_indicators"].append("deliverable_content")
+                        
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            
+            # Analyze summary for business value keywords
+            if result_summary:
+                business_keywords = [
+                    "document created", "content generated", "strategy developed",
+                    "analysis completed", "deliverable produced", "template created",
+                    "plan finalized", "framework established", "content delivered"
+                ]
+                
+                low_value_keywords = [
+                    "sub-task has been created", "task has been assigned",
+                    "analysis will be conducted", "plan has been created"
+                ]
+                
+                for keyword in business_keywords:
+                    if keyword in result_summary.lower():
+                        context["has_business_content"] = True
+                        context["business_value_indicators"].append(f"keyword:{keyword}")
+                        break
+                
+                for keyword in low_value_keywords:
+                    if keyword in result_summary.lower():
+                        context["business_value_indicators"].append(f"low_value:{keyword}")
+                        break
+            
+            # Additional context from task metadata
+            task_context_data = getattr(completed_task, 'context_data', {}) or {}
+            if isinstance(task_context_data, dict):
+                # Check if task was marked as deliverable-producing
+                if task_context_data.get("deliverable_type"):
+                    context["has_business_content"] = True
+                    context["business_value_indicators"].append(f"deliverable_type:{task_context_data['deliverable_type']}")
+                
+                # Check success criteria for business indicators
+                success_criteria = task_context_data.get("success_criteria", [])
+                if success_criteria:
+                    for criterion in success_criteria:
+                        if any(word in str(criterion).lower() for word in ["deliver", "create", "produce", "generate"]):
+                            context["business_value_indicators"].append("success_criteria_business_focused")
+                            break
+            
+            logger.debug(f"📊 Task {completed_task.id} business context: {context['has_business_content']}, type: {context['content_type']}, indicators: {len(context['business_value_indicators'])}")
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error creating task business context: {e}")
+            return {
+                "task_id": str(completed_task.id),
+                "has_business_content": False,
+                "content_type": "error",
+                "task_result_summary": "",
+                "business_value_indicators": ["context_creation_error"]
+            }
 
     def _calculate_actual_contribution(
         self, 

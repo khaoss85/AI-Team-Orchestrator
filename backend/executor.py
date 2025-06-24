@@ -979,6 +979,10 @@ class TaskExecutor(AssetCoordinationMixin):
                 self.task_completion_tracker[workspace_id].add(task_id)
             self.active_task_ids.discard(task_id)
             self.queued_task_ids.discard(task_id)
+            
+            # 🚀 CRITICAL FIX: Trigger deliverable creation check when task is completed
+            if status_to_set == TaskStatus.COMPLETED.value and workspace_id:
+                await self._check_and_trigger_deliverable_creation(workspace_id, task_id)
         except Exception as e:
             logger.error(f"Error force finalizing task {task_id}: {e}")
 
@@ -1620,9 +1624,10 @@ class TaskExecutor(AssetCoordinationMixin):
             if pattern_analysis['same_role_recursion']:
                 health_issues.append(f"Same-role recursion: {pattern_analysis['same_role_recursion']}")
 
-            # Check task orfani (senza agente attivo)
+            # Check task orfani (senza agente attivo) - escludendo task già completati o failed
             active_agent_ids = {agent['id'] for agent in agents_db if agent.get('status') == 'active'}
-            orphaned_tasks_count = sum(1 for t in all_tasks_db if not t.get('agent_id') or t.get('agent_id') not in active_agent_ids)
+            pending_or_active_tasks = [t for t in all_tasks_db if t.get('status') in ['pending', 'in_progress', 'needs_verification']]
+            orphaned_tasks_count = sum(1 for t in pending_or_active_tasks if not t.get('agent_id') or t.get('agent_id') not in active_agent_ids)
             if orphaned_tasks_count > 0:
                 health_issues.append(f"Orphaned tasks: {orphaned_tasks_count}")
 
@@ -2991,6 +2996,198 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
         }
     else:
         return {"success": False, "message": f"Auto-gen not paused for W:{workspace_id}"}
+
+    async def _check_and_trigger_deliverable_creation(self, workspace_id: str, completed_task_id: str):
+        """
+        🎯 ENHANCED: Business Value-Aware Deliverable Creation System
+        
+        Rispetta PILLAR 7 (Intelligent Decision Making) - solo deliverable con vero business value.
+        """
+        try:
+            logger.info(f"🔍 Enhanced deliverable check for workspace {workspace_id} after task {completed_task_id}")
+            
+            # Get environment thresholds
+            from os import getenv
+            min_completed_tasks = int(getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
+            business_value_threshold = float(getenv("BUSINESS_VALUE_THRESHOLD", "70.0"))
+            
+            # 🎯 ENHANCED: Check both task count AND business content quality
+            from database import list_tasks, get_supabase_client
+            supabase = get_supabase_client()
+            
+            # Get all completed tasks and analyze their business value
+            tasks = await list_tasks(workspace_id, status="completed")
+            completed_count = len(tasks)
+            
+            if completed_count < min_completed_tasks:
+                logger.debug(f"⏳ Not enough completed tasks ({completed_count}/{min_completed_tasks}) for workspace {workspace_id}")
+                return
+            
+            # 🧠 PILLAR 7: Analyze business content quality across all tasks
+            business_content_tasks = await self._analyze_tasks_business_content(tasks)
+            high_value_tasks_count = len([t for t in business_content_tasks if t.get("business_value_score", 0) >= 40.0])
+            
+            if high_value_tasks_count < min_completed_tasks:
+                logger.debug(f"⏳ Not enough high-value business tasks ({high_value_tasks_count}/{min_completed_tasks}) for workspace {workspace_id}")
+                return
+            
+            # 🎯 ENHANCED: Goal Completion Guarantee System - Ensure ALL goals get deliverables
+            goals_response = supabase.table("workspace_goals")\
+                .select("*")\
+                .eq("workspace_id", workspace_id)\
+                .execute()
+            
+            business_ready_goals = []
+            completion_guaranteed_goals = []
+            
+            for goal in goals_response.data or []:
+                goal_metadata = goal.get("metadata", {}) or {}
+                business_score = goal_metadata.get("business_content_score", 0.0)
+                progress = goal.get("current_value", 0) / max(goal.get("target_value", 1), 1) * 100
+                goal_description = goal.get('description', 'Unknown')
+                
+                # 🎯 HIGH-VALUE GOALS: Both high progress AND high business value
+                if progress >= 80.0 and business_score >= business_value_threshold:
+                    business_ready_goals.append(goal)
+                    logger.info(f"🎯 HIGH-VALUE Goal '{goal_description}': {progress:.1f}% progress, {business_score:.1f} business score - READY")
+                
+                # 🔒 COMPLETION GUARANTEE: Goals at 90%+ get deliverable regardless of business score
+                elif progress >= 90.0:
+                    completion_guaranteed_goals.append(goal)
+                    logger.warning(f"🔒 GUARANTEED Goal '{goal_description}': {progress:.1f}% progress, {business_score:.1f} business score - FORCED COMPLETION")
+                    
+                    # Update goal status to indicate completion guarantee was triggered
+                    try:
+                        goal_update = {
+                            "metadata": {
+                                **goal_metadata,
+                                "completion_guaranteed": True,
+                                "completion_guarantee_timestamp": datetime.now().isoformat(),
+                                "original_business_score": business_score,
+                                "completion_reason": "progress_threshold_met"
+                            }
+                        }
+                        supabase.table("workspace_goals")\
+                            .update(goal_update)\
+                            .eq("id", goal.get("id"))\
+                            .execute()
+                    except Exception as meta_update_error:
+                        logger.error(f"Could not update completion guarantee metadata for goal {goal.get('id')}: {meta_update_error}")
+                else:
+                    logger.debug(f"⏳ PENDING Goal '{goal_description}': {progress:.1f}% progress, {business_score:.1f} business score - NOT READY")
+            
+            # Combine both categories for deliverable creation
+            all_deliverable_goals = business_ready_goals + completion_guaranteed_goals
+            
+            if not all_deliverable_goals:
+                logger.info(f"⏳ No goals ready for deliverable creation in workspace {workspace_id}")
+                return
+            
+            logger.info(f"✅ Found {len(business_ready_goals)} high-value goals + {len(completion_guaranteed_goals)} completion-guaranteed goals = {len(all_deliverable_goals)} total goals for deliverable creation")
+            
+            # 🎯 ENHANCED: Pass comprehensive context to deliverable creation
+            deliverable_context = {
+                "business_content_tasks": business_content_tasks,
+                "business_ready_goals": business_ready_goals,
+                "completion_guaranteed_goals": completion_guaranteed_goals,
+                "all_deliverable_goals": all_deliverable_goals,
+                "high_value_tasks_count": high_value_tasks_count,
+                "business_value_threshold": business_value_threshold,
+                "completion_guarantee_count": len(completion_guaranteed_goals),
+                "content_analysis_timestamp": datetime.now().isoformat(),
+                "guarantee_policy": "90_percent_progress_threshold"
+            }
+            
+            # Import and call enhanced deliverable creation
+            try:
+                if check_and_create_final_deliverable:
+                    # Call with enhanced context
+                    result = await check_and_create_final_deliverable(workspace_id, deliverable_context)
+                    logger.info(f"📦 Enhanced deliverable result for workspace {workspace_id}: {result}")
+                else:
+                    logger.warning("⚠️ check_and_create_final_deliverable function not available")
+            except Exception as deliverable_error:
+                logger.error(f"❌ Error creating enhanced deliverable for workspace {workspace_id}: {deliverable_error}")
+                
+        except Exception as e:
+            logger.error(f"❌ Error in enhanced deliverable creation check for workspace {workspace_id}: {e}")
+    
+    async def _analyze_tasks_business_content(self, tasks: List[Dict]) -> List[Dict]:
+        """
+        🎯 Analyze business content quality across completed tasks
+        
+        Rispetta PILLAR 2 (Universal Business Domains) - works across all industries.
+        """
+        try:
+            business_content_tasks = []
+            
+            for task in tasks:
+                task_analysis = {
+                    "task_id": task.get("id"),
+                    "task_name": task.get("name", ""),
+                    "business_value_score": 0.0,
+                    "content_type": "unknown",
+                    "has_business_content": False,
+                    "content_summary": ""
+                }
+                
+                result = task.get("result", {}) or {}
+                
+                # Analyze detailed results for business content
+                if result.get("detailed_results_json"):
+                    try:
+                        detailed = json.loads(result["detailed_results_json"]) if isinstance(result["detailed_results_json"], str) else result["detailed_results_json"]
+                        
+                        # Check for rendered content (high business value)
+                        if detailed.get("rendered_html"):
+                            task_analysis["business_value_score"] += 40.0
+                            task_analysis["content_type"] = "rendered_html"
+                            task_analysis["has_business_content"] = True
+                            task_analysis["content_summary"] = f"Rendered HTML content ({len(detailed['rendered_html'])} chars)"
+                        
+                        # Check for structured content
+                        if detailed.get("structured_content"):
+                            task_analysis["business_value_score"] += 30.0
+                            if task_analysis["content_type"] == "unknown":
+                                task_analysis["content_type"] = "structured_content"
+                            task_analysis["has_business_content"] = True
+                            
+                        # Check for business deliverables
+                        if detailed.get("deliverable_content") or detailed.get("business_content"):
+                            task_analysis["business_value_score"] += 25.0
+                            task_analysis["has_business_content"] = True
+                            
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                # Analyze task result summary
+                summary = result.get("summary", "")
+                if summary:
+                    if any(phrase in summary.lower() for phrase in [
+                        "document created", "content generated", "strategy developed",
+                        "analysis completed", "deliverable produced", "template created"
+                    ]):
+                        task_analysis["business_value_score"] += 20.0
+                        task_analysis["has_business_content"] = True
+                    elif "sub-task" in summary.lower():
+                        task_analysis["business_value_score"] = max(5.0, task_analysis["business_value_score"])
+                        task_analysis["content_summary"] = "Sub-task creation (low business value)"
+                
+                # Cap the score at 100
+                task_analysis["business_value_score"] = min(100.0, task_analysis["business_value_score"])
+                
+                business_content_tasks.append(task_analysis)
+            
+            # Sort by business value score
+            business_content_tasks.sort(key=lambda x: x["business_value_score"], reverse=True)
+            
+            logger.debug(f"📊 Business content analysis: {len([t for t in business_content_tasks if t['has_business_content']])} high-value tasks out of {len(tasks)} total")
+            
+            return business_content_tasks
+            
+        except Exception as e:
+            logger.error(f"Error analyzing tasks business content: {e}")
+            return []
 
 def set_global_auto_generation(enabled: bool) -> Dict[str, Any]:
     """Abilita/disabilita auto-generation globalmente"""

@@ -92,3 +92,16 @@ The backend exposes a small API to manage this loop:
 Use the status endpoint to monitor how many iterations have occurred and to
 detect when the `max_iterations` threshold has been exceeded.
 
+## End-to-End Flow Test
+
+Per eseguire un test reale e completo di tutto il flusso (workspace→goals→team→tasks→
+deliverables→memory→course correction), lancia lo script:
+
+```bash
+./scripts/run_e2e_flow.sh
+```
+
+Il comando eseguirà `backend/test_real_e2e_complete.py`, salverà i log in
+`e2e_test.log` e restituirà exit code 0 solo se l’intero loop viene completato
+con successo.
+
