@@ -16,6 +16,9 @@ interface ThinkingStep {
 interface ThinkingProcessViewerProps {
   steps: ThinkingStep[]
   isThinking?: boolean
+  // 🧠 Real-time props (Claude/o3 style)
+  isRealTime?: boolean
+  currentDecomposition?: any
 }
 
 interface ThinkingSession {
@@ -27,7 +30,12 @@ interface ThinkingSession {
   duration?: string
 }
 
-export default function ThinkingProcessViewer({ steps, isThinking = false }: ThinkingProcessViewerProps) {
+export default function ThinkingProcessViewer({ 
+  steps, 
+  isThinking = false, 
+  isRealTime = false, 
+  currentDecomposition 
+}: ThinkingProcessViewerProps) {
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({})
 
   if (!steps || steps.length === 0) {
@@ -88,10 +96,29 @@ export default function ThinkingProcessViewer({ steps, isThinking = false }: Thi
 
   return (
     <div className="p-4 space-y-3">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-lg">🧠</span>
-        <h3 className="font-semibold text-gray-900">Thinking</h3>
-        <span className="text-xs text-gray-500">({steps.length} steps)</span>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🧠</span>
+          <h3 className="font-semibold text-gray-900">Thinking</h3>
+          <span className="text-xs text-gray-500">({steps.length} steps)</span>
+          {isRealTime && (
+            <div className="flex items-center gap-1 ml-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-xs text-green-600 font-medium">REAL-TIME</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Goal decomposition progress indicator */}
+        {currentDecomposition && (
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className={`w-2 h-2 rounded-full ${
+              currentDecomposition.status === 'in_progress' ? 'bg-orange-500 animate-pulse' :
+              currentDecomposition.status === 'completed' ? 'bg-green-500' : 'bg-gray-400'
+            }`}></div>
+            <span className="capitalize">{currentDecomposition.status || 'analyzing'}</span>
+          </div>
+        )}
       </div>
 
       {sessions.map((session) => (
@@ -287,6 +314,44 @@ function ThinkingStepCard({ step, index, isActive = false, isFromSavedMessage = 
           <p className="text-xs text-gray-700 leading-relaxed">
             {step.description}
           </p>
+          
+          {/* 📋 Todo List Decomposition (Claude/o3 style) */}
+          {step.todo_list && Array.isArray(step.todo_list) && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-md border">
+              <div className="text-xs font-medium text-gray-800 mb-2 flex items-center">
+                <span className="mr-1">📋</span>
+                Action Plan ({step.todo_list.length} items)
+              </div>
+              <div className="space-y-2">
+                {step.todo_list.map((todo: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      todo.status === 'completed' ? 'bg-green-100 text-green-600' :
+                      todo.status === 'in_progress' ? 'bg-blue-100 text-blue-600' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {todo.status === 'completed' ? '✓' : 
+                       todo.status === 'in_progress' ? '○' : '○'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-medium ${
+                        todo.status === 'completed' ? 'text-green-700 line-through' :
+                        todo.status === 'in_progress' ? 'text-blue-700' :
+                        'text-gray-700'
+                      }`}>
+                        {todo.title}
+                      </div>
+                      {todo.description && (
+                        <div className="text-gray-600 mt-0.5">
+                          {todo.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           {step.timestamp && (
             <div className="text-xs text-gray-400 mt-2">

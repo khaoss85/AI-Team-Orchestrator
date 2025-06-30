@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "{'message': \"Could not find the 'workspace_id' column of 'asset_artifacts' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
+}

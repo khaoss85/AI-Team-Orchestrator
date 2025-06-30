@@ -79,6 +79,49 @@ class AIQualityValidator:
             "timeout": 30.0  # Timeout per chiamate AI
         }
         
+        # 🚨 ENHANCED: Aggressive fake content and generic metadata patterns
+        self.fake_content_patterns = [
+            # Basic placeholders
+            r'\btodo\b', r'\bplaceholder\b', r'\bexample\b', r'\btest\b', r'\bdummy\b', r'\bfake\b',
+            r'\[insert.*here\]', r'\[your.*here\]', r'xxx+', r'lorem ipsum', r'sample data',
+            
+            # Generic business terms that indicate lazy content
+            r'\bcompany name\b', r'\bbusiness name\b', r'\byour company\b', r'\bacme corp\b',
+            r'\bexample\.com\b', r'\bsample\.com\b', r'\btest\.com\b',
+            r'\bjohn doe\b', r'\bjane doe\b', r'\bjohn smith\b', r'\bjane smith\b',
+            
+            # Generic financial placeholders
+            r'\$x+', r'\$\d{1,3}(,\d{3})*\b(?![\d\.])', r'\$\d+k\b', r'\$\d+m\b',
+            r'\d+%.*increase\b', r'\d+%.*growth\b', r'\d+%.*improvement\b',
+            
+            # Generic marketing speak
+            r'\bincrease sales\b', r'\bimprove performance\b', r'\boptimize processes\b',
+            r'\benhance productivity\b', r'\bstreamline operations\b', r'\bleverage synergies\b',
+            
+            # Vague temporal references
+            r'\bsoon\b', r'\beventually\b', r'\bin the future\b', r'\bwhen ready\b',
+            r'\bto be determined\b', r'\btbd\b', r'\btba\b',
+            
+            # Generic contact information
+            r'contact@', r'info@', r'admin@', r'support@', r'sales@',
+            r'\+1-555-', r'555-\d{4}', r'\(555\)', r'123-456-',
+            
+            # Placeholder URLs and links
+            r'https?://example', r'https?://test', r'https?://sample',
+            r'www\.example', r'www\.test', r'www\.sample',
+            
+            # Generic dates
+            r'\bjanuary 1st\b', r'\bmm/dd/yyyy\b', r'\bdd/mm/yyyy\b', r'\byyyy-mm-dd\b'
+        ]
+        
+        # 🎯 STRICT: Business-specific generic patterns to eliminate
+        self.generic_business_patterns = [
+            r'\bmultiple locations\b', r'\bvarious departments\b', r'\bdifferent teams\b',
+            r'\bkey stakeholders\b', r'\brelevant parties\b', r'\ball team members\b',
+            r'\bappropriate channels\b', r'\bstandard procedures\b', r'\bbest practices\b',
+            r'\bas needed\b', r'\bwhen appropriate\b', r'\bif necessary\b'
+        ]
+        
         # Token costs allineati con executor.py
         self.token_costs = {
             "gpt-4.1": {"input": 0.002, "output": 0.008},           # $2.00/$8.00 per 1K tokens
@@ -88,12 +131,20 @@ class AIQualityValidator:
             "gpt-4-turbo": {"input": 0.01, "output": 0.03}
         }
         
-        # Pattern per fake content detection
-        self.fake_content_patterns = [
+        # 🤖 AI-DRIVEN: Replace hard-coded patterns with AI semantic detection
+        self.enable_ai_fake_detection = os.getenv("ENABLE_AI_FAKE_DETECTION", "true").lower() == "true"
+        
+        # Placeholder detection threshold from config - lowered to be more sensitive
+        self.placeholder_detection_threshold = float(os.getenv("PLACEHOLDER_DETECTION_THRESHOLD", "0.3"))
+        
+        # Fallback patterns (used only when AI is unavailable) - enhanced
+        self.fallback_fake_patterns = [
             r"john\s+doe", r"jane\s+smith", r"example\.com", r"test@", 
             r"lorem\s+ipsum", r"placeholder", r"sample\s+data",
             r"xxx+", r"tbd", r"to\s+be\s+determined", r"coming\s+soon",
-            r"mario\s+rossi", r"giuseppe\s+verdi"  # Common Italian fake names
+            r"mario\s+rossi", r"giuseppe\s+verdi",  # Common Italian fake names
+            r"acme\s+corp", r"company\s+name", r"your\s+company", r"business\s+name",
+            r"123-456-7890", r"555-\d{4}", r"\(555\)", r"000-000-0000"
         ]
         
         # Tracking per budget e performance
@@ -141,9 +192,9 @@ class AIQualityValidator:
                 
                 logger.info(f"✅ AI ANALYSIS: Auth={authenticity_score:.2f}, Action={actionability_score:.2f}, Complete={completeness_score:.2f}")
             else:
-                # Fallback a analisi rule-based
+                # 🔧 FIX #3: Fallback a analisi rule-based (async)
                 logger.warning("🔄 FALLBACK: Using rule-based quality analysis")
-                authenticity_score = self._assess_content_authenticity_fallback(asset_data, context)
+                authenticity_score = await self._assess_content_authenticity_fallback(asset_data, context)
                 actionability_score = self._assess_actionability_fallback(asset_data, asset_type)
                 completeness_score = self._assess_completeness_fallback(asset_data, asset_type)
                 model_used = "rule_based_fallback"
@@ -158,11 +209,19 @@ class AIQualityValidator:
                 quality_issues.append(QualityIssueType.FAKE_CONTENT)
                 issue_details["fake_content"] = fake_content_report["details"]
                 
-            # Placeholder detection
-            placeholder_report = self._detect_placeholders(asset_data)
+            # 🔧 FIX #5: Placeholder detection (async) - fix issue_details format
+            placeholder_report = await self._detect_placeholders(asset_data)
             if placeholder_report["has_placeholders"]:
                 quality_issues.append(QualityIssueType.PLACEHOLDER_DATA)
-                issue_details["placeholder_data"] = placeholder_report["details"]
+                # Convert details dict to string for Pydantic validation
+                details = placeholder_report["details"]
+                if isinstance(details, dict):
+                    issue_summary = f"Found {len(details.get('specific_issues', []))} placeholder issues"
+                    if details.get('specific_issues'):
+                        issue_summary += f": {', '.join(details['specific_issues'][:3])}"
+                    issue_details["placeholder_data"] = issue_summary
+                else:
+                    issue_details["placeholder_data"] = str(details)
                 
             # Generic structure detection
             if await self._is_generic_structure(asset_data, asset_type):
@@ -634,8 +693,8 @@ Respond in this exact JSON format:
     
     # === FALLBACK METHODS (Rule-based quando AI non disponibile) ===
     
-    def _assess_content_authenticity_fallback(self, asset_data: Dict, context: Dict) -> float:
-        """Fallback rule-based per authenticity assessment"""
+    async def _assess_content_authenticity_fallback(self, asset_data: Dict, context: Dict) -> float:
+        """🔧 FIX #3: Fallback rule-based per authenticity assessment (now async)"""
         
         score = 0.7  # Base score
         
@@ -644,8 +703,8 @@ Respond in this exact JSON format:
         if fake_report["has_fake_content"]:
             score -= fake_report["fake_score"] * 0.5
         
-        # Penalità per placeholder
-        placeholder_report = self._detect_placeholders(asset_data)
+        # 🔧 FIX #3: Penalità per placeholder (async)
+        placeholder_report = await self._detect_placeholders(asset_data)
         if placeholder_report["has_placeholders"]:
             score -= placeholder_report["placeholder_score"] * 0.3
         
@@ -770,9 +829,103 @@ Respond in this exact JSON format:
             "details": "; ".join(fake_indicators) if fake_indicators else "No fake content detected"
         }
     
-    def _detect_placeholders(self, asset_data: Dict) -> Dict[str, Any]:
-        """Rileva placeholder e contenuto incompleto"""
+    async def _detect_placeholders(self, asset_data: Dict) -> Dict[str, Any]:
+        """🤖 AI-DRIVEN: Detect placeholders and incomplete content using AI semantic analysis"""
         
+        if self.enable_ai_fake_detection and self.openai_client:
+            try:
+                return await self._ai_driven_placeholder_detection(asset_data)
+            except Exception as e:
+                logger.warning(f"AI placeholder detection failed, using fallback: {e}")
+        
+        # Fallback to pattern-based detection
+        return self._fallback_placeholder_detection(asset_data)
+    
+    async def _ai_driven_placeholder_detection(self, asset_data: Dict) -> Dict[str, Any]:
+        """🤖 AI-DRIVEN: Use AI to semantically detect placeholder content"""
+        try:
+            data_str = json.dumps(asset_data, default=str)
+            
+            ai_prompt = f"""
+            You are an expert business content analyst. Analyze this content and detect ALL placeholder, template, and fake content that should be replaced with real business data.
+            
+            Content: {data_str[:1000]}...
+            
+            BE VERY STRICT - Look for:
+            
+            PLACEHOLDER CONTENT:
+            - Bracket placeholders: [insert here], {{your data}}, <placeholder>
+            - Generic instructions: "your company", "add your data", "customize this"
+            - Template markers: TBD, TODO, to be determined, coming soon
+            - Incomplete fields: "name", "email", "phone" as actual values
+            
+            FAKE/EXAMPLE DATA:
+            - Fake names: John Doe, Jane Smith, Mario Rossi, Example Person
+            - Fake companies: Acme Corp, Example Corp, Test Company, Your Company
+            - Fake contact info: example.com, test@, 555-xxxx, 123-456-7890
+            - Generic financial data: round numbers without context ($10,000, $100,000)
+            - Template dates: 1/1/2024, 12/31/2023, MM/DD/YYYY
+            
+            GENERIC BUSINESS CONTENT:
+            - Vague goals: "increase sales", "improve performance", "optimize processes"
+            - Generic descriptions: "various departments", "multiple locations", "key stakeholders"
+            - Non-specific metrics: "X% increase", "significant improvement", "better results"
+            
+            SCORING RULES:
+            - 0.0-0.2: Real, specific business content ready for use
+            - 0.3-0.5: Some placeholder elements, needs minor customization
+            - 0.6-0.8: Significant placeholder content, major customization needed
+            - 0.9-1.0: Mostly template/fake content, complete overhaul required
+            
+            Return JSON with:
+            - placeholder_found: true if ANY placeholders detected (be strict)
+            - placeholder_score: 0.0-1.0 (be generous - err on higher side)
+            - placeholder_types: specific categories found
+            - specific_issues: exact placeholder text found (up to 10 examples)
+            
+            Format: {{"placeholder_found": true, "placeholder_score": 0.7, "placeholder_types": ["fake_data", "template_markers"], "specific_issues": ["John Doe", "example.com", "[insert here]"]}}
+            """
+            
+            response = await self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert at detecting placeholder and template content. Provide only valid JSON output."},
+                    {"role": "user", "content": ai_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=400
+            )
+            
+            ai_result = response.choices[0].message.content.strip()
+            placeholder_analysis = json.loads(ai_result)
+            
+            # 🔧 FIX #4: Return correct format expected by caller with threshold check
+            placeholder_found = placeholder_analysis.get("placeholder_found", False)
+            placeholder_score = placeholder_analysis.get("placeholder_score", 0.0)
+            specific_issues = placeholder_analysis.get("specific_issues", [])
+            
+            # Apply threshold - if score is above threshold, consider it has placeholders
+            has_placeholders_final = placeholder_found or placeholder_score >= self.placeholder_detection_threshold
+            
+            logger.info(f"🤖 AI placeholder detection: found={placeholder_found}, score={placeholder_score:.2f}, threshold={self.placeholder_detection_threshold}, final={has_placeholders_final}")
+            
+            return {
+                "has_placeholders": has_placeholders_final,
+                "placeholder_score": placeholder_score,
+                "details": {
+                    "specific_issues": specific_issues,
+                    "placeholder_types": placeholder_analysis.get("placeholder_types", []),
+                    "score": placeholder_score,
+                    "ai_threshold": self.placeholder_detection_threshold
+                }
+            }
+            
+        except Exception as e:
+            logger.warning(f"AI placeholder detection failed: {e}")
+            return self._fallback_placeholder_detection(asset_data)
+    
+    def _fallback_placeholder_detection(self, asset_data: Dict) -> Dict[str, Any]:
+        """🔄 FALLBACK: Pattern-based placeholder detection when AI unavailable"""
         data_str = json.dumps(asset_data, default=str).lower()
         
         placeholder_patterns = [
@@ -786,7 +939,9 @@ Respond in this exact JSON format:
             r'fill\s+(?:in|out|this)',
             r'replace\s+(?:with|this)',
             r'esempio\s+(?:di|azienda|nome)',  # Italian placeholders
-            r'inserire\s+(?:qui|dati)'
+            r'inserire\s+(?:qui|dati)',
+            r'todo\b', r'placeholder\b', r'example\b', r'test\b', r'dummy\b',
+            r'lorem ipsum', r'sample data', r'tbd\b', r'to be determined'
         ]
         
         placeholder_indicators = []
@@ -807,10 +962,28 @@ Respond in this exact JSON format:
             if f'"{value}"' in data_str or f"'{value}'" in data_str:
                 placeholder_indicators.append(f"Generic value used as data: {value}")
         
+        # 🔧 FIX: Check for common fake placeholder values
+        fake_placeholders = [
+            "john doe", "jane smith", "example corp", "acme corp", "test company",
+            "company name", "your company", "business name", "sample email",
+            "xxx", "000", "123-456-7890", "555-", "example.com", "test.com"
+        ]
+        
+        for placeholder in fake_placeholders:
+            if placeholder in data_str:
+                placeholder_indicators.append(f"Fake placeholder detected: {placeholder}")
+        
+        placeholder_score = min(1.0, len(placeholder_indicators) * 0.15)
+        
+        # 🔧 FIX: Return consistent format expected by caller
         return {
             "has_placeholders": len(placeholder_indicators) > 0,
-            "placeholder_score": min(len(placeholder_indicators) * 0.15, 1.0),
-            "details": "; ".join(placeholder_indicators) if placeholder_indicators else "No placeholders detected"
+            "placeholder_score": placeholder_score,
+            "details": {
+                "specific_issues": placeholder_indicators,
+                "placeholder_types": ["pattern_based"] if placeholder_indicators else [],
+                "score": placeholder_score
+            }
         }
     
     async def _is_generic_structure(self, asset_data: Dict, asset_type: str) -> bool:
@@ -941,3 +1114,6 @@ Respond in this exact JSON format:
         self.total_tokens_used = 0
         self.total_cost = 0.0
         logger.info("Quality validator stats reset")
+
+# Global instance
+quality_validator = AIQualityValidator()

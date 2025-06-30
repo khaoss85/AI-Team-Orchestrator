@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-06-25T12:15:35.352190",
+  "fixes_validated": {
+    "goal_asset_integration": false,
+    "goal_monitoring_trigger": false,
+    "api_endpoints_complete": false,
+    "workflow_integration": false,
+    "no_assets_no_progress": false
+  },
+  "critical_findings": [
+    "Test execution failed: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/workspaces (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x105aafa10>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+  ],
+  "performance_metrics": {},
+  "pillar_compliance": {},
+  "end_time": "2025-06-25T12:15:35.358565"
+}

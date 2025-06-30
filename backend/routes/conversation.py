@@ -196,6 +196,53 @@ async def send_chat_message_with_thinking(
         logger.error(f"Error processing thinking message: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to process thinking message: {str(e)}")
 
+@router.post("/workspaces/{workspace_id}/chat/deliverable")
+async def send_deliverable_to_chat(
+    workspace_id: str,
+    deliverable_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """🎯 Send a completed deliverable to the conversational chat"""
+    try:
+        supabase = get_supabase_client()
+        
+        # Create chat message for deliverable
+        message_data = {
+            "workspace_id": workspace_id,
+            "chat_id": deliverable_data.get("chat_id", "general"),
+            "content": f"🎉 **Deliverable Ready:** {deliverable_data.get('deliverable_title', 'Untitled')}\n\n" +
+                      f"Goal: {deliverable_data.get('goal_description', 'General objective')}\n" +
+                      f"Business Value Score: {deliverable_data.get('business_value_score', 0)}\n\n" +
+                      "Your deliverable is ready for download and use!",
+            "message_type": "deliverable",
+            "sender": "system",
+            "metadata": {
+                "deliverable_id": deliverable_data.get("deliverable_id"),
+                "deliverable_title": deliverable_data.get("deliverable_title"),
+                "deliverable_content": deliverable_data.get("deliverable_content"),
+                "goal_description": deliverable_data.get("goal_description"),
+                "business_value_score": deliverable_data.get("business_value_score"),
+                "auto_sent": deliverable_data.get("auto_sent", False)
+            },
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Save to database
+        result = supabase.table("chat_messages").insert(message_data).execute()
+        
+        if result.data:
+            logger.info(f"✅ Deliverable message sent to chat: {deliverable_data.get('deliverable_title')}")
+            return {
+                "success": True,
+                "message_id": result.data[0]["id"],
+                "content": "Deliverable sent to chat successfully"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save deliverable message")
+            
+    except Exception as e:
+        logger.error(f"❌ Error sending deliverable to chat: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send deliverable: {str(e)}")
+
 @router.post("/workspaces/{workspace_id}/execute-action")
 async def execute_suggested_action(
     workspace_id: str,

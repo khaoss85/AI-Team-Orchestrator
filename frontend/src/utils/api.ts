@@ -385,10 +385,13 @@ export const api = {
       }
     },
     
-    // 🆕 ENHANCED: Project Deliverables with Asset Support
-    getProjectDeliverables: async (workspaceId: string): Promise<ProjectDeliverablesExtended> => {
+    // 🆕 ENHANCED: Project Deliverables with Asset Support and Goal Filtering
+    getProjectDeliverables: async (workspaceId: string, goalId?: string): Promise<ProjectDeliverablesExtended> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}`);
+        const url = goalId 
+          ? `${API_BASE_URL}/deliverables/workspace/${workspaceId}?goal_id=${goalId}`
+          : `${API_BASE_URL}/deliverables/workspace/${workspaceId}`;
+        const response = await fetch(url);
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`API error: ${response.status} - ${errorText}`);

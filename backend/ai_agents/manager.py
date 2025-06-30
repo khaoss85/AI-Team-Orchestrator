@@ -315,9 +315,16 @@ class AgentManager:
             # 5. Esecuzione con timeout
             logger.info(f"Dispatching task {task_id} -> agent {specialist.agent_data.name}")
             
+            # 🔧 FIX #1: Create proper context with workspace_id to prevent SDK placeholders
+            task_context = {
+                "workspace_id": str(task.workspace_id),
+                "task_id": str(task.id),
+                "agent_id": str(specialist.agent_data.id)
+            }
+            
             try:
                 result = await asyncio.wait_for(
-                    specialist.execute_task(task),
+                    specialist.execute_task(task, context=task_context),
                     timeout=self.execution_timeout
                 )
                 

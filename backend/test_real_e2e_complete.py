@@ -246,17 +246,10 @@ class RealE2ETest:
             
             # Generate tasks for each goal
             all_generated_tasks = []
-            for goal in self.workspace_goals:
-                logger.info(f"  Generating tasks for goal: {goal['description'][:50]}...")
-                
-                tasks = await planner.generate_tasks_for_goal(
-                    goal_id=goal['id'],
-                    workspace_id=self.workspace_id,
-                    current_goal_value=goal.get('current_value', 0),
-                    target_value=goal['target_value']
-                )
-                
-                all_generated_tasks.extend(tasks)
+            logger.info(f"  Generating tasks for all unmet goals in workspace {self.workspace_id}...")
+            all_generated_tasks = await planner.generate_tasks_for_unmet_goals(
+                workspace_id=UUID(self.workspace_id)
+            )
             
             self.generated_tasks = all_generated_tasks
             
@@ -286,12 +279,24 @@ class RealE2ETest:
             # Execute first 3 tasks for realistic testing
             tasks_to_execute = self.generated_tasks[:3]
             
-            for i, task_data in enumerate(tasks_to_execute):
-                logger.info(f"  Executing task {i+1}/3: {task_data.get('name', 'Unnamed')[:50]}...")
+            # Start the executor's main loop in the background
+            executor_task = asyncio.create_task(executor.start())
+            await asyncio.sleep(1) # Give executor a moment to start
+
+            queued_task_ids = []
+            for i, task_data in enumerate(self.generated_tasks): # Iterate through all generated tasks
+                logger.info(f"  Queuing task {i+1}/{len(self.generated_tasks)}: {task_data.get('name', 'Unnamed')[:50]}...")
                 
                 try:
-                    # Create task in database first
+                    # Ensure task_data has an 'id' for tracking
+                    if 'id' not in task_data:
+                        task_data['id'] = str(uuid4())
+                    
+                    # Create task in database first (if not already created by planner)
+                    # This is a simplified insert, assuming the planner might not have fully inserted
+                    # In a real scenario, we'd fetch the task by ID if it exists.
                     task_response = supabase.table('tasks').insert({
+                        "id": task_data['id'],
                         "workspace_id": self.workspace_id,
                         "name": task_data.get('name', f'Task {i+1}'),
                         "description": task_data.get('description', ''),
@@ -306,34 +311,66 @@ class RealE2ETest:
                     
                     if task_response.data:
                         task_id = task_response.data[0]['id']
+                        queued_task_ids.append(task_id)
                         
-                        # Execute task
-                        result = await executor.execute_task(task_id)
-                        
-                        if result and result.get('status') == 'completed':
-                            completed_tasks.append({
-                                "task_id": task_id,
-                                "name": task_data.get('name'),
-                                "result": result
-                            })
-                            logger.info(f"    ✅ Task completed successfully")
-                        else:
-                            failed_tasks.append({
-                                "task_id": task_id,
-                                "name": task_data.get('name'),
-                                "error": result.get('error', 'Unknown error')
-                            })
-                            logger.warning(f"    ⚠️ Task failed or incomplete")
+                        # Add task to executor's queue
+                        success = await executor.add_task_to_queue(task_response.data[0]) # Pass the full task dict from DB
+                        if not success:
+                            logger.warning(f"    ⚠️ Failed to add task {task_id} to executor queue.")
+                            failed_tasks.append({"task_id": task_id, "name": task_data.get('name'), "error": "Failed to queue"})
+                    else:
+                        logger.error(f"    ❌ Failed to insert task {task_data.get('name')} into database.")
+                        failed_tasks.append({"task_id": task_data['id'], "name": task_data.get('name'), "error": "DB insert failed"})
                     
-                    # Small delay between tasks
-                    await asyncio.sleep(2)
-                    
-                except Exception as task_error:
-                    failed_tasks.append({
-                        "task_name": task_data.get('name'),
-                        "error": str(task_error)
-                    })
-                    logger.error(f"    ❌ Task execution failed: {task_error}")
+                except Exception as queue_error:
+                    logger.error(f"    ❌ Error queuing task {task_data.get('name')}: {queue_error}")
+                    failed_tasks.append({"task_id": task_data.get('id'), "name": task_data.get('name'), "error": str(queue_error)})
+            
+            # Wait for all queued tasks to complete or fail
+            timeout_seconds = 300 # 5 minutes timeout for all tasks
+            start_time = time.time()
+            
+            while True:
+                all_tasks_done = True
+                for task_id in queued_task_ids:
+                    current_task_db = supabase.table('tasks').select('*').eq('id', task_id).single().execute()
+                    if current_task_db.data:
+                        status = current_task_db.data['status']
+                        if status in ['pending', 'in_progress']:
+                            all_tasks_done = False
+                            break
+                        elif status == 'completed':
+                            if task_id not in [t['task_id'] for t in completed_tasks]:
+                                completed_tasks.append({"task_id": task_id, "name": current_task_db.data['name'], "result": current_task_db.data['result']})
+                        elif status == 'failed':
+                            if task_id not in [t['task_id'] for t in failed_tasks]:
+                                failed_tasks.append({"task_id": task_id, "name": current_task_db.data['name'], "error": current_task_db.data.get('result', {}).get('output', 'Task failed')})
+                    else:
+                        # Task not found in DB, consider it failed or an issue
+                        all_tasks_done = False # Keep waiting if some are still pending
+                        logger.warning(f"Task {task_id} not found in DB during polling.")
+
+                if all_tasks_done:
+                    logger.info("    All queued tasks processed.")
+                    break
+                
+                if time.time() - start_time > timeout_seconds:
+                    logger.warning(f"    Timeout waiting for tasks to complete. {len(queued_task_ids) - len(completed_tasks) - len(failed_tasks)} tasks still pending.")
+                    break
+                
+                await asyncio.sleep(5) # Poll every 5 seconds
+            
+            # Stop the executor after tasks are processed
+            await executor.stop()
+            executor_task.cancel()
+            try:
+                await executor_task
+            except asyncio.CancelledError:
+                pass # Expected cancellation
+            except Exception as e:
+                logger.error(f"Error cancelling executor task: {e}")
+            
+            logger.info(f"    ✅ Task execution cycle finished. Completed: {len(completed_tasks)}, Failed: {len(failed_tasks)}")
             
             self.log_step("Task Execution", "success", {
                 "completed_count": len(completed_tasks),

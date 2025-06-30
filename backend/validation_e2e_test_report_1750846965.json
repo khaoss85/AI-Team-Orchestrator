@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-06-25T12:22:27.136299",
+  "fixes_validated": {
+    "goal_asset_integration": false,
+    "goal_monitoring_trigger": false,
+    "api_endpoints_complete": false,
+    "workflow_integration": false,
+    "no_assets_no_progress": false
+  },
+  "critical_findings": [
+    "Test execution failed: 'metric_type'"
+  ],
+  "performance_metrics": {},
+  "pillar_compliance": {},
+  "end_time": "2025-06-25T12:22:45.326521"
+}

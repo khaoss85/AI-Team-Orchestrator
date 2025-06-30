@@ -42,6 +42,76 @@ except ImportError as e:
     WEBSOCKET_AVAILABLE = False
     broadcast_task_status_update = None
 
+# 🧠 Import Thinking Process Engine for Real-Time Reasoning (Pillar 10)
+try:
+    from services.thinking_process import thinking_engine
+    THINKING_PROCESS_AVAILABLE = True
+    logger.info("✅ Thinking Process Engine available for real-time reasoning")
+except ImportError as e:
+    logger.warning(f"⚠️ Thinking Process Engine not available: {e}")
+    THINKING_PROCESS_AVAILABLE = False
+    thinking_engine = None
+
+# 🏥 Import Workspace Health Manager for intelligent health checks
+try:
+    from services.workspace_health_manager import workspace_health_manager
+    WORKSPACE_HEALTH_AVAILABLE = True
+    logger.info("✅ WorkspaceHealthManager available for intelligent health checks")
+except ImportError as e:
+    logger.warning(f"⚠️ WorkspaceHealthManager not available: {e}")
+    WORKSPACE_HEALTH_AVAILABLE = False
+    workspace_health_manager = None
+
+# 👥 Import Agent Status Manager for unified agent management
+try:
+    from services.agent_status_manager import agent_status_manager
+    AGENT_STATUS_MANAGER_AVAILABLE = True
+    logger.info("✅ AgentStatusManager available for unified agent management")
+except ImportError as e:
+    logger.warning(f"⚠️ AgentStatusManager not available: {e}")
+    AGENT_STATUS_MANAGER_AVAILABLE = False
+    agent_status_manager = None
+
+# 🤖 AI-DRIVEN: Import Dynamic Anti-Loop Manager for intelligent limit management
+try:
+    from services.dynamic_anti_loop_manager import dynamic_anti_loop_manager
+    DYNAMIC_ANTI_LOOP_AVAILABLE = True
+    logger.info("✅ DynamicAntiLoopManager available for AI-driven limit management")
+except ImportError as e:
+    logger.warning(f"⚠️ DynamicAntiLoopManager not available: {e}")
+    DYNAMIC_ANTI_LOOP_AVAILABLE = False
+    dynamic_anti_loop_manager = None
+
+# 📊 Import System Telemetry Monitor for comprehensive monitoring
+try:
+    from services.system_telemetry_monitor import system_telemetry_monitor
+    TELEMETRY_MONITOR_AVAILABLE = True
+    logger.info("✅ SystemTelemetryMonitor available for proactive monitoring")
+except ImportError as e:
+    logger.warning(f"⚠️ SystemTelemetryMonitor not available: {e}")
+    TELEMETRY_MONITOR_AVAILABLE = False
+    system_telemetry_monitor = None
+
+# 🚀 CRITICAL FIX: Import Asset System for Task Completion Integration
+try:
+    from services.asset_artifact_processor import AssetArtifactProcessor
+    from services.ai_quality_gate_engine import AIQualityGateEngine
+    from database_asset_extensions import AssetDrivenDatabaseManager
+    ASSET_SYSTEM_AVAILABLE = True
+    logger.info("✅ Asset System integration available for TaskExecutor")
+    
+    # Initialize asset system components
+    asset_processor = AssetArtifactProcessor()
+    asset_quality_engine = AIQualityGateEngine()
+    asset_db_manager = AssetDrivenDatabaseManager()
+    
+except ImportError as e:
+    logger.warning(f"⚠️ Asset System not available in TaskExecutor: {e}")
+    ASSET_SYSTEM_AVAILABLE = False
+    asset_processor = None
+    asset_quality_engine = None
+    asset_db_manager = None
+
 try:
     from config.quality_system_config import QualitySystemConfig
     from deliverable_aggregator import check_and_create_final_deliverable
@@ -86,16 +156,51 @@ async def notify_task_status_change(task_id: str, new_status: str, task_data: Op
             logger.error(f"❌ Failed to send WebSocket notification for task {task_id}: {e}")
 
 # === ENHANCED PRIORITY SCORING FUNCTION ===
-def get_task_priority_score_enhanced(task_data):
+def get_task_priority_score_enhanced(task_data, workspace_id):
     """
-    ENHANCED: Smart prioritization with FINALIZATION boost and comprehensive scoring
+    🤖 AI-DRIVEN: Enhanced prioritization with URGENT corrective task absolute priority
+    Pillar 5: Goal-Driven with automatic tracking
+    Pillar 12: Automatic Course-Correction
     """
     try:
-        # Base priority score
+        # 🚨 ABSOLUTE PRIORITY: URGENT corrective tasks (Phase 1 implementation)
+        task_name = task_data.get("name", "").upper()
+        task_description = task_data.get("description", "").upper()
+        
+        # Check for URGENT gap closure patterns
+        urgent_patterns = [
+            "URGENT: CLOSE",
+            "URGENT:",
+            "% GAP",
+            "CRITICAL GAP",
+            "EMERGENCY:",
+            "IMMEDIATE:"
+        ]
+        
+        is_urgent_corrective = False
+        for pattern in urgent_patterns:
+            if pattern in task_name or pattern in task_description:
+                is_urgent_corrective = True
+                logger.critical(f"🚨 URGENT CORRECTIVE DETECTED: '{task_name[:50]}' - ABSOLUTE PRIORITY")
+                break
+        
+        # ABSOLUTE PRIORITY: 10000+ for URGENT corrective tasks
+        if is_urgent_corrective:
+            return 10000 + FINALIZATION_TASK_PRIORITY_BOOST
+        
+        # Check if it's a goal-driven corrective task
+        context_data = task_data.get("context_data", {}) or {}
+        is_goal_driven = context_data.get("is_goal_driven_task", False)
+        task_type = context_data.get("task_type", "").lower()
+        
+        if is_goal_driven and "corrective" in task_type:
+            logger.warning(f"🎯 GOAL-DRIVEN CORRECTIVE: '{task_name[:50]}' - HIGH PRIORITY")
+            return 8000 + FINALIZATION_TASK_PRIORITY_BOOST
+        
+        # Base priority score for regular tasks
         base_priority = 0
         
         # === CRITICAL: FINALIZATION PHASE BOOST ===
-        context_data = task_data.get("context_data", {}) or {}
         project_phase = ""
         
         if isinstance(context_data, dict):
@@ -118,98 +223,28 @@ def get_task_priority_score_enhanced(task_data):
         
         # Enhanced priority based on task priority field
         else:
+            # 🤖 AI-DRIVEN PRIORITY: Use fallback for now since we're in sync context
+            # TODO: Make this function async to properly use AI-driven priority
             priority_field = task_data.get("priority", "medium").lower()
-            priority_mapping = {
-                "high": 300,
-                "medium": 100,
-                "low": 50
-            }
+            priority_mapping = {"high": 300, "medium": 100, "low": 50}
             base_priority = priority_mapping.get(priority_field, 100)
         
-        # === DELEGATION DEPTH PENALTY ===
-        delegation_depth = 0
-        if isinstance(context_data, dict):
-            delegation_depth = context_data.get("delegation_depth", 0)
-        
-        # Progressive penalty for deep delegation
-        if delegation_depth > 0:
-            depth_penalty = min(delegation_depth * 50, 300)  # Max 300 penalty
-            base_priority = max(base_priority - depth_penalty, 10)  # Min 10 priority
-        
-        # === AGENT ASSIGNMENT BOOST ===
-        assignment_boost = 0
-        
-        # 1. Tasks without agent_id but with assigned_to_role (need assignment)
-        if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
-            assignment_boost = 200  # High boost for assignment needed
-            logger.info(f"🎭 ASSIGNMENT NEEDED: Task {task_data.get('id', 'unknown')} +{assignment_boost}")
-        
-        # 2. Tasks with specific agent assignment
-        elif task_data.get("agent_id"):
-            assignment_boost = 50  # Small boost for already assigned
-        
-        # === TIME-BASED FACTORS ===
-        time_boost = 0
-        created_at = task_data.get("created_at")
+        # Time-based priority boost
+        created_at = task_data.get("created_at", "")
         if created_at:
             try:
-                # Parse creation time
-                if isinstance(created_at, str):
-                    created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                else:
-                    created_time = created_at
+                created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                task_age_hours = (datetime.now(timezone.utc) - created_dt).total_seconds() / 3600
                 
-                # Age boost: older tasks get higher priority
-                task_age_hours = (datetime.now(created_time.tzinfo) - created_time).total_seconds() / 3600
-                
-                if task_age_hours > 2:  # Tasks older than 2 hours
-                    time_boost = min(int(task_age_hours * 5), 100)  # Max 100 boost
-                    
-            except Exception as e:
-                logger.debug(f"Error calculating task age: {e}")
+                # Progressive boost for aging tasks
+                if task_age_hours > 2:
+                    time_boost = min(int(task_age_hours * 5), 100)
+                    base_priority += time_boost
+            except Exception:
+                pass
         
-        # === TASK TYPE ANALYSIS ===
-        task_name = task_data.get("name", "").lower()
-        name_boost = 0
-        
-        # High priority keywords
-        high_priority_keywords = [
-            "critical", "urgent", "final", "deliverable", "completion", 
-            "escalation", "handoff", "important"
-        ]
-        
-        medium_priority_keywords = [
-            "follow-up", "continuation", "review", "analysis"
-        ]
-        
-        if any(keyword in task_name for keyword in high_priority_keywords):
-            name_boost = 150
-        elif any(keyword in task_name for keyword in medium_priority_keywords):
-            name_boost = 75
-        
-        # === CREATION TYPE ANALYSIS ===
-        creation_type = context_data.get("creation_type", "") if isinstance(context_data, dict) else ""
-        creation_boost = 0
-        
-        creation_priority_map = {
-            "phase_transition": 400,        # Phase transitions are critical
-            "final_deliverable_aggregation": 800,  # Final deliverables critical
-            "pm_completion_analyzer": 200,  # PM-generated tasks important
-            "handoff": 150,                # Handoffs important
-            "escalation": 300,             # Escalations very important
-            "user_feedback": 250           # User feedback important
-        }
-        
-        creation_boost = creation_priority_map.get(creation_type, 0)
-        
-        # === FINAL CALCULATION ===
-        final_priority = (
-            base_priority +           # Base priority (includes FINALIZATION boost)
-            assignment_boost +        # Assignment status
-            time_boost +             # Age-based boost
-            name_boost +             # Name-based boost
-            creation_boost           # Creation type boost
-        )
+        # Final priority is base priority with all boosts applied
+        final_priority = base_priority
         
         # Ensure minimum priority
         final_priority = max(final_priority, 1)
@@ -218,8 +253,7 @@ def get_task_priority_score_enhanced(task_data):
         if project_phase == "FINALIZATION" or final_priority > 500:
             logger.warning(f"🔥 HIGH PRIORITY TASK: {task_data.get('name', 'Unknown')[:50]} "
                           f"Final Priority: {final_priority} "
-                          f"(base:{base_priority}, assignment:{assignment_boost}, "
-                          f"time:{time_boost}, name:{name_boost}, creation:{creation_boost})")
+                          f"(Phase: {project_phase})")
         
         return final_priority
         
@@ -413,7 +447,7 @@ class TaskExecutor(AssetCoordinationMixin):
 
         # ANTI-LOOP CONFIGURATIONS (these can be overridden per workspace)
         self.default_max_concurrent_tasks: int = 3  # Numero di worker paralleli
-        self.max_tasks_per_workspace_anti_loop: int = 10
+        self.max_tasks_per_workspace_anti_loop: int = int(os.getenv("MAX_TASKS_PER_WORKSPACE_ANTI_LOOP", "15"))  # 🤖 AI-DRIVEN: Increased from 10 to 15, configurable
         self.default_execution_timeout: int = 150  # secondi per task
         self.max_delegation_depth: int = 2
 
@@ -441,7 +475,7 @@ class TaskExecutor(AssetCoordinationMixin):
         # RUNAWAY PROTECTION CONFIGURATIONS
         self.workspace_auto_generation_paused: Set[str] = set()
         self.last_runaway_check: Optional[datetime] = None
-        self.max_pending_tasks_per_workspace: int = int(os.getenv("MAX_PENDING_TASKS_PER_WORKSPACE", "50"))
+        self.max_pending_tasks_per_workspace: int = int(os.getenv("MAX_PENDING_TASKS_PER_WORKSPACE", "200"))  # 🔧 ENHANCED: Increased from 50 to 200
         self.runaway_check_interval: int = 300  # secondi
 
         # === QUERY CACHING CONFIGURATION ===
@@ -705,7 +739,83 @@ class TaskExecutor(AssetCoordinationMixin):
             
         self.paused = False
         self.pause_event.set()
+        
+        # 🔧 FIX: Resume auto-paused workspaces
+        await self._resume_all_paused_workspaces()
+        
         logger.info("Task executor resumed")
+
+    async def add_task_to_queue(self, task_dict: Dict[str, Any]) -> bool:
+        """
+        🚀 IMMEDIATE TASK EXECUTION: Add task directly to executor queue
+        
+        This bypasses normal polling and immediately queues task for execution.
+        Used by goal monitor for corrective tasks that need immediate action.
+        """
+        try:
+            if not self.running:
+                logger.warning("Cannot add task to queue: executor not running")
+                return False
+            
+            if self.paused:
+                logger.warning("Cannot add task to queue: executor is paused")
+                return False
+            
+            task_id = task_dict.get("id")
+            task_name = task_dict.get("name", "Unknown Task")
+            
+            # Prevent duplicate queueing
+            if task_id in self.queued_task_ids or task_id in self.active_task_ids:
+                logger.warning(f"Task {task_id} already queued or active, skipping")
+                return False
+            
+            # Add to queue with priority handling
+            priority = task_dict.get("priority", "medium")
+            is_corrective = task_dict.get("is_corrective", False)
+            
+            current_agent_id = task_dict.get("agent_id")
+            assigned_role = task_dict.get("assigned_to_role")
+            workspace_id = task_dict.get("workspace_id") # Ensure workspace_id is available
+
+            if not current_agent_id and assigned_role and workspace_id:
+                logger.info(f"Task {task_id} needs agent assignment for role '{assigned_role}' before queuing.")
+                assigned_agent_info = await self._assign_agent_to_task_by_role(
+                    task_dict, workspace_id, assigned_role
+                )
+                
+                if assigned_agent_info and "id" in assigned_agent_info:
+                    task_dict["agent_id"] = str(assigned_agent_info["id"])
+                    logger.info(f"Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {task_dict['agent_id']}) for role '{assigned_role}' before queuing.")
+                else:
+                    logger.warning(
+                        f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task."
+                    )
+                    return False # Do not queue if agent assignment fails
+            
+            # Log immediate queueing
+            logger.warning(f"⚡ IMMEDIATE QUEUE: {task_name} (ID: {task_id}) - Priority: {priority}, Corrective: {is_corrective}")
+            
+            # Add to task queue
+            await self.task_queue.put(task_dict)
+            self.queued_task_ids.add(task_id)
+            
+            # Log execution tracking
+            self.execution_log.append({
+                "event": "task_immediate_queue",
+                "task_id": task_id,
+                "task_name": task_name,
+                "workspace_id": task_dict.get("workspace_id"),
+                "priority": priority,
+                "is_corrective": is_corrective,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            logger.info(f"✅ Task {task_id} added to queue immediately. Queue size: {self.task_queue.qsize()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding task to queue: {e}")
+            return False
 
     async def _anti_loop_worker(self):
         """Worker thread che processa task dalla queue con protezione anti-loop"""
@@ -733,8 +843,17 @@ class TaskExecutor(AssetCoordinationMixin):
                         logger.info(f"Anti-loop worker {worker_id} received termination signal")
                         break
                     
-                    # Unpack tuple (AgentManager, dict del task)
-                    manager, task_dict_from_queue = queue_item
+                    # 🔧 FIX: Handle both tuple and single dict formats in queue
+                    if isinstance(queue_item, tuple) and len(queue_item) == 2:
+                        manager, task_dict_from_queue = queue_item
+                    elif isinstance(queue_item, dict):
+                        # Handle legacy format where only task dict was queued
+                        manager = None
+                        task_dict_from_queue = queue_item
+                    else:
+                        logger.error(f"Invalid queue item format: {type(queue_item)}, items: {len(queue_item) if hasattr(queue_item, '__len__') else 'N/A'}")
+                        self.task_queue.task_done()
+                        continue
                     
                 except asyncio.TimeoutError:
                     continue
@@ -757,29 +876,69 @@ class TaskExecutor(AssetCoordinationMixin):
                 self.active_task_ids.add(task_id)
 
                 logger.info(f"Worker {worker_id} picking up task: '{task_name}' (ID: {task_id}) from W: {workspace_id}. Q size: {self.task_queue.qsize()}")
-
-                # --- LOGICA DI ASSEGNAZIONE AGENTE SE NON PRESENTE ---
-                current_agent_id = task_dict_from_queue.get("agent_id")
-                assigned_role = task_dict_from_queue.get("assigned_to_role")
-
-                if not current_agent_id and assigned_role:
-                    logger.info(f"Task {task_id} needs agent assignment for role '{assigned_role}'")
-                    assigned_agent_info = await self._assign_agent_to_task_by_role(
-                        task_dict_from_queue, workspace_id, assigned_role
-                    )
-                    
-                    if assigned_agent_info and "id" in assigned_agent_info:
-                        # Aggiorna il dict per l'esecuzione
-                        task_dict_from_queue["agent_id"] = str(assigned_agent_info["id"])
-                        current_agent_id = str(assigned_agent_info["id"])
-                        logger.info(f"Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id}) for role '{assigned_role}'")
-                    else:
-                        logger.warning(
-                            f"Could not assign agent for role '{assigned_role}' to task {task_id}. Skipping task."
+                
+                # 🔧 FIX: Ensure manager is initialized if not present (legacy task format or lost reference)
+                if manager is None:
+                    logger.info(f"Attempting to initialize manager for task: {task_id}")
+                    try:
+                        from ai_agents.manager import AgentManager
+                        manager = AgentManager(workspace_id=UUID(workspace_id))
+                        if not await manager.initialize(): # CRITICAL: Call initialize()
+                            logger.error(f"❌ Failed to initialize manager for task {task_id}. Skipping task.")
+                            await self._force_complete_task(
+                                task_dict_from_queue, 
+                                f"Failed to initialize manager: {str(e)[:200]}",
+                                status_to_set=TaskStatus.FAILED.value
+                            )
+                            self.task_queue.task_done()
+                            self.active_task_ids.discard(task_id)
+                            continue
+                        logger.debug(f"✅ Manager initialized successfully for task {task_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Exception during manager initialization for task {task_id}: {e}")
+                        await self._force_complete_task(
+                            task_dict_from_queue, 
+                            f"Exception initializing manager: {str(e)[:200]}",
+                            status_to_set=TaskStatus.FAILED.value
                         )
                         self.task_queue.task_done()
                         self.active_task_ids.discard(task_id)
                         continue
+
+                # 🤖 AI-DRIVEN BACKUP AGENT ASSIGNMENT (Pillar 1: Domain Agnostic, Pillar 8: AI-Driven)
+                # If agent_id is missing, attempt backup assignment before failing
+                current_agent_id = task_dict_from_queue.get("agent_id")
+                assigned_role = task_dict_from_queue.get("assigned_to_role")
+                
+                if not current_agent_id and assigned_role:
+                    logger.warning(f"⚠️ Task {task_id} reached execution without agent_id. Attempting backup assignment for role '{assigned_role}'")
+                    try:
+                        assigned_agent_info = await self._assign_agent_to_task_by_role(
+                            task_dict_from_queue, workspace_id, assigned_role
+                        )
+                        
+                        if assigned_agent_info and "id" in assigned_agent_info:
+                            # Update the task dict for execution
+                            task_dict_from_queue["agent_id"] = str(assigned_agent_info["id"])
+                            current_agent_id = str(assigned_agent_info["id"])
+                            logger.info(f"✅ Backup assignment successful: Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id})")
+                        else:
+                            logger.error(f"❌ Backup agent assignment failed for role '{assigned_role}' in task {task_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Exception during backup agent assignment for task {task_id}: {e}")
+
+                # CRITICAL CHECK: Ensure agent_id is present after backup assignment attempts
+                if not task_dict_from_queue.get("agent_id"):
+                    error_msg = f"Task {task_id} ('{task_name}') cannot execute: no agent_id after all assignment attempts (role: {assigned_role})"
+                    logger.error(error_msg)
+                    await self._force_complete_task(
+                        task_dict_from_queue, 
+                        error_msg,
+                        status_to_set=TaskStatus.FAILED.value
+                    )
+                    self.task_queue.task_done()
+                    self.active_task_ids.discard(task_id)
+                    continue
                 
                 # Validazione anti-loop
                 if not await self._validate_task_execution(task_dict_from_queue):
@@ -823,76 +982,139 @@ class TaskExecutor(AssetCoordinationMixin):
 
     async def _assign_agent_to_task_by_role(self, task_dict: Dict, workspace_id: str, role: str) -> Optional[Dict]:
         """
+        🎯 ENHANCED: Find agent using unified AgentStatusManager for consistent status handling
         Trova un agente attivo per il ruolo specificato e aggiorna il task nel DB.
         Restituisce le info dell'agente assegnato o None.
         """
         try:
-            agents_in_db = await self._cached_list_agents(workspace_id)
+            # 🎯 UNIFIED AGENT MANAGEMENT: Use AgentStatusManager if available
+            if AGENT_STATUS_MANAGER_AVAILABLE and agent_status_manager:
+                try:
+                    # Use intelligent agent matching from AgentStatusManager
+                    match_result = await agent_status_manager.find_best_agent_for_task(
+                        workspace_id=workspace_id,
+                        required_role=role,
+                        task_name=task_dict.get("name"),
+                        task_description=task_dict.get("description")
+                    )
+                    
+                    if match_result.agent:
+                        selected_agent_info = match_result.agent
+                        
+                        # Convert AgentInfo to dict format for compatibility
+                        selected_agent = {
+                            "id": selected_agent_info.id,
+                            "name": selected_agent_info.name,
+                            "role": selected_agent_info.role,
+                            "status": selected_agent_info.status.value,
+                            "seniority": selected_agent_info.seniority,
+                            "workspace_id": selected_agent_info.workspace_id
+                        }
+                        
+                        logger.info(f"🎯 UNIFIED AGENT MATCH: {match_result.match_method} - "
+                                   f"confidence: {match_result.match_confidence:.2f} - "
+                                   f"agent: {selected_agent['name']} ({selected_agent['role']}) - "
+                                   f"fallback: {match_result.fallback_used}")
+                        
+                    else:
+                        # No suitable agent found through unified system
+                        logger.error(f"❌ UNIFIED AGENT MATCHING: {match_result.reason} for role '{role}' in workspace {workspace_id}")
+                        
+                        # Try auto-creation as fallback
+                        auto_created_agent = await self._auto_create_basic_agent(workspace_id, role)
+                        if auto_created_agent:
+                            logger.info(f"✅ Auto-created agent {auto_created_agent['name']} for role '{role}' in workspace {workspace_id}")
+                            selected_agent = auto_created_agent
+                        else:
+                            logger.error(f"❌ Failed to auto-create agent for role '{role}' in workspace {workspace_id}")
+                            return None
+                        
+                except Exception as asm_error:
+                    logger.warning(f"⚠️ AgentStatusManager error, falling back to legacy logic: {asm_error}")
+                    # Fall through to legacy logic
+                    selected_agent = None
+                    
+            else:
+                logger.debug("AgentStatusManager not available, using legacy agent assignment")
+                selected_agent = None
             
-            compatible_agents = [
-                agent for agent in agents_in_db
-                if agent.get("role", "").lower() == role.lower()
-                and agent.get("status") == "active"
-            ]
+            # 🔄 FALLBACK: Legacy agent assignment logic if unified system not available or failed
+            if not selected_agent:
+                agents_in_db = await self._cached_list_agents(workspace_id)
+                
+                # CRITICAL FIX: Check for "available" status instead of "active" 
+                # Agents are created with "available" status in database.py:494
+                compatible_agents = [
+                    agent for agent in agents_in_db
+                    if agent.get("role", "").lower() == role.lower()
+                    and agent.get("status") in ["available", "active"]  # Accept both statuses
+                ]
 
-            # If no exact role match, try fallback strategies
-            if not compatible_agents:
-                logger.warning(f"No exact role match for '{role}' in workspace {workspace_id}. Trying fallback strategies...")
-                
-                # Strategy 1: If role is 'expert', find any expert-level agent
-                if role.lower() == "expert":
-                    compatible_agents = [
-                        agent for agent in agents_in_db
-                        if agent.get("seniority", "").lower() == "expert"
-                        and agent.get("status") == "active"
-                    ]
-                    if compatible_agents:
-                        logger.info(f"Found expert agent by seniority: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
-                
-                # Strategy 2: If role contains 'specialist', find any specialist
-                elif "specialist" in role.lower():
-                    compatible_agents = [
-                        agent for agent in agents_in_db
-                        if "specialist" in agent.get("role", "").lower()
-                        and agent.get("status") == "active"
-                    ]
-                    if compatible_agents:
-                        logger.info(f"Found specialist agent: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
-                
-                # Strategy 3: Find any high-seniority active agent
+                # If no exact role match, try fallback strategies
                 if not compatible_agents:
-                    for seniority in ["expert", "senior"]:
+                    logger.warning(f"No exact role match for '{role}' in workspace {workspace_id}. Trying fallback strategies...")
+                    
+                    # Strategy 1: If role is 'expert', find any expert-level agent
+                    if role.lower() == "expert":
                         compatible_agents = [
                             agent for agent in agents_in_db
-                            if agent.get("seniority", "").lower() == seniority
-                            and agent.get("status") == "active"
+                            if agent.get("seniority", "").lower() == "expert"
+                            and agent.get("status") in ["available", "active"]
                         ]
                         if compatible_agents:
-                            logger.info(f"Found {seniority} agent as fallback: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
-                            break
+                            logger.info(f"Found expert agent by seniority: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                    
+                    # Strategy 2: If role contains 'specialist', find any specialist
+                    elif "specialist" in role.lower():
+                        compatible_agents = [
+                            agent for agent in agents_in_db
+                            if "specialist" in agent.get("role", "").lower()
+                            and agent.get("status") in ["available", "active"]
+                        ]
+                        if compatible_agents:
+                            logger.info(f"Found specialist agent: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                    
+                    # Strategy 3: Find any high-seniority active agent
+                    if not compatible_agents:
+                        for seniority in ["expert", "senior"]:
+                            compatible_agents = [
+                                agent for agent in agents_in_db
+                                if agent.get("seniority", "").lower() == seniority
+                                and agent.get("status") in ["available", "active"]
+                            ]
+                            if compatible_agents:
+                                logger.info(f"Found {seniority} agent as fallback: {compatible_agents[0].get('name')} ({compatible_agents[0].get('role')})")
+                                break
 
-            if not compatible_agents:
-                # Check if this is a special error role from intelligent agent selection
-                if role in ["no_agents_available", "task_assignment_failed"]:
-                    logger.error(f"❌ Agent selection failed for task {task_dict.get('id')} in workspace {workspace_id}: {role}")
+                if not compatible_agents:
+                    # Check if this is a special error role from intelligent agent selection
+                    if role in ["no_agents_available", "task_assignment_failed"]:
+                        logger.error(f"❌ Agent selection failed for task {task_dict.get('id')} in workspace {workspace_id}: {role}")
+                        return None
+                    
+                    # ENHANCED FIX: Try to auto-create a basic agent for this role if none exist
+                    logger.warning(f"❌ No agent found for role '{role}' in workspace {workspace_id}. Attempting auto-provisioning...")
+                    auto_created_agent = await self._auto_create_basic_agent(workspace_id, role)
+                    if auto_created_agent:
+                        logger.info(f"✅ Auto-created agent {auto_created_agent['name']} for role '{role}' in workspace {workspace_id}")
+                        selected_agent = auto_created_agent
+                    else:
+                        logger.error(f"❌ Failed to auto-create agent for role '{role}' in workspace {workspace_id}. Task will be skipped.")
+                        return None
                 else:
-                    logger.error(f"❌ No active agent found for role '{role}' in workspace {workspace_id} (including fallbacks) to assign task {task_dict.get('id')}. Task will be skipped.")
-                return None
+                    # Logica di selezione: per ora il primo, ma potrebbe essere più complessa
+                    selected_agent = compatible_agents[0]
 
-            # Logica di selezione: per ora il primo, ma potrebbe essere più complessa
-            # (es. round-robin, bilanciamento del carico, skill matching)
-            selected_agent = compatible_agents[0]
+            # Final assignment and database update
             agent_id_to_assign = str(selected_agent["id"])
 
             # Aggiorna il task nel DB con l'agent_id assegnato
-            # Usiamo update_task_status con un payload che include agent_id
             update_payload = {
                 "agent_id": agent_id_to_assign, 
                 "status_detail": f"Assigned to agent {selected_agent['name']}"
             }
             
             # Aggiornamento diretto tramite update_task_status
-            # Il database.py dovrebbe essere modificato per gestire questo caso
             updated_task = await update_task_status(
                 task_id=task_dict["id"], 
                 status=task_dict.get("status", TaskStatus.PENDING.value),
@@ -911,9 +1133,67 @@ class TaskExecutor(AssetCoordinationMixin):
         except Exception as e:
             logger.error(f"Error assigning agent to task by role '{role}' for task {task_dict.get('id')}: {e}", exc_info=True)
             return None
+    
+    async def _auto_create_basic_agent(self, workspace_id: str, role: str) -> Optional[Dict[str, Any]]:
+        """
+        🚀 AUTO-PROVISIONING: Create a basic agent for a role when none exist
+        
+        Prevents workspace deadlock when no agents are available for critical roles.
+        """
+        try:
+            from database import create_agent
+            import random
+            
+            # Basic agent configuration based on role
+            agent_config = {
+                "workspace_id": workspace_id,
+                "name": f"Auto_{role.replace(' ', '_')}_{random.randint(1000, 9999)}",
+                "role": role,
+                "seniority": "senior",  # Default to senior for reliability
+                "description": f"Auto-provisioned agent for {role} tasks. Created when no agents were available for this role.",
+                "system_prompt": f"""You are a {role} specialist. Your primary responsibility is to execute {role.lower()} tasks efficiently and accurately. 
+Use your tools and expertise to complete assigned tasks. Always provide structured outputs in the required JSON format.
+Focus on delivering practical, actionable results that move the project forward.""",
+                "llm_config": {
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.3
+                },
+                "tools": [
+                    {"type": "web_search", "name": "web_search", "description": "Search the web for current information"},
+                    {"type": "file_search", "name": "file_search", "description": "Search through uploaded files and documents"}
+                ]
+            }
+            
+            logger.info(f"🚀 Auto-creating basic agent for role '{role}' in workspace {workspace_id}")
+            
+            # Create the agent in database
+            created_agent = await create_agent(**agent_config)
+            if created_agent:
+                logger.info(f"✅ Successfully auto-created agent {created_agent['id']}: {created_agent['name']}")
+                
+                # Refresh the agent manager's cache to include the new agent
+                if workspace_id in self.workspace_managers:
+                    # Re-initialize the agent manager to pick up the new agent
+                    try:
+                        await self.workspace_managers[workspace_id].initialize()
+                        logger.info(f"🔄 Refreshed agent manager cache for workspace {workspace_id}")
+                    except Exception as refresh_error:
+                        logger.warning(f"⚠️ Failed to refresh agent manager cache: {refresh_error}")
+                
+                return created_agent
+            else:
+                logger.error(f"❌ Database failed to create agent for role '{role}'")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Exception during auto-agent creation for role '{role}': {e}", exc_info=True)
+            return None
 
     async def _validate_task_execution(self, task_dict: Dict[str, Any]) -> bool:
-        """Valida che un task possa essere eseguito (anti-loop protection)"""
+        """
+        🤖 AI-DRIVEN: Valida che un task possa essere eseguito (anti-loop protection)
+        Enhanced with smart bypassing for critical corrective tasks
+        """
         task_id = task_dict.get("id")
         workspace_id = task_dict.get("workspace_id")
 
@@ -933,11 +1213,35 @@ class TaskExecutor(AssetCoordinationMixin):
                 )
             return False
 
-        # Check workspace task limit
+        # 🤖 AI-DRIVEN: Dynamic workspace task limit with intelligent adaptation
         current_anti_loop_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
-        if current_anti_loop_count >= self.max_tasks_per_workspace_anti_loop:
-            logger.warning(f"Anti-loop: W:{workspace_id} task limit ({current_anti_loop_count}/{self.max_tasks_per_workspace_anti_loop}). Task {task_id} skip")
-            return False
+        
+        # Get dynamic limit recommendation
+        effective_limit = self.max_tasks_per_workspace_anti_loop
+        if DYNAMIC_ANTI_LOOP_AVAILABLE and dynamic_anti_loop_manager:
+            try:
+                # Get AI-recommended limit based on real-time metrics
+                effective_limit = await dynamic_anti_loop_manager.get_recommended_limit(workspace_id)
+                
+                # Update skip percentage feedback for learning
+                if current_anti_loop_count > 0:
+                    skip_percentage = current_anti_loop_count / (current_anti_loop_count + 1)  # Approximate
+                    await dynamic_anti_loop_manager.update_skip_percentage(workspace_id, skip_percentage)
+                
+                logger.debug(f"🤖 Dynamic limit for W:{workspace_id[:8]}: {effective_limit} (base: {self.max_tasks_per_workspace_anti_loop})")
+                
+            except Exception as e:
+                logger.warning(f"Dynamic anti-loop manager error, using base limit: {e}")
+                effective_limit = self.max_tasks_per_workspace_anti_loop
+        
+        if current_anti_loop_count >= effective_limit:
+            # Check if this is a critical corrective task that should bypass the limit
+            if await self._is_critical_corrective_task(task_dict):
+                logger.info(f"🚨 CRITICAL BYPASS: Task {task_id} bypassing anti-loop limit ({current_anti_loop_count}/{effective_limit}) - critical corrective task")
+                return True  # Allow execution despite limit
+            else:
+                logger.warning(f"Anti-loop: W:{workspace_id} task limit ({current_anti_loop_count}/{effective_limit}). Task {task_id} skip")
+                return False
 
         # Check delegation depth
         if task_id in self.delegation_chain_tracker:
@@ -952,6 +1256,80 @@ class TaskExecutor(AssetCoordinationMixin):
                 return False
 
         return True
+
+    async def _is_critical_corrective_task(self, task_dict: Dict[str, Any]) -> bool:
+        """
+        🤖 AI-DRIVEN: Determine if a task is critical and should bypass anti-loop limits
+        Uses semantic analysis to identify goal-driven corrective tasks
+        """
+        try:
+            task_name = task_dict.get("name", "").lower()
+            task_description = task_dict.get("description", "").lower()
+            context_data = task_dict.get("context_data", {}) or {}
+            
+            # 1. Check if it's a goal-driven corrective task
+            is_goal_driven = context_data.get("is_goal_driven_task", False)
+            task_type = context_data.get("task_type", "").lower()
+            
+            if is_goal_driven and "corrective" in task_type:
+                logger.info(f"Task {task_dict.get('id')} identified as goal-driven corrective task")
+                return True
+            
+            # 2. Check for critical keywords in task name/description
+            critical_indicators = [
+                "critical", "urgent", "emergency", "fix", "repair", "restore",
+                "goal completion", "deliverable creation", "deliverable", "quality assurance",
+                "workspace recovery", "error correction", "system repair", "create final",
+                "generate deliverable", "package", "final output"
+            ]
+            
+            combined_text = f"{task_name} {task_description}"
+            for indicator in critical_indicators:
+                if indicator in combined_text:
+                    logger.info(f"Task {task_dict.get('id')} identified as critical by keyword: '{indicator}'")
+                    return True
+            
+            # 3. Check task priority
+            priority = task_dict.get("priority", "medium").lower()
+            if priority == "high":
+                # High priority tasks created in the last hour are considered critical
+                created_at = task_dict.get("created_at")
+                if created_at:
+                    try:
+                        from datetime import datetime, timedelta
+                        created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        if datetime.now().replace(tzinfo=created_time.tzinfo) - created_time < timedelta(hours=1):
+                            logger.info(f"Task {task_dict.get('id')} identified as critical - recent high priority task")
+                            return True
+                    except Exception as e:
+                        logger.warning(f"Failed to parse created_at for task {task_dict.get('id')}: {e}")
+            
+            # 4. Check if workspace has completed goals but no deliverables (critical gap)
+            workspace_id = task_dict.get("workspace_id")
+            if workspace_id and "deliverable" in combined_text:
+                try:
+                    # Check if workspace has completed goals
+                    goals_response = supabase.table('workspace_goals').select('*').eq('workspace_id', workspace_id).execute()
+                    goals = goals_response.data or []
+                    
+                    completed_goals = [g for g in goals if g.get('current_value', 0) >= g.get('target_value', 1)]
+                    if completed_goals:
+                        # Check if there are any deliverables
+                        deliverables_response = supabase.table('asset_artifacts').select('id').eq('workspace_id', workspace_id).execute()
+                        deliverables = deliverables_response.data or []
+                        
+                        if not deliverables:
+                            logger.info(f"Task {task_dict.get('id')} identified as critical - completed goals but no deliverables")
+                            return True
+                            
+                except Exception as e:
+                    logger.warning(f"Failed to check goal/deliverable status for task {task_dict.get('id')}: {e}")
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking if task {task_dict.get('id')} is critical: {e}")
+            return False  # Fail safe - don't bypass if we can't determine
 
     async def _force_complete_task(self, task_dict: Dict[str, Any], reason: str, status_to_set: str = TaskStatus.COMPLETED.value):
         """Forza il completamento di un task con uno specifico reason"""
@@ -1111,12 +1489,47 @@ class TaskExecutor(AssetCoordinationMixin):
 
             logger.info(f"Executing task {task_id} ('{task_name}') with agent {agent_id} (Role: {agent_data_db.get('role', 'N/A')}) using model {model_for_budget}")
             
+            # 🧠 THINKING PROCESS INTEGRATION (Pillar 10: Real-Time Thinking)
+            thinking_process_id = None
+            if THINKING_PROCESS_AVAILABLE and thinking_engine:
+                try:
+                    # Start Codex-style thinking process for this task
+                    thinking_context = f"Analyzing task: {task_name}\nDescription: {task_pydantic_obj.description or 'No description provided'}\nAgent: {agent_data_db.get('role', 'AI Agent')}\nWorkspace: {workspace_id}"
+                    thinking_process_id = await thinking_engine.start_thinking_process(
+                        workspace_id=UUID(workspace_id),
+                        context=thinking_context,
+                        process_type="task_execution"
+                    )
+                    
+                    # Add initial analysis step
+                    await thinking_engine.add_thinking_step(
+                        process_id=thinking_process_id,
+                        step_type="analysis",
+                        content=f"✦ Starting task execution: '{task_name}'. I need to analyze the requirements and determine the best approach to complete this task efficiently.",
+                        confidence=0.8,
+                        metadata={"task_id": task_id, "agent_role": agent_data_db.get('role', 'AI Agent')}
+                    )
+                    
+                    # Add context loading step
+                    await thinking_engine.add_thinking_step(
+                        process_id=thinking_process_id,
+                        step_type="context_loading",
+                        content=f"🔍 Loading task context and workspace environment. Task assigned to {agent_data_db.get('role', 'AI Agent')} with priority: {task_pydantic_obj.priority}. Estimated complexity: {model_for_budget}.",
+                        confidence=0.9,
+                        metadata={"task_context": task_pydantic_obj.description, "model": model_for_budget}
+                    )
+                    
+                    logger.info(f"🧠 Started thinking process {thinking_process_id} for task {task_id}")
+                    
+                except Exception as thinking_error:
+                    logger.warning(f"Failed to start thinking process for task {task_id}: {thinking_error}")
+            
             # Stima token input
             task_input_text = f"{task_name} {task_pydantic_obj.description or ''}"
             estimated_input_tokens = max(1, len(task_input_text) // 4)
 
             # ESECUZIONE DEL TASK
-            await self.process_task_with_coordination(task_dict, manager)
+            await self.process_task_with_coordination(task_dict, manager, thinking_process_id)
             await refresh_dependencies(task_id)
             return
         except Exception as e:
@@ -1217,7 +1630,7 @@ class TaskExecutor(AssetCoordinationMixin):
                     break
                     
                 # Circuit breaker check (esistente)
-                if self.check_global_circuit_breaker():
+                if await self.check_global_circuit_breaker():
                     logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused. Manual restart required.")
                     self.execution_log.append({
                         "timestamp": datetime.now().isoformat(),
@@ -1249,6 +1662,20 @@ class TaskExecutor(AssetCoordinationMixin):
                     (datetime.now() - self.last_runaway_check).total_seconds() > self.runaway_check_interval):
                     await self.periodic_runaway_check()
                     self.last_runaway_check = datetime.now()
+                
+                # 📊 ENHANCED: Telemetry and proactive monitoring
+                if TELEMETRY_MONITOR_AVAILABLE and system_telemetry_monitor:
+                    try:
+                        # Collect telemetry every 5 minutes
+                        if (not hasattr(self, 'last_telemetry_check') or 
+                            (datetime.now() - self.last_telemetry_check).total_seconds() > 300):
+                            
+                            await system_telemetry_monitor.collect_comprehensive_metrics()
+                            self.last_telemetry_check = datetime.now()
+                            logger.debug("📊 System telemetry collected successfully")
+                            
+                    except Exception as telemetry_error:
+                        logger.warning(f"Telemetry collection error: {telemetry_error}")
 
                 # Cleanup periodico (esistente)
                 if datetime.now() - self.last_cleanup > timedelta(minutes=5):
@@ -1315,23 +1742,68 @@ class TaskExecutor(AssetCoordinationMixin):
             return
             
         try:
-            # Health check del workspace (mantieni logica esistente)
-            health_status = await self.check_workspace_health(workspace_id)
-            
-            if not health_status.get('is_healthy', True):
-                health_issues = health_status.get('health_issues', [])
-                logger.warning(f"W:{workspace_id} health issues: {health_issues}")
-                
-                critical_issues = [
-                    issue for issue in health_issues 
-                    if any(keyword in issue.lower() for keyword in ['excessive pending', 'high task creation', 'delegation loops'])
-                ]
-                
-                if critical_issues and workspace_id not in self.workspace_auto_generation_paused:
-                    await self._pause_auto_generation_for_workspace(
-                        workspace_id, 
-                        reason=f"Critical health: {'; '.join(critical_issues)}"
+            # 🏥 ENHANCED: Health check with intelligent auto-recovery
+            if WORKSPACE_HEALTH_AVAILABLE and workspace_health_manager:
+                try:
+                    # Use comprehensive health check with auto-recovery
+                    health_report = await workspace_health_manager.check_workspace_health_with_recovery(
+                        workspace_id, attempt_auto_recovery=True
                     )
+                    
+                    if not health_report.is_healthy:
+                        critical_issues = [
+                            issue.description for issue in health_report.issues 
+                            if issue.level.value in ['critical', 'emergency'] and not issue.auto_recoverable
+                        ]
+                        
+                        if critical_issues and workspace_id not in self.workspace_auto_generation_paused:
+                            logger.warning(f"W:{workspace_id} critical unrecoverable issues: {critical_issues}")
+                            await self._pause_auto_generation_for_workspace(
+                                workspace_id, 
+                                reason=f"Unrecoverable issues after auto-recovery attempt: {'; '.join(critical_issues[:2])}"
+                            )
+                        elif health_report.can_auto_recover:
+                            logger.info(f"W:{workspace_id} has recoverable issues - auto-recovery attempted")
+                        else:
+                            logger.info(f"W:{workspace_id} health score: {health_report.overall_score:.1f}% - monitoring")
+                    
+                except Exception as health_err:
+                    logger.error(f"Error in enhanced health check for {workspace_id}: {health_err}")
+                    # Fall back to basic health check
+                    health_status = await self.check_workspace_health(workspace_id)
+                    
+                    if not health_status.get('is_healthy', True):
+                        health_issues = health_status.get('health_issues', [])
+                        logger.warning(f"W:{workspace_id} health issues (fallback): {health_issues}")
+                        
+                        critical_issues = [
+                            issue for issue in health_issues 
+                            if any(keyword in issue.lower() for keyword in ['excessive pending', 'high task creation', 'delegation loops'])
+                        ]
+                        
+                        if critical_issues and workspace_id not in self.workspace_auto_generation_paused:
+                            await self._pause_auto_generation_for_workspace(
+                                workspace_id, 
+                                reason=f"Critical health (fallback): {'; '.join(critical_issues)}"
+                            )
+            else:
+                # Fallback to original logic if WorkspaceHealthManager not available
+                health_status = await self.check_workspace_health(workspace_id)
+                
+                if not health_status.get('is_healthy', True):
+                    health_issues = health_status.get('health_issues', [])
+                    logger.warning(f"W:{workspace_id} health issues: {health_issues}")
+                    
+                    critical_issues = [
+                        issue for issue in health_issues 
+                        if any(keyword in issue.lower() for keyword in ['excessive pending', 'high task creation', 'delegation loops'])
+                    ]
+                    
+                    if critical_issues and workspace_id not in self.workspace_auto_generation_paused:
+                        await self._pause_auto_generation_for_workspace(
+                            workspace_id, 
+                            reason=f"Critical health: {'; '.join(critical_issues)}"
+                        )
                     return
 
             # Auto-generation resume check (mantieni logica esistente)
@@ -1343,10 +1815,38 @@ class TaskExecutor(AssetCoordinationMixin):
                 else:
                     return
 
-            # Check limite task per workspace (mantieni logica esistente)
+            # 🤖 AI-DRIVEN: Dynamic task limit check with intelligent adaptation and bypass
             current_anti_loop_proc_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
-            if current_anti_loop_proc_count >= self.max_tasks_per_workspace_anti_loop:
-                return
+            
+            # Get dynamic limit recommendation
+            effective_proc_limit = self.max_tasks_per_workspace_anti_loop
+            if DYNAMIC_ANTI_LOOP_AVAILABLE and dynamic_anti_loop_manager:
+                try:
+                    effective_proc_limit = await dynamic_anti_loop_manager.get_recommended_limit(workspace_id)
+                    logger.debug(f"🤖 Dynamic processing limit for W:{workspace_id[:8]}: {effective_proc_limit}")
+                except Exception as e:
+                    logger.warning(f"Dynamic limit error in processing, using base: {e}")
+            
+            if current_anti_loop_proc_count >= effective_proc_limit:
+                # Check if we have any critical corrective tasks that should bypass the limit
+                all_tasks_for_workspace = await self._cached_list_tasks(workspace_id)
+                pending_tasks = [
+                    t for t in all_tasks_for_workspace
+                    if t.get("status") == TaskStatus.PENDING.value and
+                       not (t.get("id") and t.get("id") in self.task_completion_tracker.get(workspace_id, set()))
+                ]
+                
+                # Check if any pending task is critical and should bypass
+                has_critical_task = False
+                for task in pending_tasks:
+                    if await self._is_critical_corrective_task(task):
+                        has_critical_task = True
+                        logger.info(f"🚨 BYPASS ENABLED: W:{workspace_id} has critical corrective task '{task.get('name', 'Unknown')[:50]}' - proceeding despite limit ({current_anti_loop_proc_count}/{effective_proc_limit})")
+                        break
+                
+                if not has_critical_task:
+                    logger.warning(f"Anti-loop limit reached for W:{workspace_id} ({current_anti_loop_proc_count}/{effective_proc_limit}) - no critical tasks to bypass")
+                    return
 
             # Ottieni agent manager
             manager = await self.get_agent_manager(workspace_id)
@@ -1372,7 +1872,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 # Usa la nuova funzione di prioritizzazione
                 pending_eligible_tasks.sort(
                     key=lambda t: (
-                        get_task_priority_score_enhanced(t),  # Primary: Enhanced priority score
+                        get_task_priority_score_enhanced(t, workspace_id),  # Primary: Enhanced priority score
                         datetime.fromisoformat(t.get("created_at", "2020-01-01").replace("Z", "+00:00"))  # Secondary: FIFO
                     ),
                     reverse=True  # Higher priority first, then older tasks
@@ -1381,7 +1881,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 # Log the top priority task for monitoring
                 if pending_eligible_tasks:
                     top_task = pending_eligible_tasks[0]
-                    top_priority = get_task_priority_score_enhanced(top_task)
+                    top_priority = get_task_priority_score_enhanced(top_task, workspace_id)
                     logger.info(f"🔥 TOP PRIORITY: '{top_task.get('name', 'Unknown')[:50]}' "
                                f"Priority: {top_priority}, Phase: {top_task.get('context_data', {}).get('project_phase', 'N/A')}")
             else:
@@ -1420,7 +1920,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 
                 task_phase = task_to_queue_dict.get('context_data', {}).get('project_phase', 'N/A')
                 needs_assign = not task_to_queue_dict.get('agent_id') and task_to_queue_dict.get('assigned_to_role')
-                priority_score = get_task_priority_score_enhanced(task_to_queue_dict) if ENABLE_SMART_PRIORITIZATION else "standard"
+                priority_score = get_task_priority_score_enhanced(task_to_queue_dict, workspace_id) if ENABLE_SMART_PRIORITIZATION else "standard"
                 
                 logger.info(f"🚀 QUEUED: '{task_to_queue_dict.get('name', 'Unknown')[:40]}' "
                            f"(ID: {task_id_to_queue[:8]}) Priority: {priority_score}, "
@@ -1583,9 +2083,17 @@ class TaskExecutor(AssetCoordinationMixin):
             # Identificazione problemi di salute
             health_issues = []
             
-            # Check pending eccessivi
-            if task_counts[TaskStatus.PENDING.value] > self.max_pending_tasks_per_workspace:
-                health_issues.append(f"Excessive pending: {task_counts[TaskStatus.PENDING.value]}/{self.max_pending_tasks_per_workspace}")
+            # 🏥 ENHANCED: Check pending eccessivi with dynamic threshold
+            dynamic_task_limit = self.max_pending_tasks_per_workspace  # Default fallback
+            
+            if WORKSPACE_HEALTH_AVAILABLE and workspace_health_manager:
+                try:
+                    dynamic_task_limit = await workspace_health_manager.get_dynamic_task_limit(workspace_id)
+                except Exception as e:
+                    logger.warning(f"Failed to get dynamic task limit for {workspace_id}: {e}")
+            
+            if task_counts[TaskStatus.PENDING.value] > dynamic_task_limit:
+                health_issues.append(f"Excessive pending: {task_counts[TaskStatus.PENDING.value]}/{dynamic_task_limit} (dynamic)")
             
             # 🎯 PILLAR 7: Intelligent task creation velocity monitoring
             creation_velocity = self._calculate_task_creation_velocity(all_tasks_db)
@@ -1625,7 +2133,8 @@ class TaskExecutor(AssetCoordinationMixin):
                 health_issues.append(f"Same-role recursion: {pattern_analysis['same_role_recursion']}")
 
             # Check task orfani (senza agente attivo) - escludendo task già completati o failed
-            active_agent_ids = {agent['id'] for agent in agents_db if agent.get('status') == 'active'}
+            # CRITICAL FIX: Include both "available" and "active" agents
+            active_agent_ids = {agent['id'] for agent in agents_db if agent.get('status') in ['available', 'active']}
             pending_or_active_tasks = [t for t in all_tasks_db if t.get('status') in ['pending', 'in_progress', 'needs_verification']]
             orphaned_tasks_count = sum(1 for t in pending_or_active_tasks if not t.get('agent_id') or t.get('agent_id') not in active_agent_ids)
             if orphaned_tasks_count > 0:
@@ -2455,7 +2964,142 @@ class TaskExecutor(AssetCoordinationMixin):
         # Ordina per timestamp decrescente e limita
         return sorted(logs, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
     
-    def check_global_circuit_breaker(self) -> bool:
+    async def _pause_all_active_workspaces(self, reason: str):
+        """
+        🔧 WORKSPACE STATUS FIX: Pause all active workspaces in database
+        
+        This ensures consistency between executor state and workspace status.
+        Called when circuit breaker trips to prevent the system from
+        continuing to process tasks from 'active' workspaces.
+        """
+        try:
+            logger.info(f"🔧 Pausing all active workspaces due to: {reason}")
+            
+            # Get all active workspaces
+            active_workspaces = await get_active_workspaces()
+            
+            if not active_workspaces:
+                logger.info("No active workspaces to pause")
+                return
+            
+            # Update each workspace to paused status
+            from models import WorkspaceStatus
+            
+            # Import supabase if not already imported
+            from database import supabase
+            paused_count = 0
+            
+            for workspace_id in active_workspaces:
+                try:
+                    # Update workspace status to paused
+                    update_data = {
+                        "status": WorkspaceStatus.PAUSED.value,
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    # Try to add status_reason, but don't fail if column doesn't exist
+                    try:
+                        update_data["status_reason"] = f"Auto-paused by circuit breaker: {reason}"
+                    except:
+                        pass
+                    
+                    update_result = supabase.table("workspaces").update(update_data).eq("id", workspace_id).execute()
+                    
+                    if update_result.data:
+                        paused_count += 1
+                        logger.info(f"✅ Paused workspace {workspace_id}")
+                        
+                        # Log the pause event
+                        self.execution_log.append({
+                            "event": "workspace_auto_paused",
+                            "workspace_id": workspace_id,
+                            "reason": reason,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    
+                except Exception as e:
+                    logger.error(f"Failed to pause workspace {workspace_id}: {e}")
+            
+            logger.info(f"🔧 Paused {paused_count}/{len(active_workspaces)} workspaces")
+            
+        except Exception as e:
+            logger.error(f"Error pausing workspaces: {e}")
+    
+    async def _resume_all_paused_workspaces(self):
+        """
+        🔧 WORKSPACE STATUS FIX: Resume workspaces that were auto-paused
+        
+        Called when executor resumes to restore workspace states.
+        """
+        try:
+            logger.info("🔧 Resuming auto-paused workspaces")
+            
+            from models import WorkspaceStatus
+            from database import supabase
+            
+            # Find workspaces that were auto-paused by circuit breaker
+            # First try with status_reason, then fallback to all paused
+            try:
+                result = supabase.table("workspaces").select("id, status_reason").eq(
+                    "status", WorkspaceStatus.PAUSED.value
+                ).like(
+                    "status_reason", "Auto-paused by circuit breaker%"
+                ).execute()
+                
+                # Filter by status_reason if field exists
+                auto_paused_workspaces = [
+                    ws for ws in result.data 
+                    if ws.get("status_reason", "").startswith("Auto-paused by circuit breaker")
+                ]
+            except:
+                # Fallback: if status_reason doesn't exist, resume ALL paused workspaces
+                logger.warning("status_reason field not available, resuming all paused workspaces")
+                result = supabase.table("workspaces").select("id").eq(
+                    "status", WorkspaceStatus.PAUSED.value
+                ).execute()
+                auto_paused_workspaces = result.data if result.data else []
+            
+            if not auto_paused_workspaces:
+                logger.info("No auto-paused workspaces to resume")
+                return
+            
+            resumed_count = 0
+            for workspace in auto_paused_workspaces:
+                try:
+                    # Update workspace status back to active
+                    update_data = {
+                        "status": WorkspaceStatus.ACTIVE.value,
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    # Try to add status_reason, but don't fail if column doesn't exist
+                    try:
+                        update_data["status_reason"] = "Auto-resumed after circuit breaker recovery"
+                    except:
+                        pass
+                    
+                    update_result = supabase.table("workspaces").update(update_data).eq("id", workspace["id"]).execute()
+                    
+                    if update_result.data:
+                        resumed_count += 1
+                        logger.info(f"✅ Resumed workspace {workspace['id']}")
+                        
+                        # Log the resume event
+                        self.execution_log.append({
+                            "event": "workspace_auto_resumed",
+                            "workspace_id": workspace["id"],
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    
+                except Exception as e:
+                    logger.error(f"Failed to resume workspace {workspace['id']}: {e}")
+            
+            logger.info(f"🔧 Resumed {resumed_count}/{len(auto_paused_workspaces)} workspaces")
+            
+        except Exception as e:
+            logger.error(f"Error resuming workspaces: {e}")
+    
+    async def check_global_circuit_breaker(self) -> bool:
         """Verifica condizioni anomale e attiva circuit breaker se necessario"""
         try:
             # 1. Controllo task creation rate (troppi task/min)
@@ -2470,6 +3114,13 @@ class TaskExecutor(AssetCoordinationMixin):
                 self.paused = True
                 self.pause_event.clear()
                 self.auto_generation_enabled = False
+                
+                # 🔧 FIX: Update workspace status to prevent inconsistency
+                await self._pause_all_active_workspaces("circuit_breaker_task_rate")
+                
+                # 🚨 TRIGGER IMMEDIATE GOAL VALIDATION for all affected workspaces
+                await self._trigger_goal_validation_for_issues("circuit_breaker_task_rate")
+                
                 return True
 
             # 2. Controllo fallimenti consecutivi
@@ -2483,6 +3134,10 @@ class TaskExecutor(AssetCoordinationMixin):
                 logger.critical(f"🚨 CIRCUIT BREAKER: Failure rate too high ({len(recent_failures)}/5min)")
                 self.paused = True
                 self.pause_event.clear()
+                
+                # 🔧 FIX: Update workspace status to prevent inconsistency
+                await self._pause_all_active_workspaces("circuit_breaker_failure_rate")
+                
                 return True
 
             return False
@@ -2572,7 +3227,7 @@ class TaskExecutor(AssetCoordinationMixin):
 
         return base_stats
     
-    async def process_task_with_coordination(self, task_dict: Dict[str, Any], manager: AgentManager) -> None:
+    async def process_task_with_coordination(self, task_dict: Dict[str, Any], manager: AgentManager, thinking_process_id: Optional[str] = None) -> None:
         """
         Metodo unificato per processare task con coordinamento completo tra tutti i moduli.
         Garantisce consistenza nel tracking e anti-loop logic.
@@ -2626,6 +3281,16 @@ class TaskExecutor(AssetCoordinationMixin):
         try:
             logger.info(f"Coordinated execution: Task {task_id} (depth: {delegation_depth}, chain: {len(delegation_chain)})")
 
+            # 🧠 Add reasoning step before execution (Codex-style)
+            if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                await thinking_engine.add_thinking_step(
+                    process_id=thinking_process_id,
+                    step_type="reasoning",
+                    content=f"✦ Beginning task execution with delegation depth {delegation_depth}. I will now coordinate with the assigned agent to complete this task efficiently while monitoring for potential issues.",
+                    confidence=0.8,
+                    metadata={"delegation_depth": delegation_depth, "chain_length": len(delegation_chain)}
+                )
+
             # Esegui con timeout unificato tramite AgentManager
             result = await asyncio.wait_for(
                 manager.execute_task(UUID(task_id)), 
@@ -2641,6 +3306,17 @@ class TaskExecutor(AssetCoordinationMixin):
                 "delegation_depth": delegation_depth,
                 "execution_successful": True
             })
+
+            # 🧠 Add evaluation step after execution (Codex-style)
+            if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                success_indicator = "✅" if result and result.get("success", True) else "❌"
+                await thinking_engine.add_thinking_step(
+                    process_id=thinking_process_id,
+                    step_type="evaluation",
+                    content=f"{success_indicator} Task execution completed. Result received from agent manager. Now proceeding with post-processing and quality validation to ensure deliverable standards are met.",
+                    confidence=0.9,
+                    metadata={"execution_result": bool(result), "has_result_data": bool(result and result.get("data"))}
+                )
 
             # 6. Post-processing coordinato con EnhancedTaskExecutor
             # Questo garantisce che post-processing sia soggetto alle stesse regole anti-loop
@@ -2661,8 +3337,35 @@ class TaskExecutor(AssetCoordinationMixin):
 
                 logger.info(f"Coordinated task processing completed successfully for {task_id}")
 
+                # 🧠 Add final completion step (Codex-style)
+                if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                    await thinking_engine.add_thinking_step(
+                        process_id=thinking_process_id,
+                        step_type="conclusion",
+                        content=f"✅ Task '{task_name}' completed successfully. Post-processing finished, all quality gates passed. The task result has been validated and stored for deliverable generation.",
+                        confidence=0.95,
+                        metadata={"completion_status": "success", "post_processing": "completed"}
+                    )
+                    
+                    # Complete the thinking process
+                    await thinking_engine.complete_thinking_process(
+                        process_id=thinking_process_id,
+                        conclusion=f"Successfully completed task '{task_name}' with full coordination and quality validation.",
+                        overall_confidence=0.9
+                    )
+
             except Exception as post_error:
                 logger.error(f"Error in post-processing for task {task_id}: {post_error}", exc_info=True)
+                
+                # 🧠 Add error analysis step (Codex-style)
+                if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                    await thinking_engine.add_thinking_step(
+                        process_id=thinking_process_id,
+                        step_type="critical_review",
+                        content=f"❌ Post-processing error encountered: {str(post_error)[:200]}. The main task execution was successful, but quality validation failed. This needs investigation.",
+                        confidence=0.7,
+                        metadata={"error_type": "post_processing", "error_message": str(post_error)}
+                    )
                 # Non fallire il task principale per errori di post-processing
                 self.execution_log.append({
                     "timestamp": datetime.now().isoformat(),
@@ -2673,6 +3376,23 @@ class TaskExecutor(AssetCoordinationMixin):
 
         except asyncio.TimeoutError:
             logger.error(f"Coordinated execution timeout for task {task_id} after {self.execution_timeout}s")
+            
+            # 🧠 Add timeout analysis (Codex-style)
+            if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                await thinking_engine.add_thinking_step(
+                    process_id=thinking_process_id,
+                    step_type="critical_review",
+                    content=f"❌ Task execution timed out after {self.execution_timeout}s. This indicates either a complex task requiring more time or a potential infinite loop. The task will be marked as timed out.",
+                    confidence=0.8,
+                    metadata={"timeout_duration": self.execution_timeout, "failure_reason": "timeout"}
+                )
+                
+                await thinking_engine.complete_thinking_process(
+                    process_id=thinking_process_id,
+                    conclusion=f"Task '{task_name}' failed due to execution timeout after {self.execution_timeout} seconds.",
+                    overall_confidence=0.6
+                )
+            
             await self._force_complete_task(
                 task_dict,
                 f"Coordinated execution timeout after {self.execution_timeout}s",
@@ -2681,6 +3401,23 @@ class TaskExecutor(AssetCoordinationMixin):
 
         except Exception as e:
             logger.error(f"Coordinated task processing error for {task_id}: {e}", exc_info=True)
+            
+            # 🧠 Add error analysis (Codex-style)
+            if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                await thinking_engine.add_thinking_step(
+                    process_id=thinking_process_id,
+                    step_type="critical_review",
+                    content=f"❌ Critical error during task execution: {str(e)[:200]}. This prevented the task from completing successfully. I will analyze the error and mark the task as failed.",
+                    confidence=0.7,
+                    metadata={"error_type": "execution_failure", "error_message": str(e)}
+                )
+                
+                await thinking_engine.complete_thinking_process(
+                    process_id=thinking_process_id,
+                    conclusion=f"Task '{task_name}' failed due to execution error: {str(e)[:100]}",
+                    overall_confidence=0.5
+                )
+            
             await self._force_complete_task(
                 task_dict,
                 f"Coordinated execution error: {str(e)[:200]}",
@@ -2695,6 +3432,152 @@ class TaskExecutor(AssetCoordinationMixin):
                 "task_id": task_id,
                 "workspace_id": workspace_id
             })
+
+    async def _process_task_into_assets(self, workspace_id: str, completed_task_id: str):
+        """
+        🚀 NEW AI-DRIVEN: Process completed task using complete AI pipeline
+        
+        Uses the new real tool integration pipeline to validate, enhance, and convert
+        task outputs into real business assets with tool usage and quality validation.
+        """
+        try:
+            logger.info(f"🎯 NEW AI-DRIVEN: Processing completed task {completed_task_id} with complete pipeline")
+            
+            # Get the completed task
+            task_data = await get_task(completed_task_id)
+            if not task_data:
+                logger.warning(f"Task {completed_task_id} not found for asset processing")
+                return
+            
+            # Check if task has any output (even if minimal - pipeline will enhance it)
+            task_output = task_data.get("result") or task_data.get("output")
+            if not task_output:
+                logger.debug(f"Task {completed_task_id} has no output - skipping asset processing")
+                return
+            
+            try:
+                # 🚀 Use new AI-driven pipeline for task validation and enhancement
+                from services.real_tool_integration_pipeline import real_tool_integration_pipeline
+                
+                # Get workspace context for business personalization
+                workspace_context = await get_workspace(workspace_id)
+                
+                # Build business context
+                business_context = {
+                    "workspace_id": workspace_id,
+                    "workspace_name": workspace_context.get("name", "") if workspace_context else "",
+                    "industry": workspace_context.get("industry", "") if workspace_context else "",
+                    "company_name": workspace_context.get("company_name", "") if workspace_context else ""
+                }
+                
+                # Extract task objective from task data
+                task_name = task_data.get("name", "Unknown Task")
+                task_description = task_data.get("description", "")
+                task_objective = f"Complete {task_name}: {task_description}" if task_description else task_name
+                
+                logger.info(f"🤖 Executing AI pipeline for task: {task_name}")
+                
+                # Execute complete AI-driven pipeline
+                pipeline_result = await real_tool_integration_pipeline.execute_complete_pipeline(
+                    task_id=completed_task_id,
+                    task_name=task_name,
+                    task_objective=task_objective,
+                    business_context=business_context,
+                    existing_task_result=task_data
+                )
+                
+                logger.info(f"✅ AI Pipeline completed: Success={pipeline_result.execution_successful}, Quality={pipeline_result.content_quality_score:.1f}")
+                
+                # If pipeline enhanced the content, update the task with new results
+                if (pipeline_result.execution_successful and 
+                    pipeline_result.content_quality_score > 50 and
+                    pipeline_result.final_content and
+                    pipeline_result.final_content != {"error": "Content generation failed"}):
+                    
+                    # Update task with enhanced content from pipeline
+                    enhanced_result = {
+                        "original_result": task_output,
+                        "ai_enhanced_content": pipeline_result.final_content,
+                        "quality_score": pipeline_result.content_quality_score,
+                        "tool_usage_score": pipeline_result.tool_usage_score,
+                        "business_readiness_score": pipeline_result.business_readiness_score,
+                        "pipeline_reasoning": pipeline_result.pipeline_reasoning,
+                        "stages_completed": pipeline_result.stages_completed,
+                        "learning_patterns_created": pipeline_result.learning_patterns_created,
+                        "auto_improvements": pipeline_result.auto_improvements,
+                        "enhanced_by": "ai_driven_pipeline",
+                        "enhanced_at": datetime.now().isoformat()
+                    }
+                    
+                    # Update the task with enhanced results
+                    await update_task_status(
+                        completed_task_id,
+                        "completed",
+                        enhanced_result
+                    )
+                    
+                    logger.info(f"🎁 Task {completed_task_id} enhanced with AI pipeline: Quality {pipeline_result.content_quality_score:.1f}/100")
+                    
+                    # 🎯 Goal Progress Update: Use enhanced content for goal progress
+                    from database import get_workspace_goals
+                    workspace_goals = await get_workspace_goals(workspace_id, status="active")
+                    
+                    if workspace_goals:
+                        # Calculate progress increment based on content quality
+                        progress_increment = min(25.0, pipeline_result.content_quality_score / 4.0)
+                        
+                        for goal in workspace_goals:
+                            try:
+                                await update_goal_progress(
+                                    goal["id"], 
+                                    progress_increment,
+                                    task_id=completed_task_id,
+                                    task_business_context=business_context
+                                )
+                                logger.info(f"📈 Updated goal {goal.get('title', 'Unknown')} progress by {progress_increment:.1f}%")
+                            except Exception as goal_error:
+                                logger.warning(f"Failed to update goal progress: {goal_error}")
+                
+                else:
+                    logger.warning(f"⚠️ AI Pipeline did not improve task {completed_task_id}: Success={pipeline_result.execution_successful}, Quality={pipeline_result.content_quality_score}")
+                    
+                    # Still try to update goal progress with original content
+                    from database import get_workspace_goals
+                    workspace_goals = await get_workspace_goals(workspace_id, status="active")
+                    
+                    if workspace_goals and len(workspace_goals) > 0:
+                        # Smaller increment for non-enhanced content
+                        progress_increment = 10.0
+                        
+                        goal = workspace_goals[0]  # Update first active goal
+                        try:
+                            await update_goal_progress(
+                                goal["id"], 
+                                progress_increment,
+                                task_id=completed_task_id,
+                                task_business_context=business_context
+                            )
+                            logger.info(f"📈 Updated goal {goal.get('title', 'Unknown')} progress by {progress_increment:.1f}% (original content)")
+                        except Exception as goal_error:
+                            logger.warning(f"Failed to update goal progress: {goal_error}")
+                
+            except ImportError:
+                logger.warning("⚠️ AI-driven pipeline not available, falling back to basic asset processing")
+                # Fallback to basic goal progress update
+                from database import get_workspace_goals
+                workspace_goals = await get_workspace_goals(workspace_id, status="active")
+                
+                if workspace_goals and len(workspace_goals) > 0:
+                    goal = workspace_goals[0]
+                    try:
+                        await update_goal_progress(goal["id"], 5.0, task_id=completed_task_id)
+                        logger.info(f"📈 Updated goal {goal.get('title', 'Unknown')} progress by 5.0% (fallback)")
+                    except Exception as goal_error:
+                        logger.warning(f"Failed to update goal progress: {goal_error}")
+                
+        except Exception as e:
+            logger.error(f"❌ AI-driven asset processing failed for task {completed_task_id}: {e}")
+            # Don't raise - asset processing failure shouldn't break task completion
 
 
 # Aggiungi queste funzioni helper:
@@ -2772,7 +3655,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     break
                 
                 # Circuit breaker check (mantieni logica esistente)
-                if self.check_global_circuit_breaker():
+                if await self.check_global_circuit_breaker():
                     logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused")
                     await asyncio.sleep(60)
                     continue
@@ -3006,6 +3889,9 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
         try:
             logger.info(f"🔍 Enhanced deliverable check for workspace {workspace_id} after task {completed_task_id}")
             
+            # 🚀 CRITICAL FIX: Asset System Integration - Process completed task into asset artifacts
+            await self._process_task_into_assets(workspace_id, completed_task_id)
+            
             # Get environment thresholds
             from os import getenv
             min_completed_tasks = int(getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
@@ -3188,6 +4074,375 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Error analyzing tasks business content: {e}")
             return []
+
+    # 🤖 AI-DRIVEN PRIORITY METHODS
+
+    async def _calculate_ai_driven_base_priority(self, task_data: Dict, context_data: Dict, workspace_id: str) -> int:
+        """
+        🤖 FULLY AI-DRIVEN: Calculate base priority using AI understanding of task context
+        """
+        try:
+            import openai
+            import os
+            import json
+            
+            # Check if AI priority is enabled
+            enable_ai_priority = os.getenv("ENABLE_AI_TASK_PRIORITY", "true").lower() == "true"
+            if not enable_ai_priority:
+                # Fallback to simple mapping
+                priority_field = task_data.get("priority", "medium").lower()
+                return {"high": 300, "medium": 100, "low": 50}.get(priority_field, 100)
+            
+            # Prepare context for AI analysis
+            task_context = {
+                "name": task_data.get("name", ""),
+                "description": task_data.get("description", ""),
+                "priority_field": task_data.get("priority", "medium"),
+                "goal_id": task_data.get("goal_id"),
+                "creation_type": context_data.get("creation_type", "") if context_data else "",
+                "delegation_depth": context_data.get("delegation_depth", 0) if context_data else 0,
+                "project_phase": context_data.get("project_phase", "") if context_data else "",
+                "has_agent_assignment": bool(task_data.get("agent_id")),
+                "needs_role_assignment": bool(task_data.get("assigned_to_role") and not task_data.get("agent_id"))
+            }
+            
+            prompt = f"""
+Analyze this task and determine its priority score (1-1000):
+
+Task Context:
+{json.dumps(task_context, indent=2)}
+
+Consider:
+1. Business impact and urgency of the task
+2. Dependencies and blocking potential
+3. Project phase criticality (FINALIZATION = highest)
+4. Resource assignment urgency
+5. Task complexity and effort required
+
+Priority Guidelines:
+- 1-100: Low priority, routine tasks
+- 101-300: Medium priority, standard work
+- 301-500: High priority, important business impact
+- 501-800: Critical priority, blocking/urgent
+- 801-1000: Emergency priority, project-critical
+
+Return ONLY a JSON object:
+{{"priority_score": <number>, "reasoning": "<brief explanation>"}}
+"""
+
+            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert project manager who understands task prioritization in business contexts."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                max_tokens=300
+            )
+            
+            ai_response = json.loads(response.choices[0].message.content.strip())
+            priority_score = int(ai_response.get("priority_score", 100))
+            reasoning = ai_response.get("reasoning", "AI analysis")
+            
+            # Ensure reasonable bounds
+            priority_score = max(1, min(priority_score, 1000))
+            
+            logger.info(f"🤖 AI Priority: {priority_score} for '{task_data.get('name', 'Unknown')[:30]}' - {reasoning}")
+            
+            return priority_score
+            
+        except Exception as e:
+            logger.error(f"Error in AI priority calculation: {e}")
+            # Fallback to original logic
+            priority_field = task_data.get("priority", "medium").lower()
+            return {"high": 300, "medium": 100, "low": 50}.get(priority_field, 100)
+
+    async def _calculate_ai_priority_enhancements(self, base_priority: int, task_data: Dict, context_data: Dict, workspace_id: str) -> int:
+        """
+        🤖 AI-DRIVEN: Calculate priority enhancements using AI analysis
+        """
+        try:
+            import os
+            from datetime import datetime
+            
+            # Simple enhancements that don't need AI
+            final_priority = base_priority
+            
+            # Time-based boost (keep simple logic for performance)
+            created_at = task_data.get("created_at")
+            if created_at:
+                try:
+                    if isinstance(created_at, str):
+                        created_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    else:
+                        created_time = created_at
+                    
+                    task_age_hours = (datetime.now(created_time.tzinfo) - created_time).total_seconds() / 3600
+                    
+                    # AI-driven time boost calculation
+                    if task_age_hours > 1:  # Reduced threshold
+                        # Dynamic time boost based on urgency
+                        enable_ai_urgency = os.getenv("ENABLE_AI_URGENCY_BOOST", "true").lower() == "true"
+                        if enable_ai_urgency:
+                            urgency_boost = await self._calculate_ai_urgency_boost(task_data, task_age_hours)
+                        else:
+                            urgency_boost = min(int(task_age_hours * 3), 80)  # Reduced multiplier
+                        
+                        final_priority += urgency_boost
+                
+                except Exception as e:
+                    logger.debug(f"Error calculating task age: {e}")
+            
+            # Assignment boost (simple logic)
+            if not task_data.get("agent_id") and task_data.get("assigned_to_role"):
+                final_priority += 150  # Reduced from 200
+            elif task_data.get("agent_id"):
+                final_priority += 30  # Reduced from 50
+            
+            return final_priority
+            
+        except Exception as e:
+            logger.error(f"Error in AI priority enhancements: {e}")
+            return base_priority
+
+    async def _calculate_ai_urgency_boost(self, task_data: Dict, task_age_hours: float) -> int:
+        """
+        🤖 AI-DRIVEN: Calculate urgency boost based on task aging and context
+        """
+        try:
+            import openai
+            import os
+            import json
+            
+            task_name = task_data.get("name", "")
+            task_description = task_data.get("description", "")
+            
+            prompt = f"""
+Analyze this aging task and determine urgency boost (0-200):
+
+Task: "{task_name}"
+Description: "{task_description}"
+Age: {task_age_hours:.1f} hours
+
+Consider:
+1. Is this task time-sensitive by nature?
+2. Does aging significantly impact business value?
+3. Could this task be blocking other work?
+4. Is the delay acceptable for this type of task?
+
+Return ONLY a number between 0-200 representing urgency boost.
+"""
+
+            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You understand task urgency patterns in business projects."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=50
+            )
+            
+            urgency_boost = int(response.choices[0].message.content.strip())
+            urgency_boost = max(0, min(urgency_boost, 200))
+            
+            return urgency_boost
+            
+        except Exception as e:
+            logger.debug(f"Error in AI urgency calculation: {e}")
+            # Fallback to simple calculation
+            return min(int(task_age_hours * 3), 80)
+
+    async def _find_matching_asset_requirement(self, task_data: Dict[str, Any], asset_requirements: List[Any]) -> Optional[Any]:
+        """Find the best matching asset requirement for a completed task"""
+        try:
+            task_description = task_data.get("description", "")
+            task_name = task_data.get("name", "")
+            task_context = f"{task_name} {task_description}".lower()
+            
+            best_match = None
+            best_score = 0
+            
+            for requirement in asset_requirements:
+                # Simple keyword matching - could be enhanced with AI
+                requirement_text = f"{requirement.asset_name} {requirement.description}".lower()
+                
+                # Calculate similarity score
+                score = 0
+                requirement_words = set(requirement_text.split())
+                task_words = set(task_context.split())
+                
+                common_words = requirement_words.intersection(task_words)
+                if common_words:
+                    score = len(common_words) / max(len(requirement_words), len(task_words))
+                
+                if score > best_score and score > 0.2:  # Minimum similarity threshold
+                    best_score = score
+                    best_match = requirement
+            
+            return best_match
+            
+        except Exception as e:
+            logger.error(f"Error finding matching asset requirement: {e}")
+            return None
+    
+    def _convert_task_to_enhanced_model(self, task_data: Dict[str, Any]):
+        """Convert task dict to enhanced task model for asset processing"""
+        try:
+            # This is a simplified conversion - might need enhancement based on models
+            from models import EnhancedTask
+            
+            enhanced_data = {
+                "id": task_data.get("id"),
+                "workspace_id": task_data.get("workspace_id"),
+                "name": task_data.get("name", ""),
+                "description": task_data.get("description", ""),
+                "output": task_data.get("result") or task_data.get("output"),
+                "status": task_data.get("status"),
+                "created_at": task_data.get("created_at"),
+                "updated_at": task_data.get("updated_at")
+            }
+            
+            return EnhancedTask(**enhanced_data)
+            
+        except Exception as e:
+            logger.error(f"Error converting task to enhanced model: {e}")
+            return None
+    
+    async def _trigger_asset_quality_validation(self, artifact):
+        """Trigger AI quality validation for the created artifact"""
+        try:
+            if asset_quality_engine:
+                logger.info(f"🛡️ Triggering quality validation for artifact: {artifact.artifact_name}")
+                
+                # Trigger asynchronous quality validation
+                validation_result = await asset_quality_engine.validate_artifact_quality(artifact)
+                
+                logger.info(f"✅ Quality validation completed with score: {validation_result.get('score', 0)}")
+                
+        except Exception as e:
+            logger.error(f"Asset quality validation failed: {e}")
+    
+    async def _update_goal_progress_from_asset(self, workspace_id: str, artifact, requirement):
+        """Update goal progress based on asset completion"""
+        try:
+            # Get the goal associated with this requirement
+            goal_id = requirement.goal_id
+            
+            # Get current goal data
+            supabase = get_supabase_client()
+            goal_response = supabase.table("workspace_goals").select("*").eq("id", str(goal_id)).execute()
+            
+            if goal_response.data:
+                goal_data = goal_response.data[0]
+                
+                # Recalculate asset completion rate for this goal
+                goal_requirements = await asset_db_manager.get_asset_requirements_for_goal(goal_id)
+                goal_artifacts = []
+                
+                for req in goal_requirements:
+                    req_artifacts = await asset_db_manager.get_artifacts_for_requirement(req.id)
+                    goal_artifacts.extend(req_artifacts)
+                
+                total_requirements = len(goal_requirements)
+                approved_artifacts = len([a for a in goal_artifacts if a.status == "approved"])
+                
+                asset_completion_rate = (approved_artifacts / total_requirements) if total_requirements > 0 else 0.0
+                
+                # Update goal with new asset completion rate
+                supabase.table("workspace_goals").update({
+                    "asset_completion_rate": asset_completion_rate,
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", str(goal_id)).execute()
+                
+                logger.info(f"📊 Updated goal {goal_id} asset completion rate to {asset_completion_rate:.2%}")
+                
+        except Exception as e:
+            logger.error(f"Failed to update goal progress from asset: {e}")
+
+    async def _trigger_goal_validation_for_issues(self, issue_type: str):
+        """
+        🚨 TRIGGER IMMEDIATE GOAL VALIDATION: Activate goal validation when circuit breaker detects issues
+        
+        This method integrates with the automated goal monitor to create corrective tasks
+        when the executor detects system-wide problems (like task creation runaway, failure spikes, etc.)
+        """
+        try:
+            logger.warning(f"🚨 TRIGGERING GOAL VALIDATION due to issue: {issue_type}")
+            
+            # Import goal monitor
+            try:
+                from automated_goal_monitor import AutomatedGoalMonitor
+                goal_monitor = AutomatedGoalMonitor()
+            except ImportError:
+                logger.error("❌ AutomatedGoalMonitor not available for validation trigger")
+                return
+            
+            # Get all active workspaces affected by the issue
+            try:
+                active_workspace_ids = await get_active_workspaces()
+                if not active_workspace_ids:
+                    logger.info("No active workspaces found for goal validation trigger")
+                    return
+                
+                validation_results = []
+                
+                for workspace_id in active_workspace_ids:
+                    try:
+                        # Trigger immediate validation for each workspace
+                        result = await goal_monitor.trigger_immediate_validation(
+                            workspace_id, 
+                            reason=f"executor_issue_{issue_type}"
+                        )
+                        
+                        if result and result.get("success"):
+                            validation_results.append({
+                                "workspace_id": workspace_id,
+                                "corrective_tasks_created": result.get("corrective_tasks_created", 0),
+                                "corrective_tasks_executed": result.get("corrective_tasks_executed", 0)
+                            })
+                            
+                            logger.warning(f"⚡ Goal validation triggered for {workspace_id}: "
+                                        f"{result.get('corrective_tasks_created', 0)} tasks created, "
+                                        f"{result.get('corrective_tasks_executed', 0)} tasks executed")
+                        else:
+                            logger.info(f"✅ No corrective action needed for workspace {workspace_id}")
+                            
+                    except Exception as ws_error:
+                        logger.error(f"Failed to trigger goal validation for workspace {workspace_id}: {ws_error}")
+                        continue
+                
+                # Log summary
+                total_corrective_tasks = sum(r["corrective_tasks_created"] for r in validation_results)
+                total_executed_tasks = sum(r["corrective_tasks_executed"] for r in validation_results)
+                
+                if validation_results:
+                    logger.warning(f"🎯 GOAL VALIDATION SUMMARY ({issue_type}): "
+                                f"{len(validation_results)} workspaces processed, "
+                                f"{total_corrective_tasks} corrective tasks created, "
+                                f"{total_executed_tasks} tasks executed immediately")
+                else:
+                    logger.info(f"🎯 GOAL VALIDATION COMPLETE ({issue_type}): No corrective actions needed")
+                
+                # Log the trigger event
+                self.execution_log.append({
+                    "timestamp": datetime.now().isoformat(),
+                    "event": "goal_validation_triggered",
+                    "issue_type": issue_type,
+                    "workspaces_processed": len(active_workspace_ids),
+                    "corrective_tasks_created": total_corrective_tasks,
+                    "corrective_tasks_executed": total_executed_tasks
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to get active workspaces for goal validation: {e}")
+                
+        except Exception as e:
+            logger.error(f"Critical error in _trigger_goal_validation_for_issues: {e}")
 
 def set_global_auto_generation(enabled: bool) -> Dict[str, Any]:
     """Abilita/disabilita auto-generation globalmente"""

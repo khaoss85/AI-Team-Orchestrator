@@ -40,6 +40,10 @@ Create `backend/.env` with:
 - `MAX_PENDING_TASKS_FOR_TRANSITION=8` - Max pending tasks for phase transition
 - `ENABLE_ENHANCED_PHASE_TRACKING=true` - Enable advanced phase management
 - `FINALIZATION_TASK_PRIORITY_BOOST=1000` - Priority boost for finalization tasks
+- `CORRECTIVE_TASK_COOLDOWN_MINUTES=60` - Cooldown after corrective task failures (adaptive)
+- `ENABLE_AI_TASK_SIMILARITY=true` - Use AI for semantic task similarity detection (vs fallback)
+- `ENABLE_AI_TASK_PRIORITY=true` - Use AI for intelligent task priority calculation
+- `ENABLE_AI_URGENCY_BOOST=true` - Use AI to calculate urgency boost for aging tasks
 
 ### Quality Assurance
 - `ENABLE_AI_QUALITY_ASSURANCE=true` - Enable AI-driven quality enhancement
@@ -49,9 +53,48 @@ Create `backend/.env` with:
 ### Goal-Driven System
 - `ENABLE_GOAL_DRIVEN_SYSTEM=true` - Enable goal-driven task generation and monitoring
 - `GOAL_VALIDATION_INTERVAL_MINUTES=20` - Interval for automated goal validation
+- `GOAL_VALIDATION_GRACE_PERIOD_HOURS=2` - Grace period for task validation (optimized from 4h to 2h)
 - `AUTO_CREATE_GOALS_FROM_WORKSPACE=true` - Automatically decompose workspace goals
 - `MAX_GOAL_DRIVEN_TASKS_PER_CYCLE=5` - Maximum goal-driven tasks created per cycle
 - `GOAL_COMPLETION_THRESHOLD=80` - Completion percentage threshold for goal success
+
+### AI Agent Enhancement
+- `ENABLE_AI_AGENT_MATCHING=true` - Use AI for semantic agent-task matching instead of keywords
+- `ENABLE_AI_PERSONALITY_GENERATION=true` - Use AI for dynamic personality trait generation
+- `ENABLE_AI_SKILL_GROUPING=true` - Use AI for intelligent skill categorization
+- `ENABLE_AI_ADAPTIVE_THRESHOLDS=true` - Use AI for context-aware quality thresholds
+- `ENABLE_AI_ADAPTIVE_ENHANCEMENT=true` - Use AI for adaptive enhancement attempt calculation
+- `ENABLE_AI_ADAPTIVE_PHASE_MANAGEMENT=true` - Use AI for adaptive phase transition thresholds
+- `ENABLE_AI_FAKE_DETECTION=true` - Use AI for semantic fake content and placeholder detection
+
+## 🤖 AI-Driven Transformation Summary
+
+Il sistema è stato completamente trasformato da hard-coded a AI-driven, mantenendo i principi core:
+
+### ✅ **Principi Implementati**
+
+1. **🎯 Goal Decomposition**: AI intelligente decompone obiettivi in sub-task concreti
+2. **👥 Agent Orchestration**: Assegnazione semantica agenti basata su competenze reali  
+3. **🔧 Real Tool Usage**: Gli agenti usano tools reali (web search, file search) per contenuti autentici
+4. **👁️ User Visibility**: Utenti vedono thinking process (todo lists) e deliverables (assets)
+5. **🏆 Content Quality**: Sistema AI previene contenuti fake, garantisce informazioni reali
+
+### 🧠 **AI-Driven Components**
+
+- **Task Classification**: Semantic understanding invece di keyword matching
+- **Priority Calculation**: Context-aware priority invece di valori fissi
+- **Agent Matching**: AI semantic analysis per assegnazione ottimale
+- **Quality Thresholds**: Adaptive basati su domain e complexity
+- **Phase Management**: Transizioni intelligenti basate su workspace context
+- **Fake Detection**: AI semantic analysis per placeholder e contenuti generici
+
+### 📈 **Benefici Ottenuti**
+
+- 🌍 **100% Domain Agnostic**: Funziona per qualsiasi settore business
+- 🧠 **Semantic Understanding**: Comprende intent oltre le parole  
+- ⚡ **Auto-Adaptive**: Si adatta automaticamente al contesto
+- 🛡️ **Robust Fallbacks**: Graceful degradation quando AI non disponibile
+- 🔄 **Self-Improving**: Migliora con nuovi modelli AI
 
 ## Architecture Overview
 

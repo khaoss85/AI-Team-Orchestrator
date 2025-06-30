@@ -374,7 +374,7 @@ const UserFriendlyFeedbackDashboard: React.FC<UserFriendlyFeedbackDashboardProps
                                 {/* Tooltip */}
                                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 w-64">
                                   <div className="font-semibold mb-1">Punteggio Qualità:</div>
-                                  <div>• >70% = Ottimo</div>
+                                  <div>• &gt;70% = Ottimo</div>
                                   <div>• 50-70% = Buono</div>
                                   <div>• &lt;50% = Richiede miglioramenti</div>
                                   <div className="mt-1 text-gray-300">Basato su completezza, accuratezza e usabilità</div>

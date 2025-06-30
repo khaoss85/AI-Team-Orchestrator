@@ -237,7 +237,7 @@ Focus ONLY on final success metrics, not on deliverables or processes."""
         
         context_str = ""
         if workspace_context:
-            context_str = f"\nWorkspace context: {json.dumps(workspace_context, indent=2)}"
+            context_str = f"\nWorkspace context: {json.dumps(workspace_context, indent=2, default=str)}"
         
         prompt = f"""Analyze this business goal and identify ALL the specific deliverables, assets, and resources needed to achieve it:
 

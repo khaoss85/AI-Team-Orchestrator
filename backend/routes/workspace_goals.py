@@ -19,7 +19,19 @@ from models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Import asset system for goal → asset requirements integration
+asset_requirements_generator = None
+try:
+    from services.asset_requirements_generator import AssetRequirementsGenerator
+    asset_requirements_generator = AssetRequirementsGenerator()
+    logger.info("✅ Asset Requirements Generator initialized for goal integration")
+except Exception as e:
+    logger.error(f"Failed to initialize Asset Requirements Generator: {e}")
 router = APIRouter(prefix="/api", tags=["workspace-goals"])
+
+# Create a separate router for direct goal access (without /api prefix)
+direct_router = APIRouter(tags=["workspace-goals-direct"])
 
 # Initialize AI Goal Extractor
 goal_extractor = None
@@ -435,10 +447,46 @@ async def create_workspace_goal(
             "target_value": created_goal["target_value"]
         })
         
+        # 🚀 CRITICAL FIX: Automatic Asset Requirements Generation (Pillar 12: Concrete Deliverables)
+        asset_requirements_count = 0
+        if asset_requirements_generator:
+            try:
+                logger.info(f"🎯 Triggering automatic asset requirements generation for goal: {created_goal['metric_type']}")
+                
+                # Convert to WorkspaceGoal model for asset generation
+                goal_model = WorkspaceGoal(**created_goal)
+                
+                # Generate asset requirements automatically
+                asset_requirements = await asset_requirements_generator.generate_from_goal(goal_model)
+                asset_requirements_count = len(asset_requirements)
+                
+                logger.info(f"✅ Generated {asset_requirements_count} asset requirements for goal {created_goal['id']}")
+                
+                # Update goal with asset metrics
+                supabase.table("workspace_goals").update({
+                    "asset_requirements_count": asset_requirements_count,
+                    "ai_validation_enabled": True,
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", created_goal["id"]).execute()
+                
+                # Log asset requirements creation
+                await _log_goal_event(workspace_id, created_goal["id"], "asset_requirements_generated", {
+                    "asset_requirements_count": asset_requirements_count,
+                    "auto_generated": True
+                })
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to generate asset requirements for goal {created_goal['id']}: {e}")
+                # Continue execution even if asset generation fails
+                asset_requirements_count = 0
+        else:
+            logger.warning("⚠️ Asset Requirements Generator not available - skipping automatic generation")
+        
         return {
             "success": True,
             "goal": created_goal,
-            "message": f"Goal created: {created_goal['metric_type']} target {created_goal['target_value']}"
+            "asset_requirements_count": asset_requirements_count,
+            "message": f"Goal created: {created_goal['metric_type']} target {created_goal['target_value']} with {asset_requirements_count} asset requirements"
         }
         
     except HTTPException:
@@ -1143,3 +1191,29 @@ async def _create_project_description_artifact(
     except Exception as e:
         logger.error(f"Error creating project description artifact: {e}")
         raise e
+
+# 🔧 FIX: Add direct endpoint for frontend compatibility
+@direct_router.get("/workspace-goals/{goal_id}")
+async def get_workspace_goal_by_id(goal_id: str) -> Dict[str, Any]:
+    """Get a single workspace goal by ID (direct access for frontend)"""
+    try:
+        response = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        
+        goal = response.data[0]
+        completion_pct = (goal["current_value"] / goal["target_value"] * 100) if goal["target_value"] > 0 else 0
+        
+        return {
+            "success": True,
+            "goal": {
+                **goal,
+                "completion_pct": round(completion_pct, 1)
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching goal: {str(e)}")

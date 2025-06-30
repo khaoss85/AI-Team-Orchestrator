@@ -224,9 +224,11 @@ Return JSON: {{"needs_strategic_decomposition": true/false, "reason": "explanati
                 else:
                     # Usa il deliverable_type direttamente come metric_type per garantire unicità
                     metric_type = base_metric_type
-                    # Se il deliverable_type è troppo generico, aggiungi un suffisso basato sull'indice
+                    # Se il deliverable_type è troppo generico, aggiungi un suffisso basato sul nome
                     if base_metric_type == "strategy_document":
-                        metric_type = f"{base_metric_type}_{i+1}"
+                        # Sanitize deliverable name for use in metric_type
+                        sanitized_name = re.sub(r'[^a-z0-9_]', '', deliverable.name.lower().replace(' ', '_'))
+                        metric_type = f"{base_metric_type}_{sanitized_name}"
                 
                 goal = ExtractedGoal(
                     goal_type=goal_type,
@@ -345,8 +347,11 @@ Return JSON: {{"needs_strategic_decomposition": true/false, "reason": "explanati
             elif "monitoring" in name_lower or "tracking" in name_lower:
                 return "tasks_completed"  # Monitoring task frequency
             else:
-                logger.info(f"🤖 AI metric type mapping: '{raw_metric_type}' -> 'quality_score' (universal fallback)")
-                return "quality_score"
+                # Append sanitized metric_name to ensure uniqueness for quality_score fallbacks
+                sanitized_metric_name = re.sub(r'[^a-z0-9_]', '', metric_name.lower().replace(' ', '_'))
+                unique_metric_type = f"quality_score_{sanitized_metric_name}"
+                logger.info(f"🤖 AI metric type mapping: '{raw_metric_type}' -> '{unique_metric_type}' (universal fallback with unique suffix)")
+                return unique_metric_type
     
     def prepare_goal_data_for_db(self, goal_data: Dict[str, Any]) -> Dict[str, Any]:
         """

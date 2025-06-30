@@ -20,6 +20,11 @@ class ValidationCache:
         self.cache: Dict[str, Dict[str, Any]] = {}
         self.default_ttl = default_ttl
         
+        # 🔧 MEMORY FIX: Add size limits to prevent memory leaks
+        import os
+        self.max_cache_entries = int(os.getenv("VALIDATION_CACHE_MAX_ENTRIES", "500"))
+        logger.info(f"🗄️ ValidationCache initialized: TTL={default_ttl}s, Max={self.max_cache_entries} entries")
+        
     def _generate_key(self, workspace_id: str, goals_data: list) -> str:
         """Generate cache key from workspace and goals"""
         # Create a stable hash from goals data
@@ -49,6 +54,10 @@ class ValidationCache:
         """Cache validation result"""
         key = self._generate_key(workspace_id, goals_data)
         expires_at = time.time() + (ttl or self.default_ttl)
+        
+        # 🔧 MEMORY FIX: Enforce cache size limits before storing
+        if len(self.cache) >= self.max_cache_entries:
+            self._enforce_cache_size_limit()
         
         self.cache[key] = {
             'data': validation_result,
@@ -85,6 +94,27 @@ class ValidationCache:
             
         if expired_keys:
             logger.info(f"🗑️ Cleaned up {len(expired_keys)} expired cache entries")
+    
+    def _enforce_cache_size_limit(self):
+        """🔧 MEMORY FIX: Enforce cache size limits using LRU eviction."""
+        if len(self.cache) <= self.max_cache_entries:
+            return
+        
+        # Sort cache entries by expires_at (oldest first) for LRU eviction
+        sorted_entries = sorted(
+            self.cache.items(),
+            key=lambda x: x[1]['expires_at']
+        )
+        
+        # Remove oldest entries until we're under the limit
+        entries_to_remove = len(self.cache) - self.max_cache_entries + 50  # Remove extra for buffer
+        removed_count = 0
+        
+        for cache_key, _ in sorted_entries[:entries_to_remove]:
+            del self.cache[cache_key]
+            removed_count += 1
+        
+        logger.info(f"🗑️ Validation cache size limit enforced: removed {removed_count} oldest entries, cache size now: {len(self.cache)}")
     
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""

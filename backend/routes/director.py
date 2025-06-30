@@ -331,6 +331,15 @@ async def _convert_frontend_goals_to_strategic_format(frontend_goals: List[Dict[
             "source": "frontend_error"
         }
 
+# Alias endpoint for compatibility with frontend expectations
+@router.post("/analyze-and-propose", response_model=DirectorTeamProposalResponse)
+async def analyze_and_propose_team(config: DirectorConfig):
+    """
+    Alias for create_team_proposal endpoint
+    Analyzes workspace and proposes a team configuration
+    """
+    return await create_team_proposal(config)
+
 async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
     """Get strategic goals and deliverables for workspace"""
     try:

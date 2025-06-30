@@ -1,0 +1,72 @@
+{
+  "test_execution": {
+    "start_time": "2025-06-26T13:59:09.015366",
+    "end_time": "2025-06-26T14:01:03.709577",
+    "total_duration_seconds": 114.6941831111908,
+    "total_duration_minutes": 1.9115697185198466
+  },
+  "user_simulation": {
+    "user_profile": {
+      "name": "Sarah Mitchell",
+      "role": "Marketing Manager",
+      "company": "TechFlow SaaS",
+      "industry": "B2B Software",
+      "goal": "Launch comprehensive marketing campaign for new product"
+    },
+    "workspace_id": "5e748419-319e-46fa-b92b-94ff37f18934",
+    "team_proposal_id": null
+  },
+  "success_metrics": {
+    "overall_success_rate": 25.0,
+    "successful_phases": 2,
+    "total_phases": 8,
+    "detailed_results": {
+      "workspace_created": true,
+      "team_formed": false,
+      "goals_created": false,
+      "tasks_executed": false,
+      "deliverables_generated": false,
+      "real_time_updates": true,
+      "conversation_working": false,
+      "quality_system_active": false
+    }
+  },
+  "phase_performance": {
+    "timings_seconds": {
+      "setup": 0.03742218017578125,
+      "workspace_creation": 2.120601177215576,
+      "goal_creation": 72.78612399101257,
+      "task_execution": 0.10420012474060059,
+      "asset_generation": 0.09227108955383301,
+      "realtime_monitoring": 0.02845597267150879,
+      "conversation_interface": 0.0015861988067626953,
+      "quality_system": 0.080780029296875,
+      "final_verification": 0.13190793991088867
+    },
+    "total_phases_executed": 9
+  },
+  "generated_data": {
+    "goals_created": 0,
+    "tasks_generated": 0,
+    "deliverables_created": 0
+  },
+  "errors_encountered": {
+    "total_errors": 1,
+    "error_list": [
+      "Team formation failed: Team approval failed: 404 - {\"detail\":\"Not Found\"}"
+    ]
+  },
+  "test_verdict": {
+    "overall_status": "FAIL",
+    "critical_failures": [
+      "team_formed",
+      "goals_created"
+    ],
+    "recommendations": [
+      "Investigate Director Agent and team formation pipeline",
+      "Check task executor and agent assignment system",
+      "Review deliverable generation thresholds and asset system",
+      "Debug conversational interface and tool execution"
+    ]
+  }
+}

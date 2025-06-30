@@ -1,0 +1,76 @@
+{
+  "timestamp": "2025-06-26T19:59:21.385124",
+  "summary": {
+    "total_tests": 7,
+    "passed": 2,
+    "failed": 5,
+    "skipped": 0,
+    "success_rate": 28.57142857142857
+  },
+  "test_results": {
+    "database_connectivity": {
+      "status": "passed",
+      "details": {
+        "workspaces_count": 1,
+        "tasks_count": 10,
+        "goals_count": 7,
+        "deliverables_count": 0
+      }
+    },
+    "quality_validator": {
+      "status": "failed",
+      "details": {
+        "overall_score": 0.16666666666666674,
+        "actionability_score": 0.4,
+        "authenticity_score": 0.7,
+        "completeness_score": 0.3,
+        "quality_issues_count": 3,
+        "ready_for_use": false
+      }
+    },
+    "task_deduplication": {
+      "status": "failed",
+      "error": "'DuplicateDetectionResult' object has no attribute 'is_unique'"
+    },
+    "agent_status_management": {
+      "status": "failed",
+      "error": "'AgentMatchResult' object has no attribute 'agent_found'"
+    },
+    "goal_validation": {
+      "status": "failed",
+      "error": "'ValidationOptimizationResult' object has no attribute 'is_in_grace_period'"
+    },
+    "deliverable_generation": {
+      "status": "failed",
+      "error": "No suitable goals/tasks found for deliverable generation"
+    },
+    "existing_workspace_analysis": {
+      "status": "passed",
+      "details": {
+        "total_workspaces": 1,
+        "workspaces_with_deliverables": 0,
+        "completion_rate_percent": 0.0,
+        "problematic_workspaces_count": 1,
+        "problematic_workspaces": [
+          {
+            "workspace_id": "2ed56960-3fce-49d0-84d3-c77114ced1b3",
+            "issue": "completed_goals_no_deliverables",
+            "stats": {
+              "name": "B2B Outbound Sales Lists",
+              "status": "active",
+              "task_counts": {
+                "failed": 10,
+                "needs_enhancement": 5
+              },
+              "goal_counts": {
+                "active": 2,
+                "completed": 5
+              },
+              "deliverable_count": 0
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -54,10 +54,10 @@ else:
         f"Quality System loaded in deliverable_aggregator: {_quality_available}"
     )
 
-# Enhanced configuration from environment
-DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "50"))
+# Enhanced configuration from environment - CRITICAL FIX: Lower default thresholds
+DELIVERABLE_READINESS_THRESHOLD = int(os.getenv("DELIVERABLE_READINESS_THRESHOLD", "25"))  # Lowered from 50% to 25%
 ENABLE_AUTO_PROJECT_COMPLETION = os.getenv("ENABLE_AUTO_PROJECT_COMPLETION", "true").lower() == "true"
-MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
+MIN_COMPLETED_TASKS_FOR_DELIVERABLE = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "1"))  # Lowered from 2 to 1
 ENABLE_ENHANCED_DELIVERABLE_LOGIC = os.getenv("ENABLE_ENHANCED_DELIVERABLE_LOGIC", "true").lower() == "true"
 ENABLE_AI_QUALITY_ASSURANCE = os.getenv("ENABLE_AI_QUALITY_ASSURANCE", "true").lower() == "true" and AI_QUALITY_ASSURANCE_AVAILABLE
 ENABLE_DYNAMIC_AI_ANALYSIS = os.getenv("ENABLE_DYNAMIC_AI_ANALYSIS", "true").lower() == "true"
@@ -1442,6 +1442,17 @@ class IntelligentDeliverableAggregator:
         try:
             logger.info(f"🤖 INTELLIGENT DELIVERABLE: Starting analysis for workspace {workspace_id}")
             
+            # CRITICAL FIX: Check if workspace exists first
+            workspace = await get_workspace(workspace_id)
+            if not workspace:
+                logger.warning(f"❌ WORKSPACE NOT FOUND: {workspace_id} - cannot create deliverables for non-existent workspace")
+                return None
+            
+            tasks = await list_tasks(workspace_id)
+            if not tasks:
+                logger.warning(f"❌ NO TASKS FOUND: Workspace {workspace_id} has no tasks - cannot create deliverables without completed work")
+                return None
+            
             # Fase 1: Controlli preliminari
             if not await self._is_ready_for_deliverable(workspace_id):
                 logger.debug(f"🤖 NOT READY: Workspace {workspace_id}")
@@ -1451,13 +1462,11 @@ class IntelligentDeliverableAggregator:
                 logger.info(f"🤖 EXISTS: Final deliverable already exists for {workspace_id}")
                 return None
             
-            # Fase 2: Raccolta dati del progetto
-            workspace = await get_workspace(workspace_id)
-            tasks = await list_tasks(workspace_id)
+            # Fase 2: Analisi dati del progetto (workspace e tasks già caricati sopra)
             completed_tasks = [t for t in tasks if t.get("status") == "completed"]
             
-            if not workspace or len(completed_tasks) < self.min_completed_tasks:
-                logger.info(f"🤖 INSUFFICIENT DATA: {len(completed_tasks)} completed tasks")
+            if len(completed_tasks) < self.min_completed_tasks:
+                logger.info(f"🤖 INSUFFICIENT DATA: {len(completed_tasks)} completed tasks (min required: {self.min_completed_tasks})")
                 return None
             
             workspace_goal = workspace.get("goal", "")
@@ -1639,12 +1648,18 @@ class IntelligentDeliverableAggregator:
             # Path 7: EMERGENCY - qualsiasi task completato con output strutturato
             emergency_deliverable = any(self._has_structured_output(t) for t in completed) and completed_count >= 1
             
-            is_ready = any([high_completion, asset_focused, quick_wins, substantial_work, quality_threshold, time_based, emergency_deliverable])
+            # Path 8: SUPER EMERGENCY - ANY completed task with ANY output (prevents zero deliverables)
+            super_emergency = completed_count >= 1 and any(
+                t.get("result") and str(t.get("result")).strip() 
+                for t in completed
+            )
+            
+            is_ready = any([high_completion, asset_focused, quick_wins, substantial_work, quality_threshold, time_based, emergency_deliverable, super_emergency])
             
             logger.info(f"🤖 READINESS: {completed_count}/{total_tasks} completed ({completion_rate:.2f}), "
                        f"Paths: [HiComp:{high_completion}, AssetFoc:{asset_focused}, QuickWins:{quick_wins}, "
                        f"Subst:{substantial_work}, Qual:{quality_threshold}, Time:{time_based}, "
-                       f"Emergency:{emergency_deliverable}] = {is_ready}")
+                       f"Emergency:{emergency_deliverable}, SuperEmerg:{super_emergency}] = {is_ready}")
             
             return is_ready
             

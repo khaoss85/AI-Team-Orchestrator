@@ -392,7 +392,7 @@ def _extract_major_milestones(
     return milestones
 
 @router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
-async def get_project_deliverables(workspace_id: UUID):
+async def get_project_deliverables(workspace_id: UUID, goal_id: Optional[str] = None):
     """Get aggregated project deliverables including final aggregated deliverable - ENHANCED"""
     try:
         # Get workspace details - handle gracefully if workspace doesn't exist yet

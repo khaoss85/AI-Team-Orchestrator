@@ -9,7 +9,10 @@ from uuid import UUID
 import uuid
 from datetime import datetime, timedelta
 import json
-from models import TaskStatus
+from models import (
+    TaskStatus, AssetArtifact, QualityRule, QualityValidation, 
+    AssetRequirement, EnhancedWorkspaceGoal, EnhancedTask, GoalProgressLog
+)
 
 # Load environment variables from `.env` in this directory
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
@@ -192,6 +195,26 @@ def safe_json_serialize(data: Any) -> str:
         fallback_data = {"error": "JSON serialization failed", "original_error": str(e)}
         return json.dumps(fallback_data, ensure_ascii=True)
 
+def _ensure_json_serializable(obj):
+    """Ensure object is JSON serializable by converting UUID objects to strings"""
+    import json
+    if isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: _ensure_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_ensure_json_serializable(item) for item in obj]
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        try:
+            # Test if the object can be JSON serialized
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            # If not serializable, convert to string
+            return str(obj)
+
 async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
     """
     🤖 AI-DRIVEN WORKSPACE GOALS CREATION
@@ -250,10 +273,104 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
 # =====================================================
 
 async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
-    """Create a new deliverable record"""
+    """
+    🤖 AI-DRIVEN: Create deliverable with intelligent content extraction
+    Uses 100% AI-driven approach instead of hardcoded templates
+    """
     try:
-        logger.info(f"📝 Creating deliverable for workspace {workspace_id}")
+        logger.info(f"📝 Creating AI-driven deliverable for workspace {workspace_id}")
         
+        # 🚀 NEW: Use complete AI-driven pipeline for real content generation
+        try:
+            from services.real_tool_integration_pipeline import real_tool_integration_pipeline
+            from services.memory_enhanced_ai_asset_generator import memory_enhanced_ai_asset_generator
+            
+            # Get completed tasks for this workspace
+            completed_tasks = await list_tasks(workspace_id, status="completed", limit=50)
+            
+            # Get workspace goals for mapping
+            workspace_goals = await get_workspace_goals(workspace_id)
+            
+            # Get workspace context
+            workspace_context = await get_workspace(workspace_id)
+            
+            if completed_tasks:
+                logger.info(f"🤖 Using NEW complete AI-driven pipeline with {len(completed_tasks)} completed tasks")
+                
+                # Determine the primary incomplete task or goal
+                task_objective = "Generate real business deliverable from completed tasks"
+                business_context = {
+                    "workspace_id": workspace_id,
+                    "completed_tasks_count": len(completed_tasks),
+                    "goals_count": len(workspace_goals) if workspace_goals else 0
+                }
+                
+                # Extract business context from workspace
+                if workspace_context:
+                    business_context.update({
+                        "workspace_name": workspace_context.get("name", ""),
+                        "workspace_description": workspace_context.get("description", ""),
+                        "industry": workspace_context.get("industry", ""),
+                        "company_name": workspace_context.get("company_name", "")
+                    })
+                
+                # Use complete pipeline to generate real content
+                pipeline_result = await real_tool_integration_pipeline.execute_complete_pipeline(
+                    task_id=f"deliverable-{workspace_id}",
+                    task_name="Generate Real Business Deliverable",
+                    task_objective=task_objective,
+                    business_context=business_context,
+                    existing_task_result={"completed_tasks": completed_tasks}
+                )
+                
+                # Map goals if any exist
+                mapped_goal_id = None
+                if workspace_goals and pipeline_result.execution_successful:
+                    # Find the best matching goal based on content
+                    for goal in workspace_goals:
+                        if goal.get("status") == "active":
+                            mapped_goal_id = goal.get("id")
+                            break
+                
+                # Create deliverable with pipeline-generated content
+                ai_deliverable_data = {
+                    'title': deliverable_data.get('title', 'Real Business Asset'),
+                    'content': pipeline_result.final_content,
+                    'status': 'completed' if pipeline_result.execution_successful else 'draft',
+                    'goal_id': mapped_goal_id,
+                    'deliverable_type': 'real_business_asset',
+                    'quality_level': 'excellent' if pipeline_result.content_quality_score >= 80 else 'good' if pipeline_result.content_quality_score >= 60 else 'acceptable',
+                    'business_specificity_score': pipeline_result.business_readiness_score,
+                    'tool_usage_score': pipeline_result.tool_usage_score,
+                    'content_quality_score': pipeline_result.content_quality_score,
+                    'creation_confidence': pipeline_result.confidence,
+                    'creation_reasoning': pipeline_result.pipeline_reasoning,
+                    'learning_patterns_created': pipeline_result.learning_patterns_created,
+                    'execution_time': pipeline_result.execution_time,
+                    'stages_completed': pipeline_result.stages_completed,
+                    'auto_improvements': pipeline_result.auto_improvements,
+                    'workspace_id': workspace_id
+                }
+                
+                # Insert AI-generated deliverable
+                result = supabase.table('deliverables').insert(ai_deliverable_data).execute()
+                
+                if result.data:
+                    deliverable = result.data[0]
+                    logger.info(f"✅ Created AI-driven deliverable with ID: {deliverable['id']}")
+                    logger.info(f"🤖 Quality: {ai_result.content_quality_level.value}, Specificity: {ai_result.business_specificity_score:.1f}, Usability: {ai_result.usability_score:.1f}")
+                    return deliverable
+                else:
+                    raise Exception(f"Failed to create AI-driven deliverable: {result}")
+            else:
+                logger.warning("No completed tasks found, falling back to standard deliverable creation")
+                
+        except ImportError:
+            logger.warning("AI-driven deliverable system not available, using standard creation")
+        except Exception as e:
+            logger.error(f"AI-driven deliverable creation failed: {e}, falling back to standard creation")
+        
+        # Fallback to standard deliverable creation
         create_data = {
             'workspace_id': workspace_id,
             **deliverable_data
@@ -263,7 +380,7 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
         
         if result.data:
             deliverable = result.data[0]
-            logger.info(f"✅ Created deliverable with ID: {deliverable['id']}")
+            logger.info(f"✅ Created standard deliverable with ID: {deliverable['id']}")
             return deliverable
         else:
             raise Exception(f"Failed to create deliverable: {result}")
@@ -631,19 +748,68 @@ async def create_task(
         clean_description = sanitize_unicode_for_postgres(description) if description else None
         clean_assigned_to_role = sanitize_unicode_for_postgres(assigned_to_role) if assigned_to_role else None
 
-        # Duplicate task name check within the workspace
+        # 🚫 ENHANCED DUPLICATE DETECTION using TaskDeduplicationManager
         try:
-            existing_tasks = await list_tasks(workspace_id)
-            check_name_lower = clean_name.lower().strip()
-            for t in existing_tasks:
-                if t.get("name", "").lower().strip() == check_name_lower and \
-                   t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value, TaskStatus.COMPLETED.value]:
+            # Import deduplication manager
+            try:
+                from services.task_deduplication_manager import task_deduplication_manager
+                
+                # Prepare task data for duplicate check
+                task_data_for_check = {
+                    "name": clean_name,
+                    "description": clean_description,
+                    "assigned_to_role": clean_assigned_to_role,
+                    "priority": priority,
+                    "workspace_id": workspace_id
+                }
+                
+                # Run comprehensive duplicate check
+                duplicate_result = await task_deduplication_manager.ensure_unique_task(
+                    task_data_for_check, workspace_id
+                )
+                
+                if duplicate_result.is_duplicate:
                     logger.warning(
-                        f"Duplicate task name detected in workspace {workspace_id}: '{clean_name}' already exists as {t.get('id')} (status: {t.get('status')})"
+                        f"🚫 DUPLICATE TASK BLOCKED: '{clean_name}' in workspace {workspace_id}. "
+                        f"Reason: {duplicate_result.reason} "
+                        f"(Method: {duplicate_result.detection_method}, Similarity: {duplicate_result.similarity_score:.2f})"
                     )
-                    return t
+                    
+                    # Return existing task if available
+                    if duplicate_result.existing_task_id:
+                        try:
+                            existing_task_response = supabase.table("tasks").select("*").eq(
+                                "id", duplicate_result.existing_task_id
+                            ).execute()
+                            if existing_task_response.data:
+                                logger.info(f"✅ Returning existing task: {duplicate_result.existing_task_id}")
+                                return existing_task_response.data[0]
+                        except Exception as fetch_err:
+                            logger.error(f"Error fetching existing task {duplicate_result.existing_task_id}: {fetch_err}")
+                    
+                    # If can't fetch existing task, return None to prevent creation
+                    logger.info(f"🛑 Task creation blocked - duplicate detected")
+                    return None
+                else:
+                    logger.debug(f"✅ Task uniqueness confirmed: {duplicate_result.reason}")
+                    
+            except ImportError:
+                logger.warning("TaskDeduplicationManager not available, falling back to basic check")
+                
+                # FALLBACK: Basic duplicate check (existing logic)
+                existing_tasks = await list_tasks(workspace_id)
+                check_name_lower = clean_name.lower().strip()
+                for t in existing_tasks:
+                    if t.get("name", "").lower().strip() == check_name_lower and \
+                       t.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value, TaskStatus.COMPLETED.value]:
+                        logger.warning(
+                            f"Duplicate task name detected in workspace {workspace_id}: '{clean_name}' already exists as {t.get('id')} (status: {t.get('status')})"
+                        )
+                        return t
+                        
         except Exception as dup_err:
-            logger.error(f"Error during duplicate task name check: {dup_err}")
+            logger.error(f"Error during duplicate task check: {dup_err}")
+            # Continue with creation if duplicate check fails
 
         final_context_data_dict: Optional[Dict[str, Any]] = None
         if auto_build_context:
@@ -1225,15 +1391,25 @@ async def get_active_workspaces():
         raise
 
 async def get_workspaces_with_pending_tasks():
-    """Get workspace IDs that have pending tasks AND are not paused"""
+    """
+    🤖 AI-DRIVEN: Get workspace IDs with pending tasks, with intelligent pause bypass
+    Enhanced to allow critical task execution from paused workspaces
+    """
     try:
-        # Get workspaces with pending tasks, but exclude paused workspaces
+        # Try to use intelligent pause manager if available
+        try:
+            from services.workspace_pause_manager import workspace_pause_manager
+            return await workspace_pause_manager.get_intelligent_workspaces_with_pending_tasks()
+        except ImportError:
+            logger.warning("Workspace pause manager not available, using fallback logic")
+        
+        # Fallback: Original logic with enhanced logging
         result = supabase.table("tasks").select("workspace_id, workspaces!inner(id, status)").eq("status", "pending").execute()
         
         if not result.data:
             return []
             
-        # Filter out paused workspaces
+        # Filter out paused workspaces (original logic)
         active_workspace_ids = []
         for task in result.data:
             workspace = task.get("workspaces")
@@ -1245,7 +1421,7 @@ async def get_workspaces_with_pending_tasks():
         
         if len(unique_workspace_ids) != len(result.data):
             paused_count = len(result.data) - len(unique_workspace_ids)
-            logger.info(f"⏸️ Skipped {paused_count} tasks from paused workspaces")
+            logger.warning(f"⏸️ FALLBACK: Skipped {paused_count} tasks from paused workspaces (intelligent manager not available)")
         
         return unique_workspace_ids
     except Exception as e:
@@ -1474,8 +1650,8 @@ async def update_human_feedback_request(
                             logger.error(f"❌ Failed to update task {task_id} status to completed")
                             if hasattr(db_result, 'error') and db_result.error:
                                 logger.error(f"Database error: {db_result.error}")
-                            # Still try to trigger goal updates even if task status update failed
-                            await _update_goal_progress_from_task_completion(task_id, stored_result)
+                            # 🛡️ FIX: Do NOT update goals if task failed to complete
+                            logger.warning(f"⚠️ Skipping goal update for failed task {task_id}")
                         
                         logger.info(f"✅ GOAL UPDATE FIX: Task {task_id} completed after verification approval")
                     else:
@@ -1766,45 +1942,36 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
                     task_context=task_business_context
                 )
                 
+                enhanced_update_successful = False
                 if success:
                     # Get updated goal to return
                     goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
-                    return goal_result.data[0] if goal_result.data else None
+                    if goal_result.data:
+                        enhanced_update_successful = True
+                        return goal_result.data[0]
+                    else:
+                        logger.warning(f"Enhanced goal progress update succeeded for {goal_id} but failed to retrieve updated goal.")
                 else:
-                    logger.warning(f"Enhanced goal progress update failed for {goal_id}, falling back to standard method")
-                    
+                    logger.warning(f"Enhanced goal progress update failed for {goal_id}. Enforcing 'no assets = no progress' rule.")
             except Exception as e:
-                logger.warning(f"Enhanced goal progress update error for {goal_id}: {e}, falling back to standard method")
+                logger.warning(f"Enhanced goal progress update error for {goal_id}: {e}. Enforcing 'no assets = no progress' rule.")
+            
+            if enhanced_update_successful:
+                return None # Already returned the updated goal, so exit here
         
-        # 🔄 FALLBACK: Original numerical progress calculation
-        # Get current goal
+        # 🚨 CRITICAL FIX: ENFORCE "NO ASSETS = NO PROGRESS" RULE
+        # NO MORE NUMERICAL FALLBACK - ALL PROGRESS MUST BE ASSET-DRIVEN
+        logger.warning(f"🚫 BLOCKED: Goal progress update for {goal_id} rejected - no business context provided or enhanced update failed.")
+        logger.warning(f"🚫 PILLAR 12 ENFORCEMENT: All goal progress must be based on approved asset artifacts.")
+        logger.warning(f"🚫 Use asset-driven progress calculation instead of numerical increments.")
+        
+        # Return current goal without changes - force callers to use asset-driven approach
         goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
-        
-        if not goal_result.data:
-            logger.warning(f"Goal {goal_id} not found for progress update")
-            return None
-        
-        goal = goal_result.data[0]
-        old_value = goal["current_value"]
-        new_value = min(old_value + increment, goal["target_value"])  # Don't exceed target
-        
-        # Update goal
-        update_data = {
-            "current_value": new_value,
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        # Mark as completed if target reached (simple numerical check)
-        if new_value >= goal["target_value"] and goal["status"] != "completed":
-            update_data["status"] = "completed"
-            update_data["completed_at"] = datetime.now().isoformat()
-        
-        result = supabase.table("workspace_goals").update(update_data).eq("id", goal_id).execute()
-        
-        if result.data:
-            # Log progress update
-            await _log_goal_progress(goal_id, goal["workspace_id"], old_value, new_value, increment, task_id)
-            return result.data[0]
+        if goal_result.data:
+            goal = goal_result.data[0]
+            logger.info(f"🎯 Goal {goal_id} current status: {goal['current_value']}/{goal['target_value']} ({goal['status']})")
+            logger.info(f"🎯 To update progress, provide task_business_context with deliverable assets.")
+            return goal
         
         return None
         
@@ -2005,7 +2172,21 @@ async def _update_goal_progress_from_task_completion(task_id: str, result_payloa
         if not task:
             logger.warning(f"Task {task_id} not found for goal progress update")
             return
-            
+        
+        # 🛡️ BUSINESS VALUE FIX: Only update goals for successfully completed tasks
+        task_status = task.get("status", "")
+        if task_status != "completed":
+            logger.warning(f"⚠️ GOAL UPDATE BLOCKED: Task {task_id} status is '{task_status}', not 'completed'")
+            return
+        
+        # 🛡️ Validate task has real content, not just error messages
+        task_result = task.get("result", {})
+        if isinstance(task_result, dict):
+            # Check for error indicators
+            if any(key in str(task_result).lower() for key in ["error", "failed", "quota", "limit"]):
+                logger.warning(f"⚠️ GOAL UPDATE BLOCKED: Task {task_id} result contains error indicators")
+                return
+        
         workspace_id = task.get("workspace_id")
         task_name = task.get("name", "")
         
@@ -2017,8 +2198,37 @@ async def _update_goal_progress_from_task_completion(task_id: str, result_payloa
             
         logger.info(f"🎯 GOAL PROGRESS UPDATE: Analyzing task '{task_name}' for {len(workspace_goals)} workspace goals")
         
-        # Extract measurable achievements from task result
-        achievements = await _extract_task_achievements(result_payload, task_name)
+        # 🤖 AI-DRIVEN: Extract measurable achievements from task result with enhanced mapping
+        achievements = await extract_task_achievements(result_payload, task_name)  # Use public enhanced version
+        
+        # 🎯 ENHANCED: Try intelligent goal mapping if enhanced mapper is available
+        try:
+            from services.deliverable_achievement_mapper import deliverable_achievement_mapper, AchievementResult
+            
+            # Create achievement result for goal mapping
+            achievement_result = AchievementResult(
+                items_created=achievements.get("items_created", 0),
+                data_processed=achievements.get("data_processed", 0),
+                deliverables_completed=achievements.get("deliverables_completed", 0),
+                metrics_achieved=achievements.get("metrics_achieved", 0),
+                extraction_method="enhanced_wrapper"
+            )
+            
+            # Try intelligent goal mapping
+            goal_updates = await deliverable_achievement_mapper.map_achievements_to_goals(workspace_id, achievement_result)
+            
+            if goal_updates:
+                logger.info(f"🎯 INTELLIGENT GOAL MAPPING: {len(goal_updates)} goals updated automatically")
+                for update in goal_updates:
+                    logger.debug(f"  - {update['metric_type']}: {update['old_value']}→{update['new_value']} (+{update['increment']})")
+                return  # Skip legacy mapping if intelligent mapping succeeded
+            else:
+                logger.debug("No intelligent goal mappings found, using legacy method")
+                
+        except ImportError:
+            logger.debug("Enhanced goal mapping not available, using legacy method")
+        except Exception as mapping_error:
+            logger.warning(f"Enhanced goal mapping failed: {mapping_error}, using legacy method")
         
         if not achievements:
             logger.debug(f"No measurable achievements found in task {task_id} result")
@@ -2053,12 +2263,164 @@ async def _update_goal_progress_from_task_completion(task_id: str, result_payloa
 
 async def extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
     """
-    🤖 PUBLIC WRAPPER: Universal task achievement extraction
+    🤖 AI-DRIVEN: Universal task achievement extraction using pure AI semantic analysis
     
-    Public interface for universal task achievement extraction that works across all domains.
-    Uses AI-driven analysis to identify measurable achievements without domain-specific assumptions.
+    Uses UniversalAIContentExtractor for domain-agnostic achievement detection.
+    Zero hardcoded patterns, 100% AI semantic understanding.
     """
-    return await _extract_task_achievements(result_payload, task_name)
+    try:
+        # Try AI-driven achievement extraction first
+        from services.universal_ai_content_extractor import universal_ai_content_extractor
+        
+        logger.info(f"🔍 AI-DRIVEN ACHIEVEMENT EXTRACTION from task: {task_name}")
+        
+        # Use AI content extractor to analyze task results
+        task_results = [{"name": task_name, "result": result_payload, "status": "completed"}]
+        content_analysis = await universal_ai_content_extractor.extract_real_content(
+            task_results,
+            task_name,  # Use task name as goal context
+            {}  # No specific workspace context for pure content analysis
+        )
+        
+        # Convert AI analysis to achievement metrics
+        achievements = await _ai_convert_to_achievement_metrics(
+            content_analysis,
+            task_name,
+            result_payload
+        )
+        
+        # Enhanced logging
+        non_zero_achievements = {k: v for k, v in achievements.items() if v > 0}
+        
+        if non_zero_achievements:
+            logger.info(f"✅ AI-DRIVEN ACHIEVEMENTS: {non_zero_achievements} (reality: {content_analysis.reality_score:.1f}, usability: {content_analysis.usability_score:.1f})")
+            logger.debug(f"🤖 AI Reasoning: {content_analysis.reasoning}")
+        else:
+            logger.warning(f"❌ NO ACHIEVEMENTS EXTRACTED from task: {task_name}")
+            logger.debug(f"AI Analysis: {content_analysis.reasoning}")
+        
+        return achievements
+        
+    except ImportError:
+        logger.warning("AI-driven content extractor not available, using enhanced mapper")
+        try:
+            # Fallback to enhanced mapper
+            from services.deliverable_achievement_mapper import deliverable_achievement_mapper
+            
+            achievement_result = await deliverable_achievement_mapper.extract_achievements_robust(result_payload, task_name)
+            
+            return {
+                "items_created": achievement_result.items_created,
+                "data_processed": achievement_result.data_processed,
+                "deliverables_completed": achievement_result.deliverables_completed,
+                "metrics_achieved": achievement_result.metrics_achieved
+            }
+        except ImportError:
+            logger.warning("Enhanced achievement mapper not available, using legacy extraction")
+            return await _extract_task_achievements(result_payload, task_name)
+    except Exception as e:
+        logger.error(f"Error in AI-driven achievement extraction: {e}")
+        return await _extract_task_achievements(result_payload, task_name)
+
+async def _ai_convert_to_achievement_metrics(
+    content_analysis, 
+    task_name: str, 
+    result_payload: Dict[str, Any]
+) -> Dict[str, int]:
+    """
+    🤖 AI-driven conversion of content analysis to achievement metrics
+    """
+    try:
+        from ai_quality_assurance.smart_evaluator import smart_evaluator
+        
+        # Prepare content for AI analysis
+        discovered_content = content_analysis.discovered_content
+        
+        metrics_prompt = f"""
+Converte questa analisi contenuto in metriche di achievement quantificate.
+
+CONTENUTO SCOPERTO:
+{json.dumps(discovered_content, indent=2)}
+
+TASK NAME: {task_name}
+
+ANALISI QUALITÀ:
+- Reality Score: {content_analysis.reality_score}/100
+- Usability Score: {content_analysis.usability_score}/100
+- Business Specificity: {content_analysis.business_specificity}/100
+
+CONVERTI IN METRICHE:
+Basandoti sul contenuto reale presente, calcola:
+
+1. items_created: Numero di elementi/asset/deliverable creati
+2. data_processed: Quantità di dati elaborati (contatti, record, etc.)
+3. deliverables_completed: Numero di deliverable business-ready completati
+4. metrics_achieved: Score generale di achievement (0-100)
+
+Usa solo contenuto REALE identificato, non assumere achievements se il contenuto è template.
+
+Rispondi in JSON:
+{{
+    "items_created": 0-50,
+    "data_processed": 0-1000,
+    "deliverables_completed": 0-10,
+    "metrics_achieved": 0-100,
+    "reasoning": "spiegazione delle metriche calcolate"
+}}
+"""
+        
+        ai_response = await smart_evaluator.evaluate_with_ai(
+            metrics_prompt,
+            context="achievement_metrics",
+            max_tokens=800
+        )
+        
+        if isinstance(ai_response, str):
+            try:
+                metrics = json.loads(ai_response)
+                return {
+                    "items_created": int(metrics.get("items_created", 0)),
+                    "data_processed": int(metrics.get("data_processed", 0)),
+                    "deliverables_completed": int(metrics.get("deliverables_completed", 0)),
+                    "metrics_achieved": int(metrics.get("metrics_achieved", 0))
+                }
+            except (json.JSONDecodeError, ValueError):
+                # Fallback based on content analysis scores
+                return _fallback_achievement_metrics(content_analysis)
+        else:
+            return _fallback_achievement_metrics(content_analysis)
+            
+    except Exception as e:
+        logger.error(f"Error in AI metrics conversion: {e}")
+        return _fallback_achievement_metrics(content_analysis)
+
+def _fallback_achievement_metrics(content_analysis) -> Dict[str, int]:
+    """Fallback achievement metrics based on content analysis scores"""
+    # Conservative metrics based on AI analysis quality
+    reality_score = getattr(content_analysis, 'reality_score', 0)
+    usability_score = getattr(content_analysis, 'usability_score', 0)
+    
+    if reality_score > 70 and usability_score > 70:
+        return {
+            "items_created": 1,
+            "data_processed": 1,
+            "deliverables_completed": 1,
+            "metrics_achieved": int((reality_score + usability_score) / 2)
+        }
+    elif reality_score > 50:
+        return {
+            "items_created": 1,
+            "data_processed": 0,
+            "deliverables_completed": 0,
+            "metrics_achieved": int(reality_score)
+        }
+    else:
+        return {
+            "items_created": 0,
+            "data_processed": 0,
+            "deliverables_completed": 0,
+            "metrics_achieved": 0
+        }
 
 async def _extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
     """
@@ -2655,3 +3017,451 @@ def _universal_pattern_goal_matching(
                     }
     
     return best_match if highest_score > 0.2 else None
+
+# ============================================================================
+# ASSET-DRIVEN SYSTEM DATABASE METHODS (PILLAR-COMPLIANT)
+# ============================================================================
+
+class AssetDrivenDatabaseManager:
+    """Enhanced database manager with asset-driven capabilities - All 14 Pillars"""
+    
+    def __init__(self, supabase_client: Client = None):
+        self.supabase = supabase_client or supabase
+    
+    # ========================================================================
+    # ASSET ARTIFACTS MANAGEMENT (Pillar 12: Concrete Deliverables)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def create_asset_artifact(self, artifact: AssetArtifact) -> AssetArtifact:
+        """Create new asset artifact with pillar compliance"""
+        try:
+            # Prepare data for database (convert Pydantic to dict)
+            artifact_data = artifact.model_dump(exclude={'id'}) if hasattr(artifact, 'model_dump') else artifact.dict(exclude={'id'})
+            
+            # Ensure timestamps are ISO format
+            artifact_data['created_at'] = datetime.now().isoformat()
+            artifact_data['updated_at'] = datetime.now().isoformat()
+            
+            # Insert into database
+            result = self.supabase.table("asset_artifacts").insert(artifact_data).execute()
+            
+            if result.data:
+                logger.info(f"✅ Asset artifact created: {result.data[0]['id']}")
+                return AssetArtifact(**result.data[0])
+            else:
+                raise Exception("No data returned from artifact creation")
+                
+        except Exception as e:
+            logger.error(f"Failed to create asset artifact: {e}")
+            raise
+    
+    @supabase_retry(max_attempts=3)
+    async def get_artifacts_for_requirement(self, requirement_id: UUID) -> List[AssetArtifact]:
+        """Get all artifacts for a specific asset requirement"""
+        try:
+            result = self.supabase.table("asset_artifacts")\
+                .select("*")\
+                .eq("requirement_id", str(requirement_id))\
+                .order("created_at", desc=True)\
+                .execute()
+            
+            if result.data:
+                return [AssetArtifact(**artifact) for artifact in result.data]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to get artifacts for requirement {requirement_id}: {e}")
+            return []
+    
+    @supabase_retry(max_attempts=3)
+    async def update_artifact_status(self, artifact_id: UUID, status: str, 
+                                   quality_score: Optional[float] = None) -> bool:
+        """Update artifact status and trigger goal recalculation (via DB trigger)"""
+        try:
+            update_data = {
+                "status": status,
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            if quality_score is not None:
+                update_data["quality_score"] = quality_score
+                
+            if status == "approved":
+                update_data["approved_at"] = datetime.now().isoformat()
+            
+            result = self.supabase.table("asset_artifacts")\
+                .update(update_data)\
+                .eq("id", str(artifact_id))\
+                .execute()
+            
+            if result.data:
+                logger.info(f"✅ Artifact {artifact_id} status updated to {status}")
+                # Goal progress will be updated automatically via database trigger
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to update artifact status {artifact_id}: {e}")
+            return False
+    
+    @supabase_retry(max_attempts=3)
+    async def get_asset_artifact(self, artifact_id: UUID) -> Optional[AssetArtifact]:
+        """Get specific asset artifact by ID"""
+        try:
+            result = self.supabase.table("asset_artifacts")\
+                .select("*")\
+                .eq("id", str(artifact_id))\
+                .single()\
+                .execute()
+            
+            if result.data:
+                return AssetArtifact(**result.data)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to get asset artifact {artifact_id}: {e}")
+            return None
+    
+    # ========================================================================
+    # QUALITY SYSTEM MANAGEMENT (Pillar 8: Quality Gates + Pillar 2: AI-Driven)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def get_quality_rules_for_asset_type(self, asset_type: str) -> List[QualityRule]:
+        """Get active quality rules for specific asset type"""
+        try:
+            result = self.supabase.table("quality_rules")\
+                .select("*")\
+                .eq("asset_type", asset_type)\
+                .eq("is_active", True)\
+                .order("rule_order")\
+                .execute()
+            
+            if result.data:
+                return [QualityRule(**rule) for rule in result.data]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to get quality rules for {asset_type}: {e}")
+            return []
+    
+    def _ensure_json_serializable(self, obj):
+        """Ensure object is JSON serializable by converting UUID objects to strings"""
+        import json
+        if isinstance(obj, UUID):
+            return str(obj)
+        elif isinstance(obj, dict):
+            return {k: self._ensure_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._ensure_json_serializable(item) for item in obj]
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        else:
+            try:
+                # Test if the object can be JSON serialized
+                json.dumps(obj)
+                return obj
+            except (TypeError, ValueError):
+                # If not serializable, convert to string
+                return str(obj)
+
+    @supabase_retry(max_attempts=3)
+    async def log_quality_validation(self, validation: QualityValidation) -> UUID:
+        """Log quality validation with AI insights"""
+        try:
+            # Prepare validation data
+            validation_data = validation.model_dump(exclude={'id'}) if hasattr(validation, 'model_dump') else validation.dict(exclude={'id'})
+            validation_data['validated_at'] = datetime.now().isoformat()
+            
+            # 🔧 FIX: Ensure UUID objects are serialized to strings
+            validation_data = self._ensure_json_serializable(validation_data)
+            
+            result = self.supabase.table("quality_validations")\
+                .insert(validation_data)\
+                .execute()
+            
+            if result.data:
+                validation_id = result.data[0]['id']
+                logger.info(f"✅ Quality validation logged: {validation_id}")
+                return UUID(validation_id)
+            else:
+                raise Exception("No data returned from validation logging")
+                
+        except Exception as e:
+            logger.error(f"Failed to log quality validation: {e}")
+            raise
+    
+    # ========================================================================
+    # ASSET REQUIREMENTS MANAGEMENT (Enhanced from goal_asset_requirements)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def get_asset_requirements_for_goal(self, goal_id: UUID) -> List[AssetRequirement]:
+        """Get asset requirements for specific goal"""
+        try:
+            result = self.supabase.table("goal_asset_requirements")\
+                .select("*")\
+                .eq("goal_id", str(goal_id))\
+                .order("priority", desc=True)\
+                .execute()
+            
+            if result.data:
+                return [AssetRequirement(**req) for req in result.data]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to get asset requirements for goal {goal_id}: {e}")
+            return []
+    
+    @supabase_retry(max_attempts=3)
+    async def get_asset_requirements_for_workspace(self, workspace_id: UUID) -> List[AssetRequirement]:
+        """Get all asset requirements for workspace"""
+        try:
+            result = self.supabase.table("goal_asset_requirements")\
+                .select("*")\
+                .eq("workspace_id", str(workspace_id))\
+                .order("created_at", desc=True)\
+                .execute()
+            
+            if result.data:
+                return [AssetRequirement(**req) for req in result.data]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to get asset requirements for workspace {workspace_id}: {e}")
+            return []
+    
+    @supabase_retry(max_attempts=3)
+    async def create_asset_requirement(self, requirement: AssetRequirement) -> AssetRequirement:
+        """Create new asset requirement"""
+        try:
+            # Prepare data for database
+            requirement_data = requirement.model_dump(exclude={'id'}) if hasattr(requirement, 'model_dump') else requirement.dict(exclude={'id'})
+            requirement_data['created_at'] = datetime.now().isoformat()
+            requirement_data['updated_at'] = datetime.now().isoformat()
+            
+            result = self.supabase.table("goal_asset_requirements")\
+                .insert(requirement_data)\
+                .execute()
+            
+            if result.data:
+                logger.info(f"✅ Asset requirement created: {result.data[0]['id']}")
+                return AssetRequirement(**result.data[0])
+            else:
+                raise Exception("No data returned from requirement creation")
+                
+        except Exception as e:
+            logger.error(f"Failed to create asset requirement: {e}")
+            raise
+    
+    # ========================================================================
+    # ENHANCED GOAL PROGRESS (Pillar 5: Goal-Driven + Real-time calculation)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def get_real_time_goal_completion(self, workspace_id: UUID) -> List[Dict[str, Any]]:
+        """Get real-time goal completion using database view"""
+        try:
+            result = self.supabase.table("real_time_goal_completion")\
+                .select("*")\
+                .eq("workspace_id", str(workspace_id))\
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Failed to get real-time goal completion for workspace {workspace_id}: {e}")
+            return []
+    
+    @supabase_retry(max_attempts=3)
+    async def create_goal_progress_log(self, log_data: Dict[str, Any]) -> UUID:
+        """Create goal progress log entry"""
+        try:
+            log_data['changed_at'] = datetime.now().isoformat()
+            
+            result = self.supabase.table("goal_progress_log")\
+                .insert(log_data)\
+                .execute()
+            
+            if result.data:
+                log_id = result.data[0]['id']
+                logger.info(f"✅ Goal progress logged: {log_id}")
+                return UUID(log_id)
+            else:
+                raise Exception("No data returned from progress logging")
+                
+        except Exception as e:
+            logger.error(f"Failed to create goal progress log: {e}")
+            raise
+    
+    @supabase_retry(max_attempts=3)
+    async def get_goal_progress_log(self, goal_id: UUID, limit: int = 10) -> List[GoalProgressLog]:
+        """Get recent goal progress log entries"""
+        try:
+            result = self.supabase.table("goal_progress_log")\
+                .select("*")\
+                .eq("goal_id", str(goal_id))\
+                .order("changed_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            
+            if result.data:
+                return [GoalProgressLog(**log) for log in result.data]
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to get goal progress log for {goal_id}: {e}")
+            return []
+    
+    # ========================================================================
+    # AI QUALITY PERFORMANCE ANALYTICS (Pillar 8: Quality Gates Analytics)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def get_ai_quality_performance(self, workspace_id: UUID) -> Dict[str, Any]:
+        """Get AI quality performance metrics for workspace"""
+        try:
+            # Use the ai_quality_performance view created in database schema
+            result = self.supabase.table("ai_quality_performance")\
+                .select("*")\
+                .execute()
+            
+            if result.data:
+                # Filter and aggregate for workspace
+                workspace_data = {}
+                for row in result.data:
+                    asset_type = row['asset_type']
+                    if asset_type not in workspace_data:
+                        workspace_data[asset_type] = {
+                            'total_validations': 0,
+                            'passed_validations': 0,
+                            'ai_pass_rate': 0.0,
+                            'avg_score': 0.0,
+                            'enhancement_success_rate': 0.0
+                        }
+                    
+                    workspace_data[asset_type]['total_validations'] += row.get('total_validations', 0)
+                    workspace_data[asset_type]['passed_validations'] += row.get('passed_validations', 0)
+                    workspace_data[asset_type]['ai_pass_rate'] = row.get('ai_pass_rate', 0.0)
+                    workspace_data[asset_type]['avg_score'] = row.get('avg_score', 0.0)
+                    workspace_data[asset_type]['enhancement_success_rate'] = row.get('enhancement_success_rate', 0.0)
+                
+                return workspace_data
+            
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Failed to get AI quality performance for workspace {workspace_id}: {e}")
+            return {}
+    
+    # ========================================================================
+    # PILLAR COMPLIANCE MONITORING (All 14 Pillars)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def get_pillar_compliance_status(self) -> List[Dict[str, Any]]:
+        """Get pillar compliance status using database view"""
+        try:
+            result = self.supabase.table("pillar_compliance_status")\
+                .select("*")\
+                .order("pillar_number")\
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Failed to get pillar compliance status: {e}")
+            return []
+    
+    # ========================================================================
+    # ENHANCED WORKSPACE GOALS (Asset-driven extensions)
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def update_workspace_goal_asset_metrics(self, goal_id: UUID, 
+                                                 asset_completion_rate: float,
+                                                 quality_score: float) -> bool:
+        """Update workspace goal with asset-driven metrics"""
+        try:
+            update_data = {
+                "asset_completion_rate": asset_completion_rate,
+                "quality_score": quality_score,
+                "current_value": asset_completion_rate * quality_score,  # Combined score
+                "updated_at": datetime.now().isoformat()
+            }
+            
+            result = self.supabase.table("workspace_goals")\
+                .update(update_data)\
+                .eq("id", str(goal_id))\
+                .execute()
+            
+            if result.data:
+                logger.info(f"✅ Goal {goal_id} asset metrics updated: completion={asset_completion_rate}, quality={quality_score}")
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to update goal asset metrics for {goal_id}: {e}")
+            return False
+    
+    # ========================================================================
+    # VIEW-BASED ANALYTICS QUERIES
+    # ========================================================================
+    
+    @supabase_retry(max_attempts=3)
+    async def execute_view_query(self, view_name: str, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """Execute query on database view with optional filters"""
+        try:
+            query = self.supabase.table(view_name).select("*")
+            
+            # Apply filters if provided
+            if filters:
+                for key, value in filters.items():
+                    query = query.eq(key, value)
+            
+            result = query.execute()
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Failed to execute view query on {view_name}: {e}")
+            return []
+
+# Create global instance for backward compatibility
+asset_db = AssetDrivenDatabaseManager()
+
+# ============================================================================
+# CONVENIENCE FUNCTIONS FOR ASSET-DRIVEN OPERATIONS
+# ============================================================================
+
+async def create_asset_artifact(artifact: AssetArtifact) -> AssetArtifact:
+    """Convenience function for creating asset artifacts"""
+    return await asset_db.create_asset_artifact(artifact)
+
+async def get_artifacts_for_requirement(requirement_id: UUID) -> List[AssetArtifact]:
+    """Convenience function for getting artifacts by requirement"""
+    return await asset_db.get_artifacts_for_requirement(requirement_id)
+
+async def update_artifact_status(artifact_id: UUID, status: str, quality_score: Optional[float] = None) -> bool:
+    """Convenience function for updating artifact status"""
+    return await asset_db.update_artifact_status(artifact_id, status, quality_score)
+
+async def get_quality_rules_for_asset_type(asset_type: str) -> List[QualityRule]:
+    """Convenience function for getting quality rules"""
+    return await asset_db.get_quality_rules_for_asset_type(asset_type)
+
+async def log_quality_validation(validation: QualityValidation) -> UUID:
+    """Convenience function for logging quality validation"""
+    return await asset_db.log_quality_validation(validation)
+
+async def get_asset_requirements_for_goal(goal_id: UUID) -> List[AssetRequirement]:
+    """Convenience function for getting asset requirements"""
+    return await asset_db.get_asset_requirements_for_goal(goal_id)
+
+async def get_real_time_goal_completion(workspace_id: UUID) -> List[Dict[str, Any]]:
+    """Convenience function for real-time goal completion"""
+    return await asset_db.get_real_time_goal_completion(workspace_id)
+
+async def get_pillar_compliance_status() -> List[Dict[str, Any]]:
+    """Convenience function for pillar compliance monitoring"""
+    return await asset_db.get_pillar_compliance_status()

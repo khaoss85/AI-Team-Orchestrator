@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "2 validation errors for AssetArtifact\nvalidation_errors\n  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.11/v/list_type\nreasoning_steps\n  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.11/v/list_type"
+}

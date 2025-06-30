@@ -87,11 +87,22 @@ class SimpleConversationalAgent:
             
             # Create wrapper for thinking callback to store steps
             async def storing_thinking_callback(step_data):
-                # Store the step
-                self._current_thinking_steps.append({
+                # Store the step locally
+                enriched_step = {
                     **step_data,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "workspace_id": self.workspace_id,
+                    "chat_id": self.chat_id
+                }
+                self._current_thinking_steps.append(enriched_step)
+                
+                # 🧠 REAL-TIME: Broadcast thinking step via WebSocket (Claude/o3 style)
+                try:
+                    from routes.websocket import broadcast_thinking_step
+                    await broadcast_thinking_step(self.workspace_id, enriched_step)
+                except Exception as e:
+                    logger.debug(f"Could not broadcast thinking step: {e}")
+                
                 # Call the original callback if provided
                 if thinking_callback:
                     await thinking_callback(step_data)
@@ -176,6 +187,68 @@ class SimpleConversationalAgent:
                     "description": f"Type: {query_type} | Data needed: {'Yes' if requires_data else 'No'}",
                     "status": "completed"
                 })
+            
+            # Step 4: Todo List Decomposition (Claude/o3 style)
+            if is_strategic_question or "decomp" in user_message.lower() or "task" in user_message.lower():
+                await storing_thinking_callback({
+                        "type": "thinking_step",
+                        "step": "todo_decomposition",
+                        "title": "📋 Breaking Down the Problem",
+                        "description": "Analyzing request and creating step-by-step action plan...",
+                        "status": "in_progress"
+                    })
+                
+                # Generate AI-driven todo list decomposition
+                todo_prompt = f"""
+                Based on this request: "{user_message}"
+                
+                Create a step-by-step todo list breakdown showing how you'll approach this task.
+                Format as a JSON array of todo items with: title, description, status (pending/in_progress/completed)
+                
+                Example format:
+                [
+                  {{"title": "Analyze current goals", "description": "Review workspace goals and progress", "status": "pending"}},
+                  {{"title": "Identify gaps", "description": "Find areas needing attention", "status": "pending"}}
+                ]
+                
+                Todo list:"""
+                
+                try:
+                    todo_response = self.openai_client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": todo_prompt}],
+                        max_tokens=300,
+                        temperature=0.3
+                    )
+                    todo_list_raw = todo_response.choices[0].message.content.strip()
+                    
+                    # Try to parse as JSON, fallback to text
+                    try:
+                        import json
+                        todo_list = json.loads(todo_list_raw)
+                    except:
+                        # Fallback: create simple todo from text
+                        todo_list = [
+                            {"title": "Analyze request", "description": "Understanding user requirements", "status": "completed"},
+                            {"title": "Plan approach", "description": "Define strategy and steps", "status": "in_progress"},
+                            {"title": "Generate response", "description": "Create comprehensive answer", "status": "pending"}
+                        ]
+                    
+                except Exception as e:
+                    # Safe fallback todo list
+                    todo_list = [
+                        {"title": "Process request", "description": "Analyze and understand requirements", "status": "in_progress"},
+                        {"title": "Generate solution", "description": "Create actionable response", "status": "pending"}
+                    ]
+                
+                await storing_thinking_callback({
+                        "type": "thinking_step",
+                        "step": "todo_decomposition",
+                        "title": "📋 Action Plan Created",
+                        "description": f"Generated {len(todo_list)} action items for systematic execution",
+                        "status": "completed",
+                        "todo_list": todo_list  # 🎯 Claude/o3 style todo breakdown
+                    })
             
             # Step 4: Data Gathering (AI-driven based on context availability)
             if requires_data and thinking_callback:

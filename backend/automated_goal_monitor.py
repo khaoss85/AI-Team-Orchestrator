@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Any
+import time
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from uuid import UUID
 
@@ -12,6 +13,35 @@ from ai_quality_assurance.goal_validator import goal_validator
 from goal_driven_task_planner import goal_driven_task_planner
 
 logger = logging.getLogger(__name__)
+
+# Import asset system for automatic asset requirements generation
+asset_requirements_generator = None
+try:
+    from services.asset_requirements_generator import AssetRequirementsGenerator
+    asset_requirements_generator = AssetRequirementsGenerator()
+    logger.info("✅ Asset Requirements Generator initialized for goal monitoring")
+except Exception as e:
+    logger.error(f"Failed to initialize Asset Requirements Generator in monitoring: {e}")
+
+# 👥 Import Agent Status Manager for unified agent management
+try:
+    from services.agent_status_manager import agent_status_manager
+    AGENT_STATUS_MANAGER_AVAILABLE = True
+    logger.info("✅ AgentStatusManager available for goal monitoring")
+except ImportError as e:
+    logger.warning(f"⚠️ AgentStatusManager not available in goal monitoring: {e}")
+    AGENT_STATUS_MANAGER_AVAILABLE = False
+    agent_status_manager = None
+
+# 🎯 Import Goal Validation Optimizer for intelligent validation
+try:
+    from services.goal_validation_optimizer import goal_validation_optimizer
+    GOAL_VALIDATION_OPTIMIZER_AVAILABLE = True
+    logger.info("✅ GoalValidationOptimizer available for intelligent validation")
+except ImportError as e:
+    logger.warning(f"⚠️ GoalValidationOptimizer not available in goal monitoring: {e}")
+    GOAL_VALIDATION_OPTIMIZER_AVAILABLE = False
+    goal_validation_optimizer = None
 
 class AutomatedGoalMonitor:
     """
@@ -27,10 +57,20 @@ class AutomatedGoalMonitor:
     """
     
     def __init__(self):
-        self.monitor_interval_minutes = 20
+        # Read from environment or use default
+        import os
+        self.monitor_interval_minutes = int(os.getenv("GOAL_VALIDATION_INTERVAL_MINUTES", "20"))
         self.is_running = False
+        
+        # 🔧 FIX: Add cache size limits to prevent memory bloat
+        self.max_cache_entries = int(os.getenv("GOAL_MONITOR_CACHE_MAX_ENTRIES", "100"))
+        self.cache_ttl_seconds = int(os.getenv("GOAL_MONITOR_CACHE_TTL_SECONDS", "1800"))  # 30 minutes
+        
         self.active_workspaces_cache = {}
         self.last_validation_cache = {}
+        
+        # Track background tasks to prevent leaks
+        self._background_tasks: set = set()
         
     async def start_monitoring(self):
         """Start the automated monitoring loop"""
@@ -53,10 +93,60 @@ class AutomatedGoalMonitor:
                 # Continue monitoring even if one cycle fails
                 await asyncio.sleep(60)  # Wait 1 minute before retry
     
-    def stop_monitoring(self):
+    async def stop_monitoring(self):
         """Stop the automated monitoring"""
         self.is_running = False
-        logger.info("🛑 Stopped automated goal monitoring")
+        
+        # 🔧 FIX: Cancel all background tasks to prevent memory leaks
+        await self._cleanup_background_tasks()
+        
+        # Clear caches to free memory
+        self.active_workspaces_cache.clear()
+        self.last_validation_cache.clear()
+        
+        logger.info("🛑 Stopped automated goal monitoring and cleaned up resources")
+    
+    async def trigger_immediate_validation(self, workspace_id: str, reason: str = "external_trigger"):
+        """
+        🚨 IMMEDIATE VALIDATION: Trigger validation for specific workspace outside normal cycle
+        
+        This can be called by other components (executor, quality gates, etc.) when they
+        detect issues that need immediate goal validation and corrective action.
+        """
+        try:
+            logger.warning(f"🚨 IMMEDIATE VALIDATION triggered for workspace {workspace_id} - Reason: {reason}")
+            
+            # Run validation for this specific workspace
+            corrective_tasks = await self._process_workspace_validation(workspace_id)
+            
+            if corrective_tasks:
+                executed_count = await self._execute_corrective_tasks_immediately(corrective_tasks, workspace_id)
+                logger.warning(f"⚡ IMMEDIATE VALIDATION result: {executed_count}/{len(corrective_tasks)} corrective tasks executed")
+                
+                # Schedule priority recheck
+                await self._schedule_priority_recheck(workspace_id, minutes=3)  # Faster recheck for triggered validations
+                
+                return {
+                    "success": True,
+                    "corrective_tasks_created": len(corrective_tasks),
+                    "corrective_tasks_executed": executed_count,
+                    "priority_recheck_scheduled": True
+                }
+            else:
+                logger.info(f"✅ IMMEDIATE VALIDATION: No corrective tasks needed for workspace {workspace_id}")
+                return {
+                    "success": True,
+                    "corrective_tasks_created": 0,
+                    "corrective_tasks_executed": 0,
+                    "priority_recheck_scheduled": False
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in immediate validation for workspace {workspace_id}: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
     
     async def _run_monitoring_cycle(self):
         """Execute one complete monitoring cycle"""
@@ -64,6 +154,23 @@ class AutomatedGoalMonitor:
         logger.info(f"🔄 Starting goal monitoring cycle at {cycle_start}")
         
         try:
+            # 🚨 CRITICAL FIX: Auto-recovery for stuck workspaces
+            from workspace_recovery_system import workspace_recovery_system
+            
+            recovery_result = await workspace_recovery_system.scan_and_recover_stuck_workspaces()
+            if recovery_result["recovered"] > 0:
+                logger.info(f"🔧 Auto-recovered {recovery_result['recovered']} workspaces from intervention status")
+            
+            # 👥 UNIFIED AGENT STATUS: Run synchronization if available
+            if AGENT_STATUS_MANAGER_AVAILABLE and agent_status_manager:
+                try:
+                    sync_result = await agent_status_manager.synchronize_agent_statuses()
+                    if sync_result.agents_updated > 0:
+                        logger.info(f"🎯 AGENT SYNC: Updated {sync_result.agents_updated} agents, "
+                                   f"fixed {sync_result.inconsistencies_fixed}/{sync_result.inconsistencies_found} inconsistencies")
+                except Exception as sync_error:
+                    logger.warning(f"⚠️ Agent status synchronization failed: {sync_error}")
+            
             # 1. Get active workspaces that need validation
             workspaces_to_validate = await self._get_workspaces_needing_validation()
             
@@ -73,18 +180,39 @@ class AutomatedGoalMonitor:
             
             logger.info(f"📊 Validating {len(workspaces_to_validate)} workspaces")
             
-            # 2. Process each workspace
+            # 🚀 PERFORMANCE OPTIMIZATION: Batch load all goals for all workspaces
+            from utils.workspace_goals_cache import batch_get_workspace_goals_cached
+            
+            logger.info(f"🚀 Batch loading goals for {len(workspaces_to_validate)} workspaces")
+            all_workspace_goals = await batch_get_workspace_goals_cached(
+                workspaces_to_validate, 
+                status_filter=GoalStatus.ACTIVE.value
+            )
+            
+            # 2. Process each workspace with pre-loaded goals
             total_corrective_tasks = 0
             for workspace_id in workspaces_to_validate:
-                corrective_tasks = await self._process_workspace_validation(workspace_id)
+                # Pass pre-loaded goals to avoid individual database queries
+                workspace_goals = all_workspace_goals.get(workspace_id, [])
+                corrective_tasks = await self._process_workspace_validation(workspace_id, preloaded_goals=workspace_goals)
                 total_corrective_tasks += len(corrective_tasks)
             
-            # 3. Log cycle summary
+            # 2.5. Check for completed goals without deliverables
+            await self._check_and_create_missing_deliverables()
+            
+            # 3. Cleanup caches to prevent memory bloat
+            await self._cleanup_caches_if_needed()
+            
+            # 4. Log cycle summary
             cycle_duration = datetime.now() - cycle_start
+            cache_stats = self.get_cache_stats()
             logger.info(
                 f"✅ Monitoring cycle completed in {cycle_duration.total_seconds():.1f}s. "
                 f"Processed {len(workspaces_to_validate)} workspaces, "
-                f"generated {total_corrective_tasks} corrective tasks"
+                f"generated {total_corrective_tasks} corrective tasks, "
+                f"recovered {recovery_result['recovered']} stuck workspaces. "
+                f"Cache: {cache_stats['active_workspaces_cache_size']}/{cache_stats['max_cache_entries']} workspaces, "
+                f"{cache_stats['background_tasks_count']} background tasks"
             )
             
         except Exception as e:
@@ -165,41 +293,143 @@ class AutomatedGoalMonitor:
         except Exception as e:
             logger.error(f"Error cleaning up orphaned goals for workspace {workspace_id}: {e}")
     
-    async def _process_workspace_validation(self, workspace_id: str) -> List[Dict[str, Any]]:
-        """Process goal validation for a single workspace"""
+    async def _process_workspace_validation(self, workspace_id: str, preloaded_goals: Optional[List[Dict]] = None) -> List[Dict[str, Any]]:
+        """Process goal validation for a single workspace - OPTIMIZED with preloaded goals"""
         try:
             logger.info(f"🔍 Validating workspace {workspace_id}")
+            
+            # 🔧 CRITICAL FIX: Check if team proposal has been approved before validation
+            # Skip validation if no team has been approved to prevent premature workspace activation
+            try:
+                # First check if there's an approved team proposal for this workspace
+                proposal_response = supabase.table("team_proposals").select("*").eq(
+                    "workspace_id", workspace_id
+                ).eq("status", "approved").execute()
+                
+                approved_proposals = proposal_response.data if proposal_response.data else []
+                
+                if not approved_proposals:
+                    logger.warning(f"⚠️ Skipping goal validation for workspace {workspace_id} - no approved team proposal found")
+                    logger.info(f"💡 Tip: Approve the team proposal first before automatic goal validation starts")
+                    return []
+                
+                # Then check if agents are available (they should be created after approval)
+                agents_response = supabase.table("agents").select("*").eq(
+                    "workspace_id", workspace_id
+                ).eq("status", "available").execute()
+                
+                available_agents = agents_response.data if agents_response.data else []
+                
+                if not available_agents:
+                    logger.warning(f"⚠️ Skipping goal validation for workspace {workspace_id} - no available agents found")
+                    logger.info(f"💡 Tip: Team approved but agents not yet created - please wait for agent provisioning")
+                    return []
+                    
+                logger.info(f"✅ Found approved team proposal and {len(available_agents)} available agents in workspace {workspace_id} - proceeding with validation")
+            except Exception as approval_check_error:
+                logger.error(f"Error checking team approval for workspace {workspace_id}: {approval_check_error}")
+                logger.warning(f"⚠️ Skipping goal validation due to approval check error")
+                return []
             
             # 1. Get completed tasks for validation
             completed_tasks = await self._get_completed_tasks(workspace_id)
             
-            # 2. Get database goals for validation (includes goal_id)
-            workspace_goals = await self._get_workspace_database_goals(workspace_id)
+            # 2. Use preloaded goals if available, otherwise fetch from cache/database
+            if preloaded_goals is not None:
+                workspace_goals = preloaded_goals
+                logger.debug(f"🚀 Using preloaded goals for workspace {workspace_id} ({len(workspace_goals)} goals)")
+            else:
+                workspace_goals = await self._get_workspace_database_goals(workspace_id)
             
             if not workspace_goals:
                 logger.warning(f"No database goals found for workspace {workspace_id}")
                 return []
             
-            # 3. 🎯 RUN DATABASE GOAL VALIDATION (includes goal_id in results)
-            validation_results = await goal_validator.validate_database_goals_achievement(
-                workspace_goals=workspace_goals,
-                completed_tasks=completed_tasks,
-                workspace_id=workspace_id
-            )
+            # 3. 🎯 INTELLIGENT VALIDATION OPTIMIZATION: Check if validation should proceed
+            all_corrective_tasks = []
+            validation_results = []
+            optimization_decisions = []
+            
+            for goal_data in workspace_goals:
+                try:
+                    goal_id = goal_data.get("id")
+                    metric_type = goal_data.get("metric_type", "Unknown Goal")
+                    
+                    # Check if this goal should be validated (optimization)
+                    if GOAL_VALIDATION_OPTIMIZER_AVAILABLE and goal_validation_optimizer:
+                        optimization_result = await goal_validation_optimizer.should_proceed_with_validation(
+                            workspace_id=workspace_id,
+                            goal_data=goal_data,
+                            recent_tasks=completed_tasks  # Use completed tasks as recent tasks context
+                        )
+                        
+                        optimization_decisions.append({
+                            "goal_id": goal_id,
+                            "metric_type": metric_type,
+                            "decision": optimization_result.decision.value,
+                            "reason": optimization_result.reason,
+                            "confidence": optimization_result.confidence
+                        })
+                        
+                        if not optimization_result.should_proceed:
+                            logger.info(f"🎯 OPTIMIZATION SKIP: Goal '{metric_type}' ({goal_id}) - "
+                                       f"{optimization_result.decision.value}: {optimization_result.reason}")
+                            continue
+                        else:
+                            logger.debug(f"🎯 OPTIMIZATION PROCEED: Goal '{metric_type}' ({goal_id}) - "
+                                        f"{optimization_result.reason}")
+                    
+                    # Run validation for this specific goal
+                    goal_validation_results = await goal_validator.validate_database_goals_achievement(
+                        workspace_goals=[goal_data],  # Single goal validation
+                        completed_tasks=completed_tasks,
+                        workspace_id=workspace_id
+                    )
+                    
+                    validation_results.extend(goal_validation_results)
+                    
+                    # Trigger corrective actions for this goal if needed
+                    if goal_validation_results:
+                        goal_corrective_tasks = await goal_validator.trigger_corrective_actions(
+                            validation_results=goal_validation_results,
+                            workspace_id=workspace_id
+                        )
+                        all_corrective_tasks.extend(goal_corrective_tasks)
+                    
+                except Exception as goal_error:
+                    logger.error(f"❌ Error validating goal {goal_data.get('id', 'unknown')}: {goal_error}")
+                    continue
+            
+            # Log optimization summary
+            if optimization_decisions:
+                skipped_count = len([d for d in optimization_decisions if not d.get("should_proceed", True)])
+                total_goals = len(workspace_goals)
+                logger.info(f"🎯 VALIDATION OPTIMIZATION: {skipped_count}/{total_goals} goals skipped, "
+                           f"{len(validation_results)} validations performed")
             
             # 4. Update last_validation_at for all goals in workspace
             await self._update_validation_timestamps(workspace_id)
             
-            # 5. 🚨 TRIGGER CORRECTIVE ACTIONS if needed
-            corrective_tasks = await goal_validator.trigger_corrective_actions(
-                validation_results=validation_results,
-                workspace_id=workspace_id
-            )
+            # 5. 🚀 CRITICAL FIX: Asset Requirements Generation Check & Trigger
+            asset_requirements_generated = await self._ensure_asset_requirements_exist(workspace_goals, workspace_id)
             
-            # 6. 📋 CREATE CORRECTIVE TASKS in database
+            # 6. Use aggregated corrective tasks
+            corrective_tasks = all_corrective_tasks
+            
+            # 7. 📋 CREATE CORRECTIVE TASKS in database
             created_tasks = await self._create_corrective_tasks(corrective_tasks, workspace_id)
             
-            # 7. Log validation summary
+            # 8. 🚀 CRITICAL FIX: EXECUTE CORRECTIVE TASKS IMMEDIATELY
+            if created_tasks:
+                executed_count = await self._execute_corrective_tasks_immediately(created_tasks, workspace_id)
+                logger.warning(f"⚡ IMMEDIATE EXECUTION: {executed_count}/{len(created_tasks)} corrective tasks queued for execution")
+                
+                # 🔥 ENHANCED: Trigger immediate re-monitoring for critical workspaces
+                if executed_count > 0:
+                    await self._schedule_priority_recheck(workspace_id, minutes=5)
+                    logger.warning(f"🔄 PRIORITY RECHECK scheduled for workspace {workspace_id} in 5 minutes")
+            
+            # 9. Log validation summary
             critical_issues = [v for v in validation_results if v.severity.value in ['critical', 'high']]
             logger.info(
                 f"📊 Workspace {workspace_id}: {len(validation_results)} validations, "
@@ -241,16 +471,18 @@ class AutomatedGoalMonitor:
             return ""
     
     async def _get_workspace_database_goals(self, workspace_id: str) -> List[Dict]:
-        """Get database goals for validation (includes goal_id)"""
+        """Get database goals for validation (includes goal_id) - OPTIMIZED with caching"""
         try:
-            response = supabase.table("workspace_goals").select("*").eq(
-                "workspace_id", workspace_id
-            ).eq(
-                "status", GoalStatus.ACTIVE.value
-            ).execute()
+            # 🚀 PERFORMANCE OPTIMIZATION: Use cached query instead of direct database call
+            from utils.workspace_goals_cache import get_workspace_goals_cached
             
-            goals = response.data or []
-            logger.info(f"📋 Found {len(goals)} active database goals for workspace {workspace_id}")
+            goals = await get_workspace_goals_cached(
+                workspace_id, 
+                force_refresh=False,  # Use cache for better performance
+                status_filter=GoalStatus.ACTIVE.value
+            )
+            
+            logger.info(f"📋 Found {len(goals)} active database goals for workspace {workspace_id} (cached)")
             return goals
             
         except Exception as e:
@@ -375,68 +607,251 @@ class AutomatedGoalMonitor:
         
         return created_tasks
     
-    async def _check_workspace_health(self, workspace_id: str) -> bool:
+    async def _execute_corrective_tasks_immediately(
+        self, 
+        created_tasks: List[Dict[str, Any]], 
+        workspace_id: str
+    ) -> int:
         """
-        🏥 WORKSPACE HEALTH CHECK: Detect orphaned/incomplete workspaces
+        🚀 CRITICAL FIX: Execute corrective tasks immediately instead of waiting for polling
         
-        Returns False for workspaces that shouldn't be processed by goal monitoring
+        This ensures that when the goal monitor detects issues, corrective actions
+        are taken immediately rather than waiting for the next executor polling cycle.
+        """
+        executed_count = 0
+        
+        try:
+            # Import task executor
+            from executor import task_executor
+            
+            logger.info(f"⚡ Executing {len(created_tasks)} corrective tasks immediately for workspace {workspace_id}")
+            
+            for task_data in created_tasks:
+                try:
+                    task_id = task_data.get("id")
+                    task_name = task_data.get("name", "Unknown Task")
+                    
+                    if not task_id:
+                        logger.error(f"Cannot execute task without ID: {task_name}")
+                        continue
+                    
+                    # 🎯 PRIORITY EXECUTION: Add to executor queue with high priority
+                    # Convert task to format expected by executor
+                    executor_task = {
+                        "id": task_id,
+                        "workspace_id": workspace_id,
+                        "name": task_name,
+                        "description": task_data.get("description", ""),
+                        "status": "pending",
+                        "priority": "high",
+                        "agent_id": task_data.get("agent_id"),
+                        "assigned_to_role": task_data.get("assigned_to_role"),
+                        "is_corrective": True,  # Mark as corrective task
+                        "created_by": "automated_goal_monitor"
+                    }
+                    
+                    # Add to executor queue immediately
+                    await task_executor.add_task_to_queue(executor_task)
+                    
+                    executed_count += 1
+                    logger.warning(f"⚡ QUEUED CORRECTIVE TASK: {task_name} (ID: {task_id}) for immediate execution")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to queue corrective task {task_data.get('name', 'unknown')}: {e}")
+            
+            return executed_count
+            
+        except Exception as e:
+            logger.error(f"Error executing corrective tasks immediately: {e}")
+            return 0
+    
+    async def _schedule_priority_recheck(self, workspace_id: str, minutes: int = 5):
+        """
+        🔥 PRIORITY RECHECK: Schedule immediate re-monitoring for critical workspaces
+        
+        When corrective tasks are executed, we want to quickly verify if they
+        resolved the issues instead of waiting for the normal 20-minute cycle.
         """
         try:
-            # 1. Check workspace status
-            workspace_response = supabase.table("workspaces").select("*").eq(
-                "id", workspace_id
-            ).single().execute()
+            import asyncio
             
-            if not workspace_response.data:
-                await self._alert_workspace_issue(workspace_id, "WORKSPACE_NOT_FOUND", "Workspace does not exist in database")
-                return False
+            async def priority_recheck():
+                try:
+                    await asyncio.sleep(minutes * 60)  # Wait specified minutes
+                    
+                    logger.info(f"🔄 PRIORITY RECHECK: Re-validating workspace {workspace_id}")
+                    
+                    # Re-run validation for this specific workspace
+                    corrective_tasks = await self._process_workspace_validation(workspace_id)
+                    
+                    if corrective_tasks:
+                        logger.warning(f"🚨 PRIORITY RECHECK: {len(corrective_tasks)} additional corrective tasks needed for {workspace_id}")
+                        # Execute immediately again
+                        await self._execute_corrective_tasks_immediately(corrective_tasks, workspace_id)
+                    else:
+                        logger.info(f"✅ PRIORITY RECHECK: Workspace {workspace_id} issues resolved")
+                        
+                except Exception as e:
+                    logger.error(f"Error in priority recheck for workspace {workspace_id}: {e}")
             
-            workspace = workspace_response.data
-            workspace_status = workspace.get("status")
-            workspace_name = workspace.get("name", "Unknown")
+            # Schedule as background task
+            asyncio.create_task(priority_recheck())
             
-            # 2. Check if workspace is in problematic states
-            if workspace_status == "created":
-                await self._alert_workspace_issue(
-                    workspace_id, 
-                    "ORPHANED_WORKSPACE", 
-                    f"Workspace '{workspace_name}' has goals but is still in 'created' status - likely from incomplete E2E test or failed initialization"
+        except Exception as e:
+            logger.error(f"Error scheduling priority recheck: {e}")
+    
+    async def _check_workspace_health(self, workspace_id: str) -> bool:
+        """
+        🏥 ENHANCED WORKSPACE HEALTH CHECK with Auto-Recovery
+        
+        Returns False for workspaces that shouldn't be processed by goal monitoring
+        Uses WorkspaceHealthManager for intelligent health assessment and recovery
+        """
+        try:
+            # 🏥 ENHANCED: Try to use WorkspaceHealthManager first
+            try:
+                from services.workspace_health_manager import workspace_health_manager
+                
+                # Get comprehensive health report with auto-recovery
+                health_report = await workspace_health_manager.check_workspace_health_with_recovery(
+                    workspace_id, attempt_auto_recovery=True
                 )
-                return False
-            
-            if workspace_status == "needs_intervention":
-                logger.info(f"🔧 Skipping workspace {workspace_id} - marked as needs_intervention")
-                return False
-            
-            # 3. Check if workspace has ANY agents (active or inactive)
-            agents_response = supabase.table("agents").select("id, status").eq(
-                "workspace_id", workspace_id
-            ).execute()
-            
-            agents = agents_response.data or []
-            available_agents = [a for a in agents if a.get("status") == "available"]
-            
-            if not agents:
-                await self._alert_workspace_issue(
-                    workspace_id,
-                    "NO_AGENTS_AT_ALL",
-                    f"Workspace '{workspace_name}' has goals but ZERO agents - this should never happen in a properly initialized workspace"
-                )
-                return False
-            
-            if not available_agents:
-                await self._alert_workspace_issue(
-                    workspace_id,
-                    "NO_AVAILABLE_AGENTS", 
-                    f"Workspace '{workspace_name}' has {len(agents)} agents but NONE are available - agents may have failed or been terminated"
-                )
-                return False
-            
-            # 4. Check for other anomalies
-            if len(available_agents) < 2:
-                logger.warning(f"⚠️ Workspace {workspace_id} has only {len(available_agents)} available agent(s) - may need attention")
-            
-            return True
+                
+                if health_report.is_healthy:
+                    logger.debug(f"✅ Workspace {workspace_id} health score: {health_report.overall_score:.1f}%")
+                    return True
+                else:
+                    # Check if issues are auto-recoverable
+                    recoverable_issues = [issue for issue in health_report.issues if issue.auto_recoverable]
+                    unrecoverable_issues = [issue for issue in health_report.issues if not issue.auto_recoverable]
+                    
+                    if unrecoverable_issues:
+                        # Log critical unrecoverable issues
+                        critical_descriptions = [issue.description for issue in unrecoverable_issues 
+                                               if issue.level.value in ['critical', 'emergency']]
+                        
+                        if critical_descriptions:
+                            await self._alert_workspace_issue(
+                                workspace_id,
+                                "CRITICAL_UNRECOVERABLE_ISSUES",
+                                f"Critical issues requiring manual intervention: {'; '.join(critical_descriptions[:2])}"
+                            )
+                            return False
+                    
+                    if recoverable_issues:
+                        logger.info(f"🔧 Workspace {workspace_id} has recoverable issues - auto-recovery attempted")
+                        # Continue processing as recovery was attempted
+                        return True
+                    
+                    # No critical unrecoverable issues, continue processing
+                    logger.info(f"⚠️ Workspace {workspace_id} health score low ({health_report.overall_score:.1f}%) but continuing")
+                    return True
+                    
+            except ImportError:
+                logger.debug("WorkspaceHealthManager not available, falling back to basic health check")
+                
+                # FALLBACK: Original basic health check logic
+                # 1. Check workspace status
+                workspace_response = supabase.table("workspaces").select("*").eq(
+                    "id", workspace_id
+                ).single().execute()
+                
+                if not workspace_response.data:
+                    await self._alert_workspace_issue(workspace_id, "WORKSPACE_NOT_FOUND", "Workspace does not exist in database")
+                    return False
+                
+                workspace = workspace_response.data
+                workspace_status = workspace.get("status")
+                workspace_name = workspace.get("name", "Unknown")
+                
+                # 2. Check if workspace is in problematic states
+                if workspace_status == "created":
+                    await self._alert_workspace_issue(
+                        workspace_id, 
+                        "ORPHANED_WORKSPACE", 
+                        f"Workspace '{workspace_name}' has goals but is still in 'created' status - likely from incomplete E2E test or failed initialization"
+                    )
+                    return False
+                
+                if workspace_status == "needs_intervention":
+                    # 🔧 ENHANCED: Try auto-recovery for needs_intervention status
+                    logger.info(f"🔧 Attempting auto-recovery for workspace {workspace_id} marked as needs_intervention")
+                    
+                    try:
+                        # Reset status to active
+                        supabase.table("workspaces").update({
+                            "status": "active"
+                        }).eq("id", workspace_id).execute()
+                        
+                        logger.info(f"✅ Auto-recovered workspace {workspace_id} from needs_intervention to active")
+                        return True  # Continue processing after recovery
+                        
+                    except Exception as recovery_err:
+                        logger.error(f"❌ Failed to auto-recover workspace {workspace_id}: {recovery_err}")
+                        return False
+                
+                # 3. 🎯 UNIFIED AGENT STATUS CHECK: Use AgentStatusManager if available
+                if AGENT_STATUS_MANAGER_AVAILABLE and agent_status_manager:
+                    try:
+                        # Get available agents using unified logic
+                        available_agents_info = await agent_status_manager.get_available_agents(workspace_id)
+                        available_agents = [
+                            {
+                                "id": agent.id,
+                                "status": agent.status.value
+                            }
+                            for agent in available_agents_info
+                        ]
+                        
+                        # Get all agents count for health reporting
+                        agents_response = supabase.table("agents").select("id, status").eq(
+                            "workspace_id", workspace_id
+                        ).execute()
+                        agents = agents_response.data or []
+                        
+                        logger.debug(f"🎯 UNIFIED AGENT STATUS: {len(available_agents)} available agents from AgentStatusManager")
+                        
+                    except Exception as asm_error:
+                        logger.warning(f"⚠️ AgentStatusManager error in health check, falling back: {asm_error}")
+                        # Fallback to legacy logic
+                        agents_response = supabase.table("agents").select("id, status").eq(
+                            "workspace_id", workspace_id
+                        ).execute()
+                        
+                        agents = agents_response.data or []
+                        # CRITICAL FIX: Accept both "available" and "active" agents (matching executor.py logic)
+                        available_agents = [a for a in agents if a.get("status") in ["available", "active"]]
+                else:
+                    # FALLBACK: Legacy agent status checking
+                    agents_response = supabase.table("agents").select("id, status").eq(
+                        "workspace_id", workspace_id
+                    ).execute()
+                    
+                    agents = agents_response.data or []
+                    # CRITICAL FIX: Accept both "available" and "active" agents (matching executor.py logic)
+                    available_agents = [a for a in agents if a.get("status") in ["available", "active"]]
+                
+                if not agents:
+                    await self._alert_workspace_issue(
+                        workspace_id,
+                        "NO_AGENTS_AT_ALL",
+                        f"Workspace '{workspace_name}' has goals but ZERO agents - this should never happen in a properly initialized workspace"
+                    )
+                    return False
+                
+                if not available_agents:
+                    await self._alert_workspace_issue(
+                        workspace_id,
+                        "NO_AVAILABLE_AGENTS", 
+                        f"Workspace '{workspace_name}' has {len(agents)} agents but NONE are available - agents may have failed or been terminated"
+                    )
+                    return False
+                
+                # 4. Check for other anomalies
+                if len(available_agents) < 2:
+                    logger.warning(f"⚠️ Workspace {workspace_id} has only {len(available_agents)} available agent(s) - may need attention")
+                
+                return True
             
         except Exception as e:
             logger.error(f"Error checking workspace health for {workspace_id}: {e}")
@@ -832,6 +1247,184 @@ class AutomatedGoalMonitor:
                 "is_running": self.is_running,
                 "error": str(e)
             }
+    
+    async def _ensure_asset_requirements_exist(self, workspace_goals: List[Dict[str, Any]], workspace_id: str) -> int:
+        """
+        🚀 CRITICAL FIX: Ensure all goals have asset requirements
+        
+        This function checks each goal and generates asset requirements if they don't exist.
+        Implements Pillar 12: Concrete Deliverables enforcement.
+        """
+        try:
+            if not asset_requirements_generator:
+                logger.warning("⚠️ Asset Requirements Generator not available - skipping asset check")
+                return 0
+            
+            total_generated = 0
+            
+            for goal_data in workspace_goals:
+                try:
+                    goal_id = goal_data.get("id")
+                    metric_type = goal_data.get("metric_type", "Unknown Goal")
+                    
+                    # Check if this goal already has asset requirements
+                    existing_requirements = await asset_requirements_generator.db_manager.get_asset_requirements_for_goal(goal_id)
+                    
+                    if not existing_requirements:
+                        logger.info(f"🎯 Goal '{metric_type}' has no asset requirements - generating automatically")
+                        
+                        # Convert to WorkspaceGoal model
+                        goal_model = WorkspaceGoal(**goal_data)
+                        
+                        # Generate asset requirements
+                        asset_requirements = await asset_requirements_generator.generate_from_goal(goal_model)
+                        requirements_count = len(asset_requirements)
+                        total_generated += requirements_count
+                        
+                        # Update goal with asset requirements count
+                        supabase.table("workspace_goals").update({
+                            "asset_requirements_count": requirements_count,
+                            "ai_validation_enabled": True,
+                            "updated_at": datetime.now().isoformat()
+                        }).eq("id", goal_id).execute()
+                        
+                        logger.info(f"✅ Generated {requirements_count} asset requirements for goal '{metric_type}'")
+                        
+                        # Log the generation
+                        supabase.table("logs").insert({
+                            "workspace_id": workspace_id,
+                            "type": "asset_generation",
+                            "message": f"Auto-generated {requirements_count} asset requirements for goal: {metric_type}",
+                            "metadata": {
+                                "goal_id": goal_id,
+                                "asset_requirements_count": requirements_count,
+                                "trigger": "automated_goal_monitoring",
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        }).execute()
+                        
+                    else:
+                        logger.debug(f"✅ Goal '{metric_type}' already has {len(existing_requirements)} asset requirements")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Failed to ensure asset requirements for goal {goal_data.get('id', 'unknown')}: {e}")
+                    continue
+            
+            if total_generated > 0:
+                logger.info(f"🚀 ASSET GENERATION SUMMARY: Generated {total_generated} total asset requirements for workspace {workspace_id}")
+            
+            return total_generated
+            
+        except Exception as e:
+            logger.error(f"❌ Critical error in asset requirements generation: {e}")
+            return 0
+    
+    async def _cleanup_background_tasks(self):
+        """🔧 FIX: Cleanup background tasks to prevent memory leaks"""
+        try:
+            if not self._background_tasks:
+                return
+            
+            logger.info(f"🧹 Cleaning up {len(self._background_tasks)} background tasks")
+            
+            # Cancel all tracked background tasks
+            for task in list(self._background_tasks):
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception as e:
+                        logger.debug(f"Background task cleanup error: {e}")
+                
+                self._background_tasks.discard(task)
+            
+            logger.info("✅ All background tasks cleaned up")
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up background tasks: {e}")
+    
+    def _add_background_task(self, task: asyncio.Task):
+        """Track a background task to prevent leaks"""
+        self._background_tasks.add(task)
+        
+        # Clean up completed tasks automatically
+        def cleanup_completed(task):
+            self._background_tasks.discard(task)
+        
+        task.add_done_callback(cleanup_completed)
+    
+    async def _cleanup_caches_if_needed(self):
+        """🔧 FIX: Cleanup caches if they exceed size/TTL limits"""
+        current_time = time.time()
+        
+        # Cleanup active workspaces cache
+        expired_workspaces = [
+            ws_id for ws_id, (timestamp, _) in self.active_workspaces_cache.items()
+            if current_time - timestamp > self.cache_ttl_seconds
+        ]
+        
+        for ws_id in expired_workspaces:
+            del self.active_workspaces_cache[ws_id]
+        
+        # Cleanup last validation cache  
+        expired_validations = [
+            ws_id for ws_id, timestamp in self.last_validation_cache.items()
+            if current_time - timestamp > self.cache_ttl_seconds
+        ]
+        
+        for ws_id in expired_validations:
+            del self.last_validation_cache[ws_id]
+        
+        # If still too many entries, remove oldest
+        if len(self.active_workspaces_cache) > self.max_cache_entries:
+            # Sort by timestamp and remove oldest
+            sorted_entries = sorted(
+                self.active_workspaces_cache.items(),
+                key=lambda x: x[1][0]  # Sort by timestamp
+            )
+            
+            excess_count = len(self.active_workspaces_cache) - self.max_cache_entries
+            for ws_id, _ in sorted_entries[:excess_count]:
+                del self.active_workspaces_cache[ws_id]
+        
+        if len(self.last_validation_cache) > self.max_cache_entries:
+            sorted_entries = sorted(
+                self.last_validation_cache.items(),
+                key=lambda x: x[1]  # Sort by timestamp
+            )
+            
+            excess_count = len(self.last_validation_cache) - self.max_cache_entries
+            for ws_id, _ in sorted_entries[:excess_count]:
+                del self.last_validation_cache[ws_id]
+        
+        if expired_workspaces or expired_validations:
+            logger.info(f"🧹 Cache cleanup: removed {len(expired_workspaces)} workspace entries, {len(expired_validations)} validation entries")
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """🔧 FIX: Get cache statistics for monitoring"""
+        return {
+            "active_workspaces_cache_size": len(self.active_workspaces_cache),
+            "last_validation_cache_size": len(self.last_validation_cache),
+            "max_cache_entries": self.max_cache_entries,
+            "cache_ttl_seconds": self.cache_ttl_seconds,
+            "background_tasks_count": len(self._background_tasks)
+        }
+    
+    async def _check_and_create_missing_deliverables(self):
+        """Check for completed goals without deliverables and create them"""
+        try:
+            logger.info("📦 Checking for completed goals without deliverables...")
+            
+            # Import the deliverable creation logic
+            from fix_deliverable_creation import check_and_fix_deliverable_creation
+            
+            # Run the deliverable creation check
+            await check_and_fix_deliverable_creation()
+            
+        except Exception as e:
+            logger.error(f"Error checking for missing deliverables: {e}")
 
 # Singleton instance
 automated_goal_monitor = AutomatedGoalMonitor()

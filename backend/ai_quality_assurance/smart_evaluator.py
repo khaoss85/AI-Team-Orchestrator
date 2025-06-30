@@ -185,7 +185,7 @@ class SmartDeliverableEvaluator:
         """
         
         asset_type = asset.get("type", "unknown")
-        content = json.dumps(asset.get("content", {}))
+        content = json.dumps(asset.get("content", {}), default=str)
         
         # Quick rule-based check first
         rule_scores = self._rule_based_evaluation(content)
@@ -551,7 +551,7 @@ Be HARSH in scoring. Only give high scores to truly exceptional, ready-to-use as
         Validazione rapida per verificare se un asset è concreto
         """
         
-        content_str = json.dumps(asset_content).lower()
+        content_str = json.dumps(asset_content, default=str).lower()
         
         # Check per pattern teorici
         theoretical_count = sum(
@@ -562,7 +562,7 @@ Be HARSH in scoring. Only give high scores to truly exceptional, ready-to-use as
         # Check per pattern concreti
         concrete_count = sum(
             1 for pattern in self.concrete_patterns 
-            if re.search(pattern, json.dumps(asset_content))
+            if re.search(pattern, json.dumps(asset_content, default=str))
         )
         
         # Asset è concreto se ha più pattern concreti che teorici

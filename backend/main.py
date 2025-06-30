@@ -33,15 +33,24 @@ from routes.ai_content_processor import router as ai_content_router
 from routes.utils import router as utils_router
 from routes.unified_assets import router as unified_assets_router
 from routes.goal_validation import router as goal_validation_router
-from routes.workspace_goals import router as workspace_goals_router
+from routes.workspace_goals import router as workspace_goals_router, direct_router as workspace_goals_direct_router
 from routes.deliverables import router as deliverables_router
 from routes.websocket import router as websocket_router
 from routes.conversation import router as conversation_router
 from routes.documents import router as documents_router
 from routes.authentic_thinking import router as authentic_thinking_router
+from routes.memory import router as memory_router
+from routes.thinking import router as thinking_router
+from routes.assets import router as assets_router
+from routes.websocket_assets import router as websocket_assets_router
+from routes.system_monitoring import router as system_monitoring_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
+
+# Import asset system integration
+from asset_system_integration import register_asset_routes, initialize_asset_system
+from optimization.asset_system_optimizer import start_optimization_monitoring
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +74,8 @@ app.add_middleware(
 
 # Include routers - ASSICURATI CHE monitoring_router SIA INCLUSO
 app.include_router(workspace_router)
+app.include_router(director_router, prefix="/api")
+# Add director route without prefix for frontend compatibility
 app.include_router(director_router)
 app.include_router(agents_router)
 app.include_router(tools_router)
@@ -82,18 +93,29 @@ app.include_router(utils_router)
 app.include_router(documents_router)
 app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router)
+app.include_router(workspace_goals_direct_router)  # 🔧 FIX: Direct access for frontend
 app.include_router(deliverables_router)
 app.include_router(websocket_router)
 app.include_router(conversation_router)
 app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
+app.include_router(memory_router, prefix="/api")
+app.include_router(thinking_router, prefix="/api")
+app.include_router(assets_router, prefix="/api")
+app.include_router(websocket_assets_router, prefix="/api")
+app.include_router(system_monitoring_router)
 
 # Add API prefix compatibility for frontend
 # Import the specific endpoint functions we need
-from routes.workspaces import get_workspace_tasks, delete_workspace_by_id
+from routes.workspaces import get_workspace_tasks, delete_workspace_by_id, get_workspace_by_id
 from fastapi import APIRouter
 from uuid import UUID
 
 api_router = APIRouter(prefix="/api/workspaces", tags=["api-compatibility"])
+
+@api_router.get("/{workspace_id}")
+async def api_get_workspace(workspace_id: UUID):
+    """API-prefixed version of get_workspace for frontend compatibility"""
+    return await get_workspace_by_id(workspace_id)
 
 @api_router.get("/{workspace_id}/tasks")
 async def api_get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None):
@@ -106,6 +128,9 @@ async def api_delete_workspace(workspace_id: UUID):
     return await delete_workspace_by_id(workspace_id)
 
 app.include_router(api_router)
+
+# Register asset system routes
+register_asset_routes(app)
 
 # Health check endpoint
 @app.get("/health")
@@ -133,6 +158,15 @@ async def startup_event():
     else:
         logger.info("⚠️ Task executor disabled via environment variable")
     
+    # 🔗 Start WebSocket health monitoring
+    logger.info("Starting WebSocket health monitoring...")
+    try:
+        from utils.websocket_health_manager import start_websocket_health_monitoring
+        await start_websocket_health_monitoring()
+        logger.info("✅ WebSocket health monitoring started successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to start WebSocket health monitoring: {e}")
+    
     # Initialize human feedback manager (lightweight)
     logger.info("Initializing human feedback manager...")
     try:
@@ -158,12 +192,46 @@ async def startup_event():
     else:
         logger.info("⚠️ Goal-driven system disabled via environment variable")
     
+    # 🚀 Initialize Asset-Driven System
+    enable_asset_system = os.getenv("ENABLE_ASSET_DRIVEN_GOALS", "true").lower()
+    if enable_asset_system == "true":
+        logger.info("🚀 Initializing Asset-Driven System...")
+        try:
+            initialization_result = await initialize_asset_system()
+            if initialization_result["status"] == "success":
+                logger.info("✅ Asset-driven system initialized successfully")
+                
+                # Start performance optimization monitoring
+                auto_optimization = os.getenv("ENABLE_AUTO_OPTIMIZATION", "true").lower()
+                if auto_optimization == "true":
+                    logger.info("⚡ Starting asset system performance optimization...")
+                    import asyncio
+                    asyncio.create_task(start_optimization_monitoring())
+                    logger.info("✅ Performance optimization monitoring started")
+                else:
+                    logger.info("⚠️ Auto-optimization disabled via environment variable")
+            else:
+                logger.error(f"❌ Asset system initialization failed: {initialization_result.get('error', 'Unknown error')}")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize asset system: {e}")
+    else:
+        logger.info("⚠️ Asset-driven system disabled via environment variable")
+    
     logger.info("Application startup complete")
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down AI Team Orchestrator")
+    
+    # 🔗 Stop WebSocket health monitoring
+    logger.info("Stopping WebSocket health monitoring...")
+    try:
+        from utils.websocket_health_manager import stop_websocket_health_monitoring
+        await stop_websocket_health_monitoring()
+        logger.info("✅ WebSocket health monitoring stopped successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to stop WebSocket health monitoring: {e}")
     
     # Stop task executor
     logger.info("Stopping task executor...")
@@ -174,8 +242,9 @@ async def shutdown_event():
         logger.info("🎯 Stopping goal-driven automated monitoring...")
         try:
             from automated_goal_monitor import automated_goal_monitor
-            automated_goal_monitor.stop_monitoring()  # This is synchronous
-            logger.info("✅ Goal-driven automated monitoring stopped successfully")
+            import asyncio
+            asyncio.create_task(automated_goal_monitor.stop_monitoring())
+            logger.info("✅ Goal-driven automated monitoring stop initiated")
         except Exception as e:
             logger.error(f"❌ Failed to stop goal monitoring: {e}")
     

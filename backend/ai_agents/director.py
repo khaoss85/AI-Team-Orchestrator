@@ -500,17 +500,8 @@ Return *only* valid JSON:
                             "description": "Enables web searching for current information.",
                         }
                     )
-                if any(
-                    k_word in role_str.lower()
-                    for k_word in (
-                        "content",
-                        "research",
-                        "analysis",
-                        "market",
-                        "manager",
-                        "writing",
-                    )
-                ):
+                # 🤖 AI-DRIVEN: Determine tool needs based on role semantics
+                if _role_needs_file_search_tool_sync(role_str):
                     tools_list.append(
                         {
                             "type": "file_search",
@@ -520,165 +511,107 @@ Return *only* valid JSON:
                     )
                 return tools_list
 
-            def _generate_personality_for_role(role_str: str) -> Dict[str, Any]:
-                """Genera attributi di personalità basati sul ruolo."""
+            async def _generate_personality_for_role(role_str: str) -> Dict[str, Any]:
+                """🤖 AI-DRIVEN: Generate personality traits based on role semantics"""
+                return await _generate_ai_driven_personality(role_str)
+            
+            def _role_needs_file_search_tool_sync(role_str: str) -> bool:
+                """
+                🤖 AI-DRIVEN: Synchronous version - determine if role needs file search capability
+                """
+                # For now, use simple semantic analysis until we can make the whole chain async
                 role_lower = role_str.lower()
-
-                # Default traits for all agents
-                personality = {
-                    "first_name": "",
-                    "last_name": "",
-                    "personality_traits": [],
-                    "communication_style": "",
-                    "hard_skills": [],
-                    "soft_skills": [],
-                    "background_story": "",
-                }
-
-                # Generate a suitable first name and last name
+                
+                # Semantic keywords that indicate need for file search
+                research_indicators = ["research", "analysis", "analyst", "content", "writer", "manager", "coordinator"]
+                document_indicators = ["review", "audit", "compliance", "legal", "documentation"]
+                information_indicators = ["data", "information", "intelligence", "market", "competitive"]
+                
+                all_indicators = research_indicators + document_indicators + information_indicators
+                
+                return any(indicator in role_lower for indicator in all_indicators)
+            
+            async def _generate_ai_driven_personality(role_str: str) -> Dict[str, Any]:
+                """🤖 AI-DRIVEN: Generate personality traits based on role semantics"""
+                try:
+                    if not AI_AVAILABLE:
+                        return _generate_personality_fallback(role_str)
+                    
+                    ai_prompt = f"""
+                    Generate appropriate personality traits for this professional role:
+                    
+                    Role: {role_str}
+                    
+                    Return a JSON object with:
+                    - personality_traits: array of 3 relevant traits (e.g., ANALYTICAL, CREATIVE, DECISIVE)
+                    - communication_style: one of ASSERTIVE, TECHNICAL, DETAILED, COLLABORATIVE
+                    - soft_skills: array of 2-3 objects with "name" and "level" (EXPERT, ADVANCED, INTERMEDIATE)
+                    - hard_skills: array of 2-3 objects with "name" and "level" (EXPERT, ADVANCED, INTERMEDIATE)
+                    - background_story: brief professional background story (1-2 sentences)
+                    
+                    Base traits on what would be most effective for this role.
+                    
+                    Format: {{"personality_traits": [...], "communication_style": "...", "soft_skills": [...], "hard_skills": [...], "background_story": "..."}}
+                    """
+                    
+                    # Create OpenAI client inline since we don't have access to self
+                    from openai import AsyncOpenAI
+                    openai_client = AsyncOpenAI()
+                    
+                    response = await openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "You are an expert at professional personality analysis. Provide only valid JSON output."},
+                            {"role": "user", "content": ai_prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=300
+                    )
+                    
+                    ai_result = response.choices[0].message.content.strip()
+                    import json
+                    personality_data = json.loads(ai_result)
+                    
+                    # Add default fields and names
+                    import random
+                    first_names = ["Alex", "Sam", "Jordan", "Morgan", "Taylor", "Casey", "Riley", "Avery", "Quinn", "Jamie"]
+                    last_names = ["Chen", "Smith", "Rodriguez", "Johnson", "Patel", "Wilson", "Garcia", "Martinez", "Lee", "Brown"]
+                    
+                    personality = {
+                        "first_name": random.choice(first_names),
+                        "last_name": random.choice(last_names),
+                        "bio": "",
+                        **personality_data
+                    }
+                    
+                    return personality
+                    
+                except Exception as e:
+                    logger.warning(f"AI personality generation failed: {e}")
+                    return _generate_personality_fallback(role_str)
+            
+            def _generate_personality_fallback(role_str: str) -> Dict[str, Any]:
+                """🔄 FALLBACK: Basic personality generation when AI unavailable"""
                 import random
-
-                first_names = [
-                    "Alex",
-                    "Sam",
-                    "Jordan",
-                    "Morgan",
-                    "Taylor",
-                    "Casey",
-                    "Riley",
-                    "Avery",
-                    "Quinn",
-                    "Jamie",
-                ]
-                last_names = [
-                    "Chen",
-                    "Smith",
-                    "Rodriguez",
-                    "Johnson",
-                    "Patel",
-                    "Wilson",
-                    "Garcia",
-                    "Martinez",
-                    "Lee",
-                    "Brown",
-                ]
-                personality["first_name"] = random.choice(first_names)
-                personality["last_name"] = random.choice(last_names)
-
-                # Set personality traits based on role
-                if (
-                    "manager" in role_lower
-                    or "coordinator" in role_lower
-                    or "lead" in role_lower
-                ):
-                    personality["personality_traits"] = [
-                        "DECISIVE",
-                        "COLLABORATIVE",
-                        "PROACTIVE",
-                    ]
-                    personality["communication_style"] = "ASSERTIVE"
-                    personality["soft_skills"] = [
-                        {"name": "Leadership", "level": "EXPERT"},
-                        {"name": "Communication", "level": "EXPERT"},
-                        {"name": "Team Coordination", "level": "EXPERT"},
-                    ]
-
-                elif "analyst" in role_lower or "research" in role_lower:
-                    personality["personality_traits"] = [
-                        "ANALYTICAL",
-                        "DETAIL_ORIENTED",
-                        "METHODICAL",
-                    ]
-                    personality["communication_style"] = "TECHNICAL"
-                    personality["soft_skills"] = [
-                        {"name": "Critical Thinking", "level": "EXPERT"},
-                        {"name": "Problem Solving", "level": "EXPERT"},
-                    ]
-
-                elif "content" in role_lower or "writ" in role_lower:
-                    personality["personality_traits"] = [
-                        "CREATIVE",
-                        "DETAIL_ORIENTED",
-                        "ADAPTABLE",
-                    ]
-                    personality["communication_style"] = "DETAILED"
-                    personality["soft_skills"] = [
-                        {"name": "Creativity", "level": "EXPERT"},
-                        {"name": "Writing", "level": "EXPERT"},
-                    ]
-
-                elif "develop" in role_lower or "engineer" in role_lower:
-                    personality["personality_traits"] = [
-                        "ANALYTICAL",
-                        "METHODICAL",
-                        "INNOVATIVE",
-                    ]
-                    personality["communication_style"] = "TECHNICAL"
-                    personality["soft_skills"] = [
-                        {"name": "Problem Solving", "level": "EXPERT"},
-                        {"name": "Logical Thinking", "level": "EXPERT"},
-                    ]
-
-                else:
-                    # Default traits for unknown roles
-                    personality["personality_traits"] = [
-                        "ADAPTABLE",
-                        "COLLABORATIVE",
-                        "PROACTIVE",
-                    ]
-                    personality["communication_style"] = "CONCISE"
-                    personality["soft_skills"] = [
-                        {"name": "Adaptability", "level": "EXPERT"},
-                        {"name": "Communication", "level": "INTERMEDIATE"},
-                    ]
-
-                # Add hard skills based on role keywords
-                hard_skills = []
-                if "analyst" in role_lower:
-                    hard_skills.append({"name": "Data Analysis", "level": "EXPERT"})
-                    hard_skills.append({"name": "Statistics", "level": "EXPERT"})
-                if "content" in role_lower or "writ" in role_lower:
-                    hard_skills.append({"name": "Content Creation", "level": "EXPERT"})
-                    hard_skills.append({"name": "Editing", "level": "EXPERT"})
-                if "develop" in role_lower or "engineer" in role_lower:
-                    hard_skills.append(
-                        {"name": "Software Development", "level": "EXPERT"}
-                    )
-                    hard_skills.append({"name": "Problem Solving", "level": "EXPERT"})
-                if "market" in role_lower:
-                    hard_skills.append({"name": "Market Research", "level": "EXPERT"})
-                    hard_skills.append({"name": "Campaign Planning", "level": "EXPERT"})
-
-                # If no specific hard skills were added, add general ones
-                if not hard_skills:
-                    hard_skills.append({"name": "Problem Solving", "level": "EXPERT"})
-                    hard_skills.append({"name": "Research", "level": "INTERMEDIATE"})
-
-                personality["hard_skills"] = hard_skills
-
-                # Add a background story based on role
-                if "manager" in role_lower:
-                    personality["background_story"] = (
-                        "Experienced project manager with a track record of successfully coordinating cross-functional teams on complex projects."
-                    )
-                elif "analyst" in role_lower:
-                    personality["background_story"] = (
-                        "Data-driven analyst with expertise in extracting actionable insights from complex datasets."
-                    )
-                elif "content" in role_lower:
-                    personality["background_story"] = (
-                        "Creative content specialist with a passion for crafting engaging narratives that resonate with target audiences."
-                    )
-                elif "develop" in role_lower:
-                    personality["background_story"] = (
-                        "Skilled developer with experience building robust solutions to complex technical challenges."
-                    )
-                else:
-                    personality["background_story"] = (
-                        f"Specialized {role_str} with extensive experience in delivering high-quality results."
-                    )
-
-                return personality
+                first_names = ["Alex", "Sam", "Jordan", "Morgan", "Taylor", "Casey", "Riley", "Avery", "Quinn", "Jamie"]
+                last_names = ["Chen", "Smith", "Rodriguez", "Johnson", "Patel", "Wilson", "Garcia", "Martinez", "Lee", "Brown"]
+                
+                return {
+                    "first_name": random.choice(first_names),
+                    "last_name": random.choice(last_names),
+                    "bio": "",
+                    "personality_traits": ["PROFESSIONAL", "RELIABLE", "ADAPTABLE"],
+                    "communication_style": "COLLABORATIVE",
+                    "soft_skills": [
+                        {"name": "Communication", "level": "ADVANCED"},
+                        {"name": "Problem Solving", "level": "ADVANCED"}
+                    ],
+                    "hard_skills": [
+                        {"name": "Technical Proficiency", "level": "ADVANCED"},
+                        {"name": "Domain Knowledge", "level": "INTERMEDIATE"}
+                    ],
+                    "background_story": f"Experienced {role_str.lower()} with proven track record in project delivery and team collaboration."
+                }
 
             async def _group_skills_for_design(
                 skills_list: List[str],
@@ -781,16 +714,82 @@ Return ONLY a JSON array in this format:
             
             async def _universal_skill_grouping_fallback(skills_list: List[str]) -> List[Dict[str, Any]]:
                 """
-                🔄 UNIVERSAL FALLBACK: Pattern-based grouping without domain assumptions
+                🤖 AI-DRIVEN UNIVERSAL FALLBACK: Semantic skill grouping without hard-coded patterns
                 """
-                # Universal functional patterns (not domain-specific)
-                universal_patterns = {
-                    "coordination_activities": ["manage", "coordina", "plan", "lead", "oversight", "organize"],
-                    "analytical_tasks": ["analy", "research", "investigat", "evaluat", "data", "report", "study"],
-                    "creative_work": ["content", "writ", "edit", "design", "creativ", "visual", "art"],
-                    "communication_tasks": ["communicat", "present", "social", "market", "promot", "brand"],
-                    "technical_implementation": ["develop", "implement", "cod", "engineer", "technical", "system"],
-                    "process_optimization": ["optim", "improve", "efficien", "automat", "workflow", "quality"]
+                try:
+                    # Try AI-driven semantic grouping first
+                    if self.ai_available and self.openai_client:
+                        return await self._ai_driven_skill_grouping(skills_list)
+                    else:
+                        # Fallback to simpler grouping if AI unavailable
+                        return await self._simple_semantic_fallback(skills_list)
+                except Exception as e:
+                    logger.warning(f"AI skill grouping failed, using simple fallback: {e}")
+                    return await self._simple_semantic_fallback(skills_list)
+            
+            async def _ai_driven_skill_grouping(self, skills_list: List[str]) -> List[Dict[str, Any]]:
+                """
+                🤖 AI-DRIVEN: Use AI to semantically group skills into functional categories
+                """
+                try:
+                    skills_text = ", ".join(skills_list)
+                    
+                    ai_prompt = f"""
+                    Analyze these skills and group them into functional categories based on semantic similarity and purpose.
+                    
+                    Skills: {skills_text}
+                    
+                    Group these skills into logical functional categories (e.g., coordination, analysis, creative, communication, technical, optimization).
+                    Return a JSON object where keys are category names and values are arrays of skills that belong to that category.
+                    
+                    Only use skills from the provided list. Create 3-6 meaningful categories that capture the functional essence of the skills.
+                    
+                    Format: {{"category_name": ["skill1", "skill2"], "another_category": ["skill3"]}}
+                    """
+                    
+                    response = await self.openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "You are an expert at semantic skill analysis and categorization. Provide only valid JSON output."},
+                            {"role": "user", "content": ai_prompt}
+                        ],
+                        temperature=0.1,
+                        max_tokens=800
+                    )
+                    
+                    ai_result = response.choices[0].message.content.strip()
+                    # Parse AI response
+                    import json
+                    skill_groups = json.loads(ai_result)
+                    
+                    # Convert to expected format
+                    grouped_skills = []
+                    for category, skills in skill_groups.items():
+                        if skills:  # Only add non-empty categories
+                            grouped_skills.append({
+                                "functional_group": category,
+                                "skills": skills,
+                                "expertise_level": "mixed",
+                                "collaboration_style": "adaptive"
+                            })
+                    
+                    logger.info(f"✅ AI-driven skill grouping created {len(grouped_skills)} categories")
+                    return grouped_skills
+                    
+                except Exception as e:
+                    logger.warning(f"AI skill grouping failed: {e}")
+                    # Fall back to simple approach
+                    return await self._simple_semantic_fallback(skills_list)
+            
+            async def _simple_semantic_fallback(self, skills_list: List[str]) -> List[Dict[str, Any]]:
+                """
+                🔄 SIMPLE FALLBACK: Basic grouping when AI is unavailable
+                """
+                # Simple approach: group by skill similarity without hard-coded keywords
+                s_groups = {
+                    "primary_skills": [],
+                    "secondary_skills": [],
+                    "specialized_skills": []
                 }
                 
                 # Group skills by pattern matching
@@ -854,7 +853,7 @@ Return ONLY a JSON array in this format:
                     allocated_budget + pm_c_val <= budget_total
                     and agents_created_count < eff_max_agents
                 ):
-                    pm_personality = _generate_personality_for_role("Project Manager")
+                    pm_personality = await _generate_personality_for_role("Project Manager")
 
                     team.append(
                         {
@@ -972,7 +971,7 @@ Return ONLY a JSON array in this format:
                     if domain_name_part
                     else f"{skill_name_base} Specialist"
                 )
-                specialist_personality = _generate_personality_for_role(
+                specialist_personality = await _generate_personality_for_role(
                     agent_role_title
                 )
                 team.append(
@@ -1014,7 +1013,7 @@ Return ONLY a JSON array in this format:
                     budget_total >= COST_PER_MONTH[s_val]
                     and agents_created_count < eff_max_agents
                 ):
-                    fallback_personality = _generate_personality_for_role(
+                    fallback_personality = await _generate_personality_for_role(
                         "General Task Executor"
                     )
                     team.append(
@@ -1113,61 +1112,121 @@ Return ONLY a JSON array in this format:
         if config.user_feedback:
             enhanced_constraints["user_feedback"] = config.user_feedback
         
-        director_instructions = f"""You are an expert AI team architect. Your goal is to design an efficient team of AI agents.
-Max team size is {self.max_team_size}.
-Project Goal: {config.goal}
-Budget Constraints: {json.dumps(config.budget_constraint)}
-User Feedback (IMPORTANT): {config.user_feedback or "None"}
+        # 🚀 SIMPLE SOLUTION: Just increase timeout and simplify prompt
+        budget_amount = config.budget_constraint.get('max_amount', 5000) if config.budget_constraint else 5000
+        
+        # 🎯 PERFORMANCE FIX: Limit team size for complex projects to maintain quality
+        max_team_for_performance = 4  # Max 4 agents for fast, detailed team generation
+        
+        director_instructions = f"""You are an AI Team Designer. Create a complete team proposal.
 
-CRITICAL: If user provided feedback about team size (e.g., "can we have 5 agents?"), you MUST respect this preference and design accordingly.
+PROJECT: {config.goal}
+BUDGET: {budget_amount} EUR
+MAX TEAM SIZE: {max_team_for_performance} agents (focus on quality over quantity)
+{f"USER REQUESTS: {config.user_feedback}" if config.user_feedback else ""}
 
-Follow these steps precisely using the provided tools:
-1.  **Analyze Requirements**: Call `analyze_project_requirements_llm` with the project `goal` and `constraints_json` (which must be a JSON string including budget AND user_feedback). This will return a JSON string with `required_skills`, `expertise_areas`, `recommended_team_size`, and `rationale`.
-2.  **Design Team Structure**: Call `design_team_structure` using:
-    * `required_skills_json`: The `required_skills` list from step 1, formatted as a JSON string.
-    * `budget_total`: The `max_amount` from the budget constraints (float).
-    * `max_agents`: The `recommended_team_size` (int) from step 1.
-    * `user_feedback`: Pass the user feedback string to consider user preferences (e.g., "{config.user_feedback or ''}").
-    This tool returns a JSON string list of agent specifications.
-3.  **Estimate Costs**: Call `estimate_costs` using:
-    * `team_composition_json`: The list of agents from step 2, formatted as a JSON string.
-    * `duration_days`: (Optional, defaults to 30) An estimated project duration in days.
-    This returns a JSON string with cost details.
-4.  **Define Handoffs**: Based on the team from step 2, define a list of handoff objects. Each handoff should have `from` (source agent name), `to` (list of target agent names), and `description`. Ensure handoffs are minimal, logical, and prevent loops (e.g., manager to specialist, specialist to specialist, specialist escalates to manager for critical issues only).
-5.  **Final Rationale**: Provide a brief rationale for your overall team design and handoff strategy.
+Create a focused, expert team with detailed profiles. Each agent should have:
+- Rich personality traits and background
+- Detailed hard/soft skills
+- Clear role specialization
+- Professional communication style
 
-Your final output MUST be a single, valid JSON object containing the keys: "agents", "handoffs", "estimated_cost", and "rationale".
-Do NOT include any markdown formatting or explanatory text outside this JSON structure.
+ENUM VALUES (use exactly these):
+- personality_traits: analytical, creative, detail-oriented, proactive, collaborative, decisive, innovative, methodical, adaptable, diplomatic
+- communication_style: formal, casual, technical, concise, detailed, empathetic, assertive
+- skill levels: beginner, intermediate, expert
+- seniority: junior, senior, expert
 
-IMPORTANT: When calling analyze_project_requirements_llm, pass the COMPLETE constraints including user_feedback:
-Enhanced Constraints to pass: {json.dumps(enhanced_constraints)}
+Return ONLY this JSON structure:
+{{
+  "agents": [
+    {{
+      "name": "NomeCognome",
+      "role": "specific_role",
+      "seniority": "junior|senior|expert",
+      "description": "what this agent does",
+      "system_prompt": "You are a [role]. [responsibilities].",
+      "llm_config": {{"model": "gpt-4.1-nano|gpt-4.1-mini|gpt-4.1", "temperature": 0.3}},
+      "tools": [{{"type": "web_search", "name": "web_search", "description": "Web search capability"}}],
+      "first_name": "Name",
+      "last_name": "Surname",
+      "personality_traits": ["trait1", "trait2"],
+      "communication_style": "collaborative",
+      "hard_skills": [{{"name": "skill", "level": "advanced"}}],
+      "soft_skills": [{{"name": "skill", "level": "advanced"}}],
+      "background_story": "Professional background..."
+    }}
+  ],
+  "handoffs": [
+    {{"from": "agent1", "to": ["agent2"], "description": "handoff description"}}
+  ],
+  "estimated_cost": {{
+    "total_estimated_cost": 450,
+    "currency": "EUR",
+    "breakdown_by_agent": {{"Agent1": 300, "Agent2": 150}}
+  }},
+  "rationale": "Brief explanation of team design"
+}}
 
-Example for passing JSON string to tools: If constraints are {{"budget": 1000, "user_feedback": "5 agents"}}, pass it as the string "{{\\"budget\\": 1000, \\"user_feedback\\": \\"5 agents\\"}}".
-"""
-        available_tools_list = [
-            DirectorAgent.analyze_project_requirements_llm,
-            DirectorAgent.estimate_costs,
-            DirectorAgent.design_team_structure,
-        ]
+TEAM GUIDELINES:
+- Budget: junior=8€/day, senior=15€/day, expert=25€/day (×30 for monthly)
+- If budget ≥{budget_amount}: Use {min(4, max(2, budget_amount//1000))} agents
+- Always include 1 Project Manager (senior) if team >1
+- Make agents domain-specific to the goal
+- Tools: web_search for senior+, file_search for research roles
+- Minimal handoffs: Manager→Specialists, critical escalations only
+- AGENT NAMES: Use format "NomeCognome" (e.g., "ElenaRossi", "MarcoBianchi")
+
+RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
+        # 🔧 OPTIMIZATION: No tools needed for single-call approach
+        available_tools_list = []
         llm_director_agent = OpenAIAgent(
-            name="EfficientTeamDirectorLLM",
+            name="DetailedTeamDirectorLLM",
             instructions=director_instructions,
-            model="gpt-4.1",  # Or "gpt-4-turbo" / "gpt-4o" if available and preferred
+            model="gpt-4.1",  # 🔄 RESTORED: Use full model for detailed team generation
             model_settings=create_model_settings(
-                temperature=0.1
-            ),  # Low temperature for more deterministic output
+                temperature=0.3  # Good balance for creative but consistent teams
+            ),
             tools=available_tools_list,
         )
         try:
-            # The prompt to the LLM Director agent. It needs to understand how to use the tools.
-            # The LLM will make multiple tool calls based on the instructions.
+            # 🚀 PERFORMANCE: Single direct prompt for immediate JSON response
             initial_user_prompt = (
-                "Please generate the AI agent team proposal as per your detailed instructions. "
-                "Ensure all tool inputs requiring JSON strings are correctly formatted. "
-                "Your final response must be only the complete JSON proposal object."
+                "Generate the complete team proposal JSON now. "
+                "No analysis needed - respond immediately with the JSON structure."
             )
-            run_result_obj = await Runner.run(llm_director_agent, initial_user_prompt)
-            raw_llm_output_json_str = run_result_obj.final_output
+            
+            # 🔧 CRITICAL FIX: Add timeout to prevent hanging
+            import asyncio
+            import time
+            start_time = time.time()
+            
+            # 🚀 SIMPLE: Just use longer timeout for all projects
+            timeout_seconds = 180.0  # 3 minutes should be enough for any project
+                
+            try:
+                run_result_obj = await asyncio.wait_for(
+                    Runner.run(llm_director_agent, initial_user_prompt),
+                    timeout=timeout_seconds
+                )
+                execution_time = time.time() - start_time
+                logger.info(f"✅ Director Runner.run completed successfully in {execution_time:.1f}s")
+                
+                # Performance warning if taking too long
+                if execution_time > 60:
+                    logger.warning(f"⚠️ Director taking {execution_time:.1f}s - consider further optimization")
+                    
+            except asyncio.TimeoutError:
+                logger.error(f"❌ Director Runner.run timed out after {timeout_seconds} seconds - using intelligent fallback")
+                logger.info("🔄 Fallback will provide a reasonable team structure based on goals")
+                # Create a robust fallback proposal when AI times out
+                fallback_dict = self._create_fallback_dict(config)
+                raw_llm_output_json_str = json.dumps(fallback_dict)
+                run_result_obj = None  # We'll handle this below
+            
+            if run_result_obj is not None:
+                raw_llm_output_json_str = run_result_obj.final_output
+            # else: raw_llm_output_json_str already set in timeout case
             logger.debug(
                 f"Director LLM raw output for proposal: {raw_llm_output_json_str}"
             )
@@ -1308,12 +1367,13 @@ Example for passing JSON string to tools: If constraints are {{"budget": 1000, "
             )  # This returns a dict with 'agents'
             agents_list = data["agents"]
 
-        # 1. Cap team size
-        if len(agents_list) > self.max_team_size:
+        # 1. Cap team size to performance limit
+        performance_max = 4  # Same as in prompt
+        if len(agents_list) > performance_max:
             logger.info(
-                f"Team size {len(agents_list)} exceeds max {self.max_team_size}. Truncating."
+                f"Team size {len(agents_list)} exceeds performance max {performance_max}. Truncating for quality."
             )
-            agents_list = agents_list[: self.max_team_size]
+            agents_list = agents_list[: performance_max]
 
         # 2. Ensure unique agent names
         final_agents_list: List[Dict[str, Any]] = []

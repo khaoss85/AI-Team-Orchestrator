@@ -1108,6 +1108,14 @@ Return as numbered list, one recommendation per line."""
                 "memory_context": failure_context
             })
             
+            # 🔧 BUGFIX: Extract agent_requirements from context_data to top level
+            # This ensures automated_goal_monitor can access agent assignment info
+            if "context_data" in corrective_task and "agent_requirements" in corrective_task["context_data"]:
+                corrective_task["agent_requirements"] = corrective_task["context_data"]["agent_requirements"]
+                logger.info(f"✅ Extracted agent_requirements: {corrective_task['agent_requirements'].get('role')} (agent_id: {corrective_task['agent_requirements'].get('agent_id')})")
+            else:
+                logger.warning(f"⚠️ No agent_requirements found in corrective task context_data")
+            
             return corrective_task
             
         except Exception as e:

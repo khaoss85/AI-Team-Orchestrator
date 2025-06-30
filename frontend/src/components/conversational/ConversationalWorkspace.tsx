@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { ConversationMessage, Chat, DeliverableArtifact, TeamActivity, WorkspaceContext } from './types'
 import ChatSidebar from './ChatSidebar'
 import ConversationPanel from './ConversationPanel'
 import ArtifactsPanel from './ArtifactsPanel'
+import { useWorkspaceWebSocket } from '@/hooks/useWorkspaceWebSocket'
 
 interface ConversationalWorkspaceProps {
   workspaceId: string
@@ -63,6 +64,27 @@ export default function ConversationalWorkspace({
 }: ConversationalWorkspaceProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // 🧠 Real-time thinking state (Claude/o3 style)
+  const [realtimeThinkingSteps, setRealtimeThinkingSteps] = useState<any[]>([])
+  const [currentGoalDecomposition, setCurrentGoalDecomposition] = useState<any>(null)
+  
+  // 🧠 WebSocket integration for real-time thinking
+  const { isConnected, realtimeUpdates } = useWorkspaceWebSocket({
+    workspaceId,
+    onThinkingStep: (thinkingData) => {
+      console.log('🧠 Real-time thinking step received:', thinkingData)
+      setRealtimeThinkingSteps(prev => [...prev, thinkingData])
+    },
+    onGoalDecompositionStart: (goalData) => {
+      console.log('🎯 Goal decomposition started:', goalData)
+      setCurrentGoalDecomposition({ ...goalData, status: 'in_progress' })
+      setRealtimeThinkingSteps([]) // Clear previous thinking steps
+    },
+    onGoalDecompositionComplete: (decompositionData) => {
+      console.log('✅ Goal decomposition completed:', decompositionData)
+      setCurrentGoalDecomposition(prev => ({ ...prev, ...decompositionData, status: 'completed' }))
+    }
+  })
   const [artifactsPanelWidth, setArtifactsPanelWidth] = useState(() => {
     // Load saved width from localStorage
     if (typeof window !== 'undefined') {
@@ -143,12 +165,15 @@ export default function ConversationalWorkspace({
           activeChat={activeChat}
           messages={messages}
           teamActivities={teamActivities}
-          thinkingSteps={thinkingSteps}
+          thinkingSteps={[...thinkingSteps, ...realtimeThinkingSteps]} // 🧠 Merge static + real-time thinking
           suggestedActions={suggestedActions}
           onSendMessage={onSendMessage}
           onRefreshMessages={onRefreshMessages}
           loading={sendingMessage}
           workspaceId={workspaceId}
+          // 🧠 Real-time thinking props
+          isWebSocketConnected={isConnected}
+          currentGoalDecomposition={currentGoalDecomposition}
         />
       </div>
 

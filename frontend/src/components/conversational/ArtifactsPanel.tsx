@@ -37,7 +37,7 @@ export default function ArtifactsPanel({
   onResumeAutoGeneration
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
-  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'thinking' | 'viewer'>('artifacts')
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'viewer'>('artifacts')
 
   // Auto-switch to artifacts when new ones arrive
   React.useEffect(() => {
@@ -119,12 +119,6 @@ export default function ArtifactsPanel({
             count={artifacts.length}
           />
           <TabButton
-            active={activeTab === 'thinking'}
-            onClick={() => setActiveTab('thinking')}
-            icon="🧠"
-            label="Thinking"
-          />
-          <TabButton
             active={activeTab === 'documents'}
             onClick={() => setActiveTab('documents')}
             icon="📁"
@@ -151,29 +145,6 @@ export default function ArtifactsPanel({
               setActiveTab('viewer')
             }}
           />
-        )}
-
-        {activeTab === 'thinking' && (
-          <div className="h-full overflow-auto">
-            {/* Show thinking process for current goal if available */}
-            {activeChat && activeChat.type === 'goal' && activeChat.metadata?.goalId ? (
-              <AuthenticThinkingViewer
-                goalId={activeChat.metadata.goalId}
-                workspaceId={workspaceId}
-              />
-            ) : (
-              <div className="p-6 text-center text-gray-500">
-                <div className="text-3xl mb-3">🧠</div>
-                <div className="text-lg font-medium mb-2">Thinking Process</div>
-                <div className="text-sm">
-                  Select a goal-based chat to view the authentic thinking process with todo list decomposition
-                </div>
-                <div className="mt-4 text-xs text-gray-400">
-                  Shows real system reasoning - not fake metadata
-                </div>
-              </div>
-            )}
-          </div>
         )}
 
         {activeTab === 'documents' && (

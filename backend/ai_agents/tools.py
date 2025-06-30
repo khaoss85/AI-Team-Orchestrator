@@ -146,11 +146,32 @@ class PMOrchestrationTools:
                 agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
                 task_name_lower = task_name.lower().strip()
 
+                # 🚨 ENHANCED DUPLICATE PREVENTION: Multiple strategies
+                duplicate_found = False
+                duplicate_task_id = None
+                duplicate_reason = ""
+                
                 for existing_task_dict in all_current_tasks:
                     if existing_task_dict.get("status") in [TaskStatus.PENDING.value, TaskStatus.IN_PROGRESS.value]:
                         existing_name_lower = existing_task_dict.get("name", "").lower().strip()
                         existing_phase = (existing_task_dict.get("context_data", {}).get("project_phase", "")).upper()
                         
+                        # Strategy 1: Exact name match
+                        if task_name_lower == existing_name_lower:
+                            duplicate_found = True
+                            duplicate_task_id = existing_task_dict.get('id')
+                            duplicate_reason = "Exact name match"
+                            break
+                        
+                        # Strategy 2: Similar name detection (Levenshtein-like)
+                        name_similarity = self._calculate_name_similarity(task_name_lower, existing_name_lower)
+                        if name_similarity > 0.8:  # 80% similarity threshold
+                            duplicate_found = True
+                            duplicate_task_id = existing_task_dict.get('id')
+                            duplicate_reason = f"High name similarity ({name_similarity:.0%})"
+                            break
+                        
+                        # Strategy 3: Same target agent + phase analysis
                         is_same_target_agent = False
                         existing_agent_id_in_task = existing_task_dict.get("agent_id")
                         existing_assigned_role_in_task = existing_task_dict.get("assigned_to_role", "") 
@@ -160,25 +181,29 @@ class PMOrchestrationTools:
                         if target_agent_object_for_new_task:
                             if existing_agent_id_in_task == target_agent_object_for_new_task.get("id"):
                                 is_same_target_agent = True
-                            # Se il task esistente non ha agent_id ma ha un assigned_to_role che matcha il nome del target agent
                             elif not existing_agent_id_in_task and existing_assigned_role_in_task.lower() == target_agent_role.lower():
                                 is_same_target_agent = True
-                        # Se non troviamo un target_agent_object per nome (improbabile se il PM usa get_team_roles_and_status),
-                        # e il task esistente ha un assigned_to_role che matcha, consideralo come stesso target
                         elif not target_agent_object_for_new_task and existing_assigned_role_in_task.lower() == target_agent_role.lower():
                              is_same_target_agent = True
 
-                        if task_name_lower == existing_name_lower and \
-                           existing_phase == normalized_project_phase and \
-                           is_same_target_agent:
-                            msg = f"Potential duplicate: A task named '{existing_task_dict.get('name')}' (ID: {existing_task_dict.get('id')}) is already '{existing_task_dict.get('status')}' targeting '{target_agent_role}' for phase '{normalized_project_phase}'. Not creating a new task."
-                            logger.warning(msg)
-                            return json.dumps({
-                                "success": False, 
-                                "task_id": existing_task_dict.get('id'), 
-                                "message": msg,
-                                "error": "Likely duplicate task detected (similar name, target agent/role, and phase)."
-                            })
+                        # Strategy 4: Semantic duplicate detection (same agent + similar content)
+                        if is_same_target_agent and existing_phase == normalized_project_phase:
+                            # Check for semantic duplicates with lower threshold
+                            if name_similarity > 0.6 or self._has_overlapping_keywords(task_name_lower, existing_name_lower):
+                                duplicate_found = True
+                                duplicate_task_id = existing_task_dict.get('id')
+                                duplicate_reason = f"Same agent + phase with similar content"
+                                break
+                
+                if duplicate_found:
+                    msg = f"Duplicate prevented: Task similar to '{existing_task_dict.get('name')}' (ID: {duplicate_task_id}) already exists. Reason: {duplicate_reason}"
+                    logger.warning(msg)
+                    return json.dumps({
+                        "success": False, 
+                        "task_id": duplicate_task_id, 
+                        "message": msg,
+                        "error": f"Duplicate task detected: {duplicate_reason}"
+                    })
                 
                 target_agent = next((agent for agent in agents_in_db if agent.get("name", "").lower() == target_agent_role.lower() and agent.get("status") == "available"), None)
                 
@@ -223,6 +248,8 @@ class PMOrchestrationTools:
                     "target_agent_role_at_creation": target_agent.get("role")
                 }
                 
+                # 🚨 CRITICAL FIX: PM should create independent tasks, not self-referencing sub-tasks
+                # Change from sub-task creation to independent task delegation
                 created_task_data = await db_create_task(
                     workspace_id=workspace_id_str,
                     agent_id=str(target_agent["id"]), 
@@ -231,16 +258,16 @@ class PMOrchestrationTools:
                     description=task_description,
                     status=TaskStatus.PENDING.value,
                     priority=priority,
-                    parent_task_id=parent_task_id, 
+                    parent_task_id=None,  # 🔧 FIX: No parent - PM creates independent tasks
                     context_data=final_context_data,
-                    created_by_task_id=parent_task_id, 
+                    created_by_task_id=parent_task_id,  # Track source but don't create hierarchy
                     created_by_agent_id=pm_agent_id, 
-                    creation_type="pm_tool_delegation" 
+                    creation_type="pm_task_delegation"  # Changed from pm_tool_delegation
                 )
                 
                 if created_task_data and created_task_data.get("id"):
                     task_created_id = created_task_data['id']
-                    msg = f"Sub-task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent '{target_agent['name']}' (Role: '{target_agent.get('role', 'N/A')}') for project phase '{normalized_project_phase}'."
+                    msg = f"Delegated task '{task_name}' (ID: {task_created_id}) created successfully and assigned to agent '{target_agent['name']}' (Role: '{target_agent.get('role', 'N/A')}') for project phase '{normalized_project_phase}'."
                     logger.info(msg)
                     response_payload = {
                         "success": True, "task_id": task_created_id,
@@ -259,6 +286,47 @@ class PMOrchestrationTools:
                 return json.dumps({"success": False, "task_id": None, "error": f"An unexpected error occurred: {str(e)}"})
         
         return impl
+    
+    @staticmethod
+    def _calculate_name_similarity(name1: str, name2: str) -> float:
+        """Calculate similarity between two task names (0.0 to 1.0)"""
+        try:
+            # Simple Jaccard similarity with word tokenization
+            words1 = set(name1.lower().split())
+            words2 = set(name2.lower().split())
+            
+            if not words1 and not words2:
+                return 1.0
+            if not words1 or not words2:
+                return 0.0
+                
+            intersection = len(words1.intersection(words2))
+            union = len(words1.union(words2))
+            
+            return intersection / union if union > 0 else 0.0
+        except Exception:
+            return 0.0
+    
+    @staticmethod
+    def _has_overlapping_keywords(name1: str, name2: str) -> bool:
+        """Check if two task names have significant keyword overlap"""
+        try:
+            # Extract meaningful keywords (ignore common words)
+            stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'task', 'create', 'generate', 'develop'}
+            
+            words1 = set(word for word in name1.lower().split() if len(word) > 2 and word not in stop_words)
+            words2 = set(word for word in name2.lower().split() if len(word) > 2 and word not in stop_words)
+            
+            if not words1 or not words2:
+                return False
+            
+            # Check if they share more than 50% of meaningful keywords
+            shared = len(words1.intersection(words2))
+            min_words = min(len(words1), len(words2))
+            
+            return shared / min_words > 0.5 if min_words > 0 else False
+        except Exception:
+            return False
 
 class CommonTools:
     """Common tools that can be used by any agent"""
@@ -649,9 +717,61 @@ class WorkspaceMemoryTools:
     """Tools for workspace memory management - agents can query/store project insights"""
     
     @staticmethod
+    def _get_workspace_id_from_context() -> str:
+        """🔧 FIX #1: Extract workspace_id from SDK context to prevent placeholder errors"""
+        try:
+            # Method 1: Try to get from SDK RunContextWrapper
+            try:
+                from agents import RunContextWrapper
+                context = RunContextWrapper.get_current()
+                if context:
+                    # Try direct access
+                    if hasattr(context, 'workspace_id'):
+                        workspace_id = str(context.workspace_id)
+                        if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
+                            return workspace_id
+                    
+                    # Try accessing custom context dict we set in manager.py
+                    ctx_dict = getattr(context, '__dict__', {})
+                    if 'workspace_id' in ctx_dict:
+                        workspace_id = str(ctx_dict['workspace_id'])
+                        if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
+                            return workspace_id
+                    
+                    # Try accessing parameters or context data
+                    for attr in ['context_data', 'parameters', 'kwargs']:
+                        if hasattr(context, attr):
+                            data = getattr(context, attr, {})
+                            if isinstance(data, dict) and 'workspace_id' in data:
+                                workspace_id = str(data['workspace_id'])
+                                if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
+                                    return workspace_id
+            except Exception as e:
+                logger.debug(f"RunContextWrapper access failed: {e}")
+            
+            # Method 2: Try global context access (fallback)
+            import inspect
+            frame = inspect.currentframe()
+            try:
+                # Look through call stack for workspace_id
+                while frame:
+                    frame = frame.f_back
+                    if frame and 'task' in frame.f_locals:
+                        task = frame.f_locals['task']
+                        if hasattr(task, 'workspace_id'):
+                            return str(task.workspace_id)
+            finally:
+                del frame
+                
+            logger.warning("No valid workspace_id found in any context")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get workspace_id from context: {e}")
+            return None
+    
+    @staticmethod
     @function_tool
     async def query_project_memory(
-        workspace_id: str, 
         query: str,
         insight_types: str = None,
         max_results: int = 5
@@ -660,7 +780,6 @@ class WorkspaceMemoryTools:
         Query project memory for relevant insights and lessons learned.
         
         Args:
-            workspace_id: ID of the current workspace
             query: Search query (e.g., "contact research challenges", "email strategy")
             insight_types: Optional comma-separated types: success_pattern,failure_lesson,discovery,constraint,optimization
             max_results: Maximum number of insights to return (1-10)
@@ -672,6 +791,11 @@ class WorkspaceMemoryTools:
             from workspace_memory import workspace_memory
             from models import MemoryQueryRequest, InsightType
             from uuid import UUID
+            
+            # 🔧 FIX #1: Get workspace_id from context instead of parameter
+            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
+            if not workspace_id:
+                return json.dumps({"error": "No workspace context available", "total_found": 0, "context": "", "insights": []})
             
             # Parse insight types
             types = None
@@ -729,7 +853,6 @@ class WorkspaceMemoryTools:
     @staticmethod
     @function_tool
     async def store_key_insight(
-        workspace_id: str,
         task_id: str,
         agent_role: str,
         insight_type: str,
@@ -772,6 +895,11 @@ class WorkspaceMemoryTools:
             if tags:
                 tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
             
+            # 🔧 FIX #1: Get workspace_id from context instead of parameter
+            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
+            if not workspace_id:
+                return json.dumps({"success": False, "error": "No workspace context available for storing insight"})
+
             # Validate UUIDs
             try:
                 workspace_uuid = UUID(workspace_id)
@@ -810,12 +938,11 @@ class WorkspaceMemoryTools:
 
     @staticmethod
     @function_tool
-    async def get_workspace_discoveries(workspace_id: str, domain: str = None) -> str:
+    async def get_workspace_discoveries(domain: str = None) -> str:
         """
         Get key discoveries made in this workspace.
         
         Args:
-            workspace_id: ID of the current workspace
             domain: Optional domain filter (e.g., "contact_research", "email_strategy")
             
         Returns:
@@ -824,6 +951,11 @@ class WorkspaceMemoryTools:
         try:
             from workspace_memory import workspace_memory
             from uuid import UUID
+            
+            # 🔧 FIX #1: Get workspace_id from context instead of parameter
+            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
+            if not workspace_id:
+                return json.dumps({"error": "No workspace context available", "total_insights": 0})
             
             # Validate workspace_id
             try:
@@ -869,12 +1001,11 @@ class WorkspaceMemoryTools:
 
     @staticmethod  
     @function_tool
-    async def get_relevant_project_context(workspace_id: str, current_task_name: str) -> str:
+    async def get_relevant_project_context(current_task_name: str) -> str:
         """
         Get relevant project context for the current task automatically.
         
         Args:
-            workspace_id: ID of the current workspace
             current_task_name: Name of the current task being executed
             
         Returns:
@@ -884,6 +1015,11 @@ class WorkspaceMemoryTools:
             from workspace_memory import workspace_memory
             from models import Task
             from uuid import UUID
+            
+            # 🔧 FIX #1: Get workspace_id from context instead of parameter
+            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
+            if not workspace_id:
+                return "Warning: No workspace context available"
             
             # Create a mock task for context extraction
             mock_task = Task(

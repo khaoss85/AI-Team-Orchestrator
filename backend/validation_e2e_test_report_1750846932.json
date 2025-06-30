@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-06-25T12:22:11.565760",
+  "fixes_validated": {
+    "goal_asset_integration": false,
+    "goal_monitoring_trigger": false,
+    "api_endpoints_complete": false,
+    "workflow_integration": false,
+    "no_assets_no_progress": false
+  },
+  "critical_findings": [
+    "Test execution failed: Failed to create workspace: 422 - {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"user_id\"],\"msg\":\"Field required\",\"input\":{\"name\":\"Asset-Driven Validation Test 1750846931\",\"description\":\"Comprehensive validation of asset-driven system with all 5 critical fixes\",\"status\":\"active\"}}]}"
+  ],
+  "performance_metrics": {},
+  "pillar_compliance": {},
+  "end_time": "2025-06-25T12:22:12.584599"
+}

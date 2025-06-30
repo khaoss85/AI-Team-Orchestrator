@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "{'message': 'new row for relation \"asset_artifacts\" violates check constraint \"asset_artifacts_artifact_type_check\"', 'code': '23514', 'hint': None, 'details': 'Failing row contains (9c78341f-3d08-400c-91f5-b5da43cadcc2, 552e6c0c-ce06-458f-af26-fb3a17ae9507, null, null, Process Optimization Workflow, workflow_document, # Process Optimization Workflow - 3-Day Onboarding\\n\\n## Overview\\n..., structured_document, null, null, null, {\"e2e_test_artifact\": true, \"generated_scenario\": \"customer_onbo..., null, null, null, 0.92, t, {}, null, {}, draft, 1, f, 0.90, 0.88, f, t, {}, null, auto, t, {}, {}, {}, null, 2025-06-25 17:23:09.854492+00, 2025-06-25 17:23:09.854492+00, null, null).'}"
+}

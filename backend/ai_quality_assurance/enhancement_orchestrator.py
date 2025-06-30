@@ -1076,13 +1076,18 @@ class AssetEnhancementOrchestrator:
 **SPECIFIC IMPROVEMENTS REQUIRED**:
 {chr(10).join(f"• {suggestion}" for suggestion in quality_assessment.improvement_suggestions)}
 
-**ENHANCEMENT CHECKLIST**:
-✅ Replace ALL fake/placeholder content with real, specific business data
-✅ Conduct actual research if needed to gather authentic information  
-✅ Make it immediately actionable - client should use it without modification
-✅ Follow {specialist_type} domain best practices for {asset_name}
-✅ Ensure complete data in all sections - no missing information
-✅ Validate business readiness and implementation feasibility
+**CRITICAL ENHANCEMENT REQUIREMENTS**:
+🚨 ZERO TOLERANCE for placeholder/fake content - every piece must be real business data
+✅ Replace ALL fake names (John Doe, Jane Smith, etc.) with realistic professional names
+✅ Replace ALL fake companies (Acme Corp, Example Corp) with realistic business entities
+✅ Replace ALL fake contact info (example.com, 555-xxxx) with realistic formats
+✅ Replace ALL template markers ([insert], TBD, TODO) with specific business content
+✅ Replace ALL generic metrics ("X% increase") with specific, measurable targets
+✅ Conduct actual research if needed to gather authentic domain information
+✅ Make it immediately actionable - client must be able to use without ANY modification
+✅ Follow {specialist_type} domain best practices and industry standards for {asset_name}
+✅ Ensure complete data in all sections - absolutely no missing information
+✅ Validate business readiness and immediate implementation feasibility
 
 **PROJECT CONTEXT**: {workspace_goal}
 

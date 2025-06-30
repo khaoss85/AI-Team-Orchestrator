@@ -11,13 +11,26 @@ router = APIRouter(prefix="/deliverables", tags=["deliverables"])
 logger = logging.getLogger(__name__)
 
 @router.get("/workspace/{workspace_id}")
-async def get_workspace_deliverables(workspace_id: str):
+async def get_workspace_deliverables(workspace_id: str, goal_id: Optional[str] = None):
     """Get all deliverables for a workspace - Frontend compatible format"""
     try:
-        logger.info(f"🔍 Fetching deliverables for workspace {workspace_id}")
+        if goal_id:
+            logger.info(f"🔍 Fetching deliverables for workspace {workspace_id}, goal {goal_id}")
+        else:
+            logger.info(f"🔍 Fetching deliverables for workspace {workspace_id}")
         
         # Use CRUD function
         deliverables = await get_deliverables(workspace_id)
+        
+        # Filter by goal_id if provided
+        if goal_id:
+            filtered_deliverables = []
+            for deliverable in deliverables:
+                metadata = deliverable.get("metadata", {})
+                if metadata.get("goal_id") == goal_id:
+                    filtered_deliverables.append(deliverable)
+            deliverables = filtered_deliverables
+            logger.info(f"📋 Filtered to {len(deliverables)} deliverables for goal {goal_id}")
         
         # Transform deliverables to frontend-expected format
         key_outputs = []

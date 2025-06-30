@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "{'message': 'invalid input syntax for type uuid: \"e2e-test-user\"', 'code': '22P02', 'hint': None, 'details': None}"
+}

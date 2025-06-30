@@ -11,7 +11,7 @@ if not hasattr(BaseModel, "model_validate"):
     BaseModel.model_validate = _model_validate  # type: ignore
 from typing import List, Dict, Any, Optional, Union, Literal
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 from enum import Enum
 import json
 import warnings
@@ -79,6 +79,7 @@ class GoalStatus(str, Enum):
     BLOCKED = "blocked"        # Goal is blocked by dependencies or issues
     FAILED = "failed"          # Goal has failed and needs intervention
     NEEDS_ATTENTION = "needs_attention"  # Goal requires manual review
+    COMPLETED_PENDING_REVIEW = "completed_pending_review" # 🔧 FIX: Add missing status for human review
 
 # 🌍 UNIVERSAL METRIC TYPES: No hardcoded business enums - AI-driven classification only
 # All metric types are now free-form strings classified by AI for true universality
@@ -118,6 +119,7 @@ class Workspace(BaseModel):
 class SkillLevel(str, Enum):
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
     EXPERT = "expert"
 
 class PersonalityTrait(str, Enum):
@@ -528,6 +530,22 @@ class WorkspaceGoal(BaseModel):
     last_validation_at: Optional[datetime] = None
     validation_frequency_minutes: int = 20
     
+    # Enhanced goal metrics - Asset-driven system
+    confidence: float = 0.8
+    semantic_context: Optional[Dict[str, Any]] = None
+    goal_type: str = "deliverable"
+    is_percentage: bool = False
+    is_minimum: bool = True
+    
+    # Asset-driven progress tracking (Pillar 12: Concrete Deliverables)
+    progress_percentage: float = 0.0
+    asset_completion_rate: float = 0.0
+    quality_score: float = 0.0
+    asset_requirements_count: int = 0
+    assets_completed_count: int = 0
+    ai_validation_enabled: bool = True
+    memory_insights: Optional[Dict[str, Any]] = None
+    
     # Computed properties
     @property
     def completion_percentage(self) -> float:
@@ -606,13 +624,52 @@ PHASE_DESCRIPTIONS = {
 # === DYNAMIC DELIVERABLE SYSTEM MODELS ===
 
 class AssetRequirement(BaseModel):
-    """Requisito per un asset azionabile"""
-    asset_type: str = PydanticField(..., description="Tipo di asset (es. contact_database, content_calendar)")
-    asset_format: str = PydanticField(..., description="Formato dell'asset (structured_data, document, spreadsheet)")
-    actionability_level: str = PydanticField(..., description="Livello di azionabilità (ready_to_use, needs_customization, template)")
-    business_impact: str = PydanticField(..., description="Impatto business (immediate, short_term, strategic)")
-    priority: int = PydanticField(default=1, description="Priorità dell'asset (1=alta, 5=bassa)")
-    validation_criteria: List[str] = PydanticField(default_factory=list, description="Criteri di validazione")
+    """Enhanced asset requirement from existing goal_asset_requirements"""
+    id: UUID = PydanticField(default_factory=uuid4)
+    goal_id: UUID = PydanticField(..., description="Goal this requirement serves")
+    decomposition_id: Optional[UUID] = PydanticField(default=None, description="From original thinking system")
+    workspace_id: UUID = PydanticField(...)
+    
+    # Asset identification (enhanced from existing)
+    asset_type: str = PydanticField(default="document", description="document, data, design, code, presentation")
+    asset_format: str = PydanticField(default="structured_data", description="Asset format type")
+    asset_name: str = PydanticField(..., description="Name from existing name field")
+    description: str = PydanticField(..., description="From existing description field")
+    
+    # Requirements (enhanced)
+    acceptance_criteria: Dict[str, Any] = PydanticField(default_factory=dict)
+    weight: float = PydanticField(default=1.0, ge=0.0, le=3.0)
+    mandatory: bool = PydanticField(default=True)
+    business_value_score: float = PydanticField(default=0.5, ge=0.0, le=1.0)
+    validation_rules: Dict[str, Any] = PydanticField(default_factory=dict)
+    automation_ready: bool = PydanticField(default=False)
+    
+    # From existing goal_todos fields
+    priority: str = PydanticField(default="medium", description="low, medium, high")
+    estimated_effort: Optional[str] = PydanticField(default=None, description="low, medium, high")
+    user_impact: Optional[str] = PydanticField(default=None, description="immediate, short-term, long-term")
+    complexity: Optional[str] = PydanticField(default=None, description="simple, medium, complex")
+    value_proposition: Optional[str] = PydanticField(default=None)
+    completion_criteria: Optional[str] = PydanticField(default=None)
+    deliverable_type: Optional[str] = PydanticField(default=None)
+    supports_assets: List[str] = PydanticField(default_factory=list)
+    
+    # Status tracking (from existing)
+    status: str = PydanticField(default="pending", description="pending, in_progress, completed, blocked")
+    progress_percentage: int = PydanticField(default=0, ge=0, le=100)
+    linked_task_id: Optional[UUID] = PydanticField(default=None)
+    
+    # Pillar compliance
+    ai_generated: bool = PydanticField(default=True, description="Pillar 2: AI-Driven")
+    language_agnostic: bool = PydanticField(default=True, description="Pillar 3: Universal")
+    sdk_compatible: bool = PydanticField(default=True, description="Pillar 1: OpenAI SDK")
+    
+    # Timestamps (from existing)
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    updated_at: datetime = PydanticField(default_factory=datetime.now)
+    completed_at: Optional[datetime] = PydanticField(default=None)
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class DeliverableRequirements(BaseModel):
     """Requirements dinamici per un deliverable"""
@@ -742,3 +799,242 @@ class WorkspaceMemorySummary(BaseModel):
     key_constraints: List[str] = PydanticField(default_factory=list, description="Vincoli chiave")
     success_patterns: List[str] = PydanticField(default_factory=list, description="Pattern di successo")
     last_updated: datetime = PydanticField(default_factory=datetime.now, description="Ultimo aggiornamento")
+
+# === ASSET-DRIVEN SYSTEM MODELS (PILLAR-COMPLIANT) ===
+
+class AssetArtifact(BaseModel):
+    """Asset artifact with pillar compliance - Pillar 12: Concrete Deliverables"""
+    id: Optional[UUID] = PydanticField(default=None)
+    requirement_id: UUID = PydanticField(..., description="Asset requirement this fulfills")
+    task_id: Optional[UUID] = PydanticField(default=None, description="Task that produced this artifact")
+    agent_id: Optional[UUID] = PydanticField(default=None, description="Agent that created this")
+    workspace_id: Optional[UUID] = PydanticField(default=None, description="Workspace this artifact belongs to")
+    
+    # Artifact identification (Pillar 12: Concrete Deliverables)
+    artifact_name: str = PydanticField(..., max_length=200)
+    artifact_type: str = PydanticField(..., description="file, text, json, url, binary, structured_data, openai_asset")
+    artifact_format: str = PydanticField(default="text", description="Format of the artifact content")
+    
+    # Content storage (Pillar 1: OpenAI SDK native)
+    content: Optional[str] = PydanticField(default=None, description="Primary content")
+    content_format: str = PydanticField(default="text", description="Content format type")
+    file_path: Optional[str] = PydanticField(default=None, max_length=500)
+    external_url: Optional[str] = PydanticField(default=None, max_length=500)
+    openai_file_id: Optional[str] = PydanticField(default=None, max_length=255, description="Pillar 1: OpenAI SDK file reference")
+    metadata: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Content metrics
+    size_bytes: Optional[int] = PydanticField(default=None)
+    word_count: Optional[int] = PydanticField(default=None)
+    checksum: Optional[str] = PydanticField(default=None, max_length=64)
+    
+    # Quality validation (Pillar 8: AI-first QA)
+    quality_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    validation_passed: bool = PydanticField(default=False)
+    validation_details: Dict[str, Any] = PydanticField(default_factory=dict)
+    validation_errors: List[str] = PydanticField(default_factory=list)
+    ai_quality_check: Dict[str, Any] = PydanticField(default_factory=dict, description="Pillar 8: AI Quality Gates")
+    
+    # Approval workflow (Pillar 8: Human-in-the-Loop)
+    status: str = PydanticField(default="draft", description="draft, ai_validated, human_review, approved, rejected, needs_improvement")
+    version: int = PydanticField(default=1)
+    human_review_required: bool = PydanticField(default=False)
+    
+    # Business metrics (Pillar 12: Actionable Deliverables)
+    business_value_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    actionability_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    automation_ready: bool = PydanticField(default=False)
+    
+    # AI Enhancement (Pillar 12: AI Content Enhancer)
+    ai_enhanced: bool = PydanticField(default=False)
+    enhancement_applied: Dict[str, Any] = PydanticField(default_factory=dict)
+    original_content_hash: Optional[str] = PydanticField(default=None, max_length=64)
+    
+    # Language & Universal Support (Pillar 3: Universal)
+    detected_language: str = PydanticField(default="auto", max_length=10)
+    language_agnostic: bool = PydanticField(default=True)
+    
+    # Memory Integration (Pillar 6: Memory System)
+    memory_context: Dict[str, Any] = PydanticField(default_factory=dict)
+    learning_insights: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Real-time Thinking (Pillar 10: Real-Time Thinking)
+    thinking_process: Dict[str, Any] = PydanticField(default_factory=dict)
+    reasoning_steps: List[str] = PydanticField(default_factory=list)
+    
+    # Timestamps
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    updated_at: datetime = PydanticField(default_factory=datetime.now)
+    approved_at: Optional[datetime] = PydanticField(default=None)
+    approved_by_user_id: Optional[UUID] = PydanticField(default=None)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class QualityRule(BaseModel):
+    """AI-driven quality rule - Pillar 2: AI-Driven, zero hard-coding"""
+    id: Optional[UUID] = PydanticField(default=None)
+    asset_type: str = PydanticField(..., max_length=50)
+    rule_name: str = PydanticField(..., max_length=200)
+    rule_description: Optional[str] = PydanticField(default=None)
+    
+    # AI-driven validation (Pillar 2: AI-Driven, zero hard-coding)
+    ai_validation_prompt: str = PydanticField(..., description="AI prompt for validation")
+    validation_model: str = PydanticField(default="gpt-4o-mini", description="Pillar 1: OpenAI SDK")
+    validation_config: Dict[str, Any] = PydanticField(default_factory=dict)
+    threshold_score: float = PydanticField(default=0.8, ge=0.0, le=1.0)
+    weight: float = PydanticField(default=1.0, ge=0.0, le=3.0)
+    
+    # Rule management (Pillar 4: Scalable & auto-apprendente)
+    is_active: bool = PydanticField(default=True)
+    rule_order: int = PydanticField(default=1)
+    failure_action: str = PydanticField(default="ai_enhance", description="warn, block, ai_enhance, human_review")
+    auto_learning_enabled: bool = PydanticField(default=True, description="Pillar 4: Auto-learning")
+    
+    # Memory integration (Pillar 6: Memory System)
+    success_patterns: Dict[str, Any] = PydanticField(default_factory=dict)
+    failure_lessons: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Universal support (Pillar 3: Universal)
+    language_agnostic: bool = PydanticField(default=True)
+    domain_agnostic: bool = PydanticField(default=True)
+    
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class QualityValidation(BaseModel):
+    """Quality validation result - Pillar 8: AI-first QA"""
+    id: Optional[UUID] = PydanticField(default=None)
+    artifact_id: UUID = PydanticField(..., description="Artifact being validated")
+    rule_id: Optional[UUID] = PydanticField(default=None, description="Quality rule applied")
+    workspace_id: Optional[UUID] = PydanticField(default=None, description="Workspace ID for validation")
+    
+    # Validation results (Pillar 8: AI-first QA)
+    score: float = PydanticField(..., ge=0.0, le=1.0)
+    passed: bool = PydanticField(...)
+    validation_output: Dict[str, Any] = PydanticField(default_factory=dict)
+    feedback: Optional[str] = PydanticField(default=None)
+    ai_reasoning: Optional[str] = PydanticField(default=None, description="Pillar 10: Explainability")
+    
+    # Enhanced AI insights (Pillar 2: AI-Driven)
+    ai_assessment: Optional[str] = PydanticField(default=None, description="AI-generated assessment")
+    improvement_suggestions: List[str] = PydanticField(default_factory=list, description="AI improvement suggestions")
+    business_impact: Optional[str] = PydanticField(default=None, description="Business impact analysis")
+    actionability_assessment: Optional[float] = PydanticField(default=None, ge=0.0, le=1.0, description="Actionability score")
+    
+    # Quality dimensions (Pillar 8: Quality Gates)
+    quality_dimensions: Dict[str, float] = PydanticField(default_factory=dict, description="Quality dimension scores")
+    
+    # Validation metadata (Pillar 1: OpenAI SDK)
+    validated_at: datetime = PydanticField(default_factory=datetime.now)
+    validator_type: str = PydanticField(default="ai", description="ai, human, automated, hybrid")
+    validation_model: Optional[str] = PydanticField(default=None, max_length=50, description="AI model used for validation")
+    openai_model_used: Optional[str] = PydanticField(default=None, max_length=50)
+    openai_completion_id: Optional[str] = PydanticField(default=None, max_length=255)
+    execution_time_ms: Optional[int] = PydanticField(default=None)
+    processing_time_ms: Optional[int] = PydanticField(default=None)
+    
+    # Enhancement tracking (Pillar 12: AI Content Enhancer)
+    enhancement_suggested: bool = PydanticField(default=False)
+    enhancement_applied: bool = PydanticField(default=False)
+    enhancement_details: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Pillar compliance (Pillar system compliance)
+    ai_driven: bool = PydanticField(default=True, description="Whether validation was AI-driven")
+    pillar_compliance_check: Dict[str, Any] = PydanticField(default_factory=dict, description="Pillar compliance assessment")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# AssetRequirement class moved to line 624 to fix import dependencies
+
+class EnhancedWorkspaceGoal(BaseModel):
+    """Enhanced workspace goal with asset tracking"""
+    # Existing fields from WorkspaceGoal
+    id: Optional[UUID] = PydanticField(default=None)
+    workspace_id: UUID = PydanticField(...)
+    metric_type: str = PydanticField(..., description="AI-generated goal metric")
+    target_value: float = PydanticField(...)
+    current_value: float = PydanticField(default=0.0)
+    status: GoalStatus = PydanticField(default=GoalStatus.ACTIVE)
+    
+    # Enhanced asset-driven fields
+    asset_completion_rate: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    quality_score: float = PydanticField(default=0.0, ge=0.0, le=1.0)
+    asset_requirements_count: int = PydanticField(default=0)
+    assets_completed_count: int = PydanticField(default=0)
+    ai_validation_enabled: bool = PydanticField(default=True, description="Pillar 8: AI-first QA")
+    memory_insights: Dict[str, Any] = PydanticField(default_factory=dict, description="Pillar 6: Memory System")
+    
+    # Existing timestamps
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    updated_at: datetime = PydanticField(default_factory=datetime.now)
+    last_validation_at: Optional[datetime] = PydanticField(default=None)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class EnhancedTask(BaseModel):
+    """Enhanced task with asset production capabilities"""
+    # Existing core Task fields (inherit from existing Task model)
+    id: Optional[UUID] = PydanticField(default=None)
+    workspace_id: UUID = PydanticField(...)
+    agent_id: Optional[UUID] = PydanticField(default=None)
+    name: str = PydanticField(...)
+    description: str = PydanticField(...)
+    status: TaskStatus = PydanticField(default=TaskStatus.PENDING)
+    priority: str = PydanticField(default="medium")
+    
+    # Enhanced asset production fields
+    target_asset_type: Optional[str] = PydanticField(default=None, max_length=50)
+    produces_artifact: bool = PydanticField(default=False)
+    asset_requirement_id: Optional[UUID] = PydanticField(default=None)
+    quality_validated: bool = PydanticField(default=False)
+    ai_enhanced: bool = PydanticField(default=False, description="Pillar 12: AI Content Enhancer")
+    openai_thread_id: Optional[str] = PydanticField(default=None, max_length=255, description="Pillar 1: OpenAI SDK native")
+    real_time_thinking: Dict[str, Any] = PydanticField(default_factory=dict, description="Pillar 10: Real-Time Thinking")
+    
+    # Existing fields
+    context_data: Optional[Dict[str, Any]] = PydanticField(default_factory=dict)
+    estimated_effort_hours: Optional[int] = PydanticField(default=None)
+    deadline: Optional[datetime] = PydanticField(default=None)
+    created_at: datetime = PydanticField(default_factory=datetime.now)
+    updated_at: datetime = PydanticField(default_factory=datetime.now)
+    completed_at: Optional[datetime] = PydanticField(default=None)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class GoalProgressLog(BaseModel):
+    """Goal progress tracking with AI analysis - Pillar 5 & 6"""
+    id: Optional[UUID] = PydanticField(default=None)
+    goal_id: UUID = PydanticField(...)
+    
+    # Progress tracking (Pillar 5: Goal-Driven tracking)
+    previous_value: Optional[float] = PydanticField(default=None)
+    new_value: Optional[float] = PydanticField(default=None)
+    previous_asset_rate: Optional[float] = PydanticField(default=None)
+    new_asset_rate: Optional[float] = PydanticField(default=None)
+    previous_quality_score: Optional[float] = PydanticField(default=None)
+    new_quality_score: Optional[float] = PydanticField(default=None)
+    
+    # Change context (Pillar 13: Course-Correction)
+    change_reason: str = PydanticField(..., description="artifact_approved, artifact_rejected, quality_improved, etc.")
+    
+    # AI-driven insights (Pillar 2: AI-Driven)
+    ai_analysis: Dict[str, Any] = PydanticField(default_factory=dict)
+    course_correction_suggested: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Memory integration (Pillar 6: Memory System)
+    memory_insights_applied: Dict[str, Any] = PydanticField(default_factory=dict)
+    learning_captured: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    # Triggering events
+    triggering_artifact_id: Optional[UUID] = PydanticField(default=None)
+    triggering_task_id: Optional[UUID] = PydanticField(default=None)
+    triggering_user_id: Optional[UUID] = PydanticField(default=None)
+    
+    # Real-time tracking (Pillar 10: Real-Time Thinking)
+    real_time_reasoning: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    changed_at: datetime = PydanticField(default_factory=datetime.now)
+    metadata: Dict[str, Any] = PydanticField(default_factory=dict)
+    
+    model_config = ConfigDict(from_attributes=True)

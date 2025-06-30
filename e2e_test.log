@@ -1,0 +1,733 @@
+2025-06-27 22:53:45,735 - INFO - 🚀 STARTING REAL END-TO-END TEST
+2025-06-27 22:53:45,735 - INFO - Testing complete workflow without manual triggers or simulations
+
+2025-06-27 22:53:45,735 - INFO - 
+🏗️ STEP 1: Creating realistic business workspace...
+2025-06-27 22:53:45,926 - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-06-27 22:53:45,978 - INFO - Supabase client created successfully
+2025-06-27 22:53:46,110 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-06-27 22:53:46,112 - INFO - ⚠️ Workspace goals creation delayed - will be done in /configure page
+2025-06-27 22:53:46,112 - INFO - ✅ Workspace Creation
+2025-06-27 22:53:46,112 - INFO - 
+🎯 STEP 2: Auto-extracting workspace goals...
+2025-06-27 22:53:46,309 - INFO - ✅ OpenAI client initialized for quality validation
+2025-06-27 22:53:46,320 - INFO - ✅ Strategic Goal Decomposer initialized with OpenAI
+2025-06-27 22:53:46,320 - INFO - ✅ Strategic Goal Decomposer available
+2025-06-27 22:53:46,325 - INFO - ✅ AI Goal Extractor initialized with OpenAI
+2025-06-27 22:53:46,383 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:53:46,389 - INFO - ✅ AI Goal Extractor initialized with OpenAI
+2025-06-27 22:53:46,389 - INFO - 🎯 AI Goal Extraction from: Sviluppare strategia marketing completa per SaaS B2B: creare 3 buyer personas dettagliate, sviluppar...
+2025-06-27 22:53:47,907 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:53:47,916 - INFO - Strategic analysis decision: True - The goal involves creating multiple types of content/assets (buyer personas, landing pages, email funnels, lead database, and a content marketing plan), has complex processes that require multiple steps/deliverables, and requires coordination of various activities to achieve the overall marketing strategy.
+2025-06-27 22:53:47,917 - INFO - 🧠 Goal requires strategic decomposition - using comprehensive analysis
+2025-06-27 22:53:47,917 - INFO - 🧠 Performing strategic goal decomposition...
+2025-06-27 22:53:47,917 - INFO - 🎯 Strategic decomposition of: Sviluppare strategia marketing completa per SaaS B2B: creare 3 buyer personas dettagliate, sviluppar...
+2025-06-27 22:53:53,136 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:12,292 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:16,177 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:16,187 - INFO - 🤖 AI autonomy analysis for buyer_personas: assisted (70%)
+2025-06-27 22:54:16,187 - WARNING - Failed to parse deliverable: 'buyer_personas' is not a valid DeliverableType
+2025-06-27 22:54:16,187 - INFO - 🤖 Unknown deliverable type 'buyer_personas' mapped to generic 'strategy_document'
+2025-06-27 22:54:16,187 - INFO - 🤖 AI fallback mapping: 'buyer_personas' → 'strategy_document'
+2025-06-27 22:54:19,340 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:19,342 - INFO - 🤖 AI autonomy analysis for strategy_document: assisted (70%)
+2025-06-27 22:54:19,342 - INFO -   ✅ 🤖 AI-recovered deliverable: Detailed Buyer Personas for SaaS B2B
+2025-06-27 22:54:23,738 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:23,740 - INFO - 🤖 AI autonomy analysis for landing_pages: assisted (70%)
+2025-06-27 22:54:23,740 - WARNING - Failed to parse deliverable: 'landing_pages' is not a valid DeliverableType
+2025-06-27 22:54:23,740 - INFO - 🤖 Unknown deliverable type 'landing_pages' mapped to generic 'strategy_document'
+2025-06-27 22:54:23,740 - INFO - 🤖 AI fallback mapping: 'landing_pages' → 'strategy_document'
+2025-06-27 22:54:26,041 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:26,042 - INFO - 🤖 AI autonomy analysis for strategy_document: assisted (70%)
+2025-06-27 22:54:26,042 - INFO -   ✅ 🤖 AI-recovered deliverable: Five Optimized Landing Pages
+2025-06-27 22:54:27,773 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:27,781 - INFO - 🤖 AI autonomy analysis for email_funnels: assisted (70%)
+2025-06-27 22:54:27,781 - WARNING - Failed to parse deliverable: 'email_funnels' is not a valid DeliverableType
+2025-06-27 22:54:27,781 - INFO - 🤖 Unknown deliverable type 'email_funnels' mapped to generic 'strategy_document'
+2025-06-27 22:54:27,781 - INFO - 🤖 AI fallback mapping: 'email_funnels' → 'strategy_document'
+2025-06-27 22:54:30,389 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:30,390 - INFO - 🤖 AI autonomy analysis for strategy_document: assisted (70%)
+2025-06-27 22:54:30,390 - INFO -   ✅ 🤖 AI-recovered deliverable: Two Email Automation Funnels
+2025-06-27 22:54:32,947 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:32,948 - INFO - 🤖 AI autonomy analysis for lead_generation: assisted (70%)
+2025-06-27 22:54:32,948 - WARNING - Failed to parse deliverable: 'lead_generation' is not a valid DeliverableType
+2025-06-27 22:54:32,948 - INFO - 🤖 Unknown deliverable type 'lead_generation' mapped to generic 'strategy_document'
+2025-06-27 22:54:32,948 - INFO - 🤖 AI fallback mapping: 'lead_generation' → 'strategy_document'
+2025-06-27 22:54:34,573 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:34,574 - INFO - 🤖 AI autonomy analysis for strategy_document: assisted (70%)
+2025-06-27 22:54:34,574 - INFO -   ✅ 🤖 AI-recovered deliverable: Database of 150 Qualified Leads
+2025-06-27 22:54:37,664 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:37,665 - INFO - 🤖 AI autonomy analysis for content_marketing_plan: assisted (70%)
+2025-06-27 22:54:37,665 - WARNING - Failed to parse deliverable: 'content_marketing_plan' is not a valid DeliverableType
+2025-06-27 22:54:37,665 - INFO - 🤖 AI fallback mapping: 'content_marketing_plan' → 'strategy_document'
+2025-06-27 22:54:40,643 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:40,645 - INFO - 🤖 AI autonomy analysis for strategy_document: assisted (70%)
+2025-06-27 22:54:40,646 - INFO -   ✅ 🤖 AI-recovered deliverable: 30-Day Content Marketing Plan
+2025-06-27 22:54:47,521 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:51,228 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:54:51,232 - INFO - ✅ Strategic plan created: 5 deliverables, 5 phases
+2025-06-27 22:54:51,232 - INFO - 🤖 AI metric type mapping: 'qualitative' -> 'quality_score_buyer_personas_created' (universal fallback with unique suffix)
+2025-06-27 22:54:51,232 - INFO -   🎯 Final metric goal: Create 3 detailed buyer personas
+2025-06-27 22:54:51,232 - INFO - 🤖 AI metric type mapping: 'qualitative' -> 'quality_score_landing_pages_optimized' (universal fallback with unique suffix)
+2025-06-27 22:54:51,232 - INFO -   🎯 Final metric goal: Develop 5 optimized landing pages
+2025-06-27 22:54:51,232 - INFO - 🤖 AI metric type mapping: 'qualitative' -> 'quality_score_email_funnels_configured' (universal fallback with unique suffix)
+2025-06-27 22:54:51,232 - INFO -   🎯 Final metric goal: Configure 2 email automation funnels
+2025-06-27 22:54:51,232 - INFO - 🤖 AI metric type mapping: 'quantitative' -> 'quality_score_qualified_leads_generated' (universal fallback with unique suffix)
+2025-06-27 22:54:51,232 - INFO -   🎯 Final metric goal: Generate a database of 150 qualified CMO/CTO leads in Europe
+2025-06-27 22:54:51,232 - INFO - 🤖 AI metric type mapping: 'qualitative' -> 'quality_score_content_posts_ready' (universal fallback with unique suffix)
+2025-06-27 22:54:51,232 - INFO -   🎯 Final metric goal: Create a 30-day content marketing plan with 50 posts ready for publication
+2025-06-27 22:54:51,232 - INFO -   📋 Deliverable goal: Detailed Buyer Personas for SaaS B2B (priority: 1)
+2025-06-27 22:54:51,232 - INFO -   📋 Deliverable goal: Five Optimized Landing Pages (priority: 1)
+2025-06-27 22:54:51,232 - INFO -   📋 Deliverable goal: Two Email Automation Funnels (priority: 1)
+2025-06-27 22:54:51,233 - INFO -   📋 Deliverable goal: Database of 150 Qualified Leads (priority: 1)
+2025-06-27 22:54:51,233 - INFO -   📋 Deliverable goal: 30-Day Content Marketing Plan (priority: 1)
+2025-06-27 22:54:51,233 - INFO - 🧠 Strategic decomposition created 10 goals: 5 metrics + 5 deliverables
+2025-06-27 22:54:51,233 - INFO - ✅ AI extracted 10 unique goals
+2025-06-27 22:54:51,358 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,414 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,469 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,530 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,587 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,657 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,711 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,771 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,827 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,899 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-06-27 22:54:51,900 - INFO - ✅ Goal Extraction
+2025-06-27 22:54:51,900 - INFO - 
+👥 STEP 3: Creating specialized team...
+2025-06-27 22:54:51,902 - WARNING - Failed to import from 'agents' SDK. Attempting fallback to 'openai_agents'. Some features like native handoffs might be unavailable.
+2025-06-27 22:54:51,904 - INFO - ✅ QualitySystemConfig loaded successfully from config.quality_system_config
+2025-06-27 22:54:51,904 - WARNING - ⚠️ Robust JSON parser not available - using fallback
+2025-06-27 22:54:51,907 - WARNING - Modern 'agents' SDK not found; falling back to 'openai_agents'. Advanced features may be unavailable.
+2025-06-27 22:54:51,907 - ERROR - No compatible Agent SDK found. DirectorAgent will operate in degraded mode.
+2025-06-27 22:54:51,978 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents "HTTP/2 201 Created"
+2025-06-27 22:54:52,045 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents "HTTP/2 201 Created"
+2025-06-27 22:54:52,101 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents "HTTP/2 201 Created"
+2025-06-27 22:54:52,102 - INFO - ✅ Team Creation
+2025-06-27 22:54:52,102 - INFO - 
+📋 STEP 4: Generating goal-driven tasks...
+2025-06-27 22:54:52,112 - INFO - ✅ AI Task Planner initialized with OpenAI
+2025-06-27 22:54:52,118 - INFO - ✅ AI Task Planner initialized with OpenAI
+2025-06-27 22:54:52,118 - INFO -   Generating tasks for all unmet goals in workspace 197b9fe2-5b4e-450b-92f4-28829d591a71...
+2025-06-27 22:54:52,119 - INFO - 🗄️ WorkspaceGoalsCache initialized: TTL=300s, Max=1000 entries
+2025-06-27 22:54:52,119 - INFO - 🚀 WorkspaceGoalsCache initialized with 5-minute TTL
+2025-06-27 22:54:52,178 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71&status=eq.active&order=priority.desc "HTTP/2 200 OK"
+2025-06-27 22:54:52,178 - INFO - ✅ Cached 10 goals for workspace 197b9fe2 (status: active)
+2025-06-27 22:54:52,180 - INFO - 📊 Found 10 unmet goals for workspace 197b9fe2-5b4e-450b-92f4-28829d591a71
+2025-06-27 22:54:52,180 - INFO - 🤖 Generating AI-driven tasks for quality_score_buyer_personas_created (gap: 3.0 personas)
+2025-06-27 22:54:52,235 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:03,384 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:04,239 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:04,240 - INFO - 🤖 AI classified 'quality_score_buyer_personas_created' → 'quality_measures'
+2025-06-27 22:55:04,728 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:04,728 - INFO - 🤖 AI classified 'quality_score_buyer_personas_created' → 'quality_measures'
+2025-06-27 22:55:05,227 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:05,229 - INFO - 🤖 AI classified 'quality_score_buyer_personas_created' → 'quality_measures'
+2025-06-27 22:55:05,229 - INFO - 🤖 AI generated 3 universal tasks for quality_score_buyer_personas_created goal
+2025-06-27 22:55:05,229 - INFO - 🤖 Generating AI-driven tasks for quality_score_landing_pages_optimized (gap: 5.0 pages)
+2025-06-27 22:55:05,341 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:15,526 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:15,975 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:15,977 - INFO - 🤖 AI classified 'quality_score_landing_pages_optimized' → 'quality_measures'
+2025-06-27 22:55:17,047 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:17,054 - INFO - 🤖 AI classified 'quality_score_landing_pages_optimized' → 'quality_measures'
+2025-06-27 22:55:17,647 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:17,647 - INFO - 🤖 AI classified 'quality_score_landing_pages_optimized' → 'quality_measures'
+2025-06-27 22:55:17,647 - INFO - 🤖 AI generated 3 universal tasks for quality_score_landing_pages_optimized goal
+2025-06-27 22:55:17,648 - INFO - 🤖 Generating AI-driven tasks for quality_score_email_funnels_configured (gap: 2.0 funnels)
+2025-06-27 22:55:17,770 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:24,647 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:25,321 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:25,322 - INFO - 🤖 AI classified 'quality_score_email_funnels_configured' → 'quality_measures'
+2025-06-27 22:55:26,230 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:26,252 - INFO - 🤖 AI classified 'quality_score_email_funnels_configured' → 'quality_measures'
+2025-06-27 22:55:26,858 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:26,859 - INFO - 🤖 AI classified 'quality_score_email_funnels_configured' → 'quality_measures'
+2025-06-27 22:55:26,859 - INFO - 🤖 AI generated 3 universal tasks for quality_score_email_funnels_configured goal
+2025-06-27 22:55:26,859 - INFO - 🤖 Generating AI-driven tasks for quality_score_qualified_leads_generated (gap: 150.0 leads)
+2025-06-27 22:55:26,990 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:33,598 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:34,252 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:34,253 - INFO - 🤖 AI classified 'quality_score_qualified_leads_generated' → 'quality_measures'
+2025-06-27 22:55:35,060 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:35,061 - INFO - 🤖 AI classified 'quality_score_qualified_leads_generated' → 'quality_measures'
+2025-06-27 22:55:35,710 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:35,712 - INFO - 🤖 AI classified 'quality_score_qualified_leads_generated' → 'quality_measures'
+2025-06-27 22:55:35,712 - INFO - 🤖 AI generated 3 universal tasks for quality_score_qualified_leads_generated goal
+2025-06-27 22:55:35,712 - INFO - 🤖 Generating AI-driven tasks for quality_score_content_posts_ready (gap: 50.0 posts)
+2025-06-27 22:55:35,857 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:41,509 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:41,971 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:41,972 - INFO - 🤖 AI classified 'quality_score_content_posts_ready' → 'quality_measures'
+2025-06-27 22:55:42,561 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:42,565 - INFO - 🤖 AI classified 'quality_score_content_posts_ready' → 'quality_measures'
+2025-06-27 22:55:43,304 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:43,309 - INFO - 🤖 AI classified 'quality_score_content_posts_ready' → 'quality_measures'
+2025-06-27 22:55:43,309 - INFO - 🤖 AI generated 3 universal tasks for quality_score_content_posts_ready goal
+2025-06-27 22:55:43,309 - INFO - 🤖 Generating AI-driven tasks for strategy_document_detailed_buyer_personas_for_saas_b2b (gap: 1.0 deliverable)
+2025-06-27 22:55:43,432 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:55:50,847 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:55,439 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:55,440 - INFO - 🤖 AI classified 'strategy_document_detailed_buyer_personas_for_saas_b2b' → 'quantified_outputs'
+2025-06-27 22:55:56,154 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:56,155 - INFO - 🤖 AI classified 'strategy_document_detailed_buyer_personas_for_saas_b2b' → 'quantified_outputs'
+2025-06-27 22:55:56,842 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:55:56,843 - INFO - 🤖 AI classified 'strategy_document_detailed_buyer_personas_for_saas_b2b' → 'quantified_outputs'
+2025-06-27 22:55:56,843 - INFO - 🤖 AI generated 3 universal tasks for strategy_document_detailed_buyer_personas_for_saas_b2b goal
+2025-06-27 22:55:56,843 - INFO - 🤖 Generating AI-driven tasks for strategy_document_five_optimized_landing_pages (gap: 1.0 deliverable)
+2025-06-27 22:55:56,950 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:01,988 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:02,763 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:02,767 - INFO - 🤖 AI classified 'strategy_document_five_optimized_landing_pages' → 'quantified_outputs'
+2025-06-27 22:56:03,457 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:03,457 - INFO - 🤖 AI classified 'strategy_document_five_optimized_landing_pages' → 'quantified_outputs'
+2025-06-27 22:56:04,363 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:04,365 - INFO - 🤖 AI classified 'strategy_document_five_optimized_landing_pages' → 'quantified_outputs'
+2025-06-27 22:56:04,365 - INFO - 🤖 AI generated 3 universal tasks for strategy_document_five_optimized_landing_pages goal
+2025-06-27 22:56:04,366 - INFO - 🤖 Generating AI-driven tasks for strategy_document_two_email_automation_funnels (gap: 1.0 deliverable)
+2025-06-27 22:56:04,490 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:15,601 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:16,186 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:16,187 - INFO - 🤖 AI classified 'strategy_document_two_email_automation_funnels' → 'quantified_outputs'
+2025-06-27 22:56:16,810 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:16,810 - INFO - 🤖 AI classified 'strategy_document_two_email_automation_funnels' → 'quantified_outputs'
+2025-06-27 22:56:17,316 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:17,316 - INFO - 🤖 AI classified 'strategy_document_two_email_automation_funnels' → 'quantified_outputs'
+2025-06-27 22:56:17,317 - INFO - 🤖 AI generated 3 universal tasks for strategy_document_two_email_automation_funnels goal
+2025-06-27 22:56:17,317 - INFO - 🤖 Generating AI-driven tasks for strategy_document_database_of_150_qualified_leads (gap: 1.0 deliverable)
+2025-06-27 22:56:17,487 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:28,006 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:28,546 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:28,547 - INFO - 🤖 AI classified 'strategy_document_database_of_150_qualified_leads' → 'quantified_outputs'
+2025-06-27 22:56:29,662 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:29,684 - INFO - 🤖 AI classified 'strategy_document_database_of_150_qualified_leads' → 'quantified_outputs'
+2025-06-27 22:56:30,336 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:30,341 - INFO - 🤖 AI classified 'strategy_document_database_of_150_qualified_leads' → 'quantified_outputs'
+2025-06-27 22:56:30,341 - INFO - 🤖 AI generated 3 universal tasks for strategy_document_database_of_150_qualified_leads goal
+2025-06-27 22:56:30,341 - INFO - 🤖 Generating AI-driven tasks for strategy_document_30day_content_marketing_plan (gap: 1.0 deliverable)
+2025-06-27 22:56:30,463 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:38,873 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:39,508 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:39,510 - INFO - 🤖 AI classified 'strategy_document_30day_content_marketing_plan' → 'quantified_outputs'
+2025-06-27 22:56:40,171 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:40,172 - INFO - 🤖 AI classified 'strategy_document_30day_content_marketing_plan' → 'quantified_outputs'
+2025-06-27 22:56:40,881 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-27 22:56:40,883 - INFO - 🤖 AI classified 'strategy_document_30day_content_marketing_plan' → 'quantified_outputs'
+2025-06-27 22:56:40,883 - INFO - 🤖 AI generated 3 universal tasks for strategy_document_30day_content_marketing_plan goal
+2025-06-27 22:56:40,883 - INFO - 🎯 Generated 30 goal-driven tasks for workspace 197b9fe2-5b4e-450b-92f4-28829d591a71
+2025-06-27 22:56:40,883 - INFO - ✅ Task Generation
+2025-06-27 22:56:40,883 - INFO - 
+⚡ STEP 5: Executing tasks with real agents...
+2025-06-27 22:56:40,889 - WARNING - ⚠️ WebSocket not available in TaskExecutor: No module named 'fastapi'
+2025-06-27 22:56:40,890 - INFO - 💭 Real-Time Thinking Engine initialized
+2025-06-27 22:56:40,890 - INFO - ✅ Thinking Process Engine available for real-time reasoning
+2025-06-27 22:56:40,897 - INFO - WorkspaceHealthManager initialized - auto_recovery: True, base_task_limit: 200, check_interval: 300s
+2025-06-27 22:56:40,897 - INFO - ✅ WorkspaceHealthManager available for intelligent health checks
+2025-06-27 22:56:40,899 - INFO - AgentStatusManager initialized - auto_sync: True, sync_interval: 120s, activity_timeout: 30min
+2025-06-27 22:56:40,899 - INFO - ✅ AgentStatusManager available for unified agent management
+2025-06-27 22:56:40,899 - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-06-27 22:56:40,900 - INFO - ✅ Asset System integration available for TaskExecutor
+2025-06-27 22:56:40,906 - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-06-27 22:56:40,906 - INFO - 🏭 AssetArtifactProcessor initialized with AI-driven configuration
+2025-06-27 22:56:40,911 - INFO - 🛡️ AIQualityGateEngine initialized with comprehensive quality assurance
+2025-06-27 22:56:40,911 - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-06-27 22:56:40,913 - INFO - ✅ QualitySystemConfig loaded successfully via centralized loader
+2025-06-27 22:56:40,914 - INFO - ✅ AI Quality Assurance modules imported successfully
+2025-06-27 22:56:40,914 - INFO - Quality System loaded in deliverable_aggregator: True
+2025-06-27 22:56:40,919 - INFO - 🤖 AI Deliverable Analyzer: ✅ Active
+2025-06-27 22:56:40,924 - INFO - 🤖 AI Deliverable Analyzer: ✅ Active
+2025-06-27 22:56:40,929 - INFO - 🤖 AI Deliverable Analyzer: ✅ Active
+2025-06-27 22:56:40,933 - INFO - ✅ OpenAI client initialized for quality validation
+2025-06-27 22:56:40,938 - INFO - 🔧 AssetEnhancementOrchestrator initialized with Enhanced AI Quality Validator
+2025-06-27 22:56:40,942 - INFO - ✅ OpenAI client initialized for quality validation
+2025-06-27 22:56:40,943 - INFO - ✅ Intelligent Deliverable Aggregator with full AI Quality Assurance
+2025-06-27 22:56:40,943 - INFO - 🔍 Using Quality Config: threshold=0.6
+2025-06-27 22:56:40,943 - INFO - ✅ Schema system available
+2025-06-27 22:56:40,943 - INFO - 🤖 Intelligent Deliverable Aggregator initialized successfully
+2025-06-27 22:56:40,943 - INFO - ================================================================================
+2025-06-27 22:56:40,943 - INFO - 🤖 INTELLIGENT DELIVERABLE AGGREGATOR SYSTEM INITIALIZED
+2025-06-27 22:56:40,943 - INFO - ================================================================================
+2025-06-27 22:56:40,943 - INFO - Version: 3.0 Intelligent Hybrid (AI-Driven + Quality Assurance)
+2025-06-27 22:56:40,943 - INFO - Aggregator: IntelligentDeliverableAggregator
+2025-06-27 22:56:40,943 - INFO - AI Analysis: ✅ GPT-4o-mini Active
+2025-06-27 22:56:40,943 - INFO - Quality Assurance: ✅ Active
+2025-06-27 22:56:40,943 - INFO - Schema System: ✅ Active
+2025-06-27 22:56:40,943 - INFO - Configuration: Threshold=25%, MinTasks=1
+2025-06-27 22:56:40,943 - INFO - Intelligence Features: Dynamic Analysis, Smart Asset Extraction, Intelligent Packaging
+2025-06-27 22:56:40,943 - INFO - ================================================================================
+2025-06-27 22:56:40,943 - INFO - 🔧 Startup Diagnostics: {'ai_client_available': True, 'quality_orchestrator_available': True, 'schema_system_available': True, 'configuration_valid': True}
+2025-06-27 22:56:40,943 - INFO - 🚀 System ready for intelligent deliverable creation
+2025-06-27 22:56:40,943 - INFO - ================================================================================
+2025-06-27 22:56:40,943 - INFO - ✅ Quality System integration available for TaskExecutor
+2025-06-27 22:56:40,943 - CRITICAL - 🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+2025-06-27 22:56:40,943 - CRITICAL - auto_generation_enabled: True
+2025-06-27 22:56:40,943 - CRITICAL - analysis_enabled: True
+2025-06-27 22:56:40,943 - INFO - EnhancedTaskExecutor initialized with complete fixes
+2025-06-27 22:56:40,943 - INFO - 🔍 EXECUTOR: Quality assurance integration enabled
+2025-06-27 22:56:40,943 - INFO - 🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version
+2025-06-27 22:56:40,943 - INFO - Starting task executor with anti-loop protection
+2025-06-27 22:56:40,943 - INFO - Max concurrent tasks: 3
+2025-06-27 22:56:40,943 - INFO - Task timeout: 150s
+2025-06-27 22:56:40,943 - INFO - Auto-generation: ENABLED
+2025-06-27 22:56:40,944 - INFO - Runaway check interval: 300s
+2025-06-27 22:56:40,944 - INFO - FINALIZATION priority boost: 1000
+2025-06-27 22:56:40,944 - INFO - Smart prioritization: ENABLED
+2025-06-27 22:56:40,944 - INFO - Task executor started successfully
+2025-06-27 22:56:40,944 - INFO - Anti-loop worker e10db730-8618-40a1-ae1e-826af0b66a31 started
+2025-06-27 22:56:40,944 - INFO - Anti-loop worker 81946c3d-6fdb-48dd-9bf6-91f824d4960a started
+2025-06-27 22:56:40,944 - INFO - Anti-loop worker a82b29d0-0c7a-4d9d-ae1e-6c62d04b3eae started
+2025-06-27 22:56:40,944 - INFO - Main execution loop started with asset coordination
+2025-06-27 22:56:41,074 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-06-27 22:56:41,138 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-06-27 22:56:41,211 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.bc41beb3-4380-434a-8280-92821006840e&order=created_at.desc "HTTP/2 200 OK"
+2025-06-27 22:56:41,297 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-06-27 22:56:41,298 - INFO - Starting periodic runaway check...
+2025-06-27 22:56:41,364 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-06-27 22:56:41,435 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A&workspace_id=eq.bc41beb3-4380-434a-8280-92821006840e "HTTP/2 200 OK"
+2025-06-27 22:56:41,552 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.bc41beb3-4380-434a-8280-92821006840e "HTTP/2 200 OK"
+2025-06-27 22:56:41,629 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=id&workspace_id=eq.bc41beb3-4380-434a-8280-92821006840e "HTTP/2 200 OK"
+2025-06-27 22:56:41,691 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=id&workspace_id=eq.bc41beb3-4380-434a-8280-92821006840e&status=eq.active "HTTP/2 200 OK"
+2025-06-27 22:56:41,692 - INFO - Runaway check: All 1 workspaces stable
+2025-06-27 22:56:41,944 - INFO -   Queuing task 1/30: Research and Define Buyer Persona for CMO...
+2025-06-27 22:56:42,002 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,003 - WARNING - ⚡ IMMEDIATE QUEUE: Research and Define Buyer Persona for CMO (ID: 19e183fc-aad6-4439-b9d8-3d4f16423b5b) - Priority: high, Corrective: False
+2025-06-27 22:56:42,003 - INFO - ✅ Task 19e183fc-aad6-4439-b9d8-3d4f16423b5b added to queue immediately. Queue size: 1
+2025-06-27 22:56:42,003 - INFO -   Queuing task 2/30: Research and Define Buyer Persona for CTO...
+2025-06-27 22:56:42,067 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,068 - WARNING - ⚡ IMMEDIATE QUEUE: Research and Define Buyer Persona for CTO (ID: 3662e5b4-c180-4fcd-b497-361f33c2a1aa) - Priority: medium, Corrective: False
+2025-06-27 22:56:42,068 - INFO - ✅ Task 3662e5b4-c180-4fcd-b497-361f33c2a1aa added to queue immediately. Queue size: 2
+2025-06-27 22:56:42,068 - INFO -   Queuing task 3/30: Analyze Competitor Content for Buyer Persona Insig...
+2025-06-27 22:56:42,126 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,126 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Content for Buyer Persona Insights (ID: ea77ed25-8af2-4c5c-85db-52fbeb5497cb) - Priority: low, Corrective: False
+2025-06-27 22:56:42,126 - INFO - ✅ Task ea77ed25-8af2-4c5c-85db-52fbeb5497cb added to queue immediately. Queue size: 3
+2025-06-27 22:56:42,126 - INFO -   Queuing task 4/30: Develop 5 optimized landing page drafts...
+2025-06-27 22:56:42,193 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,194 - WARNING - ⚡ IMMEDIATE QUEUE: Develop 5 optimized landing page drafts (ID: 3bbca47d-db11-4dff-8528-2b283ff3309a) - Priority: high, Corrective: False
+2025-06-27 22:56:42,194 - INFO - ✅ Task 3bbca47d-db11-4dff-8528-2b283ff3309a added to queue immediately. Queue size: 4
+2025-06-27 22:56:42,194 - INFO -   Queuing task 5/30: Create visual assets for landing pages...
+2025-06-27 22:56:42,265 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,267 - WARNING - ⚡ IMMEDIATE QUEUE: Create visual assets for landing pages (ID: 61e57ad6-2ec7-4dbe-87f0-297513731e0f) - Priority: medium, Corrective: False
+2025-06-27 22:56:42,267 - INFO - ✅ Task 61e57ad6-2ec7-4dbe-87f0-297513731e0f added to queue immediately. Queue size: 5
+2025-06-27 22:56:42,267 - INFO -   Queuing task 6/30: Analyze competitor landing pages...
+2025-06-27 22:56:42,326 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,327 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze competitor landing pages (ID: 564872d1-912e-45a5-be16-1d38099e7cc7) - Priority: low, Corrective: False
+2025-06-27 22:56:42,327 - INFO - ✅ Task 564872d1-912e-45a5-be16-1d38099e7cc7 added to queue immediately. Queue size: 6
+2025-06-27 22:56:42,327 - INFO -   Queuing task 7/30: Write email sequence for onboarding funnel...
+2025-06-27 22:56:42,394 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,395 - WARNING - ⚡ IMMEDIATE QUEUE: Write email sequence for onboarding funnel (ID: 3bfb238b-b818-4687-a25b-f63747a80810) - Priority: high, Corrective: False
+2025-06-27 22:56:42,395 - INFO - ✅ Task 3bfb238b-b818-4687-a25b-f63747a80810 added to queue immediately. Queue size: 7
+2025-06-27 22:56:42,395 - INFO -   Queuing task 8/30: Write email sequence for re-engagement funnel...
+2025-06-27 22:56:42,455 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,456 - WARNING - ⚡ IMMEDIATE QUEUE: Write email sequence for re-engagement funnel (ID: 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd) - Priority: medium, Corrective: False
+2025-06-27 22:56:42,456 - INFO - ✅ Task 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd added to queue immediately. Queue size: 8
+2025-06-27 22:56:42,456 - INFO -   Queuing task 9/30: Create marketing copy for email funnels...
+2025-06-27 22:56:42,525 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,525 - WARNING - ⚡ IMMEDIATE QUEUE: Create marketing copy for email funnels (ID: 79a17600-081b-425b-8d8d-48b885bbe8dc) - Priority: low, Corrective: False
+2025-06-27 22:56:42,526 - INFO - ✅ Task 79a17600-081b-425b-8d8d-48b885bbe8dc added to queue immediately. Queue size: 9
+2025-06-27 22:56:42,526 - INFO -   Queuing task 10/30: Research and Generate List of 150 CMO/CTO Leads in...
+2025-06-27 22:56:42,593 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,595 - WARNING - ⚡ IMMEDIATE QUEUE: Research and Generate List of 150 CMO/CTO Leads in Europe (ID: a97b5169-0adc-4d15-86f5-adc94c6d76eb) - Priority: high, Corrective: False
+2025-06-27 22:56:42,595 - INFO - ✅ Task a97b5169-0adc-4d15-86f5-adc94c6d76eb added to queue immediately. Queue size: 10
+2025-06-27 22:56:42,595 - INFO -   Queuing task 11/30: Analyze Hashtags for CMO/CTO Engagement...
+2025-06-27 22:56:42,657 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,657 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Hashtags for CMO/CTO Engagement (ID: f99b53fb-1cee-4cea-9671-6c65957de318) - Priority: medium, Corrective: False
+2025-06-27 22:56:42,657 - INFO - ✅ Task f99b53fb-1cee-4cea-9671-6c65957de318 added to queue immediately. Queue size: 11
+2025-06-27 22:56:42,657 - INFO -   Queuing task 12/30: Create Email Sequence for Lead Nurturing...
+2025-06-27 22:56:42,712 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,713 - WARNING - ⚡ IMMEDIATE QUEUE: Create Email Sequence for Lead Nurturing (ID: 87afd2fa-aede-47c4-a4a1-75ace3d57566) - Priority: high, Corrective: False
+2025-06-27 22:56:42,713 - INFO - ✅ Task 87afd2fa-aede-47c4-a4a1-75ace3d57566 added to queue immediately. Queue size: 12
+2025-06-27 22:56:42,713 - INFO -   Queuing task 13/30: Develop 30-Day Content Marketing Strategy...
+2025-06-27 22:56:42,771 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,771 - WARNING - ⚡ IMMEDIATE QUEUE: Develop 30-Day Content Marketing Strategy (ID: f047c837-b6ff-4c11-bc85-bffdf3de8465) - Priority: high, Corrective: False
+2025-06-27 22:56:42,771 - INFO - ✅ Task f047c837-b6ff-4c11-bc85-bffdf3de8465 added to queue immediately. Queue size: 13
+2025-06-27 22:56:42,771 - INFO -   Queuing task 14/30: Generate 50 Social Media Posts...
+2025-06-27 22:56:42,827 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,829 - WARNING - ⚡ IMMEDIATE QUEUE: Generate 50 Social Media Posts (ID: 95fb34bf-5854-4810-8643-bbed64765a16) - Priority: high, Corrective: False
+2025-06-27 22:56:42,829 - INFO - ✅ Task 95fb34bf-5854-4810-8643-bbed64765a16 added to queue immediately. Queue size: 14
+2025-06-27 22:56:42,829 - INFO -   Queuing task 15/30: Analyze Competitor Content Strategies...
+2025-06-27 22:56:42,899 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,900 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Content Strategies (ID: d8a16481-ea08-4c5c-9c92-3bdac35e3b13) - Priority: medium, Corrective: False
+2025-06-27 22:56:42,900 - INFO - ✅ Task d8a16481-ea08-4c5c-9c92-3bdac35e3b13 added to queue immediately. Queue size: 15
+2025-06-27 22:56:42,900 - INFO -   Queuing task 16/30: Research and Analyze Target Audience for Buyer Per...
+2025-06-27 22:56:42,964 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:42,964 - WARNING - ⚡ IMMEDIATE QUEUE: Research and Analyze Target Audience for Buyer Personas (ID: c2bc7e9e-4eae-490c-85d6-c63593db9076) - Priority: high, Corrective: False
+2025-06-27 22:56:42,964 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Research and Define Buyer Persona for CMO' (ID: 19e183fc-aad6-4439-b9d8-3d4f16423b5b) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 14
+2025-06-27 22:56:42,964 - INFO - Creating task manager for legacy task format: 19e183fc-aad6-4439-b9d8-3d4f16423b5b
+2025-06-27 22:56:42,964 - ERROR - Task 19e183fc-aad6-4439-b9d8-3d4f16423b5b ('Research and Define Buyer Persona for CMO') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,024 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.19e183fc-aad6-4439-b9d8-3d4f16423b5b "HTTP/2 200 OK"
+2025-06-27 22:56:43,025 - INFO - Task 19e183fc-aad6-4439-b9d8-3d4f16423b5b status updated to failed.
+2025-06-27 22:56:43,025 - INFO - Forcibly finalized task 19e183fc-aad6-4439-b9d8-3d4f16423b5b as failed: Task 19e183fc-aad6-4439-b9d8-3d4f16423b5b ('Research and Define Buyer Persona for CMO') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,025 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 19e183fc-aad6-4439-b9d8-3d4f16423b5b. Active: 0
+2025-06-27 22:56:43,025 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Research and Define Buyer Persona for CTO' (ID: 3662e5b4-c180-4fcd-b497-361f33c2a1aa) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 13
+2025-06-27 22:56:43,025 - INFO - Creating task manager for legacy task format: 3662e5b4-c180-4fcd-b497-361f33c2a1aa
+2025-06-27 22:56:43,025 - ERROR - Task 3662e5b4-c180-4fcd-b497-361f33c2a1aa ('Research and Define Buyer Persona for CTO') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,085 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.3662e5b4-c180-4fcd-b497-361f33c2a1aa "HTTP/2 200 OK"
+2025-06-27 22:56:43,085 - INFO - Task 3662e5b4-c180-4fcd-b497-361f33c2a1aa status updated to failed.
+2025-06-27 22:56:43,085 - INFO - Forcibly finalized task 3662e5b4-c180-4fcd-b497-361f33c2a1aa as failed: Task 3662e5b4-c180-4fcd-b497-361f33c2a1aa ('Research and Define Buyer Persona for CTO') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,085 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 3662e5b4-c180-4fcd-b497-361f33c2a1aa. Active: 0
+2025-06-27 22:56:43,085 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Content for Buyer Persona Insights' (ID: ea77ed25-8af2-4c5c-85db-52fbeb5497cb) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 12
+2025-06-27 22:56:43,085 - INFO - Creating task manager for legacy task format: ea77ed25-8af2-4c5c-85db-52fbeb5497cb
+2025-06-27 22:56:43,085 - ERROR - Task ea77ed25-8af2-4c5c-85db-52fbeb5497cb ('Analyze Competitor Content for Buyer Persona Insights') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,146 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.ea77ed25-8af2-4c5c-85db-52fbeb5497cb "HTTP/2 200 OK"
+2025-06-27 22:56:43,147 - INFO - Task ea77ed25-8af2-4c5c-85db-52fbeb5497cb status updated to failed.
+2025-06-27 22:56:43,147 - INFO - Forcibly finalized task ea77ed25-8af2-4c5c-85db-52fbeb5497cb as failed: Task ea77ed25-8af2-4c5c-85db-52fbeb5497cb ('Analyze Competitor Content for Buyer Persona Insights') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,147 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: ea77ed25-8af2-4c5c-85db-52fbeb5497cb. Active: 0
+2025-06-27 22:56:43,147 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop 5 optimized landing page drafts' (ID: 3bbca47d-db11-4dff-8528-2b283ff3309a) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 11
+2025-06-27 22:56:43,147 - INFO - Creating task manager for legacy task format: 3bbca47d-db11-4dff-8528-2b283ff3309a
+2025-06-27 22:56:43,147 - ERROR - Task 3bbca47d-db11-4dff-8528-2b283ff3309a ('Develop 5 optimized landing page drafts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,203 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.3bbca47d-db11-4dff-8528-2b283ff3309a "HTTP/2 200 OK"
+2025-06-27 22:56:43,204 - INFO - Task 3bbca47d-db11-4dff-8528-2b283ff3309a status updated to failed.
+2025-06-27 22:56:43,204 - INFO - Forcibly finalized task 3bbca47d-db11-4dff-8528-2b283ff3309a as failed: Task 3bbca47d-db11-4dff-8528-2b283ff3309a ('Develop 5 optimized landing page drafts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,204 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 3bbca47d-db11-4dff-8528-2b283ff3309a. Active: 0
+2025-06-27 22:56:43,204 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create visual assets for landing pages' (ID: 61e57ad6-2ec7-4dbe-87f0-297513731e0f) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 10
+2025-06-27 22:56:43,204 - INFO - Creating task manager for legacy task format: 61e57ad6-2ec7-4dbe-87f0-297513731e0f
+2025-06-27 22:56:43,204 - ERROR - Task 61e57ad6-2ec7-4dbe-87f0-297513731e0f ('Create visual assets for landing pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,259 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.61e57ad6-2ec7-4dbe-87f0-297513731e0f "HTTP/2 200 OK"
+2025-06-27 22:56:43,260 - INFO - Task 61e57ad6-2ec7-4dbe-87f0-297513731e0f status updated to failed.
+2025-06-27 22:56:43,260 - INFO - Forcibly finalized task 61e57ad6-2ec7-4dbe-87f0-297513731e0f as failed: Task 61e57ad6-2ec7-4dbe-87f0-297513731e0f ('Create visual assets for landing pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,260 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 61e57ad6-2ec7-4dbe-87f0-297513731e0f. Active: 0
+2025-06-27 22:56:43,260 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze competitor landing pages' (ID: 564872d1-912e-45a5-be16-1d38099e7cc7) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 9
+2025-06-27 22:56:43,260 - INFO - Creating task manager for legacy task format: 564872d1-912e-45a5-be16-1d38099e7cc7
+2025-06-27 22:56:43,260 - ERROR - Task 564872d1-912e-45a5-be16-1d38099e7cc7 ('Analyze competitor landing pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,316 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.564872d1-912e-45a5-be16-1d38099e7cc7 "HTTP/2 200 OK"
+2025-06-27 22:56:43,317 - INFO - Task 564872d1-912e-45a5-be16-1d38099e7cc7 status updated to failed.
+2025-06-27 22:56:43,317 - INFO - Forcibly finalized task 564872d1-912e-45a5-be16-1d38099e7cc7 as failed: Task 564872d1-912e-45a5-be16-1d38099e7cc7 ('Analyze competitor landing pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,317 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 564872d1-912e-45a5-be16-1d38099e7cc7. Active: 0
+2025-06-27 22:56:43,317 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Write email sequence for onboarding funnel' (ID: 3bfb238b-b818-4687-a25b-f63747a80810) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 8
+2025-06-27 22:56:43,317 - INFO - Creating task manager for legacy task format: 3bfb238b-b818-4687-a25b-f63747a80810
+2025-06-27 22:56:43,317 - ERROR - Task 3bfb238b-b818-4687-a25b-f63747a80810 ('Write email sequence for onboarding funnel') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,375 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.3bfb238b-b818-4687-a25b-f63747a80810 "HTTP/2 200 OK"
+2025-06-27 22:56:43,377 - INFO - Task 3bfb238b-b818-4687-a25b-f63747a80810 status updated to failed.
+2025-06-27 22:56:43,377 - INFO - Forcibly finalized task 3bfb238b-b818-4687-a25b-f63747a80810 as failed: Task 3bfb238b-b818-4687-a25b-f63747a80810 ('Write email sequence for onboarding funnel') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,377 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 3bfb238b-b818-4687-a25b-f63747a80810. Active: 0
+2025-06-27 22:56:43,377 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Write email sequence for re-engagement funnel' (ID: 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 7
+2025-06-27 22:56:43,377 - INFO - Creating task manager for legacy task format: 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd
+2025-06-27 22:56:43,377 - ERROR - Task 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd ('Write email sequence for re-engagement funnel') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,450 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd "HTTP/2 200 OK"
+2025-06-27 22:56:43,451 - INFO - Task 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd status updated to failed.
+2025-06-27 22:56:43,451 - INFO - Forcibly finalized task 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd as failed: Task 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd ('Write email sequence for re-engagement funnel') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,451 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd. Active: 0
+2025-06-27 22:56:43,451 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create marketing copy for email funnels' (ID: 79a17600-081b-425b-8d8d-48b885bbe8dc) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 6
+2025-06-27 22:56:43,451 - INFO - Creating task manager for legacy task format: 79a17600-081b-425b-8d8d-48b885bbe8dc
+2025-06-27 22:56:43,451 - ERROR - Task 79a17600-081b-425b-8d8d-48b885bbe8dc ('Create marketing copy for email funnels') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,519 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.79a17600-081b-425b-8d8d-48b885bbe8dc "HTTP/2 200 OK"
+2025-06-27 22:56:43,520 - INFO - Task 79a17600-081b-425b-8d8d-48b885bbe8dc status updated to failed.
+2025-06-27 22:56:43,520 - INFO - Forcibly finalized task 79a17600-081b-425b-8d8d-48b885bbe8dc as failed: Task 79a17600-081b-425b-8d8d-48b885bbe8dc ('Create marketing copy for email funnels') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,520 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 79a17600-081b-425b-8d8d-48b885bbe8dc. Active: 0
+2025-06-27 22:56:43,520 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Research and Generate List of 150 CMO/CTO Leads in Europe' (ID: a97b5169-0adc-4d15-86f5-adc94c6d76eb) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 5
+2025-06-27 22:56:43,520 - INFO - Creating task manager for legacy task format: a97b5169-0adc-4d15-86f5-adc94c6d76eb
+2025-06-27 22:56:43,520 - ERROR - Task a97b5169-0adc-4d15-86f5-adc94c6d76eb ('Research and Generate List of 150 CMO/CTO Leads in Europe') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,607 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.a97b5169-0adc-4d15-86f5-adc94c6d76eb "HTTP/2 200 OK"
+2025-06-27 22:56:43,607 - INFO - Task a97b5169-0adc-4d15-86f5-adc94c6d76eb status updated to failed.
+2025-06-27 22:56:43,607 - INFO - Forcibly finalized task a97b5169-0adc-4d15-86f5-adc94c6d76eb as failed: Task a97b5169-0adc-4d15-86f5-adc94c6d76eb ('Research and Generate List of 150 CMO/CTO Leads in Europe') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,607 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: a97b5169-0adc-4d15-86f5-adc94c6d76eb. Active: 0
+2025-06-27 22:56:43,607 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Hashtags for CMO/CTO Engagement' (ID: f99b53fb-1cee-4cea-9671-6c65957de318) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 4
+2025-06-27 22:56:43,607 - INFO - Creating task manager for legacy task format: f99b53fb-1cee-4cea-9671-6c65957de318
+2025-06-27 22:56:43,607 - ERROR - Task f99b53fb-1cee-4cea-9671-6c65957de318 ('Analyze Hashtags for CMO/CTO Engagement') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,684 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.f99b53fb-1cee-4cea-9671-6c65957de318 "HTTP/2 200 OK"
+2025-06-27 22:56:43,686 - INFO - Task f99b53fb-1cee-4cea-9671-6c65957de318 status updated to failed.
+2025-06-27 22:56:43,686 - INFO - Forcibly finalized task f99b53fb-1cee-4cea-9671-6c65957de318 as failed: Task f99b53fb-1cee-4cea-9671-6c65957de318 ('Analyze Hashtags for CMO/CTO Engagement') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,686 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: f99b53fb-1cee-4cea-9671-6c65957de318. Active: 0
+2025-06-27 22:56:43,686 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create Email Sequence for Lead Nurturing' (ID: 87afd2fa-aede-47c4-a4a1-75ace3d57566) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 3
+2025-06-27 22:56:43,686 - INFO - Creating task manager for legacy task format: 87afd2fa-aede-47c4-a4a1-75ace3d57566
+2025-06-27 22:56:43,686 - ERROR - Task 87afd2fa-aede-47c4-a4a1-75ace3d57566 ('Create Email Sequence for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,756 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.87afd2fa-aede-47c4-a4a1-75ace3d57566 "HTTP/2 200 OK"
+2025-06-27 22:56:43,757 - INFO - Task 87afd2fa-aede-47c4-a4a1-75ace3d57566 status updated to failed.
+2025-06-27 22:56:43,758 - INFO - Forcibly finalized task 87afd2fa-aede-47c4-a4a1-75ace3d57566 as failed: Task 87afd2fa-aede-47c4-a4a1-75ace3d57566 ('Create Email Sequence for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,758 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 87afd2fa-aede-47c4-a4a1-75ace3d57566. Active: 0
+2025-06-27 22:56:43,758 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop 30-Day Content Marketing Strategy' (ID: f047c837-b6ff-4c11-bc85-bffdf3de8465) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 2
+2025-06-27 22:56:43,758 - INFO - Creating task manager for legacy task format: f047c837-b6ff-4c11-bc85-bffdf3de8465
+2025-06-27 22:56:43,758 - ERROR - Task f047c837-b6ff-4c11-bc85-bffdf3de8465 ('Develop 30-Day Content Marketing Strategy') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,823 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.f047c837-b6ff-4c11-bc85-bffdf3de8465 "HTTP/2 200 OK"
+2025-06-27 22:56:43,823 - INFO - Task f047c837-b6ff-4c11-bc85-bffdf3de8465 status updated to failed.
+2025-06-27 22:56:43,823 - INFO - Forcibly finalized task f047c837-b6ff-4c11-bc85-bffdf3de8465 as failed: Task f047c837-b6ff-4c11-bc85-bffdf3de8465 ('Develop 30-Day Content Marketing Strategy') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,823 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: f047c837-b6ff-4c11-bc85-bffdf3de8465. Active: 0
+2025-06-27 22:56:43,823 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Generate 50 Social Media Posts' (ID: 95fb34bf-5854-4810-8643-bbed64765a16) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 1
+2025-06-27 22:56:43,823 - INFO - Creating task manager for legacy task format: 95fb34bf-5854-4810-8643-bbed64765a16
+2025-06-27 22:56:43,823 - ERROR - Task 95fb34bf-5854-4810-8643-bbed64765a16 ('Generate 50 Social Media Posts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,885 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.95fb34bf-5854-4810-8643-bbed64765a16 "HTTP/2 200 OK"
+2025-06-27 22:56:43,885 - INFO - Task 95fb34bf-5854-4810-8643-bbed64765a16 status updated to failed.
+2025-06-27 22:56:43,885 - INFO - Forcibly finalized task 95fb34bf-5854-4810-8643-bbed64765a16 as failed: Task 95fb34bf-5854-4810-8643-bbed64765a16 ('Generate 50 Social Media Posts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,885 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 95fb34bf-5854-4810-8643-bbed64765a16. Active: 0
+2025-06-27 22:56:43,885 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Content Strategies' (ID: d8a16481-ea08-4c5c-9c92-3bdac35e3b13) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 0
+2025-06-27 22:56:43,885 - INFO - Creating task manager for legacy task format: d8a16481-ea08-4c5c-9c92-3bdac35e3b13
+2025-06-27 22:56:43,886 - ERROR - Task d8a16481-ea08-4c5c-9c92-3bdac35e3b13 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,941 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.d8a16481-ea08-4c5c-9c92-3bdac35e3b13 "HTTP/2 200 OK"
+2025-06-27 22:56:43,944 - INFO - Task d8a16481-ea08-4c5c-9c92-3bdac35e3b13 status updated to failed.
+2025-06-27 22:56:43,944 - INFO - Forcibly finalized task d8a16481-ea08-4c5c-9c92-3bdac35e3b13 as failed: Task d8a16481-ea08-4c5c-9c92-3bdac35e3b13 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:43,944 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: d8a16481-ea08-4c5c-9c92-3bdac35e3b13. Active: 0
+2025-06-27 22:56:43,944 - INFO - ✅ Task c2bc7e9e-4eae-490c-85d6-c63593db9076 added to queue immediately. Queue size: 1
+2025-06-27 22:56:43,944 - INFO -   Queuing task 17/30: Create Detailed Buyer Personas...
+2025-06-27 22:56:43,998 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:43,999 - WARNING - ⚡ IMMEDIATE QUEUE: Create Detailed Buyer Personas (ID: 81bfcbc8-760a-4500-be55-4b40d4c15ddc) - Priority: high, Corrective: False
+2025-06-27 22:56:43,999 - INFO - ✅ Task 81bfcbc8-760a-4500-be55-4b40d4c15ddc added to queue immediately. Queue size: 2
+2025-06-27 22:56:43,999 - INFO -   Queuing task 18/30: Analyze Competitor Content Strategies...
+2025-06-27 22:56:44,068 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,070 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Content Strategies (ID: 5a91f253-b35b-4124-97b0-5a9349a5d3c4) - Priority: medium, Corrective: False
+2025-06-27 22:56:44,070 - INFO - ✅ Task 5a91f253-b35b-4124-97b0-5a9349a5d3c4 added to queue immediately. Queue size: 3
+2025-06-27 22:56:44,070 - INFO -   Queuing task 19/30: Develop 5 Optimized Landing Pages...
+2025-06-27 22:56:44,139 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,140 - WARNING - ⚡ IMMEDIATE QUEUE: Develop 5 Optimized Landing Pages (ID: a0d493bd-53dd-497d-9c07-534c923a48fd) - Priority: high, Corrective: False
+2025-06-27 22:56:44,140 - INFO - ✅ Task a0d493bd-53dd-497d-9c07-534c923a48fd added to queue immediately. Queue size: 4
+2025-06-27 22:56:44,140 - INFO -   Queuing task 20/30: Generate Visual Assets for Landing Pages...
+2025-06-27 22:56:44,219 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,220 - WARNING - ⚡ IMMEDIATE QUEUE: Generate Visual Assets for Landing Pages (ID: 34966baa-d405-4118-a9e4-6732e69a61db) - Priority: medium, Corrective: False
+2025-06-27 22:56:44,220 - INFO - ✅ Task 34966baa-d405-4118-a9e4-6732e69a61db added to queue immediately. Queue size: 5
+2025-06-27 22:56:44,220 - INFO -   Queuing task 21/30: Analyze Competitor Landing Pages...
+2025-06-27 22:56:44,276 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,278 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Landing Pages (ID: a0d617c3-4a8a-4d5c-ab49-5681a7ac6528) - Priority: low, Corrective: False
+2025-06-27 22:56:44,278 - INFO - ✅ Task a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 added to queue immediately. Queue size: 6
+2025-06-27 22:56:44,278 - INFO -   Queuing task 22/30: Develop Email Automation Funnel for Lead Nurturing...
+2025-06-27 22:56:44,336 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,337 - WARNING - ⚡ IMMEDIATE QUEUE: Develop Email Automation Funnel for Lead Nurturing (ID: a7cd248d-7fed-45e1-9ece-9002959c98b1) - Priority: high, Corrective: False
+2025-06-27 22:56:44,337 - INFO - ✅ Task a7cd248d-7fed-45e1-9ece-9002959c98b1 added to queue immediately. Queue size: 7
+2025-06-27 22:56:44,337 - INFO -   Queuing task 23/30: Create Email Automation Funnel for Customer Onboar...
+2025-06-27 22:56:44,406 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,407 - WARNING - ⚡ IMMEDIATE QUEUE: Create Email Automation Funnel for Customer Onboarding (ID: 0b37be9e-808d-402e-8ca9-fd4c28e3c32b) - Priority: medium, Corrective: False
+2025-06-27 22:56:44,407 - INFO - ✅ Task 0b37be9e-808d-402e-8ca9-fd4c28e3c32b added to queue immediately. Queue size: 8
+2025-06-27 22:56:44,407 - INFO -   Queuing task 24/30: Analyze Competitor Email Strategies...
+2025-06-27 22:56:44,471 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,472 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Email Strategies (ID: 44304dae-948a-4f0f-81b3-e3afaf10bd3b) - Priority: low, Corrective: False
+2025-06-27 22:56:44,472 - INFO - ✅ Task 44304dae-948a-4f0f-81b3-e3afaf10bd3b added to queue immediately. Queue size: 9
+2025-06-27 22:56:44,472 - INFO -   Queuing task 25/30: Research and Analyze Target Audience for Lead Gene...
+2025-06-27 22:56:44,530 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,531 - WARNING - ⚡ IMMEDIATE QUEUE: Research and Analyze Target Audience for Lead Generation (ID: 41a46741-dede-478a-802e-eaec3ad937bb) - Priority: high, Corrective: False
+2025-06-27 22:56:44,531 - INFO - ✅ Task 41a46741-dede-478a-802e-eaec3ad937bb added to queue immediately. Queue size: 10
+2025-06-27 22:56:44,531 - INFO -   Queuing task 26/30: Create Optimized Landing Pages for Lead Capture...
+2025-06-27 22:56:44,590 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,591 - WARNING - ⚡ IMMEDIATE QUEUE: Create Optimized Landing Pages for Lead Capture (ID: 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e) - Priority: medium, Corrective: False
+2025-06-27 22:56:44,591 - INFO - ✅ Task 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e added to queue immediately. Queue size: 11
+2025-06-27 22:56:44,591 - INFO -   Queuing task 27/30: Develop Email Automation Funnel for Lead Nurturing...
+2025-06-27 22:56:44,656 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,657 - WARNING - ⚡ IMMEDIATE QUEUE: Develop Email Automation Funnel for Lead Nurturing (ID: 71e848c9-007b-48ee-aa7f-5384c373bcb1) - Priority: low, Corrective: False
+2025-06-27 22:56:44,657 - INFO - ✅ Task 71e848c9-007b-48ee-aa7f-5384c373bcb1 added to queue immediately. Queue size: 12
+2025-06-27 22:56:44,657 - INFO -   Queuing task 28/30: Develop 30-Day Content Marketing Strategy...
+2025-06-27 22:56:44,728 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,729 - WARNING - ⚡ IMMEDIATE QUEUE: Develop 30-Day Content Marketing Strategy (ID: cfc1c819-e9ae-4dda-8c70-9e1658c5ec73) - Priority: high, Corrective: False
+2025-06-27 22:56:44,729 - INFO - ✅ Task cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 added to queue immediately. Queue size: 13
+2025-06-27 22:56:44,729 - INFO -   Queuing task 29/30: Create 50 Social Media Posts...
+2025-06-27 22:56:44,785 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,787 - WARNING - ⚡ IMMEDIATE QUEUE: Create 50 Social Media Posts (ID: 11aa4205-1572-4fb9-be97-039f07290971) - Priority: medium, Corrective: False
+2025-06-27 22:56:44,787 - INFO - ✅ Task 11aa4205-1572-4fb9-be97-039f07290971 added to queue immediately. Queue size: 14
+2025-06-27 22:56:44,787 - INFO -   Queuing task 30/30: Analyze Competitor Content Strategies...
+2025-06-27 22:56:44,851 - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-06-27 22:56:44,852 - WARNING - ⚡ IMMEDIATE QUEUE: Analyze Competitor Content Strategies (ID: d4be9780-95d7-4279-b41e-d7cda1e33480) - Priority: low, Corrective: False
+2025-06-27 22:56:44,852 - INFO - ✅ Task d4be9780-95d7-4279-b41e-d7cda1e33480 added to queue immediately. Queue size: 15
+2025-06-27 22:56:44,909 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.19e183fc-aad6-4439-b9d8-3d4f16423b5b "HTTP/2 200 OK"
+2025-06-27 22:56:44,982 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3662e5b4-c180-4fcd-b497-361f33c2a1aa "HTTP/2 200 OK"
+2025-06-27 22:56:45,041 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.ea77ed25-8af2-4c5c-85db-52fbeb5497cb "HTTP/2 200 OK"
+2025-06-27 22:56:45,102 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3bbca47d-db11-4dff-8528-2b283ff3309a "HTTP/2 200 OK"
+2025-06-27 22:56:45,160 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.61e57ad6-2ec7-4dbe-87f0-297513731e0f "HTTP/2 200 OK"
+2025-06-27 22:56:45,223 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.564872d1-912e-45a5-be16-1d38099e7cc7 "HTTP/2 200 OK"
+2025-06-27 22:56:45,292 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3bfb238b-b818-4687-a25b-f63747a80810 "HTTP/2 200 OK"
+2025-06-27 22:56:45,374 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd "HTTP/2 200 OK"
+2025-06-27 22:56:45,455 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.79a17600-081b-425b-8d8d-48b885bbe8dc "HTTP/2 200 OK"
+2025-06-27 22:56:45,516 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.a97b5169-0adc-4d15-86f5-adc94c6d76eb "HTTP/2 200 OK"
+2025-06-27 22:56:45,614 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.f99b53fb-1cee-4cea-9671-6c65957de318 "HTTP/2 200 OK"
+2025-06-27 22:56:45,669 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.87afd2fa-aede-47c4-a4a1-75ace3d57566 "HTTP/2 200 OK"
+2025-06-27 22:56:45,728 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.f047c837-b6ff-4c11-bc85-bffdf3de8465 "HTTP/2 200 OK"
+2025-06-27 22:56:45,782 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.95fb34bf-5854-4810-8643-bbed64765a16 "HTTP/2 200 OK"
+2025-06-27 22:56:45,843 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.d8a16481-ea08-4c5c-9c92-3bdac35e3b13 "HTTP/2 200 OK"
+2025-06-27 22:56:45,902 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.c2bc7e9e-4eae-490c-85d6-c63593db9076 "HTTP/2 200 OK"
+2025-06-27 22:56:45,903 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Research and Analyze Target Audience for Buyer Personas' (ID: c2bc7e9e-4eae-490c-85d6-c63593db9076) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 14
+2025-06-27 22:56:45,903 - INFO - Creating task manager for legacy task format: c2bc7e9e-4eae-490c-85d6-c63593db9076
+2025-06-27 22:56:45,903 - ERROR - Task c2bc7e9e-4eae-490c-85d6-c63593db9076 ('Research and Analyze Target Audience for Buyer Personas') reached execution stage without an assigned agent_id
+2025-06-27 22:56:45,971 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.c2bc7e9e-4eae-490c-85d6-c63593db9076 "HTTP/2 200 OK"
+2025-06-27 22:56:45,971 - INFO - Task c2bc7e9e-4eae-490c-85d6-c63593db9076 status updated to failed.
+2025-06-27 22:56:45,971 - INFO - Forcibly finalized task c2bc7e9e-4eae-490c-85d6-c63593db9076 as failed: Task c2bc7e9e-4eae-490c-85d6-c63593db9076 ('Research and Analyze Target Audience for Buyer Personas') reached execution stage without an assigned agent_id
+2025-06-27 22:56:45,971 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: c2bc7e9e-4eae-490c-85d6-c63593db9076. Active: 0
+2025-06-27 22:56:45,971 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create Detailed Buyer Personas' (ID: 81bfcbc8-760a-4500-be55-4b40d4c15ddc) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 13
+2025-06-27 22:56:45,971 - INFO - Creating task manager for legacy task format: 81bfcbc8-760a-4500-be55-4b40d4c15ddc
+2025-06-27 22:56:45,971 - ERROR - Task 81bfcbc8-760a-4500-be55-4b40d4c15ddc ('Create Detailed Buyer Personas') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,039 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.81bfcbc8-760a-4500-be55-4b40d4c15ddc "HTTP/2 200 OK"
+2025-06-27 22:56:46,040 - INFO - Task 81bfcbc8-760a-4500-be55-4b40d4c15ddc status updated to failed.
+2025-06-27 22:56:46,040 - INFO - Forcibly finalized task 81bfcbc8-760a-4500-be55-4b40d4c15ddc as failed: Task 81bfcbc8-760a-4500-be55-4b40d4c15ddc ('Create Detailed Buyer Personas') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,040 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 81bfcbc8-760a-4500-be55-4b40d4c15ddc. Active: 0
+2025-06-27 22:56:46,040 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Content Strategies' (ID: 5a91f253-b35b-4124-97b0-5a9349a5d3c4) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 12
+2025-06-27 22:56:46,040 - INFO - Creating task manager for legacy task format: 5a91f253-b35b-4124-97b0-5a9349a5d3c4
+2025-06-27 22:56:46,040 - ERROR - Task 5a91f253-b35b-4124-97b0-5a9349a5d3c4 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,112 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.5a91f253-b35b-4124-97b0-5a9349a5d3c4 "HTTP/2 200 OK"
+2025-06-27 22:56:46,112 - INFO - Task 5a91f253-b35b-4124-97b0-5a9349a5d3c4 status updated to failed.
+2025-06-27 22:56:46,112 - INFO - Forcibly finalized task 5a91f253-b35b-4124-97b0-5a9349a5d3c4 as failed: Task 5a91f253-b35b-4124-97b0-5a9349a5d3c4 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,112 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 5a91f253-b35b-4124-97b0-5a9349a5d3c4. Active: 0
+2025-06-27 22:56:46,112 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop 5 Optimized Landing Pages' (ID: a0d493bd-53dd-497d-9c07-534c923a48fd) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 11
+2025-06-27 22:56:46,112 - INFO - Creating task manager for legacy task format: a0d493bd-53dd-497d-9c07-534c923a48fd
+2025-06-27 22:56:46,112 - ERROR - Task a0d493bd-53dd-497d-9c07-534c923a48fd ('Develop 5 Optimized Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,173 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.a0d493bd-53dd-497d-9c07-534c923a48fd "HTTP/2 200 OK"
+2025-06-27 22:56:46,174 - INFO - Task a0d493bd-53dd-497d-9c07-534c923a48fd status updated to failed.
+2025-06-27 22:56:46,174 - INFO - Forcibly finalized task a0d493bd-53dd-497d-9c07-534c923a48fd as failed: Task a0d493bd-53dd-497d-9c07-534c923a48fd ('Develop 5 Optimized Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,174 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: a0d493bd-53dd-497d-9c07-534c923a48fd. Active: 0
+2025-06-27 22:56:46,174 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Generate Visual Assets for Landing Pages' (ID: 34966baa-d405-4118-a9e4-6732e69a61db) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 10
+2025-06-27 22:56:46,174 - INFO - Creating task manager for legacy task format: 34966baa-d405-4118-a9e4-6732e69a61db
+2025-06-27 22:56:46,174 - ERROR - Task 34966baa-d405-4118-a9e4-6732e69a61db ('Generate Visual Assets for Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,234 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.34966baa-d405-4118-a9e4-6732e69a61db "HTTP/2 200 OK"
+2025-06-27 22:56:46,234 - INFO - Task 34966baa-d405-4118-a9e4-6732e69a61db status updated to failed.
+2025-06-27 22:56:46,234 - INFO - Forcibly finalized task 34966baa-d405-4118-a9e4-6732e69a61db as failed: Task 34966baa-d405-4118-a9e4-6732e69a61db ('Generate Visual Assets for Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,234 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 34966baa-d405-4118-a9e4-6732e69a61db. Active: 0
+2025-06-27 22:56:46,234 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Landing Pages' (ID: a0d617c3-4a8a-4d5c-ab49-5681a7ac6528) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 9
+2025-06-27 22:56:46,234 - INFO - Creating task manager for legacy task format: a0d617c3-4a8a-4d5c-ab49-5681a7ac6528
+2025-06-27 22:56:46,234 - ERROR - Task a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 ('Analyze Competitor Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,293 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 "HTTP/2 200 OK"
+2025-06-27 22:56:46,294 - INFO - Task a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 status updated to failed.
+2025-06-27 22:56:46,294 - INFO - Forcibly finalized task a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 as failed: Task a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 ('Analyze Competitor Landing Pages') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,294 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: a0d617c3-4a8a-4d5c-ab49-5681a7ac6528. Active: 0
+2025-06-27 22:56:46,294 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop Email Automation Funnel for Lead Nurturing' (ID: a7cd248d-7fed-45e1-9ece-9002959c98b1) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 8
+2025-06-27 22:56:46,294 - INFO - Creating task manager for legacy task format: a7cd248d-7fed-45e1-9ece-9002959c98b1
+2025-06-27 22:56:46,294 - ERROR - Task a7cd248d-7fed-45e1-9ece-9002959c98b1 ('Develop Email Automation Funnel for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,352 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.a7cd248d-7fed-45e1-9ece-9002959c98b1 "HTTP/2 200 OK"
+2025-06-27 22:56:46,354 - INFO - Task a7cd248d-7fed-45e1-9ece-9002959c98b1 status updated to failed.
+2025-06-27 22:56:46,354 - INFO - Forcibly finalized task a7cd248d-7fed-45e1-9ece-9002959c98b1 as failed: Task a7cd248d-7fed-45e1-9ece-9002959c98b1 ('Develop Email Automation Funnel for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,354 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: a7cd248d-7fed-45e1-9ece-9002959c98b1. Active: 0
+2025-06-27 22:56:46,354 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create Email Automation Funnel for Customer Onboarding' (ID: 0b37be9e-808d-402e-8ca9-fd4c28e3c32b) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 7
+2025-06-27 22:56:46,355 - INFO - Creating task manager for legacy task format: 0b37be9e-808d-402e-8ca9-fd4c28e3c32b
+2025-06-27 22:56:46,355 - ERROR - Task 0b37be9e-808d-402e-8ca9-fd4c28e3c32b ('Create Email Automation Funnel for Customer Onboarding') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,421 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.0b37be9e-808d-402e-8ca9-fd4c28e3c32b "HTTP/2 200 OK"
+2025-06-27 22:56:46,422 - INFO - Task 0b37be9e-808d-402e-8ca9-fd4c28e3c32b status updated to failed.
+2025-06-27 22:56:46,423 - INFO - Forcibly finalized task 0b37be9e-808d-402e-8ca9-fd4c28e3c32b as failed: Task 0b37be9e-808d-402e-8ca9-fd4c28e3c32b ('Create Email Automation Funnel for Customer Onboarding') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,423 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 0b37be9e-808d-402e-8ca9-fd4c28e3c32b. Active: 0
+2025-06-27 22:56:46,423 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Email Strategies' (ID: 44304dae-948a-4f0f-81b3-e3afaf10bd3b) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 6
+2025-06-27 22:56:46,423 - INFO - Creating task manager for legacy task format: 44304dae-948a-4f0f-81b3-e3afaf10bd3b
+2025-06-27 22:56:46,423 - ERROR - Task 44304dae-948a-4f0f-81b3-e3afaf10bd3b ('Analyze Competitor Email Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,505 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.44304dae-948a-4f0f-81b3-e3afaf10bd3b "HTTP/2 200 OK"
+2025-06-27 22:56:46,508 - INFO - Task 44304dae-948a-4f0f-81b3-e3afaf10bd3b status updated to failed.
+2025-06-27 22:56:46,508 - INFO - Forcibly finalized task 44304dae-948a-4f0f-81b3-e3afaf10bd3b as failed: Task 44304dae-948a-4f0f-81b3-e3afaf10bd3b ('Analyze Competitor Email Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,508 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 44304dae-948a-4f0f-81b3-e3afaf10bd3b. Active: 0
+2025-06-27 22:56:46,508 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Research and Analyze Target Audience for Lead Generation' (ID: 41a46741-dede-478a-802e-eaec3ad937bb) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 5
+2025-06-27 22:56:46,508 - INFO - Creating task manager for legacy task format: 41a46741-dede-478a-802e-eaec3ad937bb
+2025-06-27 22:56:46,508 - ERROR - Task 41a46741-dede-478a-802e-eaec3ad937bb ('Research and Analyze Target Audience for Lead Generation') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,589 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.41a46741-dede-478a-802e-eaec3ad937bb "HTTP/2 200 OK"
+2025-06-27 22:56:46,593 - INFO - Task 41a46741-dede-478a-802e-eaec3ad937bb status updated to failed.
+2025-06-27 22:56:46,593 - INFO - Forcibly finalized task 41a46741-dede-478a-802e-eaec3ad937bb as failed: Task 41a46741-dede-478a-802e-eaec3ad937bb ('Research and Analyze Target Audience for Lead Generation') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,593 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 41a46741-dede-478a-802e-eaec3ad937bb. Active: 0
+2025-06-27 22:56:46,593 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create Optimized Landing Pages for Lead Capture' (ID: 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 4
+2025-06-27 22:56:46,593 - INFO - Creating task manager for legacy task format: 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e
+2025-06-27 22:56:46,593 - ERROR - Task 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e ('Create Optimized Landing Pages for Lead Capture') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,652 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.2fc648da-4e37-43fa-9a5f-a0aaa36edd4e "HTTP/2 200 OK"
+2025-06-27 22:56:46,652 - INFO - Task 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e status updated to failed.
+2025-06-27 22:56:46,652 - INFO - Forcibly finalized task 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e as failed: Task 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e ('Create Optimized Landing Pages for Lead Capture') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,652 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 2fc648da-4e37-43fa-9a5f-a0aaa36edd4e. Active: 0
+2025-06-27 22:56:46,652 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop Email Automation Funnel for Lead Nurturing' (ID: 71e848c9-007b-48ee-aa7f-5384c373bcb1) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 3
+2025-06-27 22:56:46,652 - INFO - Creating task manager for legacy task format: 71e848c9-007b-48ee-aa7f-5384c373bcb1
+2025-06-27 22:56:46,652 - ERROR - Task 71e848c9-007b-48ee-aa7f-5384c373bcb1 ('Develop Email Automation Funnel for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,713 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.71e848c9-007b-48ee-aa7f-5384c373bcb1 "HTTP/2 200 OK"
+2025-06-27 22:56:46,713 - INFO - Task 71e848c9-007b-48ee-aa7f-5384c373bcb1 status updated to failed.
+2025-06-27 22:56:46,713 - INFO - Forcibly finalized task 71e848c9-007b-48ee-aa7f-5384c373bcb1 as failed: Task 71e848c9-007b-48ee-aa7f-5384c373bcb1 ('Develop Email Automation Funnel for Lead Nurturing') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,714 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 71e848c9-007b-48ee-aa7f-5384c373bcb1. Active: 0
+2025-06-27 22:56:46,714 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Develop 30-Day Content Marketing Strategy' (ID: cfc1c819-e9ae-4dda-8c70-9e1658c5ec73) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 2
+2025-06-27 22:56:46,714 - INFO - Creating task manager for legacy task format: cfc1c819-e9ae-4dda-8c70-9e1658c5ec73
+2025-06-27 22:56:46,714 - ERROR - Task cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 ('Develop 30-Day Content Marketing Strategy') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,793 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 "HTTP/2 200 OK"
+2025-06-27 22:56:46,793 - INFO - Task cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 status updated to failed.
+2025-06-27 22:56:46,793 - INFO - Forcibly finalized task cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 as failed: Task cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 ('Develop 30-Day Content Marketing Strategy') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,793 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: cfc1c819-e9ae-4dda-8c70-9e1658c5ec73. Active: 0
+2025-06-27 22:56:46,793 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Create 50 Social Media Posts' (ID: 11aa4205-1572-4fb9-be97-039f07290971) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 1
+2025-06-27 22:56:46,793 - INFO - Creating task manager for legacy task format: 11aa4205-1572-4fb9-be97-039f07290971
+2025-06-27 22:56:46,793 - ERROR - Task 11aa4205-1572-4fb9-be97-039f07290971 ('Create 50 Social Media Posts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,864 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.11aa4205-1572-4fb9-be97-039f07290971 "HTTP/2 200 OK"
+2025-06-27 22:56:46,865 - INFO - Task 11aa4205-1572-4fb9-be97-039f07290971 status updated to failed.
+2025-06-27 22:56:46,865 - INFO - Forcibly finalized task 11aa4205-1572-4fb9-be97-039f07290971 as failed: Task 11aa4205-1572-4fb9-be97-039f07290971 ('Create 50 Social Media Posts') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,865 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: 11aa4205-1572-4fb9-be97-039f07290971. Active: 0
+2025-06-27 22:56:46,865 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 picking up task: 'Analyze Competitor Content Strategies' (ID: d4be9780-95d7-4279-b41e-d7cda1e33480) from W: 197b9fe2-5b4e-450b-92f4-28829d591a71. Q size: 0
+2025-06-27 22:56:46,865 - INFO - Creating task manager for legacy task format: d4be9780-95d7-4279-b41e-d7cda1e33480
+2025-06-27 22:56:46,865 - ERROR - Task d4be9780-95d7-4279-b41e-d7cda1e33480 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,929 - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?id=eq.d4be9780-95d7-4279-b41e-d7cda1e33480 "HTTP/2 200 OK"
+2025-06-27 22:56:46,931 - INFO - Task d4be9780-95d7-4279-b41e-d7cda1e33480 status updated to failed.
+2025-06-27 22:56:46,931 - INFO - Forcibly finalized task d4be9780-95d7-4279-b41e-d7cda1e33480 as failed: Task d4be9780-95d7-4279-b41e-d7cda1e33480 ('Analyze Competitor Content Strategies') reached execution stage without an assigned agent_id
+2025-06-27 22:56:46,931 - INFO - Worker e10db730-8618-40a1-ae1e-826af0b66a31 finished task: d4be9780-95d7-4279-b41e-d7cda1e33480. Active: 0
+2025-06-27 22:56:50,975 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.19e183fc-aad6-4439-b9d8-3d4f16423b5b "HTTP/2 200 OK"
+2025-06-27 22:56:51,047 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3662e5b4-c180-4fcd-b497-361f33c2a1aa "HTTP/2 200 OK"
+2025-06-27 22:56:51,128 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.ea77ed25-8af2-4c5c-85db-52fbeb5497cb "HTTP/2 200 OK"
+2025-06-27 22:56:51,199 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3bbca47d-db11-4dff-8528-2b283ff3309a "HTTP/2 200 OK"
+2025-06-27 22:56:51,264 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.61e57ad6-2ec7-4dbe-87f0-297513731e0f "HTTP/2 200 OK"
+2025-06-27 22:56:51,332 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.564872d1-912e-45a5-be16-1d38099e7cc7 "HTTP/2 200 OK"
+2025-06-27 22:56:51,402 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.3bfb238b-b818-4687-a25b-f63747a80810 "HTTP/2 200 OK"
+2025-06-27 22:56:51,464 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.1d9b5a38-de99-40ac-b5a8-5fb3ec65bafd "HTTP/2 200 OK"
+2025-06-27 22:56:51,538 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.79a17600-081b-425b-8d8d-48b885bbe8dc "HTTP/2 200 OK"
+2025-06-27 22:56:51,604 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.a97b5169-0adc-4d15-86f5-adc94c6d76eb "HTTP/2 200 OK"
+2025-06-27 22:56:51,660 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.f99b53fb-1cee-4cea-9671-6c65957de318 "HTTP/2 200 OK"
+2025-06-27 22:56:51,723 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.87afd2fa-aede-47c4-a4a1-75ace3d57566 "HTTP/2 200 OK"
+2025-06-27 22:56:51,791 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.f047c837-b6ff-4c11-bc85-bffdf3de8465 "HTTP/2 200 OK"
+2025-06-27 22:56:51,846 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.95fb34bf-5854-4810-8643-bbed64765a16 "HTTP/2 200 OK"
+2025-06-27 22:56:51,903 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.d8a16481-ea08-4c5c-9c92-3bdac35e3b13 "HTTP/2 200 OK"
+2025-06-27 22:56:51,963 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.c2bc7e9e-4eae-490c-85d6-c63593db9076 "HTTP/2 200 OK"
+2025-06-27 22:56:52,025 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.81bfcbc8-760a-4500-be55-4b40d4c15ddc "HTTP/2 200 OK"
+2025-06-27 22:56:52,087 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.5a91f253-b35b-4124-97b0-5a9349a5d3c4 "HTTP/2 200 OK"
+2025-06-27 22:56:52,153 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.a0d493bd-53dd-497d-9c07-534c923a48fd "HTTP/2 200 OK"
+2025-06-27 22:56:52,218 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.34966baa-d405-4118-a9e4-6732e69a61db "HTTP/2 200 OK"
+2025-06-27 22:56:52,290 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.a0d617c3-4a8a-4d5c-ab49-5681a7ac6528 "HTTP/2 200 OK"
+2025-06-27 22:56:52,362 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.a7cd248d-7fed-45e1-9ece-9002959c98b1 "HTTP/2 200 OK"
+2025-06-27 22:56:52,418 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.0b37be9e-808d-402e-8ca9-fd4c28e3c32b "HTTP/2 200 OK"
+2025-06-27 22:56:52,492 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.44304dae-948a-4f0f-81b3-e3afaf10bd3b "HTTP/2 200 OK"
+2025-06-27 22:56:52,555 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.41a46741-dede-478a-802e-eaec3ad937bb "HTTP/2 200 OK"
+2025-06-27 22:56:52,619 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.2fc648da-4e37-43fa-9a5f-a0aaa36edd4e "HTTP/2 200 OK"
+2025-06-27 22:56:52,689 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.71e848c9-007b-48ee-aa7f-5384c373bcb1 "HTTP/2 200 OK"
+2025-06-27 22:56:52,778 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.cfc1c819-e9ae-4dda-8c70-9e1658c5ec73 "HTTP/2 200 OK"
+2025-06-27 22:56:52,841 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.11aa4205-1572-4fb9-be97-039f07290971 "HTTP/2 200 OK"
+2025-06-27 22:56:52,914 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&id=eq.d4be9780-95d7-4279-b41e-d7cda1e33480 "HTTP/2 200 OK"
+2025-06-27 22:56:52,915 - INFO -     All queued tasks processed.
+2025-06-27 22:56:52,915 - INFO - Stopping task executor...
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker e10db730-8618-40a1-ae1e-826af0b66a31 received termination signal
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker e10db730-8618-40a1-ae1e-826af0b66a31 exiting
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker 81946c3d-6fdb-48dd-9bf6-91f824d4960a received termination signal
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker 81946c3d-6fdb-48dd-9bf6-91f824d4960a exiting
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker a82b29d0-0c7a-4d9d-ae1e-6c62d04b3eae received termination signal
+2025-06-27 22:56:52,915 - INFO - Anti-loop worker a82b29d0-0c7a-4d9d-ae1e-6c62d04b3eae exiting
+2025-06-27 22:56:52,915 - INFO - Main execution loop finished
+2025-06-27 22:56:52,915 - INFO - Task executor stopped
+2025-06-27 22:56:52,915 - INFO -     ✅ Task execution cycle finished. Completed: 0, Failed: 30
+2025-06-27 22:56:52,915 - INFO - ✅ Task Execution
+2025-06-27 22:56:52,916 - INFO - 
+📊 STEP 6: Monitoring goal progress...
+2025-06-27 22:56:52,927 - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-06-27 22:56:52,927 - INFO - 🤖 AssetRequirementsGenerator initialized with AI-driven configuration
+2025-06-27 22:56:52,927 - INFO - ✅ Asset Requirements Generator initialized for goal monitoring
+2025-06-27 22:56:52,927 - INFO - ✅ AgentStatusManager available for goal monitoring
+2025-06-27 22:56:52,929 - INFO - GoalValidationOptimizer initialized - optimization: True, grace_period: 2.0h, velocity_window: 24.0h
+2025-06-27 22:56:52,929 - INFO - ✅ GoalValidationOptimizer available for intelligent validation
+2025-06-27 22:56:52,929 - INFO - 🔍 Validating workspace 197b9fe2-5b4e-450b-92f4-28829d591a71
+2025-06-27 22:56:52,999 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/team_proposals?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71&status=eq.approved "HTTP/2 200 OK"
+2025-06-27 22:56:53,002 - WARNING - ⚠️ Skipping goal validation for workspace 197b9fe2-5b4e-450b-92f4-28829d591a71 - no approved team proposal found
+2025-06-27 22:56:53,002 - INFO - 💡 Tip: Approve the team proposal first before automatic goal validation starts
+2025-06-27 22:56:53,078 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,079 - INFO - ✅ Goal Monitoring
+2025-06-27 22:56:53,079 - INFO - 
+📦 STEP 7: Generating deliverables...
+2025-06-27 22:56:53,139 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71&status=in.%28completed%2Cpending_verification%29 "HTTP/2 200 OK"
+2025-06-27 22:56:53,141 - INFO - 🔄 Deliverable Generation: skipped
+2025-06-27 22:56:53,141 - INFO - 
+👤 STEP 8: Human feedback cycle...
+2025-06-27 22:56:53,199 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/human_feedback_requests?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71&status=eq.pending "HTTP/2 200 OK"
+2025-06-27 22:56:53,201 - INFO - 🔄 Human Feedback: skipped
+2025-06-27 22:56:53,201 - INFO - 
+🔍 STEP 9: Quality assurance cycle...
+2025-06-27 22:56:53,210 - INFO - ✅ OpenAI client initialized for quality validation
+2025-06-27 22:56:53,297 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/deliverables?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,297 - INFO - ✅ Quality Assurance
+2025-06-27 22:56:53,297 - INFO - 
+🏁 STEP 10: Final verification...
+2025-06-27 22:56:53,359 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,427 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,523 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,584 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/deliverables?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,655 - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A&workspace_id=eq.197b9fe2-5b4e-450b-92f4-28829d591a71 "HTTP/2 200 OK"
+2025-06-27 22:56:53,655 - INFO - ✅ Final Verification
+2025-06-27 22:56:53,655 - INFO - 
+================================================================================
+2025-06-27 22:56:53,655 - INFO - 🎬 REAL END-TO-END TEST COMPLETE
+2025-06-27 22:56:53,655 - INFO - ================================================================================
+2025-06-27 22:56:53,655 - INFO - 📊 EXECUTION SUMMARY:
+2025-06-27 22:56:53,655 - INFO -    Duration: 187.9 seconds
+2025-06-27 22:56:53,655 - INFO -    Steps Completed: 10
+2025-06-27 22:56:53,655 - INFO -    Errors: 0
+2025-06-27 22:56:53,655 - INFO -    Final Status: partial
+2025-06-27 22:56:53,655 - INFO - 
+📈 WORKSPACE METRICS:
+2025-06-27 22:56:53,655 - INFO -    Goals: 0/10 completed
+2025-06-27 22:56:53,655 - INFO -    Tasks: 0/30 completed
+2025-06-27 22:56:53,655 - INFO -    Deliverables: 0 created
+2025-06-27 22:56:53,655 - INFO -    Agents: 3 created
+2025-06-27 22:56:53,655 - INFO -    Completion: 0.0%
+2025-06-27 22:56:53,656 - INFO - 
+📝 DETAILED REPORT: e2e_test_report_20250627_225653.json
+2025-06-27 22:56:53,656 - WARNING - ⚠️ END-TO-END TEST PARTIAL - 8/10 steps succeeded

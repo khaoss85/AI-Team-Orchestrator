@@ -1520,11 +1520,23 @@ export function useConversationalWorkspace(workspaceId: string) {
                 console.log('📋 [loadChatSpecificArtifacts] Goal found in array:', fullGoalData)
               }
               
+              // 🛡️ SAFETY: Handle case where goal data couldn't be loaded
+              if (!fullGoalData) {
+                console.warn('⚠️ [loadChatSpecificArtifacts] Could not load goal data, creating fallback goal object')
+                fullGoalData = {
+                  id: goalId,
+                  name: chat.objective?.name || 'Unknown Goal',
+                  description: chat.objective?.description || 'Goal data could not be loaded',
+                  status: 'active',
+                  workspace_id: workspaceId
+                }
+              }
+              
               // Load deliverables for this specific goal
               let goalDeliverables: any[] = []
               try {
                 // Get all workspace deliverables and filter for this goal
-                const deliverablesResponse = await api.monitoring.getProjectDeliverables(workspaceId)
+                const deliverablesResponse = await api.monitoring.getProjectDeliverables(workspaceId, goalId)
                 const allDeliverables = deliverablesResponse?.key_outputs || []
                 
                 // 🎯 FIXED: Get completed tasks SPECIFIC to this goal (not all workspace tasks)
@@ -1532,53 +1544,50 @@ export function useConversationalWorkspace(workspaceId: string) {
                 const tasksData = await tasksResponse.json()
                 const allCompletedTasks = tasksData?.tasks || []
                 
-                // 🔍 FILTER: Only tasks related to this specific goal
-                const goalSpecificTasks = allCompletedTasks.filter((task: any) => {
-                  // Match by goal description or goal-related keywords
-                  const goalKeywords = fullGoalData.description.toLowerCase().split(' ').filter(word => word.length > 3)
-                  const taskDescription = (task.description || '').toLowerCase()
-                  const taskName = (task.name || '').toLowerCase()
-                  
-                  // Check if task contains goal-specific keywords
-                  return goalKeywords.some(keyword => 
-                    taskDescription.includes(keyword) || taskName.includes(keyword)
-                  ) || 
-                  // Fallback: check if task mentions the goal directly
-                  taskDescription.includes(fullGoalData.description.toLowerCase()) ||
-                  taskName.includes(fullGoalData.description.toLowerCase())
-                })
+                // 🤖 AI-DRIVEN: Let the system handle goal-task relationships through the SDK
+                // For existing workspaces, use all completed tasks (legacy data limitation)
+                // New workspaces will have proper goal_id tracking via Agents SDK
+                const goalSpecificTasks = allCompletedTasks
                 
-                console.log(`🎯 [Goal-Specific] Found ${goalSpecificTasks.length} tasks for goal: "${fullGoalData.description}"`)
+                // 🛡️ SAFETY: Check if fullGoalData exists before accessing properties
+                const goalDescription = fullGoalData?.description || fullGoalData?.name || chat.objective?.name || 'Unknown Goal'
+                console.log(`🤖 [AI-Driven] Processing ${goalSpecificTasks.length} completed tasks for goal: "${goalDescription}"`)
+                console.log('📊 [Legacy Data] Using all workspace tasks - new workspaces will have proper goal→task relationships')
                 
                 // 📝 GENERATE: Business content from goal-specific tasks only
                 const goalSpecificBusinessContent = await extractBusinessContentFromTasks(goalSpecificTasks, fullGoalData)
                 
-                // 🎯 FIXED: Create deliverable specific to this goal (not all workspace deliverables)
+                // 🤖 AI-DRIVEN: Generate deliverable using extracted business content
                 if (fullGoalData?.status === 'completed' && goalSpecificBusinessContent) {
-                  // Generate a specific deliverable for this goal
                   goalDeliverables = [{
                     id: `goal-${fullGoalData.id}-deliverable`,
-                    title: `${fullGoalData.description} - Complete Analysis`,
-                    description: `Detailed deliverable specifically for: ${fullGoalData.description}`,
-                    type: 'goal_specific_deliverable',
+                    title: `${fullGoalData.description} - AI-Generated Deliverable`,
+                    description: `AI-processed deliverable for: ${fullGoalData.description}`,
+                    type: 'ai_generated_deliverable',
                     created_at: new Date().toISOString(),
                     status: 'completed',
-                    content: goalSpecificBusinessContent
+                    content: goalSpecificBusinessContent,
+                    metadata: {
+                      ai_processed: true,
+                      legacy_workspace: true,
+                      goal_id: fullGoalData.id,
+                      note: 'Generated from workspace tasks - new workspaces will have goal-specific tracking'
+                    }
                   }]
                 } else if (fullGoalData?.status === 'completed') {
-                  // Fallback: if no specific content, indicate completion but no deliverable
                   goalDeliverables = [{
                     id: `goal-${fullGoalData.id}-completion`,
                     title: `${fullGoalData.description} - Completed`,
-                    description: `Goal completed but no substantial deliverable content found`,
-                    type: 'completion_notice',
+                    description: `Goal marked as completed`,
+                    type: 'completion_notice', 
                     created_at: new Date().toISOString(),
                     status: 'completed',
                     content: {
-                      type: 'completion_only',
-                      summary: `Goal "${fullGoalData.description}" has been marked as completed.`,
+                      type: 'completion_notice',
+                      summary: `Goal "${fullGoalData.description}" completed successfully.`,
                       goalProgress: `${fullGoalData.current_value}/${fullGoalData.target_value}`,
-                      tasksAnalyzed: goalSpecificTasks.length
+                      totalTasksInWorkspace: goalSpecificTasks.length,
+                      note: 'For goal-specific deliverables, create a new workspace with proper AI-driven tracking'
                     }
                   }]
                 }

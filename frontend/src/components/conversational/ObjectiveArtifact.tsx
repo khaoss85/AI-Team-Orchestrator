@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import DeliverableActionBar from './DeliverableActionBar'
 
 interface ObjectiveData {
   objective: {
@@ -825,6 +826,17 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
               <div className="bg-white rounded border p-4 max-h-96 overflow-y-auto">
                 {renderDeliverableContent(deliverable.content)}
               </div>
+              
+              {/* 🎯 ACTIONABLE: Universal actions for any deliverable */}
+              <DeliverableActionBar 
+                deliverable={{
+                  id: deliverable.id || `deliverable-${index}`,
+                  title: deliverable.title || `Deliverable ${index + 1}`,
+                  content: deliverable.content,
+                  contentType: deliverable.content?.businessMetrics ? 'Structured' : 'HTML',
+                  type: deliverable.type
+                }}
+              />
             </div>
           )}
         </div>

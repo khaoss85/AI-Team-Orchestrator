@@ -1097,14 +1097,20 @@ class SpecialistAgent(Generic[T]):
             ]
         )
         
-        # 🔧 OPENAI SDK TOOLS - Available to all agents
+        # 🔧 OPENAI SDK TOOLS - Available based on model compatibility
         if SDK_AVAILABLE:
-            # Add WebSearchTool for all agents
-            try:
-                tools_list.append(WebSearchTool())
-                logger.info(f"Agent {self.agent_data.name} equipped with OpenAI SDK WebSearchTool")
-            except Exception as e:
-                logger.warning(f"Could not add WebSearchTool to {self.agent_data.name}: {e}")
+            # 🚨 FIX: WebSearchTool compatibility check - nano models may have limitations
+            agent_model = self.seniority_model_map.get(self.agent_data.seniority.value, "gpt-4.1-nano")
+            
+            # Only add WebSearchTool for compatible models (mini and above)
+            if "nano" not in agent_model:
+                try:
+                    tools_list.append(WebSearchTool())
+                    logger.info(f"Agent {self.agent_data.name} equipped with OpenAI SDK WebSearchTool (model: {agent_model})")
+                except Exception as e:
+                    logger.warning(f"Could not add WebSearchTool to {self.agent_data.name}: {e}")
+            else:
+                logger.info(f"🔧 WebSearchTool skipped for {self.agent_data.name} - nano model compatibility (model: {agent_model})")
             
             # Note: FileSearchTool requires vector_store_ids, so we'll add it conditionally below
             # Future SDK tools like CodeInterpreterTool can be added here when available
@@ -1328,36 +1334,28 @@ class SpecialistAgent(Generic[T]):
                         ).model_dump()
                     )
 
+                # 🔧 FIX #2: TEAM-AWARE HANDOFF - Use existing agents only
                 agents_in_db = await db_list_agents(str(self.agent_data.workspace_id))
-                compatible_agents = self._find_compatible_agents_anti_loop(
-                    agents_in_db, target_role
-                )
+                
+                # Smart agent matching with team awareness
+                handoff_result = self._smart_team_aware_handoff(agents_in_db, target_role, reason_for_handoff)
+                
+                if not handoff_result["success"]:
+                    logger.error(f"Team-aware handoff failed: {handoff_result['message']}")
+                    return json.dumps(
+                        HandoffRequestOutput(
+                            success=False,
+                            message=handoff_result["message"],
+                        ).model_dump()
+                    )
+                
+                target_agent_dict = handoff_result["agent"]
+                target_role_for_description = handoff_result["role_description"] 
                 original_target_role_for_log = target_role
-
-                if not compatible_agents:
-                    logger.warning(
-                        f"No direct agent for handoff target role '{target_role}'. Attempting PM fallback."
-                    )
-                    compatible_agents = self._find_compatible_agents_anti_loop(
-                        agents_in_db, "Project Manager"
-                    )
-                    if compatible_agents:
-                        target_role_for_description = "Project Manager"
-                        reason_for_handoff = f"[ESCALATED to PM] Original Target: {original_target_role_for_log}. Reason: {reason_for_handoff}"
-                    else:
-                        logger.error(
-                            f"Handoff failed: No suitable agent for '{original_target_role_for_log}' or Project Manager."
-                        )
-                        return json.dumps(
-                            HandoffRequestOutput(
-                                success=False,
-                                message=f"No suitable agent for handoff to '{original_target_role_for_log}' or fallback.",
-                            ).model_dump()
-                        )
-                else:
-                    target_role_for_description = target_role
-
-                target_agent_dict = compatible_agents[0]
+                
+                # Update reason if agent was remapped
+                if handoff_result["was_remapped"]:
+                    reason_for_handoff = f"[TEAM-AWARE MAPPING] Original: {target_role} → Available: {target_agent_dict.get('role')}. {reason_for_handoff}"
                 handoff_task_name = f"HANDOFF from {self.agent_data.name} for Task ID: {self._current_task_being_processed_id}"
                 handoff_task_description = f"!!! HANDOFF TASK !!!\nPriority: {priority.upper()}\nOriginal Task ID: {self._current_task_being_processed_id}\nFrom: {self.agent_data.name} ({self.agent_data.role})\nTo (Intended): {target_role_for_description} (Assigned: {target_agent_dict.get('name')} - {target_agent_dict.get('role')})\nReason: {reason_for_handoff}\nWork Done by {self.agent_data.name}:\n{summary_of_work_done}\nSpecific Request for {target_agent_dict.get('role', target_role_for_description)}:\n{specific_request_for_target}\nInstructions: Review, continue progress. Avoid further delegation without manager approval."
 
@@ -1400,6 +1398,258 @@ class SpecialistAgent(Generic[T]):
                 )
 
         return impl
+
+    def _smart_team_aware_handoff(
+        self, agents_in_db: List[Dict[str, Any]], target_role: str, reason: str
+    ) -> Dict[str, Any]:
+        """
+        🔧 FIX #2: Intelligent team-aware handoff that works with existing agents only.
+        
+        Implements proper team orchestration by:
+        1. Knowing the real team composition
+        2. Mapping requested roles to available agents intelligently
+        3. Providing clear fallbacks and alternatives
+        
+        Returns dict with: success, agent, role_description, was_remapped, message
+        """
+        try:
+            logger.info(f"🤝 Team-aware handoff: Looking for '{target_role}' among {len(agents_in_db)} available agents")
+            
+            # Filter active agents (excluding self)
+            available_agents = [
+                agent for agent in agents_in_db 
+                if (agent.get("status") == AgentStatus.ACTIVE.value and 
+                    str(agent.get("id")) != str(self.agent_data.id))
+            ]
+            
+            if not available_agents:
+                return {
+                    "success": False,
+                    "message": "No active agents available in workspace for handoff",
+                    "agent": None,
+                    "role_description": None,
+                    "was_remapped": False
+                }
+            
+            # Log available team for visibility  
+            team_summary = ", ".join([f"{agent.get('name')} ({agent.get('role')})" for agent in available_agents])
+            logger.info(f"🎯 Available team: {team_summary}")
+            
+            # Stage 1: Exact role matching
+            exact_matches = self._find_exact_role_matches(available_agents, target_role)
+            if exact_matches:
+                best_agent = self._select_best_agent(exact_matches)
+                logger.info(f"✅ Exact match found: {best_agent.get('name')} ({best_agent.get('role')})")
+                return {
+                    "success": True,
+                    "agent": best_agent,
+                    "role_description": target_role,
+                    "was_remapped": False,
+                    "message": f"Exact match: {best_agent.get('name')}"
+                }
+            
+            # Stage 2: Semantic role mapping (intelligent alternatives)
+            semantic_matches = self._find_semantic_role_matches(available_agents, target_role)
+            if semantic_matches:
+                best_agent = self._select_best_agent(semantic_matches)
+                logger.info(f"🔄 Semantic match: {target_role} → {best_agent.get('name')} ({best_agent.get('role')})")
+                return {
+                    "success": True,
+                    "agent": best_agent,
+                    "role_description": best_agent.get('role'),
+                    "was_remapped": True,
+                    "message": f"Mapped to available: {best_agent.get('name')} ({best_agent.get('role')})"
+                }
+            
+            # Stage 3: Skill-based matching (best available for task type)
+            skill_matches = self._find_skill_based_matches(available_agents, target_role, reason)
+            if skill_matches:
+                best_agent = self._select_best_agent(skill_matches)
+                logger.info(f"🧠 Skill-based match: {target_role} → {best_agent.get('name')} ({best_agent.get('role')})")
+                return {
+                    "success": True,
+                    "agent": best_agent,
+                    "role_description": best_agent.get('role'),
+                    "was_remapped": True,
+                    "message": f"Best skill match: {best_agent.get('name')} ({best_agent.get('role')})"
+                }
+            
+            # Stage 4: Senior agent fallback (most experienced available)
+            senior_agents = [agent for agent in available_agents if agent.get('seniority') in ['senior', 'expert']]
+            if senior_agents:
+                best_agent = self._select_best_agent(senior_agents)
+                logger.info(f"👤 Senior fallback: {target_role} → {best_agent.get('name')} ({best_agent.get('role')})")
+                return {
+                    "success": True,
+                    "agent": best_agent,
+                    "role_description": best_agent.get('role'),
+                    "was_remapped": True,
+                    "message": f"Senior fallback: {best_agent.get('name')} ({best_agent.get('role')})"
+                }
+            
+            # Stage 5: Any available agent (last resort)
+            if available_agents:
+                best_agent = self._select_best_agent(available_agents)
+                logger.warning(f"⚠️ Last resort: {target_role} → {best_agent.get('name')} ({best_agent.get('role')})")
+                return {
+                    "success": True,
+                    "agent": best_agent,
+                    "role_description": best_agent.get('role'),
+                    "was_remapped": True,
+                    "message": f"Last resort assignment: {best_agent.get('name')} ({best_agent.get('role')})"
+                }
+            
+            return {
+                "success": False,
+                "message": f"No suitable agent found for '{target_role}' among available team",
+                "agent": None,
+                "role_description": None,
+                "was_remapped": False
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in smart team-aware handoff: {e}")
+            return {
+                "success": False,
+                "message": f"Handoff system error: {e}",
+                "agent": None,
+                "role_description": None,
+                "was_remapped": False
+            }
+    
+    def _find_exact_role_matches(self, agents: List[Dict], target_role: str) -> List[Dict]:
+        """Find agents with exact or very close role matches"""
+        target_lower = target_role.lower().strip()
+        exact_matches = []
+        
+        for agent in agents:
+            agent_role = agent.get('role', '').lower().strip()
+            agent_name = agent.get('name', '').lower().strip()
+            
+            # Exact role match
+            if target_lower == agent_role:
+                exact_matches.append(agent)
+            # Agent name match
+            elif target_lower == agent_name:
+                exact_matches.append(agent)
+            # Very close match (ignoring minor differences)
+            elif self._calculate_role_similarity(target_lower, agent_role) >= 0.9:
+                exact_matches.append(agent)
+                
+        return exact_matches
+    
+    def _find_semantic_role_matches(self, agents: List[Dict], target_role: str) -> List[Dict]:
+        """Find agents with semantically similar roles"""
+        semantic_matches = []
+        
+        # Define semantic role mappings for common cases
+        role_mappings = {
+            'data research specialist': ['market analyst', 'business analyst', 'research', 'analyst'],
+            'social media specialist': ['marketing', 'content', 'social'],
+            'network research specialist': ['business development', 'sales', 'marketing'],
+            'project manager': ['manager', 'coordinator', 'lead'],
+            'content specialist': ['marketing', 'writer', 'content'],
+            'technical specialist': ['developer', 'engineer', 'technical']
+        }
+        
+        target_lower = target_role.lower()
+        
+        # Check if target role has known mappings
+        for mapped_role, keywords in role_mappings.items():
+            if any(keyword in target_lower for keyword in mapped_role.split()):
+                for agent in agents:
+                    agent_role = agent.get('role', '').lower()
+                    if any(keyword in agent_role for keyword in keywords):
+                        semantic_matches.append(agent)
+        
+        # Fallback: word overlap analysis
+        if not semantic_matches:
+            target_words = set(target_lower.split())
+            for agent in agents:
+                agent_role = agent.get('role', '').lower()
+                agent_words = set(agent_role.split())
+                
+                # Calculate word overlap
+                overlap = len(target_words.intersection(agent_words))
+                if overlap >= 1:  # At least one word in common
+                    semantic_matches.append(agent)
+        
+        return semantic_matches
+    
+    def _find_skill_based_matches(self, agents: List[Dict], target_role: str, reason: str) -> List[Dict]:
+        """Find agents based on task requirements and skills"""
+        skill_matches = []
+        
+        # Analyze task requirements from reason
+        reason_lower = reason.lower()
+        target_lower = target_role.lower()
+        
+        # Define skill categories
+        skill_categories = {
+            'research': ['analyst', 'research', 'intelligence'],
+            'data': ['analyst', 'data', 'business'],
+            'marketing': ['marketing', 'social', 'content'],
+            'technical': ['technical', 'developer', 'engineer'],
+            'management': ['manager', 'coordinator', 'lead'],
+            'sales': ['sales', 'business development', 'account']
+        }
+        
+        # Determine required skills
+        required_skills = []
+        for skill, keywords in skill_categories.items():
+            if any(keyword in reason_lower or keyword in target_lower for keyword in keywords):
+                required_skills.append(skill)
+        
+        # Match agents to required skills
+        for agent in agents:
+            agent_role = agent.get('role', '').lower()
+            skill_score = 0
+            
+            for skill in required_skills:
+                if skill in skill_categories:
+                    for keyword in skill_categories[skill]:
+                        if keyword in agent_role:
+                            skill_score += 1
+            
+            if skill_score > 0:
+                # Add skill score to agent for ranking
+                agent_copy = agent.copy()
+                agent_copy['skill_score'] = skill_score
+                skill_matches.append(agent_copy)
+        
+        # Sort by skill score (highest first)
+        skill_matches.sort(key=lambda x: x.get('skill_score', 0), reverse=True)
+        
+        return skill_matches
+    
+    def _select_best_agent(self, candidates: List[Dict]) -> Dict:
+        """Select the best agent from candidates based on seniority and other factors"""
+        if not candidates:
+            return None
+        
+        # Sort by seniority (expert > senior > junior) and other factors
+        seniority_order = {'expert': 3, 'senior': 2, 'junior': 1}
+        
+        def agent_score(agent):
+            seniority_score = seniority_order.get(agent.get('seniority', 'junior'), 1)
+            skill_score = agent.get('skill_score', 0)
+            return (seniority_score, skill_score)
+        
+        best_agent = max(candidates, key=agent_score)
+        return best_agent
+    
+    def _calculate_role_similarity(self, role1: str, role2: str) -> float:
+        """Calculate similarity between two role strings"""
+        words1 = set(role1.split())
+        words2 = set(role2.split())
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
+        
+        return intersection / union if union > 0 else 0.0
 
     def _find_compatible_agents_anti_loop(
         self, agents_db_list: List[Dict[str, Any]], target_role: str
@@ -2026,8 +2276,8 @@ Remember: You are producing REAL deliverables that will be used by the client. N
                 model_name = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
 
                 # 🧩 PILLAR 1 & 2 COMPLIANCE: AI-driven max_turns configuration
-                # Default to higher turns for complex goal-driven tasks
-                max_turns_for_agent = 25  # Increased from 10 to prevent goal-driven task failures
+                # 🔧 FIX #6: Significantly increase max_turns for goal-driven task success
+                max_turns_for_agent = 50  # Increased from 25 to 50 to prevent goal-driven task failures
                 
                 # Allow AI-driven configuration override from llm_config
                 if (
@@ -2039,10 +2289,15 @@ Remember: You are producing REAL deliverables that will be used by the client. N
                     ]
                 
                 # 🎯 PILLAR 5: Goal-driven adaptive max_turns based on task complexity
-                # Increase max_turns for corrective/goal-driven tasks that need more iterations
+                # 🔧 FIX #6: Increase max_turns for corrective/goal-driven tasks that need more iterations
                 if hasattr(task, 'is_corrective') and task.is_corrective:
-                    max_turns_for_agent = max(max_turns_for_agent, 30)  # Ensure corrective tasks have enough turns
+                    max_turns_for_agent = max(max_turns_for_agent, 75)  # Ensure corrective tasks have enough turns
                     logger.info(f"🎯 Increased max_turns to {max_turns_for_agent} for corrective task {task.id}")
+                
+                # 🔧 FIX #6: Additional boost for goal-driven tasks
+                if hasattr(task, 'source') and task.source == 'goal_driven':
+                    max_turns_for_agent = max(max_turns_for_agent, 60)  # Goal-driven tasks need more turns
+                    logger.info(f"🎯 Increased max_turns to {max_turns_for_agent} for goal-driven task {task.id}")
                 
                 # 📚 PILLAR 6: Memory-driven configuration (use learned patterns)
                 try:
@@ -2051,14 +2306,15 @@ Remember: You are producing REAL deliverables that will be used by the client. N
                     task_type = getattr(task, 'metric_type', 'unknown')
                     complexity_hint = await workspace_memory.get_task_complexity_hint(task.workspace_id, task_type)
                     if complexity_hint and complexity_hint.get('needs_more_turns', False):
-                        max_turns_for_agent = max(max_turns_for_agent, 40)
+                        max_turns_for_agent = max(max_turns_for_agent, 80)  # 🔧 FIX #6: Increased from 40 to 80
                         logger.info(f"🧠 Memory-driven: Increased max_turns to {max_turns_for_agent} for complex {task_type} task")
                 except Exception as e:
                     logger.debug(f"Memory-driven max_turns adjustment failed: {e}")
 
                 # 🔧 PILLAR 1 COMPLIANCE: Check if SDK Agent is available, use fallback if not
-                if self.agent is None:
-                    logger.warning(f"🔧 SDK Agent not available for {self.agent_data.name}, using fallback execution")
+                # CRITICAL FIX: Use fallback when SDK_AVAILABLE is False OR agent is None
+                if self.agent is None or not SDK_AVAILABLE:
+                    logger.warning(f"🔧 SDK Agent not available for {self.agent_data.name} (SDK_AVAILABLE={SDK_AVAILABLE}, agent={self.agent is not None}), using fallback execution")
                     agent_run_result = await self._execute_task_with_fallback(task, task_prompt_content)
                 else:
                     # Normal SDK execution
@@ -2536,16 +2792,43 @@ Remember: You are producing REAL deliverables that will be used by the client. N
 
             except MaxTurnsExceeded as e:
                 elapsed_time = time.time() - start_time
+                
+                # 🔧 FIX #6: Intelligent MaxTurnsExceeded handling with retry logic
+                last_output = str(getattr(e, 'last_output', ''))
+                
+                # Check if we made progress (output length > 100 chars suggests progress)
+                made_progress = len(last_output) > 100
+                
+                # Check if task should be retried with chunking strategy
+                should_retry_with_chunking = (
+                    made_progress and 
+                    hasattr(task, 'retry_count') and 
+                    getattr(task, 'retry_count', 0) < 2  # Max 2 retries
+                )
+                
+                if should_retry_with_chunking:
+                    logger.warning(
+                        f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns but made progress. "
+                        f"Attempting chunked completion strategy..."
+                    )
+                    
+                    # Try to extract partial results and create a completion-focused task
+                    chunked_result = await self._attempt_chunked_completion(task, last_output, context)
+                    if chunked_result and chunked_result.get('status') == 'completed':
+                        logger.info(f"✅ Successfully completed task {task.id} using chunked strategy")
+                        return chunked_result
+                
+                # If retry didn't work or wasn't attempted, mark as failed
                 max_turns_summary = "Task forcibly marked as FAILED due to exceeding max interaction turns with LLM."
                 logger.warning(
-                    f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Last output: {str(getattr(e, 'last_output', 'N/A'))[:200]}"
+                    f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Last output: {last_output[:200]}"
                 )
                 max_turns_result_obj = TaskExecutionOutput(
                     task_id=str(task.id),
                     status="failed",
                     summary=max_turns_summary,
                     detailed_results_json=json.dumps(
-                        {"error": "MaxTurnsExceeded", "reason": str(e)}
+                        {"error": "MaxTurnsExceeded", "reason": str(e), "last_output_preview": last_output[:500]}
                     ),
                 )
                 max_turns_result = max_turns_result_obj.model_dump()
@@ -2791,3 +3074,99 @@ Remember: You are producing REAL deliverables that will be used by the client. N
                 
         except Exception as e:
             logger.debug(f"Error in fallback insight extraction: {e}")
+    
+    async def _attempt_chunked_completion(self, task: Task, last_output: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        🔧 FIX #6: Attempt to complete a MaxTurnsExceeded task using chunked strategy
+        """
+        try:
+            # Increment retry count
+            retry_count = getattr(task, 'retry_count', 0) + 1
+            setattr(task, 'retry_count', retry_count)
+            
+            # Create a focused completion prompt based on partial progress
+            completion_prompt = f"""
+TASK COMPLETION REQUEST - ATTEMPT {retry_count}/2
+
+Original Task: {task.name}
+Description: {task.description}
+
+PARTIAL PROGRESS MADE:
+{last_output[:1000]}
+
+INSTRUCTIONS:
+You have made significant progress on this task but exceeded the conversation limit.
+Please provide a FINAL, COMPLETE RESULT based on the progress shown above.
+
+Focus on:
+1. Extracting and organizing the useful information already gathered
+2. Providing a structured, actionable deliverable
+3. Being concise but comprehensive
+4. Making the result immediately usable for business purposes
+
+Deliver your final result in JSON format with these fields:
+- summary: Brief description of what was accomplished
+- key_findings: Array of main discoveries/results
+- deliverable: The main output/artifact
+- next_steps: Recommended follow-up actions (if any)
+- confidence: Your confidence in this result (0-100)
+"""
+            
+            # Use a focused agent with limited turns for completion
+            if self.agent and SDK_AVAILABLE:
+                completion_result = await asyncio.wait_for(
+                    Runner.run(
+                        self.agent,
+                        completion_prompt,
+                        max_turns=5,  # Very limited turns for focused completion
+                        context=context,
+                    ),
+                    timeout=60,  # Shorter timeout for completion
+                )
+                
+                if completion_result and completion_result.final_output:
+                    # Try to parse the JSON response
+                    try:
+                        import json
+                        completion_data = json.loads(completion_result.final_output)
+                        
+                        # Create successful result
+                        chunked_result = TaskExecutionOutput(
+                            task_id=str(task.id),
+                            status="completed",
+                            summary=completion_data.get('summary', 'Completed via chunked strategy'),
+                            detailed_results_json=json.dumps(completion_data),
+                        ).model_dump()
+                        
+                        # Update task status
+                        await update_task_status(
+                            task_id=str(task.id),
+                            status=TaskStatus.COMPLETED.value,
+                            result_payload=chunked_result,
+                        )
+                        
+                        logger.info(f"✅ Chunked completion successful for task {task.id}")
+                        return chunked_result
+                        
+                    except json.JSONDecodeError:
+                        # If JSON parsing fails, use the raw output
+                        chunked_result = TaskExecutionOutput(
+                            task_id=str(task.id),
+                            status="completed",
+                            summary="Completed via chunked strategy (raw output)",
+                            detailed_results_json=json.dumps({"raw_output": completion_result.final_output}),
+                        ).model_dump()
+                        
+                        await update_task_status(
+                            task_id=str(task.id),
+                            status=TaskStatus.COMPLETED.value,
+                            result_payload=chunked_result,
+                        )
+                        
+                        logger.info(f"✅ Chunked completion successful (raw) for task {task.id}")
+                        return chunked_result
+            
+        except Exception as e:
+            logger.warning(f"Chunked completion failed for task {task.id}: {e}")
+            
+        return None

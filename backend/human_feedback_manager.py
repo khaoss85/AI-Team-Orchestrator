@@ -78,12 +78,7 @@ class HumanFeedbackManager:
         self.notification_handlers: List[Callable] = []
         self.auto_approval_rules: Dict[str, Dict[str, Any]] = {}
         
-        # Start cleanup task - but only if we're in an asyncio event loop
-        try:
-            asyncio.create_task(self._periodic_cleanup())
-        except RuntimeError:
-            # No event loop running yet, the task will be started later
-            logger.info("No event loop running, periodic cleanup will start when the event loop is available")
+        
         
     def add_notification_handler(self, handler: Callable):
         """Add a handler for notifying humans of pending requests"""
@@ -428,7 +423,8 @@ class HumanFeedbackManager:
     def start_periodic_cleanup(self):
         """Start the periodic cleanup task if not already running"""
         try:
-            asyncio.create_task(self._periodic_cleanup())
+            if not hasattr(self, '_cleanup_task') or self._cleanup_task is None:
+                self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
         except RuntimeError:
             logger.warning("Cannot start periodic cleanup: no event loop running")
 

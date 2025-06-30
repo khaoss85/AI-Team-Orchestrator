@@ -395,15 +395,17 @@ class ConversationContextManager:
             return {"max_budget": 10000, "used": 0, "currency": "EUR"}
     
     async def _get_goals(self) -> List[Dict[str, Any]]:
-        """Get workspace goals and objectives"""
+        """Get workspace goals and objectives - OPTIMIZED with caching"""
         try:
-            result = self.supabase.table("workspace_goals")\
-                .select("*")\
-                .eq("workspace_id", self.workspace_id)\
-                .order("priority", desc=True)\
-                .execute()
+            # 🚀 PERFORMANCE OPTIMIZATION: Use cached query instead of direct database call
+            from utils.workspace_goals_cache import get_workspace_goals_cached
             
-            return result.data or []
+            goals = await get_workspace_goals_cached(
+                self.workspace_id,
+                force_refresh=False  # Use cache for conversational context
+            )
+            
+            return goals
             
         except Exception as e:
             logger.error(f"Failed to get goals: {e}")

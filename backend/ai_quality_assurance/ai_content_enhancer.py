@@ -274,10 +274,10 @@ class AIContentEnhancer:
             - Deliverable Components: {len(task_results)} task outputs
             
             GOALS ACHIEVED:
-            {json.dumps([{'description': g['description'], 'target': g['target_value'], 'unit': g['unit'], 'achieved': g['current_value']} for g in goals_data], indent=2)}
+            {json.dumps([{'description': g['description'], 'target': g['target_value'], 'unit': g['unit'], 'achieved': g['current_value']} for g in goals_data], indent=2, default=str)}
             
             TASK OUTPUTS:
-            {json.dumps([{'name': t['task_name'], 'summary': t['summary'], 'agent': t['agent_role']} for t in task_results], indent=2)}
+            {json.dumps([{'name': t['task_name'], 'summary': t['summary'], 'agent': t['agent_role']} for t in task_results], indent=2, default=str)}
             
             REQUIREMENTS:
             1. Create a dynamic, AI-generated deliverable structure (NO templates)
@@ -298,7 +298,7 @@ class AIContentEnhancer:
             
             logger.info(f"🤖 Generating AI-driven deliverable content for workspace {workspace_id}")
             
-            response = await self.client.chat.completions.create(
+            response = await self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,

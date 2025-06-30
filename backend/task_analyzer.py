@@ -17,12 +17,18 @@ from database import (
     # 🎯 Goal-driven database functions
     update_goal_progress, get_workspace_goals
 )
+from UniversalAIContentExtractor import UniversalAIContentExtractor
+from AISemanticMapper import AISemanticMapper
 
 logger = logging.getLogger(__name__)
 
 # Configuration from environment
+# 🤖 AI-DRIVEN: These values can now be adaptive based on workspace context
+ENABLE_AI_ADAPTIVE_PHASE_MANAGEMENT = os.getenv("ENABLE_AI_ADAPTIVE_PHASE_MANAGEMENT", "true").lower() == "true"
+
+# Fallback static values
 PHASE_PLANNING_COOLDOWN_MINUTES = int(os.getenv("PHASE_PLANNING_COOLDOWN_MINUTES", "5"))
-MAX_PENDING_TASKS_FOR_TRANSITION = int(os.getenv("MAX_PENDING_TASKS_FOR_TRANSITION", "8"))
+MAX_PENDING_TASKS_FOR_TRANSITION = int(os.getenv("MAX_PENDING_TASKS_FOR_TRANSITION", "15"))
 ENABLE_ENHANCED_PHASE_TRACKING = os.getenv("ENABLE_ENHANCED_PHASE_TRACKING", "true").lower() == "true"
 
 class PhaseManagerError(Exception):
@@ -65,8 +71,7 @@ class PhaseManager:
             logger.warning(f"Error validating phase '{phase}': {e}")
             return ProjectPhase.ANALYSIS
 
-    @staticmethod
-    async def should_transition_to_next_phase(workspace_id: str) -> tuple[ProjectPhase, Optional[ProjectPhase]]:
+    async def should_transition_to_next_phase(self, workspace_id: str) -> tuple[ProjectPhase, Optional[ProjectPhase]]:
         """
         ENHANCED: Determine phase transition with robust planning detection
         """
@@ -127,15 +132,18 @@ class PhaseManager:
             
             # ENHANCED TRANSITION LOGIC
             
-           # If FINALIZATION completed -> project finished
-            if phase_counts[ProjectPhase.FINALIZATION] >= 2:
+            # 🤖 AI-DRIVEN: Use adaptive thresholds instead of hard-coded numbers
+            # FIX: Pass self explicitly to the method
+            transition_thresholds = await self._get_adaptive_phase_transition_thresholds(workspace_id, phase_counts, pending_phase_counts)
+            
+            # If FINALIZATION completed -> project finished
+            if phase_counts[ProjectPhase.FINALIZATION] >= transition_thresholds["finalization_completion_min"]:
                 return ProjectPhase.COMPLETED, None
 
             # For FINALIZATION: need IMPLEMENTATION + reasonable completion
-            # FIX: Ridotto il requisito da 2 a 1 per IMPLEMENTATION
-            if (phase_counts[ProjectPhase.IMPLEMENTATION] >= 1 and 
-                phase_counts[ProjectPhase.ANALYSIS] >= 1 and  # FIX: Assicura che ANALYSIS sia fatto
-                pending_phase_counts[ProjectPhase.FINALIZATION] <= 3 and  # FIX: Più permissivo sui pending
+            if (phase_counts[ProjectPhase.IMPLEMENTATION] >= transition_thresholds["implementation_for_finalization"] and 
+                phase_counts[ProjectPhase.ANALYSIS] >= transition_thresholds["analysis_for_finalization"] and
+                pending_phase_counts[ProjectPhase.FINALIZATION] <= transition_thresholds["max_pending_finalization"] and
                 "FINALIZATION" not in planning_phases_executed and
                 "FINALIZATION" not in pending_planning_phases):
 
@@ -143,9 +151,8 @@ class PhaseManager:
                 return ProjectPhase.IMPLEMENTATION, ProjectPhase.FINALIZATION
 
             # For IMPLEMENTATION: need ANALYSIS + no conflicts
-            # FIX: Ridotto il requisito da 2 a 1 per ANALYSIS
-            if (phase_counts[ProjectPhase.ANALYSIS] >= 1 and 
-                pending_phase_counts[ProjectPhase.IMPLEMENTATION] <= 3 and  # FIX: Più permissivo sui pending
+            if (phase_counts[ProjectPhase.ANALYSIS] >= transition_thresholds["analysis_for_implementation"] and 
+                pending_phase_counts[ProjectPhase.IMPLEMENTATION] <= transition_thresholds["max_pending_implementation"] and
                 "IMPLEMENTATION" not in planning_phases_executed and
                 "IMPLEMENTATION" not in pending_planning_phases):
 
@@ -159,6 +166,116 @@ class PhaseManager:
         except Exception as e:
             logger.error(f"Error in phase transition check: {e}", exc_info=True)
             return ProjectPhase.ANALYSIS, None
+    
+    @staticmethod
+    async def _get_adaptive_phase_transition_thresholds(
+        workspace_id: str, 
+        phase_counts: Dict, 
+        pending_phase_counts: Dict
+    ) -> Dict[str, int]:
+        """🤖 AI-DRIVEN: Get adaptive phase transition thresholds based on workspace context"""
+        
+        # Fallback static thresholds
+        static_thresholds = {
+            "finalization_completion_min": 2,
+            "implementation_for_finalization": 1,
+            "analysis_for_finalization": 1,
+            "max_pending_finalization": 3,
+            "analysis_for_implementation": 1,
+            "max_pending_implementation": 3
+        }
+        
+        if not ENABLE_AI_ADAPTIVE_PHASE_MANAGEMENT:
+            return static_thresholds
+        
+        try:
+            # Initialize OpenAI client if available
+            openai_client = None
+            if os.getenv("OPENAI_API_KEY"):
+                try:
+                    from openai import AsyncOpenAI
+                    openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                except ImportError:
+                    pass
+            
+            if not openai_client:
+                return static_thresholds
+            
+            # Get workspace context
+            try:
+                from database import get_workspace
+                workspace = await get_workspace(workspace_id)
+                project_description = workspace.get("description", "" if workspace else "")
+                
+                # Calculate workspace complexity indicators
+                total_completed = sum(phase_counts.values())
+                total_pending = sum(pending_phase_counts.values())
+                complexity_score = total_completed + total_pending
+                
+            except Exception:
+                project_description = ""
+                complexity_score = 5  # Default medium complexity
+            
+            ai_prompt = f"""
+            Determine appropriate phase transition thresholds for this project:
+            
+            Project Description: {project_description[:200]}...
+            Total Completed Tasks: {sum(phase_counts.values())}
+            Total Pending Tasks: {sum(pending_phase_counts.values())}
+            Complexity Score: {complexity_score}
+            
+            Current Phase Distribution:
+            - Analysis: {phase_counts.get('ANALYSIS', 0)} completed, {pending_phase_counts.get('ANALYSIS', 0)} pending
+            - Implementation: {phase_counts.get('IMPLEMENTATION', 0)} completed, {pending_phase_counts.get('IMPLEMENTATION', 0)} pending
+            - Finalization: {phase_counts.get('FINALIZATION', 0)} completed, {pending_phase_counts.get('FINALIZATION', 0)} pending
+            
+            Return JSON with adaptive thresholds:
+            - finalization_completion_min: Min finalization tasks to consider project complete (1-4)
+            - implementation_for_finalization: Min implementation tasks needed before finalization (1-3)
+            - analysis_for_finalization: Min analysis tasks needed before finalization (1-2)
+            - max_pending_finalization: Max pending finalization tasks to allow new ones (2-6)
+            - analysis_for_implementation: Min analysis tasks needed before implementation (1-2)
+            - max_pending_implementation: Max pending implementation tasks to allow new ones (2-6)
+            
+            Consider:
+            - Complex projects need higher thresholds
+            - Small projects can have lower requirements
+            - If many tasks are pending, be more conservative
+            
+            Format: {{"finalization_completion_min": 2, "implementation_for_finalization": 1, ...}}
+            """
+            
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert at project phase management and adaptive thresholds. Provide only valid JSON output."},
+                    {"role": "user", "content": ai_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=300
+            )
+            
+            ai_result = response.choices[0].message.content.strip()
+            import json
+            adaptive_thresholds = json.loads(ai_result)
+            
+            # Validate and bound the values
+            for key, fallback_value in static_thresholds.items():
+                if key not in adaptive_thresholds:
+                    adaptive_thresholds[key] = fallback_value
+                else:
+                    # Ensure values are within reasonable bounds
+                    if "completion_min" in key or "for_" in key:
+                        adaptive_thresholds[key] = max(1, min(4, adaptive_thresholds[key]))
+                    elif "max_pending" in key:
+                        adaptive_thresholds[key] = max(2, min(10, adaptive_thresholds[key]))
+            
+            logger.info(f"✅ AI-adaptive phase thresholds calculated for workspace {workspace_id}")
+            return adaptive_thresholds
+            
+        except Exception as e:
+            logger.warning(f"AI adaptive phase thresholds failed: {e}")
+            return static_thresholds
 
     @staticmethod
     async def determine_workspace_current_phase(workspace_id: str) -> ProjectPhase:
@@ -870,26 +987,88 @@ class EnhancedTaskExecutor:
                                 await self._log_completion_analysis(
                                     completed_task, analysis.__dict__(), "analysis_complete_no_action"
                                 )
-            # === ASSET ANALYSIS ===
+            # === ASSET ANALYSIS (AI-DRIVEN) ===
             try:
                 if self._should_analyze_task_for_assets(completed_task, task_result):
-                    logger.info(f"🎯 ASSET ANALYSIS: Analyzing task {completed_task.id} for asset content")
+                    logger.info(f"🎯 AI ASSET ANALYSIS: Analyzing task {completed_task.id} for concrete content and goal mapping")
 
-                    # Log asset task completion per monitoring
+                    # Initialize AI content extractor and semantic mapper
+                    content_extractor = UniversalAIContentExtractor()
+                    semantic_mapper = AISemanticMapper()
+
+                    # 1. Extract concrete content
+                    extracted_content = await content_extractor.extract_content(task_result)
+
+                    if extracted_content:
+                        logger.info(f"🎯 AI ASSET ANALYSIS: Extracted concrete content from task {completed_task.id}")
+
+                        # 2. Fetch workspace goals
+                        workspace_goals = await get_workspace_goals(workspace_id)
+                        
+                        if workspace_goals:
+                            # 3. Map extracted content to goals
+                            mapped_contributions = await semantic_mapper.map_content_to_goals(
+                                extracted_content,
+                                workspace_goals
+                            )
+
+                            if mapped_contributions:
+                                logger.info(f"🎯 AI ASSET ANALYSIS: Mapped content to {len(mapped_contributions)} goals for task {completed_task.id}")
+                                # 4. Update goal progress based on AI-driven contributions
+                                for contribution_data in mapped_contributions:
+                                    goal_id = contribution_data.get("goal_id")
+                                    contribution_percentage = contribution_data.get("contribution_percentage", 0)
+                                    reasoning = contribution_data.get("reasoning", "AI-driven contribution")
+
+                                    # Convert percentage to an increment value based on target_value
+                                    # Find the actual goal object to get its target_value
+                                    target_goal = next((g for g in workspace_goals if str(g.get("id")) == goal_id), None)
+                                    
+                                    if target_goal and target_goal.get("target_value") > 0:
+                                        increment_value = (contribution_percentage / 100.0) * target_goal["target_value"]
+                                        
+                                        # Ensure increment is positive and meaningful
+                                        if increment_value > 0:
+                                            updated_goal = await update_goal_progress(
+                                                goal_id=goal_id,
+                                                increment=increment_value,
+                                                task_id=str(completed_task.id),
+                                                task_business_context={
+                                                    "ai_extracted_content": extracted_content,
+                                                    "ai_mapped_contribution": contribution_data,
+                                                    "reasoning": reasoning
+                                                }
+                                            )
+                                            if updated_goal:
+                                                logger.info(f"🎯 GOAL PROGRESS: Updated goal {goal_id} by {increment_value} based on AI analysis. New value: {updated_goal.get('current_value')}")
+                                            else:
+                                                logger.warning(f"Failed to update goal {goal_id} progress for task {completed_task.id}")
+                                        else:
+                                            logger.debug(f"AI suggested 0 or negative increment for goal {goal_id}. Skipping update.")
+                                    else:
+                                        logger.warning(f"Could not find target goal {goal_id} or target_value is zero for task {completed_task.id}")
+                            else:
+                                logger.info(f"🎯 AI ASSET ANALYSIS: No significant contributions mapped to goals for task {completed_task.id}")
+                        else:
+                            logger.info(f"🎯 AI ASSET ANALYSIS: No workspace goals defined for workspace {workspace_id}. Skipping goal mapping.")
+                    else:
+                        logger.info(f"🎯 AI ASSET ANALYSIS: No concrete content extracted from task {completed_task.id}")
+
+                    # Log asset task completion for monitoring
                     await self._log_completion_analysis(
                         completed_task, 
                         task_result, 
-                        "asset_task_completed",
-                        f"Asset-oriented task completed with {len(task_result.get('detailed_results_json', ''))} chars output"
+                        "asset_task_completed_ai_analyzed",
+                        f"Asset-oriented task completed. AI extracted: {bool(extracted_content)}, AI mapped: {bool(mapped_contributions)}"
                     )
 
-                    # Verifica se questo completa i requisiti per deliverable
+                    # Check if this completes the requirements for deliverable
                     asset_completion_triggered = await self._check_asset_completion_trigger(workspace_id)
                     if asset_completion_triggered:
                         logger.info(f"🎯 ASSET TRIGGER: Asset completion may trigger deliverable for {workspace_id}")
 
             except Exception as e:
-                logger.error(f"Error in asset analysis for task {completed_task.id}: {e}")           
+                logger.error(f"Error in AI asset analysis for task {completed_task.id}: {e}", exc_info=True)           
             
             # After every specialist task, check for final deliverable (but not for enhancement tasks)
             if not self._is_enhancement_task(completed_task):
@@ -1836,17 +2015,17 @@ class EnhancedTaskExecutor:
 
     def _check_strict_workspace_limits(self, ctx: Dict[str, Any]) -> bool:
         """Extremely strict limits for workspace auto-generation"""
-        if ctx.get("pending_tasks", 1) > 3:
+        if ctx.get("pending_tasks", 1) > 5: # Increased from 3 to 5
             return False
         
         total_tasks = ctx.get("total_tasks", 1)
         completed_tasks = ctx.get("completed_tasks", 0)
         completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0
         
-        if completion_rate < 0.70:
+        if completion_rate < 0.50: # Lowered from 0.70 to 0.50
             return False
         
-        if total_tasks < 3:
+        if total_tasks < 1: # Lowered from 3 to 1
             return False
         
         return True
@@ -1858,7 +2037,7 @@ class EnhancedTaskExecutor:
         if recent_handoff and datetime.now() - recent_handoff < timedelta(hours=24):
             return True
 
-        recent_tasks = ctx.get("recent_completions", [])
+        recent_completions = ctx.get("recent_completions", [])
         task_words = set(task.name.lower().split())
         
         for recent_task in recent_tasks[-10:]:
@@ -1868,8 +2047,9 @@ class EnhancedTaskExecutor:
                 return True
                 
             recent_words = set(recent_name.split())
-            overlap = len(task_words & recent_words) / len(task_words | recent_words)
-            if overlap > 0.5:
+            union_len = len(task_words | recent_words)
+            overlap = len(task_words & recent_words) / union_len if union_len > 0 else 0.0
+            if overlap > 0.4: # Reduced from 0.5 to 0.4 to be less strict
                 return True
 
         return False
@@ -2344,6 +2524,157 @@ If unclear, escalate to Project Manager immediately.
                     
         except Exception as e:
             logger.error(f"Error creating corrective tasks: {e}", exc_info=True)
+    
+    # =====================================================================
+    # AI-DRIVEN PRIORITY METHODS
+    # =====================================================================
+    
+    async def _calculate_ai_driven_base_priority(
+        self, 
+        task_data: Dict[str, Any], 
+        context_data: Dict[str, Any],
+        workspace_id: str
+    ) -> int:
+        """🤖 AI-DRIVEN: Calculate task priority based on semantic understanding"""
+        try:
+            # Check if AI is enabled
+            if not os.getenv("ENABLE_AI_TASK_PRIORITY", "true").lower() == "true":
+                # Fallback to static priority
+                priority_field = task_data.get("priority", "medium").lower()
+                priority_mapping = {"high": 300, "medium": 100, "low": 50}
+                return priority_mapping.get(priority_field, 100)
+            
+            # Initialize OpenAI client if available
+            openai_client = None
+            if os.getenv("OPENAI_API_KEY"):
+                try:
+                    from openai import AsyncOpenAI
+                    openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                except ImportError:
+                    pass
+            
+            if not openai_client:
+                # Fallback to static priority
+                priority_field = task_data.get("priority", "medium").lower()
+                priority_mapping = {"high": 300, "medium": 100, "low": 50}
+                return priority_mapping.get(priority_field, 100)
+            
+            # Get workspace context
+            try:
+                from database import get_workspace
+                workspace = await get_workspace(workspace_id)
+                project_description = workspace.get("description", "")
+            except Exception:
+                project_description = ""
+            
+            task_name = task_data.get("name", "")
+            task_description = task_data.get("description", "")
+            task_priority = task_data.get("priority", "medium")
+            
+            ai_prompt = f"""
+            Calculate appropriate priority score for this task:
+            
+            Task: {task_name}
+            Description: {task_description}
+            Current Priority: {task_priority}
+            Project: {project_description[:200]}...
+            
+            Consider:
+            - Business impact and urgency
+            - Task dependencies and blockers
+            - Project phase and timeline
+            - Resource availability
+            
+            Return ONLY a number between 0-500 representing the priority score.
+            Guidelines: 0-50 (low), 50-150 (medium), 150-300 (high), 300+ (critical)
+            """
+            
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert at project task prioritization. Return only a numeric priority score."},
+                    {"role": "user", "content": ai_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=10
+            )
+            
+            ai_result = response.choices[0].message.content.strip()
+            try:
+                priority_score = int(float(ai_result))
+                # Bound the score
+                priority_score = max(0, min(500, priority_score))
+                logger.info(f"✅ AI-driven priority calculated: {priority_score} for task {task_name}")
+                return priority_score
+            except ValueError:
+                logger.warning(f"AI returned non-numeric priority: {ai_result}")
+                # Fallback
+                priority_field = task_data.get("priority", "medium").lower()
+                priority_mapping = {"high": 300, "medium": 100, "low": 50}
+                return priority_mapping.get(priority_field, 100)
+                
+        except Exception as e:
+            logger.warning(f"AI priority calculation failed: {e}")
+            # Fallback to static priority
+            priority_field = task_data.get("priority", "medium").lower()
+            priority_mapping = {"high": 300, "medium": 100, "low": 50}
+            return priority_mapping.get(priority_field, 100)
+    
+    async def _calculate_ai_priority_enhancements(
+        self,
+        base_priority: int,
+        task_data: Dict[str, Any],
+        context_data: Dict[str, Any],
+        workspace_id: str
+    ) -> int:
+        """🤖 AI-DRIVEN: Calculate priority enhancements based on context"""
+        try:
+            # Check if AI enhancement is enabled
+            if not os.getenv("ENABLE_AI_URGENCY_BOOST", "true").lower() == "true":
+                return base_priority
+            
+            # Calculate age boost
+            created_at = task_data.get("created_at", "")
+            if created_at:
+                try:
+                    from datetime import datetime, timezone
+                    created_dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    age_hours = (datetime.now(timezone.utc) - created_dt).total_seconds() / 3600
+                    
+                    # AI-driven urgency boost
+                    urgency_boost = await self._calculate_ai_urgency_boost(age_hours, task_data, context_data)
+                    base_priority += urgency_boost
+                except Exception as e:
+                    logger.debug(f"Error calculating age boost: {e}")
+            
+            return base_priority
+            
+        except Exception as e:
+            logger.warning(f"AI priority enhancements failed: {e}")
+            return base_priority
+    
+    async def _calculate_ai_urgency_boost(
+        self,
+        age_hours: float,
+        task_data: Dict[str, Any],
+        context_data: Dict[str, Any]
+    ) -> int:
+        """🤖 AI-DRIVEN: Calculate urgency boost based on task age and context"""
+        try:
+            # Simple adaptive urgency calculation
+            if age_hours < 1:
+                return 0
+            elif age_hours < 4:
+                return int(age_hours * 10)  # Gradual increase
+            elif age_hours < 24:
+                return int(age_hours * 5) + 20  # Moderate increase
+            else:
+                return min(150, int(age_hours * 2) + 50)  # Capped increase
+                
+        except Exception as e:
+            logger.warning(f"AI urgency boost calculation failed: {e}")
+            # Simple fallback
+            return min(100, int(age_hours * 5)) if age_hours > 2 else 0
 
 # Global instance management
 _enhanced_executor_instance = None

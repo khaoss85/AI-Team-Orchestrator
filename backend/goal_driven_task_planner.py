@@ -12,7 +12,7 @@ from models import (
     WorkspaceGoal, GoalStatus, TaskStatus,
     WorkspaceGoalProgress
 )
-from database import supabase
+from database import supabase, create_task
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,13 @@ class GoalDrivenTaskPlanner:
             # Convert dict to WorkspaceGoal object
             goal = WorkspaceGoal(**workspace_goal)
             
-            # 🛡️ DUPLICATE PREVENTION: Check if tasks already exist for this goal
+            # 🛡️ ENHANCED DUPLICATE PREVENTION: Check for similar tasks across workspace
+            similar_tasks = await self._check_similar_tasks_workspace_wide(workspace_id, str(goal.id), str(goal.metric_type))
+            if similar_tasks:
+                logger.info(f"🔄 Goal {goal.metric_type} has similar tasks ({len(similar_tasks)} found) - applying intelligent deduplication")
+                return similar_tasks
+            
+            # 🛡️ DUPLICATE PREVENTION: Check if tasks already exist for this goal  
             existing_tasks_response = supabase.table("tasks").select("id, name").eq(
                 "workspace_id", workspace_id
             ).eq(
@@ -133,28 +139,34 @@ class GoalDrivenTaskPlanner:
                     agent_index += 1
                     logger.info(f"🎯 Assigning task '{task_data['name']}' to agent {assigned_agent.get('name')} ({assigned_agent_role})")
                 
-                # Add workspace_id and execution metadata
-                task_data.update({
-                    "workspace_id": workspace_id,
-                    "agent_id": assigned_agent_id,  # 🔧 FIX: Assign agent_id to prevent orphaned tasks
-                    "assigned_to_role": assigned_agent_role,
-                    "status": "pending",  # Direct string instead of enum.value
-                    "created_at": datetime.now().isoformat(),
-                    "context_data": {
-                        **(task_data.get("context_data", {})),
-                        "is_goal_driven": True,
-                        "auto_generated": True,
-                        "generated_by": "goal_driven_task_planner",
-                        "goal_analysis_timestamp": datetime.now().isoformat(),
-                        "assigned_agent_name": assigned_agent.get('name') if available_agents else None
-                    }
-                })
+                # 🚫 ENHANCED TASK CREATION with Deduplication
+                context_data = {
+                    **(task_data.get("context_data", {})),
+                    "is_goal_driven": True,
+                    "auto_generated": True,
+                    "generated_by": "goal_driven_task_planner",
+                    "goal_analysis_timestamp": datetime.now().isoformat(),
+                    "assigned_agent_name": assigned_agent.get('name') if available_agents else None
+                }
                 
-                # Insert into database
-                response = supabase.table("tasks").insert(task_data).execute()
-                if response.data:
-                    created_tasks.extend(response.data)
+                # Use create_task function which includes deduplication
+                created_task = await create_task(
+                    workspace_id=workspace_id,
+                    name=task_data.get("name"),
+                    status="pending",
+                    agent_id=assigned_agent_id,
+                    assigned_to_role=assigned_agent_role,
+                    description=task_data.get("description"),
+                    priority=task_data.get("priority", "medium"),
+                    context_data=context_data,
+                    auto_build_context=True
+                )
+                
+                if created_task:
+                    created_tasks.append(created_task)
                     logger.info(f"✅ Created task: {task_data['name']}")
+                else:
+                    logger.info(f"🚫 Task creation blocked (duplicate): {task_data['name']}")
             
             logger.info(f"🎯 Successfully created {len(created_tasks)} tasks for goal {goal.metric_type}")
             return created_tasks
@@ -164,16 +176,19 @@ class GoalDrivenTaskPlanner:
             return []
     
     async def _get_unmet_goals(self, workspace_id: UUID) -> List[WorkspaceGoal]:
-        """Recupera goal attivi non completati per il workspace"""
+        """Recupera goal attivi non completati per il workspace - OPTIMIZED with caching"""
         try:
-            response = supabase.table("workspace_goals").select("*").eq(
-                "workspace_id", str(workspace_id)
-            ).eq(
-                "status", GoalStatus.ACTIVE.value
-            ).execute()
+            # 🚀 PERFORMANCE OPTIMIZATION: Use cached query instead of direct database call
+            from utils.workspace_goals_cache import get_workspace_goals_cached
+            
+            goals_data = await get_workspace_goals_cached(
+                str(workspace_id),
+                force_refresh=False,
+                status_filter=GoalStatus.ACTIVE.value
+            )
             
             goals = []
-            for goal_data in response.data:
+            for goal_data in goals_data:
                 # Convert to WorkspaceGoal model
                 goal = WorkspaceGoal(**goal_data)
                 
@@ -519,59 +534,85 @@ Return ONLY the category name."""
             logger.warning(f"🤖 AI classification failed for '{metric_type}': {e}")
             return None
     
-    def _classify_by_semantic_patterns(self, metric_type: str) -> str:
+    async def _classify_by_semantic_patterns(self, metric_type: str) -> str:
         """
-        🧠 PILLAR 2: Semantic pattern-based classification (universal, no domain bias)
-        Uses linguistic patterns rather than business-specific keywords
+        🤖 FULLY AI-DRIVEN: Semantic classification using AI understanding
+        
+        Completely removes hard-coded patterns and uses AI to understand metric semantics.
         """
-        metric_lower = metric_type.lower()
-        
-        # 📊 Quality/Performance indicators (scores, rates, percentages)
-        quality_patterns = ["score", "rate", "quality", "performance", "accuracy", 
-                          "efficiency", "satisfaction", "rating", "index"]
-        if any(pattern in metric_lower for pattern in quality_patterns):
-            return "quality_measures"
-        
-        # ⏰ Time-based indicators
-        time_patterns = ["time", "day", "week", "month", "duration", "deadline", 
-                        "timeline", "schedule", "period"]
-        if any(pattern in metric_lower for pattern in time_patterns):
-            return "time_based_metrics"
-        
-        # 🤝 Engagement indicators (interactions, responses)
-        engagement_patterns = ["engagement", "interaction", "response", "participation",
-                             "activity", "usage", "adoption", "retention"]
-        if any(pattern in metric_lower for pattern in engagement_patterns):
-            return "engagement_metrics"
-        
-        # ✅ Completion indicators (progress, milestones)
-        completion_patterns = ["completion", "progress", "milestone", "achievement",
-                             "success", "done", "finished", "accomplished"]
-        if any(pattern in metric_lower for pattern in completion_patterns):
-            return "completion_metrics"
-        
-        # 🌍 Default to quantified outputs for everything else
-        return "quantified_outputs"
+        try:
+            # Try AI-driven classification first
+            ai_classification = await self._classify_metric_type_ai_driven(metric_type)
+            if ai_classification:
+                return ai_classification
+            
+            # Fallback to simple semantic analysis
+            return await self._semantic_fallback_ai_driven(metric_type)
+            
+        except Exception as e:
+            logger.warning(f"Error in AI semantic classification: {e}")
+            # Ultimate fallback
+            return "quantified_outputs"
     
-    def _get_semantic_fallback(self, metric_type: str) -> str:
+    async def _semantic_fallback_ai_driven(self, metric_type: str) -> str:
         """
-        🌍 PILLAR 2: Universal semantic fallback based on content meaning
-        Last resort classification that works for any business domain
+        🤖 AI-DRIVEN: Semantic fallback using AI understanding
         """
-        if not metric_type:
-            return "quantified_outputs"
-        
-        metric_lower = metric_type.lower()
-        
-        # Very broad semantic categories that apply universally
-        if any(word in metric_lower for word in ["list", "collection", "database", "contacts", "items"]):
-            return "quantified_outputs"
-        elif any(word in metric_lower for word in ["analysis", "report", "strategy", "framework"]):
-            return "completion_metrics" 
-        elif any(word in metric_lower for word in ["sequence", "template", "content", "document"]):
-            return "quantified_outputs"
-        else:
-            # Ultimate universal fallback
+        try:
+            import openai
+            import os
+            import json
+            
+            if not metric_type:
+                return "quantified_outputs"
+            
+            # Check if AI classification is enabled
+            enable_ai_classification = os.getenv("ENABLE_AI_METRIC_CLASSIFICATION", "true").lower() == "true"
+            if not enable_ai_classification:
+                return "quantified_outputs"
+            
+            prompt = f"""
+Classify this metric type into one of these categories:
+
+Metric: "{metric_type}"
+
+Categories:
+- quantified_outputs: Countable items, lists, collections (contacts, documents, templates)
+- completion_metrics: Progress, milestones, achievements (analysis, reports, strategies)
+- quality_measures: Scores, ratings, performance indicators
+- time_based_metrics: Durations, deadlines, schedules
+- engagement_metrics: Interactions, usage, activity levels
+
+Return ONLY the category name that best fits this metric.
+"""
+
+            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert at classifying business metrics and understand semantic meaning."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=50
+            )
+            
+            classification = response.choices[0].message.content.strip()
+            
+            # Validate classification
+            valid_categories = [
+                "quantified_outputs", "completion_metrics", "quality_measures", 
+                "time_based_metrics", "engagement_metrics"
+            ]
+            
+            if classification in valid_categories:
+                return classification
+            else:
+                return "quantified_outputs"
+                
+        except Exception as e:
+            logger.debug(f"Error in AI semantic fallback: {e}")
             return "quantified_outputs"
     
     async def create_corrective_task(
@@ -594,6 +635,17 @@ Return ONLY the category name."""
             goal = WorkspaceGoal(**response.data)
             workspace_id = str(goal.workspace_id)
             
+            # 🔄 PREVENTION: Check if we're in cooldown period
+            if await self._check_corrective_task_cooldown(workspace_id, str(goal_id)):
+                logger.info(f"🔄 Skipping corrective task creation - cooldown active for goal {goal_id}")
+                return {}
+            
+            # 🚫 PREVENTION: Check for recent identical corrective tasks
+            if await self._check_recent_corrective_task_duplicates(workspace_id, str(goal_id)):
+                logger.info(f"🚫 Skipping corrective task creation - recent duplicate detected for goal {goal_id}")
+                await self._add_corrective_task_cooldown(workspace_id, str(goal_id), "duplicate_prevention")
+                return {}
+            
             # Calculate corrective action needed
             remaining_gap = goal.remaining_value
             
@@ -605,18 +657,23 @@ Return ONLY the category name."""
                 required_skills=["rapid_execution", "goal_achievement"]
             )
             
-            # 🚨 CRITICAL ERROR: No agents available for corrective task creation
-            if selected_agent_role is None:
-                logger.error(f"🚨 CRITICAL: No agents available in workspace {workspace_id} for corrective task creation")
+            # 🚨 PREVENTION: Enhanced error handling and fallback logic
+            if selected_agent_role is None or "error" in selected_agent_role:
+                logger.error(f"🚨 CRITICAL: Agent assignment failed in workspace {workspace_id} for corrective task creation")
+                
+                # 🔄 PREVENTION: Add workspace to cooldown to prevent repeated failures
+                await self._add_corrective_task_cooldown(workspace_id, goal_id, "agent_assignment_failure")
                 
                 # This should not happen in a healthy workspace - alert the issue
                 try:
                     alert_data = {
                         "workspace_id": workspace_id,
                         "type": "system",
-                        "message": "CRITICAL: Corrective task creation failed - no agents available",
+                        "message": "CRITICAL: Corrective task creation failed - agent assignment error",
                         "metadata": {
                             "alert_type": "corrective_task_failure",
+                            "error_type": "agent_assignment_failure",
+                            "selected_agent_role": selected_agent_role,
                             "issue_type": "NO_AGENTS_FOR_CORRECTIVE_TASK",
                             "description": f"Goal-driven task planner could not create corrective task due to no available agents in workspace {workspace_id}",
                             "severity": "critical",
@@ -682,6 +739,13 @@ Return ONLY the category name."""
             
         except Exception as e:
             logger.error(f"Error creating corrective task: {e}")
+            
+            # 🔄 PREVENTION: Add cooldown for failed task creation attempts
+            try:
+                await self._add_corrective_task_cooldown(workspace_id, goal_id, f"creation_error: {str(e)}")
+            except:
+                pass
+            
             return {}
     
     async def _select_best_available_agent_role(
@@ -786,6 +850,326 @@ Return ONLY the category name."""
                 "error": str(e)
             }
     
+    async def _add_corrective_task_cooldown(
+        self,
+        workspace_id: str,
+        goal_id: str,
+        failure_reason: str,
+        cooldown_minutes: int = None
+    ) -> None:
+        """
+        🔄 PREVENTION: Add cooldown period after failed corrective task creation
+        
+        Prevents repeated attempts that will likely fail for the same reasons.
+        """
+        try:
+            import json
+            import os
+            from datetime import datetime, timedelta
+            
+            # 🤖 AI-DRIVEN: Adaptive cooldown based on environment and failure pattern
+            if cooldown_minutes is None:
+                # Domain-agnostic adaptive cooldown
+                base_cooldown = int(os.getenv("CORRECTIVE_TASK_COOLDOWN_MINUTES", "60"))
+                # Adaptive based on failure type
+                if "agent_assignment" in failure_reason:
+                    cooldown_minutes = base_cooldown  # Standard
+                elif "duplicate" in failure_reason:
+                    cooldown_minutes = base_cooldown // 2  # Shorter for duplicates
+                else:
+                    cooldown_minutes = base_cooldown * 2  # Longer for unknown errors
+            
+            cooldown_entry = {
+                "workspace_id": workspace_id,
+                "goal_id": str(goal_id),
+                "failure_reason": failure_reason,
+                "cooldown_until": (datetime.now() + timedelta(minutes=cooldown_minutes)).isoformat(),
+                "created_at": datetime.now().isoformat(),
+                "metadata": {
+                    "cooldown_type": "corrective_task_failure",
+                    "cooldown_minutes": cooldown_minutes,
+                    "retry_after": (datetime.now() + timedelta(minutes=cooldown_minutes)).isoformat()
+                }
+            }
+            
+            # Store in workspace_insights as a constraint
+            supabase.table("workspace_insights").insert({
+                "workspace_id": workspace_id,
+                "insight_type": "constraint",
+                "content": f"Corrective task creation cooldown: {failure_reason}. Retry after: {cooldown_entry['cooldown_until']}",
+                "confidence_score": 1.0,
+                "relevance_tags": ["corrective_task", "cooldown", "failure_prevention"],
+                "expires_at": cooldown_entry["cooldown_until"]
+            }).execute()
+            
+            logger.warning(f"🔄 Added {cooldown_minutes}min cooldown for workspace {workspace_id}, goal {goal_id}: {failure_reason}")
+            
+        except Exception as e:
+            logger.error(f"Error adding corrective task cooldown: {e}")
+    
+    async def _check_corrective_task_cooldown(self, workspace_id: str, goal_id: str) -> bool:
+        """
+        🔄 PREVENTION: Check if workspace/goal is in cooldown period
+        
+        Returns True if cooldown is active, False if can proceed.
+        """
+        try:
+            from datetime import datetime
+            
+            # Check for active cooldowns
+            response = supabase.table("workspace_insights").select("*").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "insight_type", "constraint"
+            ).like(
+                "content", "Corrective task creation cooldown%"
+            ).gt(
+                "expires_at", datetime.now().isoformat()
+            ).execute()
+            
+            active_cooldowns = response.data or []
+            
+            # Check if any cooldown applies to this goal
+            for cooldown in active_cooldowns:
+                metadata = cooldown.get("metadata", {})
+                if metadata.get("goal_id") == str(goal_id):
+                    logger.info(f"🔄 Corrective task cooldown active for goal {goal_id}: {cooldown['content']}")
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking corrective task cooldown: {e}")
+            return False
+    
+    async def _check_recent_corrective_task_duplicates(self, workspace_id: str, goal_id: str) -> bool:
+        """
+        🚫 PREVENTION: Check for recent identical corrective tasks
+        
+        Returns True if duplicates found, False if safe to proceed.
+        """
+        try:
+            from datetime import datetime, timedelta
+            
+            # Check for corrective tasks created in the last 30 minutes
+            cutoff_time = (datetime.now() - timedelta(minutes=30)).isoformat()
+            
+            response = supabase.table("tasks").select("name, created_at").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "goal_id", str(goal_id)
+            ).like(
+                "name", "🚨 URGENT: Close%gap%"
+            ).gt(
+                "created_at", cutoff_time
+            ).execute()
+            
+            recent_corrective_tasks = response.data or []
+            
+            if recent_corrective_tasks:
+                logger.warning(f"🚫 Found {len(recent_corrective_tasks)} recent corrective tasks for goal {goal_id}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking recent corrective task duplicates: {e}")
+            return False
+    
+    async def _check_similar_tasks_workspace_wide(self, workspace_id: str, goal_id: str, metric_type: str) -> List[Dict]:
+        """
+        🛡️ ENHANCED PREVENTION: Check for semantically similar tasks across the entire workspace
+        
+        Prevents creation of duplicate tasks even if they're for different goals but same purpose.
+        """
+        try:
+            from datetime import datetime, timedelta
+            import difflib
+            
+            # CRITICAL FIX: Get ALL active/pending tasks from workspace (not just recent)
+            # This prevents cross-goal duplicates regardless of creation time
+            response = supabase.table("tasks").select("id, name, goal_id, created_at, status, description").eq(
+                "workspace_id", workspace_id
+            ).in_(
+                "status", ["pending", "in_progress", "blocked"]
+            ).execute()
+            
+            active_tasks = response.data or []
+            
+            if not active_tasks:
+                return []
+            
+            # 🤖 FULLY AI-DRIVEN: Semantic similarity detection using AI analysis
+            similar_tasks = await self._detect_similar_tasks_ai_driven(active_tasks, metric_type)
+            
+            if similar_tasks:
+                logger.warning(f"🛡️ Found {len(similar_tasks)} similar tasks for {metric_type}: {[t['name'] for t in similar_tasks[:3]]}")
+                
+                # Return existing similar tasks to prevent duplicates
+                return similar_tasks
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error checking similar tasks workspace-wide: {e}")
+            return []
+    
+    async def _detect_similar_tasks_ai_driven(self, active_tasks: List[Dict], metric_type: str) -> List[Dict]:
+        """
+        🤖 FULLY AI-DRIVEN: Use LLM to detect semantically similar tasks across all goals
+        
+        Completely removes hard-coded logic and uses AI to understand cross-goal task similarity.
+        """
+        try:
+            import openai
+            import os
+            import json
+            
+            if not active_tasks:
+                return []
+            
+            # Prepare task names for AI analysis
+            task_names = [task['name'] for task in active_tasks]
+            
+            if len(task_names) < 2:
+                return []
+            
+            # 🎛️ Check if AI similarity detection is enabled
+            enable_ai_similarity = os.getenv("ENABLE_AI_TASK_SIMILARITY", "true").lower() == "true"
+            if not enable_ai_similarity:
+                return await self._fallback_text_similarity(active_tasks, metric_type)
+            
+            # 🤖 CRITICAL FIX: AI Prompt for cross-goal semantic similarity detection
+            prompt = f"""
+Analyze these task names for semantic similarity and overlapping deliverables across ALL business goals:
+
+Task Names:
+{json.dumps(task_names, indent=2)}
+
+Instructions:
+1. Identify tasks that would produce the SAME OR OVERLAPPING work, regardless of their stated goal
+2. Focus on business intent and deliverables, not just goal type "{metric_type}"
+3. Consider tasks similar if they would create duplicate effort or redundant outputs
+4. Look for foundational work that supports multiple goals (e.g., "market research" supports both "lead generation" and "content creation")
+5. Group tasks that any reasonable business would consider redundant
+
+Examples of cross-goal similarities:
+- "Research target audience" (for contacts) + "Analyze market segments" (for content) = SAME RESEARCH
+- "Compile contact list" + "Build prospect database" = SAME DATABASE WORK
+- "Create email templates" + "Draft outreach messages" = SAME MESSAGING WORK
+
+Return a JSON object with a "similar_tasks" array containing task names that are semantically similar or would create overlapping work:
+{"similar_tasks": ["task1", "task2", ...]}
+
+If no overlapping work found, return: {"similar_tasks": []}
+"""
+
+            # Make AI request for similarity detection
+            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",  # Fast and cost-effective for this analysis
+                messages=[
+                    {"role": "system", "content": "You are an expert at detecting semantic similarity in task descriptions. You understand business intent behind different wordings. Always return valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,  # Low temperature for consistent analysis
+                max_tokens=500,
+                response_format={"type": "json_object"}  # 🤖 FORCE VALID JSON OUTPUT
+            )
+            
+            ai_response = response.choices[0].message.content.strip()
+            
+            # 🤖 AI-DRIVEN ROBUST JSON PARSING (Pillar 8: AI-Driven, Pillar 11: Production-ready)
+            try:
+                from utils.robust_json_parser import robust_json_parse
+                
+                # Use robust parser for AI responses with markdown handling
+                parsing_result = robust_json_parse(ai_response, expected_type=dict)
+                
+                if parsing_result.success and isinstance(parsing_result.parsed_data, dict):
+                    # Extract similar_tasks array from JSON object
+                    similar_task_names = parsing_result.parsed_data.get("similar_tasks", [])
+                    
+                    # Find actual task objects that match AI-identified names
+                    similar_tasks = []
+                    for task in active_tasks:
+                        if task['name'] in similar_task_names:
+                            similar_tasks.append(task)
+                    
+                    if similar_tasks:
+                        logger.info(f"🤖 AI detected {len(similar_tasks)} cross-goal semantically similar tasks: {[t['name'] for t in similar_tasks]}")
+                    
+                    return similar_tasks
+                else:
+                    logger.warning(f"🤖 Robust parser failed: {parsing_result.error_message}. Raw response: {ai_response[:200]}...")
+                    return []
+                
+            except ImportError:
+                # Fallback to basic JSON parsing with enhanced markdown handling
+                logger.warning("Robust parser not available, using enhanced fallback")
+                try:
+                    # Enhanced markdown handling
+                    clean_response = ai_response.strip()
+                    if clean_response.startswith('```json'):
+                        clean_response = clean_response[7:]
+                    if clean_response.endswith('```'):
+                        clean_response = clean_response[:-3]
+                    clean_response = clean_response.strip()
+                    
+                    parsed_response = json.loads(clean_response)
+                    if isinstance(parsed_response, dict):
+                        similar_task_names = parsed_response.get("similar_tasks", [])
+                        # Find actual task objects that match AI-identified names
+                        similar_tasks = []
+                        for task in active_tasks:
+                            if task['name'] in similar_task_names:
+                                similar_tasks.append(task)
+                        return similar_tasks
+                    return []
+                    
+                except json.JSONDecodeError:
+                    logger.warning(f"🤖 Enhanced fallback also failed. AI response: {ai_response[:200]}...")
+                    return []
+            
+        except Exception as e:
+            logger.error(f"Error in AI-driven similarity detection: {e}")
+            
+            # 🛡️ FALLBACK: Simple text-based similarity as backup
+            return await self._fallback_text_similarity(active_tasks, metric_type)
+    
+    async def _fallback_text_similarity(self, active_tasks: List[Dict], metric_type: str) -> List[Dict]:
+        """
+        🛡️ FALLBACK: Simple text-based similarity when AI is unavailable
+        
+        Minimal fallback logic for when OpenAI API is not available.
+        """
+        try:
+            import difflib
+            
+            similar_tasks = []
+            task_names = [task['name'].lower() for task in recent_tasks]
+            
+            # Find tasks with high text similarity (>0.7)
+            for i, task1 in enumerate(recent_tasks):
+                for j, task2 in enumerate(recent_tasks):
+                    if i >= j:  # Avoid duplicates and self-comparison
+                        continue
+                    
+                    similarity = difflib.SequenceMatcher(None, task1['name'].lower(), task2['name'].lower()).ratio()
+                    
+                    if similarity > 0.7:  # High text similarity threshold
+                        if task1 not in similar_tasks:
+                            similar_tasks.append(task1)
+                        if task2 not in similar_tasks:
+                            similar_tasks.append(task2)
+            
+            return similar_tasks
+            
+        except Exception as e:
+            logger.error(f"Error in fallback similarity detection: {e}")
+            return []
+    
     async def update_goal_progress(
         self, 
         goal_id: UUID, 
@@ -855,6 +1239,7 @@ Return ONLY the category name."""
                     update_data["metadata"]["business_value_review_required"] = True
                     logger.warning(f"⚠️ Goal {goal_id} numerically complete but low business value: {business_content_score:.1f}")
             
+            logger.debug(f"Attempting to update goal {goal_id} status to: {repr(update_data['status'])}")
             supabase.table("workspace_goals").update(update_data).eq(
                 "id", str(goal_id)
             ).execute()
