@@ -433,6 +433,9 @@ class EnhancedTaskExecutor:
         self.initialization_time = datetime.now()
         self.last_cleanup = datetime.now()
         self.performance_metrics = defaultdict(int)
+
+        # Instantiate PhaseManager
+        self.phase_manager = PhaseManager()
         
         logger.critical("🔧 ENHANCED TASK EXECUTOR CONFIGURATION")
         logger.critical(f"auto_generation_enabled: {self.auto_generation_enabled}")
@@ -1121,7 +1124,7 @@ class EnhancedTaskExecutor:
                     return None
 
             # Use enhanced phase manager
-            current_phase, should_create_for_phase = await PhaseManager.should_transition_to_next_phase(workspace_id)
+            current_phase, should_create_for_phase = await self.phase_manager.should_transition_to_next_phase(workspace_id)
 
             if not should_create_for_phase:
                 logger.debug(f"🔍 NO TRANSITION: {workspace_id}")

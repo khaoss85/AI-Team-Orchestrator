@@ -348,9 +348,8 @@ class DynamicAntiLoopManager:
             self.workspace_metrics[workspace_id].skip_percentage = skip_percentage
             
             # Check if we need to adjust based on skip rate
-            if skip_percentage >= 0.15:  # 15% threshold
-                current_limit = self.workspace_metrics[workspace_id].current_limit
-                new_limit = min(int(current_limit * 1.5), self.max_absolute_limit)
+            if skip_percentage >= 0.20:  # 20% threshold
+                new_limit = min(current_limit + 5, self.max_absolute_limit) # Increase by a fixed amount
                 self.workspace_metrics[workspace_id].recommended_limit = max(
                     self.workspace_metrics[workspace_id].recommended_limit, new_limit
                 )

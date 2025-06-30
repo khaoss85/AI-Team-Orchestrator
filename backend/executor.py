@@ -867,6 +867,12 @@ class TaskExecutor(AssetCoordinationMixin):
                 task_name = task_dict_from_queue.get("name", "Unnamed Task")
                 workspace_id = task_dict_from_queue.get("workspace_id", "UnknownWS")
 
+                # Ensure created_at and updated_at are present for Pydantic validation
+                if "created_at" not in task_dict_from_queue:
+                    task_dict_from_queue["created_at"] = datetime.now().isoformat()
+                if "updated_at" not in task_dict_from_queue:
+                    task_dict_from_queue["updated_at"] = datetime.now().isoformat()
+
                 # Update queued/active trackers
                 self.queued_task_ids.discard(task_id)
                 if task_id in self.active_task_ids:

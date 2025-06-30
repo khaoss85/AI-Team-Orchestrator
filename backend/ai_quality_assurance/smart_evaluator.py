@@ -46,14 +46,17 @@ class SmartDeliverableEvaluator:
     """
     
     def __init__(self):
+        self.client = None
         if HAS_OPENAI:
-            try:
-                self.client = AsyncOpenAI()
-            except Exception as e:
-                logger.warning(f"OpenAI client initialization failed: {e}")
-                self.client = None
+            if os.getenv("OPENAI_API_KEY"):
+                try:
+                    self.client = AsyncOpenAI()
+                except Exception as e:
+                    logger.warning(f"OpenAI client initialization failed: {e}")
+            else:
+                logger.warning("OPENAI_API_KEY environment variable not set. OpenAI client will not be initialized.")
         else:
-            self.client = None
+            logger.warning("OpenAI library not found. OpenAI client will not be initialized.")
         
         # Thresholds stringenti per asset concreti
         self.concrete_threshold = 0.85
@@ -287,9 +290,9 @@ class SmartDeliverableEvaluator:
         if cache_key in self.evaluation_cache:
             return self.evaluation_cache[cache_key]
         
-        # Fallback to rule-based if no AI available
+        # Fallback to rule-based if no AI available or client not initialized
         if not self.client:
-            logger.info("AI evaluation unavailable, using enhanced rule-based scoring")
+            logger.info("AI evaluation unavailable or client not initialized, using enhanced rule-based scoring")
             return self._enhanced_rule_based_evaluation(asset_type, content, workspace_goal)
         
         try:
@@ -567,6 +570,29 @@ Be HARSH in scoring. Only give high scores to truly exceptional, ready-to-use as
         
         # Asset è concreto se ha più pattern concreti che teorici
         return concrete_count > theoretical_count * 2
+
+    async def evaluate_with_ai(self, prompt: str, context: str, max_tokens: int = 500) -> Optional[Dict[str, Any]]:
+        """
+        Generic method to call OpenAI API for evaluation.
+        """
+        if not self.client:
+            logger.warning(f"OpenAI client not initialized for evaluate_with_ai in context: {context}")
+            return None
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Or another suitable model
+                messages=[
+                    {"role": "system", "content": f"You are an expert AI assistant for {context}."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"}
+            )
+            return {"raw_response": json.loads(response.choices[0].message.content.strip())}
+        except Exception as e:
+            logger.error(f"Error calling OpenAI API for {context} evaluation: {e}")
+            return None
 
 # Singleton instance
 smart_evaluator = SmartDeliverableEvaluator()

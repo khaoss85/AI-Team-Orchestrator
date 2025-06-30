@@ -93,10 +93,11 @@ class AISemanticMapper:
             )
 
             ai_response_content = response.choices[0].message.content
-            mapped_contributions = json.loads(ai_response_content)
+            parsed_response = json.loads(ai_response_content)
+            mapped_contributions = parsed_response.get("result", []) # Extract from 'result' key
             
             if not isinstance(mapped_contributions, list):
-                logger.error(f"AI did not return a list: {mapped_contributions}")
+                logger.error(f"AI did not return a list within 'result' key: {mapped_contributions}")
                 return []
 
             # Validate and clean up contributions
