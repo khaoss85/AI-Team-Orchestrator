@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "'AssetArtifact' object has no attribute 'pillar_compliance'"
-}

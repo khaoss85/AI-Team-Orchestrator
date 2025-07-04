@@ -253,17 +253,13 @@ Rispondi in JSON:
 }}
 """
             
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert content reality validator. Respond only with valid JSON."},
-                    {"role": "user", "content": reality_prompt}
-                ],
-                max_tokens=1500,
-                temperature=0.1
-            )
+            from ai_quality_assurance.smart_evaluator import smart_evaluator
             
-            ai_response = response.choices[0].message.content
+            ai_response = await smart_evaluator.evaluate_with_ai(
+                reality_prompt,
+                context="content_reality_validation",
+                max_tokens=1500
+            )
             
             if isinstance(ai_response, str):
                 try:

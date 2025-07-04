@@ -62,12 +62,12 @@ class RealToolIntegrationPipeline:
             from services.ai_tool_aware_validator import ai_tool_aware_validator
             from services.ai_tool_orchestrator import ai_tool_orchestrator
             from services.memory_enhanced_ai_asset_generator import memory_enhanced_ai_asset_generator
-            from services.autonomous_learning_memory_system import autonomous_learning_memory_system
+            from services.memory_system import memory_system
             
             self.validator = ai_tool_aware_validator
             self.orchestrator = ai_tool_orchestrator
             self.generator = memory_enhanced_ai_asset_generator
-            self.memory_system = autonomous_learning_memory_system
+            self.memory_system = memory_system
             
             logger.info("✅ All pipeline components initialized successfully")
             

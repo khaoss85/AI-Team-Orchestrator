@@ -1,0 +1,122 @@
+{
+  "test_type": "definitive_autonomous_validation",
+  "test_id": "ca2d2d61",
+  "scenario": {
+    "name": "AI-Driven E-commerce Optimization Platform",
+    "goal": "Sviluppare una piattaforma di ottimizzazione e-commerce che utilizzi AI per personalizzazione prodotti, pricing dinamico, e customer journey analysis",
+    "domain": "ecommerce-ai",
+    "complexity": "high",
+    "success_criteria": [
+      "Sistema di raccomandazione prodotti con ML personalizzato",
+      "Engine di pricing dinamico basato su demand forecasting",
+      "Analytics avanzati per customer journey optimization",
+      "Dashboard real-time per performance monitoring",
+      "API integration con principali piattaforme e-commerce"
+    ]
+  },
+  "test_data": {
+    "test_id": "ca2d2d61",
+    "workspace_id": "30aba9d2-29fa-4b38-bfbf-0cff9347cbd8",
+    "goal_id": "created",
+    "team_proposal_id": "29213521-03e6-416b-a9c8-2e136f6796a9",
+    "task_ids": [
+      "74626a3a-c262-43c7-8397-d13cc55dc46b",
+      "55c6b054-783a-4d33-8eca-990bfcbc3f93",
+      "fbf31e07-67a4-4421-bac8-3b9c804ff0a5"
+    ],
+    "asset_ids": [],
+    "deliverable_ids": [],
+    "start_time": "2025-07-04 12:23:28.907194"
+  },
+  "pillar_validation": {
+    "pillars_validated": 5,
+    "pillars_total": 13,
+    "success_rate_percent": 38.46153846153847,
+    "details": {
+      "Pillar 1 (SDK Nativo)": {
+        "target": "Real tools usage",
+        "validated": false
+      },
+      "Pillar 2 (AI-Driven)": {
+        "target": "AI team proposal",
+        "validated": true
+      },
+      "Pillar 3 (Universal)": {
+        "target": "Domain-agnostic",
+        "validated": true
+      },
+      "Pillar 4 (Scalabile)": {
+        "target": "Event-driven execution",
+        "validated": false
+      },
+      "Pillar 5 (Goal-Driven)": {
+        "target": "Goal\u2192Task flow",
+        "validated": true
+      },
+      "Pillar 6 (Memory System)": {
+        "target": "Learning insights",
+        "validated": false
+      },
+      "Pillar 7 (Pipeline Autonoma)": {
+        "target": "Auto task generation",
+        "validated": true
+      },
+      "Pillar 8 (Quality Gates)": {
+        "target": "Quality validation",
+        "validated": false
+      },
+      "Pillar 10 (Real-Time Thinking)": {
+        "target": "Thinking logs",
+        "validated": false
+      },
+      "Pillar 11 (Production-Ready)": {
+        "target": "Usable outputs",
+        "validated": false
+      },
+      "Pillar 12 (Deliverable Concreti)": {
+        "target": "No fake content",
+        "validated": false
+      },
+      "Pillar 13 (Course Correction)": {
+        "target": "Auto-correction",
+        "validated": false
+      },
+      "Pillar 15 (Robustezza)": {
+        "target": "Error handling",
+        "validated": true
+      }
+    }
+  },
+  "content_quality": {
+    "fake_content_detected": 0,
+    "fake_content_details": []
+  },
+  "orchestrator_verification": {
+    "events_tracked": 5,
+    "coordination_verified": true
+  },
+  "error_analysis": {
+    "critical_errors": 0,
+    "warnings": 8,
+    "error_details": [],
+    "warning_details": [
+      "Task monitoring error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x11221aad0>: Failed to establish a new connection: [Errno 61] Connection refused'))",
+      "Task monitoring error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1122b8160>: Failed to establish a new connection: [Errno 61] Connection refused'))",
+      "Task monitoring error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x11221b240>: Failed to establish a new connection: [Errno 61] Connection refused'))",
+      "Task monitoring error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1122b85a0>: Failed to establish a new connection: [Errno 61] Connection refused'))",
+      "Task monitoring error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1122b87c0>: Failed to establish a new connection: [Errno 61] Connection refused'))",
+      "No task execution detected in monitoring period",
+      "Assets endpoint returned: 404",
+      "Deliverable check error: 'str' object has no attribute 'get'"
+    ]
+  },
+  "metrics": {
+    "duration_minutes": 12.6129386,
+    "tasks_generated": 3,
+    "assets_created": 0,
+    "deliverables_produced": 0,
+    "human_interventions": 1,
+    "autonomy_score": 100
+  },
+  "timestamp": "2025-07-04T12:36:05.683557"
+}

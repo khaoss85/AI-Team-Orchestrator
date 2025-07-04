@@ -1134,12 +1134,7 @@ Return as numbered list, one recommendation per line."""
             # Get relevant insights for this metric type
             memory_context = await workspace_memory.get_relevant_context(
                 workspace_id=workspace_id,
-                current_task=None,
-                context_filter={
-                    "insight_types": ["failure_lesson", "constraint"],
-                    "relevance_tags": [f"metric_{failure.extracted_metrics.get('type', 'unknown')}"],
-                    "limit": 5
-                }
+                context_filter={"insight_types": ["failure_lesson", "constraint"]}
             )
             
             return {

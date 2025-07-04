@@ -58,12 +58,12 @@ class DynamicAntiLoopManager:
         self.metrics_update_interval = 60  # seconds
         self.adaptation_interval = 300     # seconds (5 minutes)
         
-        # AI-driven adaptation rules
+        # AI-driven adaptation rules  
         self.adaptation_rules = [
             AdaptationRule(
                 condition="high_skip_rate",
-                threshold_value=0.15,  # 15% skip rate
-                adjustment_factor=1.5,
+                threshold_value=0.10,  # 10% skip rate (more aggressive)
+                adjustment_factor=2.0,  # More aggressive adjustment
                 max_limit=self.max_absolute_limit,
                 min_limit=self.base_limit
             ),
@@ -344,16 +344,50 @@ class DynamicAntiLoopManager:
     
     async def update_skip_percentage(self, workspace_id: str, skip_percentage: float):
         """Update skip percentage from executor feedback"""
-        if workspace_id in self.workspace_metrics:
-            self.workspace_metrics[workspace_id].skip_percentage = skip_percentage
-            
-            # Check if we need to adjust based on skip rate
-            if skip_percentage >= 0.20:  # 20% threshold
-                new_limit = min(current_limit + 5, self.max_absolute_limit) # Increase by a fixed amount
-                self.workspace_metrics[workspace_id].recommended_limit = max(
-                    self.workspace_metrics[workspace_id].recommended_limit, new_limit
+        try:
+            if workspace_id in self.workspace_metrics:
+                self.workspace_metrics[workspace_id].skip_percentage = skip_percentage
+                
+                # Check if we need to adjust based on skip rate
+                if skip_percentage >= 0.10:  # 10% threshold (more aggressive)
+                    current_limit = self.workspace_metrics[workspace_id].current_limit
+                    # More aggressive limit increase based on skip percentage
+                    if skip_percentage >= 0.70:  # 70%+ skip rate
+                        increment = 15  # Very aggressive increase
+                    elif skip_percentage >= 0.50:  # 50%+ skip rate
+                        increment = 10
+                    elif skip_percentage >= 0.30:  # 30%+ skip rate
+                        increment = 7
+                    else:  # 10-30% skip rate
+                        increment = 5
+                    new_limit = min(current_limit + increment, self.max_absolute_limit)
+                    self.workspace_metrics[workspace_id].recommended_limit = max(
+                        self.workspace_metrics[workspace_id].recommended_limit, new_limit
+                    )
+                    logger.warning(f"🚨 High skip rate ({skip_percentage:.1%}) for W:{workspace_id[:8]} - recommending limit increase to {new_limit}")
+            else:
+                # Initialize metrics if not present
+                logger.info(f"🔄 Initializing metrics for W:{workspace_id[:8]} due to skip percentage update")
+                await self.collect_workspace_metrics(workspace_id)
+                # Retry the update
+                if workspace_id in self.workspace_metrics:
+                    await self.update_skip_percentage(workspace_id, skip_percentage)
+        except Exception as e:
+            logger.error(f"Dynamic anti-loop manager error, using base limit: {e}")
+            # Create minimal metrics with base limit as fallback
+            if workspace_id not in self.workspace_metrics:
+                self.workspace_metrics[workspace_id] = WorkspaceMetrics(
+                    workspace_id=workspace_id,
+                    pending_tasks_count=0,
+                    critical_tasks_count=0,
+                    skip_percentage=skip_percentage,
+                    average_wait_time_minutes=0.0,
+                    task_generation_rate=0.0,
+                    completion_rate=0.0,
+                    current_limit=self.base_limit,
+                    recommended_limit=self.base_limit,
+                    health_score=0.5
                 )
-                logger.warning(f"🚨 High skip rate ({skip_percentage:.1%}) for W:{workspace_id[:8]} - recommending limit increase to {new_limit}")
     
     async def get_recommended_limit(self, workspace_id: str) -> int:
         """Get current recommended limit for a workspace"""

@@ -82,6 +82,16 @@ except ImportError as e:
     DYNAMIC_ANTI_LOOP_AVAILABLE = False
     dynamic_anti_loop_manager = None
 
+# 🎼 Import Unified Orchestrator for complete orchestration capabilities
+try:
+    from services.unified_orchestrator import get_unified_orchestrator
+    UNIFIED_ORCHESTRATOR_AVAILABLE = True
+    logger.info("✅ Unified Orchestrator available for complete orchestration capabilities")
+except ImportError as e:
+    logger.warning(f"⚠️ Unified Orchestrator not available: {e}")
+    UNIFIED_ORCHESTRATOR_AVAILABLE = False
+    get_unified_orchestrator = None
+
 # 📊 Import System Telemetry Monitor for comprehensive monitoring
 try:
     from services.system_telemetry_monitor import system_telemetry_monitor
@@ -499,6 +509,16 @@ class TaskExecutor(AssetCoordinationMixin):
             'recovery_timeout': 300,  # 5 minutes before allowing retry
             'half_open_max_calls': 3  # max calls in half-open state
         }
+        
+        # 🚀 ATOE: Initialize Adaptive Task Orchestration Engine for skip rate optimization
+        self.atoe = None
+        if ATOE_AVAILABLE and get_adaptive_task_orchestration_engine:
+            try:
+                self.atoe = get_adaptive_task_orchestration_engine()
+                logger.info("🚀 ATOE initialized successfully for skip rate optimization")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize ATOE: {e}")
+                self.atoe = None
 
     async def get_workspace_settings(self, workspace_id: str):
         """Get workspace-specific settings with fallback to defaults"""
@@ -958,7 +978,9 @@ class TaskExecutor(AssetCoordinationMixin):
                 self.active_tasks_count += 1
                 try:
                     if manager is None:
+                        logger.error(f"Worker {worker_id}: Manager is None for task {task_id}. Skipping execution.")
                         raise ValueError(f"Task {task_id} with null manager for worker {worker_id}")
+                    logger.info(f"Worker {worker_id}: Manager is {manager.__class__.__name__} for task {task_id}. Proceeding with execution.")
                     await self._execute_task_with_anti_loop_and_tracking(manager, task_dict_from_queue)
                 except Exception as e_exec:
                     logger.error(f"Worker {worker_id} critical error for task {task_id}: {e_exec}", exc_info=True)
@@ -1219,12 +1241,63 @@ Focus on delivering practical, actionable results that move the project forward.
                 )
             return False
 
-        # 🤖 AI-DRIVEN: Dynamic workspace task limit with intelligent adaptation
+        # 🚀 ATOE: Dynamic workspace task limit with AI-driven skip prevention
         current_anti_loop_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
         
-        # Get dynamic limit recommendation
+        # Get dynamic limit recommendation with ATOE integration
         effective_limit = self.max_tasks_per_workspace_anti_loop
-        if DYNAMIC_ANTI_LOOP_AVAILABLE and dynamic_anti_loop_manager:
+        atoe_recommendation = None
+        
+        # Primary: Try ATOE for adaptive orchestration (addresses 66.7% skip rate issue)
+        if self.atoe:
+            try:
+                # Get comprehensive ATOE recommendations
+                atoe_recommendation = await self.atoe.get_orchestration_recommendation(
+                    workspace_id=workspace_id,
+                    current_pending_count=current_anti_loop_count,
+                    task_metadata={
+                        "task_id": task_id,
+                        "task_name": task_dict.get("name", "Unknown"),
+                        "task_priority": task_dict.get("priority", "medium"),
+                        "is_critical": await self._is_critical_corrective_task(task_dict)
+                    }
+                )
+                
+                if atoe_recommendation.should_proceed:
+                    effective_limit = atoe_recommendation.recommended_limit
+                    logger.info(f"🚀 ATOE RECOMMENDATION: Proceed with limit {effective_limit} "
+                              f"(reasoning: {atoe_recommendation.reasoning[:100]})")
+                    
+                    # Update ATOE metrics for continuous improvement
+                    await self.atoe.update_workspace_metrics(
+                        workspace_id=workspace_id,
+                        current_metrics={
+                            "pending_tasks": current_anti_loop_count,
+                            "task_skip_count": 0,  # Will be updated if skipped
+                            "task_execution_count": 1
+                        }
+                    )
+                else:
+                    logger.warning(f"🚀 ATOE RECOMMENDATION: Skip task {task_id} "
+                                 f"(reasoning: {atoe_recommendation.reasoning[:100]})")
+                    
+                    # Update skip metrics for ATOE learning
+                    await self.atoe.update_workspace_metrics(
+                        workspace_id=workspace_id,
+                        current_metrics={
+                            "pending_tasks": current_anti_loop_count,
+                            "task_skip_count": 1,
+                            "task_execution_count": 0
+                        }
+                    )
+                    return False
+                    
+            except Exception as e:
+                logger.warning(f"ATOE orchestration error, falling back to dynamic anti-loop: {e}")
+                atoe_recommendation = None
+        
+        # Fallback: Use dynamic anti-loop manager if ATOE not available
+        if not atoe_recommendation and DYNAMIC_ANTI_LOOP_AVAILABLE and dynamic_anti_loop_manager:
             try:
                 # Get AI-recommended limit based on real-time metrics
                 effective_limit = await dynamic_anti_loop_manager.get_recommended_limit(workspace_id)
@@ -1240,13 +1313,16 @@ Focus on delivering practical, actionable results that move the project forward.
                 logger.warning(f"Dynamic anti-loop manager error, using base limit: {e}")
                 effective_limit = self.max_tasks_per_workspace_anti_loop
         
+        # Final validation check
         if current_anti_loop_count >= effective_limit:
             # Check if this is a critical corrective task that should bypass the limit
             if await self._is_critical_corrective_task(task_dict):
                 logger.info(f"🚨 CRITICAL BYPASS: Task {task_id} bypassing anti-loop limit ({current_anti_loop_count}/{effective_limit}) - critical corrective task")
                 return True  # Allow execution despite limit
             else:
-                logger.warning(f"Anti-loop: W:{workspace_id} task limit ({current_anti_loop_count}/{effective_limit}). Task {task_id} skip")
+                # Log the skip with improved context
+                skip_rate = current_anti_loop_count / effective_limit * 100 if effective_limit > 0 else 0
+                logger.warning(f"Anti-loop: W:{workspace_id} task limit ({current_anti_loop_count}/{effective_limit}, {skip_rate:.1f}% skip rate). Task {task_id} skip")
                 return False
 
         # Check delegation depth
@@ -1262,6 +1338,14 @@ Focus on delivering practical, actionable results that move the project forward.
                 return False
 
         return True
+
+    async def get_completed_tasks(self, workspace_id: str) -> List[str]:
+        """Returns a list of task IDs that have been completed for a given workspace."""
+        completed_tasks = list(self.task_completion_tracker.get(workspace_id, set()))
+        # Clear the tracker for these tasks to avoid reprocessing
+        if workspace_id in self.task_completion_tracker:
+            self.task_completion_tracker[workspace_id].clear()
+        return completed_tasks
 
     async def _is_critical_corrective_task(self, task_dict: Dict[str, Any]) -> bool:
         """
@@ -1346,6 +1430,22 @@ Focus on delivering practical, actionable results that move the project forward.
             logger.error(f"Cannot force complete task: ID missing. Reason: {reason}")
             return
 
+        # Check for agent inactivity reason
+        if "inactive" in reason.lower() or "no active team members" in reason.lower():
+            try:
+                from backend.services.memory_system import memory_system
+                await memory_system.store_insight(
+                    workspace_id=workspace_id,
+                    insight_type="constraint",
+                    content=f"Operational Block: Task assignment is blocked because all agents are inactive. Pausing corrective actions for 10 minutes.",
+                    relevance_tags=["agent_status", "operational_block"],
+                    confidence_score=1.0,
+                    expires_at=datetime.now(timezone.utc) + timedelta(minutes=10)
+                )
+                logger.warning(f"Stored operational constraint for workspace {workspace_id} due to inactive agents.")
+            except Exception as e:
+                logger.error(f"Failed to store operational constraint: {e}")
+
         completion_result = {
             "output": f"Task forcibly finalized: {reason}",
             "status_detail": f"forced_{status_to_set.lower().replace('.', '_')}",
@@ -1367,8 +1467,121 @@ Focus on delivering practical, actionable results that move the project forward.
             # 🚀 CRITICAL FIX: Trigger deliverable creation check when task is completed
             if status_to_set == TaskStatus.COMPLETED.value and workspace_id:
                 await self._check_and_trigger_deliverable_creation(workspace_id, task_id)
+                
+                # EVENT-DRIVEN: Create task completion event
+                await self._create_integration_event(
+                    workspace_id=workspace_id,
+                    event_type='task_completed',
+                    source_component='executor',
+                    target_component='unified_orchestrator',
+                    event_data={
+                        'task_id': task_id,
+                        'completion_result': completion_result,
+                        'status': status_to_set
+                    }
+                )
+                
+                # 🎯 CRITICAL FIX: Update goal progress when task completes (MISSING LINK)
+                try:
+                    from services.unified_progress_manager import unified_progress_manager
+                    progress_result = await unified_progress_manager.handle_task_completion(
+                        task_id, completion_result
+                    )
+                    if progress_result.get("updated"):
+                        logger.info(f"✅ Task {task_id} completion updated goal progress: {progress_result}")
+                    
+                    # 🎯 PRIORITY 2: Real-time validation of progress update flow
+                    try:
+                        from utils.progress_validation import progress_validation_engine
+                        validation_result = await progress_validation_engine.validate_task_completion_flow(task_id)
+                        if not validation_result.get("overall_success"):
+                            logger.warning(f"⚠️ Progress validation failed for task {task_id}: {validation_result['failures']}")
+                        else:
+                            logger.info(f"✅ Progress flow validation passed for task {task_id}")
+                    except Exception as validation_error:
+                        logger.error(f"Error in progress validation: {validation_error}")
+                    
+                    # 🛡️ AUTOMATIC QUALITY TRIGGER: Trigger quality validation on task completion
+                    try:
+                        from services.automatic_quality_trigger import get_automatic_quality_trigger
+                        quality_trigger = get_automatic_quality_trigger()
+                        
+                        # Trigger immediate quality check for the workspace
+                        quality_result = await quality_trigger.trigger_immediate_quality_check(workspace_id)
+                        
+                        if quality_result.get("status") == "completed":
+                            logger.info(f"✅ Automatic quality validation triggered for task {task_id}: {quality_result.get('new_validations', 0)} validations created")
+                        else:
+                            logger.warning(f"⚠️ Automatic quality validation failed for task {task_id}: {quality_result.get('error', 'Unknown error')}")
+                            
+                    except Exception as quality_error:
+                        logger.error(f"Error triggering automatic quality validation for task {task_id}: {quality_error}")
+                        # Don't fail the task completion due to quality trigger errors
+                        
+                except Exception as e:
+                    logger.error(f"Error updating goal progress for task {task_id}: {e}")
         except Exception as e:
             logger.error(f"Error force finalizing task {task_id}: {e}")
+    
+    async def _retrieve_quality_patterns_for_task(self, task_data: Dict[str, Any], workspace_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve learned quality patterns for task type and agent to guide execution"""
+        try:
+            from uuid import UUID
+            from workspace_memory import workspace_memory
+            
+            # Extract task context
+            task_type = task_data.get('task_type', task_data.get('type', 'unknown'))
+            agent_id = task_data.get('agent_id', 'unknown')
+            
+            if task_type == 'unknown':
+                logger.debug("No specific task type found - skipping quality pattern retrieval")
+                return None
+            
+            # Get quality patterns from workspace memory
+            quality_patterns = await workspace_memory.get_quality_patterns_for_task_type(
+                workspace_id=UUID(workspace_id),
+                task_type=task_type,
+                agent_id=agent_id
+            )
+            
+            # Return only if we have meaningful patterns
+            if quality_patterns and quality_patterns.get('quality_statistics', {}).get('total_validations', 0) > 0:
+                logger.debug(f"Found quality patterns for {task_type}: {quality_patterns['quality_statistics']['total_validations']} validations")
+                return quality_patterns
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error retrieving quality patterns: {e}")
+            return None
+    
+    async def _inject_quality_guidance(self, task_id: str, quality_patterns: Dict[str, Any]):
+        """Inject quality guidance into task for agent access"""
+        try:
+            # Update task with quality guidance in the database
+            quality_guidance = {
+                "best_practices": quality_patterns.get('best_practices', [])[:3],  # Top 3
+                "success_patterns": quality_patterns.get('success_patterns', [])[:3],  # Top 3
+                "failure_patterns": quality_patterns.get('failure_patterns', [])[:2],  # Top 2 to avoid
+                "recommendations": quality_patterns.get('recommendations', []),
+                "quality_statistics": quality_patterns.get('quality_statistics', {}),
+                "injected_at": datetime.now().isoformat()
+            }
+            
+            # Update task metadata with quality guidance
+            from database import update_task_metadata
+            
+            metadata_update = {
+                "quality_guidance": quality_guidance,
+                "quality_guidance_source": "workspace_memory_learning"
+            }
+            
+            await update_task_metadata(task_id, metadata_update)
+            
+            logger.debug(f"✅ Quality guidance injected into task {task_id}")
+            
+        except Exception as e:
+            logger.error(f"Error injecting quality guidance for task {task_id}: {e}")
 
     async def _execute_task_with_anti_loop_and_tracking(self, manager: AgentManager, task_dict: Dict[str, Any]):
         """
@@ -1535,7 +1748,9 @@ Focus on delivering practical, actionable results that move the project forward.
             estimated_input_tokens = max(1, len(task_input_text) // 4)
 
             # ESECUZIONE DEL TASK
+            logger.info(f"Before manager.execute_task for task {task_id}")
             await self.process_task_with_coordination(task_dict, manager, thinking_process_id)
+            logger.info(f"After manager.execute_task for task {task_id}")
             await refresh_dependencies(task_id)
             return
         except Exception as e:
@@ -1746,8 +1961,36 @@ Focus on delivering practical, actionable results that move the project forward.
         """
         if self.paused:
             return
-            
+
         try:
+            # Check for operational constraints
+            try:
+                from backend.services.memory_system import memory_system
+                constraints = await memory_system.get_relevant_context(
+                    workspace_id=workspace_id,
+                    context_filter={"insight_types": ["constraint"]}
+                )
+                # 🔧 FIX: Handle case where constraints might be strings instead of dicts
+                if constraints:
+                    has_operational_block = False
+                    constraint_items = constraints if isinstance(constraints, list) else [constraints]
+                    for c in constraint_items:
+                        if isinstance(c, dict):
+                            content = c.get("content", "")
+                        elif isinstance(c, str):
+                            content = c
+                        else:
+                            continue
+                        if "operational block" in content.lower():
+                            has_operational_block = True
+                            break
+                    
+                    if has_operational_block:
+                        logger.warning(f"W:{workspace_id} is under an operational block. Skipping task processing.")
+                        return
+            except Exception as e:
+                logger.error(f"Failed to check operational constraints: {e}")
+
             # 🏥 ENHANCED: Health check with intelligent auto-recovery
             if WORKSPACE_HEALTH_AVAILABLE and workspace_health_manager:
                 try:
@@ -3297,11 +3540,25 @@ Focus on delivering practical, actionable results that move the project forward.
                     metadata={"delegation_depth": delegation_depth, "chain_length": len(delegation_chain)}
                 )
 
+            # 🔧 QUALITY PATTERN INJECTION: Retrieve learned quality patterns for task guidance
+            try:
+                quality_patterns = await self._retrieve_quality_patterns_for_task(task_dict, workspace_id)
+                if quality_patterns:
+                    # Inject quality guidance into task data for agent access
+                    await self._inject_quality_guidance(task_id, quality_patterns)
+                    logger.info(f"✅ Quality patterns injected for task {task_id}: {len(quality_patterns.get('best_practices', []))} best practices")
+                else:
+                    logger.debug(f"ℹ️ No quality patterns found for task {task_id}")
+            except Exception as pattern_error:
+                logger.warning(f"⚠️ Failed to retrieve quality patterns for task {task_id}: {pattern_error}")
+            
             # Esegui con timeout unificato tramite AgentManager
+            logger.info(f"Attempting to execute task {task_id} via AgentManager...")
             result = await asyncio.wait_for(
                 manager.execute_task(UUID(task_id)), 
                 timeout=self.execution_timeout
             )
+            logger.info(f"AgentManager.execute_task for {task_id} returned: {result}")
 
             # 5. Log risultato intermedio
             self.execution_log.append({
@@ -3522,6 +3779,17 @@ Focus on delivering practical, actionable results that move the project forward.
                         enhanced_result
                     )
                     
+                    # 🎯 CRITICAL FIX: Update goal progress via Unified Progress Manager
+                    try:
+                        from services.unified_progress_manager import unified_progress_manager
+                        progress_result = await unified_progress_manager.handle_task_completion(
+                            completed_task_id, enhanced_result
+                        )
+                        if progress_result.get("updated"):
+                            logger.info(f"✅ Enhanced task {completed_task_id} updated goal progress: {progress_result}")
+                    except Exception as e:
+                        logger.error(f"Error updating goal progress for enhanced task {completed_task_id}: {e}")
+                    
                     logger.info(f"🎁 Task {completed_task_id} enhanced with AI pipeline: Quality {pipeline_result.content_quality_score:.1f}/100")
                     
                     # 🎯 Goal Progress Update: Use enhanced content for goal progress
@@ -3584,6 +3852,141 @@ Focus on delivering practical, actionable results that move the project forward.
         except Exception as e:
             logger.error(f"❌ AI-driven asset processing failed for task {completed_task_id}: {e}")
             # Don't raise - asset processing failure shouldn't break task completion
+
+    async def _trigger_workflow_orchestrator_if_needed(self, workspace_id: str, completed_task_id: str):
+        """
+        🎼 WORKFLOW ORCHESTRATOR INTEGRATION
+        
+        Trigger complete end-to-end workflow when significant task completion occurs
+        """
+        try:
+            # Import WorkflowOrchestrator
+            try:
+                from services.workflow_orchestrator import workflow_orchestrator
+                WORKFLOW_ORCHESTRATOR_AVAILABLE = True
+            except ImportError as e:
+                logger.warning(f"WorkflowOrchestrator not available: {e}")
+                return
+            
+            # Get task details to determine workflow trigger criteria
+            task_data = await get_task(completed_task_id)
+            if not task_data:
+                return
+            
+            # Check if this task completion should trigger a complete workflow
+            should_trigger_workflow = await self._should_trigger_complete_workflow(
+                workspace_id, completed_task_id, task_data
+            )
+            
+            if should_trigger_workflow:
+                # Get goal associated with this task
+                goal_id = task_data.get("goal_id")
+                if goal_id:
+                    logger.info(f"🎼 TRIGGERING WORKFLOW ORCHESTRATOR: Task {completed_task_id} completed, starting complete workflow for goal {goal_id}")
+                    
+                    try:
+                        # Execute complete workflow with timeout and quality gates
+                        workflow_result = await workflow_orchestrator.execute_complete_workflow(
+                            workspace_id=workspace_id,
+                            goal_id=goal_id,
+                            timeout_minutes=30,
+                            enable_rollback=True,
+                            quality_threshold=75.0
+                        )
+                        
+                        if workflow_result.success:
+                            logger.info(f"✅ WORKFLOW ORCHESTRATOR: Complete workflow successful for goal {goal_id}")
+                            logger.info(f"📊 Workflow Results: {workflow_result.tasks_generated} tasks, {workflow_result.deliverables_created} deliverables, {workflow_result.quality_score:.1f}% quality")
+                        else:
+                            logger.warning(f"❌ WORKFLOW ORCHESTRATOR: Complete workflow failed for goal {goal_id}: {workflow_result.error}")
+                            
+                            # If rollback was performed, log the details
+                            if workflow_result.rollback_performed:
+                                rollback_status = "successful" if workflow_result.rollback_success else "failed"
+                                logger.warning(f"🔄 WORKFLOW ROLLBACK: {rollback_status}")
+                                
+                    except Exception as workflow_error:
+                        logger.error(f"❌ WORKFLOW ORCHESTRATOR: Critical error executing workflow for goal {goal_id}: {workflow_error}")
+                        logger.info("🔄 Task execution will continue normally despite workflow orchestrator error")
+                else:
+                    logger.debug(f"Task {completed_task_id} has no associated goal - no workflow orchestration needed")
+            else:
+                logger.debug(f"Task {completed_task_id} completion does not meet workflow trigger criteria")
+                
+        except Exception as e:
+            logger.error(f"Error in WorkflowOrchestrator integration: {e}")
+
+    async def _should_trigger_complete_workflow(self, workspace_id: str, completed_task_id: str, task_data: dict) -> bool:
+        """
+        Determine if completing this task should trigger a complete workflow orchestration
+        """
+        try:
+            # Trigger criteria:
+            # 1. Task is associated with a goal
+            # 2. Task represents significant progress towards goal completion
+            # 3. Workspace is ready for deliverable generation
+            
+            goal_id = task_data.get("goal_id")
+            if not goal_id:
+                return False
+            
+            # Check if this task represents significant progress (high priority/critical task)
+            task_priority = task_data.get("priority", "medium")
+            context_data = task_data.get("context_data", {}) or {}
+            project_phase = context_data.get("project_phase", "").upper()
+            is_finalization = project_phase == "FINALIZATION"
+            is_high_priority = task_priority == "high"
+            
+            # Always trigger for finalization tasks
+            if is_finalization:
+                logger.info(f"🎯 FINALIZATION TASK COMPLETED: Triggering complete workflow for task {completed_task_id}")
+                return True
+            
+            # Check if enough tasks are completed for this goal to warrant workflow orchestration
+            tasks = await list_tasks(workspace_id)
+            goal_tasks = [t for t in tasks if t.get("goal_id") == goal_id]
+            completed_goal_tasks = [t for t in goal_tasks if t.get("status") == "completed"]
+            
+            # Trigger if we've completed at least 50% of tasks for this goal
+            if len(goal_tasks) > 0:
+                completion_rate = len(completed_goal_tasks) / len(goal_tasks)
+                if completion_rate >= 0.5:
+                    logger.info(f"🎯 GOAL PROGRESS THRESHOLD: {completion_rate:.1%} tasks completed for goal {goal_id}, triggering workflow")
+                    return True
+            
+            # Trigger for high-priority tasks that might represent major milestones
+            if is_high_priority and len(completed_goal_tasks) >= 2:
+                logger.info(f"🎯 HIGH-PRIORITY MILESTONE: High priority task completed with sufficient goal progress, triggering workflow")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error determining workflow trigger criteria: {e}")
+            return False
+    
+    async def _create_integration_event(self, workspace_id: str, event_type: str, 
+                                      source_component: str, target_component: str = None,
+                                      event_data: Dict[str, Any] = None):
+        """Create an integration event for event-driven coordination"""
+        try:
+            from database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            event = {
+                'workspace_id': workspace_id,
+                'event_type': event_type,
+                'source_component': source_component,
+                'target_component': target_component,
+                'event_data': event_data or {},
+                'status': 'pending'
+            }
+            
+            result = supabase.table('integration_events').insert(event).execute()
+            logger.debug(f"Created integration event: {event_type} from {source_component}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create integration event: {e}")
 
 
 # Aggiungi queste funzioni helper:
@@ -3898,6 +4301,12 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
             # 🚀 CRITICAL FIX: Asset System Integration - Process completed task into asset artifacts
             await self._process_task_into_assets(workspace_id, completed_task_id)
             
+            # 🎯 PRIORITY 1 FIX: Extract achievements using DeliverableAchievementMapper
+            await self._extract_and_map_task_achievements(workspace_id, completed_task_id)
+            
+            # 🎼 WORKFLOW ORCHESTRATOR INTEGRATION: Trigger complete workflow validation
+            await self._trigger_workflow_orchestrator_if_needed(workspace_id, completed_task_id)
+            
             # Get environment thresholds
             from os import getenv
             min_completed_tasks = int(getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", "2"))
@@ -4003,6 +4412,162 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
                 
         except Exception as e:
             logger.error(f"❌ Error in enhanced deliverable creation check for workspace {workspace_id}: {e}")
+    
+    async def _extract_and_map_task_achievements(self, workspace_id: str, completed_task_id: str):
+        """
+        🎯 PRIORITY 1: Extract achievements from completed task and map to goals
+        
+        This is the MISSING LINK between task completion and goal progress updates.
+        """
+        try:
+            logger.info(f"🎯 Extracting achievements from completed task {completed_task_id}")
+            
+            # Import DeliverableAchievementMapper
+            from services.deliverable_achievement_mapper import deliverable_achievement_mapper
+            
+            # Get task details
+            task_data = await get_task(completed_task_id)
+            if not task_data:
+                logger.warning(f"Task {completed_task_id} not found for achievement extraction")
+                return
+            
+            # Extract achievements from task result
+            task_result = task_data.get("result", {}) or {}
+            task_name = task_data.get("name", "Unknown Task")
+            task_output = task_result.get("output", "") or str(task_result)
+            
+            logger.debug(f"Task result for achievement extraction: {task_result}")
+            
+            # 🎯 CHECK QUALITY ASSESSMENT FROM DATABASE
+            # Use quality assessment from task completion in database.py instead of re-validating
+            result_payload = task_data.get("result_payload", {})
+            quality_assessment = result_payload.get("quality_assessment", {})
+            
+            if quality_assessment:
+                passes_quality = quality_assessment.get("passes_quality_gate", True)
+                quality_score = quality_assessment.get("score", 100)
+                quality_reasoning = quality_assessment.get("reasoning", "No reasoning provided")
+                
+                if not passes_quality:
+                    logger.warning(f"🚫 Task {completed_task_id} failed quality validation - blocking goal progress update")
+                    logger.debug(f"Quality failure reason: {quality_reasoning} (score: {quality_score})")
+                    
+                    # Store quality gate failure in insights for tracking  
+                    try:
+                        from workspace_memory import workspace_memory
+                        await workspace_memory.store_insight(
+                            workspace_id=workspace_id,
+                            insight_type="quality_gate_failure",
+                            content=f"Task {task_name} failed quality assessment: {quality_reasoning}",
+                            relevance_tags=["quality", "task_completion", "validation"],
+                            confidence_score=0.9,
+                            metadata=quality_assessment
+                        )
+                    except Exception as insight_error:
+                        logger.error(f"Error storing quality gate failure insight: {insight_error}")
+                    
+                    # QUALITY LEARNING: Store detailed learning for future improvement
+                    try:
+                        from uuid import UUID
+                        task_context = {
+                            'task_type': task_data.get('task_type', 'unknown'),
+                            'agent_id': task_data.get('agent_id', 'unknown'),
+                            'goal_id': task_data.get('goal_id'),
+                            'task_name': task_name
+                        }
+                        
+                        await workspace_memory.store_quality_validation_learning(
+                            workspace_id=UUID(workspace_id),
+                            task_id=completed_task_id,
+                            quality_assessment=quality_assessment,
+                            task_context=task_context
+                        )
+                    except Exception as learning_error:
+                        logger.error(f"Error storing quality learning: {learning_error}")
+                    
+                    return  # Block achievement extraction and goal progress
+                else:
+                    logger.info(f"✅ Task {completed_task_id} passed quality assessment (score: {quality_score}) - proceeding with achievement extraction")
+            else:
+                # No quality assessment available - proceed with warning
+                logger.warning(f"⚠️ No quality assessment found for task {completed_task_id} - proceeding with achievement extraction")
+            
+            # Use robust achievement extraction (only if quality gates passed)
+            achievements = await deliverable_achievement_mapper.extract_achievements_robust(
+                task_result, task_name
+            )
+            
+            if not achievements:
+                logger.debug(f"No achievements extracted from task {completed_task_id}")
+                return
+            
+            logger.info(f"✅ Extracted {len(achievements)} achievements from task {completed_task_id}: {achievements}")
+            
+            # Map achievements to goals and update progress
+            goal_updates = await deliverable_achievement_mapper.map_achievements_to_goals(
+                workspace_id, achievements
+            )
+            
+            if goal_updates:
+                logger.info(f"🎯 Achievement mapping resulted in {len(goal_updates)} goal updates: {goal_updates}")
+                
+                # Check if any goals are now ready for deliverable creation
+                for goal_update in goal_updates:
+                    goal_id = goal_update.get("goal_id")
+                    new_progress = goal_update.get("new_progress", 0)
+                    
+                    # 🎯 PRIORITY 3.2: Real-time goal achievement validation
+                    try:
+                        from utils.goal_achievement_monitor import goal_achievement_monitor
+                        achievement_validation = await goal_achievement_monitor.validate_goal_achievement_post_completion(
+                            workspace_id, goal_id, completed_task_id
+                        )
+                        logger.info(f"🎯 Goal achievement validation: {achievement_validation['overall_status']} for goal {goal_id}")
+                    except Exception as monitor_error:
+                        logger.error(f"Error in goal achievement monitoring: {monitor_error}")
+                    
+                    # If goal reached high completion, trigger immediate deliverable check
+                    if new_progress >= 70:  # 70% threshold for immediate deliverable creation
+                        logger.info(f"🚀 Goal {goal_id} reached {new_progress}% - triggering immediate deliverable creation")
+                        
+                        # Check if deliverable should be created immediately
+                        await self._check_immediate_deliverable_creation(workspace_id, goal_id, new_progress)
+            else:
+                logger.debug(f"No goal updates from achievement mapping for task {completed_task_id}")
+                
+        except Exception as e:
+            logger.error(f"Error extracting achievements from task {completed_task_id}: {e}")
+    
+    async def _check_immediate_deliverable_creation(self, workspace_id: str, goal_id: str, progress: float):
+        """Check if a specific goal should trigger immediate deliverable creation"""
+        try:
+            # Lower threshold for immediate deliverable creation
+            immediate_threshold = float(os.getenv("IMMEDIATE_DELIVERABLE_THRESHOLD", "70"))
+            
+            if progress >= immediate_threshold:
+                logger.info(f"🎯 Goal {goal_id} at {progress}% triggers immediate deliverable creation")
+                
+                # Import and trigger deliverable creation for this specific goal
+                try:
+                    from deliverable_aggregator import IntelligentDeliverableAggregator
+                    aggregator = IntelligentDeliverableAggregator()
+                    
+                    # Create deliverable context for this specific goal
+                    deliverable_context = {
+                        "trigger_goal_id": goal_id,
+                        "trigger_progress": progress,
+                        "immediate_creation": True,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    
+                    result = await aggregator.check_and_create_final_deliverable(workspace_id)
+                    logger.info(f"📦 Immediate deliverable creation result: {result}")
+                    
+                except Exception as deliverable_error:
+                    logger.error(f"Error in immediate deliverable creation: {deliverable_error}")
+                    
+        except Exception as e:
+            logger.error(f"Error checking immediate deliverable creation: {e}")
     
     async def _analyze_tasks_business_content(self, tasks: List[Dict]) -> List[Dict]:
         """
@@ -4449,6 +5014,70 @@ Return ONLY a number between 0-200 representing urgency boost.
                 
         except Exception as e:
             logger.error(f"Critical error in _trigger_goal_validation_for_issues: {e}")
+    
+    async def _retrieve_quality_patterns_for_task(self, task_dict: Dict[str, Any], workspace_id: str) -> Optional[Dict[str, Any]]:
+        """
+        🎯 QUALITY PATTERN RETRIEVAL: Get learned quality patterns for specific task
+        
+        Retrieves quality patterns from workspace memory to guide task execution
+        and prevent known quality issues.
+        """
+        try:
+            from uuid import UUID
+            from workspace_memory import workspace_memory
+            
+            # Extract task type and agent info for pattern matching
+            task_type = task_dict.get('task_type', 'unknown')
+            agent_id = task_dict.get('agent_id', 'unknown')
+            
+            # Retrieve quality patterns for this task type
+            quality_patterns = await workspace_memory.get_quality_patterns_for_task_type(
+                workspace_id=UUID(workspace_id),
+                task_type=task_type,
+                agent_id=str(agent_id) if agent_id else None
+            )
+            
+            return quality_patterns
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve quality patterns for task: {e}")
+            return None
+    
+    async def _inject_quality_guidance(self, task_id: str, quality_patterns: Dict[str, Any]) -> None:
+        """
+        🎯 QUALITY GUIDANCE INJECTION: Inject quality patterns into task metadata
+        
+        Updates task metadata with quality guidance so agents can access
+        learned patterns during task execution.
+        """
+        try:
+            from database import supabase
+            
+            # Build quality guidance context
+            guidance_context = {
+                "quality_guidance": {
+                    "best_practices": quality_patterns.get("best_practices", []),
+                    "success_patterns": quality_patterns.get("success_patterns", []),
+                    "failure_patterns": quality_patterns.get("failure_patterns", []),
+                    "common_issues": quality_patterns.get("common_issues", []),
+                    "recommendations": quality_patterns.get("recommendations", []),
+                    "quality_statistics": quality_patterns.get("quality_statistics", {}),
+                    "injected_at": datetime.now().isoformat()
+                }
+            }
+            
+            # Update task metadata with quality guidance
+            update_result = supabase.table("tasks").update({
+                "metadata": guidance_context
+            }).eq("id", task_id).execute()
+            
+            if update_result.data:
+                logger.debug(f"✅ Quality guidance injected into task {task_id} metadata")
+            else:
+                logger.warning(f"⚠️ Failed to inject quality guidance into task {task_id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to inject quality guidance for task {task_id}: {e}")
 
 def set_global_auto_generation(enabled: bool) -> Dict[str, Any]:
     """Abilita/disabilita auto-generation globalmente"""
@@ -4469,6 +5098,7 @@ def get_auto_generation_stats() -> Dict[str, Any]:
 def get_runaway_protection_status() -> Dict[str, Any]:
     """Backward compatibility: restituisce solo la sezione runaway_protection_status"""
     return task_executor.get_detailed_stats().get("runaway_protection_status", {})
+
 
 # Helper function to get workspace settings
 async def get_workspace_execution_settings(workspace_id: str) -> Dict[str, Any]:

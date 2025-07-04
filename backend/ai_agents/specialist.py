@@ -105,8 +105,7 @@ except ImportError:
 
 from pydantic import BaseModel, Field, ConfigDict
 
-# IMPORT PMOrchestrationTools
-from ai_agents.tools import PMOrchestrationTools
+# IMPORT PMOrchestrationTools - use lazy import to avoid circular import
 
 try:
     from models import (
@@ -1140,16 +1139,10 @@ class SpecialistAgent(Generic[T]):
         if is_manager_type_role:
             # FIX PRINCIPALE: Tool specifici per Project Manager
             try:
-                # Crea istanza PMOrchestrationTools con workspace_id corretto
-                pm_tools = PMOrchestrationTools(str(self.agent_data.workspace_id))
-
-                # Aggiungi i tool chiamando i metodi di istanza (non più statici)
-                tools_list.append(pm_tools.create_and_assign_sub_task_tool())
-                tools_list.append(pm_tools.get_team_roles_and_status_tool())
-
-                logger.info(
-                    f"Agent {self.agent_data.name} ({self.agent_data.role}) equipped with PMOrchestrationTools for workspace {self.agent_data.workspace_id}."
-                )
+                # Use the ToolRegistry to get all tools - lazy import to avoid circular import
+                from utils.tool_registry import ToolRegistry
+                tool_registry = ToolRegistry(str(self.agent_data.workspace_id))
+                self.tools = tool_registry.get_tools()
             except Exception as e:
                 logger.error(
                     f"Error initializing PMOrchestrationTools for {self.agent_data.name}: {e}",
@@ -1361,6 +1354,7 @@ class SpecialistAgent(Generic[T]):
 
                 created_task = await db_create_task(
                     workspace_id=str(self.agent_data.workspace_id),
+                    goal_id=self._current_task_context.get("goal_id"), # Pass goal_id from current task context
                     agent_id=str(target_agent_dict["id"]),
                     name=handoff_task_name,
                     description=handoff_task_description,
@@ -2183,6 +2177,17 @@ Remember: You are producing REAL deliverables that will be used by the client. N
         self._handoff_attempts_for_current_task = set()
         self.self_delegation_tool_call_count = 0
 
+        # 🔧 PHASE 2 FIX: Enhanced workspace_id propagation logging
+        logger.info(f"🔍 EXECUTE_TASK START - Task: {task.id}, Agent: {self.agent_data.name}")
+        logger.info(f"🔍 WORKSPACE_ID SOURCES:")
+        logger.info(f"   - task.workspace_id: {task.workspace_id}")
+        logger.info(f"   - agent_data.workspace_id: {self.agent_data.workspace_id}")
+        logger.info(f"   - context type: {type(context).__name__ if context else 'None'}")
+        if context and isinstance(context, dict):
+            logger.info(f"   - context contains workspace_id: {'workspace_id' in context}")
+            if 'workspace_id' in context:
+                logger.info(f"   - context.workspace_id: {context['workspace_id']}")
+
         trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
         workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
 
@@ -2317,13 +2322,17 @@ Remember: You are producing REAL deliverables that will be used by the client. N
                     logger.warning(f"🔧 SDK Agent not available for {self.agent_data.name} (SDK_AVAILABLE={SDK_AVAILABLE}, agent={self.agent is not None}), using fallback execution")
                     agent_run_result = await self._execute_task_with_fallback(task, task_prompt_content)
                 else:
-                    # Normal SDK execution
+                    # 🚀 FIX: Enhanced context propagation with workspace_id for RunContextWrapper
+                    enhanced_context = await self._enhance_context_with_workspace_id(context, task)
+                    
+                    # Normal SDK execution with enhanced context
+                    logger.info(f"Executing agent.run for task {task.id} (Name: {task.name})")
                     agent_run_result = await asyncio.wait_for(
                         Runner.run(
                             self.agent,
                             task_prompt_content,
                             max_turns=max_turns_for_agent,
-                            context=context,
+                            context=enhanced_context,
                         ),
                         timeout=self.execution_timeout,
                     )
@@ -3114,12 +3123,15 @@ Deliver your final result in JSON format with these fields:
             
             # Use a focused agent with limited turns for completion
             if self.agent and SDK_AVAILABLE:
+                # 🚀 FIX: Enhanced context propagation with workspace_id for completion run
+                enhanced_context_completion = await self._enhance_context_with_workspace_id(context, task)
+                
                 completion_result = await asyncio.wait_for(
                     Runner.run(
                         self.agent,
                         completion_prompt,
                         max_turns=5,  # Very limited turns for focused completion
-                        context=context,
+                        context=enhanced_context_completion,
                     ),
                     timeout=60,  # Shorter timeout for completion
                 )
@@ -3170,3 +3182,77 @@ Deliver your final result in JSON format with these fields:
             logger.warning(f"Chunked completion failed for task {task.id}: {e}")
             
         return None
+    
+    async def _enhance_context_with_workspace_id(self, context: Optional[T], task: Task) -> Optional[T]:
+        """
+        🚀 FIX: Enhanced context propagation with workspace_id for RunContextWrapper
+        
+        Ensures workspace_id is properly included in context for SDK RunContextWrapper
+        to resolve context propagation issues in tool usage.
+        """
+        try:
+            # If context is None, create a new context dict with workspace_id
+            if context is None:
+                if SDK_AVAILABLE:
+                    # Use RunContextWrapper if available for proper SDK integration
+                    enhanced_context = RunContextWrapper({
+                        "workspace_id": str(task.workspace_id),
+                        "task_id": str(task.id),
+                        "agent_id": str(self.agent_data.id),
+                        "agent_name": self.agent_data.name,
+                        "agent_role": self.agent_data.role,
+                        "context_source": "enhanced_propagation"
+                    })
+                    logger.info(f"🚀 Created new RunContextWrapper with workspace_id: {task.workspace_id}")
+                    return enhanced_context
+                else:
+                    # Fallback for when SDK is not available
+                    return {
+                        "workspace_id": str(task.workspace_id),
+                        "task_id": str(task.id),
+                        "agent_id": str(self.agent_data.id),
+                        "context_source": "enhanced_fallback"
+                    }
+            
+            # If context exists but is a dict, enhance it with workspace_id
+            elif isinstance(context, dict):
+                enhanced_dict = context.copy()
+                enhanced_dict["workspace_id"] = str(task.workspace_id)
+                enhanced_dict["task_id"] = str(task.id)
+                enhanced_dict["agent_id"] = str(self.agent_data.id)
+                enhanced_dict["context_enhanced"] = True
+                
+                if SDK_AVAILABLE:
+                    # Wrap in RunContextWrapper for proper SDK integration
+                    enhanced_context = RunContextWrapper(enhanced_dict)
+                    logger.info(f"🚀 Enhanced existing dict context with RunContextWrapper for workspace_id: {task.workspace_id}")
+                    return enhanced_context
+                else:
+                    logger.info(f"🚀 Enhanced existing dict context with workspace_id: {task.workspace_id}")
+                    return enhanced_dict
+            
+            # If context is already a RunContextWrapper or other object, try to enhance it
+            else:
+                if SDK_AVAILABLE and hasattr(context, '__dict__'):
+                    # Try to create new RunContextWrapper with enhanced data
+                    try:
+                        context_dict = context.__dict__.copy() if hasattr(context, '__dict__') else {}
+                        context_dict["workspace_id"] = str(task.workspace_id)
+                        context_dict["task_id"] = str(task.id)
+                        context_dict["agent_id"] = str(self.agent_data.id)
+                        context_dict["context_enhanced"] = True
+                        
+                        enhanced_context = RunContextWrapper(context_dict)
+                        logger.info(f"🚀 Enhanced object context with RunContextWrapper for workspace_id: {task.workspace_id}")
+                        return enhanced_context
+                    except Exception as e:
+                        logger.warning(f"Failed to enhance object context, using original: {e}")
+                        return context
+                else:
+                    logger.debug(f"Using original context (not dict or SDK unavailable): {type(context)}")
+                    return context
+                    
+        except Exception as e:
+            logger.error(f"❌ Error enhancing context with workspace_id: {e}")
+            # Return original context if enhancement fails
+            return context

@@ -199,8 +199,11 @@ Respond in JSON:
                 )
                 
                 content = response.choices[0].message.content
+                logger.info(f"AI Achievement Extraction Prompt: {prompt}")
+                logger.info(f"AI Achievement Extraction Raw Content: {content}")
                 if content:
                     result_data = json.loads(content)
+                    logger.info(f"AI Achievement Extraction Parsed Data: {result_data}")
                     
                     return AchievementResult(
                         items_created=int(result_data.get("items_created", 0)),
@@ -434,7 +437,8 @@ Respond in JSON:
         🤖 AI-DRIVEN: Map extracted achievements to workspace goals
         """
         try:
-            from database import supabase
+            from database import get_supabase_client
+            supabase = get_supabase_client()
             
             # Get workspace goals
             goals_response = supabase.table('workspace_goals').select('*').eq('workspace_id', workspace_id).execute()

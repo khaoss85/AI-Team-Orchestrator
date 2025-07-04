@@ -29,13 +29,38 @@ async def health_check():
     """Simple health check endpoint"""
     return {"status": "healthy", "service": "workspaces"}
 
+@router.get("/", response_model=List[Workspace])
+async def get_all_workspaces(limit: Optional[int] = 50, user_id: Optional[str] = None):
+    """Get all workspaces with optional limit and user filter"""
+    try:
+        from database import supabase
+        
+        # If user_id provided, filter by user, otherwise get all
+        if user_id:
+            result = supabase.table("workspaces").select("*").eq("user_id", user_id).limit(limit).execute()
+        else:
+            result = supabase.table("workspaces").select("*").limit(limit).execute()
+        
+        workspaces = result.data or []
+        return workspaces
+    except Exception as e:
+        logger.error(f"Error fetching workspaces: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch workspaces: {str(e)}"
+        )
+
 @router.post("/", response_model=Workspace, status_code=status.HTTP_201_CREATED)
 async def create_new_workspace(workspace: WorkspaceCreate):
     try:
+        # Generate default user_id if not provided (must be valid UUID)
+        from uuid import uuid4
+        user_id = str(workspace.user_id) if workspace.user_id else str(uuid4())
+        
         created_workspace = await create_workspace(
             name=workspace.name,
             description=workspace.description,
-            user_id=str(workspace.user_id),
+            user_id=user_id,
             goal=workspace.goal,
             budget=workspace.budget
         )

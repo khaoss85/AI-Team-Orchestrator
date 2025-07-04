@@ -132,8 +132,7 @@ class PhaseManager:
             
             # ENHANCED TRANSITION LOGIC
             
-            # 🤖 AI-DRIVEN: Use adaptive thresholds instead of hard-coded numbers
-            # FIX: Pass self explicitly to the method
+            # 🚀 ATOE: Use Adaptive Task Orchestration Engine for phase transition thresholds
             transition_thresholds = await self._get_adaptive_phase_transition_thresholds(workspace_id, phase_counts, pending_phase_counts)
             
             # If FINALIZATION completed -> project finished
@@ -173,7 +172,7 @@ class PhaseManager:
         phase_counts: Dict, 
         pending_phase_counts: Dict
     ) -> Dict[str, int]:
-        """🤖 AI-DRIVEN: Get adaptive phase transition thresholds based on workspace context"""
+        """🚀 ATOE: Get adaptive phase transition thresholds with AI-driven orchestration"""
         
         # Fallback static thresholds
         static_thresholds = {
@@ -187,6 +186,26 @@ class PhaseManager:
         
         if not ENABLE_AI_ADAPTIVE_PHASE_MANAGEMENT:
             return static_thresholds
+        
+        # 🚀 ATOE: Try Adaptive Task Orchestration Engine first
+        try:
+            from services.unified_orchestrator import get_unified_orchestrator
+            atoe = get_unified_orchestrator()
+            
+            if atoe:
+                # Get ATOE-based adaptive thresholds
+                atoe_thresholds = await atoe.get_adaptive_phase_thresholds(
+                    workspace_id=workspace_id,
+                    current_phase_counts=phase_counts,
+                    pending_phase_counts=pending_phase_counts
+                )
+                
+                if atoe_thresholds:
+                    logger.info(f"🚀 ATOE phase thresholds for W:{workspace_id[:8]}: {atoe_thresholds}")
+                    return atoe_thresholds
+                    
+        except Exception as e:
+            logger.warning(f"ATOE phase threshold calculation failed, using AI fallback: {e}")
         
         try:
             # Initialize OpenAI client if available

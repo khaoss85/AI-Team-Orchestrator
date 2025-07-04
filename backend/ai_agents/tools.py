@@ -716,62 +716,12 @@ class AgentTools:
 class WorkspaceMemoryTools:
     """Tools for workspace memory management - agents can query/store project insights"""
     
-    @staticmethod
-    def _get_workspace_id_from_context() -> str:
-        """🔧 FIX #1: Extract workspace_id from SDK context to prevent placeholder errors"""
-        try:
-            # Method 1: Try to get from SDK RunContextWrapper
-            try:
-                from agents import RunContextWrapper
-                context = RunContextWrapper.get_current()
-                if context:
-                    # Try direct access
-                    if hasattr(context, 'workspace_id'):
-                        workspace_id = str(context.workspace_id)
-                        if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
-                            return workspace_id
-                    
-                    # Try accessing custom context dict we set in manager.py
-                    ctx_dict = getattr(context, '__dict__', {})
-                    if 'workspace_id' in ctx_dict:
-                        workspace_id = str(ctx_dict['workspace_id'])
-                        if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
-                            return workspace_id
-                    
-                    # Try accessing parameters or context data
-                    for attr in ['context_data', 'parameters', 'kwargs']:
-                        if hasattr(context, attr):
-                            data = getattr(context, attr, {})
-                            if isinstance(data, dict) and 'workspace_id' in data:
-                                workspace_id = str(data['workspace_id'])
-                                if workspace_id and workspace_id not in ['workspace_id_placeholder', 'current_workspace']:
-                                    return workspace_id
-            except Exception as e:
-                logger.debug(f"RunContextWrapper access failed: {e}")
-            
-            # Method 2: Try global context access (fallback)
-            import inspect
-            frame = inspect.currentframe()
-            try:
-                # Look through call stack for workspace_id
-                while frame:
-                    frame = frame.f_back
-                    if frame and 'task' in frame.f_locals:
-                        task = frame.f_locals['task']
-                        if hasattr(task, 'workspace_id'):
-                            return str(task.workspace_id)
-            finally:
-                del frame
-                
-            logger.warning("No valid workspace_id found in any context")
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get workspace_id from context: {e}")
-            return None
+    
     
     @staticmethod
     @function_tool
     async def query_project_memory(
+        workspace_id: Annotated[str, Field(description="ID of the current workspace. This is required.")],
         query: str,
         insight_types: str = None,
         max_results: int = 5
@@ -792,10 +742,8 @@ class WorkspaceMemoryTools:
             from models import MemoryQueryRequest, InsightType
             from uuid import UUID
             
-            # 🔧 FIX #1: Get workspace_id from context instead of parameter
-            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
             if not workspace_id:
-                return json.dumps({"error": "No workspace context available", "total_found": 0, "context": "", "insights": []})
+                return json.dumps({"error": "Workspace ID is required.", "total_found": 0, "context": "", "insights": []})
             
             # Parse insight types
             types = None
@@ -853,6 +801,7 @@ class WorkspaceMemoryTools:
     @staticmethod
     @function_tool
     async def store_key_insight(
+        workspace_id: Annotated[str, Field(description="ID of the current workspace. This is required.")],
         task_id: str,
         agent_role: str,
         insight_type: str,
@@ -895,10 +844,8 @@ class WorkspaceMemoryTools:
             if tags:
                 tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
             
-            # 🔧 FIX #1: Get workspace_id from context instead of parameter
-            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
             if not workspace_id:
-                return json.dumps({"success": False, "error": "No workspace context available for storing insight"})
+                return json.dumps({"success": False, "error": "Workspace ID is required for storing insight"})
 
             # Validate UUIDs
             try:
@@ -938,7 +885,7 @@ class WorkspaceMemoryTools:
 
     @staticmethod
     @function_tool
-    async def get_workspace_discoveries(domain: str = None) -> str:
+    async def get_workspace_discoveries(workspace_id: Annotated[str, Field(description="ID of the current workspace. This is required.")], domain: str = None) -> str:
         """
         Get key discoveries made in this workspace.
         
@@ -952,10 +899,8 @@ class WorkspaceMemoryTools:
             from workspace_memory import workspace_memory
             from uuid import UUID
             
-            # 🔧 FIX #1: Get workspace_id from context instead of parameter
-            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
             if not workspace_id:
-                return json.dumps({"error": "No workspace context available", "total_insights": 0})
+                return json.dumps({"error": "Workspace ID is required", "total_insights": 0})
             
             # Validate workspace_id
             try:
@@ -1001,7 +946,7 @@ class WorkspaceMemoryTools:
 
     @staticmethod  
     @function_tool
-    async def get_relevant_project_context(current_task_name: str) -> str:
+    async def get_relevant_project_context(workspace_id: Annotated[str, Field(description="ID of the current workspace. This is required.")], current_task_name: str) -> str:
         """
         Get relevant project context for the current task automatically.
         
@@ -1016,10 +961,8 @@ class WorkspaceMemoryTools:
             from models import Task
             from uuid import UUID
             
-            # 🔧 FIX #1: Get workspace_id from context instead of parameter
-            workspace_id = WorkspaceMemoryTools._get_workspace_id_from_context()
             if not workspace_id:
-                return "Warning: No workspace context available"
+                return "Warning: Workspace ID is required"
             
             # Create a mock task for context extraction
             mock_task = Task(

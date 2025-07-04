@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from database import supabase
+from database import get_supabase_client, get_supabase_service_client
 from models import (
     WorkspaceInsight, 
     InsightType, 
@@ -34,7 +34,18 @@ class WorkspaceMemory:
     """
     
     def __init__(self):
-        self.supabase = supabase
+        self.supabase = get_supabase_client() # Client standard per letture, se necessario
+        self.supabase_service = get_supabase_service_client() # Client con privilegi per scritture
+        
+        # Test service client validity
+        try:
+            # Test with a simple query to verify service client works
+            test_result = self.supabase_service.table("workspaces").select("id").limit(1).execute()
+            logger.info("✅ WorkspaceMemory initialized with valid service client")
+        except Exception as e:
+            logger.error(f"❌ Service client authentication failed: {e}")
+            logger.error("❌ CRITICAL: WorkspaceMemory requires valid SUPABASE_SERVICE_KEY")
+            raise ValueError("Invalid or expired SUPABASE_SERVICE_KEY. Please update .env file with valid service key.")
         
         # Anti-pollution settings
         self.max_insights_per_workspace = 100  # Limite massimo insights per workspace
@@ -56,7 +67,8 @@ class WorkspaceMemory:
         content: str = "",
         relevance_tags: List[str] = None,
         confidence_score: float = 1.0,
-        ttl_days: Optional[int] = None
+        ttl_days: Optional[int] = None,
+        metadata: Dict[str, Any] = None
     ) -> Optional[WorkspaceInsight]:
         """
         Store a workspace insight with anti-pollution controls
@@ -106,7 +118,8 @@ class WorkspaceMemory:
                 "relevance_tags": relevance_tags or [],
                 "confidence_score": confidence_score,
                 "expires_at": expires_at,
-                "created_at": datetime.now()
+                "created_at": datetime.now(),
+                "metadata": metadata or {}
             }
             
             # Add task_id only if provided
@@ -219,6 +232,359 @@ class WorkspaceMemory:
         except Exception as e:
             logger.error(f"Error getting workspace summary: {e}", exc_info=True)
             return WorkspaceMemorySummary(workspace_id=workspace_id)
+    
+    async def store_quality_validation_learning(
+        self, 
+        workspace_id: UUID, 
+        task_id: str,
+        quality_assessment: Dict[str, Any],
+        task_context: Dict[str, Any] = None
+    ) -> str:
+        """
+        🎯 QUALITY VALIDATION LEARNING: Store learnings from quality validation results
+        
+        Memorizza insights basati sui risultati della validazione qualità per migliorare
+        future task execution e quality predictions.
+        """
+        try:
+            passes_quality = quality_assessment.get('passes_quality_gate', False)
+            quality_score = quality_assessment.get('score', 0)
+            reasoning = quality_assessment.get('reasoning', '')
+            
+            # Determina tipo di insight basato sul risultato
+            if passes_quality and quality_score >= 90:
+                insight_type = InsightType.SUCCESS_PATTERN
+                content = f"HIGH QUALITY SUCCESS: Task {task_id[:8]} achieved {quality_score}% quality. Pattern: {reasoning}"
+                relevance_tags = ["quality_success", "high_score", "best_practice"]
+                confidence = 0.9
+                
+            elif passes_quality and quality_score >= 70:
+                insight_type = InsightType.SUCCESS_PATTERN  
+                content = f"QUALITY SUCCESS: Task {task_id[:8]} passed validation with {quality_score}%. Approach: {reasoning}"
+                relevance_tags = ["quality_pass", "acceptable_pattern"]
+                confidence = 0.7
+                
+            elif not passes_quality:
+                insight_type = InsightType.CONSTRAINT
+                content = f"QUALITY FAILURE: Task {task_id[:8]} failed validation ({quality_score}%). Issue: {reasoning}"
+                relevance_tags = ["quality_failure", "avoid_pattern", "improvement_needed"]
+                confidence = 0.8
+                
+            else:
+                insight_type = InsightType.DISCOVERY
+                content = f"QUALITY BORDERLINE: Task {task_id[:8]} had mixed results ({quality_score}%). Analysis: {reasoning}"
+                relevance_tags = ["quality_borderline", "requires_attention"]
+                confidence = 0.6
+            
+            # Aggiungi contesto specifico del task se disponibile
+            if task_context:
+                task_type = task_context.get('task_type', 'unknown')
+                agent_id = task_context.get('agent_id', 'unknown')
+                relevance_tags.extend([f"task_type_{task_type}", f"agent_{agent_id}"])
+                
+                # Arricchisci il contenuto con dettagli del task
+                content += f" [Task Type: {task_type}, Agent: {agent_id}]"
+            
+            # Crea metadata con dettagli completi per future analisi
+            metadata = {
+                "task_id": task_id,
+                "quality_score": quality_score,
+                "passes_quality_gate": passes_quality,
+                "quality_reasoning": reasoning,
+                "learning_type": "quality_validation",
+                "task_context": task_context or {},
+                "created_from": "quality_validation_learning"
+            }
+            
+            # Store insight usando metodo esistente
+            insight_id = await self.store_insight(
+                workspace_id=workspace_id,
+                insight_type=insight_type,
+                content=content,
+                relevance_tags=relevance_tags,
+                confidence_score=confidence,
+                metadata=metadata
+            )
+            
+            logger.info(f"✅ Quality validation learning stored: {insight_id} for task {task_id}")
+            return insight_id
+            
+        except Exception as e:
+            logger.error(f"Failed to store quality validation learning: {e}")
+            return f"error_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    async def get_quality_patterns_for_task_type(
+        self, 
+        workspace_id: UUID, 
+        task_type: str,
+        agent_id: str = None
+    ) -> Dict[str, Any]:
+        """
+        🎯 QUALITY PATTERN RETRIEVAL: Get learned quality patterns for specific task types
+        
+        Retrieves learned patterns from quality validation to help predict and improve
+        quality for similar future tasks.
+        """
+        try:
+            # Build query filters
+            tag_filters = [f"task_type_{task_type}"]
+            if agent_id:
+                tag_filters.append(f"agent_{agent_id}")
+            
+            # Get insights related to this task type
+            all_insights = await self._get_insights_by_tags(workspace_id, tag_filters)
+            
+            # Categorize insights by quality outcomes
+            success_patterns = []
+            failure_patterns = []
+            best_practices = []
+            common_issues = []
+            
+            for insight in all_insights:
+                metadata = insight.metadata or {}
+                quality_score = metadata.get('quality_score', 0)
+                passes_quality = metadata.get('passes_quality_gate', False)
+                
+                if insight.insight_type == InsightType.SUCCESS_PATTERN:
+                    if quality_score >= 90:
+                        best_practices.append({
+                            "content": insight.content,
+                            "quality_score": quality_score,
+                            "confidence": insight.confidence_score,
+                            "reasoning": metadata.get('quality_reasoning', ''),
+                            "created_at": insight.created_at
+                        })
+                    elif passes_quality:
+                        success_patterns.append({
+                            "content": insight.content,
+                            "quality_score": quality_score,
+                            "confidence": insight.confidence_score,
+                            "reasoning": metadata.get('quality_reasoning', ''),
+                            "created_at": insight.created_at
+                        })
+                
+                elif insight.insight_type == InsightType.CONSTRAINT:
+                    if not passes_quality:
+                        failure_patterns.append({
+                            "content": insight.content,
+                            "quality_score": quality_score,
+                            "confidence": insight.confidence_score,
+                            "issue": metadata.get('quality_reasoning', ''),
+                            "created_at": insight.created_at
+                        })
+                        
+                        # Extract common issues
+                        issue_summary = metadata.get('quality_reasoning', '').lower()
+                        if issue_summary:
+                            common_issues.append(issue_summary)
+            
+            # Calculate quality statistics
+            all_scores = [metadata.get('quality_score', 0) for insight in all_insights 
+                         if insight.metadata and 'quality_score' in insight.metadata]
+            
+            quality_stats = {
+                "avg_quality_score": sum(all_scores) / len(all_scores) if all_scores else 0,
+                "max_quality_score": max(all_scores) if all_scores else 0,
+                "min_quality_score": min(all_scores) if all_scores else 0,
+                "total_validations": len(all_scores),
+                "success_rate": sum(1 for insight in all_insights 
+                                  if insight.metadata and insight.metadata.get('passes_quality_gate', False)) / len(all_insights) if all_insights else 0
+            }
+            
+            # Generate recommendations based on patterns
+            recommendations = []
+            if best_practices:
+                recommendations.append(f"Follow best practices from {len(best_practices)} high-quality examples")
+            if failure_patterns:
+                recommendations.append(f"Avoid {len(failure_patterns)} known failure patterns")
+            if quality_stats["avg_quality_score"] < 70:
+                recommendations.append("Quality score is below average - review task approach")
+            
+            return {
+                "task_type": task_type,
+                "agent_id": agent_id,
+                "quality_statistics": quality_stats,
+                "best_practices": sorted(best_practices, key=lambda x: x['quality_score'], reverse=True)[:3],
+                "success_patterns": sorted(success_patterns, key=lambda x: x['quality_score'], reverse=True)[:5],
+                "failure_patterns": sorted(failure_patterns, key=lambda x: x['created_at'], reverse=True)[:3],
+                "common_issues": list(set(common_issues))[:5],
+                "recommendations": recommendations,
+                "last_updated": datetime.now()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get quality patterns for task type {task_type}: {e}")
+            return {
+                "task_type": task_type,
+                "error": str(e),
+                "recommendations": ["Quality pattern analysis unavailable - proceed with caution"]
+            }
+    
+    async def get_asset_success_patterns_for_type(
+        self, 
+        workspace_id: UUID, 
+        asset_type: str,
+        goal_metric_type: str = None
+    ) -> Dict[str, Any]:
+        """
+        🎯 ASSET SUCCESS PATTERN RETRIEVAL: Get learned asset success patterns for specific asset types
+        
+        Retrieves learned patterns from successful asset creation to guide future asset development
+        and improve deliverable quality.
+        """
+        try:
+            # Build query filters for asset success patterns
+            tag_filters = [f"asset_type_{asset_type.lower()}", "asset_success"]
+            if goal_metric_type:
+                tag_filters.append(f"metric_{goal_metric_type}")
+            
+            # Get insights related to asset success
+            all_insights = await self._get_insights_by_tags(workspace_id, tag_filters)
+            
+            # Categorize insights by success level
+            high_quality_patterns = []
+            standard_quality_patterns = []
+            best_practices = []
+            success_factors = []
+            
+            for insight in all_insights:
+                metadata = insight.metadata or {}
+                quality_score = metadata.get('quality_score', 0)
+                artifact_name = metadata.get('artifact_name', 'unnamed')
+                
+                if insight.insight_type == InsightType.SUCCESS_PATTERN:
+                    pattern_data = {
+                        "content": insight.content,
+                        "artifact_name": artifact_name,
+                        "quality_score": quality_score,
+                        "business_value_score": metadata.get('business_value_score', 0),
+                        "actionability_score": metadata.get('actionability_score', 0),
+                        "content_format": metadata.get('content_format', 'unknown'),
+                        "ai_enhanced": metadata.get('ai_enhanced', False),
+                        "confidence": insight.confidence_score,
+                        "created_at": insight.created_at,
+                        "creation_context": metadata.get('creation_context', {})
+                    }
+                    
+                    if quality_score >= 90:
+                        high_quality_patterns.append(pattern_data)
+                        
+                        # Extract best practices from high-quality assets
+                        context = metadata.get('creation_context', {})
+                        success_factors_text = context.get('success_factors', '')
+                        if success_factors_text:
+                            success_factors.append(success_factors_text)
+                        
+                        approach_text = context.get('creation_approach', '')
+                        if approach_text:
+                            best_practices.append(f"{approach_text} (Quality: {quality_score}%)")
+                    
+                    elif quality_score >= 70:
+                        standard_quality_patterns.append(pattern_data)
+            
+            # Calculate asset success statistics
+            all_scores = [metadata.get('quality_score', 0) for insight in all_insights 
+                         if insight.metadata and 'quality_score' in insight.metadata]
+            
+            asset_stats = {
+                "avg_quality_score": sum(all_scores) / len(all_scores) if all_scores else 0,
+                "max_quality_score": max(all_scores) if all_scores else 0,
+                "min_quality_score": min(all_scores) if all_scores else 0,
+                "total_successful_assets": len(all_scores),
+                "high_quality_rate": len([s for s in all_scores if s >= 90]) / len(all_scores) if all_scores else 0,
+                "quality_pass_rate": len([s for s in all_scores if s >= 70]) / len(all_scores) if all_scores else 0
+            }
+            
+            # Analyze common success factors
+            unique_success_factors = list(set(success_factors))
+            format_preferences = {}
+            enhancement_patterns = {"ai_enhanced": 0, "manual": 0}
+            
+            for insight in all_insights:
+                metadata = insight.metadata or {}
+                content_format = metadata.get('content_format')
+                if content_format:
+                    format_preferences[content_format] = format_preferences.get(content_format, 0) + 1
+                
+                if metadata.get('ai_enhanced'):
+                    enhancement_patterns["ai_enhanced"] += 1
+                else:
+                    enhancement_patterns["manual"] += 1
+            
+            # Generate asset-specific recommendations
+            recommendations = []
+            if asset_stats["avg_quality_score"] >= 80:
+                recommendations.append(f"Excellent track record for {asset_type} assets - continue current approach")
+            elif asset_stats["avg_quality_score"] >= 70:
+                recommendations.append(f"Good quality trend for {asset_type} assets - review high-quality examples")
+            else:
+                recommendations.append(f"Quality improvement needed for {asset_type} assets - analyze best practices")
+            
+            if format_preferences:
+                best_format = max(format_preferences.items(), key=lambda x: x[1])
+                recommendations.append(f"Prefer {best_format[0]} format (used in {best_format[1]} successful assets)")
+            
+            if enhancement_patterns["ai_enhanced"] > enhancement_patterns["manual"]:
+                recommendations.append("AI-enhanced content shows better results - leverage AI tools")
+            
+            return {
+                "asset_type": asset_type,
+                "goal_metric_type": goal_metric_type,
+                "asset_statistics": asset_stats,
+                "high_quality_patterns": sorted(high_quality_patterns, key=lambda x: x['quality_score'], reverse=True)[:3],
+                "standard_quality_patterns": sorted(standard_quality_patterns, key=lambda x: x['quality_score'], reverse=True)[:5],
+                "best_practices": list(set(best_practices))[:5],
+                "success_factors": unique_success_factors[:5],
+                "format_preferences": format_preferences,
+                "enhancement_patterns": enhancement_patterns,
+                "recommendations": recommendations,
+                "last_updated": datetime.now()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get asset success patterns for type {asset_type}: {e}")
+            return {
+                "asset_type": asset_type,
+                "error": str(e),
+                "recommendations": ["Asset pattern analysis unavailable - proceed with standard approach"]
+            }
+    
+    async def _get_insights_by_tags(self, workspace_id: UUID, tags: List[str]) -> List[WorkspaceInsight]:
+        """Helper method to get insights by relevance tags"""
+        try:
+            # Use service client for data access
+            query = self.supabase_service.table("workspace_insights").select("*")\
+                .eq("workspace_id", str(workspace_id))
+            
+            # Filter by tags (PostgreSQL array contains)
+            for tag in tags:
+                query = query.contains("relevance_tags", [tag])
+            
+            result = query.order("created_at", desc=True).limit(50).execute()
+            
+            if not result.data:
+                return []
+            
+            # Convert to WorkspaceInsight objects
+            insights = []
+            for insight_data in result.data:
+                insight = WorkspaceInsight(
+                    id=UUID(insight_data["id"]),
+                    workspace_id=UUID(insight_data["workspace_id"]),
+                    insight_type=InsightType(insight_data["insight_type"]),
+                    content=insight_data["content"],
+                    relevance_tags=insight_data.get("relevance_tags", []),
+                    confidence_score=insight_data.get("confidence_score", 0.5),
+                    metadata=insight_data.get("metadata", {}),
+                    created_at=datetime.fromisoformat(insight_data["created_at"].replace("Z", "+00:00"))
+                )
+                insights.append(insight)
+            
+            return insights
+            
+        except Exception as e:
+            logger.error(f"Failed to get insights by tags: {e}")
+            return []
 
     async def get_relevant_context(
         self, 
@@ -226,7 +592,7 @@ class WorkspaceMemory:
         current_task: Optional[Dict] = None,
         max_insights: int = 10,
         context_filter: Optional[Dict[str, Any]] = None
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
         🎯 STEP 5: Enhanced context retrieval with goal-driven filtering
         
@@ -361,11 +727,30 @@ class WorkspaceMemory:
                 f"{len(context_parts)} lines for workspace {workspace_id}"
             )
             
-            return "\n".join(context_parts)
+            context_text = "\n".join(context_parts)
+            
+            # 🔧 FIX CRITICO 2: Return Dict instead of str for compatibility
+            return {
+                "context_text": context_text,
+                "insights_found": len(relevant_insights),
+                "context_lines": len(context_parts),
+                "workspace_id": str(workspace_id),
+                "generated_at": datetime.now().isoformat(),
+                "context_type": "workspace_memory_insights"
+            }
             
         except Exception as e:
             logger.error(f"Error getting relevant context: {e}")
-            return ""
+            # 🔧 FIX CRITICO 2: Return Dict fallback instead of empty string
+            return {
+                "context_text": "",
+                "insights_found": 0,
+                "context_lines": 0,
+                "workspace_id": str(workspace_id),
+                "generated_at": datetime.now().isoformat(),
+                "context_type": "workspace_memory_insights_error",
+                "error": str(e)
+            }
     
     def _extract_task_keywords_from_dict(self, task: Dict[str, Any]) -> List[str]:
         """Extract keywords from task dictionary for memory querying"""
@@ -450,12 +835,13 @@ class WorkspaceMemory:
             "relevance_tags": insight.relevance_tags,
             "confidence_score": insight.confidence_score,
             "expires_at": insight.expires_at.isoformat() if insight.expires_at else None,
-            "created_at": insight.created_at.isoformat()
+            "created_at": insight.created_at.isoformat(),
+            "metadata": insight.metadata or {}
         }
         
-        result = self.supabase.table("workspace_insights").insert(data).execute()
-        if result.data is None:
-            raise Exception(f"Failed to insert insight: {result}")
+        result = self.supabase_service.table("workspace_insights").insert(data).execute()
+        if hasattr(result, 'error') and result.error:
+            raise Exception(f"Failed to insert insight: {result.error.message}")
 
     async def _query_insights_from_db(
         self, 
@@ -463,7 +849,7 @@ class WorkspaceMemory:
         request: MemoryQueryRequest
     ) -> List[WorkspaceInsight]:
         """Query insights from database with filters"""
-        query = self.supabase.table("workspace_insights").select("*").eq("workspace_id", str(workspace_id))
+        query = self.supabase_service.table("workspace_insights").select("*").eq("workspace_id", str(workspace_id))
         
         # Filter by insight types
         if request.insight_types:
@@ -502,7 +888,8 @@ class WorkspaceMemory:
                 relevance_tags=row["relevance_tags"] or [],
                 confidence_score=row["confidence_score"],
                 expires_at=datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None,
-                created_at=datetime.fromisoformat(row["created_at"])
+                created_at=datetime.fromisoformat(row["created_at"]),
+                metadata=row.get("metadata", {})
             )
             insights.append(insight)
         
@@ -510,7 +897,7 @@ class WorkspaceMemory:
 
     async def _get_workspace_insight_count(self, workspace_id: UUID) -> int:
         """Get current insight count for workspace"""
-        result = self.supabase.table("workspace_insights").select("id", count="exact").eq("workspace_id", str(workspace_id)).execute()
+        result = self.supabase_service.table("workspace_insights").select("id", count="exact").eq("workspace_id", str(workspace_id)).execute()
         return result.count or 0
 
     async def _get_all_workspace_insights(self, workspace_id: UUID) -> List[WorkspaceInsight]:
@@ -528,18 +915,18 @@ class WorkspaceMemory:
         try:
             # Remove expired insights
             now = datetime.now().isoformat()
-            self.supabase.table("workspace_insights").delete().eq("workspace_id", str(workspace_id)).lt("expires_at", now).execute()
+            self.supabase_service.table("workspace_insights").delete().eq("workspace_id", str(workspace_id)).lt("expires_at", now).execute()
             
             # If still too many, remove oldest low-confidence insights
             current_count = await self._get_workspace_insight_count(workspace_id)
             if current_count >= self.max_insights_per_workspace:
                 excess = current_count - self.max_insights_per_workspace + 10  # Remove extra 10
                 
-                old_insights = self.supabase.table("workspace_insights").select("id").eq("workspace_id", str(workspace_id)).order("confidence_score").order("created_at").limit(excess).execute()
+                old_insights = self.supabase_service.table("workspace_insights").select("id").eq("workspace_id", str(workspace_id)).order("confidence_score").order("created_at").limit(excess).execute()
                 
                 if old_insights.data:
                     ids_to_delete = [row["id"] for row in old_insights.data]
-                    self.supabase.table("workspace_insights").delete().in_("id", ids_to_delete).execute()
+                    self.supabase_service.table("workspace_insights").delete().in_("id", ids_to_delete).execute()
                     logger.info(f"Cleaned up {len(ids_to_delete)} old insights from workspace {workspace_id}")
                     
         except Exception as e:

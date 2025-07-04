@@ -19,7 +19,8 @@ from models import (
     TaskStatus,
     AgentStatus,
     AgentHealth,
-    HealthStatus
+    HealthStatus,
+    create_model_with_harmonization
 )
 from ai_agents.specialist import SpecialistAgent
 
@@ -263,6 +264,7 @@ class AgentManager:
         try:
             # 1. Recupera task con retry
             task = await self._safe_fetch_task(task_id)
+            logger.info(f"_safe_fetch_task for task {task_id} returned: {task}")
             if not task:
                 raise ValueError(f"Task {task_id} non trovato in workspace {self.workspace_id}")
 
@@ -323,10 +325,12 @@ class AgentManager:
             }
             
             try:
+                logger.info(f"Calling specialist.execute_task for task {task_id}")
                 result = await asyncio.wait_for(
                     specialist.execute_task(task, context=task_context),
                     timeout=self.execution_timeout
                 )
+                logger.info(f"specialist.execute_task for task {task_id} returned: {result}")
                 
                 # Cleanup cache su successo
                 self.failed_tasks_cache.pop(task_id_str, None)
@@ -365,14 +369,37 @@ class AgentManager:
             asyncio.create_task(self._cleanup_execution_cache(task_id_str))
 
     async def _safe_fetch_task(self, task_id: UUID, max_retries: int = 3) -> Optional[Task]:
-        """Recupera task con retry logic"""
+        """
+        🔧 ROOT CAUSE FIX: Recupera task con AI-driven schema harmonization
+        
+        Fixes Pydantic validation errors for created_at/updated_at fields by using
+        Universal Schema Harmonizer to convert raw database data to proper model format.
+        """
         for attempt in range(max_retries):
             try:
                 all_tasks = await db_list_tasks_from_db(str(self.workspace_id))
                 task_record = next((t for t in all_tasks if UUID(t["id"]) == task_id), None)
                 
                 if task_record:
-                    return Task.model_validate(task_record)
+                    # 🤖 AI-DRIVEN SCHEMA HARMONIZATION: Fix validation errors automatically
+                    try:
+                        return await create_model_with_harmonization(
+                            model_class=Task,
+                            raw_data=task_record,
+                            table_context="tasks table from db_list_tasks_from_db"
+                        )
+                    except Exception as harmonization_error:
+                        logger.warning(f"⚠️ Schema harmonization failed for task {task_id}, using fallback: {harmonization_error}")
+                        
+                        # Emergency fallback: use create_model_with_harmonization even for processed_record
+                        # This ensures that even if the first harmonization attempt fails,
+                        # the fallback also benefits from harmonization logic.
+                        processed_record = self._emergency_task_field_processing(task_record)
+                        return await create_model_with_harmonization(
+                            model_class=Task,
+                            raw_data=processed_record, # Use the processed record here
+                            table_context="tasks table from db_list_tasks_from_db (fallback)"
+                        )
                 else:
                     return None
                     
@@ -383,6 +410,37 @@ class AgentManager:
                 else:
                     logger.error(f"All attempts to fetch task {task_id} failed")
                     return None
+
+    def _emergency_task_field_processing(self, task_record: Dict[str, Any]) -> Dict[str, Any]:
+        """Emergency fallback for task field processing when harmonization fails"""
+        from datetime import datetime, timezone
+        from uuid import uuid4
+        
+        processed = task_record.copy()
+        
+        # Handle datetime fields that cause validation errors
+        datetime_fields = ['created_at', 'updated_at', 'deadline']
+        for field in datetime_fields:
+            if field in processed:
+                if processed[field] is None:
+                    # Set default datetime for required fields
+                    if field in ['created_at', 'updated_at']:
+                        processed[field] = datetime.now(timezone.utc)
+                elif isinstance(processed[field], str):
+                    try:
+                        # Try parsing ISO format from database
+                        processed[field] = datetime.fromisoformat(processed[field].replace('Z', '+00:00'))
+                    except:
+                        # Fallback to current time if parsing fails
+                        processed[field] = datetime.now(timezone.utc)
+        
+        # Ensure required fields exist
+        if 'created_at' not in processed or processed['created_at'] is None:
+            processed['created_at'] = datetime.now(timezone.utc)
+        if 'updated_at' not in processed or processed['updated_at'] is None:
+            processed['updated_at'] = datetime.now(timezone.utc)
+            
+        return processed
 
     async def _handle_task_failure(self, task_id_str: str, error_msg: str, error_detail: Dict[str, Any]):
         """Gestisce il fallimento di un task con logging e update DB"""

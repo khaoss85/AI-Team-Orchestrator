@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "{'message': \"Could not find the 'industry' column of 'workspaces' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
-}

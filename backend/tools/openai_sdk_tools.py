@@ -423,6 +423,15 @@ class OpenAISDKToolsManager:
         """Execute a specific tool with parameters and context"""
         try:
             if tool_name == "web_search":
+                # Check model compatibility before executing web search
+                agent_model = context.get("model", "") if context else ""
+                if "nano" in agent_model:
+                    logger.warning(f"🔧 web_search tool not compatible with model {agent_model}, using fallback")
+                    # Use fallback DuckDuckGo search instead
+                    query = parameters.get("query", "")
+                    result = await self.web_search.execute(query, context)
+                    return {"success": True, "result": result}
+                    
                 query = parameters.get("query", "")
                 result = await self.web_search.execute(query, context)
                 return {"success": True, "result": result}

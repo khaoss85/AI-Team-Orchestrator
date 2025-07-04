@@ -167,7 +167,12 @@ class AssetDrivenDatabaseManager:
                 logger.info(f"✅ Created asset artifact: {artifact.artifact_name}")
                 # 🔧 FIX: Filter response data to match AssetArtifact model fields
                 artifact_data = self._filter_asset_artifact_fields(response.data[0])
-                return AssetArtifact(**artifact_data)
+                created_artifact = AssetArtifact(**artifact_data)
+                
+                # 🎯 ASSET SUCCESS PATTERN LEARNING: Store learning when high-quality artifacts are created
+                await self._store_asset_success_learning(created_artifact)
+                
+                return created_artifact
             else:
                 raise Exception("No data returned from artifact creation")
                 
@@ -333,16 +338,16 @@ class AssetDrivenDatabaseManager:
                 "score": validation.score,
                 "passed": validation.passed,
                 "feedback": validation.feedback,
-                "ai_assessment": getattr(validation, 'ai_assessment', None),
-                "improvement_suggestions": _ensure_json_serializable(getattr(validation, 'improvement_suggestions', [])),
-                "business_impact": getattr(validation, 'business_impact', None),
-                "actionability_assessment": getattr(validation, 'actionability_assessment', None),
-                "quality_dimensions": _ensure_json_serializable(getattr(validation, 'quality_dimensions', {})),
-                "validation_model": getattr(validation, 'validation_model', None),
+                "ai_assessment": validation.ai_assessment,
+                "improvement_suggestions": _ensure_json_serializable(validation.improvement_suggestions),
+                "business_impact": validation.business_impact,
+                "actionability_assessment": validation.actionability_assessment,
+                "quality_dimensions": _ensure_json_serializable(validation.quality_dimensions),
+                "validation_model": validation.validation_model,
                 "validated_at": datetime.utcnow().isoformat(),
-                "processing_time_ms": getattr(validation, 'processing_time_ms', None),
-                "ai_driven": getattr(validation, 'ai_driven', True),
-                "pillar_compliance_check": _ensure_json_serializable(getattr(validation, 'pillar_compliance_check', {}))
+                "processing_time_ms": validation.processing_time_ms,
+                "ai_driven": validation.ai_driven,
+                "pillar_compliance_check": _ensure_json_serializable(validation.pillar_compliance_check)
             }
             
             # Remove None values to avoid database issues
@@ -836,6 +841,172 @@ class AssetDrivenDatabaseManager:
                 "timestamp": datetime.utcnow().isoformat(),
                 "error": str(e)
             }
+    
+    async def _store_asset_success_learning(self, artifact: AssetArtifact) -> None:
+        """
+        🎯 ASSET SUCCESS PATTERN LEARNING: Store learning patterns when high-quality assets are created
+        
+        Analyzes successful asset creation to identify patterns that lead to quality deliverables.
+        This feeds into workspace memory for future task guidance.
+        """
+        try:
+            # Only learn from high-quality artifacts (score >= 70)
+            if artifact.quality_score is None or artifact.quality_score < 70:
+                logger.debug(f"Skipping asset learning for low-quality artifact: {artifact.quality_score}")
+                return
+            
+            # Get additional context about the asset creation
+            asset_context = await self._build_asset_creation_context(artifact)
+            if not asset_context:
+                logger.debug(f"No context available for asset learning: {artifact.id}")
+                return
+            
+            # Import workspace memory for learning storage
+            from workspace_memory import workspace_memory
+            from models import InsightType
+            
+            # Determine learning type based on quality score
+            if artifact.quality_score >= 90:
+                insight_type = InsightType.SUCCESS_PATTERN
+                content = f"HIGH-QUALITY ASSET SUCCESS: {artifact.artifact_type} '{artifact.artifact_name}' achieved {artifact.quality_score}% quality. Pattern: {asset_context.get('success_factors', '')}"
+                relevance_tags = ["asset_success", "high_quality", "best_practice", f"asset_type_{artifact.artifact_type.lower()}"]
+                confidence = 0.9
+                
+            elif artifact.quality_score >= 70:
+                insight_type = InsightType.SUCCESS_PATTERN
+                content = f"QUALITY ASSET SUCCESS: {artifact.artifact_type} '{artifact.artifact_name}' passed validation with {artifact.quality_score}%. Approach: {asset_context.get('creation_approach', '')}"
+                relevance_tags = ["asset_success", "quality_pass", f"asset_type_{artifact.artifact_type.lower()}"]
+                confidence = 0.7
+                
+            else:
+                return  # Already filtered above, but double-check
+            
+            # Add specific context tags
+            if asset_context.get('requirement_priority'):
+                relevance_tags.append(f"priority_{asset_context['requirement_priority'].lower()}")
+            if asset_context.get('goal_metric_type'):
+                relevance_tags.append(f"metric_{asset_context['goal_metric_type']}")
+            if asset_context.get('task_agent_role'):
+                relevance_tags.append(f"agent_role_{asset_context['task_agent_role']}")
+            
+            # Create metadata with detailed asset success context
+            metadata = {
+                "artifact_id": str(artifact.id),
+                "artifact_type": artifact.artifact_type,
+                "artifact_name": artifact.artifact_name,
+                "quality_score": artifact.quality_score,
+                "business_value_score": artifact.business_value_score,
+                "actionability_score": artifact.actionability_score,
+                "content_format": artifact.content_format,
+                "ai_enhanced": artifact.ai_enhanced,
+                "validation_passed": artifact.validation_passed,
+                "learning_type": "asset_success_pattern",
+                "creation_context": asset_context,
+                "created_from": "asset_success_learning"
+            }
+            
+            # Store learning in workspace memory
+            workspace_id = asset_context.get('workspace_id')
+            if workspace_id:
+                await workspace_memory.store_insight(
+                    workspace_id=UUID(workspace_id),
+                    insight_type=insight_type,
+                    content=content,
+                    relevance_tags=relevance_tags,
+                    confidence_score=confidence,
+                    metadata=metadata
+                )
+                
+                logger.info(f"✅ Asset success learning stored for {artifact.artifact_type}: {artifact.artifact_name}")
+            else:
+                logger.warning(f"No workspace_id found for asset learning: {artifact.id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to store asset success learning for {artifact.id}: {e}")
+            # Non-blocking error - asset creation should still succeed
+    
+    async def _build_asset_creation_context(self, artifact: AssetArtifact) -> Optional[Dict[str, Any]]:
+        """Build context information about successful asset creation"""
+        try:
+            context = {}
+            
+            # Get requirement details
+            if artifact.requirement_id:
+                requirement_response = self.supabase.table("goal_asset_requirements") \
+                    .select("*") \
+                    .eq("id", str(artifact.requirement_id)) \
+                    .execute()
+                
+                if requirement_response.data:
+                    req_data = requirement_response.data[0]
+                    context.update({
+                        "requirement_priority": req_data.get("priority", "unknown"),
+                        "requirement_effort": req_data.get("estimated_effort", 0),
+                        "requirement_weight": req_data.get("weight", 0),
+                        "requirement_mandatory": req_data.get("mandatory", False),
+                        "workspace_id": req_data.get("workspace_id")  # Critical for workspace learning
+                    })
+                    
+                    # Get goal details
+                    goal_id = req_data.get("goal_id")
+                    if goal_id:
+                        goal_response = self.supabase.table("workspace_goals") \
+                            .select("metric_type, goal_description") \
+                            .eq("id", str(goal_id)) \
+                            .execute()
+                        
+                        if goal_response.data:
+                            goal_data = goal_response.data[0]
+                            context.update({
+                                "goal_metric_type": goal_data.get("metric_type", "unknown"),
+                                "goal_description": goal_data.get("goal_description", "")
+                            })
+            
+            # Get task details if available
+            if artifact.task_id:
+                task_response = self.supabase.table("tasks") \
+                    .select("task_type, agent_role, name, description") \
+                    .eq("id", str(artifact.task_id)) \
+                    .execute()
+                
+                if task_response.data:
+                    task_data = task_response.data[0]
+                    context.update({
+                        "task_type": task_data.get("task_type", "unknown"),
+                        "task_agent_role": task_data.get("agent_role", "unknown"),
+                        "task_name": task_data.get("name", ""),
+                        "task_description": task_data.get("description", "")
+                    })
+            
+            # Build success factors summary
+            success_factors = []
+            if artifact.ai_enhanced:
+                success_factors.append("AI-enhanced content")
+            if artifact.quality_score >= 90:
+                success_factors.append("exceptional quality standards")
+            if artifact.business_value_score and artifact.business_value_score >= 80:
+                success_factors.append("high business value")
+            if artifact.actionability_score and artifact.actionability_score >= 80:
+                success_factors.append("highly actionable content")
+            
+            context["success_factors"] = ", ".join(success_factors) if success_factors else "standard quality achievement"
+            
+            # Build creation approach summary
+            approach_elements = []
+            if context.get("requirement_priority") == "high":
+                approach_elements.append("high-priority requirement")
+            if context.get("task_type"):
+                approach_elements.append(f"{context['task_type']} task approach")
+            if artifact.content_format:
+                approach_elements.append(f"{artifact.content_format} format")
+            
+            context["creation_approach"] = ", ".join(approach_elements) if approach_elements else "standard creation process"
+            
+            return context if context.get("workspace_id") else None
+            
+        except Exception as e:
+            logger.error(f"Failed to build asset creation context: {e}")
+            return None
 
 # Export the enhanced database manager
 asset_db_manager = AssetDrivenDatabaseManager()

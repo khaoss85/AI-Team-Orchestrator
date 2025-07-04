@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "1 validation error for DirectorConfig\nbudget_constraint\n  Input should be a valid dictionary [type=dict_type, input_value='Medium', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/dict_type"
-}

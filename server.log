@@ -1,1 +1,607 @@
-/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python: can't open file '/Users/pelleri/Documents/ai-team-orchestrator/main.py': [Errno 2] No such file or directory
+⚠️ Schema verification system not available: No module named 'schema_verification'
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+2025-07-04 12:34:55,246 [INFO] ✅ Asset system routes registered with FastAPI
+INFO:     Will watch for changes in these directories: ['/Users/pelleri/Documents/ai-team-orchestrator']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [26633] using WatchFiles
+⚠️ Schema verification system not available: No module named 'schema_verification'
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+2025-07-04 12:34:56,235 [INFO] ✅ Asset system routes registered with FastAPI
+2025-07-04 12:34:56,308 [INFO] ✅ Asset system routes registered with FastAPI
+INFO:     Started server process [26636]
+INFO:     Waiting for application startup.
+2025-07-04 12:34:56,382 [INFO] Starting AI Team Orchestrator
+2025-07-04 12:34:56,382 [INFO] Initializing tool registry...
+2025-07-04 12:34:56,382 [INFO] Tool registry initialized
+2025-07-04 12:34:56,382 [INFO] Starting task executor...
+2025-07-04 12:34:56,382 [INFO] Starting task executor with anti-loop protection
+2025-07-04 12:34:56,382 [INFO] Max concurrent tasks: 3
+2025-07-04 12:34:56,382 [INFO] Task timeout: 150s
+2025-07-04 12:34:56,382 [INFO] Auto-generation: ENABLED
+2025-07-04 12:34:56,382 [INFO] Runaway check interval: 300s
+2025-07-04 12:34:56,382 [INFO] FINALIZATION priority boost: 1000
+2025-07-04 12:34:56,382 [INFO] Smart prioritization: ENABLED
+2025-07-04 12:34:56,382 [INFO] Task executor started successfully
+2025-07-04 12:34:56,382 [INFO] Starting WebSocket health monitoring...
+2025-07-04 12:34:56,384 [INFO] 🔗 WebSocketHealthManager initialized: heartbeat=20s, timeout=45s
+2025-07-04 12:34:56,384 [INFO] 🚀 WebSocket health monitoring started
+2025-07-04 12:34:56,384 [INFO] ✅ WebSocket health monitoring started successfully
+2025-07-04 12:34:56,384 [INFO] Initializing human feedback manager...
+2025-07-04 12:34:56,384 [INFO] ✅ Human feedback manager initialized successfully
+2025-07-04 12:34:56,384 [INFO] 🎯 Starting Unified Orchestrator...
+2025-07-04 12:34:56,391 [INFO] ✅ AI Resilient Similarity Engine available for robust task similarity detection
+2025-07-04 12:34:56,395 [INFO] ✅ AI Task Planner initialized with OpenAI
+2025-07-04 12:34:56,717 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&limit=1 "HTTP/2 200 OK"
+2025-07-04 12:34:56,721 [INFO] ✅ WorkspaceMemory initialized with valid service client
+2025-07-04 12:34:56,721 [INFO] WorkspaceMemory initialized with anti-pollution controls
+2025-07-04 12:34:56,738 [INFO] ✅ OpenAI client initialized for quality validation
+2025-07-04 12:34:56,816 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&limit=1 "HTTP/2 200 OK"
+2025-07-04 12:34:56,817 [INFO] ✅ WorkspaceMemory initialized with valid service client
+2025-07-04 12:34:56,817 [INFO] WorkspaceMemory initialized with anti-pollution controls
+2025-07-04 12:34:56,817 [INFO] ✅ Unified Orchestrator started successfully
+2025-07-04 12:34:56,817 [INFO] 📦 Starting Deliverable Pipeline...
+2025-07-04 12:34:56,837 [ERROR] ❌ Failed to start Deliverable Pipeline: cannot import name 'RequirementsAnalyzer' from 'deliverable_system.requirements_analyzer' (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/requirements_analyzer.py)
+2025-07-04 12:34:56,837 [INFO] 🛡️ Starting Automatic Quality Trigger System...
+2025-07-04 12:34:56,849 [INFO] 🛡️ AIQualityGateEngine initialized with comprehensive quality assurance
+2025-07-04 12:34:56,849 [INFO] 🤖 Quality Automation Engine initialized - Pillar 8: 100% Automation
+2025-07-04 12:34:56,859 [INFO] 🛡️ AIQualityGateEngine initialized with comprehensive quality assurance
+2025-07-04 12:34:56,868 [INFO] 🛡️ AIQualityGateEngine initialized with comprehensive quality assurance
+2025-07-04 12:34:56,868 [INFO] 🤖 Quality Automation Engine initialized - Pillar 8: 100% Automation
+2025-07-04 12:34:56,868 [INFO] 🛡️ Automatic Quality Trigger initialized - monitoring system events
+2025-07-04 12:34:56,868 [INFO] 🏭 Created singleton AutomaticQualityTrigger instance
+2025-07-04 12:34:56,868 [INFO] ✅ Automatic Quality Trigger System initialized successfully
+2025-07-04 12:34:56,868 [INFO] 🏥 Starting Component Health Monitoring...
+2025-07-04 12:34:56,870 [INFO] ✅ Database connection initialized for health monitoring
+2025-07-04 12:34:56,870 [INFO] 🏥 ComponentHealthMonitor initialized
+2025-07-04 12:34:56,870 [INFO] ✅ Component Health Monitoring started successfully
+2025-07-04 12:34:56,870 [INFO] 🎯 Starting Automated Goal Monitor...
+2025-07-04 12:34:56,871 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:34:56,871 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:34:56,871 [INFO] ✅ Asset Requirements Generator initialized for goal monitoring
+2025-07-04 12:34:56,871 [INFO] ✅ AgentStatusManager available for goal monitoring
+2025-07-04 12:34:56,873 [INFO] GoalValidationOptimizer initialized - optimization: True, grace_period: 2.0h, velocity_window: 24.0h
+2025-07-04 12:34:56,874 [INFO] ✅ GoalValidationOptimizer available for intelligent validation
+2025-07-04 12:34:56,874 [INFO] ✅ Automated Goal Monitor started successfully - autonomous task generation active
+2025-07-04 12:34:56,874 [INFO] 🚀 Initializing Asset-Driven System...
+2025-07-04 12:34:56,874 [INFO] ✅ Asset-Driven System initialization handled by other components
+2025-07-04 12:34:56,874 [INFO] Application startup complete
+2025-07-04 12:34:56,874 [INFO] Anti-loop worker 49622b95-e418-497a-a7cb-60b90b66932d started
+2025-07-04 12:34:56,874 [INFO] Anti-loop worker 3f1dadbf-07b5-43ad-a6d7-1f6708860005 started
+2025-07-04 12:34:56,874 [INFO] Anti-loop worker 871d42c0-a30b-42cd-b204-f9124120ae77 started
+2025-07-04 12:34:56,874 [INFO] Enhanced execution loop started with quality assurance integration
+2025-07-04 12:34:56,875 [INFO] 🤖 WorkspacePauseManager initialized with AI-driven recovery
+2025-07-04 12:34:56,929 [INFO] 3 changes detected
+2025-07-04 12:34:57,020 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:34:57,095 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:57,096 [INFO] 🚀 Starting Unified Orchestrator...
+2025-07-04 12:34:57,157 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:34:57,158 [INFO] 🚀 Starting component health monitoring system
+2025-07-04 12:34:57,158 [INFO] 🤖 Starting automated goal monitoring (every 2 minutes)
+2025-07-04 12:34:57,159 [INFO] 🔄 Starting goal monitoring cycle at 2025-07-04 12:34:57.158980
+2025-07-04 12:34:57,161 [INFO] 🔍 Scanning for workspaces needing recovery...
+2025-07-04 12:34:57,224 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&status=eq.needs_intervention&updated_at=lt.2025-07-04T12%3A24%3A57.162017 "HTTP/2 200 OK"
+2025-07-04 12:34:57,224 [INFO] ✅ No workspaces stuck in intervention status
+2025-07-04 12:34:57,224 [INFO] Synchronizing agent statuses globally
+2025-07-04 12:34:57,289 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:34:57,291 [INFO] Agent status sync completed: 0 updated, 0/0 inconsistencies fixed
+2025-07-04 12:34:57,351 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=workspace_id&status=eq.active&or=%28last_validation_at.is.null%2Clast_validation_at.lt.2025-07-04T12%3A32%3A57.291463%29 "HTTP/2 200 OK"
+2025-07-04 12:34:57,351 [INFO] 📋 Found 0/0 healthy workspaces needing validation
+2025-07-04 12:34:57,352 [INFO] ✅ No workspaces need validation this cycle
+INFO:     Application startup complete.
+2025-07-04 12:34:57,422 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:34:57,482 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:57,562 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/orchestration_flows "HTTP/2 201 Created"
+2025-07-04 12:34:57,643 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=priority%2Ccreated_at.desc "HTTP/2 200 OK"
+2025-07-04 12:34:57,705 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events "HTTP/2 201 Created"
+2025-07-04 12:34:57,767 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/orchestration_flows?id=eq.0823f04a-63f0-4c0b-896a-211305c3f9a7 "HTTP/2 200 OK"
+2025-07-04 12:34:57,837 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:34:57,902 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?id=eq.4b7c00a0-09f8-4abb-995e-10886b30c5a6 "HTTP/2 200 OK"
+2025-07-04 12:34:57,967 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:34:58,032 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:34:58,095 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:34:58,096 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:34:58,164 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,229 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,298 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,359 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,431 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,501 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,574 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,637 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,711 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,773 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,861 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,920 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,984 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:58,985 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:34:58,985 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:34:59,046 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:34:59,111 [INFO] HTTP Request: DELETE https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?created_at=lt.2025-06-27T10%3A34%3A59.047712%2B00%3A00&status=eq.completed "HTTP/2 200 OK"
+2025-07-04 12:34:59,175 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:59,176 [INFO] 🤖 INTELLIGENT DELIVERABLE: Starting analysis for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+2025-07-04 12:34:59,231 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:34:59,291 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:34:59,364 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:34:59,426 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:34:59,427 [INFO] 🤖 READINESS: 0/3 completed (0.00), Paths: [HiComp:False, AssetFoc:False, QuickWins:False, Subst:False, Qual:False, Time:False, Emergency:False, SuperEmerg:False] = False
+2025-07-04 12:34:59,500 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:59,503 [INFO] Starting periodic runaway check...
+2025-07-04 12:34:59,561 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:59,629 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:34:59,696 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:34:59,755 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=id&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:34:59,816 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=id&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:34:59,818 [INFO] Runaway check: All 1 workspaces stable
+2025-07-04 12:35:02,739 [INFO] 1 change detected
+2025-07-04 12:35:02,962 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:05,066 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:05,125 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:05,126 [INFO] 📋 Retrieved 3 tasks for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 (filter: None)
+INFO:     127.0.0.1:59292 - "GET /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59294 - "GET /api/orchestrator/status/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 404 Not Found
+2025-07-04 12:35:08,050 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:09,890 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:35:09,954 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:10,013 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:13,115 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:18,247 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:20,089 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:35:20,144 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:20,205 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:20,260 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:20,315 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:20,317 [INFO] 📋 Retrieved 3 tasks for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 (filter: None)
+INFO:     127.0.0.1:59298 - "GET /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59300 - "GET /api/orchestrator/status/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 404 Not Found
+2025-07-04 12:35:23,305 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:27,837 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:28,369 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:28,633 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:28,693 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:28,758 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:28,839 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:28,897 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:28,957 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:29,026 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:30,263 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:35:30,332 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:30,390 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:30,392 [INFO] 🤖 INTELLIGENT DELIVERABLE: Starting analysis for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+2025-07-04 12:35:30,457 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:30,526 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:30,586 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:30,640 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:30,642 [INFO] 🤖 READINESS: 0/3 completed (0.00), Paths: [HiComp:False, AssetFoc:False, QuickWins:False, Subst:False, Qual:False, Time:False, Emergency:False, SuperEmerg:False] = False
+2025-07-04 12:35:33,434 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:35,382 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:35,433 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:35,434 [INFO] 📋 Retrieved 3 tasks for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 (filter: None)
+INFO:     127.0.0.1:59312 - "GET /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59314 - "GET /api/orchestrator/status/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 404 Not Found
+2025-07-04 12:35:38,496 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:40,722 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:35:40,798 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:40,851 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:43,559 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:48,716 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:50,511 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:35:50,582 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:35:50,583 [INFO] 📋 Retrieved 3 tasks for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 (filter: None)
+INFO:     127.0.0.1:59318 - "GET /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59320 - "GET /api/orchestrator/status/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 404 Not Found
+2025-07-04 12:35:50,915 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:35:50,973 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:51,034 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:53,783 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:57,898 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:35:58,033 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:35:58,178 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:35:58,243 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:35:58,245 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:35:58,845 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:35:59,098 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,161 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,227 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,287 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,359 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,444 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,516 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,583 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,652 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,727 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,798 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,865 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,934 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:35:59,936 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:35:59,936 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:36:00,021 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:01,119 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:01,190 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:01,250 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:36:01,311 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:01,312 [INFO] 🤖 INTELLIGENT DELIVERABLE: Starting analysis for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+2025-07-04 12:36:01,380 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:36:01,456 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:36:01,535 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:36:01,603 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:36:01,604 [INFO] 🤖 READINESS: 0/3 completed (0.00), Paths: [HiComp:False, AssetFoc:False, QuickWins:False, Subst:False, Qual:False, Time:False, Emergency:False, SuperEmerg:False] = False
+2025-07-04 12:36:01,675 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:03,925 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+INFO:     127.0.0.1:59323 - "GET /api/assets/workspace/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 404 Not Found
+2025-07-04 12:36:05,606 [INFO] 🔍 Fetching deliverables for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+2025-07-04 12:36:05,672 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/deliverables?select=%2A&workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:36:05,673 [INFO] 📦 Found 0 deliverables for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+INFO:     127.0.0.1:59325 - "GET /deliverables/workspace/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59327 - "GET /api/memory/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/summary HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59329 - "GET /api/thinking/workspace/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8/entries HTTP/1.1" 404 Not Found
+2025-07-04 12:36:05,743 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:36:05,818 [INFO] HTTP Request: DELETE https://szerliaxjcverzdoisik.supabase.co/rest/v1/human_feedback_requests?workspace_id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:36:05,819 [INFO] Cleaned up feedback requests for workspace 30aba9d2-29fa-4b38-bfbf-0cff9347cbd8
+2025-07-04 12:36:05,819 [INFO] 🔍 Validating DELETE operation on workspaces with constraint prevention
+2025-07-04 12:36:05,819 [INFO] 🔍 Validating DELETE operation on workspaces
+2025-07-04 12:36:05,900 [INFO] HTTP Request: DELETE https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?id=eq.30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 "HTTP/2 200 OK"
+2025-07-04 12:36:05,901 [INFO] ✅ Constraint-safe DELETE completed successfully on workspaces
+INFO:     127.0.0.1:59331 - "DELETE /workspaces/30aba9d2-29fa-4b38-bfbf-0cff9347cbd8 HTTP/1.1" 200 OK
+2025-07-04 12:36:05,975 [INFO] 2 changes detected
+2025-07-04 12:36:08,994 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:11,740 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:11,815 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:11,874 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:14,061 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:19,214 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:21,941 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:22,000 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:22,063 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:24,293 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:27,978 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:29,366 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:29,596 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:29,692 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:29,756 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:29,823 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:29,893 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:29,976 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:30,050 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:36:32,135 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:32,209 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:32,278 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:34,434 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:39,705 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:42,342 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:42,406 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:42,468 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:44,767 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:49,895 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:52,549 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:36:52,616 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:52,677 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:54,971 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:36:57,355 [INFO] 🔄 Starting goal monitoring cycle at 2025-07-04 12:36:57.354937
+2025-07-04 12:36:57,355 [INFO] 🔍 Scanning for workspaces needing recovery...
+2025-07-04 12:36:57,417 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&status=eq.needs_intervention&updated_at=lt.2025-07-04T12%3A26%3A57.355627 "HTTP/2 200 OK"
+2025-07-04 12:36:57,418 [INFO] ✅ No workspaces stuck in intervention status
+2025-07-04 12:36:57,418 [INFO] Synchronizing agent statuses globally
+2025-07-04 12:36:57,478 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:36:57,480 [INFO] Agent status sync completed: 0 updated, 0/0 inconsistencies fixed
+2025-07-04 12:36:57,549 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=workspace_id&status=eq.active&or=%28last_validation_at.is.null%2Clast_validation_at.lt.2025-07-04T12%3A34%3A57.480263%29 "HTTP/2 200 OK"
+2025-07-04 12:36:57,626 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:57,627 [INFO] 🏥 Starting comprehensive health check for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5
+2025-07-04 12:36:57,689 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:57,768 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:36:57,838 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:57,898 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:57,958 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/logs?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&created_at=gte.2025-07-04T11%3A36%3A57.900366 "HTTP/2 200 OK"
+2025-07-04 12:36:58,020 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:58,080 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=id&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:36:58,139 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=id&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:58,140 [INFO] 🏥 Health check completed for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5: score=70.0%, issues=1, healthy=True
+2025-07-04 12:36:58,140 [INFO] 📋 Found 1/1 healthy workspaces needing validation
+2025-07-04 12:36:58,140 [INFO] 📊 Validating 1 workspaces
+2025-07-04 12:36:58,144 [INFO] 🗄️ WorkspaceGoalsCache initialized: TTL=300s, Max=1000 entries
+2025-07-04 12:36:58,144 [INFO] 🚀 WorkspaceGoalsCache initialized with 5-minute TTL
+2025-07-04 12:36:58,144 [INFO] 🚀 Batch loading goals for 1 workspaces
+2025-07-04 12:36:58,145 [INFO] 🔄 Batch fetching goals for 1 workspaces
+2025-07-04 12:36:58,202 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=in.%28d6df7e4b-f1e9-487c-bd70-4c81daa96fc5%29&status=eq.active&order=priority.desc "HTTP/2 200 OK"
+2025-07-04 12:36:58,203 [INFO] 📊 Batch operation complete: 1 workspaces (hits: 0, misses: 1)
+2025-07-04 12:36:58,203 [INFO] 🔍 Validating workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5
+2025-07-04 12:36:58,260 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/team_proposals?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&status=eq.approved "HTTP/2 200 OK"
+2025-07-04 12:36:58,262 [WARNING] ⚠️ Skipping goal validation for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 - no approved team proposal found
+2025-07-04 12:36:58,262 [INFO] 💡 Tip: Approve the team proposal first before automatic goal validation starts
+2025-07-04 12:36:58,262 [INFO] 📦 Checking for completed goals without deliverables...
+2025-07-04 12:36:58,263 [ERROR] Error checking for missing deliverables: No module named 'fix_deliverable_creation'
+2025-07-04 12:36:58,263 [INFO] ✅ Monitoring cycle completed in 0.9s. Processed 1 workspaces, generated 0 corrective tasks, recovered 0 stuck workspaces. Cache: 0/100 workspaces, 0 background tasks
+2025-07-04 12:36:58,328 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:36:58,388 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:36:58,448 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:36:58,523 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:36:58,524 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:37:00,037 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:00,101 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,167 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,232 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,296 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,369 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,440 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,441 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:37:00,441 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:37:00,514 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,580 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,637 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,700 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,767 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,842 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:00,924 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:01,018 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:02,772 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:02,851 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:02,916 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:02,977 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:05,100 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:10,277 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:13,052 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:13,131 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:13,214 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:13,278 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:15,359 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:20,497 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:23,344 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:23,410 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:23,477 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:23,537 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:25,559 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:28,401 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:30,635 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:31,080 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,152 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,220 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,296 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,357 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,422 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:31,494 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:37:33,624 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:33,691 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:33,758 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:33,819 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:35,711 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:40,910 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:43,884 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:43,950 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:44,015 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:44,086 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:45,978 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:51,124 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:54,154 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:37:54,233 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:54,301 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:54,366 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:56,199 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:37:58,468 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:37:58,546 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:37:58,618 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:37:58,697 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:37:58,699 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:38:00,591 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,670 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,739 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,808 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,876 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,950 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:00,951 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:38:00,951 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:38:01,025 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,276 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:01,571 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,643 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,707 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,784 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,872 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:01,937 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:02,008 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:04,451 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:04,526 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:04,592 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:04,658 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:06,348 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:11,492 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:14,730 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:14,795 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:14,871 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:14,944 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:16,573 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:21,711 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:25,182 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:25,245 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:25,302 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:25,363 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:26,768 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:28,610 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:31,840 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:32,080 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,136 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,202 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,263 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,327 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,404 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:32,473 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:38:35,426 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:35,486 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:35,552 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:35,612 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:36,912 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:42,063 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:45,680 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:45,742 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:45,819 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:45,899 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:47,136 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:52,281 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:55,970 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:38:56,049 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:56,108 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:56,170 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:57,344 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:38:58,266 [INFO] 🔄 Starting goal monitoring cycle at 2025-07-04 12:38:58.266448
+2025-07-04 12:38:58,267 [INFO] 🔍 Scanning for workspaces needing recovery...
+2025-07-04 12:38:58,329 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&status=eq.needs_intervention&updated_at=lt.2025-07-04T12%3A28%3A58.267118 "HTTP/2 200 OK"
+2025-07-04 12:38:58,331 [INFO] ✅ No workspaces stuck in intervention status
+2025-07-04 12:38:58,331 [INFO] Synchronizing agent statuses globally
+2025-07-04 12:38:58,393 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:38:58,394 [INFO] Agent status sync completed: 0 updated, 0/0 inconsistencies fixed
+2025-07-04 12:38:58,467 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=workspace_id&status=eq.active&or=%28last_validation_at.is.null%2Clast_validation_at.lt.2025-07-04T12%3A36%3A58.394201%29 "HTTP/2 200 OK"
+2025-07-04 12:38:58,532 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:58,533 [INFO] 🏥 Starting comprehensive health check for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5
+2025-07-04 12:38:58,597 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:58,675 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&order=created_at.desc "HTTP/2 200 OK"
+2025-07-04 12:38:58,735 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:58,803 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:58,864 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/logs?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&created_at=gte.2025-07-04T11%3A38%3A58.804225 "HTTP/2 200 OK"
+2025-07-04 12:38:58,921 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=%2A&id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:58,984 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/agents?select=id&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 "HTTP/2 200 OK"
+2025-07-04 12:38:59,050 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=id&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:59,051 [INFO] 🏥 Health check completed for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5: score=70.0%, issues=1, healthy=True
+2025-07-04 12:38:59,051 [INFO] 📋 Found 1/1 healthy workspaces needing validation
+2025-07-04 12:38:59,051 [INFO] 📊 Validating 1 workspaces
+2025-07-04 12:38:59,051 [INFO] 🚀 Batch loading goals for 1 workspaces
+2025-07-04 12:38:59,051 [INFO] 📊 Batch operation complete: 1 workspaces (hits: 1, misses: 1)
+2025-07-04 12:38:59,051 [INFO] 🔍 Validating workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5
+2025-07-04 12:38:59,112 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/team_proposals?select=%2A&workspace_id=eq.d6df7e4b-f1e9-487c-bd70-4c81daa96fc5&status=eq.approved "HTTP/2 200 OK"
+2025-07-04 12:38:59,113 [WARNING] ⚠️ Skipping goal validation for workspace d6df7e4b-f1e9-487c-bd70-4c81daa96fc5 - no approved team proposal found
+2025-07-04 12:38:59,113 [INFO] 💡 Tip: Approve the team proposal first before automatic goal validation starts
+2025-07-04 12:38:59,113 [INFO] 📦 Checking for completed goals without deliverables...
+2025-07-04 12:38:59,114 [ERROR] Error checking for missing deliverables: No module named 'fix_deliverable_creation'
+2025-07-04 12:38:59,114 [INFO] ✅ Monitoring cycle completed in 0.8s. Processed 1 workspaces, generated 0 corrective tasks, recovered 0 stuck workspaces. Cache: 0/100 workspaces, 0 background tasks
+2025-07-04 12:38:59,195 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:38:59,258 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:38:59,326 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:38:59,393 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:38:59,395 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:39:01,101 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,175 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,240 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,307 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,386 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,454 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:01,456 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:39:01,456 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:39:01,519 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,402 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:02,538 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,625 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,687 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,751 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,826 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,885 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:02,958 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:06,250 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:06,322 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:06,391 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:06,456 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:07,465 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:12,626 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:16,532 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:16,589 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:16,652 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:16,721 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:17,700 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:22,832 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:26,806 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:26,864 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:26,921 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:26,999 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:27,900 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:29,327 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:32,965 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:33,028 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,089 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,165 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,245 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,316 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,374 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:33,439 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:39:37,068 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:37,127 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:37,188 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:37,248 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:38,030 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:43,167 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:47,316 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:47,390 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:47,478 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:47,546 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:48,238 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:53,377 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:57,615 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:39:57,673 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:57,728 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:57,822 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:57,824 [INFO] Performing cleanup of executor tracking data...
+2025-07-04 12:39:57,824 [INFO] Tracking data cleanup finished
+2025-07-04 12:39:58,443 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:39:59,188 [INFO] HTTP Request: DELETE https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?created_at=lt.2025-06-27T10%3A39%3A59.116893%2B00%3A00&status=eq.completed "HTTP/2 200 OK"
+2025-07-04 12:39:59,253 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&status=eq.needs_revision&limit=10 "HTTP/2 200 OK"
+2025-07-04 12:39:59,388 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:39:59,455 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:39:59,512 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?select=%2A "HTTP/2 200 OK"
+2025-07-04 12:39:59,514 [ERROR] Health monitor error: can't subtract offset-naive and offset-aware datetimes
+2025-07-04 12:40:01,584 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,643 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,700 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,764 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,825 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,890 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:01,892 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-04 12:40:01,892 [INFO] 🤖 AssetRequirementsGenerator initialized with Universal AI Pipeline Engine
+2025-07-04 12:40:01,974 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,509 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,570 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,655 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,717 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,778 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,838 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,897 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?on_conflict=component_name "HTTP/2 200 OK"
+2025-07-04 12:40:03,962 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:40:06,984 [INFO] 1 change detected
+2025-07-04 12:40:07,881 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=workspace_id%2Cworkspaces%21inner%28id%2Cstatus%29&status=eq.pending "HTTP/2 200 OK"
+2025-07-04 12:40:07,947 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:40:08,004 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:40:08,212 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:40:08,214 [INFO] Starting periodic runaway check...
+2025-07-04 12:40:08,276 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?select=id&status=eq.active "HTTP/2 200 OK"
+2025-07-04 12:40:08,277 [INFO] No active workspaces for runaway check
+2025-07-04 12:40:09,017 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+2025-07-04 12:40:14,169 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/integration_events?select=%2A&status=eq.pending&order=created_at&limit=100 "HTTP/2 200 OK"
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2025-07-04 12:40:18,221 [INFO] Shutting down AI Team Orchestrator
+2025-07-04 12:40:18,221 [INFO] Stopping WebSocket health monitoring...
+2025-07-04 12:40:18,222 [INFO] 🔗 WebSocket health monitoring stopped
+2025-07-04 12:40:18,222 [INFO] ✅ WebSocket health monitoring stopped successfully
+2025-07-04 12:40:18,222 [INFO] Stopping Unified Orchestrator...
+2025-07-04 12:40:18,280 [INFO] HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/component_health?component_name=eq.unified_orchestrator "HTTP/2 200 OK"
+2025-07-04 12:40:18,281 [INFO] 🛑 Unified Orchestrator stopped
+2025-07-04 12:40:18,281 [INFO] Stopping Deliverable Pipeline...
+2025-07-04 12:40:18,282 [ERROR] Error stopping deliverable pipeline: cannot import name 'RequirementsAnalyzer' from 'deliverable_system.requirements_analyzer' (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/requirements_analyzer.py)
+2025-07-04 12:40:18,282 [INFO] Stopping Automated Goal Monitor...
+2025-07-04 12:40:18,282 [INFO] 🛑 Stopped automated goal monitoring and cleaned up resources
+2025-07-04 12:40:18,282 [INFO] ✅ Automated Goal Monitor stopped successfully
+2025-07-04 12:40:18,282 [INFO] Stopping Component Health Monitoring...
+2025-07-04 12:40:18,282 [INFO] 🛑 Component health monitoring stopped
+2025-07-04 12:40:18,282 [INFO] ✅ Component Health Monitoring stopped successfully
+2025-07-04 12:40:18,282 [INFO] Stopping task executor...
+2025-07-04 12:40:18,282 [INFO] Stopping task executor...
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 49622b95-e418-497a-a7cb-60b90b66932d received termination signal
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 49622b95-e418-497a-a7cb-60b90b66932d exiting
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 3f1dadbf-07b5-43ad-a6d7-1f6708860005 received termination signal
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 3f1dadbf-07b5-43ad-a6d7-1f6708860005 exiting
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 871d42c0-a30b-42cd-b204-f9124120ae77 received termination signal
+2025-07-04 12:40:18,282 [INFO] Anti-loop worker 871d42c0-a30b-42cd-b204-f9124120ae77 exiting
+2025-07-04 12:40:18,282 [INFO] Enhanced execution loop finished
+2025-07-04 12:40:18,282 [INFO] Task executor stopped
+2025-07-04 12:40:18,282 [INFO] Application shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26636]
+INFO:     Stopping reloader process [26633]

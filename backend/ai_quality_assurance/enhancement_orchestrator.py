@@ -779,6 +779,7 @@ class AssetEnhancementOrchestrator:
             # Crea task
             created_task = await create_task(
                 workspace_id=workspace_id,
+                goal_id=overall_plan.get("goal_id"), # Pass goal_id from overall_plan
                 agent_id=pm_agent["id"],
                 name=task_name,
                 description=task_description,
@@ -1008,6 +1009,7 @@ class AssetEnhancementOrchestrator:
             # Crea task
             created_task = await create_task(
                 workspace_id=workspace_id,
+                goal_id=asset_info.get("goal_id"), # Pass goal_id from asset_info
                 agent_id=target_agent["id"],
                 name=task_name,
                 description=task_description,

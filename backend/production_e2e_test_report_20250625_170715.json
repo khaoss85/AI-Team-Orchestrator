@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "{'message': \"Could not find the 'agent_role' column of 'tasks' in the schema cache\", 'code': 'PGRST204', 'hint': None, 'details': None}"
-}

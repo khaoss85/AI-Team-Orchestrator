@@ -517,40 +517,54 @@ async def get_workspace_goals(
         response = query.execute()
         goals = response.data or []
         
-        # Filter for deliverables only if requested
+        # 🔧 DEBUG: Log response details to identify the issue
+        logger.info(f"Goals query response type: {type(response)}")
+        logger.info(f"Goals data type: {type(goals)}")
+        if goals:
+            logger.info(f"First goal type: {type(goals[0])} - {goals[0] if len(str(goals[0])) < 200 else str(goals[0])[:200]}")
+        else:
+            logger.info("No goals found")
+        
+        # Filter for deliverables only if requested with type safety
         if deliverables_only:
-            goals = [g for g in goals if g["metric_type"].startswith("deliverable_") or g["metric_type"] == "deliverables"]
+            goals = [g for g in goals if isinstance(g, dict) and (g.get("metric_type", "").startswith("deliverable_") or g.get("metric_type") == "deliverables")]
         
         # Separate deliverables from other metrics for better organization
         deliverable_goals = []
         metric_goals = []
         
         for goal in goals:
+            # 🔧 FIX: Handle case where goal might be a string instead of dict
+            if not isinstance(goal, dict):
+                logger.warning(f"Skipping invalid goal data (not a dict): {type(goal)} - {goal}")
+                continue
+                
             # Check if this is a deliverable based on metric_type or metadata
-            if (goal["metric_type"].startswith("deliverable_") or 
-                goal["metric_type"] == "deliverables" or
+            if (goal.get("metric_type", "").startswith("deliverable_") or 
+                goal.get("metric_type") == "deliverables" or
                 (goal.get("metadata", {}).get("base_type") == "deliverables")):
                 deliverable_goals.append(goal)
             else:
                 metric_goals.append(goal)
         
-        # Calculate summary statistics
-        total_goals = len(goals)
-        active_goals = len([g for g in goals if g["status"] == "active"])
-        completed_goals = len([g for g in goals if g["status"] == "completed"])
+        # Calculate summary statistics with type safety
+        valid_goals = [g for g in goals if isinstance(g, dict)]
+        total_goals = len(valid_goals)
+        active_goals = len([g for g in valid_goals if g.get("status") == "active"])
+        completed_goals = len([g for g in valid_goals if g.get("status") == "completed"])
         
         # Calculate overall progress
         overall_progress = 0.0
         if active_goals > 0:
             progress_sum = sum(
-                (g["current_value"] / g["target_value"] * 100) if g["target_value"] > 0 else 0
-                for g in goals if g["status"] == "active"
+                (g.get("current_value", 0) / g.get("target_value", 1) * 100) if g.get("target_value", 0) > 0 else 0
+                for g in valid_goals if g.get("status") == "active"
             )
             overall_progress = progress_sum / active_goals
         
         return {
             "success": True,
-            "goals": goals,
+            "goals": valid_goals,
             "deliverable_goals": deliverable_goals,
             "metric_goals": metric_goals,
             "summary": {
@@ -565,6 +579,9 @@ async def get_workspace_goals(
         }
         
     except Exception as e:
+        import traceback
+        logger.error(f"Error in get_workspace_goals: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error fetching goals: {str(e)}")
 
 @router.put("/workspaces/{workspace_id}/goals/{goal_id}/progress")
@@ -1192,7 +1209,28 @@ async def _create_project_description_artifact(
         logger.error(f"Error creating project description artifact: {e}")
         raise e
 
-# 🔧 FIX: Add direct endpoint for frontend compatibility
+# 🔧 FIX: Add direct endpoints for frontend/test compatibility
+@direct_router.post("/workspace-goals")
+async def create_workspace_goal_direct(goal_data: WorkspaceGoalCreate) -> Dict[str, Any]:
+    """Create a new workspace goal (direct access for frontend/tests)"""
+    try:
+        # Insert the goal
+        response = supabase.table("workspace_goals").insert(goal_data.model_dump()).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Failed to create goal")
+        
+        created_goal = response.data[0]
+        logger.info(f"✅ Goal created via direct endpoint: {created_goal['id']}")
+        
+        return created_goal
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating goal via direct endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating goal: {str(e)}")
+
 @direct_router.get("/workspace-goals/{goal_id}")
 async def get_workspace_goal_by_id(goal_id: str) -> Dict[str, Any]:
     """Get a single workspace goal by ID (direct access for frontend)"""

@@ -5,8 +5,19 @@ import json
 from typing import Dict, Any, List, Optional
 import os
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+from utils.ai_utils import get_structured_ai_response
 
 logger = logging.getLogger(__name__)
+
+class GoalContribution(BaseModel):
+    goal_id: str = Field(..., description="The ID of the goal this content contributes to.")
+    contribution_percentage: int = Field(..., description="An estimated percentage (0-100) of how much this content contributes to the goal's target.")
+    reasoning: str = Field(..., description="A brief explanation of why this content contributes to the goal.")
+
+class AIResponse(BaseModel):
+    result: List[GoalContribution]
+
 
 class AISemanticMapper:
     """
@@ -78,23 +89,17 @@ class AISemanticMapper:
         ]
         """
 
-        messages = [
-            {"role": "system", "content": "You are an expert in project management and content-to-goal mapping. Respond only with a JSON array."},
-            {"role": "user", "content": prompt}
-        ]
-
         try:
-            response = await self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=1000
+            structured_response = await get_structured_ai_response(
+                prompt=prompt,
+                response_model=AIResponse
             )
 
-            ai_response_content = response.choices[0].message.content
-            parsed_response = json.loads(ai_response_content)
-            mapped_contributions = parsed_response.get("result", []) # Extract from 'result' key
+            if not structured_response:
+                logger.error("Failed to get a structured response from AI.")
+                return []
+
+            mapped_contributions = structured_response.result
             
             if not isinstance(mapped_contributions, list):
                 logger.error(f"AI did not return a list within 'result' key: {mapped_contributions}")

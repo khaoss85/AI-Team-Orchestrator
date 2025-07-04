@@ -351,13 +351,21 @@ async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
         if not goals_response.data:
             return None
         
-        goals = goals_response.data
+        # Filter out None/null values from the response
+        goals = [goal for goal in goals_response.data if goal is not None]
+        
+        if not goals:
+            return None
         
         # Separate final metrics from strategic deliverables
         final_metrics = []
         strategic_deliverables = []
         
         for goal in goals:
+            # Safety check for None goals
+            if not goal or not isinstance(goal, dict):
+                continue
+                
             metadata = goal.get("metadata", {})
             if metadata.get("semantic_context", {}).get("is_strategic_deliverable"):
                 # This is a strategic deliverable

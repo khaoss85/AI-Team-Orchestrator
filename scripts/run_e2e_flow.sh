@@ -7,7 +7,7 @@ set -euo pipefail
 LOGFILE="e2e_test.log"
 
 echo "🚀 Starting real end-to-end flow test..."
-python3 backend/test_real_e2e_complete.py 2>&1 | tee "$LOGFILE"
+python3 backend/comprehensive_e2e_pillar_test.py 2>&1 | tee "$LOGFILE"
 
 # Look for the test summary indicating full pass
 if grep -q "END-TO-END TEST PASSED" "$LOGFILE"; then

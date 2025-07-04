@@ -91,6 +91,22 @@ class DeliverableRequirementsAnalyzer:
             
             # Raccogli context completo
             context = await self._gather_workspace_context(workspace_id)
+            # Add workspace_id to context for asset creation
+            context["workspace_id"] = workspace_id
+            
+            # Try to get a goal_id from workspace_goals table
+            from uuid import uuid4
+            try:
+                from database import supabase
+                goals_response = supabase.table("workspace_goals").select("id").eq("workspace_id", workspace_id).limit(1).execute()
+                if goals_response.data:
+                    context["goal_id"] = goals_response.data[0]["id"]
+                else:
+                    # Generate a dummy goal_id if none exists
+                    context["goal_id"] = str(uuid4())
+            except Exception:
+                # Fallback to generated UUID
+                context["goal_id"] = str(uuid4())
             
             # Analisi AI dinamica
             requirements = await self._ai_analyze_requirements(
@@ -377,14 +393,21 @@ Return ONLY a JSON object in this format:
                         # Convert to expected format
                         assets = []
                         for asset in parsed_requirements["recommended_assets"]:
-                            assets.append({
-                                "asset_type": asset.get("asset_type", "general_deliverable"),
-                                "asset_format": asset.get("asset_format", "document"),
-                                "actionability_level": "ready_to_use",
-                                "business_impact": asset.get("business_impact", "immediate"),
-                                "priority": asset.get("priority", 2),
-                                "validation_criteria": ["completeness", "actionability", "relevance"]
-                            })
+                            # Convert numeric priority to string
+                            priority_str = "medium"
+                            if asset.get("priority") == 1: priority_str = "high"
+                            elif asset.get("priority") == 2: priority_str = "medium"
+                            elif asset.get("priority") == 3: priority_str = "low"
+
+                            asset_name = asset.get("asset_type", "general_deliverable")
+                            description = asset.get("purpose", "") + " (" + asset.get("asset_type", "general_deliverable") + ")"
+                            asset_type = asset.get("asset_type", "general_deliverable")
+                            asset_format = asset.get("asset_format", "document")
+                            validation_criteria = ["completeness", "actionability", "relevance"]
+
+                            assets.append(self._create_asset_dict(
+                                context, asset_name, description, asset_type, asset_format, priority_str, validation_criteria
+                            ))
                         
                         return {
                             "deliverable_category": parsed_requirements.get("functional_category", "business"),
@@ -437,40 +460,44 @@ Return ONLY a JSON object in this format:
             "next_steps": "required"
         }
     
+    def _create_asset_dict(self, context: Dict, asset_name: str, description: str, asset_type: str, asset_format: str, priority: str, validation_criteria: List[str]) -> Dict[str, Any]:
+        """Helper to create properly formatted asset dictionary"""
+        return {
+            "goal_id": context.get("goal_id", ""),
+            "workspace_id": context.get("workspace_id", ""),
+            "asset_name": asset_name,
+            "description": description,
+            "asset_type": asset_type,
+            "asset_format": asset_format,
+            "priority": priority,
+            "validation_criteria": validation_criteria
+        }
+    
     def _generate_creation_assets(self, goal: str, context: Dict, capabilities: Dict) -> List[Dict]:
         """🤖 Generate assets for creation-focused projects (universal)"""
         assets = []
         
         # Primary creation asset based on capabilities
         if capabilities.get("content_creation"):
-            assets.append({
-                "asset_type": "content_creation_plan",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "immediate",
-                "priority": 1,
-                "validation_criteria": ["creation_schedule", "content_specifications", "quality_standards"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Content Creation Plan", "Comprehensive plan for content creation activities",
+                "content_creation_plan", "structured_data", "high",
+                ["creation_schedule", "content_specifications", "quality_standards"]
+            ))
         
         if capabilities.get("automation_setup"):
-            assets.append({
-                "asset_type": "creation_workflow",
-                "asset_format": "structured_data", 
-                "actionability_level": "ready_to_use",
-                "business_impact": "short_term",
-                "priority": 2,
-                "validation_criteria": ["workflow_steps", "automation_triggers", "quality_checks"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Creation Workflow", "Automated workflow for creation processes",
+                "creation_workflow", "structured_data", "medium",
+                ["workflow_steps", "automation_triggers", "quality_checks"]
+            ))
         
         # Always include implementation guide
-        assets.append({
-            "asset_type": "implementation_guide",
-            "asset_format": "document",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["step_by_step", "success_criteria", "troubleshooting"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Implementation Guide", "Step-by-step implementation guide for the creation project",
+            "implementation_guide", "document", "high",
+            ["step_by_step", "success_criteria", "troubleshooting"]
+        ))
         
         return assets
     
@@ -479,34 +506,25 @@ Return ONLY a JSON object in this format:
         assets = []
         
         # Core analysis deliverable
-        assets.append({
-            "asset_type": "analysis_report",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use",
-            "business_impact": "strategic",
-            "priority": 1,
-            "validation_criteria": ["data_sources_credible", "methodology_clear", "actionable_insights"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Analysis Report", "Comprehensive analysis report with data-driven insights",
+            "analysis_report", "structured_data", "high",
+            ["data_sources_credible", "methodology_clear", "actionable_insights"]
+        ))
         
         if capabilities.get("data_analysis"):
-            assets.append({
-                "asset_type": "data_summary_dashboard",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "immediate",
-                "priority": 1,
-                "validation_criteria": ["key_metrics", "trend_analysis", "visualization_ready"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Data Summary Dashboard", "Dashboard summarizing key metrics and trends",
+                "data_summary_dashboard", "structured_data", "high",
+                ["key_metrics", "trend_analysis", "visualization_ready"]
+            ))
         
         # Recommendations based on analysis
-        assets.append({
-            "asset_type": "actionable_recommendations", 
-            "asset_format": "document",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["evidence_based", "implementation_timeline", "success_metrics"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Actionable Recommendations", "Evidence-based recommendations with implementation guidance",
+            "actionable_recommendations", "document", "high",
+            ["evidence_based", "implementation_timeline", "success_metrics"]
+        ))
         
         return assets
     
@@ -515,34 +533,25 @@ Return ONLY a JSON object in this format:
         assets = []
         
         # Optimization plan
-        assets.append({
-            "asset_type": "optimization_plan",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["improvement_targets", "implementation_steps", "success_metrics"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Optimization Plan", "Detailed plan for optimization improvements with targets and steps",
+            "optimization_plan", "structured_data", "high",
+            ["improvement_targets", "implementation_steps", "success_metrics"]
+        ))
         
         if capabilities.get("process_documentation"):
-            assets.append({
-                "asset_type": "process_improvement_guide",
-                "asset_format": "document",
-                "actionability_level": "ready_to_use",
-                "business_impact": "short_term",
-                "priority": 2,
-                "validation_criteria": ["current_state_analysis", "improvement_recommendations", "implementation_roadmap"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Process Improvement Guide", "Guide for implementing process improvements with roadmap",
+                "process_improvement_guide", "document", "medium",
+                ["current_state_analysis", "improvement_recommendations", "implementation_roadmap"]
+            ))
         
         if capabilities.get("automation_setup"):
-            assets.append({
-                "asset_type": "automation_recommendations",
-                "asset_format": "structured_data",
-                "actionability_level": "needs_customization",
-                "business_impact": "strategic",
-                "priority": 2,
-                "validation_criteria": ["automation_opportunities", "technical_requirements", "roi_estimates"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Automation Recommendations", "Recommendations for automation opportunities with ROI estimates",
+                "automation_recommendations", "structured_data", "medium",
+                ["automation_opportunities", "technical_requirements", "roi_estimates"]
+            ))
         
         return assets
     
@@ -551,34 +560,25 @@ Return ONLY a JSON object in this format:
         assets = []
         
         # Core strategic plan
-        assets.append({
-            "asset_type": "strategic_plan",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use",
-            "business_impact": "strategic",
-            "priority": 1,
-            "validation_criteria": ["clear_objectives", "implementation_timeline", "resource_requirements"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Strategic Plan", "Comprehensive strategic plan with clear objectives and timeline",
+            "strategic_plan", "structured_data", "high",
+            ["clear_objectives", "implementation_timeline", "resource_requirements"]
+        ))
         
         if capabilities.get("strategic_planning"):
-            assets.append({
-                "asset_type": "execution_roadmap",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "immediate",
-                "priority": 1,
-                "validation_criteria": ["milestone_definition", "resource_allocation", "risk_mitigation"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Execution Roadmap", "Detailed roadmap for strategy execution with milestones",
+                "execution_roadmap", "structured_data", "high",
+                ["milestone_definition", "resource_allocation", "risk_mitigation"]
+            ))
         
         # Success measurement framework
-        assets.append({
-            "asset_type": "success_measurement_framework",
-            "asset_format": "document",
-            "actionability_level": "ready_to_use",
-            "business_impact": "short_term",
-            "priority": 2,
-            "validation_criteria": ["kpi_definition", "measurement_methods", "reporting_schedule"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Success Measurement Framework", "Framework for measuring strategic success with KPIs",
+            "success_measurement_framework", "document", "medium",
+            ["kpi_definition", "measurement_methods", "reporting_schedule"]
+        ))
         
         return assets
     
@@ -587,35 +587,26 @@ Return ONLY a JSON object in this format:
         assets = []
         
         # Universal action plan
-        assets.append({
-            "asset_type": "action_plan",
-            "asset_format": "structured_data",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["tasks_defined", "timeline_realistic", "resources_allocated"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Action Plan", "Comprehensive action plan with tasks and timeline",
+            "action_plan", "structured_data", "high",
+            ["tasks_defined", "timeline_realistic", "resources_allocated"]
+        ))
         
         # Implementation support
-        assets.append({
-            "asset_type": "implementation_guide",
-            "asset_format": "document",
-            "actionability_level": "ready_to_use",
-            "business_impact": "immediate",
-            "priority": 1,
-            "validation_criteria": ["step_by_step", "success_criteria", "troubleshooting"]
-        })
+        assets.append(self._create_asset_dict(
+            context, "Implementation Guide", "Step-by-step implementation guide with success criteria",
+            "implementation_guide", "document", "high",
+            ["step_by_step", "success_criteria", "troubleshooting"]
+        ))
         
         # Progress tracking if data analysis capability exists
         if capabilities.get("data_analysis"):
-            assets.append({
-                "asset_type": "progress_tracking_system",
-                "asset_format": "structured_data",
-                "actionability_level": "ready_to_use",
-                "business_impact": "short_term",
-                "priority": 2,
-                "validation_criteria": ["measurable_kpis", "tracking_methods", "reporting_format"]
-            })
+            assets.append(self._create_asset_dict(
+                context, "Progress Tracking System", "System for tracking project progress with KPIs",
+                "progress_tracking_system", "structured_data", "medium",
+                ["measurable_kpis", "tracking_methods", "reporting_format"]
+            ))
         
         return assets
     
@@ -648,14 +639,17 @@ Return ONLY a JSON object in this format:
     
     def _create_fallback_requirements(self, workspace_id: str, goal: str) -> DeliverableRequirements:
         """Crea requirements di fallback in caso di errore"""
+        from uuid import uuid4
         
         fallback_assets = [
             AssetRequirement(
+                goal_id=uuid4(),
+                workspace_id=workspace_id,
+                asset_name="Comprehensive Report",
+                description="Comprehensive report covering all project aspects",
                 asset_type="comprehensive_report",
                 asset_format="document",
-                actionability_level="ready_to_use",
-                business_impact="immediate",
-                priority=1,
+                priority="high",
                 validation_criteria=["executive_summary", "key_findings", "next_steps"]
             )
         ]

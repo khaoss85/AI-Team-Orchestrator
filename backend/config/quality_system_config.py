@@ -8,6 +8,25 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Utility functions for environment variable parsing
+def get_env_bool(key: str, default: bool = False) -> bool:
+    """Get boolean environment variable with default"""
+    return os.getenv(key, str(default)).lower() == "true"
+
+def get_env_int(key: str, default: int = 0) -> int:
+    """Get integer environment variable with default"""
+    try:
+        return int(os.getenv(key, str(default)))
+    except ValueError:
+        return default
+
+def get_env_float(key: str, default: float = 0.0) -> float:
+    """Get float environment variable with default"""
+    try:
+        return float(os.getenv(key, str(default)))
+    except ValueError:
+        return default
+
 class QualitySystemConfig:
     """
     Configurazione centralizzata per il sistema di AI Quality Assurance

@@ -117,6 +117,7 @@ async def request_asset_refinement(task_id: str, refinement_request: Dict[str, A
         try:
             enhancement_task = await create_task(
                 workspace_id=enhancement_task_data["workspace_id"],
+                goal_id=original_task.get("goal_id") if original_task else None, # Pass goal_id from original task
                 name=enhancement_task_data["name"],
                 status=enhancement_task_data["status"],
                 assigned_to_role=enhancement_task_data["assigned_to_role"],

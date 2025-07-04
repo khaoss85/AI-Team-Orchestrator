@@ -72,6 +72,10 @@ class AutomatedGoalMonitor:
         # Track background tasks to prevent leaks
         self._background_tasks: set = set()
         
+        # 🚨 CRITICAL FIX: Add global corrective task cooldown to prevent infinite loops
+        self.global_corrective_cooldown = {}  # workspace_id + goal_type -> last_created_time
+        self.corrective_cooldown_seconds = int(os.getenv("CORRECTIVE_TASK_COOLDOWN_SECONDS", "300"))  # 5 minutes
+        
     async def start_monitoring(self):
         """Start the automated monitoring loop"""
         if self.is_running:
@@ -428,6 +432,9 @@ class AutomatedGoalMonitor:
                 if executed_count > 0:
                     await self._schedule_priority_recheck(workspace_id, minutes=5)
                     logger.warning(f"🔄 PRIORITY RECHECK scheduled for workspace {workspace_id} in 5 minutes")
+                    
+                    # 🎼 WORKFLOW ORCHESTRATOR: Trigger complete workflow if significant progress
+                    await self._trigger_workflow_orchestrator_for_goals(workspace_id, workspace_goals)
             
             # 9. Log validation summary
             critical_issues = [v for v in validation_results if v.severity.value in ['critical', 'high']]
@@ -522,6 +529,18 @@ class AutomatedGoalMonitor:
         
         for task_data in corrective_tasks:
             try:
+                goal_id = task_data.get("goal_id")
+                if not goal_id:
+                    logger.warning("Skipping corrective task creation: goal_id is missing.")
+                    continue
+
+                # 🚨 IDEMPOTENCY FIX: Check if a corrective task for this goal already exists
+                existing_task_response = supabase.table("tasks").select("id").eq("goal_id", goal_id).eq("is_corrective", True).in_("status", ["pending", "in_progress"]).execute()
+                
+                if existing_task_response.data:
+                    logger.warning(f"Skipping corrective task for goal {goal_id}: an active corrective task already exists.")
+                    continue
+
                 agent_requirements = task_data.get("agent_requirements", {})
                 
                 # ⚠️ NOTE: Auto-provisioning removed - orphaned workspaces should be fixed at the source
@@ -558,6 +577,7 @@ class AutomatedGoalMonitor:
                 
                 db_task = {
                     "workspace_id": workspace_id,
+                    "goal_id": task_data.get("goal_id"),
                     "name": task_name,
                     "description": task_description,
                     "status": "pending",
@@ -717,18 +737,34 @@ class AutomatedGoalMonitor:
                     workspace_id, attempt_auto_recovery=True
                 )
                 
+                # CRITICAL FIX: Ensure health_report.issues is always a list of dicts
+                if not hasattr(health_report, 'issues') or not isinstance(health_report.issues, list):
+                    logger.error(f"❌ Health report issues is not a list: {type(health_report.issues)}")
+                    health_report.issues = [] # Default to empty list to prevent errors
+
+                # CRITICAL FIX: Ensure each issue in health_report.issues is a dict and has 'level' attribute
+                cleaned_issues = []
+                for issue in health_report.issues:
+                    if isinstance(issue, dict) and 'level' in issue:
+                        cleaned_issues.append(issue)
+                    elif hasattr(issue, '__dict__') and 'level' in issue.__dict__:
+                        cleaned_issues.append(issue.__dict__)
+                    else:
+                        logger.warning(f"Malformed issue in health report: {issue}")
+                health_report.issues = cleaned_issues
+
                 if health_report.is_healthy:
                     logger.debug(f"✅ Workspace {workspace_id} health score: {health_report.overall_score:.1f}%")
                     return True
                 else:
                     # Check if issues are auto-recoverable
-                    recoverable_issues = [issue for issue in health_report.issues if issue.auto_recoverable]
-                    unrecoverable_issues = [issue for issue in health_report.issues if not issue.auto_recoverable]
+                    recoverable_issues = [issue for issue in health_report.issues if issue.get('auto_recoverable', False)]
+                    unrecoverable_issues = [issue for issue in health_report.issues if not issue.get('auto_recoverable', False)]
                     
                     if unrecoverable_issues:
                         # Log critical unrecoverable issues
-                        critical_descriptions = [issue.description for issue in unrecoverable_issues 
-                                               if issue.level.value in ['critical', 'emergency']]
+                        critical_descriptions = [issue.get('description', 'Unknown') for issue in unrecoverable_issues 
+                                               if issue.get('level', '').lower() in ['critical', 'emergency']]
                         
                         if critical_descriptions:
                             await self._alert_workspace_issue(
@@ -1425,6 +1461,88 @@ class AutomatedGoalMonitor:
             
         except Exception as e:
             logger.error(f"Error checking for missing deliverables: {e}")
+
+    async def _trigger_workflow_orchestrator_for_goals(self, workspace_id: str, workspace_goals: List[Dict[str, Any]]):
+        """
+        🎼 WORKFLOW ORCHESTRATOR INTEGRATION
+        
+        Trigger complete workflows for goals that are ready for end-to-end processing
+        """
+        try:
+            # Import WorkflowOrchestrator
+            try:
+                from services.unified_orchestrator import get_unified_orchestrator
+                workflow_orchestrator = get_unified_orchestrator()
+                WORKFLOW_ORCHESTRATOR_AVAILABLE = True
+            except ImportError as e:
+                logger.warning(f"WorkflowOrchestrator not available: {e}")
+                return
+            
+            # Analyze which goals are ready for complete workflow orchestration
+            goals_for_workflow = []
+            
+            for goal in workspace_goals:
+                goal_id = goal.get("id")
+                goal_status = goal.get("status", "")
+                current_value = goal.get("current_value", 0)
+                target_value = goal.get("target_value", 1)
+                
+                # Skip completed goals
+                if goal_status == "completed":
+                    continue
+                
+                # Check if goal has enough progress to warrant workflow orchestration
+                progress_ratio = current_value / max(target_value, 1)
+                
+                # Trigger workflow for goals with 30%+ progress but not yet completed
+                if progress_ratio >= 0.3 and progress_ratio < 1.0:
+                    goals_for_workflow.append(goal)
+                    logger.info(f"🎯 Goal {goal_id} ready for workflow orchestration: {progress_ratio:.1%} progress")
+                
+                # Also trigger for completely new goals (0% progress) to kick-start them
+                elif progress_ratio == 0.0:
+                    goals_for_workflow.append(goal)
+                    logger.info(f"🚀 New goal {goal_id} ready for initial workflow orchestration")
+            
+            # Execute workflows for selected goals
+            successful_workflows = 0
+            for goal in goals_for_workflow:
+                goal_id = goal.get("id")
+                try:
+                    logger.info(f"🎼 TRIGGERING WORKFLOW ORCHESTRATOR: Starting complete workflow for goal {goal_id}")
+                    
+                    # Execute complete workflow with conservative settings
+                    workflow_result = await workflow_orchestrator.execute_complete_workflow(
+                        workspace_id=workspace_id,
+                        goal_id=goal_id,
+                        timeout_minutes=20,  # Shorter timeout for goal monitor context
+                        enable_rollback=True,
+                        quality_threshold=70.0  # Slightly lower threshold for goal validation context
+                    )
+                    
+                    if workflow_result.success:
+                        successful_workflows += 1
+                        logger.info(f"✅ WORKFLOW SUCCESS: Goal {goal_id} workflow completed successfully")
+                        logger.info(f"📊 Results: {workflow_result.tasks_generated} tasks, {workflow_result.deliverables_created} deliverables, {workflow_result.quality_score:.1f}% quality")
+                    else:
+                        logger.warning(f"❌ WORKFLOW FAILED: Goal {goal_id} workflow failed: {workflow_result.error}")
+                        
+                        # Log rollback information if applicable
+                        if workflow_result.rollback_performed:
+                            rollback_status = "successful" if workflow_result.rollback_success else "failed"
+                            logger.warning(f"🔄 ROLLBACK: {rollback_status} for goal {goal_id}")
+                
+                except Exception as goal_workflow_error:
+                    logger.error(f"❌ WORKFLOW ORCHESTRATOR: Critical error executing workflow for goal {goal_id}: {goal_workflow_error}")
+                    logger.info("🔄 Goal monitoring will continue normally despite workflow orchestrator error")
+            
+            if goals_for_workflow:
+                logger.info(f"🎼 WORKFLOW ORCHESTRATOR SUMMARY: {successful_workflows}/{len(goals_for_workflow)} workflows successful for workspace {workspace_id}")
+            else:
+                logger.debug(f"No goals ready for workflow orchestration in workspace {workspace_id}")
+                
+        except Exception as e:
+            logger.error(f"Error in WorkflowOrchestrator integration for workspace {workspace_id}: {e}")
 
 # Singleton instance
 automated_goal_monitor = AutomatedGoalMonitor()
