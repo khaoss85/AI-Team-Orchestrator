@@ -1,0 +1,998 @@
+{
+  "timestamp": "2025-07-04T13:13:41.080046",
+  "findings": [],
+  "statistics": {},
+  "duplications": {
+    "test_files": {
+      "comprehensive_production_e2e_test": [
+        "comprehensive_production_e2e_test.py",
+        "comprehensive_production_e2e_test.py",
+        "comprehensive_production_e2e_test.py"
+      ],
+      "comprehensive_e2e_user_test": [
+        "comprehensive_e2e_real_user_test.py",
+        "comprehensive_e2e_real_user_test.py",
+        "comprehensive_e2e_real_user_test.py"
+      ],
+      "validation_e2e_test": [
+        "validation_e2e_test.py",
+        "validation_e2e_test.py",
+        "validation_e2e_test.py"
+      ],
+      "e2e_start_test": [
+        "e2e_auto_start_test.py",
+        "e2e_auto_start_test.py",
+        "e2e_auto_start_test.py"
+      ],
+      "comprehensive_e2e_test": [
+        "comprehensive_e2e_test.py",
+        "comprehensive_e2e_test.py",
+        "comprehensive_e2e_test.py"
+      ],
+      "test_e2e_nuovo": [
+        "test_e2e_nuovo.py",
+        "test_e2e_nuovo.py"
+      ],
+      "comprehensive_e2enomous_test": [
+        "comprehensive_e2e_autonomous_test.py",
+        "comprehensive_e2e_autonomous_test.py",
+        "comprehensive_e2e_autonomous_test.py"
+      ],
+      "comprehensive_e2e_pillar_test": [
+        "comprehensive_e2e_pillar_test.py",
+        "comprehensive_e2e_pillar_test.py",
+        "comprehensive_e2e_pillar_test.py"
+      ],
+      "stock_recommendation_test": [
+        "stock_recommendation_test.py",
+        "stock_recommendation_test.py"
+      ],
+      "end_to_end_flow_test": [
+        "end_to_end_flow_test.py",
+        "end_to_end_flow_test.py"
+      ],
+      "simplenomous_test": [
+        "simple_autonomous_test.py",
+        "simple_autonomous_test.py"
+      ],
+      "final_comprehensive_test": [
+        "final_comprehensive_test.py",
+        "final_comprehensive_test.py"
+      ],
+      "minimalnomous_test": [
+        "minimal_autonomous_test.py",
+        "minimal_autonomous_test.py"
+      ],
+      "force_task_generation_test": [
+        "force_task_generation_test.py",
+        "force_task_generation_test.py"
+      ],
+      "comprehensive_validation_test": [
+        "comprehensive_validation_test.py",
+        "comprehensive_validation_test.py"
+      ],
+      "definitivenomous_test": [
+        "definitive_autonomous_test.py",
+        "definitive_autonomous_test.py"
+      ],
+      "quicknomous_test": [
+        "quick_autonomous_test.py",
+        "quick_autonomous_test.py"
+      ]
+    }
+  },
+  "trace_analysis": {
+    "files_with_trace": [],
+    "files_without_trace": [
+      "routes/deliverables.py",
+      "routes/authentic_thinking.py",
+      "routes/delegation_monitor.py",
+      "routes/improvement.py",
+      "routes/memory.py",
+      "routes/conversation.py",
+      "routes/monitoring.py",
+      "routes/asset_management.py",
+      "routes/documents.py",
+      "routes/tools.py",
+      "routes/system_monitoring.py",
+      "routes/__init__.py",
+      "routes/ai_content_processor.py",
+      "routes/unified_assets.py",
+      "routes/agents.py",
+      "routes/service_registry.py",
+      "routes/human_feedback.py",
+      "routes/workspace_goals.py",
+      "routes/thinking.py",
+      "routes/utils.py",
+      "routes/assets.py",
+      "routes/goal_validation.py",
+      "routes/project_insights.py",
+      "routes/websocket_assets.py",
+      "routes/proposals.py",
+      "routes/director.py",
+      "routes/component_health.py",
+      "routes/websocket.py",
+      "routes/workspaces.py"
+    ],
+    "trace_patterns": {}
+  },
+  "db_analysis": {
+    "tables": {
+      "workspace_goal_decompositions": {
+        "files": [
+          "add_authentic_thinking_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "goal_todos": {
+        "files": [
+          "add_authentic_thinking_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "thinking_process_steps": {
+        "files": [
+          "add_authentic_thinking_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "todo_progress_tracking": {
+        "files": [
+          "add_authentic_thinking_tables.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "orchestration_flows": {
+        "files": [
+          "orchestration_flows_schema.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "integration_events": {
+        "files": [
+          "orchestration_flows_schema.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "component_health": {
+        "files": [
+          "orchestration_flows_schema.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "component_versions": {
+        "files": [
+          "VERSIONING_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "version_migrations": {
+        "files": [
+          "VERSIONING_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "conversation_backups": {
+        "files": [
+          "VERSIONING_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "version_compatibility": {
+        "files": [
+          "VERSIONING_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "workspace_goals": {
+        "files": [
+          "complete_goal_driven_setup.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "workspace_insights": {
+        "files": [
+          "complete_goal_driven_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "conversations": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "conversation_messages": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "pending_confirmations": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "agent_knowledge": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "workflow_automations": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "cross_workspace_insights": {
+        "files": [
+          "CONVERSATIONAL_AI_DATABASE_SCHEMA.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "workspaces": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "agents": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "agent_handoffs": {
+        "files": [
+          "supabase_setup.sql",
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "tasks": {
+        "files": [
+          "supabase_setup.sql",
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "execution_logs": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "documents": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "custom_tools": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "team_proposals": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "human_feedback_requests": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "agent_proposals": {
+        "files": [
+          "supabase_setup.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "goal_asset_requirements": {
+        "files": [
+          "migrations/create_goal_asset_requirements_table.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "memory_context_cache": {
+        "files": [
+          "migrations/create_uma_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "memory_context_entries": {
+        "files": [
+          "migrations/create_uma_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "memory_patterns": {
+        "files": [
+          "migrations/create_uma_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "uma_performance_metrics": {
+        "files": [
+          "migrations/create_uma_tables.sql"
+        ],
+        "has_unique_constraints": false,
+        "indexes": []
+      },
+      "workspace_documents": {
+        "files": [
+          "database/migrations/008_add_document_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      },
+      "workspace_vector_stores": {
+        "files": [
+          "database/migrations/008_add_document_tables.sql"
+        ],
+        "has_unique_constraints": true,
+        "indexes": []
+      }
+    },
+    "missing_constraints": [
+      "tasks",
+      "agents",
+      "workspaces"
+    ],
+    "duplicate_tables": [
+      {
+        "table": "agent_handoffs",
+        "files": [
+          "supabase_setup.sql",
+          "supabase_setup.sql"
+        ]
+      },
+      {
+        "table": "tasks",
+        "files": [
+          "supabase_setup.sql",
+          "supabase_setup.sql"
+        ]
+      }
+    ],
+    "indexes": {
+      "tasks": [
+        "idx_tasks_goal_id",
+        "idx_tasks_metric_type",
+        "idx_tasks_corrective",
+        "idx_tasks_goal_status",
+        "idx_tasks_goal_id",
+        "idx_tasks_metric_type",
+        "idx_tasks_corrective",
+        "idx_tasks_goal_status",
+        "idx_tasks_workspace_id",
+        "idx_tasks_agent_id",
+        "idx_tasks_workspace_id",
+        "idx_tasks_agent_id",
+        "idx_tasks_status",
+        "idx_tasks_assigned_to_role",
+        "idx_tasks_priority",
+        "idx_tasks_parent_task_id",
+        "idx_tasks_depends_on_gin",
+        "idx_tasks_context_data_gin",
+        "idx_tasks_created_by_task_id",
+        "idx_tasks_delegation_depth",
+        "idx_tasks_creation_type"
+      ],
+      "conversation_messages": [
+        "idx_conversation_messages_identifier",
+        "idx_conversation_messages_identifier",
+        "idx_conversation_messages_conversation",
+        "idx_conversation_messages_role"
+      ],
+      "pending_confirmations": [
+        "idx_pending_confirmations_identifier",
+        "idx_pending_confirmations_identifier",
+        "idx_pending_confirmations_action_id_text",
+        "idx_pending_confirmations_status",
+        "idx_pending_confirmations_workspace"
+      ],
+      "workspace_goal_decompositions": [
+        "idx_goal_decompositions_goal_id",
+        "idx_goal_decompositions_workspace_id",
+        "idx_goal_decompositions_complexity",
+        "idx_goal_decompositions_user_value",
+        "idx_goal_decompositions_assets_gin",
+        "idx_goal_decompositions_thinking_gin"
+      ],
+      "goal_todos": [
+        "idx_goal_todos_decomposition_id",
+        "idx_goal_todos_goal_id",
+        "idx_goal_todos_workspace_id",
+        "idx_goal_todos_type",
+        "idx_goal_todos_status",
+        "idx_goal_todos_priority",
+        "idx_goal_todos_task_link",
+        "idx_goal_todos_supports_assets",
+        "idx_goal_todos_workspace_type_status"
+      ],
+      "thinking_process_steps": [
+        "idx_thinking_steps_todo_id",
+        "idx_thinking_steps_workspace_id",
+        "idx_thinking_steps_session",
+        "idx_thinking_steps_sequence",
+        "idx_thinking_steps_type",
+        "idx_thinking_steps_status",
+        "idx_thinking_steps_agent",
+        "idx_thinking_steps_inputs_gin",
+        "idx_thinking_steps_conclusions_gin",
+        "idx_thinking_steps_todo_completion"
+      ],
+      "todo_progress_tracking": [
+        "idx_todo_progress_todo_id",
+        "idx_todo_progress_workspace_id",
+        "idx_todo_progress_created_at",
+        "idx_todo_progress_needs_review",
+        "idx_todo_progress_work_gin",
+        "idx_todo_progress_recent"
+      ],
+      "orchestration_flows": [
+        "idx_orchestration_flows_workspace_id",
+        "idx_orchestration_flows_status",
+        "idx_orchestration_flows_current_stage",
+        "idx_orchestration_flows_created_at",
+        "idx_orchestration_flows_workspace_status"
+      ],
+      "integration_events": [
+        "idx_integration_events_workspace_id",
+        "idx_integration_events_status",
+        "idx_integration_events_event_type",
+        "idx_integration_events_created_at",
+        "idx_integration_events_target_status",
+        "idx_integration_events_flow_id",
+        "idx_integration_events_priority_sequence"
+      ],
+      "component_health": [
+        "idx_component_health_status",
+        "idx_component_health_last_heartbeat",
+        "idx_component_health_component_name"
+      ],
+      "component_versions": [
+        "idx_component_versions_type_name",
+        "idx_component_versions_active"
+      ],
+      "version_migrations": [
+        "idx_version_migrations_workspace",
+        "idx_version_migrations_status"
+      ],
+      "conversation_backups": [
+        "idx_conversation_backups_workspace",
+        "idx_conversation_backups_expires"
+      ],
+      "version_compatibility": [
+        "idx_version_compatibility_lookup"
+      ],
+      "workspace_goals": [
+        "idx_workspace_goals_confidence",
+        "idx_workspace_goals_semantic_context",
+        "idx_workspace_goals_workspace_id",
+        "idx_workspace_goals_status",
+        "idx_workspace_goals_priority",
+        "idx_workspace_goals_metric_type",
+        "idx_workspace_goals_validation",
+        "idx_workspace_goals_goal_type",
+        "idx_workspace_goals_confidence",
+        "idx_workspace_goals_semantic_context",
+        "idx_workspace_goals_ai_flags"
+      ],
+      "workspace_insights": [
+        "idx_workspace_insights_workspace_id",
+        "idx_workspace_insights_task_id",
+        "idx_workspace_insights_type",
+        "idx_workspace_insights_expires",
+        "idx_workspace_insights_tags",
+        "idx_workspace_insights_created"
+      ],
+      "conversations": [
+        "idx_conversations_workspace"
+      ],
+      "agent_knowledge": [
+        "idx_agent_knowledge_agent",
+        "idx_agent_knowledge_workspace"
+      ],
+      "workflow_automations": [
+        "idx_workflow_automations_workspace",
+        "idx_workflow_automations_trigger"
+      ],
+      "cross_workspace_insights": [
+        "idx_cross_workspace_insights_domain"
+      ],
+      "thinking_steps": [
+        "idx_thinking_steps_created_at"
+      ],
+      "agents": [
+        "idx_agents_workspace_id"
+      ],
+      "execution_logs": [
+        "idx_execution_logs_workspace_id",
+        "idx_execution_logs_agent_id"
+      ],
+      "documents": [
+        "idx_documents_workspace_id",
+        "idx_documents_agent_id"
+      ],
+      "custom_tools": [
+        "idx_custom_tools_workspace_id"
+      ],
+      "team_proposals": [
+        "idx_team_proposals_workspace_id",
+        "idx_team_proposals_status"
+      ],
+      "human_feedback_requests": [
+        "idx_human_feedback_requests_workspace_id",
+        "idx_human_feedback_requests_status",
+        "idx_human_feedback_requests_expires_at"
+      ],
+      "agent_handoffs": [
+        "idx_agent_handoffs_workspace_id",
+        "idx_agent_handoffs_workspace_id"
+      ],
+      "agent_proposals": [
+        "idx_agent_proposals_agent_id",
+        "idx_agent_proposals_status"
+      ],
+      "goal_asset_requirements": [
+        "idx_goal_asset_requirements_workspace_id",
+        "idx_goal_asset_requirements_goal_id",
+        "idx_goal_asset_requirements_type",
+        "idx_goal_asset_requirements_priority"
+      ],
+      "asset_artifacts": [
+        "idx_asset_artifacts_workspace_id"
+      ],
+      "memory_context_cache": [
+        "idx_memory_context_cache_hash",
+        "idx_memory_context_cache_expires",
+        "idx_memory_context_cache_workspace"
+      ],
+      "memory_context_entries": [
+        "idx_memory_context_entries_workspace",
+        "idx_memory_context_entries_type",
+        "idx_memory_context_entries_importance",
+        "idx_memory_context_entries_semantic",
+        "idx_memory_context_entries_created"
+      ],
+      "memory_patterns": [
+        "idx_memory_patterns_type",
+        "idx_memory_patterns_confidence",
+        "idx_memory_patterns_usage",
+        "idx_memory_patterns_domain"
+      ],
+      "uma_performance_metrics": [
+        "idx_uma_performance_workspace",
+        "idx_uma_performance_type",
+        "idx_uma_performance_recorded"
+      ],
+      "workspace_documents": [
+        "idx_workspace_documents_workspace_id",
+        "idx_workspace_documents_scope",
+        "idx_workspace_documents_hash"
+      ],
+      "workspace_vector_stores": [
+        "idx_workspace_vector_stores_workspace_id",
+        "idx_workspace_vector_stores_scope"
+      ]
+    }
+  },
+  "functional_silos": {
+    "quality_assurance": {
+      "files": 13,
+      "duplicate_functions": {
+        "__init__": [
+          "ai_quality_assurance/strategic_goal_decomposer.py",
+          "ai_quality_assurance/quality_gates.py",
+          "ai_quality_assurance/ai_memory_intelligence.py",
+          "ai_quality_assurance/smart_evaluator.py",
+          "ai_quality_assurance/enhancement_orchestrator.py",
+          "ai_quality_assurance/quality_validator.py",
+          "ai_quality_assurance/ai_content_enhancer.py",
+          "ai_quality_assurance/goal_validator.py",
+          "ai_quality_assurance/ai_goal_extractor.py",
+          "ai_quality_assurance/ai_evaluator.py",
+          "ai_quality_assurance/ai_evaluator.py",
+          "ai_quality_assurance/quality_integration.py",
+          "services/ai_quality_gate_engine.py"
+        ],
+        "reset_stats": [
+          "ai_quality_assurance/enhancement_orchestrator.py",
+          "ai_quality_assurance/quality_validator.py"
+        ],
+        "_detect_fake_content": [
+          "ai_quality_assurance/quality_validator.py",
+          "ai_quality_assurance/ai_evaluator.py"
+        ]
+      },
+      "common_imports": {
+        "logging": 13,
+        "json": 12,
+        "typing": 12,
+        "datetime": 12,
+        "os": 9,
+        "asyncio": 9,
+        "openai": 9,
+        "re": 8,
+        "enum": 5,
+        "AIQualityValidator": 5
+      }
+    },
+    "deliverable_system": {
+      "files": 7,
+      "duplicate_functions": {
+        "__init__": [
+          "deliverable_system/markup_processor.py",
+          "deliverable_system/ai_display_enhancer.py",
+          "deliverable_system/requirements_analyzer.py",
+          "deliverable_system/concrete_asset_extractor.py",
+          "deliverable_system/schema_generator.py",
+          "deliverable_system/deliverable_pipeline.py",
+          "services/asset_first_deliverable_system.py"
+        ]
+      },
+      "common_imports": {
+        "openai": 11,
+        "re": 7,
+        "json": 7,
+        "logging": 7,
+        "typing": 7,
+        "datetime": 7,
+        "models": 7,
+        "database": 6,
+        "os": 4,
+        "asyncio": 4
+      }
+    },
+    "orchestrators": {
+      "files": 4,
+      "duplicate_functions": {
+        "__init__": [
+          "services/unified_orchestrator.py",
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator_legacy.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "calculate_optimal_settings": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_collect_workspace_metrics": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_skip_metrics": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_get_completion_times": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_goal_completion_rate": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_agent_utilization": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_detect_workspace_phase": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_identify_bottlenecks": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_performance_score": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_ai_calculate_thresholds": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_confidence": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_get_fallback_thresholds": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_get_fallback_metrics": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_is_cached_valid": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "execute_complete_workflow": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "optimize_workspace_throughput": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "get_orchestration_recommendation": [
+          "services/unified_orchestrator.py",
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "adaptive_skip_prevention": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_update_progress": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_generate_fallback_asset_requirements": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_generate_fallback_tasks": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_calculate_adaptive_limit": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_generate_optimization_suggestions": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_fallback_quality_score": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_perform_rollback": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_finalize_workflow_result": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "_get_fallback_optimization": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_generate_optimization_recommendations": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_identify_high_risk_tasks": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_task_risk_score": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_identify_risk_factors": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_calculate_priority_adjustments": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_estimate_skip_reduction": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "_generate_prevention_strategies": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "get_workflow_progress": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "health_check": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/workflow_orchestrator.py"
+        ],
+        "get_dynamic_max_pending_tasks": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ],
+        "should_skip_task_execution": [
+          "services/unified_orchestrator.py",
+          "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+        ]
+      },
+      "common_imports": {
+        "asyncio": 4,
+        "logging": 4,
+        "datetime": 4,
+        "typing": 4,
+        "uuid": 4,
+        "database": 4,
+        "json": 3,
+        "dataclasses": 3,
+        "enum": 3,
+        "get_env_bool": 3
+      }
+    },
+    "memory_systems": {
+      "files": 2,
+      "duplicate_functions": {
+        "__init__": [
+          "services/memory_system.py",
+          "services/universal_memory_architecture.py",
+          "services/universal_memory_architecture.py",
+          "services/universal_memory_architecture.py",
+          "services/universal_memory_architecture.py"
+        ],
+        "get_relevant_context": [
+          "services/memory_system.py",
+          "services/universal_memory_architecture.py"
+        ],
+        "store_context": [
+          "services/memory_system.py",
+          "services/memory_system.py",
+          "services/universal_memory_architecture.py"
+        ],
+        "retrieve_context": [
+          "services/memory_system.py",
+          "services/memory_system.py",
+          "services/universal_memory_architecture.py"
+        ],
+        "get_memory_insights": [
+          "services/memory_system.py",
+          "services/memory_system.py",
+          "services/universal_memory_architecture.py"
+        ],
+        "store_insight": [
+          "services/memory_system.py",
+          "services/memory_system.py"
+        ]
+      },
+      "common_imports": {
+        "database": 4,
+        "uuid": 3,
+        "get_universal_memory_architecture": 3,
+        "json": 2,
+        "logging": 2,
+        "datetime": 2,
+        "typing": 2,
+        "sys": 2,
+        "pathlib": 2,
+        "get_env_bool": 2
+      }
+    },
+    "goal_systems": {
+      "files": 2,
+      "duplicate_functions": {
+        "__init__": [
+          "goal_driven_task_planner.py",
+          "services/enhanced_goal_driven_planner.py"
+        ],
+        "_generate_tasks_for_goal": [
+          "goal_driven_task_planner.py",
+          "services/enhanced_goal_driven_planner.py"
+        ]
+      },
+      "common_imports": {
+        "datetime": 6,
+        "json": 4,
+        "os": 4,
+        "openai": 4,
+        "logging": 2,
+        "asyncio": 2,
+        "typing": 2,
+        "uuid": 2,
+        "models": 2,
+        "database": 2
+      }
+    }
+  },
+  "api_analysis": {
+    "endpoints": [],
+    "prefix_usage": {
+      "/api": 5
+    },
+    "inconsistencies": [
+      {
+        "type": "duplicate_router_includes",
+        "details": {
+          "director_router": 2
+        }
+      }
+    ]
+  },
+  "logging_analysis": {
+    "logging_tables": {
+      "execution_logs": [
+        "monitor_improvements.py",
+        "database.py",
+        "audit_scripts.py",
+        "analyze_logs.py",
+        "quick_audit_check.py",
+        "services/unified_orchestrator.py",
+        "services/deprecated_orchestrators/adaptive_task_orchestration_engine.py"
+      ],
+      "thinking_process_steps": [
+        "monitor_improvements.py",
+        "audit_scripts.py",
+        "analyze_logs.py",
+        "quick_audit_check.py",
+        "routes/authentic_thinking.py"
+      ],
+      "audit_logs": [
+        "monitor_improvements.py",
+        "audit_scripts.py",
+        "quick_audit_check.py"
+      ]
+    },
+    "logging_patterns": {
+      "logger": 5184,
+      "logging": 263,
+      "print": 553
+    },
+    "inconsistencies": [
+      {
+        "type": "multiple_logging_tables",
+        "tables": [
+          "execution_logs",
+          "thinking_process_steps",
+          "audit_logs"
+        ]
+      }
+    ]
+  },
+  "scripts_generated": {
+    "trace_verification": "verify_trace_propagation.py",
+    "log_analysis": "analyze_logs.py",
+    "duplicate_detection": "detect_duplicates.py"
+  }
+}

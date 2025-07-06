@@ -512,9 +512,9 @@ class TaskExecutor(AssetCoordinationMixin):
         
         # 🚀 ATOE: Initialize Adaptive Task Orchestration Engine for skip rate optimization
         self.atoe = None
-        if ATOE_AVAILABLE and get_adaptive_task_orchestration_engine:
+        if UNIFIED_ORCHESTRATOR_AVAILABLE and get_unified_orchestrator:
             try:
-                self.atoe = get_adaptive_task_orchestration_engine()
+                self.atoe = get_unified_orchestrator()
                 logger.info("🚀 ATOE initialized successfully for skip rate optimization")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize ATOE: {e}")

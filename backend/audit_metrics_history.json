@@ -1,0 +1,21 @@
+[
+  {
+    "timestamp": "2025-07-04T13:12:37.511439",
+    "trace_id_coverage": 0.0,
+    "duplicate_test_count": 5,
+    "api_consistency_score": 83.87096774193549,
+    "database_constraint_coverage": 0.0,
+    "logging_fragmentation": 3,
+    "orchestrator_consolidation": {
+      "deprecated_files": 3,
+      "unified_exists": true,
+      "consolidation_complete": false
+    },
+    "code_quality_metrics": {
+      "total_python_files": 211,
+      "total_lines_of_code": 119231,
+      "total_functions": 3058,
+      "total_classes": 522
+    }
+  }
+]

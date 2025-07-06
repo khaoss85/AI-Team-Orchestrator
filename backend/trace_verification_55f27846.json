@@ -1,0 +1,28 @@
+{
+  "trace_id": "55f27846-f09e-4dba-80a5-cc50913ffa1e",
+  "timestamp": "2025-07-04T13:13:46.953442",
+  "endpoints_tested": [],
+  "propagation_success": [],
+  "propagation_failures": [
+    {
+      "endpoint": "/workspaces",
+      "reason": "Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103db6f90>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "endpoint": "/workspaces",
+      "reason": "Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /workspaces (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103d725d0>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "endpoint": "/api/director/analyze",
+      "reason": "Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/director/analyze (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103d72850>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "endpoint": "/api/agents",
+      "reason": "Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/agents (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103e74b00>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    },
+    {
+      "endpoint": "/api/tasks",
+      "reason": "Error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/tasks (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x103e75350>: Failed to establish a new connection: [Errno 61] Connection refused'))"
+    }
+  ]
+}
