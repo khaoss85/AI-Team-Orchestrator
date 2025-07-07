@@ -4,6 +4,7 @@
 Implementa ottimizzazioni più aggressive per ridurre significativamente le richieste di feedback
 """
 
+from pathlib import Path
 import os
 import sys
 import json
@@ -219,7 +220,7 @@ class FeedbackBatchManager:
 feedback_batch_manager = FeedbackBatchManager()
 '''
         
-        with open("/Users/pelleri/Documents/ai-team-orchestrator/backend/human_feedback_batch_manager.py", "w") as f:
+        with open("./human_feedback_batch_manager.py", "w") as f:
             f.write(batch_manager_code)
         
         print("  ✅ Smart batching manager created")
@@ -458,7 +459,7 @@ class AdaptiveThresholdManager:
 adaptive_threshold_manager = AdaptiveThresholdManager()
 '''
         
-        with open("/Users/pelleri/Documents/ai-team-orchestrator/backend/adaptive_threshold_manager.py", "w") as f:
+        with open("./adaptive_threshold_manager.py", "w") as f:
             f.write(threshold_manager_code)
         
         print("  ✅ Adaptive threshold manager created")
@@ -850,7 +851,7 @@ class PredictiveApprovalEngine:
 predictive_approval_engine = PredictiveApprovalEngine()
 '''
         
-        with open("/Users/pelleri/Documents/ai-team-orchestrator/backend/predictive_approval_engine.py", "w") as f:
+        with open("./predictive_approval_engine.py", "w") as f:
             f.write(predictive_code)
         
         print("  ✅ Predictive approval engine created")
@@ -1023,7 +1024,7 @@ prediction = await predictive_approval_engine.predict_approval_probability(...)
 **Success Criteria**: 50%+ reduction in feedback requests with <5% quality degradation
 '''
         
-        with open("/Users/pelleri/Documents/ai-team-orchestrator/backend/ADVANCED_FEEDBACK_OPTIMIZATION_GUIDE.md", "w") as f:
+        with open("./ADVANCED_FEEDBACK_OPTIMIZATION_GUIDE.md", "w") as f:
             f.write(integration_guide)
         
         print("  ✅ Integration guide created")

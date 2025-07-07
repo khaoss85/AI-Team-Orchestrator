@@ -4,6 +4,7 @@ Comprehensive End-to-End Test for Auto-Start Functionality
 Test Goal: "Raccogliere 500 contatti ICP (CMO/CTO di aziende SaaS europee) e suggerire almeno 3 sequenze email da impostare su Hubspot"
 """
 
+from pathlib import Path
 import requests
 import json
 import time
@@ -377,7 +378,7 @@ def main():
     
     # Save results to file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = f"/Users/pelleri/Documents/ai-team-orchestrator/backend/e2e_test_results_{timestamp}.json"
+    results_file = f"./e2e_test_results_{timestamp}.json"
     
     with open(results_file, 'w') as f:
         json.dump(results, f, indent=2)

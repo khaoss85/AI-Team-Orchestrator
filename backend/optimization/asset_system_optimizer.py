@@ -31,7 +31,7 @@ from enum import Enum
 # Import system components
 from database_asset_extensions import AssetDrivenDatabaseManager
 from monitoring.asset_system_monitor import AssetSystemMonitor, AssetSystemHealth
-from services.ai_quality_gate_engine import AIQualityGateEngine
+from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class AssetSystemOptimizer:
     def __init__(self):
         self.db_manager = AssetDrivenDatabaseManager()
         self.monitor = AssetSystemMonitor()
-        self.quality_engine = AIQualityGateEngine()
+        self.quality_engine = unified_quality_engine
         
         # Performance tracking
         self.metrics_history = deque(maxlen=1000)  # Last 1000 metric snapshots

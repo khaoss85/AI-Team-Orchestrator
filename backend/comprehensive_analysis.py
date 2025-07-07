@@ -4,6 +4,7 @@
 Analisi completa del sistema per verificare tutti i punti critici richiesti
 """
 
+from pathlib import Path
 import asyncio
 import logging
 import os
@@ -13,11 +14,29 @@ from typing import Dict, List, Any
 from datetime import datetime
 
 # Add backend to Python path
-sys.path.append('/Users/pelleri/Documents/ai-team-orchestrator/backend')
+sys.path.append('.')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 🔧 FIXED: Import unified quality engine and backward compatibility aliases
+try:
+    from backend.ai_quality_assurance.unified_quality_engine import (
+        unified_quality_engine, 
+        goal_validator, 
+        ai_goal_extractor, 
+        extract_and_create_workspace_goals,
+        AIGoalExtractor
+    )
+    QA_ENGINE_AVAILABLE = True
+    logger.info("✅ Unified Quality Engine imported successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Quality engine not available: {e}")
+    QA_ENGINE_AVAILABLE = False
+    # Create fallback objects
+    unified_quality_engine = goal_validator = ai_goal_extractor = None
+    extract_and_create_workspace_goals = AIGoalExtractor = None
 
 class SystemAnalyzer:
     def __init__(self):
@@ -92,7 +111,6 @@ class SystemAnalyzer:
             logger.info(f"Memory storage test: {'✅ PASSED' if context else '❌ FAILED'}")
             
             # Check goal validator memory integration
-            from ai_quality_assurance.goal_validator import goal_validator
             
             # Verify goal validator has memory integration methods
             has_store_failure = hasattr(goal_validator, '_store_failure_insight')
@@ -131,11 +149,9 @@ class SystemAnalyzer:
             }
             
             # Check goal extraction
-            from ai_quality_assurance.ai_goal_extractor import ai_goal_extractor
             analysis["components_found"].append("✅ AI Goal Extractor")
             
             # Check goal validation
-            from ai_quality_assurance.goal_validator import goal_validator
             analysis["components_found"].append("✅ Goal Validator")
             
             # Check database goal integration
@@ -195,7 +211,6 @@ class SystemAnalyzer:
             }
             
             # Check AI goal extractor
-            from ai_quality_assurance.ai_goal_extractor import AIGoalExtractor
             extractor = AIGoalExtractor()
             
             # Verify AI-driven features
@@ -233,8 +248,8 @@ class SystemAnalyzer:
             
             # Check for hardcoded patterns (anti-pattern detection)
             import inspect
-            import ai_quality_assurance.ai_goal_extractor as extractor_module
             
+            import ai_quality_assurance.ai_goal_extractor as extractor_module
             source = inspect.getsource(extractor_module)
             
             # Look for hardcoded domain patterns (bad practice)
@@ -289,7 +304,6 @@ class SystemAnalyzer:
                 analysis["issues_resolved"].append("✅ Memory-Guided Decisions")
             
             # Issue 3: Reactive vs Proactive - Goal achievement focus
-            from ai_quality_assurance.goal_validator import goal_validator
             if hasattr(goal_validator, 'trigger_corrective_actions'):
                 analysis["issues_resolved"].append("✅ Proactive Goal Achievement")
                 analysis["proactive_features"].append("Automatic corrective task creation")
@@ -328,7 +342,6 @@ class SystemAnalyzer:
             logger.info(f"📝 Testing goal: {goal_text}")
             
             # Test 1: AI Goal Extraction
-            from ai_quality_assurance.ai_goal_extractor import extract_and_create_workspace_goals
             
             workspace_goals = await extract_and_create_workspace_goals(workspace_id, goal_text)
             
@@ -376,7 +389,6 @@ class SystemAnalyzer:
             
             # Test 4: Goal Validation
             try:
-                from ai_quality_assurance.goal_validator import goal_validator
                 
                 # Simulate completed tasks
                 mock_tasks = [

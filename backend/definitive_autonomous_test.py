@@ -8,6 +8,7 @@ produce contenuti reali, e rispetta tutti i pilastri architetturali.
 TARGET: 10+/13 Pilastri validati, 0 contenuti fake, esecuzione completa E2E
 """
 
+from pathlib import Path
 import asyncio
 import requests
 import time
@@ -276,7 +277,7 @@ class DefinitiveAutonomousTest:
         
         # Trigger autonomous task generation
         try:
-            sys.path.insert(0, '/Users/pelleri/Documents/ai-team-orchestrator/backend')
+            sys.path.insert(0, '.')
             from automated_goal_monitor import automated_goal_monitor
             from goal_driven_task_planner import goal_driven_task_planner
             from database import get_supabase_client

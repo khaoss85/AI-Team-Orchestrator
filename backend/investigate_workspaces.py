@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import sys
-sys.path.append('/Users/pelleri/Documents/ai-team-orchestrator/backend')
+sys.path.append('.')
 from database import supabase
 from models import GoalStatus
 

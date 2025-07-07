@@ -4,8 +4,9 @@ Component Health API Routes
 Endpoints per monitoraggio salute componenti e metriche sistema.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Request, APIRouter, HTTPException, Query
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 from datetime import datetime
 
@@ -17,7 +18,12 @@ router = APIRouter(prefix="/api/health", tags=["component-health"])
 health_router = APIRouter(prefix="/component-health", tags=["component-health"])
 
 @router.get("/system")
-async def get_system_health():
+async def get_system_health(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_system_health called", endpoint="get_system_health", trace_id=trace_id)
+
     """Ottieni riassunto salute complessiva del sistema"""
     try:
         from services.component_health_monitor import get_system_health
@@ -34,7 +40,12 @@ async def get_system_health():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/components")
-async def get_all_components_health(include_metrics: bool = Query(False, description="Include detailed metrics")):
+async def get_all_components_health(include_metrics: bool = Query(False, description="Include detailed metrics"), request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_all_components_health called", endpoint="get_all_components_health", trace_id=trace_id)
+
     """Ottieni stato di salute di tutti i componenti"""
     try:
         from database import get_supabase_client
@@ -102,7 +113,12 @@ async def get_all_components_health(include_metrics: bool = Query(False, descrip
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/component/{component_name}")
-async def get_component_health(component_name: str):
+async def get_component_health(component_name: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_component_health called", endpoint="get_component_health", trace_id=trace_id)
+
     """Ottieni stato dettagliato di un componente specifico"""
     try:
         from database import get_supabase_client
@@ -163,7 +179,12 @@ async def get_component_health(component_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/events/recent")
-async def get_recent_health_events(limit: int = Query(50, description="Number of recent events to retrieve")):
+async def get_recent_health_events(limit: int = Query(50, description="Number of recent events to retrieve"), request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_recent_health_events called", endpoint="get_recent_health_events", trace_id=trace_id)
+
     """Ottieni eventi di salute recenti"""
     try:
         from database import get_supabase_client
@@ -189,7 +210,12 @@ async def get_recent_health_events(limit: int = Query(50, description="Number of
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/metrics/summary")
-async def get_health_metrics_summary():
+async def get_health_metrics_summary(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_health_metrics_summary called", endpoint="get_health_metrics_summary", trace_id=trace_id)
+
     """Ottieni riassunto metriche di salute sistema"""
     try:
         from database import get_supabase_client
@@ -240,7 +266,12 @@ async def get_health_metrics_summary():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/component/{component_name}/heartbeat")
-async def manual_heartbeat(component_name: str):
+async def manual_heartbeat(component_name: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route manual_heartbeat called", endpoint="manual_heartbeat", trace_id=trace_id)
+
     """Invia heartbeat manuale per un componente"""
     try:
         from database import get_supabase_client
@@ -275,7 +306,12 @@ async def manual_heartbeat(component_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard")
-async def get_health_dashboard():
+async def get_health_dashboard(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_health_dashboard called", endpoint="get_health_dashboard", trace_id=trace_id)
+
     """Ottieni dati completi per dashboard di monitoraggio"""
     try:
         from services.component_health_monitor import get_system_health

@@ -1,7 +1,8 @@
 # backend/routes/deliverables.py
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import Request, APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 import json
 from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable, delete_deliverable
@@ -11,7 +12,12 @@ router = APIRouter(prefix="/deliverables", tags=["deliverables"])
 logger = logging.getLogger(__name__)
 
 @router.get("/workspace/{workspace_id}")
-async def get_workspace_deliverables(workspace_id: str, goal_id: Optional[str] = None):
+async def get_workspace_deliverables(workspace_id: str, goal_id: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_deliverables called", endpoint="get_workspace_deliverables", trace_id=trace_id)
+
     """Get all deliverables for a workspace - Frontend compatible format"""
     try:
         if goal_id:
@@ -82,7 +88,12 @@ async def get_workspace_deliverables(workspace_id: str, goal_id: Optional[str] =
         raise HTTPException(status_code=500, detail=f"Failed to fetch deliverables: {str(e)}")
 
 @router.post("/workspace/{workspace_id}/create")
-async def create_workspace_deliverable(workspace_id: str, deliverable_data: Dict[str, Any]):
+async def create_workspace_deliverable(workspace_id: str, deliverable_data: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_workspace_deliverable called", endpoint="create_workspace_deliverable", trace_id=trace_id)
+
     """Create a new deliverable for a workspace"""
     try:
         logger.info(f"📝 Creating deliverable for workspace {workspace_id}")
@@ -122,7 +133,12 @@ async def create_workspace_deliverable(workspace_id: str, deliverable_data: Dict
         raise HTTPException(status_code=500, detail=f"Failed to create deliverable: {str(e)}")
 
 @router.put("/{deliverable_id}")
-async def update_deliverable(deliverable_id: str, update_data: Dict[str, Any]):
+async def update_deliverable(deliverable_id: str, update_data: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route update_deliverable called", endpoint="update_deliverable", trace_id=trace_id)
+
     """Update a deliverable"""
     try:
         logger.info(f"🔄 Updating deliverable {deliverable_id}")
@@ -148,7 +164,12 @@ async def update_deliverable(deliverable_id: str, update_data: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"Failed to update deliverable: {str(e)}")
 
 @router.delete("/{deliverable_id}")
-async def delete_deliverable(deliverable_id: str):
+async def delete_deliverable(deliverable_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route delete_deliverable called", endpoint="delete_deliverable", trace_id=trace_id)
+
     """Delete a deliverable"""
     try:
         logger.info(f"🗑️ Deleting deliverable {deliverable_id}")
@@ -172,7 +193,12 @@ async def delete_deliverable(deliverable_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to delete deliverable: {str(e)}")
 
 @router.get("/{deliverable_id}")
-async def get_deliverable(deliverable_id: str):
+async def get_deliverable(deliverable_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_deliverable called", endpoint="get_deliverable", trace_id=trace_id)
+
     """Get a specific deliverable by ID"""
     try:
         logger.info(f"🔍 Fetching deliverable {deliverable_id}")
@@ -196,7 +222,12 @@ async def get_deliverable(deliverable_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch deliverable: {str(e)}")
 
 @router.post("/workspace/{workspace_id}/force-finalize")
-async def force_finalize_deliverables(workspace_id: str):
+async def force_finalize_deliverables(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route force_finalize_deliverables called", endpoint="force_finalize_deliverables", trace_id=trace_id)
+
     """Force creation of final deliverables for completed goals"""
     try:
         logger.info(f"🚀 Force finalizing deliverables for workspace {workspace_id}")

@@ -6,8 +6,9 @@ Endpoints per gestire il thinking process autentico basato sulla vera todo list
 derivata dal goal decomposition. NON genera contenuto fake.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import Request, APIRouter, HTTPException, Depends
 from typing import Dict, List, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 from uuid import UUID
 from datetime import datetime
@@ -18,7 +19,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/workspace/{workspace_id}/thinking/goals")
-async def get_workspace_thinking_goals(workspace_id: str):
+async def get_workspace_thinking_goals(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_thinking_goals called", endpoint="get_workspace_thinking_goals", trace_id=trace_id)
+
     """🎯 Get all goals with thinking process data for a workspace"""
     try:
         # Get goals for the workspace
@@ -66,7 +72,12 @@ async def get_workspace_thinking_goals(workspace_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get thinking goals: {str(e)}")
 
 @router.get("/goal/{goal_id}/thinking")
-async def get_goal_thinking_process(goal_id: str, workspace_id: str):
+async def get_goal_thinking_process(goal_id: str, workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_goal_thinking_process called", endpoint="get_goal_thinking_process", trace_id=trace_id)
+
     """🧠 Get complete thinking process for a specific goal"""
     try:
         # Get goal basic info
@@ -203,7 +214,12 @@ async def get_goal_thinking_process(goal_id: str, workspace_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get thinking process: {str(e)}")
 
 @router.get("/workspace/{workspace_id}/thinking/latest")
-async def get_latest_thinking_steps(workspace_id: str, limit: int = 10):
+async def get_latest_thinking_steps(workspace_id: str, limit: int = 10, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_latest_thinking_steps called", endpoint="get_latest_thinking_steps", trace_id=trace_id)
+
     """💭 Get latest thinking steps across all goals in workspace"""
     try:
         # Get latest thinking steps
@@ -231,7 +247,12 @@ async def get_latest_thinking_steps(workspace_id: str, limit: int = 10):
         raise HTTPException(status_code=500, detail=f"Failed to get latest thinking: {str(e)}")
 
 @router.get("/health")
-async def thinking_api_health():
+async def thinking_api_health(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route thinking_api_health called", endpoint="thinking_api_health", trace_id=trace_id)
+
     """🏥 Health check for thinking API"""
     return {
         "service": "Authentic Thinking Process API",

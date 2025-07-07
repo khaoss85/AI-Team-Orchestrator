@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import asyncio
 import json
 import os
@@ -10,10 +11,10 @@ from supabase import create_client, Client
 import requests
 
 # Add the backend directory to Python path
-sys.path.append('/Users/pelleri/Documents/ai-team-orchestrator/backend')
+sys.path.append('.')
 
 # Load environment variables
-load_dotenv('/Users/pelleri/Documents/ai-team-orchestrator/backend/.env')
+load_dotenv('./.env')
 
 async def trigger_team_proposal():
     """Trigger a team proposal creation for the existing workspace"""

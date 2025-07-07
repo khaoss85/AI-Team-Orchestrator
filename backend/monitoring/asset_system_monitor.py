@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from database_asset_extensions import AssetDrivenDatabaseManager
-from services.ai_quality_gate_engine import AIQualityGateEngine
-from services.asset_driven_task_executor import AssetDrivenTaskExecutor
+from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class AssetSystemMonitor:
     
     def __init__(self):
         self.db_manager = AssetDrivenDatabaseManager()
-        self.quality_engine = AIQualityGateEngine()
+        self.quality_engine = unified_quality_engine
         self.task_executor = AssetDrivenTaskExecutor()
         
         # Configuration

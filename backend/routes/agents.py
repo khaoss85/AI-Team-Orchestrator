@@ -1,3 +1,5 @@
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 from uuid import UUID
@@ -27,7 +29,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 @router.post("/{workspace_id}", response_model=Agent, status_code=status.HTTP_201_CREATED)
-async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
+async def create_new_agent(workspace_id: UUID, agent: AgentCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_new_agent called", endpoint="create_new_agent", trace_id=trace_id)
+    
     """Create a new agent in a workspace"""
     try:
         # Ensure the agent's workspace_id matches the path parameter
@@ -54,7 +61,12 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate):
         )
 
 @router.get("/{workspace_id}", response_model=List[Agent])
-async def get_workspace_agents(workspace_id: str):
+async def get_workspace_agents(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_agents called", endpoint="get_workspace_agents", trace_id=trace_id)
+    
     """Get all agents in a workspace"""
     try:
         # Validate UUID format
@@ -104,7 +116,12 @@ async def get_workspace_agents(workspace_id: str):
         )
 
 @router.get("/{workspace_id}/handoffs", response_model=List[Handoff], tags=["agents", "handoffs"])
-async def get_workspace_handoffs(workspace_id: UUID):
+async def get_workspace_handoffs(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_handoffs called", endpoint="get_workspace_handoffs", trace_id=trace_id)
+    
     """Get all handoffs for a workspace"""
     try:
         handoffs_data = await db_list_handoffs(str(workspace_id))
@@ -119,7 +136,12 @@ async def get_workspace_handoffs(workspace_id: UUID):
 
         
 @router.put("/{workspace_id}/{agent_id}", response_model=Agent)
-async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: AgentUpdate):
+async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: AgentUpdate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route update_agent_data called", endpoint="update_agent_data", trace_id=trace_id)
+    
     """Update an agent's configuration"""
     try:
         # Verifica che l'agente esista e appartenga al workspace
@@ -173,7 +195,12 @@ async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: Ag
         )
 
 @router.post("/{workspace_id}/verify", status_code=status.HTTP_200_OK)
-async def verify_agents(workspace_id: UUID):
+async def verify_agents(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route verify_agents called", endpoint="verify_agents", trace_id=trace_id)
+    
     """Verify all agents in a workspace have required capabilities"""
     try:
         manager = AgentManager(workspace_id)
@@ -193,7 +220,12 @@ async def verify_agents(workspace_id: UUID):
         )
 
 @router.post("/{workspace_id}/tasks", response_model=Task, status_code=status.HTTP_201_CREATED)
-async def create_new_task(workspace_id: UUID, task: TaskCreate):
+async def create_new_task(workspace_id: UUID, task: TaskCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_new_task called", endpoint="create_new_task", trace_id=trace_id)
+    
     """Create a new task for an agent"""
     try:
         # Ensure the task's workspace_id matches the path parameter
@@ -229,7 +261,12 @@ async def create_new_task(workspace_id: UUID, task: TaskCreate):
         )
 
 @router.post("/{workspace_id}/execute/{task_id}", status_code=status.HTTP_200_OK)
-async def execute_task(workspace_id: UUID, task_id: UUID):
+async def execute_task(workspace_id: UUID, task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route execute_task called", endpoint="execute_task", trace_id=trace_id)
+    
     """Execute a specific task"""
     try:
         manager = AgentManager(workspace_id)

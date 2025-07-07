@@ -1,6 +1,8 @@
 # backend/routes/unified_assets.py
 # Unified Asset Management API with proper versioning and AI content processing
 
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, HTTPException, status
 from typing import List, Dict, Any, Optional
 from uuid import UUID
@@ -8,9 +10,9 @@ import logging
 import json
 from datetime import datetime
 
-from deliverable_system.concrete_asset_extractor import concrete_extractor
-from deliverable_system.markup_processor import markup_processor
-from ai_quality_assurance.smart_evaluator import smart_evaluator
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
 from database import list_tasks, get_workspace
 from models import TaskStatus
 
@@ -588,7 +590,12 @@ class UnifiedAssetManager:
 unified_asset_manager = UnifiedAssetManager()
 
 @router.get("/workspace/{workspace_id}", response_model=Dict[str, Any])
-async def get_unified_workspace_assets(workspace_id: UUID):
+async def get_unified_workspace_assets(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_unified_workspace_assets called", endpoint="get_unified_workspace_assets", trace_id=trace_id)
+    
     """
     Get all workspace assets using unified extraction and processing
     """
@@ -603,7 +610,12 @@ async def get_unified_workspace_assets(workspace_id: UUID):
         return unified_asset_manager._empty_response(str(workspace_id))
 
 @router.post("/workspace/{workspace_id}/refresh", response_model=Dict[str, Any])
-async def refresh_workspace_assets(workspace_id: UUID):
+async def refresh_workspace_assets(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route refresh_workspace_assets called", endpoint="refresh_workspace_assets", trace_id=trace_id)
+    
     """
     Force refresh of workspace assets (same as GET but explicitly for refresh)
     """

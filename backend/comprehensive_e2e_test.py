@@ -170,7 +170,11 @@ class ComprehensiveE2ETestSuite:
         
         response = requests.post(f"{self.base_url}/workspaces/", json=workspace_data)
         if response.status_code not in [200, 201]:
-            raise Exception(f"Workspace creation failed: {response.text}")
+            try:
+                error_detail = response.json()
+            except json.JSONDecodeError:
+                error_detail = response.text
+            raise Exception(f"Workspace creation failed: {error_detail}")
         
         workspace_result = response.json()
         self.workspace_id = workspace_result["id"]
@@ -337,10 +341,10 @@ class ComprehensiveE2ETestSuite:
         
         # 🔧 FIX PILLAR 8: Trigger immediate quality validation
         try:
-            from services.automatic_quality_trigger import trigger_quality_check_for_workspace
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
             
             logger.info("🚀 Triggering immediate quality validation for workspace...")
-            quality_trigger_result = await trigger_quality_check_for_workspace(self.workspace_id)
+            quality_trigger_result = await unified_quality_engine.trigger_quality_check_for_workspace(self.workspace_id)
             logger.info(f"✅ Quality trigger result: {quality_trigger_result}")
             
         except Exception as e:
@@ -470,7 +474,7 @@ class ComprehensiveE2ETestSuite:
         
         # 🔧 FIX PILLAR 12: Trigger deliverable creation
         try:
-            from deliverable_aggregator import check_and_create_final_deliverable
+            from deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
             
             logger.info("🚀 Triggering deliverable creation for workspace...")
             deliverable_id = await check_and_create_final_deliverable(self.workspace_id)

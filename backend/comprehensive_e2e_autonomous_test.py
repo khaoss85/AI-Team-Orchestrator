@@ -32,6 +32,7 @@ VALIDAZIONE 15 PILASTRI:
 ✅ Pillar 15: Robustezza (gestione errori)
 """
 
+from pathlib import Path
 import asyncio
 import requests
 import json
@@ -248,7 +249,7 @@ class ComprehensiveAutonomousTest:
     async def create_manual_team(self):
         """Create team manually if autonomous proposal fails"""
         import sys
-        sys.path.insert(0, '/Users/pelleri/Documents/ai-team-orchestrator/backend')
+        sys.path.insert(0, '.')
         
         from database import get_supabase_client
         supabase = get_supabase_client()
@@ -364,7 +365,7 @@ class ComprehensiveAutonomousTest:
         # Force immediate validation after grace period
         try:
             import sys
-            sys.path.insert(0, '/Users/pelleri/Documents/ai-team-orchestrator/backend')
+            sys.path.insert(0, '.')
             from automated_goal_monitor import automated_goal_monitor
             
             logger.info("   ⚡ Triggering immediate goal validation after grace period...")

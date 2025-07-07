@@ -362,14 +362,15 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
     """
     try:
         # Import here to avoid circular imports
-        from ai_quality_assurance.ai_goal_extractor import extract_and_create_workspace_goals
+        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
         from models import GoalStatus
         from uuid import uuid4
         # datetime already imported globally
         
         # 🤖 Use AI-driven goal extraction with semantic understanding
         logger.info(f"🤖 AI-DRIVEN GOAL EXTRACTION from text: {goal_text}")
-        workspace_goals_data = await extract_and_create_workspace_goals(workspace_id, goal_text)
+        # Use unified quality engine for goal extraction
+        workspace_goals_data = await unified_quality_engine.extract_and_create_workspace_goals(workspace_id, goal_text)
         
         logger.info(f"🎯 AI extracted {len(workspace_goals_data)} unique goals (no duplicates)")
         
@@ -601,7 +602,7 @@ async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: st
     Used when AI-driven extraction fails, preserves original functionality.
     """
     try:
-        from ai_quality_assurance.goal_validator import goal_validator
+        from backend.ai_quality_assurance.unified_quality_engine import goal_validator
         from models import GoalStatus
         from uuid import uuid4
         # datetime already imported globally
@@ -678,8 +679,24 @@ async def create_workspace(name: str, description: Optional[str], user_id: str, 
         if budget:
             data["budget"] = budget
             
+        logger.info(f"Attempting to insert new workspace with data: {data}")
         result = await safe_database_operation("INSERT", "workspaces", data)
-        created_workspace = result.data[0] if result.data and len(result.data) > 0 else None
+        
+        if result.data and len(result.data) > 0:
+            created_workspace = result.data[0]
+            logger.info(f"Successfully created workspace: {created_workspace.get('id')}")
+        else:
+            created_workspace = None
+            logger.error(f"Failed to create workspace. Supabase response: {result}")
+            if hasattr(result, 'error') and result.error:
+                logger.error(f"Supabase error details: {result.error}")
+                if hasattr(result.error, 'message'):
+                    logger.error(f"Supabase error message: {result.error.message}")
+                if hasattr(result.error, 'details'):
+                    logger.error(f"Supabase error details: {result.error.details}")
+                if hasattr(result.error, 'hint'):
+                    logger.error(f"Supabase error hint: {result.error.hint}")
+            raise Exception(f"Failed to create workspace: {result}")
         
         # 🎯 GOALS CREATION DELAYED: Goals will be created when user reaches /configure page
         logger.info("⚠️ Workspace goals creation delayed - will be done in /configure page")
@@ -1129,8 +1146,8 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         # 🎯 STEP 1: QUALITY VALIDATION FOR COMPLETED TASKS
         if status == "completed" and result_payload is not None:
             try:
-                from quality_gate import QualityGate
-                quality_gate = QualityGate()
+                
+                
                 task = await get_task(task_id)
                 goal = await get_workspace_goal(task['goal_id']) if task and task.get('goal_id') else None
                 goal_context = {"description": goal.get("description"), "metric_type": goal.get("metric_type")} if goal else {}
@@ -1191,7 +1208,7 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                 
                 # Extract assets for deliverable system
                 try:
-                    from deliverable_system.concrete_asset_extractor import ConcreteAssetExtractor
+                    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
                     asset_extractor = ConcreteAssetExtractor()
                     
                     # Get task details for asset extraction
@@ -2290,7 +2307,7 @@ async def _ai_convert_to_achievement_metrics(
     🤖 AI-driven conversion of content analysis to achievement metrics
     """
     try:
-        from ai_quality_assurance.smart_evaluator import smart_evaluator
+        from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
         
         # Prepare content for AI analysis
         discovered_content = content_analysis.discovered_content
@@ -2467,7 +2484,7 @@ async def _analyze_achievements_with_ai(result_payload: Dict[str, Any], task_nam
     """
     try:
         # Import AI quality validator that's already available
-        from ai_quality_assurance.quality_validator import AIQualityValidator
+        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
         
         # Create a prompt that analyzes achievements universally
         sample_data = json.dumps(result_payload, default=str)[:1000]  # Limit for AI processing
@@ -2513,9 +2530,9 @@ Respond with this exact JSON format:
 
         # Try to use AI if available
         try:
-            quality_validator = AIQualityValidator()
-            if quality_validator.openai_available:
-                ai_result = await quality_validator._call_openai_api(ai_prompt, "achievement_analysis")
+            # Use the unified quality engine instance directly
+            if unified_quality_engine.openai_available:
+                ai_result = await unified_quality_engine._call_openai_api(ai_prompt, "achievement_analysis")
                 
                 if ai_result and "raw_response" in ai_result:
                     response = ai_result["raw_response"]
@@ -2765,7 +2782,7 @@ async def _trigger_goal_validation_and_correction(task_id: str, workspace_id: st
         completed_tasks = await list_tasks(workspace_id, status="completed")
         
         # Import and use goal validator
-        from ai_quality_assurance.goal_validator import goal_validator
+        from backend.ai_quality_assurance.unified_quality_engine import goal_validator
         
         logger.info(f"🎯 REAL-TIME GOAL VALIDATION: Analyzing {len(completed_tasks)} completed tasks against workspace goal")
         

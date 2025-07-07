@@ -157,23 +157,18 @@ except Exception:  # pragma: no cover - fallback if database stub incomplete
 
 # FIXED: Import centralizzato Quality System con fallback
 try:
-    from backend.utils.quality_config_loader import load_quality_system_config
+    from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
 except ImportError:
     try:
-        from utils.quality_config_loader import load_quality_system_config  # type: ignore
-    except ImportError as e:
-        logger.warning(f"⚠️ Quality System loader not available: {e}")
-        QUALITY_SYSTEM_AVAILABLE = False
-        QualitySystemConfig = None
-        DynamicPromptEnhancer = None
-    else:
-        QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = load_quality_system_config()
+        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+
+QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = unified_quality_engine.get_config(), True
 else:
-    QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = load_quality_system_config()
+    
 
     # Prova a importare DynamicPromptEnhancer
     try:
-        from ai_quality_assurance.quality_integration import DynamicPromptEnhancer
+        from backend.ai_quality_assurance.unified_quality_engine import DynamicPromptEnhancer
     except ImportError:
         try:
             from backend.ai_quality_assurance.quality_integration import (

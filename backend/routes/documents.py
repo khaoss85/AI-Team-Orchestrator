@@ -4,8 +4,9 @@ Document Management API Routes
 Handles document upload, listing, and management
 """
 
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
+from fastapi import Request, APIRouter, HTTPException, status, UploadFile, File, Form
 from typing import List, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 import base64
 
@@ -185,7 +186,12 @@ async def delete_document(
         )
 
 @router.get("/{workspace_id}/vector-stores")
-async def get_vector_stores(workspace_id: str):
+async def get_vector_stores(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_vector_stores called", endpoint="get_vector_stores", trace_id=trace_id)
+
     """Get vector stores for workspace"""
     try:
         vector_store_ids = await document_manager.get_vector_store_ids_for_agent(

@@ -7,7 +7,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
+from fastapi import Request, APIRouter, HTTPException
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from pydantic import BaseModel, Field
 
 from services.memory_system import memory_system
@@ -50,7 +51,12 @@ class MemoryInsightsResponse(BaseModel):
 # === MEMORY CONTEXT ENDPOINTS ===
 
 @router.post("/context", response_model=str)
-async def store_memory_context(context_data: ContextCreate):
+async def store_memory_context(context_data: ContextCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route store_memory_context called", endpoint="store_memory_context", trace_id=trace_id)
+
     """Store context in memory system"""
     try:
         logger.info(f"💾 Storing context for workspace: {context_data.workspace_id}")
@@ -71,7 +77,12 @@ async def store_memory_context(context_data: ContextCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/context/search", response_model=List[ContextResponse])
-async def search_memory_context(query_data: ContextQuery):
+async def search_memory_context(query_data: ContextQuery, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route search_memory_context called", endpoint="search_memory_context", trace_id=trace_id)
+
     """Search memory context with semantic matching"""
     try:
         logger.info(f"🔍 Searching context for workspace: {query_data.workspace_id}")
@@ -104,7 +115,12 @@ async def search_memory_context(query_data: ContextQuery):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/context/{workspace_id}", response_model=List[ContextResponse])
-async def get_workspace_memory_context(workspace_id: UUID, limit: int = 20):
+async def get_workspace_memory_context(workspace_id: UUID, limit: int = 20, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_memory_context called", endpoint="get_workspace_memory_context", trace_id=trace_id)
+
     """Get recent memory context for workspace"""
     try:
         logger.info(f"📋 Getting memory context for workspace: {workspace_id}")
@@ -138,7 +154,12 @@ async def get_workspace_memory_context(workspace_id: UUID, limit: int = 20):
 # === MEMORY INSIGHTS ENDPOINTS ===
 
 @router.get("/insights/{workspace_id}", response_model=MemoryInsightsResponse)
-async def get_workspace_memory_insights(workspace_id: UUID):
+async def get_workspace_memory_insights(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_memory_insights called", endpoint="get_workspace_memory_insights", trace_id=trace_id)
+
     """Get comprehensive memory insights for workspace"""
     try:
         logger.info(f"🧠 Getting memory insights for workspace: {workspace_id}")
@@ -166,7 +187,12 @@ async def get_workspace_memory_insights(workspace_id: UUID):
 # === LEARNING PATTERNS ENDPOINTS ===
 
 @router.get("/learning-patterns/{workspace_id}")
-async def get_workspace_learning_patterns(workspace_id: UUID):
+async def get_workspace_learning_patterns(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_learning_patterns called", endpoint="get_workspace_learning_patterns", trace_id=trace_id)
+
     """Get learning patterns for workspace"""
     try:
         logger.info(f"📊 Getting learning patterns for workspace: {workspace_id}")
@@ -198,7 +224,12 @@ async def get_workspace_learning_patterns(workspace_id: UUID):
 # === MEMORY HEALTH ENDPOINTS ===
 
 @router.get("/health/{workspace_id}")
-async def get_memory_system_health(workspace_id: UUID):
+async def get_memory_system_health(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_memory_system_health called", endpoint="get_memory_system_health", trace_id=trace_id)
+
     """Get memory system health status"""
     try:
         logger.info(f"🏥 Checking memory health for workspace: {workspace_id}")

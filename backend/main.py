@@ -1,12 +1,14 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from middleware.trace_middleware import TraceMiddleware
 from typing import List, Dict, Any, Optional
 import os
 import sys
 import asyncio
 from dotenv import load_dotenv
 import logging
+
 
 # Aggiungi la directory corrente e la root del progetto al path
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -133,17 +135,17 @@ async def lifespan(app: FastAPI):
     
     logger.info("📦 Starting Deliverable Pipeline...")
     try:
-        from deliverable_system.deliverable_pipeline import deliverable_pipeline
+        from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
         # Start deliverable pipeline in background
-        asyncio.create_task(deliverable_pipeline.start())
+        asyncio.create_task(unified_deliverable_engine.start())
         logger.info("✅ Deliverable Pipeline started successfully")
     except Exception as e:
         logger.error(f"❌ Failed to start Deliverable Pipeline: {e}")
     
     logger.info("🛡️ Starting Automatic Quality Trigger System...")
     try:
-        from services.automatic_quality_trigger import get_automatic_quality_trigger
-        quality_trigger = get_automatic_quality_trigger()
+        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+        quality_trigger = unified_quality_engine.get_automatic_quality_trigger()
         
         # Initialize the quality trigger system (it will monitor for events)
         logger.info("✅ Automatic Quality Trigger System initialized successfully")
@@ -207,8 +209,8 @@ async def lifespan(app: FastAPI):
     # Stop deliverable pipeline
     logger.info("Stopping Deliverable Pipeline...")
     try:
-        from deliverable_system.deliverable_pipeline import deliverable_pipeline
-        await deliverable_pipeline.stop()
+        from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+        await unified_deliverable_engine.stop()
     except Exception as e:
         logger.error(f"Error stopping deliverable pipeline: {e}")
     
@@ -253,41 +255,69 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add X-Trace-ID middleware for end-to-end traceability
+app.add_middleware(TraceMiddleware)
+
+# Install trace-aware logging
+install_trace_aware_logging()
+
+logger.info("✅ X-Trace-ID middleware and trace-aware logging installed")
+
 # Register asset system routes
 register_asset_routes(app)
 
 # Include all routers
+# ==========================================
+
+# Core workspace and project management
 app.include_router(workspace_router)
 app.include_router(director_router, prefix="/api")
-app.include_router(director_router)
 app.include_router(agents_router)
 app.include_router(tools_router)
-app.include_router(monitoring_router) 
-app.include_router(human_feedback_router)
-app.include_router(improvement_router)
-app.include_router(project_insights_router)
-app.include_router(proposals_router)
-app.include_router(delegation_router)
-app.include_router(unified_assets_router)
-app.include_router(ai_content_router)
-app.include_router(utils_router)
-app.include_router(documents_router)
+
+# Goal and task management
 app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router)
 app.include_router(workspace_goals_direct_router)
-app.include_router(deliverables_router)
-app.include_router(websocket_router)
-app.include_router(conversation_router)
-app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
-app.include_router(memory_router, prefix="/api")
-app.include_router(thinking_router, prefix="/api")
+
+# Asset and deliverable system
+app.include_router(unified_assets_router)
 app.include_router(assets_router, prefix="/api")
+app.include_router(deliverables_router)
+
+# Communication and feedback
+app.include_router(websocket_router)
 app.include_router(websocket_assets_router, prefix="/api")
+app.include_router(conversation_router)
+app.include_router(human_feedback_router)
+
+# AI and processing
+app.include_router(ai_content_router)
+app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
+app.include_router(thinking_router, prefix="/api")
+app.include_router(memory_router, prefix="/api")
+
+# Monitoring and system management
+app.include_router(monitoring_router)
 app.include_router(system_monitoring_router)
-app.include_router(service_registry_router)
-app.include_router(service_registry_compat_router)
-app.include_router(component_health_router)
-app.include_router(component_health_compat_router)
+app.include_router(project_insights_router)
+app.include_router(improvement_router)
+
+# Service management
+app.include_router(service_registry_router, prefix="/api")
+app.include_router(service_registry_compat_router)  # Legacy compatibility
+app.include_router(component_health_router, prefix="/api")
+app.include_router(component_health_compat_router)  # Legacy compatibility
+
+# Workflow and delegation
+app.include_router(proposals_router)
+app.include_router(delegation_router)
+
+# Documentation and utilities
+app.include_router(documents_router)
+app.include_router(utils_router)
+
+# API compatibility layer
 app.include_router(api_router)
 
 # Health check endpoint

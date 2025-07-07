@@ -3,12 +3,13 @@
 Execute thinking_steps schema migration using Supabase client
 """
 
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 from database import supabase
 
 # Load environment
-load_dotenv('/Users/pelleri/Documents/ai-team-orchestrator/backend/.env')
+load_dotenv('./.env')
 
 def execute_migration():
     """Execute the thinking_steps schema migration"""

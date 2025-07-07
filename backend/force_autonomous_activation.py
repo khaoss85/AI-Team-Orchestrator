@@ -6,8 +6,9 @@ Questo script forza l'attivazione del sistema autonomo verificando che
 l'AutomatedGoalMonitor processi i goal e generi task automaticamente.
 """
 
+from pathlib import Path
 import sys
-sys.path.insert(0, '/Users/pelleri/Documents/ai-team-orchestrator/backend')
+sys.path.insert(0, '.')
 
 import asyncio
 import logging

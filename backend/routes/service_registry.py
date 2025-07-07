@@ -4,8 +4,9 @@ Service Registry API Routes
 Provides REST endpoints for service discovery, health monitoring, and management.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Request, APIRouter, HTTPException, Query
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,12 @@ router = APIRouter(prefix="/api/services", tags=["service-registry"])
 registry_router = APIRouter(prefix="/service-registry", tags=["service-registry"])
 
 @router.get("/list")
-async def list_services(detailed: bool = Query(False, description="Include detailed service information")):
+async def list_services(detailed: bool = Query(False, description="Include detailed service information"), request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route list_services called", endpoint="list_services", trace_id=trace_id)
+
     """List all registered services"""
     try:
         from services.service_registry import service_registry
@@ -29,7 +35,12 @@ async def list_services(detailed: bool = Query(False, description="Include detai
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def get_service_stats():
+async def get_service_stats(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_service_stats called", endpoint="get_service_stats", trace_id=trace_id)
+
     """Get service registry statistics"""
     try:
         from services.service_registry import get_service_stats
@@ -39,7 +50,12 @@ async def get_service_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/health")
-async def service_health_check():
+async def service_health_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route service_health_check called", endpoint="service_health_check", trace_id=trace_id)
+
     """Run health check on all services"""
     try:
         from services.service_registry import run_health_check
@@ -65,7 +81,12 @@ async def service_health_check():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/service/{service_name}")
-async def get_service_info(service_name: str):
+async def get_service_info(service_name: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_service_info called", endpoint="get_service_info", trace_id=trace_id)
+
     """Get detailed information about a specific service"""
     try:
         from services.service_registry import get_service_info
@@ -95,7 +116,12 @@ async def get_service_info(service_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/service/{service_name}/health")
-async def check_service_health(service_name: str):
+async def check_service_health(service_name: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route check_service_health called", endpoint="check_service_health", trace_id=trace_id)
+
     """Check health of a specific service"""
     try:
         from services.service_registry import check_service_health
@@ -113,7 +139,12 @@ async def check_service_health(service_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/categories/{category}")
-async def get_services_by_category(category: str):
+async def get_services_by_category(category: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_services_by_category called", endpoint="get_services_by_category", trace_id=trace_id)
+
     """Get all services in a specific category"""
     try:
         from services.service_registry import service_registry, ServiceCategory
@@ -150,7 +181,12 @@ async def get_services_by_category(category: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/status/{status}")
-async def get_services_by_status(status: str):
+async def get_services_by_status(status: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_services_by_status called", endpoint="get_services_by_status", trace_id=trace_id)
+
     """Get all services with a specific status"""
     try:
         from services.service_registry import service_registry, ServiceStatus
@@ -187,7 +223,12 @@ async def get_services_by_status(status: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/discover")
-async def discover_unregistered_services():
+async def discover_unregistered_services(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route discover_unregistered_services called", endpoint="discover_unregistered_services", trace_id=trace_id)
+
     """Auto-discover services that exist but are not registered"""
     try:
         from services.service_registry import service_registry

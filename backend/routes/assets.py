@@ -8,7 +8,8 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from uuid import UUID, uuid4
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File
+from fastapi import Request, APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -19,8 +20,8 @@ from models import (
 from database import get_supabase_client
 from services.asset_requirements_generator import AssetRequirementsGenerator
 from services.asset_artifact_processor import AssetArtifactProcessor
-from services.ai_quality_gate_engine import AIQualityGateEngine
-from services.asset_driven_task_executor import AssetDrivenTaskExecutor
+from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
 from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 # Initialize services
 requirements_generator = AssetRequirementsGenerator()
 artifact_processor = AssetArtifactProcessor()
-quality_gate_engine = AIQualityGateEngine()
+quality_gate_engine = unified_quality_engine
 task_executor = AssetDrivenTaskExecutor()
 goal_planner = EnhancedGoalDrivenPlanner()
 
@@ -110,7 +111,12 @@ async def generate_asset_requirements(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/requirements/{workspace_id}", response_model=List[AssetRequirement])
-async def get_workspace_requirements(workspace_id: UUID):
+async def get_workspace_requirements(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_requirements called", endpoint="get_workspace_requirements", trace_id=trace_id)
+
     """Get all asset requirements for a workspace"""
     try:
         supabase = get_supabase_client()
@@ -129,7 +135,12 @@ async def get_workspace_requirements(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/requirements", response_model=AssetRequirement)
-async def create_asset_requirement(requirement: AssetRequirementCreate):
+async def create_asset_requirement(requirement: AssetRequirementCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_asset_requirement called", endpoint="create_asset_requirement", trace_id=trace_id)
+
     """Create a new asset requirement"""
     try:
         supabase = get_supabase_client()
@@ -160,7 +171,12 @@ async def create_asset_requirement(requirement: AssetRequirementCreate):
 # === ASSET ARTIFACTS ENDPOINTS ===
 
 @router.get("/artifacts/{workspace_id}", response_model=List[AssetArtifact])
-async def get_workspace_artifacts(workspace_id: UUID):
+async def get_workspace_artifacts(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_artifacts called", endpoint="get_workspace_artifacts", trace_id=trace_id)
+
     """Get all asset artifacts for a workspace"""
     try:
         supabase = get_supabase_client()
@@ -225,7 +241,12 @@ async def create_asset_artifact(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/artifacts/{artifact_id}/download")
-async def download_artifact(artifact_id: UUID):
+async def download_artifact(artifact_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route download_artifact called", endpoint="download_artifact", trace_id=trace_id)
+
     """Download artifact content as file"""
     try:
         supabase = get_supabase_client()
@@ -260,7 +281,12 @@ async def download_artifact(artifact_id: UUID):
 # === QUALITY MANAGEMENT ENDPOINTS ===
 
 @router.post("/quality/artifacts/{artifact_id}/validate")
-async def validate_artifact(artifact_id: UUID, background_tasks: BackgroundTasks):
+async def validate_artifact(artifact_id: UUID, background_tasks: BackgroundTasks, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route validate_artifact called", endpoint="validate_artifact", trace_id=trace_id)
+
     """Run quality validation on an artifact"""
     try:
         logger.info(f"🛡️ Starting quality validation for artifact: {artifact_id}")
@@ -275,7 +301,12 @@ async def validate_artifact(artifact_id: UUID, background_tasks: BackgroundTasks
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quality/artifacts/{artifact_id}/approve")
-async def approve_artifact(artifact_id: UUID):
+async def approve_artifact(artifact_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route approve_artifact called", endpoint="approve_artifact", trace_id=trace_id)
+
     """Approve an artifact after human review"""
     try:
         supabase = get_supabase_client()
@@ -307,7 +338,12 @@ async def approve_artifact(artifact_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quality/artifacts/{artifact_id}/enhance")
-async def enhance_artifact(artifact_id: UUID, background_tasks: BackgroundTasks):
+async def enhance_artifact(artifact_id: UUID, background_tasks: BackgroundTasks, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route enhance_artifact called", endpoint="enhance_artifact", trace_id=trace_id)
+
     """Request AI enhancement for an artifact"""
     try:
         logger.info(f"🤖 Starting AI enhancement for artifact: {artifact_id}")
@@ -322,7 +358,12 @@ async def enhance_artifact(artifact_id: UUID, background_tasks: BackgroundTasks)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/quality/artifacts/{artifact_id}/human-review")
-async def submit_human_review(artifact_id: UUID, review: QualityActionRequest):
+async def submit_human_review(artifact_id: UUID, review: QualityActionRequest, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route submit_human_review called", endpoint="submit_human_review", trace_id=trace_id)
+
     """Submit human review decision for an artifact"""
     try:
         supabase = get_supabase_client()
@@ -377,7 +418,12 @@ async def submit_human_review(artifact_id: UUID, review: QualityActionRequest):
 # === GOAL COMPLETION ENDPOINTS ===
 
 @router.get("/goals/{workspace_id}/completion", response_model=List[GoalCompletionResponse])
-async def get_goal_completion_with_assets(workspace_id: UUID):
+async def get_goal_completion_with_assets(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_goal_completion_with_assets called", endpoint="get_goal_completion_with_assets", trace_id=trace_id)
+
     """Get goal completion data with asset breakdown"""
     try:
         supabase = get_supabase_client()
@@ -439,7 +485,12 @@ async def get_goal_completion_with_assets(workspace_id: UUID):
 # === QUALITY METRICS ENDPOINTS ===
 
 @router.get("/quality/{workspace_id}/metrics", response_model=QualityMetricsResponse)
-async def get_quality_metrics(workspace_id: UUID):
+async def get_quality_metrics(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_quality_metrics called", endpoint="get_quality_metrics", trace_id=trace_id)
+
     """Get comprehensive quality metrics for workspace"""
     try:
         quality_metrics = await quality_gate_engine.get_quality_metrics_dashboard(workspace_id)
@@ -450,7 +501,12 @@ async def get_quality_metrics(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/quality/{workspace_id}/dashboard")
-async def get_quality_dashboard_data(workspace_id: UUID):
+async def get_quality_dashboard_data(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_quality_dashboard_data called", endpoint="get_quality_dashboard_data", trace_id=trace_id)
+
     """Get comprehensive quality dashboard data"""
     try:
         supabase = get_supabase_client()
@@ -515,7 +571,12 @@ async def get_quality_dashboard_data(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/quality/validations/{workspace_id}")
-async def get_quality_validations(workspace_id: UUID):
+async def get_quality_validations(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_quality_validations called", endpoint="get_quality_validations", trace_id=trace_id)
+
     """Get quality validations for workspace"""
     try:
         supabase = get_supabase_client()
@@ -555,7 +616,12 @@ async def get_quality_validations(workspace_id: UUID):
 # === MISSING ENDPOINTS IDENTIFIED IN E2E TESTING ===
 
 @router.get("/requirements/workspace/{workspace_id}", response_model=List[AssetRequirement])
-async def get_workspace_asset_requirements(workspace_id: str):
+async def get_workspace_asset_requirements(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_asset_requirements called", endpoint="get_workspace_asset_requirements", trace_id=trace_id)
+
     """Get all asset requirements for a workspace (CRITICAL FIX: Missing endpoint)"""
     try:
         logger.info(f"📋 Getting asset requirements for workspace: {workspace_id}")
@@ -577,7 +643,12 @@ async def get_workspace_asset_requirements(workspace_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/process-goal/{workspace_id}/{goal_id}")
-async def process_goal_to_assets(workspace_id: str, goal_id: str):
+async def process_goal_to_assets(workspace_id: str, goal_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route process_goal_to_assets called", endpoint="process_goal_to_assets", trace_id=trace_id)
+
     """
     CRITICAL FIX: Manual trigger for goal → asset requirements → tasks workflow
     
@@ -655,7 +726,12 @@ async def process_goal_to_assets(workspace_id: str, goal_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/workspace/{workspace_id}/status")
-async def get_workspace_asset_status(workspace_id: str):
+async def get_workspace_asset_status(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_asset_status called", endpoint="get_workspace_asset_status", trace_id=trace_id)
+
     """
     Get comprehensive asset status for a workspace
     
@@ -805,7 +881,12 @@ async def trigger_goal_progress_update(artifact_id: UUID):
 # === HEALTH CHECK ===
 
 @router.get("/health")
-async def assets_health_check():
+async def assets_health_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route assets_health_check called", endpoint="assets_health_check", trace_id=trace_id)
+
     """Health check for asset system"""
     try:
         health_status = await task_executor.health_check()

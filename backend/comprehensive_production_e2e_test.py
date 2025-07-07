@@ -536,7 +536,7 @@ class ProductionE2ETest:
         logger.info("-" * 50)
         
         try:
-            from services.quality_automation import quality_automation
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
             from services.course_correction_engine import course_correction_engine
             from models import AssetArtifact
             
@@ -589,7 +589,7 @@ This plan outlines the strategy to reduce customer onboarding time from 14 days 
             )
             
             # Test quality automation
-            quality_result = await quality_automation.auto_process_new_artifact(test_artifact)
+            quality_result = await unified_quality_engine.auto_process_new_artifact(test_artifact)
             
             logger.info(f"✅ Quality validation completed:")
             logger.info(f"   Decision: {quality_result.get('automated_decision', {}).get('action', 'unknown')}")

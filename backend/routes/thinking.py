@@ -7,7 +7,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
+from fastapi import Request, APIRouter, HTTPException
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import json
@@ -53,7 +54,12 @@ class ThinkingStepResponse(BaseModel):
 # === THINKING PROCESS ENDPOINTS ===
 
 @router.get("/{workspace_id}")
-async def get_workspace_thinking_processes(workspace_id: UUID, limit: int = 10):
+async def get_workspace_thinking_processes(workspace_id: UUID, limit: int = 10, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_thinking_processes called", endpoint="get_workspace_thinking_processes", trace_id=trace_id)
+
     """Get recent thinking processes for workspace"""
     try:
         logger.info(f"💭 Getting thinking processes for workspace: {workspace_id}")
@@ -94,7 +100,12 @@ async def get_workspace_thinking_processes(workspace_id: UUID, limit: int = 10):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/process/{process_id}")
-async def get_thinking_process(process_id: str):
+async def get_thinking_process(process_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_thinking_process called", endpoint="get_thinking_process", trace_id=trace_id)
+
     """Get specific thinking process by ID"""
     try:
         logger.info(f"💭 Getting thinking process: {process_id}")
@@ -138,7 +149,12 @@ async def get_thinking_process(process_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/start")
-async def start_thinking_process(query: ThinkingQuery):
+async def start_thinking_process(query: ThinkingQuery, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route start_thinking_process called", endpoint="start_thinking_process", trace_id=trace_id)
+
     """Start a new thinking process"""
     try:
         logger.info(f"💭 Starting thinking process for workspace: {query.workspace_id}")
@@ -162,7 +178,12 @@ async def start_thinking_process(query: ThinkingQuery):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/step")
-async def add_thinking_step(step_data: ThinkingStepCreate):
+async def add_thinking_step(step_data: ThinkingStepCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route add_thinking_step called", endpoint="add_thinking_step", trace_id=trace_id)
+
     """Add a thinking step to active process"""
     try:
         logger.info(f"💭 Adding thinking step to process: {step_data.process_id}")
@@ -190,7 +211,12 @@ async def add_thinking_step(step_data: ThinkingStepCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/complete/{process_id}")
-async def complete_thinking_process(process_id: str, conclusion: str, confidence: float = 0.8):
+async def complete_thinking_process(process_id: str, conclusion: str, confidence: float = 0.8, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route complete_thinking_process called", endpoint="complete_thinking_process", trace_id=trace_id)
+
     """Complete a thinking process with final conclusion"""
     try:
         logger.info(f"💭 Completing thinking process: {process_id}")
@@ -219,7 +245,12 @@ async def complete_thinking_process(process_id: str, conclusion: str, confidence
 # === O3/CLAUDE-STYLE THINKING ENDPOINTS ===
 
 @router.post("/o3-style")
-async def generate_o3_style_thinking(query: ThinkingQuery):
+async def generate_o3_style_thinking(query: ThinkingQuery, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route generate_o3_style_thinking called", endpoint="generate_o3_style_thinking", trace_id=trace_id)
+
     """Generate O3/Claude-style thinking process with streaming steps"""
     try:
         logger.info(f"💭 Generating O3-style thinking for: {query.query}")
@@ -254,7 +285,12 @@ async def generate_o3_style_thinking(query: ThinkingQuery):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/o3-demo/{workspace_id}")
-async def o3_thinking_demo(workspace_id: UUID, query: str = "How should I approach building a new feature?"):
+async def o3_thinking_demo(workspace_id: UUID, query: str = "How should I approach building a new feature?", request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route o3_thinking_demo called", endpoint="o3_thinking_demo", trace_id=trace_id)
+
     """Demo endpoint for O3-style thinking visualization"""
     try:
         logger.info(f"💭 O3 thinking demo for workspace: {workspace_id}")
@@ -329,7 +365,12 @@ async def o3_thinking_demo(workspace_id: UUID, query: str = "How should I approa
 # === THINKING ANALYTICS ENDPOINTS ===
 
 @router.get("/analytics/{workspace_id}")
-async def get_thinking_analytics(workspace_id: UUID):
+async def get_thinking_analytics(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_thinking_analytics called", endpoint="get_thinking_analytics", trace_id=trace_id)
+
     """Get thinking analytics for workspace"""
     try:
         logger.info(f"📊 Getting thinking analytics for workspace: {workspace_id}")
@@ -400,7 +441,12 @@ async def get_thinking_analytics(workspace_id: UUID):
 # === GOAL-SPECIFIC THINKING ===
 
 @router.get("/goal/{goal_id}/thinking")
-async def get_goal_thinking(goal_id: UUID):
+async def get_goal_thinking(goal_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_goal_thinking called", endpoint="get_goal_thinking", trace_id=trace_id)
+
     """Get thinking processes related to specific goal"""
     try:
         logger.info(f"💭 Getting thinking for goal: {goal_id}")

@@ -1,0 +1,54 @@
+2025-07-07 09:30:34,808 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:30:34,808 [INFO] ================================================================================
+2025-07-07 09:30:34,808 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:30:34,808 [INFO] Goals to test: 3
+2025-07-07 09:30:34,808 [INFO] ================================================================================
+2025-07-07 09:30:34,808 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:30:34,808 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:30:34,832 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:30:34,832 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:08,522 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:31:08,522 [INFO] ================================================================================
+2025-07-07 09:31:08,522 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:31:08,522 [INFO] Goals to test: 3
+2025-07-07 09:31:08,522 [INFO] ================================================================================
+2025-07-07 09:31:08,522 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:31:08,522 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:31:08,531 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:08,531 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:45,939 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:31:45,939 [INFO] ================================================================================
+2025-07-07 09:31:45,939 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:31:45,939 [INFO] Goals to test: 3
+2025-07-07 09:31:45,939 [INFO] ================================================================================
+2025-07-07 09:31:45,939 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:31:45,939 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:31:45,949 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:45,949 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:50,611 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:31:50,612 [INFO] ================================================================================
+2025-07-07 09:31:50,612 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:31:50,612 [INFO] Goals to test: 3
+2025-07-07 09:31:50,612 [INFO] ================================================================================
+2025-07-07 09:31:50,612 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:31:50,612 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:31:50,620 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:31:50,620 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error
+2025-07-07 09:32:19,063 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:32:19,063 [INFO] ================================================================================
+2025-07-07 09:32:19,063 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:32:19,063 [INFO] Goals to test: 3
+2025-07-07 09:32:19,063 [INFO] ================================================================================
+2025-07-07 09:32:19,063 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:32:19,063 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:32:19,070 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:32:19,071 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error
+2025-07-07 09:32:40,172 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-07 09:32:40,172 [INFO] ================================================================================
+2025-07-07 09:32:40,172 [INFO] Project: AI-Powered Content Management System
+2025-07-07 09:32:40,172 [INFO] Goals to test: 3
+2025-07-07 09:32:40,172 [INFO] ================================================================================
+2025-07-07 09:32:40,172 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-07 09:32:40,172 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-07 09:32:40,179 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace creation failed: Internal Server Error
+2025-07-07 09:32:40,179 [ERROR] ❌ Test suite execution failed: Workspace creation failed: Internal Server Error

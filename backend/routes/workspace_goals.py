@@ -4,8 +4,9 @@
 Gestisce CRUD operations per workspace goals e integrazione con goal-driven system
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Request, APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 from datetime import datetime
 import logging
@@ -36,7 +37,7 @@ direct_router = APIRouter(tags=["workspace-goals-direct"])
 # Initialize AI Goal Extractor
 goal_extractor = None
 try:
-    from ai_quality_assurance.ai_goal_extractor import AIGoalExtractor
+    from backend.ai_quality_assurance.unified_quality_engine import AIGoalExtractor
     goal_extractor = AIGoalExtractor()
     logger.info("✅ AI Goal Extractor initialized in routes")
 except Exception as e:
@@ -46,7 +47,12 @@ except Exception as e:
 goal_extraction_progress = {}
 
 @router.get("/workspaces/{workspace_id}/goals/progress")
-async def get_goal_extraction_progress(workspace_id: str) -> Dict[str, Any]:
+async def get_goal_extraction_progress(workspace_id: str, request: Request) -> Dict[str, Any]:
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_goal_extraction_progress called", endpoint="get_goal_extraction_progress", trace_id=trace_id)
+
     """Get real-time progress of goal extraction process"""
     try:
         # Check if we have progress tracking for this workspace

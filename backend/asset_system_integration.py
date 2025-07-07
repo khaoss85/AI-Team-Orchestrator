@@ -13,8 +13,8 @@ from fastapi import FastAPI, APIRouter
 # Import all asset system components
 from services.asset_requirements_generator import AssetRequirementsGenerator
 from services.asset_artifact_processor import AssetArtifactProcessor
-from services.ai_quality_gate_engine import AIQualityGateEngine
-from services.asset_driven_task_executor import AssetDrivenTaskExecutor
+from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
 from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 
 from database_asset_extensions import AssetDrivenDatabaseManager, asset_db_manager
@@ -38,7 +38,7 @@ class AssetDrivenOrchestrator:
         # Initialize all services
         self.requirements_generator = AssetRequirementsGenerator()
         self.artifact_processor = AssetArtifactProcessor()
-        self.quality_gate_engine = AIQualityGateEngine()
+        self.quality_gate_engine = unified_quality_engine
         self.task_executor = AssetDrivenTaskExecutor()
         self.goal_planner = EnhancedGoalDrivenPlanner()
         

@@ -925,7 +925,7 @@ class EnhancedTaskExecutor:
                 # After PM task completion, check for final deliverable with circuit breaker protection
                 try:
                     async def _safe_deliverable_creation():
-                        from deliverable_aggregator import check_and_create_final_deliverable
+                        from deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
                         return await check_and_create_final_deliverable(workspace_id)
                     
                     # Use circuit breaker if available
@@ -1096,7 +1096,7 @@ class EnhancedTaskExecutor:
             if not self._is_enhancement_task(completed_task):
                 try:
                     async def _safe_deliverable_creation():
-                        from deliverable_aggregator import check_and_create_final_deliverable
+                        from deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
                         return await check_and_create_final_deliverable(workspace_id)
                     
                     # Use circuit breaker if available
@@ -2347,7 +2347,7 @@ If unclear, escalate to Project Manager immediately.
         """
         try:
             # Import memory intelligence system
-            from ai_quality_assurance.ai_memory_intelligence import AIMemoryIntelligence
+            from backend.ai_quality_assurance.unified_quality_engine import AIMemoryIntelligence
             
             memory_intelligence = AIMemoryIntelligence()
             

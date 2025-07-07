@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import Request, APIRouter, HTTPException, status
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 
 from human_feedback_manager import human_feedback_manager, FeedbackStatus
@@ -7,7 +8,12 @@ from human_feedback_manager import human_feedback_manager, FeedbackStatus
 router = APIRouter(prefix="/human-feedback", tags=["human-feedback"])
 
 @router.get("/pending", response_model=List[Dict[str, Any]])
-async def get_pending_feedback_requests(workspace_id: Optional[str] = None):
+async def get_pending_feedback_requests(workspace_id: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_pending_feedback_requests called", endpoint="get_pending_feedback_requests", trace_id=trace_id)
+
     """Get all pending human feedback requests"""
     try:
         requests = await human_feedback_manager.get_pending_requests(workspace_id)
@@ -19,7 +25,12 @@ async def get_pending_feedback_requests(workspace_id: Optional[str] = None):
         )
 
 @router.get("/{request_id}", response_model=Dict[str, Any])
-async def get_feedback_request(request_id: str):
+async def get_feedback_request(request_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_feedback_request called", endpoint="get_feedback_request", trace_id=trace_id)
+
     """Get a specific feedback request"""
     from database import get_human_feedback_requests
     
@@ -71,7 +82,12 @@ async def respond_to_feedback_request(
     return {"success": True, "message": "Response recorded successfully"}
 
 @router.post("/auto-approval-rule", status_code=status.HTTP_201_CREATED)
-async def create_auto_approval_rule(rule: Dict[str, Any]):
+async def create_auto_approval_rule(rule: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_auto_approval_rule called", endpoint="create_auto_approval_rule", trace_id=trace_id)
+
     """Create an auto-approval rule"""
     criteria = rule.get("criteria", {})
     action = rule.get("action", "approve")

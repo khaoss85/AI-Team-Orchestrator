@@ -3,8 +3,9 @@
 Provides real-time system metrics, alerts, and health monitoring endpoints
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Request, APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any, List
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 from datetime import datetime, timedelta
 
@@ -13,7 +14,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/monitoring", tags=["system-monitoring"])
 
 @router.get("/status")
-async def get_system_status():
+async def get_system_status(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_system_status called", endpoint="get_system_status", trace_id=trace_id)
+
     """
     🤖 AI-DRIVEN: Get comprehensive system status report
     Returns current health, metrics, alerts, and recommendations
@@ -41,7 +47,12 @@ async def get_system_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/metrics/current")
-async def get_current_metrics():
+async def get_current_metrics(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_current_metrics called", endpoint="get_current_metrics", trace_id=trace_id)
+
     """
     🤖 AI-DRIVEN: Get current system metrics
     Returns latest telemetry data
@@ -136,7 +147,12 @@ async def get_system_alerts(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/health/workspace/{workspace_id}")
-async def get_workspace_health(workspace_id: str):
+async def get_workspace_health(workspace_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_health called", endpoint="get_workspace_health", trace_id=trace_id)
+
     """
     🤖 AI-DRIVEN: Get specific workspace health metrics
     """
@@ -251,7 +267,12 @@ async def get_performance_trends(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str):
+async def acknowledge_alert(alert_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route acknowledge_alert called", endpoint="acknowledge_alert", trace_id=trace_id)
+
     """
     🤖 AI-DRIVEN: Acknowledge a system alert
     """
@@ -281,7 +302,12 @@ async def acknowledge_alert(alert_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/diagnostics")
-async def get_system_diagnostics():
+async def get_system_diagnostics(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_system_diagnostics called", endpoint="get_system_diagnostics", trace_id=trace_id)
+
     """
     🤖 AI-DRIVEN: Get comprehensive system diagnostics
     Returns detailed diagnostic information for troubleshooting
@@ -368,7 +394,12 @@ async def get_system_diagnostics():
 
 # Health check endpoint
 @router.get("/health")
-async def health_check():
+async def health_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route health_check called", endpoint="health_check", trace_id=trace_id)
+
     """Simple health check endpoint"""
     return {
         "status": "healthy",

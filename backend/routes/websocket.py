@@ -3,6 +3,8 @@
 WebSocket endpoint per aggiornamenti real-time dello stato dei task
 """
 
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Set
 import json

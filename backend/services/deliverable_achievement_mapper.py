@@ -220,7 +220,7 @@ Respond in JSON:
                 
                 # Fallback to existing AI quality validator
                 try:
-                    from ai_quality_assurance.quality_validator import AIQualityValidator
+                    from backend.ai_quality_assurance.unified_quality_engine import AIQualityValidator
                     quality_validator = AIQualityValidator()
                     
                     if quality_validator.openai_available:

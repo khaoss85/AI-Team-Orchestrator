@@ -1,3 +1,5 @@
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Dict, Any, Optional
 from uuid import UUID
@@ -16,7 +18,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/delegation", tags=["delegation-monitor"])
 
 @router.get("/workspace/{workspace_id}/analysis", response_model=Dict[str, Any])
-async def get_delegation_analysis(workspace_id: UUID):
+async def get_delegation_analysis(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_delegation_analysis called", endpoint="get_delegation_analysis", trace_id=trace_id)
+    
     """Analizza i pattern di delegazione per un workspace"""
     try:
         # Recupera dati
@@ -156,7 +163,12 @@ async def get_delegation_analysis(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/bottlenecks", response_model=List[Dict[str, Any]])
-async def get_delegation_bottlenecks(workspace_id: UUID):
+async def get_delegation_bottlenecks(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_delegation_bottlenecks called", endpoint="get_delegation_bottlenecks", trace_id=trace_id)
+    
     """Identifica i colli di bottiglia nella delegazione"""
     try:
         recent_activity = task_executor.get_recent_activity(str(workspace_id), 200)
@@ -214,7 +226,12 @@ async def get_delegation_bottlenecks(workspace_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/reset-cache", status_code=status.HTTP_200_OK)
-async def reset_delegation_cache(workspace_id: UUID):
+async def reset_delegation_cache(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route reset_delegation_cache called", endpoint="reset_delegation_cache", trace_id=trace_id)
+    
     """Reset del cache di delegazione per tutti gli agenti del workspace"""
     try:
         # Nota: Questa implementazione assumerebbe che gli agenti 
@@ -236,7 +253,12 @@ async def reset_delegation_cache(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/suggestions", response_model=Dict[str, Any])
-async def get_team_expansion_suggestions(workspace_id: UUID):
+async def get_team_expansion_suggestions(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_team_expansion_suggestions called", endpoint="get_team_expansion_suggestions", trace_id=trace_id)
+    
     """Suggerimenti per espansione del team basati sui pattern di delegazione"""
     try:
         # Analizza bottlenecks

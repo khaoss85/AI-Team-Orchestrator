@@ -930,7 +930,7 @@ class HumanVerificationSystem:
                         
                         # Also trigger asset extraction for deliverable system
                         try:
-                            from deliverable_system.concrete_asset_extractor import ConcreteAssetExtractor
+                            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
                             asset_extractor = ConcreteAssetExtractor()
                             
                             # Extract assets from the verified task

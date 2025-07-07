@@ -9,7 +9,8 @@ import asyncio
 from datetime import datetime
 from typing import Dict, Set, List, Any, Optional
 from uuid import UUID
-from fastapi import WebSocket, WebSocketDisconnect, APIRouter, HTTPException
+from fastapi import Request, WebSocket, WebSocketDisconnect, APIRouter, HTTPException
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi.websockets import WebSocketState
 
 from models import AssetArtifact, QualityValidation, WorkspaceGoal
@@ -576,7 +577,12 @@ async def send_artifact_quality_status(websocket: WebSocket, artifact_id: str):
 # === WEBSOCKET STATS ENDPOINT ===
 
 @router.get("/ws/stats")
-async def get_websocket_stats():
+async def get_websocket_stats(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_websocket_stats called", endpoint="get_websocket_stats", trace_id=trace_id)
+
     """Get WebSocket connection statistics"""
     try:
         stats = await websocket_manager.get_connection_stats()

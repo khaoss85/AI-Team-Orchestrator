@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import Request, APIRouter, Depends, HTTPException, status, Query
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 from collections import Counter
@@ -82,7 +83,12 @@ async def get_workspace_activity(
         )
 
 @router.get("/workspace/{workspace_id}/budget", response_model=Dict[str, Any])
-async def get_workspace_budget(workspace_id: UUID):
+async def get_workspace_budget(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_budget called", endpoint="get_workspace_budget", trace_id=trace_id)
+
     """Get budget summary for a workspace"""
     try:
         agents_db = await db_list_agents(str(workspace_id))
@@ -156,7 +162,12 @@ async def get_workspace_tasks(
         )
 
 @router.get("/agent/{agent_id}/budget", response_model=Dict[str, Any])
-async def get_agent_budget(agent_id: UUID):
+async def get_agent_budget(agent_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_agent_budget called", endpoint="get_agent_budget", trace_id=trace_id)
+
     """Get budget details for a specific agent"""
     try:
         total_cost = task_executor.budget_tracker.get_agent_total_cost(str(agent_id))
@@ -182,7 +193,12 @@ async def get_agent_budget(agent_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/start", status_code=status.HTTP_200_OK)
-async def start_workspace_team(workspace_id: UUID):
+async def start_workspace_team(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route start_workspace_team called", endpoint="start_workspace_team", trace_id=trace_id)
+
     """Start the team by creating an initial task if none exist or workspace is idle"""
     try:
         from executor import trigger_initial_workspace_task 
@@ -200,7 +216,12 @@ async def start_workspace_team(workspace_id: UUID):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to start team: {str(e)}")
 
 @router.get("/workspace/{workspace_id}/status", response_model=Dict[str, Any])
-async def get_workspace_status_endpoint(workspace_id: UUID):
+async def get_workspace_status_endpoint(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_status_endpoint called", endpoint="get_workspace_status_endpoint", trace_id=trace_id)
+
     """Get overall status of a workspace including agents and tasks"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -227,7 +248,12 @@ async def get_workspace_status_endpoint(workspace_id: UUID):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get workspace status: {str(e)}")
 
 @router.get("/global/activity", response_model=List[Dict[str, Any]])
-async def get_global_activity(limit: int = Query(default=50, le=200)):
+async def get_global_activity(limit: int = Query(default=50, le=200), request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_global_activity called", endpoint="get_global_activity", trace_id=trace_id)
+
     """Get recent activity across all workspaces"""
     try:
         activity = task_executor.get_recent_activity(None, limit)
@@ -238,7 +264,12 @@ async def get_global_activity(limit: int = Query(default=50, le=200)):
 
 # ENDPOINT CONTROLLO EXECUTOR - DA V1
 @router.post("/executor/pause", status_code=status.HTTP_200_OK)
-async def pause_executor_endpoint():
+async def pause_executor_endpoint(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route pause_executor_endpoint called", endpoint="pause_executor_endpoint", trace_id=trace_id)
+
     """Pause the task executor."""
     if not task_executor.running:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task executor is not running.")
@@ -248,7 +279,12 @@ async def pause_executor_endpoint():
     return {"message": "Task executor pause requested."}
 
 @router.post("/executor/resume", status_code=status.HTTP_200_OK)
-async def resume_executor_endpoint():
+async def resume_executor_endpoint(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route resume_executor_endpoint called", endpoint="resume_executor_endpoint", trace_id=trace_id)
+
     """Resume the task executor."""
     if not task_executor.running:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task executor is not running. Cannot resume a stopped executor.")
@@ -258,7 +294,12 @@ async def resume_executor_endpoint():
     return {"message": "Task executor resumed."}
 
 @router.get("/executor/status", response_model=Dict[str, Any])
-async def get_executor_runtime_status_endpoint():
+async def get_executor_runtime_status_endpoint(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_executor_runtime_status_endpoint called", endpoint="get_executor_runtime_status_endpoint", trace_id=trace_id)
+
     """Get the current running and paused status of the task executor."""
     return {
         "is_running": task_executor.running,
@@ -269,7 +310,12 @@ async def get_executor_runtime_status_endpoint():
     }
 
 @router.get("/executor/detailed-stats", response_model=Dict[str, Any])
-async def get_executor_detailed_stats_endpoint():
+async def get_executor_detailed_stats_endpoint(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_executor_detailed_stats_endpoint called", endpoint="get_executor_detailed_stats_endpoint", trace_id=trace_id)
+
     """Get detailed statistics from the task executor with asset tracking"""
     try:
         stats = task_executor.get_detailed_stats()
@@ -314,31 +360,56 @@ async def get_executor_detailed_stats_endpoint():
 
 # ENDPOINT RUNAWAY PROTECTION - DA V1
 @router.get("/runaway-protection/status", response_model=Dict[str, Any])
-async def get_runaway_protection_status():
+async def get_runaway_protection_status(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_runaway_protection_status called", endpoint="get_runaway_protection_status", trace_id=trace_id)
+
     """Get runaway protection status"""
     return task_executor.get_runaway_protection_status()
 
 @router.post("/runaway-protection/check", status_code=status.HTTP_200_OK)
-async def trigger_manual_runaway_check():
+async def trigger_manual_runaway_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route trigger_manual_runaway_check called", endpoint="trigger_manual_runaway_check", trace_id=trace_id)
+
     """Manually trigger runaway check"""
     from executor import trigger_runaway_check
     return await trigger_runaway_check()
 
 @router.post("/workspace/{workspace_id}/resume-auto-generation", status_code=status.HTTP_200_OK)
-async def resume_workspace_auto_generation(workspace_id: UUID):
+async def resume_workspace_auto_generation(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route resume_workspace_auto_generation called", endpoint="resume_workspace_auto_generation", trace_id=trace_id)
+
     """Manually resume auto-generation for a workspace"""
     from executor import reset_workspace_auto_generation
     return await reset_workspace_auto_generation(str(workspace_id))
 
 @router.get("/workspace/{workspace_id}/health", response_model=Dict[str, Any])
-async def get_workspace_health(workspace_id: UUID):
+async def get_workspace_health(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_health called", endpoint="get_workspace_health", trace_id=trace_id)
+
     """Get detailed health status for a workspace"""
     health_status = await task_executor.check_workspace_health(str(workspace_id))
     return health_status
 
 # ENDPOINT TASK ANALYSIS - DA V2 (CORRETTO)
 @router.get("/workspace/{workspace_id}/task-analysis", response_model=TaskAnalysisResponse)
-async def get_task_failure_analysis(workspace_id: UUID):
+async def get_task_failure_analysis(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_task_failure_analysis called", endpoint="get_task_failure_analysis", trace_id=trace_id)
+
     """Get comprehensive analysis of task failures, patterns, and system health"""
     try:
         # Fetch data from multiple sources
@@ -512,7 +583,12 @@ async def get_task_failure_analysis(workspace_id: UUID):
 
 # ENDPOINT EMERGENCY RESET - DA V2
 @router.post("/workspace/{workspace_id}/reset-runaway", status_code=status.HTTP_200_OK)
-async def reset_runaway_tasks(workspace_id: UUID):
+async def reset_runaway_tasks(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route reset_runaway_tasks called", endpoint="reset_runaway_tasks", trace_id=trace_id)
+
     """Emergency reset for workspaces with runaway task generation"""
     try:
         # Get all pending tasks
@@ -556,7 +632,12 @@ async def reset_runaway_tasks(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
         
 @router.post("/tasks/{task_id}/reset", status_code=status.HTTP_200_OK)
-async def reset_failed_task(task_id: UUID):
+async def reset_failed_task(task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route reset_failed_task called", endpoint="reset_failed_task", trace_id=trace_id)
+
     """Reset un task fallito a pending"""
     try:
         from database import update_task_status
@@ -587,7 +668,12 @@ async def reset_failed_task(task_id: UUID):
         )
         
 @router.get("/workspace/{workspace_id}/finalization-status", response_model=Dict[str, Any])
-async def get_workspace_finalization_status(workspace_id: UUID):
+async def get_workspace_finalization_status(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_finalization_status called", endpoint="get_workspace_finalization_status", trace_id=trace_id)
+
     """
     CRITICAL: Monitoring specifico per stato FINALIZATION
     """
@@ -666,7 +752,12 @@ async def get_workspace_finalization_status(workspace_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/force-finalization", status_code=status.HTTP_200_OK)
-async def force_finalization_if_stuck(workspace_id: UUID):
+async def force_finalization_if_stuck(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route force_finalization_if_stuck called", endpoint="force_finalization_if_stuck", trace_id=trace_id)
+
     """
     EMERGENCY: Forza completamento se stuck in FINALIZATION
     """
@@ -695,7 +786,7 @@ async def force_finalization_if_stuck(workspace_id: UUID):
             # Trigger deliverable creation with circuit breaker protection
             try:
                 async def _safe_deliverable_creation():
-                    from deliverable_aggregator import check_and_create_final_deliverable
+                    from .deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
                     return await check_and_create_final_deliverable(str(workspace_id))
                 
                 deliverable_id = await task_executor._execute_with_circuit_breaker(_safe_deliverable_creation)
@@ -729,7 +820,12 @@ async def force_finalization_if_stuck(workspace_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/clear-stuck-tasks", status_code=status.HTTP_200_OK)
-async def clear_stuck_tasks_emergency(workspace_id: UUID):
+async def clear_stuck_tasks_emergency(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route clear_stuck_tasks_emergency called", endpoint="clear_stuck_tasks_emergency", trace_id=trace_id)
+
     """
     EMERGENCY: Clear stuck tasks that might be blocking progress
     """
@@ -947,7 +1043,12 @@ def _generate_recommendations(
     return recommendations
 
 @router.get("/workspace/{workspace_id}/asset-tracking", response_model=Dict[str, Any])
-async def get_workspace_asset_tracking(workspace_id: UUID):
+async def get_workspace_asset_tracking(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_asset_tracking called", endpoint="get_workspace_asset_tracking", trace_id=trace_id)
+
     """Get asset-oriented task tracking for a workspace with enhanced detection"""
     try:
         from utils.asset_discovery import discover_assets_from_tasks
@@ -972,7 +1073,12 @@ async def get_workspace_asset_tracking(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/deliverable-readiness", response_model=Dict[str, Any])
-async def get_deliverable_readiness_status(workspace_id: UUID):
+async def get_deliverable_readiness_status(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_deliverable_readiness_status called", endpoint="get_deliverable_readiness_status", trace_id=trace_id)
+
     """Check if workspace is ready for deliverable creation - FIXED VERSION"""
     try:
         # Get basic data
@@ -1087,7 +1193,12 @@ async def get_deliverable_readiness_status(workspace_id: UUID):
         }
 
 @router.get("/task/{task_id}/status", response_model=Dict[str, Any])
-async def get_task_detailed_status(task_id: str):
+async def get_task_detailed_status(task_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_task_detailed_status called", endpoint="get_task_detailed_status", trace_id=trace_id)
+
     """Get detailed status of a specific task for monitoring"""
     try:
         from database import supabase
@@ -1146,7 +1257,12 @@ async def get_task_detailed_status(task_id: str):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get task status: {str(e)}")
 
 @router.get("/workspace/{workspace_id}/enhancement-tasks", response_model=List[Dict[str, Any]])
-async def get_workspace_enhancement_tasks(workspace_id: UUID, status_filter: Optional[str] = None):
+async def get_workspace_enhancement_tasks(workspace_id: UUID, status_filter: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_enhancement_tasks called", endpoint="get_workspace_enhancement_tasks", trace_id=trace_id)
+
     """Get all enhancement tasks for a workspace with detailed status"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -1216,7 +1332,12 @@ class WorkspaceHealthStatus(BaseModel):
     can_unblock: bool
 
 @router.get("/workspace/{workspace_id}/health-status", response_model=WorkspaceHealthStatus)
-async def get_workspace_health_status(workspace_id: UUID):
+async def get_workspace_health_status(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_health_status called", endpoint="get_workspace_health_status", trace_id=trace_id)
+
     """Get comprehensive workspace health status for frontend monitoring"""
     try:
         workspace_id_str = str(workspace_id)
@@ -1303,7 +1424,12 @@ async def get_workspace_health_status(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=f"Failed to get workspace health status: {str(e)}")
 
 @router.post("/workspace/{workspace_id}/unblock")
-async def unblock_workspace(workspace_id: UUID):
+async def unblock_workspace(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route unblock_workspace called", endpoint="unblock_workspace", trace_id=trace_id)
+
     """Manually unblock a workspace and resume operations"""
     try:
         workspace_id_str = str(workspace_id)
@@ -1378,7 +1504,12 @@ async def unblock_workspace(workspace_id: UUID):
         raise HTTPException(status_code=500, detail=f"Failed to unblock workspace: {str(e)}")
 
 @router.post("/workspace/{workspace_id}/resume-auto-generation")
-async def resume_workspace_auto_generation(workspace_id: UUID):
+async def resume_workspace_auto_generation(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route resume_workspace_auto_generation called", endpoint="resume_workspace_auto_generation", trace_id=trace_id)
+
     """Force resume auto-generation for a workspace"""
     try:
         workspace_id_str = str(workspace_id)

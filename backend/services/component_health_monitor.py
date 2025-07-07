@@ -211,7 +211,7 @@ class ComponentHealthMonitor:
                 return hasattr(unified_orchestrator, 'start')
             
             elif component_name == 'deliverable_pipeline':
-                from deliverable_system.deliverable_pipeline import deliverable_pipeline
+                from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
                 return hasattr(deliverable_pipeline, 'start')
             
             elif component_name == 'executor':
@@ -219,7 +219,7 @@ class ComponentHealthMonitor:
                 return hasattr(executor, 'start_task_executor')
             
             elif component_name == 'quality_gate':
-                from quality_gate import QualityGate
+                from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
                 return True
             
             elif component_name == 'memory_system':
@@ -227,7 +227,7 @@ class ComponentHealthMonitor:
                 return hasattr(memory_system, 'store_context')
             
             elif component_name == 'automatic_quality_trigger':
-                from services.automatic_quality_trigger import get_automatic_quality_trigger
+                from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
                 return True
             
             elif component_name == 'asset_requirements_generator':
@@ -283,7 +283,7 @@ class ComponentHealthMonitor:
         """Check salute deliverable pipeline"""
         start_time = time.time()
         try:
-            from deliverable_system.deliverable_pipeline import deliverable_pipeline
+            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
             
             # Verifica stato pipeline
             if hasattr(deliverable_pipeline, '_running'):
@@ -344,8 +344,8 @@ class ComponentHealthMonitor:
         """Check salute quality gate"""
         start_time = time.time()
         try:
-            from quality_gate import QualityGate
-            gate = QualityGate()
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            
             response_time = (time.time() - start_time) * 1000
             
             return HealthMetrics(
@@ -404,8 +404,8 @@ class ComponentHealthMonitor:
         """Check salute quality trigger"""
         start_time = time.time()
         try:
-            from services.automatic_quality_trigger import get_automatic_quality_trigger
-            trigger = get_automatic_quality_trigger()
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            trigger = unified_quality_engine.get_automatic_quality_trigger()
             response_time = (time.time() - start_time) * 1000
             
             return HealthMetrics(

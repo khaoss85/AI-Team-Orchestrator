@@ -5,6 +5,7 @@
 Test per forzare la generazione di task dal goal e verificare l'intero pipeline
 """
 
+from pathlib import Path
 import asyncio
 import requests
 import time
@@ -58,7 +59,7 @@ async def force_task_generation():
     # Create agents and approved proposal
     print("🤖 Creating team...")
     try:
-        sys.path.insert(0, '/Users/pelleri/Documents/ai-team-orchestrator/backend')
+        sys.path.insert(0, '.')
         from database import get_supabase_client
         supabase = get_supabase_client()
         

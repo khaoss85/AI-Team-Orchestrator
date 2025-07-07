@@ -3,6 +3,8 @@ Utility Routes
 Provides various utility endpoints for data processing and cleaning
 """
 
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
@@ -23,6 +25,11 @@ class JsonCleaningResponse(BaseModel):
 
 @router.post("/utils/clean-json", response_model=JsonCleaningResponse)
 async def clean_json_endpoint(request: JsonCleaningRequest):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route clean_json_endpoint called", endpoint="clean_json_endpoint", trace_id=trace_id)
+    
     """
     Clean and parse potentially malformed JSON string
     """
@@ -77,6 +84,11 @@ class ContentValidationResponse(BaseModel):
 
 @router.post("/utils/validate-content", response_model=ContentValidationResponse)
 async def validate_content_endpoint(request: ContentValidationRequest):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route validate_content_endpoint called", endpoint="validate_content_endpoint", trace_id=trace_id)
+    
     """
     Validate and analyze structured content to suggest best rendering approach
     """

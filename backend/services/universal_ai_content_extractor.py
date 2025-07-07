@@ -206,7 +206,7 @@ Rispondi in JSON con questa struttura:
         🤖 AI assessment of content reality vs template nature
         """
         try:
-            from ai_quality_assurance.smart_evaluator import smart_evaluator
+            from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
             
             business_info = self._extract_business_context(workspace_context)
             
@@ -253,7 +253,7 @@ Rispondi in JSON:
 }}
 """
             
-            from ai_quality_assurance.smart_evaluator import smart_evaluator
+            from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
             
             ai_response = await smart_evaluator.evaluate_with_ai(
                 reality_prompt,
@@ -291,7 +291,7 @@ Rispondi in JSON:
         🤖 AI evaluation of content usability for the specific goal
         """
         try:
-            from ai_quality_assurance.smart_evaluator import smart_evaluator
+            from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
             
             usability_prompt = f"""
 Valuta quanto questo contenuto soddisfa l'obiettivo in modo UTILIZZABILE.
@@ -360,7 +360,7 @@ Rispondi in JSON:
         🤖 AI gap analysis and intelligent completion suggestions
         """
         try:
-            from ai_quality_assurance.smart_evaluator import smart_evaluator
+            from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
             
             gap_prompt = f"""
 Analizza i gap in questo contenuto e suggerisci completamenti INTELLIGENTI.

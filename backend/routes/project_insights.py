@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import Request, APIRouter, HTTPException, status
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
 import os
 from collections import Counter
-from deliverable_system.markup_processor import markup_processor
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from models import (
     ProjectDeliverables,
     ProjectOutput,
@@ -24,8 +25,8 @@ from database import (
     create_task,
 )
 from executor import task_executor
-from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
-from deliverable_system.schema_generator import AssetSchemaGenerator
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["project-insights"])
@@ -36,7 +37,12 @@ DELIVERABLE_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
 @router.get("/{workspace_id}/insights", response_model=Dict[str, Any])
-async def get_project_insights(workspace_id: UUID):
+async def get_project_insights(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_project_insights called", endpoint="get_project_insights", trace_id=trace_id)
+
     """Get comprehensive project insights including progress, timing, and predictions"""
     try:
         # Get workspace details - handle gracefully if workspace doesn't exist yet
@@ -84,7 +90,12 @@ async def get_project_insights(workspace_id: UUID):
         )
 
 @router.get("/{workspace_id}/major-milestones", response_model=List[Dict[str, Any]])
-async def get_major_milestones(workspace_id: UUID):
+async def get_major_milestones(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_major_milestones called", endpoint="get_major_milestones", trace_id=trace_id)
+
     """Get major milestones and phases completed in the project"""
     try:
         tasks = await list_tasks(str(workspace_id))
@@ -392,7 +403,12 @@ def _extract_major_milestones(
     return milestones
 
 @router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
-async def get_project_deliverables(workspace_id: UUID, goal_id: Optional[str] = None):
+async def get_project_deliverables(workspace_id: UUID, goal_id: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_project_deliverables called", endpoint="get_project_deliverables", trace_id=trace_id)
+
     """Get aggregated project deliverables including final aggregated deliverable - ENHANCED"""
     try:
         # Get workspace details - handle gracefully if workspace doesn't exist yet
@@ -767,7 +783,12 @@ async def get_project_deliverables(workspace_id: UUID, goal_id: Optional[str] = 
         )
 
 @router.get("/{workspace_id}/task/{task_id}/enhanced-result", response_model=Dict[str, Any])
-async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID):
+async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_enhanced_task_result called", endpoint="get_enhanced_task_result", trace_id=trace_id)
+
     """Get enhanced task result with processed structured content"""
     try:
         # Get task details
@@ -936,7 +957,12 @@ Please review this feedback and take appropriate action:
 
 # NEW: Endpoint to manually trigger deliverable asset analysis
 @router.post("/{workspace_id}/trigger-asset-analysis", status_code=status.HTTP_200_OK)
-async def trigger_asset_analysis(workspace_id: UUID):
+async def trigger_asset_analysis(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route trigger_asset_analysis called", endpoint="trigger_asset_analysis", trace_id=trace_id)
+
     """Run the deliverable requirements analyzer and return a summary"""
     try:
         analyzer = DeliverableRequirementsAnalyzer()
@@ -964,7 +990,12 @@ async def trigger_asset_analysis(workspace_id: UUID):
         )
 
 @router.get("/{workspace_id}/asset-insights", response_model=Dict[str, Any])
-async def get_asset_insights(workspace_id: UUID):
+async def get_asset_insights(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_asset_insights called", endpoint="get_asset_insights", trace_id=trace_id)
+
     """Return insight data about actionable assets for this workspace."""
     try:
         analyzer = DeliverableRequirementsAnalyzer()
@@ -1035,7 +1066,12 @@ async def get_asset_insights(workspace_id: UUID):
 
 # New endpoint: return full task record for a specific output
 @router.get("/{workspace_id}/output/{task_id}", response_model=Task)
-async def get_output_detail(workspace_id: UUID, task_id: UUID):
+async def get_output_detail(workspace_id: UUID, task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_output_detail called", endpoint="get_output_detail", trace_id=trace_id)
+
     """Fetch a single task from the workspace and return its details."""
     try:
         tasks = await list_tasks(str(workspace_id))
@@ -1056,7 +1092,12 @@ async def get_output_detail(workspace_id: UUID, task_id: UUID):
         )
 
 @router.get("/{workspace_id}/task/{task_id}/enhanced-result")
-async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID):
+async def get_enhanced_task_result(workspace_id: UUID, task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_enhanced_task_result called", endpoint="get_enhanced_task_result", trace_id=trace_id)
+
     """Get enhanced, processed task result with rich markup content"""
     try:
         tasks = await list_tasks(str(workspace_id))

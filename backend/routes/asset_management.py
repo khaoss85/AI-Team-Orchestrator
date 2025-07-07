@@ -1,15 +1,13 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import Request, APIRouter, HTTPException, status
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 import json
 from datetime import datetime
 
-from deliverable_system.requirements_analyzer import DeliverableRequirementsAnalyzer
-from deliverable_system.schema_generator import AssetSchemaGenerator
-from deliverable_system.concrete_asset_extractor import concrete_extractor
-from deliverable_system.markup_processor import markup_processor
-from ai_quality_assurance.smart_evaluator import smart_evaluator
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
 from database import list_tasks, list_agents, get_workspace
 from models import DeliverableRequirements, AssetSchema
 
@@ -17,7 +15,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/asset-management", tags=["asset-management"])
 
 @router.get("/workspace/{workspace_id}/requirements", response_model=Dict[str, Any])
-async def get_workspace_asset_requirements(workspace_id: UUID):
+async def get_workspace_asset_requirements(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_asset_requirements called", endpoint="get_workspace_asset_requirements", trace_id=trace_id)
+
     """Get asset requirements analysis for a workspace"""
     try:
         analyzer = DeliverableRequirementsAnalyzer()
@@ -49,7 +52,12 @@ async def get_workspace_asset_requirements(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/schemas", response_model=Dict[str, Any])
-async def get_workspace_asset_schemas(workspace_id: UUID):
+async def get_workspace_asset_schemas(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_asset_schemas called", endpoint="get_workspace_asset_schemas", trace_id=trace_id)
+
     """Get available asset schemas for a workspace"""
     try:
         analyzer = DeliverableRequirementsAnalyzer()
@@ -85,7 +93,12 @@ async def get_workspace_asset_schemas(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/extraction-status", response_model=Dict[str, Any])
-async def get_asset_extraction_status(workspace_id: UUID):
+async def get_asset_extraction_status(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_asset_extraction_status called", endpoint="get_asset_extraction_status", trace_id=trace_id)
+
     """Get status of asset extraction from completed tasks"""
     try:
         tasks = await list_tasks(str(workspace_id))
@@ -142,7 +155,12 @@ async def get_asset_extraction_status(workspace_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/extract-concrete-assets", response_model=Dict[str, Any])
-async def extract_concrete_assets(workspace_id: UUID):
+async def extract_concrete_assets(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route extract_concrete_assets called", endpoint="extract_concrete_assets", trace_id=trace_id)
+
     """Extract concrete, actionable assets from completed tasks"""
     try:
         # Get workspace and tasks
@@ -210,7 +228,12 @@ async def extract_concrete_assets(workspace_id: UUID):
         )
 
 @router.get("/workspace/{workspace_id}/quality-dashboard", response_model=Dict[str, Any])
-async def get_quality_dashboard(workspace_id: UUID):
+async def get_quality_dashboard(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_quality_dashboard called", endpoint="get_quality_dashboard", trace_id=trace_id)
+
     """Get comprehensive quality dashboard for workspace assets"""
     try:
         # Get workspace and basic stats
@@ -249,7 +272,12 @@ async def get_quality_dashboard(workspace_id: UUID):
         )
 
 @router.post("/workspace/{workspace_id}/export-assets", response_model=Dict[str, Any])
-async def export_workspace_assets(workspace_id: UUID, export_format: str = "json"):
+async def export_workspace_assets(workspace_id: UUID, request: Request, export_format: str = "json"):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route export_workspace_assets called", endpoint="export_workspace_assets", trace_id=trace_id)
+
     """Export workspace assets with structured markup formatting preserved"""
     try:
         # Get completed tasks

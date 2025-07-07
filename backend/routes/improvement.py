@@ -1,3 +1,5 @@
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, HTTPException, status
 from typing import Dict, Any
 import logging
@@ -22,7 +24,12 @@ router = APIRouter(prefix="/improvement", tags=["improvement"])
 
 
 @router.post("/start/{task_id}", response_model=Dict[str, Any])
-async def start_improvement(task_id: str, payload: Dict[str, Any]):
+async def start_improvement(task_id: str, payload: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route start_improvement called", endpoint="start_improvement", trace_id=trace_id)
+    
     task = await get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -31,7 +38,12 @@ async def start_improvement(task_id: str, payload: Dict[str, Any]):
 
 
 @router.get("/status/{task_id}", response_model=Dict[str, Any])
-async def get_status(task_id: str):
+async def get_status(task_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_status called", endpoint="get_status", trace_id=trace_id)
+    
     task = await get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -42,13 +54,23 @@ async def get_status(task_id: str):
 
 
 @router.post("/close/{task_id}", response_model=Dict[str, Any])
-async def close_improvement(task_id: str):
+async def close_improvement(task_id: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route close_improvement called", endpoint="close_improvement", trace_id=trace_id)
+    
     await close_loop(task_id)
     return {"closed": True}
 
 
 @router.post("/qa/{task_id}", response_model=Dict[str, Any])
-async def qa_improvement(task_id: str, payload: Dict[str, Any]):
+async def qa_improvement(task_id: str, payload: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route qa_improvement called", endpoint="qa_improvement", trace_id=trace_id)
+    
     task = await get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -58,6 +80,11 @@ async def qa_improvement(task_id: str, payload: Dict[str, Any]):
 
 @router.post("/asset-refinement/{task_id}", response_model=Dict[str, Any])
 async def request_asset_refinement(task_id: str, refinement_request: Dict[str, Any]):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route request_asset_refinement called", endpoint="request_asset_refinement", trace_id=trace_id)
+    
     """
     🔄 USER-REQUESTED ASSET REFINEMENT
     Creates an improvement task based on user feedback for asset enhancement

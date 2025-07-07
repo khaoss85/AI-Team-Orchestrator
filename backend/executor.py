@@ -124,7 +124,7 @@ except ImportError as e:
 
 try:
     from config.quality_system_config import QualitySystemConfig
-    from deliverable_aggregator import check_and_create_final_deliverable
+    from backend.deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
     QUALITY_SYSTEM_AVAILABLE = True
     logger.info("✅ Quality System integration available for TaskExecutor")
 except ImportError as e:
@@ -389,7 +389,7 @@ class AssetCoordinationMixin:
                     if last_task and not self._is_enhancement_task(last_task):
                         # Trigger enhanced deliverable check with circuit breaker protection
                         async def _safe_deliverable_creation():
-                            from deliverable_aggregator import check_and_create_final_deliverable
+                            from backend.deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
                             return await check_and_create_final_deliverable(workspace_id)
                         
                         deliverable_id = await self._execute_with_circuit_breaker(_safe_deliverable_creation)
@@ -1503,8 +1503,8 @@ Focus on delivering practical, actionable results that move the project forward.
                     
                     # 🛡️ AUTOMATIC QUALITY TRIGGER: Trigger quality validation on task completion
                     try:
-                        from services.automatic_quality_trigger import get_automatic_quality_trigger
-                        quality_trigger = get_automatic_quality_trigger()
+                        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+                        quality_trigger = unified_quality_engine.get_automatic_quality_trigger()
                         
                         # Trigger immediate quality check for the workspace
                         quality_result = await quality_trigger.trigger_immediate_quality_check(workspace_id)
@@ -4133,7 +4133,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                             return await check_and_create_final_deliverable(workspace_id)
                         else:
                             # Fallback se quality system non disponibile
-                            from deliverable_aggregator import check_and_create_final_deliverable as fallback_func
+                            from backend.deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable as fallback_func
                             return await fallback_func(workspace_id)
                     
                     deliverable_id = await self._execute_with_circuit_breaker(_safe_quality_deliverable_creation)
@@ -4164,7 +4164,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                     if QualitySystemConfig and QualitySystemConfig.FALLBACK_TO_STANDARD_SYSTEM_ON_ERROR:
                         try:
                             async def _safe_fallback_deliverable():
-                                from deliverable_aggregator import check_and_create_final_deliverable
+                                from backend.deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
                                 return await check_and_create_final_deliverable(workspace_id)
                             
                             fallback_id = await self._execute_with_circuit_breaker(_safe_fallback_deliverable)
@@ -4173,7 +4173,7 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                                 logger.info(f"📦 FALLBACK DELIVERABLE: Created {fallback_id} for {workspace_id}")
                                 
                         except ImportError as import_error:
-                            logger.error(f"Cannot import deliverable_aggregator for fallback: {import_error}")
+                            logger.error(f"Cannot import unified_deliverable_engine for fallback: {import_error}")
                         except Exception as fallback_error:
                             logger.error(f"Fallback deliverable also failed for {workspace_id}: {fallback_error}")
                     
@@ -4549,7 +4549,7 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
                 
                 # Import and trigger deliverable creation for this specific goal
                 try:
-                    from deliverable_aggregator import IntelligentDeliverableAggregator
+                    from deliverable_system.unified_deliverable_engine import IntelligentDeliverableAggregator
                     aggregator = IntelligentDeliverableAggregator()
                     
                     # Create deliverable context for this specific goal

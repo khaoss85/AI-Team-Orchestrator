@@ -3,6 +3,8 @@ AI Content Processor Route
 Processes structured content using AI to generate rich, formatted markup
 """
 
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
@@ -26,6 +28,11 @@ class ContentProcessingResponse(BaseModel):
 
 @router.post("/ai/process-content", response_model=ContentProcessingResponse)
 async def process_content_with_ai(request: ContentProcessingRequest):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route process_content_with_ai called", endpoint="process_content_with_ai", trace_id=trace_id)
+    
     """
     Process structured content with AI to generate beautiful, user-friendly markup
     """
@@ -232,6 +239,11 @@ Generate clean, professional {request.format.upper()} markup using Tailwind CSS 
 
 @router.post("/ai/process-content/preview")
 async def preview_content_processing(request: ContentProcessingRequest):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route preview_content_processing called", endpoint="preview_content_processing", trace_id=trace_id)
+    
     """
     Preview what the AI processing would generate without actually calling the API
     Returns a mock/template response for testing

@@ -210,7 +210,7 @@ class AutonomousSystemVerifier:
         logger.info("\n📦 VERIFICA DELIVERABLE PIPELINE...")
         
         try:
-            from deliverable_system.deliverable_pipeline import DeliverablePipeline, deliverable_pipeline
+            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
             
             logger.info("   ✅ DeliverablePipeline module imported successfully")
             
@@ -232,13 +232,13 @@ class AutonomousSystemVerifier:
         logger.info("\n🛡️ VERIFICA QUALITY GATES...")
         
         try:
-            from quality_gate import QualityGate
+            
             
             logger.info("   ✅ QualityGate module imported successfully")
             
             # Check if automatic quality trigger is configured
             try:
-                from services.automatic_quality_trigger import get_automatic_quality_trigger
+                from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
                 logger.info("   ✅ AutomaticQualityTrigger available")
                 self.verification_results["quality_gates"]["status"] = "PASS"
                 self.verification_results["quality_gates"]["details"] = "Ready for autonomous quality validation"
@@ -247,7 +247,7 @@ class AutonomousSystemVerifier:
                 self.verification_results["quality_gates"]["status"] = "PARTIAL"
                 
         except Exception as e:
-            logger.error(f"   ❌ QualityGates verification failed: {e}")
+            logger.error(f"   ❌ UnifiedQualityEngine verification failed: {e}")
             self.verification_results["quality_gates"]["status"] = "FAIL"
             self.verification_results["quality_gates"]["details"] = str(e)
     

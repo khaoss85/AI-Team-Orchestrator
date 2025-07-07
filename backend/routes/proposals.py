@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, status, Body
+from fastapi import Request, APIRouter, HTTPException, status, Body
 from typing import Optional, Dict, Any
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 
@@ -14,7 +15,12 @@ router = APIRouter(prefix="/proposals", tags=["proposals"])
 
 
 @router.post("/{proposal_id}/approve", status_code=status.HTTP_200_OK)
-async def approve_proposal(proposal_id: UUID) -> Dict[str, Any]:
+async def approve_proposal(proposal_id: UUID, request: Request) -> Dict[str, Any]:
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route approve_proposal called", endpoint="approve_proposal", trace_id=trace_id)
+
     """Approve a stored proposal."""
     try:
         proposal = await get_team_proposal(str(proposal_id))

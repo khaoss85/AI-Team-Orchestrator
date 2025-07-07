@@ -1,3 +1,5 @@
+from fastapi import Request
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from fastapi import APIRouter, Depends, HTTPException, status
 from database import (
     save_team_proposal, 
@@ -27,7 +29,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
 @router.post("/proposal", response_model=DirectorTeamProposalResponse) 
-async def create_team_proposal(config: DirectorConfig):
+async def create_team_proposal(config: DirectorConfig, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_team_proposal called", endpoint="create_team_proposal", trace_id=trace_id)
+    
     """
     Create a team proposal for a workspace based on goals and constraints
     Enhanced to use strategic goals when available
@@ -106,7 +113,12 @@ async def create_team_proposal(config: DirectorConfig):
         )
 
 @router.post("/approve/{workspace_id}", status_code=status.HTTP_200_OK)
-async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID):
+async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route approve_team_proposal_endpoint called", endpoint="approve_team_proposal_endpoint", trace_id=trace_id)
+    
     """
     Approve a team proposal and create the agent team
     """
@@ -333,7 +345,12 @@ async def _convert_frontend_goals_to_strategic_format(frontend_goals: List[Dict[
 
 # Alias endpoint for compatibility with frontend expectations
 @router.post("/analyze-and-propose", response_model=DirectorTeamProposalResponse)
-async def analyze_and_propose_team(config: DirectorConfig):
+async def analyze_and_propose_team(config: DirectorConfig, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route analyze_and_propose_team called", endpoint="analyze_and_propose_team", trace_id=trace_id)
+    
     """
     Alias for create_team_proposal endpoint
     Analyzes workspace and proposes a team configuration

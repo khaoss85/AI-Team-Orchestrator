@@ -9,7 +9,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 from uuid import uuid4, UUID
 
-from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import Request, APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from pydantic import BaseModel, Field
 
 from database import get_supabase_client
@@ -512,7 +513,12 @@ async def confirm_action(
         raise HTTPException(status_code=500, detail=f"Failed to process confirmation: {str(e)}")
 
 @router.get("/workspaces/{workspace_id}/context")
-async def get_conversation_context(workspace_id: str, chat_id: str = "general") -> Dict[str, Any]:
+async def get_conversation_context(workspace_id: str, chat_id: str = "general", request: Request) -> Dict[str, Any]:
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_conversation_context called", endpoint="get_conversation_context", trace_id=trace_id)
+
     """
     Get current conversation context including workspace state.
     Useful for debugging and advanced integrations.
@@ -886,7 +892,12 @@ async def _execute_confirmed_action(confirmation: Dict[str, Any]) -> Dict[str, A
 
 # Health Check
 @router.get("/workspaces/{workspace_id}/knowledge-insights")
-async def get_knowledge_insights(workspace_id: str) -> Dict[str, Any]:
+async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[str, Any]:
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_knowledge_insights called", endpoint="get_knowledge_insights", trace_id=trace_id)
+
     """
     Get knowledge insights for a workspace including best practices and learnings.
     """
@@ -981,7 +992,12 @@ async def get_knowledge_insights(workspace_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to fetch knowledge insights: {str(e)}")
 
 @router.get("/health")
-async def health_check():
+async def health_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route health_check called", endpoint="health_check", trace_id=trace_id)
+
     """Health check endpoint for conversation service"""
     return {
         "status": "healthy",

@@ -9,7 +9,7 @@ from uuid import UUID
 
 from models import WorkspaceGoal, GoalStatus
 from database import supabase
-from ai_quality_assurance.goal_validator import goal_validator
+from backend.ai_quality_assurance.unified_quality_engine import goal_validator
 from goal_driven_task_planner import goal_driven_task_planner
 
 logger = logging.getLogger(__name__)
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Import asset system for automatic asset requirements generation
 asset_requirements_generator = None
 try:
-    from services.asset_requirements_generator import AssetRequirementsGenerator
-    asset_requirements_generator = AssetRequirementsGenerator()
+    from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetRequirementsGenerator
+    asset_requirements_generator = unified_deliverable_engine
     logger.info("✅ Asset Requirements Generator initialized for goal monitoring")
 except Exception as e:
     logger.error(f"Failed to initialize Asset Requirements Generator in monitoring: {e}")

@@ -1,13 +1,14 @@
 # backend/routes/goal_validation.py
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import Request, APIRouter, HTTPException, status, Query
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 from datetime import datetime
 
-from ai_quality_assurance.goal_validator import goal_validator, ValidationSeverity
-from ai_quality_assurance.quality_gates import quality_gates, GateStatus
+from backend.ai_quality_assurance.unified_quality_engine import goal_validator, ValidationSeverity
+from backend.ai_quality_assurance.unified_quality_engine import quality_gates, GateStatus
 from database import get_workspace, list_tasks
 from models import TaskStatus
 
@@ -164,7 +165,12 @@ async def validate_workspace_goals(
         )
 
 @router.get("/{workspace_id}/quality-gate/{target_phase}", response_model=Dict[str, Any])
-async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_phase: Optional[str] = None):
+async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_phase: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route evaluate_quality_gate called", endpoint="evaluate_quality_gate", trace_id=trace_id)
+
     """
     Evaluate quality gate for phase transition
     AI-driven gate evaluation with blocking capability
@@ -232,7 +238,12 @@ async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_p
         )
 
 @router.post("/{workspace_id}/completion-readiness", response_model=Dict[str, Any])
-async def check_project_completion_readiness(workspace_id: UUID):
+async def check_project_completion_readiness(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route check_project_completion_readiness called", endpoint="check_project_completion_readiness", trace_id=trace_id)
+
     """
     Comprehensive check for project completion readiness
     """
@@ -307,7 +318,12 @@ async def check_project_completion_readiness(workspace_id: UUID):
         )
 
 @router.post("/{workspace_id}/validate-task/{task_id}", response_model=Dict[str, Any])
-async def validate_task_against_goals(workspace_id: UUID, task_id: UUID):
+async def validate_task_against_goals(workspace_id: UUID, task_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route validate_task_against_goals called", endpoint="validate_task_against_goals", trace_id=trace_id)
+
     """
     Validate a specific task's contribution to workspace goals
     """

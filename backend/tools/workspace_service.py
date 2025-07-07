@@ -147,7 +147,7 @@ class SupabaseWorkspaceService(WorkspaceServiceInterface):
             # SCALABLE: Reuse existing services when available
             # Try to import existing goal service to avoid duplication
             try:
-                from ai_quality_assurance.strategic_goal_decomposer import StrategicGoalDecomposer
+                from backend.ai_quality_assurance.unified_quality_engine import StrategicGoalDecomposer
                 goal_service = StrategicGoalDecomposer()
             except ImportError:
                 # Fallback to simple implementation if service not available

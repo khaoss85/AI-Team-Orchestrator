@@ -4,6 +4,7 @@
 Verifica finale che entrambi i problemi siano completamente risolti
 """
 
+from pathlib import Path
 import logging
 import sys
 import ast
@@ -19,14 +20,14 @@ def verify_markup_processor_fix():
     
     try:
         # 1. Test syntax validity
-        with open('/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/markup_processor.py', 'r') as f:
+        with open('./deliverable_system/markup_processor.py', 'r') as f:
             content = f.read()
         
         ast.parse(content)
         logger.info("✅ Python syntax is valid")
         
         # 2. Test import
-        sys.path.append('/Users/pelleri/Documents/ai-team-orchestrator/backend')
+        sys.path.append('.')
         from deliverable_system import markup_processor
         logger.info("✅ Module imports successfully")
         
@@ -79,7 +80,7 @@ def verify_workspace_memory_fix():
     
     try:
         # 1. Check the fix is in place
-        with open('/Users/pelleri/Documents/ai-team-orchestrator/backend/workspace_memory.py', 'r') as f:
+        with open('./workspace_memory.py', 'r') as f:
             content = f.read()
         
         # Find the specific line

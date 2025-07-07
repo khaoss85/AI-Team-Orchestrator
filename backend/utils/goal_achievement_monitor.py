@@ -262,7 +262,7 @@ class GoalAchievementMonitor:
             }).eq("id", goal_id).execute()
             
             # Trigger deliverable creation
-            from deliverable_aggregator import IntelligentDeliverableAggregator
+            from deliverable_system.unified_deliverable_engine import IntelligentDeliverableAggregator
             aggregator = IntelligentDeliverableAggregator()
             await aggregator.check_and_create_final_deliverable(workspace_id)
             

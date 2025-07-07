@@ -116,7 +116,7 @@ class ComprehensiveValidationTest:
         logger.info("🔍 Test 2: Quality Validator")
         
         try:
-            from ai_quality_assurance.quality_validator import AIQualityValidator
+            from backend.ai_quality_assurance.unified_quality_engine import AIQualityValidator
             
             quality_validator = AIQualityValidator()
             

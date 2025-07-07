@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Request, APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 
@@ -25,12 +26,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
 @router.get("/health", status_code=status.HTTP_200_OK)
-async def health_check():
+async def health_check(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route health_check called", endpoint="health_check", trace_id=trace_id)
+
     """Simple health check endpoint"""
     return {"status": "healthy", "service": "workspaces"}
 
 @router.get("/", response_model=List[Workspace])
-async def get_all_workspaces(limit: Optional[int] = 50, user_id: Optional[str] = None):
+async def get_all_workspaces(limit: Optional[int] = 50, user_id: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_all_workspaces called", endpoint="get_all_workspaces", trace_id=trace_id)
+
     """Get all workspaces with optional limit and user filter"""
     try:
         from database import supabase
@@ -51,7 +62,12 @@ async def get_all_workspaces(limit: Optional[int] = 50, user_id: Optional[str] =
         )
 
 @router.post("/", response_model=Workspace, status_code=status.HTTP_201_CREATED)
-async def create_new_workspace(workspace: WorkspaceCreate):
+async def create_new_workspace(workspace: WorkspaceCreate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_new_workspace called", endpoint="create_new_workspace", trace_id=trace_id)
+
     try:
         # Generate default user_id if not provided (must be valid UUID)
         from uuid import uuid4
@@ -73,7 +89,12 @@ async def create_new_workspace(workspace: WorkspaceCreate):
         )
 
 @router.get("/{workspace_id}", response_model=Workspace)
-async def get_workspace_by_id(workspace_id: UUID):
+async def get_workspace_by_id(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_by_id called", endpoint="get_workspace_by_id", trace_id=trace_id)
+
     workspace = await get_workspace(str(workspace_id))
     if not workspace:
         raise HTTPException(
@@ -83,7 +104,12 @@ async def get_workspace_by_id(workspace_id: UUID):
     return workspace
 
 @router.get("/user/{user_id}", response_model=List[Workspace])
-async def get_user_workspaces(user_id: UUID):
+async def get_user_workspaces(user_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_user_workspaces called", endpoint="get_user_workspaces", trace_id=trace_id)
+
     try:
         logger.info(f"Fetching workspaces for user: {user_id}")
         workspaces = await list_workspaces(str(user_id))
@@ -97,7 +123,12 @@ async def get_user_workspaces(user_id: UUID):
         )
 
 @router.delete("/{workspace_id}", status_code=status.HTTP_200_OK)
-async def delete_workspace_by_id(workspace_id: UUID):
+async def delete_workspace_by_id(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route delete_workspace_by_id called", endpoint="delete_workspace_by_id", trace_id=trace_id)
+
     """Delete a workspace and all its associated data"""
     try:
         # Verifica se il workspace esiste
@@ -131,7 +162,12 @@ async def delete_workspace_by_id(workspace_id: UUID):
 
 
 @router.put("/{workspace_id}", status_code=status.HTTP_200_OK)
-async def update_workspace_by_id(workspace_id: UUID, workspace_update: WorkspaceUpdate):
+async def update_workspace_by_id(workspace_id: UUID, workspace_update: WorkspaceUpdate, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route update_workspace_by_id called", endpoint="update_workspace_by_id", trace_id=trace_id)
+
     """Update workspace fields"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -157,7 +193,12 @@ async def update_workspace_by_id(workspace_id: UUID, workspace_update: Workspace
 
 
 @router.post("/{workspace_id}/pause", status_code=status.HTTP_200_OK)
-async def pause_workspace(workspace_id: UUID):
+async def pause_workspace(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route pause_workspace called", endpoint="pause_workspace", trace_id=trace_id)
+
     """Pause a workspace"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -177,7 +218,12 @@ async def pause_workspace(workspace_id: UUID):
 
 
 @router.post("/{workspace_id}/resume", status_code=status.HTTP_200_OK)
-async def resume_workspace(workspace_id: UUID):
+async def resume_workspace(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route resume_workspace called", endpoint="resume_workspace", trace_id=trace_id)
+
     """Resume a paused workspace"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -196,7 +242,12 @@ async def resume_workspace(workspace_id: UUID):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to resume workspace: {str(e)}")
 
 @router.get("/{workspace_id}/settings", status_code=status.HTTP_200_OK)
-async def get_workspace_settings(workspace_id: UUID):
+async def get_workspace_settings(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_settings called", endpoint="get_workspace_settings", trace_id=trace_id)
+
     """Get workspace-specific settings"""
     try:
         from utils.project_settings import get_project_settings
@@ -222,7 +273,12 @@ async def get_workspace_settings(workspace_id: UUID):
 # Human Interaction Endpoints for Human-in-the-Loop Workflow
 
 @router.post("/{workspace_id}/ask-question", status_code=status.HTTP_200_OK)
-async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any]):
+async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route ask_question_to_team called", endpoint="ask_question_to_team", trace_id=trace_id)
+
     """Ask a question to the AI team"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -265,7 +321,12 @@ async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any]):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send question: {str(e)}")
 
 @router.post("/{workspace_id}/provide-feedback", status_code=status.HTTP_200_OK)
-async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any]):
+async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route provide_feedback_to_team called", endpoint="provide_feedback_to_team", trace_id=trace_id)
+
     """Provide general feedback to the AI team"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -306,7 +367,12 @@ async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any]):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to provide feedback: {str(e)}")
 
 @router.post("/{workspace_id}/request-iteration", status_code=status.HTTP_200_OK)
-async def request_iteration(workspace_id: UUID, request: Dict[str, Any]):
+async def request_iteration(workspace_id: UUID, request: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route request_iteration called", endpoint="request_iteration", trace_id=trace_id)
+
     """Request an iteration with specific changes"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -350,7 +416,12 @@ async def request_iteration(workspace_id: UUID, request: Dict[str, Any]):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to request iteration: {str(e)}")
 
 @router.post("/{workspace_id}/approve-completion", status_code=status.HTTP_200_OK)
-async def approve_project_completion(workspace_id: UUID):
+async def approve_project_completion(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route approve_project_completion called", endpoint="approve_project_completion", trace_id=trace_id)
+
     """Approve the completion of the project"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -375,7 +446,12 @@ async def approve_project_completion(workspace_id: UUID):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to approve completion: {str(e)}")
 
 @router.post("/{workspace_id}/request-changes", status_code=status.HTTP_200_OK)
-async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, Any]):
+async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, Any], request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route request_changes_to_completion called", endpoint="request_changes_to_completion", trace_id=trace_id)
+
     """Request changes to the completed project"""
     try:
         workspace = await get_workspace(str(workspace_id))
@@ -428,7 +504,12 @@ async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, A
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to request changes: {str(e)}")
 
 @router.post("/{workspace_id}/create-goals", status_code=status.HTTP_200_OK)
-async def create_workspace_goals(workspace_id: UUID):
+async def create_workspace_goals(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_workspace_goals called", endpoint="create_workspace_goals", trace_id=trace_id)
+
     """
     🎯 Create workspace goals from workspace goal text
     
@@ -464,7 +545,12 @@ async def create_workspace_goals(workspace_id: UUID):
         )
 
 @router.get("/{workspace_id}/tasks", status_code=status.HTTP_200_OK)
-async def get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None):
+async def get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_tasks called", endpoint="get_workspace_tasks", trace_id=trace_id)
+
     """Get tasks for a workspace, optionally filtered by task type"""
     try:
         from database import list_tasks

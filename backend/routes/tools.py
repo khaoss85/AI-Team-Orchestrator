@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import Request, APIRouter, Depends, HTTPException, status, Request
 from typing import List, Dict, Any, Optional
+from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from uuid import UUID
 import logging
 import json
@@ -19,6 +20,11 @@ logger = logging.getLogger(__name__)
 
 @router.post("/store-data", status_code=status.HTTP_200_OK)
 async def store_data(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route store_data called", endpoint="store_data", trace_id=trace_id)
+
     """
     Store data in the database.
     This is a macro tool that can be called by agents.
@@ -52,7 +58,12 @@ async def store_data(request: Request):
         )
 
 @router.get("/retrieve-data/{workspace_id}/{key}", status_code=status.HTTP_200_OK)
-async def retrieve_data(workspace_id: UUID, key: str):
+async def retrieve_data(workspace_id: UUID, key: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route retrieve_data called", endpoint="retrieve_data", trace_id=trace_id)
+
     """
     Retrieve data from the database.
     This is a macro tool that can be called by agents.
@@ -108,6 +119,11 @@ async def retrieve_data(workspace_id: UUID, key: str):
 
 @router.post("/custom", status_code=status.HTTP_201_CREATED)
 async def create_new_custom_tool(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_new_custom_tool called", endpoint="create_new_custom_tool", trace_id=trace_id)
+
     """Create a new custom tool"""
     try:
         payload = await request.json()
@@ -153,7 +169,12 @@ async def create_new_custom_tool(request: Request):
         )
 
 @router.get("/custom/{workspace_id}", status_code=status.HTTP_200_OK)
-async def get_workspace_custom_tools(workspace_id: UUID):
+async def get_workspace_custom_tools(workspace_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspace_custom_tools called", endpoint="get_workspace_custom_tools", trace_id=trace_id)
+
     """Get all custom tools for a workspace"""
     try:
         # Get tools from database
@@ -171,7 +192,12 @@ async def get_workspace_custom_tools(workspace_id: UUID):
         )
 
 @router.delete("/custom/{tool_id}", status_code=status.HTTP_200_OK)
-async def delete_tool(tool_id: UUID):
+async def delete_tool(tool_id: UUID, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route delete_tool called", endpoint="delete_tool", trace_id=trace_id)
+
     """Delete a custom tool"""
     try:
         # Get tool from database first
@@ -202,7 +228,12 @@ async def delete_tool(tool_id: UUID):
         )
 
 @router.get("/social-media/analyze-hashtags", status_code=status.HTTP_200_OK)
-async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram"):
+async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram", request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route analyze_hashtags_universal called", endpoint="analyze_hashtags_universal", trace_id=trace_id)
+
     """
     🤖 UNIVERSAL: Analyze hashtags for any social media platform
     hashtags: Comma-separated list of hashtags
@@ -222,7 +253,12 @@ async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram")
         )
 
 @router.get("/social-media/analyze-account/{username}", status_code=status.HTTP_200_OK)
-async def analyze_account_universal(username: str, platform: str = "instagram"):
+async def analyze_account_universal(username: str, platform: str = "instagram", request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route analyze_account_universal called", endpoint="analyze_account_universal", trace_id=trace_id)
+
     """
     🤖 UNIVERSAL: Analyze social media account across platforms
     """
@@ -240,6 +276,11 @@ async def analyze_account_universal(username: str, platform: str = "instagram"):
 
 @router.post("/social-media/generate-content-ideas", status_code=status.HTTP_200_OK)
 async def generate_content_ideas_universal(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route generate_content_ideas_universal called", endpoint="generate_content_ideas_universal", trace_id=trace_id)
+
     """
     🤖 UNIVERSAL: Generate content ideas for any social media platform
     """
@@ -272,17 +313,32 @@ async def generate_content_ideas_universal(request: Request):
 
 # 🔄 BACKWARDS COMPATIBILITY: Keep old Instagram endpoints but redirect to universal ones
 @router.get("/instagram/analyze-hashtags", status_code=status.HTTP_200_OK)
-async def analyze_instagram_hashtags_legacy(hashtags: str):
+async def analyze_instagram_hashtags_legacy(hashtags: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route analyze_instagram_hashtags_legacy called", endpoint="analyze_instagram_hashtags_legacy", trace_id=trace_id)
+
     """LEGACY: Redirects to universal hashtag analysis"""
     return await analyze_hashtags_universal(hashtags, "instagram")
 
 @router.get("/instagram/analyze-account/{username}", status_code=status.HTTP_200_OK)
-async def analyze_instagram_account_legacy(username: str):
+async def analyze_instagram_account_legacy(username: str, request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route analyze_instagram_account_legacy called", endpoint="analyze_instagram_account_legacy", trace_id=trace_id)
+
     """LEGACY: Redirects to universal account analysis"""
     return await analyze_account_universal(username, "instagram")
 
 @router.post("/instagram/generate-content-ideas", status_code=status.HTTP_200_OK)
 async def generate_instagram_content_ideas_legacy(request: Request):
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route generate_instagram_content_ideas_legacy called", endpoint="generate_instagram_content_ideas_legacy", trace_id=trace_id)
+
     """LEGACY: Redirects to universal content generation"""
     payload = await request.json()
     payload["platform"] = "instagram"  # Force Instagram platform
