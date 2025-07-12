@@ -1,0 +1,721 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+/Users/pelleri/Documents/ai-team-orchestrator/backend/simple_server.py:58: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [26509]
+INFO:     Waiting for application startup.
+⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Workspaces routes registered
+✅ Director routes registered
+✅ Goals routes registered
+🚀 Starting simple server with task executor...
+🚀 Starting minimal components...
+✅ Task executor started
+INFO:     127.0.0.1:54319 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54345 - "POST /api/workspaces HTTP/1.1" 307 Temporary Redirect
+[2m2025-07-12T09:45:33.383606Z[0m [[32m[1minfo     [0m] [1mRoute create_new_workspace called[0m [36mendpoint[0m=[35mcreate_new_workspace[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54345 - "POST /api/workspaces/ HTTP/1.1" 201 Created
+❌ Failed to generate asset requirements for goal 0112aaa6-e6a8-4761-ac1e-4eef8bbe2c93: 'UnifiedDeliverableEngine' object has no attribute 'generate_from_goal'
+Warning: Failed to log goal event: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'message' column of 'logs' in the schema cache"}
+INFO:     127.0.0.1:54347 - "POST /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:45:33.628843Z[0m [[32m[1minfo     [0m] [1mRoute create_team_proposal called[0m [36mendpoint[0m=[35mcreate_team_proposal[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:33.688594Z[0m [[32m[1minfo     [0m] [1m🎯 Using enhanced director for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:33.688702Z[0m [[32m[1minfo     [0m] [1m📊 Using 0 strategic goals from database[0m [36mtrace_id[0m=[35munknown[0m
+Preventing manager-to-manager handoff between similar roles: ElenaRossi (project manager) -> LucaVerdi (lead generation specialist).
+INFO:     127.0.0.1:54349 - "POST /api/director/proposal HTTP/1.1" 200 OK
+[2m2025-07-12T09:45:42.594030Z[0m [[32m[1minfo     [0m] [1mRoute approve_team_proposal_endpoint called[0m [36mendpoint[0m=[35mapprove_team_proposal_endpoint[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.725848Z[0m [[32m[1minfo     [0m] [1m🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for 2 agents[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.725966Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 1/2: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.726007Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.726068Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '0ebd8f62-d705-4af9-8770-90bdd15c7a56', 'name': 'ElenaRossi', 'role': 'Project Manager', 'seniority': 'senior', 'description': 'Oversees the project, coordinates tasks, ensures quality and timely delivery of the SaaS contact list.', 'system_prompt': 'You are a Project Manager. Your responsibilities include planning, coordinating, and monitoring the generation of a high-quality SaaS industry contact list, ensuring all deliverables meet quality standards and deadlines.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Elena', 'last_name': 'Rossi', 'personality_traits': ['analytical', 'proactive'], 'communication_style': 'formal', 'hard_skills': [{'name': 'project management', 'level': 'expert'}, {'name': 'SaaS industry knowledge', 'level': 'advanced'}], 'soft_skills': [{'name': 'leadership', 'level': 'expert'}, {'name': 'organization', 'level': 'expert'}], 'background_story': 'Elena has over 10 years of experience managing B2B SaaS projects across Europe. She is known for her structured approach and ability to deliver high-quality results under tight deadlines.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.788264Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent ef43c77d-6968-4e83-9f09-7b15304d5ec0: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.788350Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 2/2: LucaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.788384Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.788495Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '0ebd8f62-d705-4af9-8770-90bdd15c7a56', 'name': 'LucaVerdi', 'role': 'Lead Generation Specialist', 'seniority': 'senior', 'description': 'Researches and compiles a targeted list of high-quality SaaS industry leads using advanced search and verification techniques.', 'system_prompt': 'You are a Lead Generation Specialist. Your responsibilities include identifying, researching, and verifying potential SaaS industry leads to build a high-quality contact list.', 'llm_config': {'model': 'gpt-4.1', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Luca', 'last_name': 'Verdi', 'personality_traits': ['detail-oriented', 'methodical'], 'communication_style': 'concise', 'hard_skills': [{'name': 'lead research', 'level': 'expert'}, {'name': 'data verification', 'level': 'advanced'}, {'name': 'SaaS market analysis', 'level': 'advanced'}], 'soft_skills': [{'name': 'critical thinking', 'level': 'advanced'}, {'name': 'adaptability', 'level': 'advanced'}], 'background_story': 'Luca has specialized in SaaS lead generation for 7 years, working with top European tech firms. He is renowned for his meticulous research and ability to uncover hard-to-find contacts.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.856977Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 83c05629-2583-4d19-8bb2-020d3afc21d0: LucaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.857142Z[0m [[32m[1minfo     [0m] [1m📊 AGENT CREATION SUMMARY: 2 agents created out of 2 proposed[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:42.857207Z[0m [[32m[1minfo     [0m] [1m🗂️ Agent name to ID mapping: {'ElenaRossi': 'ef43c77d-6968-4e83-9f09-7b15304d5ec0', 'LucaVerdi': '83c05629-2583-4d19-8bb2-020d3afc21d0'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.140420Z[0m [[32m[1minfo     [0m] [1m✅ AgentManager cache refreshed successfully for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.140514Z[0m [[32m[1minfo     [0m] [1mProcessing 0 handoff proposals for actual creation...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.197489Z[0m [[32m[1minfo     [0m] [1m✅ Workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 activated successfully[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.197547Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.263033Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:45:43.263152Z[0m [[32m[1minfo     [0m] [1m✅ 2 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task 50323be2-4cee-4341-a916-9dbd1a242f21: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:46:01.705899Z[0m [[32m[1minfo     [0m] [1m✅ Auto-start triggered after team approval via director endpoint[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54353 - "POST /api/director/approve/0ebd8f62-d705-4af9-8770-90bdd15c7a56?proposal_id=0c2d9656-c547-488d-ad0d-f0974337ccee HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:01.710732Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:46:01.853044Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54363 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:01.858853Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54365 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54367 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:02.021678Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:46:02.160802Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54369 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54371 - "GET /monitoring/task/50323be2-4cee-4341-a916-9dbd1a242f21/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:46:17.176541Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54374 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54376 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:17.315793Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:46:17.455963Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54378 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:46:32.469725Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54381 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54384 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:32.694819Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:46:32.831525Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54386 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:46:47.845495Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54389 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54391 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:46:47.986212Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:46:48.113115Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54393 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:0ebd8f62 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:0ebd8f62 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task 983a536e-a88c-47a2-b242-3e8ae9dd029c: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:47:03.127321Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54396 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54398 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:47:03.256215Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:47:03.386016Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54400 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54402 - "GET /monitoring/task/983a536e-a88c-47a2-b242-3e8ae9dd029c/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:0ebd8f62 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:0ebd8f62 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task adc8fc52-cd93-435a-924d-3870ddfdf1b9: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:47:18.396926Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54405 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54408 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:47:18.573747Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:47:18.690268Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54411 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54413 - "GET /monitoring/task/adc8fc52-cd93-435a-924d-3870ddfdf1b9/status HTTP/1.1" 404 Not Found
+[2m2025-07-12T09:47:33.706628Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54425 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54427 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:47:33.834711Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:47:33.991853Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54429 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:47:49.004265Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54433 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54436 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:47:49.204954Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:47:49.345143Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54438 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:48:04.358306Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54441 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54443 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:48:04.509286Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:48:04.648814Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54445 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:48:19.662812Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54450 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54453 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:48:19.867498Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:48:19.998917Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 0ebd8f62-d705-4af9-8770-90bdd15c7a56 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54455 - "GET /api/workspaces/0ebd8f62-d705-4af9-8770-90bdd15c7a56/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54603 - "POST /api/workspaces HTTP/1.1" 307 Temporary Redirect
+[2m2025-07-12T09:57:39.963282Z[0m [[32m[1minfo     [0m] [1mRoute create_new_workspace called[0m [36mendpoint[0m=[35mcreate_new_workspace[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54603 - "POST /api/workspaces/ HTTP/1.1" 201 Created
+❌ Failed to generate asset requirements for goal 91eb83dd-3c6a-4f76-b7b5-6b17bfe2f00d: 'UnifiedDeliverableEngine' object has no attribute 'generate_from_goal'
+Warning: Failed to log goal event: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'message' column of 'logs' in the schema cache"}
+INFO:     127.0.0.1:54605 - "POST /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:57:40.431607Z[0m [[32m[1minfo     [0m] [1mRoute create_team_proposal called[0m [36mendpoint[0m=[35mcreate_team_proposal[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:40.502400Z[0m [[32m[1minfo     [0m] [1m🎯 Using enhanced director for workspace 3c872d00-655a-4478-9df7-85634b92ec43[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:40.502525Z[0m [[32m[1minfo     [0m] [1m📊 Using 0 strategic goals from database[0m [36mtrace_id[0m=[35munknown[0m
+Preventing manager-to-manager handoff between similar roles: ElenaRossi (project manager) -> MarcoBianchi (lead research specialist).
+INFO:     127.0.0.1:54607 - "POST /api/director/proposal HTTP/1.1" 200 OK
+[2m2025-07-12T09:57:49.218262Z[0m [[32m[1minfo     [0m] [1mRoute approve_team_proposal_endpoint called[0m [36mendpoint[0m=[35mapprove_team_proposal_endpoint[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.343093Z[0m [[32m[1minfo     [0m] [1m🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for 2 agents[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.343204Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 1/2: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.343238Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.343288Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '3c872d00-655a-4478-9df7-85634b92ec43', 'name': 'ElenaRossi', 'role': 'Project Manager', 'seniority': 'senior', 'description': 'Oversees the project, ensures objectives are met, manages timelines, and maintains quality standards for the SaaS contact list generation.', 'system_prompt': 'You are a Project Manager. Coordinate the team, set milestones, ensure quality and timely delivery of a high-quality SaaS industry contact list.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Elena', 'last_name': 'Rossi', 'personality_traits': ['analytical', 'decisive'], 'communication_style': 'formal', 'hard_skills': [{'name': 'project management', 'level': 'expert'}, {'name': 'SaaS industry knowledge', 'level': 'advanced'}], 'soft_skills': [{'name': 'leadership', 'level': 'expert'}, {'name': 'organization', 'level': 'expert'}, {'name': 'diplomacy', 'level': 'advanced'}], 'background_story': 'Elena has over 10 years of experience managing B2B SaaS projects across Europe, specializing in lead generation and team coordination for high-growth startups.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.396967Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent edf542d3-1ac7-406b-8152-1b49fd88919c: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.397076Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 2/2: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.397117Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.397178Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '3c872d00-655a-4478-9df7-85634b92ec43', 'name': 'MarcoBianchi', 'role': 'Lead Research Specialist', 'seniority': 'senior', 'description': 'Conducts in-depth research to identify and verify high-quality SaaS leads, ensuring accuracy and relevance of contact information.', 'system_prompt': 'You are a Lead Research Specialist. Identify, research, and verify 10 high-quality SaaS industry leads with accurate contact details.', 'llm_config': {'model': 'gpt-4.1', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Marco', 'last_name': 'Bianchi', 'personality_traits': ['detail-oriented', 'methodical'], 'communication_style': 'concise', 'hard_skills': [{'name': 'lead research', 'level': 'expert'}, {'name': 'data verification', 'level': 'advanced'}, {'name': 'SaaS market analysis', 'level': 'advanced'}], 'soft_skills': [{'name': 'critical thinking', 'level': 'expert'}, {'name': 'adaptability', 'level': 'advanced'}], 'background_story': 'Marco is a seasoned researcher with 8 years in SaaS lead generation, known for his precision and ability to uncover hard-to-find executive contacts for sales teams.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.451063Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent e12718a1-f095-479c-bf71-09a049665acb: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.451167Z[0m [[32m[1minfo     [0m] [1m📊 AGENT CREATION SUMMARY: 2 agents created out of 2 proposed[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.451213Z[0m [[32m[1minfo     [0m] [1m🗂️ Agent name to ID mapping: {'ElenaRossi': 'edf542d3-1ac7-406b-8152-1b49fd88919c', 'MarcoBianchi': 'e12718a1-f095-479c-bf71-09a049665acb'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.712665Z[0m [[32m[1minfo     [0m] [1m✅ AgentManager cache refreshed successfully for workspace 3c872d00-655a-4478-9df7-85634b92ec43[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.712848Z[0m [[32m[1minfo     [0m] [1mProcessing 0 handoff proposals for actual creation...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.765238Z[0m [[32m[1minfo     [0m] [1m✅ Workspace 3c872d00-655a-4478-9df7-85634b92ec43 activated successfully[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.765300Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 3c872d00-655a-4478-9df7-85634b92ec43, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.819787Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:57:49.819882Z[0m [[32m[1minfo     [0m] [1m✅ 2 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task 40215bb9-3eab-4489-8307-43590296eea1: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:58:07.523209Z[0m [[32m[1minfo     [0m] [1m✅ Auto-start triggered after team approval via director endpoint[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54619 - "POST /api/director/approve/3c872d00-655a-4478-9df7-85634b92ec43?proposal_id=3424b652-f396-43ea-9345-023b7fa81f09 HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:07.528829Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:58:07.662982Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54628 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:07.666799Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54630 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54632 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:07.793217Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:58:07.923216Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54634 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54636 - "GET /monitoring/task/40215bb9-3eab-4489-8307-43590296eea1/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:58:22.940645Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54640 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54642 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:23.091002Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:58:23.224427Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54644 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:58:38.235555Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54647 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54650 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:38.451463Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:58:38.584694Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54652 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T09:58:53.595053Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54656 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54658 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:58:53.738914Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:58:53.868930Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54660 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:3c872d00 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:3c872d00 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task fbf1fb7b-2a7d-4c1b-a48e-9df94a8d9a1a: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:59:08.882944Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54663 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54665 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:59:09.020550Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:59:09.140759Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54667 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54669 - "GET /monitoring/task/fbf1fb7b-2a7d-4c1b-a48e-9df94a8d9a1a/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:3c872d00 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:3c872d00 - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task d735e5ea-f875-4eff-9876-1a388513368d: 'SpecialistAgent' object has no attribute 'execute'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                             ^^^^^^^^^^^^^
+AttributeError: 'SpecialistAgent' object has no attribute 'execute'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T09:59:24.157399Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54671 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54674 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:59:24.523762Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:59:24.647561Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54676 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54678 - "GET /monitoring/task/d735e5ea-f875-4eff-9876-1a388513368d/status HTTP/1.1" 404 Not Found
+[2m2025-07-12T09:59:39.662284Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54681 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54683 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:59:39.805616Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:59:39.915488Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54685 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T09:59:54.925173Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54691 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54694 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T09:59:55.132175Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T09:59:55.261030Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54696 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:10.271583Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54701 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54703 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:10.392264Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:00:10.519923Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54705 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:25.528318Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54710 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54713 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:25.704124Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:00:25.828669Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54715 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:40.838500Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54717 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54720 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:41.048577Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:00:41.177999Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54722 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:56.188774Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54732 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54734 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:00:56.319205Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:00:56.430712Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54736 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:11.441526Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54739 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54742 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:11.851849Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:01:11.976357Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54744 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:26.987258Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54755 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54757 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:27.108629Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:01:27.232059Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54759 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:42.242834Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54762 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54765 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:42.462427Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:01:42.591233Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54767 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:57.599404Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54771 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54773 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:01:57.734942Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:01:57.870140Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54775 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:12.884837Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54778 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54780 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:13.031277Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:02:13.165201Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54782 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:28.181033Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54785 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54788 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:28.388669Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:02:28.520056Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54790 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:43.530781Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54796 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54798 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:43.674262Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:02:43.809800Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54800 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:58.823439Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54803 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54806 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:02:59.190812Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:02:59.313095Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54808 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:14.329171Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54811 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54813 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:14.483622Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:03:14.606023Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54815 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:29.622460Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54818 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54821 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:30.099495Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:03:30.235301Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54823 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:45.251427Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54826 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54828 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:03:45.521710Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:03:45.691460Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54830 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:00.727684Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54834 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54837 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:00.960607Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:04:01.124923Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54839 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:16.761167Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54842 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:16.898019Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:04:17.045263Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54846 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:32.059417Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54849 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54851 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:32.208145Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:04:32.339170Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54853 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:47.357529Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54858 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54861 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:04:47.697148Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:04:47.860629Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54863 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:02.881117Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54866 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54868 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:03.007326Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:05:03.119861Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54870 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:18.132553Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54873 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54876 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:18.355369Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:05:18.496481Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54878 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:33.510084Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54881 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54883 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:33.640408Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:05:33.743752Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54885 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:48.759390Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54888 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54890 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:05:48.910759Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:05:49.035506Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54892 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:04.047145Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54894 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54897 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:04.223338Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:06:04.345030Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54899 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:19.362320Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54902 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54904 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:19.505173Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:06:19.624083Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54906 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:34.641131Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54910 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54913 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:35.142393Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:06:35.262569Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54915 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:50.276217Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54918 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54920 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:06:50.433365Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:06:50.583061Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54922 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:05.598045Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54925 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54928 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:05.812737Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:07:05.954770Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54930 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:20.972450Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54935 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54937 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:21.104648Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:07:21.239149Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54939 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:36.252157Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54953 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54956 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/goals HTTP/1.1" 200 OK
+[2m2025-07-12T10:07:36.468058Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T10:07:36.608116Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 3c872d00-655a-4478-9df7-85634b92ec43 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54958 - "GET /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43/tasks HTTP/1.1" 200 OK
+Error getting intelligent workspaces with pending tasks: [Errno 54] Connection reset by peer
+[2m2025-07-12T10:22:51.481806Z[0m [[32m[1minfo     [0m] [1mRoute delete_workspace_by_id called[0m [36mendpoint[0m=[35mdelete_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:54986 - "DELETE /api/workspaces/3c872d00-655a-4478-9df7-85634b92ec43 HTTP/1.1" 200 OK
+Error getting intelligent workspaces with pending tasks: [Errno 54] Connection reset by peer
+Error getting intelligent workspaces with pending tasks: [Errno 54] Connection reset by peer
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26509]

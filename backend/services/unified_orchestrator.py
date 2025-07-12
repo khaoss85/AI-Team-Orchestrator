@@ -43,7 +43,7 @@ from database import (
 )
 from models import TaskStatus, WorkspaceStatus, GoalStatus, WorkspaceGoal
 from config.quality_system_config import get_env_bool, get_env_int, get_env_float
-from services.universal_memory_architecture import get_universal_memory_architecture
+from backend.services.unified_memory_engine import get_universal_memory_architecture
 
 # Initialize logger first before any usage
 logger = logging.getLogger(__name__)
@@ -1549,8 +1549,8 @@ class UnifiedOrchestrator:
             await self._update_progress(result, WorkflowStage.ROLLBACK, 0.0, "Rolling back changes")
             
             if result.tasks_generated > 0:
-                supabase.table("tasks").delete().eq("workspace_id", str(result.workspace_id)).eq("goal_id", str(result.goal_id)).execute()
-                logger.info(f"🗑️ Rolled back {result.tasks_generated} tasks")
+                # supabase.table("tasks").delete().eq("workspace_id", str(result.workspace_id)).eq("goal_id", str(result.goal_id)).execute()
+                logger.warning(f"ROLLBACK (DRY RUN): Would have deleted {result.tasks_generated} tasks for goal {result.goal_id}")
             
             if result.assets_generated > 0:
                 supabase.table("goal_asset_requirements").delete().eq("goal_id", str(result.goal_id)).execute()

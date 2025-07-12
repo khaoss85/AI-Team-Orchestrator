@@ -129,10 +129,10 @@ class TestFinTechTrading:
         """FASE 2: Generazione asset requirements specifici per trading"""
         logger.info("📈 FASE 2: ASSET REQUIREMENTS TRADING AI")
         
-        from services.asset_requirements_generator import AssetRequirementsGenerator
+        from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
         from models import WorkspaceGoal
         
-        generator = AssetRequirementsGenerator()
+        generator = unified_deliverable_engine
         total_requirements = 0
         
         for goal in self.goals:
@@ -140,7 +140,7 @@ class TestFinTechTrading:
                 goal_obj = WorkspaceGoal.model_validate(goal)
                 
                 logger.info(f"🎯 Generando trading assets per: {goal_obj.metric_type}")
-                requirements = await generator.generate_from_goal(goal_obj)
+                requirements = await generator.generate_requirements_from_goal(goal_obj)
                 
                 req_count = len(requirements)
                 total_requirements += req_count

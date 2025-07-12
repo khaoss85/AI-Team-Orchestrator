@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from database_asset_extensions import asset_db_manager
-from services.memory_system import memory_system
+from backend.services.unified_memory_engine import memory_system
 from services.thinking_process import thinking_engine
 
 logger = logging.getLogger(__name__)

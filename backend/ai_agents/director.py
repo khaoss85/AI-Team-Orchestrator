@@ -19,7 +19,8 @@ from typing import List, Dict, Any, Optional, Union, Set  # Per type hints compa
 from uuid import UUID
 from enum import Enum
 
-from utils.model_settings_factory import create_model_settings
+from backend.services.unified_memory_engine import unified_memory_engine
+from backend.utils.model_settings_factory import create_model_settings
 
 # ---------------------------------------------------------------------------
 # logging first (serve prima di eventuali fallback che usano logger)
@@ -117,7 +118,7 @@ try:
         DirectorTeamProposal,
         AgentCreate,
         AgentSeniority,
-        HandoffProposalCreate,
+        DirectorHandoffProposal,
     )
 except Exception:  # pragma: no cover - fallback if wrong module on path
     from backend.models import (
@@ -125,7 +126,7 @@ except Exception:  # pragma: no cover - fallback if wrong module on path
         DirectorTeamProposal,
         AgentCreate,
         AgentSeniority,
-        HandoffProposalCreate,
+        DirectorHandoffProposal,
     )  # type: ignore
 from pydantic import BaseModel, Field
 
@@ -906,6 +907,23 @@ Return ONLY a JSON array in this format:
                 if not group_item["skills"]:
                     continue
 
+                # LINKING: Get best performing agents for this role/skill group
+                role_for_memory_lookup = group_item["domain"]
+                best_performers = await unified_memory_engine.get_best_performing_agents(
+                    workspace_id=proposal_request.workspace_id,
+                    role=role_for_memory_lookup,
+                    limit=1
+                )
+                
+                performance_boost = 0.0
+                if best_performers:
+                    top_performer = best_performers[0]
+                    avg_quality = top_performer.get('avg_quality_score', 0.0)
+                    if avg_quality > 0.85:
+                        performance_boost = 0.2 # Boost for expert
+                    elif avg_quality > 0.75:
+                        performance_boost = 0.1 # Boost for senior
+
                 # Determine seniority based on remaining budget per slot and importance
                 s_val = AgentSeniority.JUNIOR.value  # Default
                 slots_remaining = eff_max_agents - agents_created_count
@@ -913,14 +931,16 @@ Return ONLY a JSON array in this format:
                     avg_budget_per_slot = (
                         budget_total - allocated_budget
                     ) / slots_remaining
+                    
+                    # Apply performance boost to budget calculation
                     if (
-                        avg_budget_per_slot
+                        avg_budget_per_slot * (1 + performance_boost)
                         >= COST_PER_MONTH[AgentSeniority.EXPERT.value]
                         and group_item["importance"] == "high"
                     ):
                         s_val = AgentSeniority.EXPERT.value
                     elif (
-                        avg_budget_per_slot
+                        avg_budget_per_slot * (1 + performance_boost)
                         >= COST_PER_MONTH[AgentSeniority.SENIOR.value]
                     ):
                         s_val = AgentSeniority.SENIOR.value
@@ -1098,32 +1118,34 @@ Return ONLY a JSON array in this format:
         return type_r1 == type_r2 and type_r1 != "other"
 
     async def create_team_proposal(
-        self, config: DirectorConfig
+        self, proposal_request: DirectorTeamProposal
     ) -> DirectorTeamProposal:
+        logger.info(f"DirectorAgent received proposal request of type: {type(proposal_request)}")
+        logger.info(f"DirectorAgent received proposal request content: {proposal_request}")
         logger.info(
-            f"Director: Creating team proposal for workspace {config.workspace_id}"
+            f"Director: Creating team proposal for workspace {proposal_request.workspace_id}"
         )
+
+        # Create a dictionary for budget constraints from the proposal_request
+        budget_constraint_dict = {"max_amount": proposal_request.budget_limit} if proposal_request.budget_limit is not None else {}
 
         # Instructions per l'LLM orchestratore
         # L'LLM deve capire che `constraints_json` per `analyze_project_requirements_llm` deve essere una stringa JSON.
         # E che `required_skills_json` e `team_composition_json` per gli altri tool sono anche stringhe JSON.
         # Create enhanced constraints that include user feedback
-        enhanced_constraints = config.budget_constraint.copy() if config.budget_constraint else {}
-        if config.user_feedback:
-            enhanced_constraints["user_feedback"] = config.user_feedback
+        enhanced_constraints = budget_constraint_dict
         
         # 🚀 SIMPLE SOLUTION: Just increase timeout and simplify prompt
-        budget_amount = config.budget_constraint.get('max_amount', 5000) if config.budget_constraint else 5000
+        budget_amount = proposal_request.budget_limit or 5000
         
         # 🎯 PERFORMANCE FIX: Limit team size for complex projects to maintain quality
         max_team_for_performance = 4  # Max 4 agents for fast, detailed team generation
         
         director_instructions = f"""You are an AI Team Designer. Create a complete team proposal.
 
-PROJECT: {config.goal}
+PROJECT: {proposal_request.requirements}
 BUDGET: {budget_amount} EUR
 MAX TEAM SIZE: {max_team_for_performance} agents (focus on quality over quantity)
-{f"USER REQUESTS: {config.user_feedback}" if config.user_feedback else ""}
 
 Create a focused, expert team with detailed profiles. Each agent should have:
 - Rich personality traits and background
@@ -1170,7 +1192,7 @@ Return ONLY this JSON structure:
 
 TEAM GUIDELINES:
 - Budget: junior=8€/day, senior=15€/day, expert=25€/day (×30 for monthly)
-- If budget ≥{budget_amount}: Use {min(4, max(2, budget_amount//1000))} agents
+- If budget ≥{budget_amount}: Use {min(4, max(2, int(budget_amount)//1000))} agents
 - Always include 1 Project Manager (senior) if team >1
 - Make agents domain-specific to the goal
 - Tools: web_search for senior+, file_search for research roles
@@ -1220,7 +1242,7 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                 logger.error(f"❌ Director Runner.run timed out after {timeout_seconds} seconds - using intelligent fallback")
                 logger.info("🔄 Fallback will provide a reasonable team structure based on goals")
                 # Create a robust fallback proposal when AI times out
-                fallback_dict = self._create_fallback_dict(config)
+                fallback_dict = self._create_fallback_dict(proposal_request)
                 raw_llm_output_json_str = json.dumps(fallback_dict)
                 run_result_obj = None  # We'll handle this below
             
@@ -1259,18 +1281,18 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                     f"Could not parse or extract valid JSON proposal from LLM. Using fallback. Output: {raw_llm_output_json_str[:300]}"
                 )
                 proposal_dict = self._create_fallback_dict(
-                    config
+                    proposal_request
                 )  # Use dict fallback first
 
             # Validate and sanitize the dictionary before creating Pydantic models
             validated_proposal_data = self._validate_and_sanitize_proposal(
-                proposal_dict, config
+                proposal_dict, proposal_request
             )
 
             agents_create_obj_list: List[AgentCreate] = []
             for agent_spec_dict in validated_proposal_data.get("agents", []):
                 agent_spec_dict["workspace_id"] = (
-                    config.workspace_id
+                    proposal_request.workspace_id
                 )  # Ensure UUID is passed
 
                 # Robust seniority handling before Pydantic model creation
@@ -1316,25 +1338,25 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                         exc_info=True,
                     )
 
-            handoffs_obj_list: List[HandoffProposalCreate] = []
+            handoffs_obj_list: List[DirectorHandoffProposal] = []
             for h_spec in validated_proposal_data.get("handoffs", []):
                 if h_spec.get("from") and h_spec.get("to"):
-                    # Ensure 'to' is List[str] for HandoffProposalCreate
+                    # Ensure 'to' is List[str] for DirectorHandoffProposal
                     if isinstance(h_spec["to"], str):
                         h_spec["to"] = [h_spec["to"]]
                     try:
-                        handoffs_obj_list.append(HandoffProposalCreate(**h_spec))
+                        handoffs_obj_list.append(DirectorHandoffProposal(**h_spec))
                     except Exception as e_hc:  # Catch Pydantic validation errors etc.
                         logger.warning(
                             f"Skipping invalid handoff spec {h_spec}: {e_hc}"
                         )
 
             extra_data_for_proposal: Dict[str, Any] = {}
-            if hasattr(config, "user_feedback") and config.user_feedback:
-                extra_data_for_proposal["user_feedback"] = config.user_feedback
+            if hasattr(proposal_request, "user_feedback") and proposal_request.user_feedback:
+                extra_data_for_proposal["user_feedback"] = proposal_request.user_feedback
 
             return DirectorTeamProposal(
-                workspace_id=config.workspace_id,  # UUID
+                workspace_id=proposal_request.workspace_id,  # UUID
                 agents=agents_create_obj_list,
                 handoffs=handoffs_obj_list,
                 estimated_cost=validated_proposal_data.get(
@@ -1349,10 +1371,10 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             logger.error(
                 f"create_team_proposal critically failed: {exc_outer}", exc_info=True
             )
-            return self._create_minimal_fallback_proposal(config, str(exc_outer))
+            return self._create_minimal_fallback_proposal(proposal_request, str(exc_outer))
 
     def _validate_and_sanitize_proposal(
-        self, data: Dict[str, Any], config: DirectorConfig
+        self, data: Dict[str, Any], proposal_request: DirectorTeamProposal
     ) -> Dict[str, Any]:
         """Validates and sanitizes the raw proposal dictionary from LLM."""
         agents_list: List[Dict[str, Any]] = data.get("agents", [])
@@ -1363,7 +1385,7 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                 "_validate_and_sanitize_proposal: No agents found or invalid format, creating default."
             )
             data = self._create_fallback_dict(
-                config
+                proposal_request
             )  # This returns a dict with 'agents'
             agents_list = data["agents"]
 
@@ -1552,11 +1574,11 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                 )
         return final_valid_handoffs
 
-    def _create_fallback_dict(self, config: DirectorConfig) -> Dict[str, Any]:
+    def _create_fallback_dict(self, proposal_request: DirectorTeamProposal) -> Dict[str, Any]:
         """Creates a fallback proposal dictionary for internal use."""
         logger.info("Creating fallback proposal dictionary.")
         # Pass budget_constraint (which can be None or Dict) to _create_default_agents
-        default_agents_list = self._create_default_agents(config.budget_constraint)
+        default_agents_list = self._create_default_agents(proposal_request.budget_limit)
 
         total_est_cost = sum(
             agent.get(
@@ -1634,20 +1656,20 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         return agents_list_default
 
     def _create_minimal_fallback_proposal(
-        self, config: DirectorConfig, error_reason: str
+        self, proposal_request: DirectorTeamProposal, error_reason: str
     ) -> DirectorTeamProposal:
         """Creates a Pydantic DirectorTeamProposal object for critical fallback."""
         logger.info(
             f"Creating minimal fallback DirectorTeamProposal due to: {error_reason}"
         )
         fallback_data_dict = self._create_fallback_dict(
-            config
+            proposal_request
         )  # Gets a dict with default agent(s)
 
         # Convert agent dicts to AgentCreate objects
         minimal_agents_list: List[AgentCreate] = []
         for agent_s in fallback_data_dict.get("agents", []):
-            agent_s["workspace_id"] = config.workspace_id  # UUID
+            agent_s["workspace_id"] = proposal_request.workspace_id  # UUID
             # Ensure seniority is Enum for AgentCreate
             s_val_str = agent_s.get("seniority", AgentSeniority.JUNIOR.value)
             if isinstance(s_val_str, Enum):
@@ -1666,7 +1688,7 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
 
         if not minimal_agents_list:  # Ensure at least one agent always
             panic_agent_spec = self._create_default_agents()[0]  # Get the PM spec
-            panic_agent_spec["workspace_id"] = config.workspace_id
+            panic_agent_spec["workspace_id"] = proposal_request.workspace_id
             panic_agent_spec["seniority"] = AgentSeniority(
                 panic_agent_spec["seniority"]
             )
@@ -1676,7 +1698,7 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             )
 
         return DirectorTeamProposal(
-            workspace_id=config.workspace_id,  # UUID
+            workspace_id=proposal_request.workspace_id,  # UUID
             agents=minimal_agents_list,
             handoffs=[],  # No handoffs in minimal fallback
             estimated_cost=fallback_data_dict.get("estimated_cost", {"total_estimated_cost": 0}),  # type: ignore

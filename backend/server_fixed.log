@@ -1,0 +1,14 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+AI Quality Assurance system not fully available: cannot import name 'EnhancementPlan' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+Deliverable System not fully available: cannot import name 'IntelligentDeliverableAggregator' from 'deliverable_system.unified_deliverable_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/unified_deliverable_engine.py)
+[2m2025-07-11T06:43:01.649741Z[0m [[32m[1minfo     [0m] [1m✅ X-Trace-ID middleware and trace-aware logging installed[0m [36mfilename[0m=[35mmain.py[0m [36mfuncName[0m=[35m<module>[0m [36mlineno[0m=[35m271[0m [36mtrace_id[0m=[35mno-trace[0m
+[2m2025-07-11T06:43:01.654423Z[0m [[32m[1minfo     [0m] [1m✅ Asset system routes registered with FastAPI[0m [36mfilename[0m=[35masset_system_integration.py[0m [36mfuncName[0m=[35mregister_with_fastapi[0m [36mlineno[0m=[35m281[0m [36mtrace_id[0m=[35mno-trace[0m
+INFO:     Will watch for changes in these directories: ['/Users/pelleri/Documents/ai-team-orchestrator/backend']
+ERROR:    [Errno 48] Address already in use

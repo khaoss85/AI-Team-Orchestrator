@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/services", tags=["service-registry"])
 registry_router = APIRouter(prefix="/service-registry", tags=["service-registry"])
 
 @router.get("/list")
-async def list_services(detailed: bool = Query(False, description="Include detailed service information"), request: Request):
+async def list_services(request: Request, detailed: bool = Query(False, description="Include detailed service information")):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

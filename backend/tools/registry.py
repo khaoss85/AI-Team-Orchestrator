@@ -8,7 +8,7 @@ import importlib.util
 import sys
 import ast
 
-from agents import function_tool 
+from backend.ai_agents.tools import function_tool 
 
 logger = logging.getLogger(__name__)
 

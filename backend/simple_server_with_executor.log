@@ -1,0 +1,26 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+/Users/pelleri/Documents/ai-team-orchestrator/backend/simple_server.py:57: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [20719]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Workspaces routes registered
+❌ Failed to register director routes: expected 'except' or 'finally' block (specialist.py, line 2221)
+✅ Goals routes registered
+🚀 Starting simple server with task executor...
+🚀 Starting minimal components...
+❌ Failed to start task executor: expected 'except' or 'finally' block (specialist.py, line 2221)
+INFO:     127.0.0.1:63804 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20719]

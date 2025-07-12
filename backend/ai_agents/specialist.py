@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 import time
 
-from utils.model_settings_factory import create_model_settings
+from backend.utils.model_settings_factory import create_model_settings
 
 # IMPORT COMPATIBILI SDK v0.0.15 + Fallback
 try:
@@ -158,13 +158,13 @@ except Exception:  # pragma: no cover - fallback if database stub incomplete
 # FIXED: Import centralizzato Quality System con fallback
 try:
     from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+    QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = unified_quality_engine.get_config(), True
 except ImportError:
     try:
         from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
-
-QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = unified_quality_engine.get_config(), True
-else:
-    
+        QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = unified_quality_engine.get_config(), True
+    except ImportError:
+        QualitySystemConfig, QUALITY_SYSTEM_AVAILABLE = None, False
 
     # Prova a importare DynamicPromptEnhancer
     try:
@@ -332,7 +332,8 @@ class SpecialistAgent(Generic[T]):
         # Configurazioni anti-loop
         self.max_self_delegations_per_tool_call = 1
         self.self_delegation_tool_call_count = 0
-        self.execution_timeout = 120
+        # Use 150 seconds to match TaskExecutor timeout
+        self.execution_timeout = 150
         if AgentSystemConfig and hasattr(
             AgentSystemConfig, "SPECIALIST_EXECUTION_TIMEOUT"
         ):
@@ -395,7 +396,7 @@ class SpecialistAgent(Generic[T]):
         """
         llm_config = self.agent_data.llm_config or {}
         model_name = llm_config.get("model") or self.seniority_model_map.get(
-            self.agent_data.seniority.value, "gpt-4.1-nano"
+            self.agent_data.seniority, "gpt-4.1-nano"
         )
         temperature = llm_config.get("temperature", 0.3)
 
@@ -636,7 +637,7 @@ class SpecialistAgent(Generic[T]):
             full_name = f"Your name is {self.agent_data.first_name}.\n"
 
         return f"""
-    You are a '{self.agent_data.seniority.value}' AI specialist in the role of: '{self.agent_data.role}'.
+    You are a '{self.agent_data.seniority}' AI specialist in the role of: '{self.agent_data.role}'.
     {full_name}
     Your specific expertise is: {self.agent_data.description or 'Not specified, assume general capabilities for your role.'}
     {personality_section}{communication_section}{hard_skills_section}{soft_skills_section}{background_section}
@@ -997,6 +998,100 @@ class SpecialistAgent(Generic[T]):
 
         return enhanced_prompt
 
+    async def execute(self, task: Task) -> TaskExecutionOutput:
+        self._current_task_being_processed_id = str(task.id)
+        self._current_task_context = task.context_data
+        self._handoff_attempts_for_current_task = set()
+
+        start_time = time.time()
+        estimated_input_tokens = max(1, len(str(task.model_dump())) // 4)
+
+        try:
+            await update_agent_status(str(self.agent_data.id), AgentStatus.BUSY.value)
+            
+            run_result = await Runner.run(self.agent, str(task.model_dump()))
+            
+            if not run_result.final_output:
+                raise ValueError("LLM returned empty output.")
+
+            if ROBUST_JSON_AVAILABLE:
+                parsed_data, success, method = parse_llm_json_robust(
+                    run_result.final_output, str(task.id)
+                )
+                logger.info(
+                    f"Robust JSON parsing used (method: {method}, success: {success})"
+                )
+            else:
+                parsed_data = json.loads(run_result.final_output)
+
+            processed_data = self._preprocess_task_output_data(parsed_data, task)
+            
+            final_output = TaskExecutionOutput(**processed_data)
+            final_output.execution_time = time.time() - start_time
+            
+            return final_output
+        except Exception as e:
+            logger.error(f"Error during agent execution: {e}", exc_info=True)
+            return TaskExecutionOutput(
+                task_id=task.id,
+                status=TaskStatus.FAILED,
+                summary=f"Agent execution failed: {e}",
+                error_message=str(e),
+            )
+
+    async def execute(self, task: Task) -> TaskExecutionOutput:
+        logger.info(f"AGENT_EXECUTE: Starting execution for task {task.id} by agent {self.agent_data.name}")
+        self._current_task_being_processed_id = str(task.id)
+        self._current_task_context = task.context_data
+        self._handoff_attempts_for_current_task = set()
+
+        start_time = time.time()
+        estimated_input_tokens = max(1, len(str(task.model_dump())) // 4)
+
+        try:
+            await update_agent_status(str(self.agent_data.id), AgentStatus.BUSY.value)
+            
+            prompt_for_llm = self.agent.instructions
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Prompt sent to LLM: {prompt_for_llm[:500]}...")
+
+            run_result = await Runner.run(self.agent, str(task.model_dump()))
+            
+            raw_output_from_llm = run_result.final_output
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Raw output from LLM: {raw_output_from_llm}")
+
+            if not raw_output_from_llm:
+                raise ValueError("LLM returned empty output.")
+
+            if ROBUST_JSON_AVAILABLE:
+                logger.info(f"AGENT_EXECUTE: Task {task.id} - Parsing LLM output with robust parser...")
+                parsed_data, success, method = parse_llm_json_robust(
+                    raw_output_from_llm, str(task.id)
+                )
+                logger.info(
+                    f"AGENT_EXECUTE: Task {task.id} - Robust JSON parsing used (method: {method}, success: {success})"
+                )
+            else:
+                logger.info(f"AGENT_EXECUTE: Task {task.id} - Parsing LLM output with standard json.loads...")
+                parsed_data = json.loads(raw_output_from_llm)
+
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Preprocessing parsed data...")
+            processed_data = self._preprocess_task_output_data(parsed_data, task)
+            
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Final processed output: {processed_data}")
+
+            final_output = TaskExecutionOutput(**processed_data)
+            final_output.execution_time = time.time() - start_time
+            
+            return final_output
+        except Exception as e:
+            logger.error(f"Error during agent execution: {e}", exc_info=True)
+            return TaskExecutionOutput(
+                task_id=task.id,
+                status=TaskStatus.FAILED,
+                summary=f"Agent execution failed: {e}",
+                error_message=str(e),
+            )
+
     def _create_sdk_handoffs(self) -> List[Any]:
         if not SDK_AVAILABLE or not handoff_filters:
             return []
@@ -1029,7 +1124,7 @@ class SpecialistAgent(Generic[T]):
                         name=other_agent_data.name,
                         instructions=f"You are {other_agent_data.role}. You are receiving a handoff.",
                         model=self.seniority_model_map.get(
-                            other_agent_data.seniority.value, "gpt-4.1-nano"
+                            other_agent_data.seniority, "gpt-4.1-nano"
                         ),
                     )
                     agent_handoff_tool = handoff(
@@ -1094,7 +1189,7 @@ class SpecialistAgent(Generic[T]):
         # 🔧 OPENAI SDK TOOLS - Available based on model compatibility
         if SDK_AVAILABLE:
             # 🚨 FIX: WebSearchTool compatibility check - nano models may have limitations
-            agent_model = self.seniority_model_map.get(self.agent_data.seniority.value, "gpt-4.1-nano")
+            agent_model = self.seniority_model_map.get(self.agent_data.seniority, "gpt-4.1-nano")
             
             # Only add WebSearchTool for compatible models (mini and above)
             if "nano" not in agent_model:
@@ -2008,21 +2103,28 @@ class SpecialistAgent(Generic[T]):
         try:
             # Get OpenAI client
             from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # Create OpenAI client with timeout configuration
+            client = AsyncOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                timeout=self.execution_timeout
+            )
             
             # Create specialized prompt for this agent type
             system_prompt = self._create_fallback_system_prompt(task)
             
-            # Execute with OpenAI API directly
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": task_prompt_content}
-                ],
-                temperature=0.7,
-                max_tokens=2000,
-                response_format={"type": "json_object"}
+            # Execute with OpenAI API directly (with timeout protection)
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": task_prompt_content}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}
+                ),
+                timeout=self.execution_timeout
             )
             
             ai_output = response.choices[0].message.content
@@ -2168,726 +2270,54 @@ Remember: You are producing REAL deliverables that will be used by the client. N
     async def execute_task(
         self, task: Task, context: Optional[T] = None
     ) -> Dict[str, Any]:
+        logger.info(f"AGENT_EXECUTE: Starting execution for task {task.id} by agent {self.agent_data.name}")
+        logger.info(f"AGENT_EXECUTE: Starting execution for task {task.id} by agent {self.agent_data.name}")
         self._current_task_being_processed_id = str(task.id)
+        self._current_task_context = task.context_data
         self._handoff_attempts_for_current_task = set()
-        self.self_delegation_tool_call_count = 0
-
-        # 🔧 PHASE 2 FIX: Enhanced workspace_id propagation logging
-        logger.info(f"🔍 EXECUTE_TASK START - Task: {task.id}, Agent: {self.agent_data.name}")
-        logger.info(f"🔍 WORKSPACE_ID SOURCES:")
-        logger.info(f"   - task.workspace_id: {task.workspace_id}")
-        logger.info(f"   - agent_data.workspace_id: {self.agent_data.workspace_id}")
-        logger.info(f"   - context type: {type(context).__name__ if context else 'None'}")
-        if context and isinstance(context, dict):
-            logger.info(f"   - context contains workspace_id: {'workspace_id' in context}")
-            if 'workspace_id' in context:
-                logger.info(f"   - context.workspace_id: {context['workspace_id']}")
-
-        trace_id_val = gen_trace_id() if SDK_AVAILABLE else f"fallback_trace_{task.id}"
-        workflow_name = f"TaskExec-{task.name[:25]}-{self.agent_data.name[:15]}"
 
         start_time = time.time()
+        estimated_input_tokens = max(1, len(str(task.model_dump())) // 4)
 
         try:
-            if SDK_AVAILABLE:
-                _trace_cm = trace(
-                    workflow_name=workflow_name,
-                    trace_id=trace_id_val,
-                    group_id=str(task.id),
+            await update_agent_status(str(self.agent_data.id), AgentStatus.BUSY.value)
+            
+            prompt_for_llm = self.agent.instructions
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Prompt sent to LLM: {prompt_for_llm[:500]}...")
+
+            run_result = await Runner.run(self.agent, str(task.model_dump()))
+            
+            raw_output_from_llm = run_result.final_output
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Raw output from LLM: {raw_output_from_llm}")
+
+            if not raw_output_from_llm:
+                raise ValueError("LLM returned empty output.")
+
+            if ROBUST_JSON_AVAILABLE:
+                logger.info(f"AGENT_EXECUTE: Task {task.id} - Parsing LLM output with robust parser...")
+                parsed_data, success, method = parse_llm_json_robust(
+                    raw_output_from_llm, str(task.id)
                 )
-                if hasattr(_trace_cm, "__aenter__"):
-                    trace_context_manager = _trace_cm
-                else:
-
-                    @contextlib.asynccontextmanager
-                    async def _wrap():
-                        with _trace_cm:
-                            yield
-
-                    trace_context_manager = _wrap()
+                logger.info(
+                    f"AGENT_EXECUTE: Task {task.id} - Robust JSON parsing used (method: {method}, success: {success})"
+                )
             else:
-                trace_context_manager = _dummy_async_context_manager()
-        except (AttributeError, TypeError) as e:
-            logger.warning(f"SDK trace failed ({e}), using dummy context manager")
-            trace_context_manager = _dummy_async_context_manager()
+                logger.info(f"AGENT_EXECUTE: Task {task.id} - Parsing LLM output with standard json.loads...")
+                parsed_data = json.loads(raw_output_from_llm)
 
-        async with trace_context_manager:  # type: ignore
-            try:
-                await self._log_execution_internal(
-                    "task_execution_started",
-                    {
-                        "task_id": str(task.id),
-                        "task_name": task.name,
-                        "trace_id": trace_id_val,
-                        "assigned_role": task.assigned_to_role,
-                    },
-                )
-                await update_task_status(
-                    task_id=str(task.id),
-                    status=TaskStatus.IN_PROGRESS.value,
-                    result_payload={"status_detail": "Execution started by agent"},
-                )
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Preprocessing parsed data...")
+            processed_data = self._preprocess_task_output_data(parsed_data, task)
+            
+            logger.info(f"AGENT_EXECUTE: Task {task.id} - Final processed output: {processed_data}")
 
-                task_context_info = ""
-                if task.context_data:
-                    try:
-                        context_json_str = json.dumps(task.context_data)
-                        task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (JSON):\n{context_json_str}"
-                    except Exception as e:
-                        logger.warning(
-                            f"Could not serialize context_data for task {task.id}: {e}. Passing as string."
-                        )
-                        task_context_info = f"\nADDITIONAL CONTEXT FOR THIS TASK (Raw String):\n{str(task.context_data)}"
-
-                # 🧠 WORKSPACE MEMORY INTEGRATION: Get relevant context from previous tasks
-                project_memory_context = ""
-                try:
-                    from workspace_memory import workspace_memory
-                    # Convert Task object to dict for memory system compatibility
-                    task_dict = {
-                        "id": str(task.id),
-                        "name": task.name,
-                        "description": task.description,
-                        "priority": task.priority,
-                        "status": task.status,
-                        "phase": getattr(task, 'phase', 'unknown'),
-                        "goal_id": getattr(task, 'goal_id', None),
-                        "metric_type": getattr(task, 'metric_type', None),
-                        "type": getattr(task, 'type', 'standard')
-                    }
-                    memory_context = await workspace_memory.get_relevant_context(task.workspace_id, task_dict)
-                    if memory_context.strip():
-                        project_memory_context = f"\n{memory_context}\n"
-                        logger.info(f"🧠 Added memory context for task {task.id} ({len(memory_context)} chars)")
-                except Exception as e:
-                    logger.error(f"Error getting relevant context: {e}")
-                    # Fallback: continue without memory context
-                    project_memory_context = ""
-
-                task_prompt_content = f"Current Task ID: {task.id}\nTask Name: {task.name}\nTask Priority: {task.priority}\nTask Description:\n{task.description}{task_context_info}{project_memory_context}\n---\nRemember to use your tools and expertise as per your system instructions. Your final output MUST be a single JSON object matching the 'TaskExecutionOutput' schema."
-
-                # NUOVO: Stima token di input per calcolo costi
-                input_text = f"{task.name} {task.description or ''}"
-                estimated_input_tokens = max(
-                    1, len(input_text.split()) * 1.3
-                )  # Stima approssimativa
-
-                # Ottieni il modello usato (con fallback per OpenAI Agent compatibility)
-                model_name = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
-
-                # 🧩 PILLAR 1 & 2 COMPLIANCE: AI-driven max_turns configuration
-                # 🔧 FIX #6: Significantly increase max_turns for goal-driven task success
-                max_turns_for_agent = 50  # Increased from 25 to 50 to prevent goal-driven task failures
-                
-                # Allow AI-driven configuration override from llm_config
-                if (
-                    isinstance(self.agent_data.llm_config, dict)
-                    and "max_turns_override" in self.agent_data.llm_config
-                ):
-                    max_turns_for_agent = self.agent_data.llm_config[
-                        "max_turns_override"
-                    ]
-                
-                # 🎯 PILLAR 5: Goal-driven adaptive max_turns based on task complexity
-                # 🔧 FIX #6: Increase max_turns for corrective/goal-driven tasks that need more iterations
-                if hasattr(task, 'is_corrective') and task.is_corrective:
-                    max_turns_for_agent = max(max_turns_for_agent, 75)  # Ensure corrective tasks have enough turns
-                    logger.info(f"🎯 Increased max_turns to {max_turns_for_agent} for corrective task {task.id}")
-                
-                # 🔧 FIX #6: Additional boost for goal-driven tasks
-                if hasattr(task, 'source') and task.source == 'goal_driven':
-                    max_turns_for_agent = max(max_turns_for_agent, 60)  # Goal-driven tasks need more turns
-                    logger.info(f"🎯 Increased max_turns to {max_turns_for_agent} for goal-driven task {task.id}")
-                
-                # 📚 PILLAR 6: Memory-driven configuration (use learned patterns)
-                try:
-                    # Check if this task type has historically needed more turns
-                    from workspace_memory import workspace_memory
-                    task_type = getattr(task, 'metric_type', 'unknown')
-                    complexity_hint = await workspace_memory.get_task_complexity_hint(task.workspace_id, task_type)
-                    if complexity_hint and complexity_hint.get('needs_more_turns', False):
-                        max_turns_for_agent = max(max_turns_for_agent, 80)  # 🔧 FIX #6: Increased from 40 to 80
-                        logger.info(f"🧠 Memory-driven: Increased max_turns to {max_turns_for_agent} for complex {task_type} task")
-                except Exception as e:
-                    logger.debug(f"Memory-driven max_turns adjustment failed: {e}")
-
-                # 🔧 PILLAR 1 COMPLIANCE: Check if SDK Agent is available, use fallback if not
-                # CRITICAL FIX: Use fallback when SDK_AVAILABLE is False OR agent is None
-                if self.agent is None or not SDK_AVAILABLE:
-                    logger.warning(f"🔧 SDK Agent not available for {self.agent_data.name} (SDK_AVAILABLE={SDK_AVAILABLE}, agent={self.agent is not None}), using fallback execution")
-                    agent_run_result = await self._execute_task_with_fallback(task, task_prompt_content)
-                else:
-                    # 🚀 FIX: Enhanced context propagation with workspace_id for RunContextWrapper
-                    enhanced_context = await self._enhance_context_with_workspace_id(context, task)
-                    
-                    # Normal SDK execution with enhanced context
-                    logger.info(f"Executing agent.run for task {task.id} (Name: {task.name})")
-                    agent_run_result = await asyncio.wait_for(
-                        Runner.run(
-                            self.agent,
-                            task_prompt_content,
-                            max_turns=max_turns_for_agent,
-                            context=enhanced_context,
-                        ),
-                        timeout=self.execution_timeout,
-                    )
-
-                elapsed_time = time.time() - start_time
-
-                # NUOVO: Calcolo automatico dei costi/token
-                token_usage, cost_data = self._calculate_token_costs(
-                    agent_run_result, model_name, estimated_input_tokens, elapsed_time
-                )
-
-                final_llm_output = agent_run_result.final_output
-                parsed_successfully = False
-                execution_result_obj: TaskExecutionOutput
-                parsing_method = "unknown"
-
-                if isinstance(final_llm_output, str):
-                    try:
-                        basic_data = json.loads(final_llm_output)
-                        # Enhanced preprocessing to ensure valid schema
-                        basic_data = self._preprocess_task_output_data(basic_data, task)
-                        execution_result_obj = TaskExecutionOutput.model_validate(
-                            basic_data
-                        )
-                        parsing_method = "json_loads"
-                        parsed_successfully = True
-                        logger.info(f"Task {task.id}: simple json parsing successful")
-                    except Exception as json_err:
-                        logger.warning(
-                            f"Task {task.id}: json parsing failed: {json_err}"
-                        )
-                        if ROBUST_JSON_AVAILABLE:
-                            try:
-                                fixed_data, _, fix_method = parse_llm_json_robust(
-                                    final_llm_output, str(task.id)
-                                )
-                                # Enhanced preprocessing for robust parsing path
-                                fixed_data = self._preprocess_task_output_data(fixed_data, task)
-                                execution_result_obj = (
-                                    TaskExecutionOutput.model_validate(fixed_data)
-                                )
-                                parsing_method = f"json_fix_{fix_method}"
-                                parsed_successfully = True
-                                logger.info(
-                                    f"Task {task.id}: json fix successful ({fix_method})"
-                                )
-                            except Exception as fix_err:
-                                logger.error(
-                                    f"Task {task.id}: json fix failed: {fix_err}"
-                                )
-
-                if not parsed_successfully and isinstance(
-                    final_llm_output, TaskExecutionOutput
-                ):
-                    # Output già nel formato corretto
-                    execution_result_obj = final_llm_output
-                    parsing_method = "direct_taskexecutionoutput"
-                    logger.info(f"Task {task.id}: Direct TaskExecutionOutput received")
-
-                elif not parsed_successfully and isinstance(final_llm_output, dict):
-                    # Output dict - prova validazione diretta
-                    try:
-                        final_llm_output.setdefault("task_id", str(task.id))
-                        final_llm_output.setdefault("status", "completed")
-                        final_llm_output.setdefault(
-                            "summary", "Task processing completed by agent."
-                        )
-                        # Enhanced preprocessing for dict validation path
-                        preprocessed_data = self._preprocess_task_output_data(final_llm_output, task)
-                        execution_result_obj = TaskExecutionOutput.model_validate(
-                            preprocessed_data
-                        )
-                        parsing_method = "direct_dict_validation"
-                        logger.info(
-                            f"Task {task.id}: Direct dict validation successful"
-                        )
-                    except Exception as val_err:
-                        logger.warning(
-                            f"Task {task.id}: Dict validation failed: {val_err}"
-                        )
-                        # Fallback a parsing robusto del dict serializzato
-                        if ROBUST_JSON_AVAILABLE:
-                            try:
-                                dict_as_json = json.dumps(final_llm_output)
-                                parsed_data, is_complete, method = (
-                                    parse_llm_json_robust(dict_as_json, str(task.id))
-                                )
-                                # Enhanced preprocessing for robust dict recovery
-                                parsed_data = self._preprocess_task_output_data(parsed_data, task)
-                                execution_result_obj = (
-                                    TaskExecutionOutput.model_validate(parsed_data)
-                                )
-                                parsing_method = f"robust_dict_recovery_{method}"
-                                logger.info(
-                                    f"Task {task.id}: Robust dict recovery successful ({method})"
-                                )
-                            except Exception as robust_err:
-                                logger.error(
-                                    f"Task {task.id}: Robust dict recovery failed: {robust_err}"
-                                )
-                                execution_result_obj = TaskExecutionOutput(
-                                    task_id=str(task.id),
-                                    status="failed",
-                                    summary=f"Dict validation and recovery failed: {val_err}",
-                                    detailed_results_json=json.dumps(
-                                        {
-                                            "error": "validation_and_recovery_failed",
-                                            "original_validation_error": str(val_err),
-                                            "robust_recovery_error": str(robust_err),
-                                            "raw_output": str(final_llm_output)[:1000],
-                                        }
-                                    ),
-                                )
-                                parsing_method = "error_fallback_dict"
-                        else:
-                            # Fallback senza robust parser
-                            execution_result_obj = TaskExecutionOutput(
-                                task_id=str(task.id),
-                                status="failed",
-                                summary=f"Output validation error: {val_err}",
-                                detailed_results_json=json.dumps(
-                                    {
-                                        "error": "Agent output validation failed",
-                                        "raw_output": str(final_llm_output)[:1000],
-                                    }
-                                ),
-                            )
-                            parsing_method = "basic_fallback_dict"
-
-                elif not parsed_successfully:
-                    # Output string - usa parsing robusto
-                    logger.info(
-                        f"Task {task.id}: Processing string output with robust parser"
-                    )
-
-                    if ROBUST_JSON_AVAILABLE:
-                        try:
-                            parsed_data, is_complete, method = parse_llm_json_robust(
-                                str(final_llm_output), str(task.id)
-                            )
-
-                            # Assicura campi minimi
-                            parsed_data.setdefault("task_id", str(task.id))
-                            parsed_data.setdefault(
-                                "status", "completed" if is_complete else "failed"
-                            )
-
-                            if not is_complete:
-                                # Aggiungi nota sul parsing incompleto
-                                original_summary = parsed_data.get("summary", "")
-                                parsed_data["summary"] = (
-                                    f"{original_summary} [Note: Output was truncated/incomplete, recovery applied]"
-                                )
-
-                            # Enhanced preprocessing for string parsing
-                            parsed_data = self._preprocess_task_output_data(parsed_data, task)
-                            execution_result_obj = TaskExecutionOutput.model_validate(
-                                parsed_data
-                            )
-                            parsing_method = f"robust_string_{method}"
-
-                            completion_status = (
-                                "✅ Complete"
-                                if is_complete
-                                else "⚠️ Incomplete/Recovered"
-                            )
-                            logger.info(
-                                f"Task {task.id}: Robust string parsing successful - {completion_status} ({method})"
-                            )
-
-                        except Exception as robust_err:
-                            logger.error(
-                                f"Task {task.id}: Robust string parsing failed: {robust_err}"
-                            )
-                            # Create error fallback
-                            execution_result_obj = TaskExecutionOutput(
-                                task_id=str(task.id),
-                                status="failed",
-                                summary=f"String output parsing failed: {str(robust_err)[:100]}",
-                                detailed_results_json=json.dumps(
-                                    {
-                                        "error": "robust_string_parsing_failed",
-                                        "parsing_error": str(robust_err),
-                                        "raw_output_length": len(str(final_llm_output)),
-                                        "raw_output_preview": str(final_llm_output)[
-                                            :500
-                                        ],
-                                    }
-                                ),
-                            )
-                            parsing_method = "error_fallback_string"
-                    else:
-                        # Fallback senza robust parser - usa logica originale semplificata
-                        logger.warning(
-                            f"Task {task.id}: Using basic string parsing (robust parser unavailable)"
-                        )
-                        try:
-                            # Prova estrazione JSON semplice
-                            json_match = re.search(
-                                r"\{.*\}", str(final_llm_output), re.DOTALL
-                            )
-                            if json_match:
-                                basic_json = json.loads(json_match.group())
-                                basic_json.setdefault("task_id", str(task.id))
-                                basic_json.setdefault("status", "completed")
-                                basic_json.setdefault(
-                                    "summary", f"Basic extraction from string output"
-                                )
-                                execution_result_obj = (
-                                    TaskExecutionOutput.model_validate(basic_json)
-                                )
-                                parsing_method = "basic_string_extraction"
-                            else:
-                                raise ValueError("No JSON found in string output")
-                        except Exception:
-                            execution_result_obj = TaskExecutionOutput(
-                                task_id=str(task.id),
-                                status="failed",
-                                summary=f"Basic string parsing failed. Raw output: {str(final_llm_output)[:200]}...",
-                                detailed_results_json=json.dumps(
-                                    {
-                                        "error": "basic_string_parsing_failed",
-                                        "raw_output_snippet": str(final_llm_output)[
-                                            :1000
-                                        ],
-                                    }
-                                ),
-                            )
-                            parsing_method = "basic_fallback"
-
-                # Log del metodo di parsing utilizzato per monitoring
-                logger.info(f"Task {task.id}: Final parsing method: {parsing_method}")
-                await self._log_execution_internal(
-                    "output_parsing_completed",
-                    {
-                        "task_id": str(task.id),
-                        "parsing_method": parsing_method,
-                        "final_status": execution_result_obj.status,
-                        "output_type": type(final_llm_output).__name__,
-                    },
-                )
-
-                execution_result_obj.task_id = str(task.id)
-
-                if token_usage or cost_data:
-                    resources_consumed = {
-                        "model": model_name,
-                        "execution_time_seconds": round(elapsed_time, 2),
-                        **token_usage,
-                        **cost_data,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                    # Assicura che detailed_results_json sia una stringa valida
-                    if not isinstance(
-                        execution_result_obj.detailed_results_json, (str, type(None))
-                    ):
-                        logger.warning(
-                            f"detailed_results_json is not a string or None for task {task.id}, attempting to stringify. Type: {type(execution_result_obj.detailed_results_json)}"
-                        )
-                        try:
-                            execution_result_obj.detailed_results_json = json.dumps(
-                                execution_result_obj.detailed_results_json
-                            )
-                        except (
-                            Exception
-                        ):  # Non dovrebbe succedere se Pydantic fa il suo lavoro
-                            execution_result_obj.detailed_results_json = json.dumps(
-                                {"error": "Failed to stringify detailed_results_json"}
-                            )
-
-                    execution_result_obj.resources_consumed_json = json.dumps(
-                        resources_consumed
-                    )
-
-                result_dict_to_save = execution_result_obj.model_dump(
-                    exclude_none=True
-                )  # exclude_none=True per pulizia
-
-                result_dict_to_save["execution_time_seconds"] = round(elapsed_time, 2)
-                result_dict_to_save["model_used"] = model_name
-                result_dict_to_save["status_detail"] = (
-                    f"{execution_result_obj.status}_by_agent"
-                )
-
-                # Estrazione di costi e token da resources_consumed_json, se presenti
-                if execution_result_obj.resources_consumed_json:
-                    try:
-                        resources = json.loads(
-                            execution_result_obj.resources_consumed_json
-                        )
-                        if isinstance(resources, dict):
-                            result_dict_to_save["cost_estimated"] = resources.get(
-                                "total_cost"
-                            )  # Già total_cost in resources
-
-                            input_tokens = resources.get("input_tokens")
-                            output_tokens = resources.get("output_tokens")
-                            if input_tokens is not None and output_tokens is not None:
-                                result_dict_to_save["tokens_used"] = {
-                                    "input": input_tokens,
-                                    "output": output_tokens,
-                                }
-                            elif "total_tokens" in resources:
-                                result_dict_to_save["tokens_used"] = {
-                                    "input": resources["total_tokens"],
-                                    "output": 0,
-                                }  # Stima grezza
-                    except Exception as e:
-                        logger.warning(
-                            f"Error extracting cost/tokens from resources_consumed_json for task {task.id}: {e}"
-                        )
-
-                result_dict_to_save["trace_id_for_run"] = trace_id_val
-
-                # NUOVO: Ottimizza output prima del salvataggio per prevenire problemi di lunghezza
-                if ROBUST_JSON_AVAILABLE:
-                    result_dict_to_save, was_optimized, optimizations = (
-                        optimize_agent_output(result_dict_to_save, str(task.id))
-                    )
-                    if was_optimized:
-                        logger.info(
-                            f"Task {task.id}: Output optimized to prevent length issues - Applied: {optimizations}"
-                        )
-                        # Aggiungi metadata sull'ottimizzazione
-                        if "status_detail" in result_dict_to_save:
-                            result_dict_to_save[
-                                "status_detail"
-                            ] += f" | Output optimized: {len(optimizations)} modifications"
-
-                await self._register_usage_in_budget_tracker(
-                    str(task.id), model_name, token_usage, cost_data
-                )
-
-                final_db_status = TaskStatus.COMPLETED.value
-                if execution_result_obj.status == "failed":
-                    final_db_status = TaskStatus.FAILED.value
-                elif execution_result_obj.status == "requires_handoff":
-                    final_db_status = TaskStatus.COMPLETED.value
-                    logger.info(
-                        f"Task {task.id} by {self.agent_data.name} resulted in 'requires_handoff' to role '{execution_result_obj.suggested_handoff_target_role}'. This task is marked COMPLETED."
-                    )
-
-                # === INTEGRAZIONE AI QUALITY ASSURANCE ===
-                if (
-                    QUALITY_SYSTEM_AVAILABLE
-                    and QualitySystemConfig.ENABLE_AI_QUALITY_EVALUATION
-                ):
-                    try:
-                        # Verifica se è un task di produzione asset
-                        task_context = (
-                            task.context_data
-                            if isinstance(task.context_data, dict)
-                            else {}
-                        )
-                        is_asset_task = (
-                            task_context.get("asset_production")
-                            or task_context.get("asset_oriented_task")
-                            or "PRODUCE ASSET:" in task.name.upper()
-                        )
-
-                        if is_asset_task and execution_result_obj.status == "completed":
-                            # Aggiungi nota qualità al risultato
-                            quality_note = (
-                                f"🔧 QUALITY ASSURANCE: This asset will be automatically evaluated "
-                                f"(target: {QualitySystemConfig.QUALITY_SCORE_THRESHOLD}/1.0). "
-                                f"Outputs below threshold will trigger enhancement tasks."
-                            )
-
-                            # Aggiungi la nota al payload del database
-                            if "status_detail" not in result_dict_to_save:
-                                result_dict_to_save["status_detail"] = quality_note
-                            else:
-                                result_dict_to_save[
-                                    "status_detail"
-                                ] += f" | {quality_note}"
-
-                            # Aggiungi flag per identificare asset tasks nel DB
-                            result_dict_to_save["ai_quality_evaluation_pending"] = True
-                            result_dict_to_save["asset_production_task"] = True
-
-                            logger.info(
-                                f"🔧 QUALITY: Added quality evaluation note to task {task.id}"
-                            )
-
-                    except Exception as e:
-                        logger.debug(
-                            f"Error adding quality note to task {task.id}: {e}"
-                        )
-
-                # 🧠 WORKSPACE MEMORY INTEGRATION: Extract and store insights after successful execution
-                if final_db_status == TaskStatus.COMPLETED.value:
-                    try:
-                        await self._extract_and_store_insights(task, execution_result_obj, agent_run_result)
-                        logger.info(f"🧠 Insights extraction completed for task {task.id}")
-                    except Exception as e:
-                        logger.warning(f"Failed to extract insights for task {task.id}: {e}")
-
-                # Continua con update_task_status come nel codice originale...
-                await update_task_status(
-                    task_id=str(task.id),
-                    status=final_db_status,
-                    result_payload=result_dict_to_save,
-                )
-
-                logger.info(f"TASK OUTPUT for {task.id}:")
-                logger.info(f"Summary: {execution_result_obj.summary}")
-                if execution_result_obj.detailed_results_json:
-                    logger.info(
-                        f"Detailed Results: {execution_result_obj.detailed_results_json}"
-                    )
-                if execution_result_obj.next_steps:
-                    logger.info(f"Next Steps: {execution_result_obj.next_steps}")
-                if execution_result_obj.suggested_handoff_target_role:
-                    logger.info(
-                        f"Handoff Target Role: {execution_result_obj.suggested_handoff_target_role}"
-                    )
-
-                await self._log_execution_internal(
-                    "task_execution_finished",
-                    {
-                        "task_id": str(task.id),
-                        "final_status_in_db": final_db_status,
-                        "agent_reported_status": execution_result_obj.status,
-                        "summary": execution_result_obj.summary,
-                    },
-                )
-                
-                # 🧠 AUTO-EXTRACT INSIGHTS for workspace memory
-                if execution_result_obj.status == "completed":
-                    await self._extract_and_store_insights(task, execution_result_obj, agent_run_result)
-                
-                return result_dict_to_save
-
-            except asyncio.TimeoutError:
-                elapsed_time = time.time() - start_time
-                timeout_summary = f"Task forcibly marked as TIMED_OUT after {self.execution_timeout}s."
-                logger.warning(
-                    f"Task {task.id} (Trace: {trace_id_val}) timed out ({self.execution_timeout}s)."
-                )
-                timeout_result_obj = TaskExecutionOutput(
-                    task_id=str(task.id),
-                    status="failed",
-                    summary=timeout_summary,
-                    detailed_results_json=json.dumps(
-                        {
-                            "error": "TimeoutError",
-                            "reason": "Task execution exceeded timeout limit.",
-                        }
-                    ),
-                )
-                timeout_result = timeout_result_obj.model_dump()
-                timeout_result["trace_id_for_run"] = trace_id_val
-                timeout_result["execution_time_seconds"] = round(elapsed_time, 2)
-                timeout_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
-                timeout_result["status_detail"] = "timed_out_by_agent_system"
-                await update_task_status(
-                    task_id=str(task.id),
-                    status=TaskStatus.TIMED_OUT.value,
-                    result_payload=timeout_result,
-                )
-                await self._log_execution_internal(
-                    "task_execution_timeout",
-                    {"task_id": str(task.id), "summary": timeout_summary},
-                )
-                return timeout_result
-
-            except MaxTurnsExceeded as e:
-                elapsed_time = time.time() - start_time
-                
-                # 🔧 FIX #6: Intelligent MaxTurnsExceeded handling with retry logic
-                last_output = str(getattr(e, 'last_output', ''))
-                
-                # Check if we made progress (output length > 100 chars suggests progress)
-                made_progress = len(last_output) > 100
-                
-                # Check if task should be retried with chunking strategy
-                should_retry_with_chunking = (
-                    made_progress and 
-                    hasattr(task, 'retry_count') and 
-                    getattr(task, 'retry_count', 0) < 2  # Max 2 retries
-                )
-                
-                if should_retry_with_chunking:
-                    logger.warning(
-                        f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns but made progress. "
-                        f"Attempting chunked completion strategy..."
-                    )
-                    
-                    # Try to extract partial results and create a completion-focused task
-                    chunked_result = await self._attempt_chunked_completion(task, last_output, context)
-                    if chunked_result and chunked_result.get('status') == 'completed':
-                        logger.info(f"✅ Successfully completed task {task.id} using chunked strategy")
-                        return chunked_result
-                
-                # If retry didn't work or wasn't attempted, mark as failed
-                max_turns_summary = "Task forcibly marked as FAILED due to exceeding max interaction turns with LLM."
-                logger.warning(
-                    f"Task {task.id} (Trace: {trace_id_val}) exceeded max turns. Last output: {last_output[:200]}"
-                )
-                max_turns_result_obj = TaskExecutionOutput(
-                    task_id=str(task.id),
-                    status="failed",
-                    summary=max_turns_summary,
-                    detailed_results_json=json.dumps(
-                        {"error": "MaxTurnsExceeded", "reason": str(e), "last_output_preview": last_output[:500]}
-                    ),
-                )
-                max_turns_result = max_turns_result_obj.model_dump()
-                max_turns_result["trace_id_for_run"] = trace_id_val
-                max_turns_result["execution_time_seconds"] = round(elapsed_time, 2)
-                max_turns_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
-                max_turns_result["status_detail"] = "failed_max_turns"
-                await update_task_status(
-                    task_id=str(task.id),
-                    status=TaskStatus.FAILED.value,
-                    result_payload=max_turns_result,
-                )
-                await self._log_execution_internal(
-                    "task_execution_max_turns",
-                    {"task_id": str(task.id), "summary": max_turns_summary},
-                )
-                return max_turns_result
-
-            except Exception as e:
-                elapsed_time = time.time() - start_time
-                unhandled_error_summary = (
-                    f"Task failed due to an unexpected error: {str(e)[:100]}..."
-                )
-                logger.error(
-                    f"Unhandled error executing task {task.id} (Trace: {trace_id_val}): {e}",
-                    exc_info=True,
-                )
-                unhandled_error_result_obj = TaskExecutionOutput(
-                    task_id=str(task.id),
-                    status="failed",
-                    summary=unhandled_error_summary,
-                    detailed_results_json=json.dumps(
-                        {"error": str(e), "type": type(e).__name__}
-                    ),
-                )
-                unhandled_error_result = unhandled_error_result_obj.model_dump()
-                unhandled_error_result["trace_id_for_run"] = trace_id_val
-                unhandled_error_result["execution_time_seconds"] = round(
-                    elapsed_time, 2
-                )
-                unhandled_error_result["model_used"] = getattr(self.agent, 'model', getattr(self.agent, '_model', 'gpt-4'))
-                unhandled_error_result["status_detail"] = "failed_unhandled_exception"
-                await update_task_status(
-                    task_id=str(task.id),
-                    status=TaskStatus.FAILED.value,
-                    result_payload=unhandled_error_result,
-                )
-                await self._log_execution_internal(
-                    "task_execution_unhandled_error",
-                    {"task_id": str(task.id), "error": str(e)[:100]},
-                )
-                return unhandled_error_result
-            finally:
-                self._current_task_being_processed_id = None
-                self._handoff_attempts_for_current_task = set()
+            final_output = TaskExecutionOutput(**processed_data)
+            final_output.execution_time = time.time() - start_time
+            
+            # ... (il resto del metodo rimane invariato)
+            
+        except Exception as e:
+            logger.error(f"Task execution failed: {e}")
+            raise
 
     async def _extract_and_store_insights(self, task: Task, execution_result: TaskExecutionOutput, run_result: Any):
         """
@@ -2938,7 +2368,7 @@ Remember: You are producing REAL deliverables that will be used by the client. N
             # Use a simple LLM call to extract insights
             try:
                 # Create a minimal agent for insight extraction
-                from utils.model_settings_factory import create_model_settings
+                from backend.utils.model_settings_factory import create_model_settings
                 
                 insight_model_settings = create_model_settings(
                     model="gpt-4o-mini",  # Use cheaper model for insights

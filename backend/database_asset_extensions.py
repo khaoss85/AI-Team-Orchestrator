@@ -143,30 +143,40 @@ class AssetDrivenDatabaseManager:
     async def create_asset_artifact(self, artifact: AssetArtifact) -> AssetArtifact:
         """Create new asset artifact with enhanced metadata"""
         try:
+            # Database-aligned field names
             artifact_data = {
                 "id": str(artifact.id),
                 "requirement_id": str(artifact.requirement_id),
                 "task_id": str(artifact.task_id) if artifact.task_id else None,
-                "artifact_name": artifact.artifact_name,
-                "artifact_type": artifact.artifact_type,
-                "content_format": artifact.content_format,
-                "content": artifact.content,
+                "workspace_id": str(artifact.workspace_id) if artifact.workspace_id else None,
+                "name": getattr(artifact, 'name', None) or artifact.artifact_name,  # Database field
+                "type": getattr(artifact, 'type', None) or artifact.artifact_type,  # Database field
+                "category": getattr(artifact, 'category', 'general'),  # Database field
+                "content": artifact.content,  # JSONB
                 "metadata": artifact.metadata,
                 "quality_score": artifact.quality_score,
-                "business_value_score": artifact.business_value_score,
+                "completeness_score": getattr(artifact, 'completeness_score', 0.0),  # Database field
+                "authenticity_score": getattr(artifact, 'authenticity_score', 0.0),  # Database field
                 "actionability_score": artifact.actionability_score,
                 "status": artifact.status,
-                "ai_enhanced": artifact.ai_enhanced,
-                "validation_passed": artifact.validation_passed,
-                "openai_file_id": artifact.openai_file_id
+                "validation_status": getattr(artifact, 'validation_status', 'pending'),  # Database field
+                "generation_method": getattr(artifact, 'generation_method', 'manual'),  # Database field
+                "ai_confidence": getattr(artifact, 'ai_confidence', 0.0),  # Database field
+                "source_tools": getattr(artifact, 'source_tools', []),  # Database field
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
             }
             
             response = self.supabase.table("asset_artifacts").insert(artifact_data).execute()
             
             if response.data:
-                logger.info(f"✅ Created asset artifact: {artifact.artifact_name}")
-                # 🔧 FIX: Filter response data to match AssetArtifact model fields
-                artifact_data = self._filter_asset_artifact_fields(response.data[0])
+                logger.info(f"✅ Created asset artifact: {getattr(artifact, 'name', None) or artifact.artifact_name}")
+                # Map database fields back to model for backward compatibility
+                artifact_result = response.data[0].copy()
+                artifact_result['artifact_name'] = artifact_result.get('name', '')
+                artifact_result['artifact_type'] = artifact_result.get('type', '')
+                artifact_result['content_format'] = 'json'  # Default for JSONB
+                artifact_data = self._filter_asset_artifact_fields(artifact_result)
                 created_artifact = AssetArtifact(**artifact_data)
                 
                 # 🎯 ASSET SUCCESS PATTERN LEARNING: Store learning when high-quality artifacts are created
@@ -298,17 +308,20 @@ class AssetDrivenDatabaseManager:
         🔧 FIX: Filter raw database data to only include fields that exist in AssetArtifact model
         This prevents 'pillar_compliance' attribute errors when creating AssetArtifact instances
         """
-        # Valid AssetArtifact fields based on the model definition
+        # Valid AssetArtifact fields based on the updated model definition
         valid_fields = {
-            'id', 'requirement_id', 'task_id', 'agent_id',
-            'artifact_name', 'artifact_type', 'content', 'content_format', 
+            'id', 'requirement_id', 'task_id', 'agent_id', 'workspace_id',
+            'name', 'artifact_name', 'type', 'artifact_type', 'artifact_format',
+            'content', 'content_format', 'category',
             'file_path', 'external_url', 'openai_file_id', 'metadata',
             'size_bytes', 'word_count', 'checksum',
-            'quality_score', 'validation_passed', 'validation_details', 
+            'quality_score', 'completeness_score', 'authenticity_score', 'actionability_score',
+            'validation_passed', 'validation_status', 'validation_details', 
             'validation_errors', 'ai_quality_check',
             'status', 'version', 'human_review_required',
-            'business_value_score', 'actionability_score', 'automation_ready',
-            'ai_enhanced', 'enhancement_applied', 'original_content_hash',
+            'business_value_score', 'automation_ready',
+            'ai_enhanced', 'generation_method', 'ai_confidence', 'source_tools',
+            'enhancement_applied', 'original_content_hash',
             'detected_language', 'language_agnostic',
             'memory_context', 'learning_insights',
             'thinking_process', 'reasoning_steps',

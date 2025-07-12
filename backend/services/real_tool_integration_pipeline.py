@@ -61,8 +61,7 @@ class RealToolIntegrationPipeline:
             # Import all AI-driven components
             from services.ai_tool_aware_validator import ai_tool_aware_validator
             from services.ai_tool_orchestrator import ai_tool_orchestrator
-            from services.memory_enhanced_ai_asset_generator import memory_enhanced_ai_asset_generator
-            from services.memory_system import memory_system
+            from backend.services.unified_memory_engine import memory_enhanced_ai_asset_generator, memory_system
             
             self.validator = ai_tool_aware_validator
             self.orchestrator = ai_tool_orchestrator

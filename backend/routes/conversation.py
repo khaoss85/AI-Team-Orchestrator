@@ -513,7 +513,7 @@ async def confirm_action(
         raise HTTPException(status_code=500, detail=f"Failed to process confirmation: {str(e)}")
 
 @router.get("/workspaces/{workspace_id}/context")
-async def get_conversation_context(workspace_id: str, chat_id: str = "general", request: Request) -> Dict[str, Any]:
+async def get_conversation_context(request: Request, workspace_id: str, chat_id: str = "general") -> Dict[str, Any]:
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

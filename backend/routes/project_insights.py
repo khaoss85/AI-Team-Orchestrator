@@ -403,7 +403,7 @@ def _extract_major_milestones(
     return milestones
 
 @router.get("/{workspace_id}/deliverables", response_model=ProjectDeliverables)
-async def get_project_deliverables(workspace_id: UUID, goal_id: Optional[str] = None, request: Request):
+async def get_project_deliverables(request: Request, workspace_id: UUID, goal_id: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

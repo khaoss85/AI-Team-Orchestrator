@@ -1,0 +1,726 @@
+2025-07-11 09:47:34,964 - INFO - --- FASE 1: SETUP ---
+2025-07-11 09:47:35,047 - INFO - Workspace creato: b34d892f-8c6f-4f14-b5fb-3e322ddc4074
+2025-07-11 09:47:35,238 - INFO - Goal creato con successo.
+2025-07-11 09:47:35,238 - INFO - 
+--- FASE 2: TRIGGER AUTONOMOUS FLOW ---
+2025-07-11 09:47:35,238 - INFO - ⏳ Generando proposta di team (può richiedere fino a 2 minuti)...
+2025-07-11 09:47:42,128 - INFO - ✅ Proposta di team generata: be3092bb-d5f0-4f47-b421-baa2d1c55435
+2025-07-11 09:47:42,129 - INFO - 📋 Simulando conferma manuale dell'utente...
+2025-07-11 09:47:43,130 - INFO - ⏳ Approvando proposta e avviando generazione task...
+2025-07-11 09:48:07,823 - INFO - ✅ Proposta approvata e task generation avviata.
+2025-07-11 09:48:07,823 - INFO - 
+--- FASE 3: WAITING FOR TASK CREATION ---
+2025-07-11 09:48:07,824 - INFO - ⏳ Attendendo creazione task per un massimo di 60 secondi...
+2025-07-11 09:48:07,987 - INFO - ✅ Task creati! Trovati 3 task nel workspace
+2025-07-11 09:48:07,988 - INFO - 
+--- FASE 4: WAITING FOR WORKSPACE COMPLETION ---
+2025-07-11 09:48:07,988 - INFO - Polling workspace b34d892f-8c6f-4f14-b5fb-3e322ddc4074 per un massimo di 300 secondi...
+2025-07-11 09:48:08,303 - INFO - --- DIAGNOSTICS (Time: 0s) ---
+2025-07-11 09:48:08,303 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:48:08,303 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:48:08,303 - INFO - TASKS: {
+  "total": 3,
+  "pending": 2,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 1
+}
+2025-07-11 09:48:08,303 - ERROR - 🚨 DETECTED FAILED TASK: 671b597b-818e-4984-9366-6264ad4c5cf6. Retrieving details...
+2025-07-11 09:48:08,447 - ERROR - FAILED TASK DETAILS (671b597b-818e-4984-9366-6264ad4c5cf6): {
+  "id": "671b597b-818e-4984-9366-6264ad4c5cf6",
+  "name": "Create Asset: SaaS Industry Lead Contact List",
+  "status": "failed",
+  "description": "Compile a CSV file containing 10 high-quality leads in the SaaS industry, including fields for name, email address, company name, and job title.",
+  "created_at": "2025-07-11T07:47:54.857572+00:00",
+  "updated_at": "2025-07-11T09:47:57.921939+00:00",
+  "execution_time_seconds": 7203.064367,
+  "result": null,
+  "context_data": {
+    "task_type": "goal_driven",
+    "created_at": "2025-07-11T09:47:54.805620",
+    "generated_by": "goal_driven_task_planner",
+    "creation_type": "manual",
+    "auto_generated": true,
+    "is_goal_driven": true,
+    "required_skills": [],
+    "delegation_chain": [],
+    "delegation_depth": 0,
+    "deliverable_type": "project_output",
+    "numerical_target": {
+      "unit": "units",
+      "metric": "deliverable_quality",
+      "target": 30,
+      "validation_method": "manual_verification"
+    },
+    "success_criteria": [
+      "CSV file is created and saved in the specified format.",
+      "File contains 10 unique entries with all required fields filled."
+    ],
+    "assigned_agent_name": "ElenaRossi",
+    "created_by_agent_id": "1900fc21-3c09-4402-b913-2f32b8f5d355",
+    "original_metric_type": "deliverable_quality",
+    "goal_analysis_timestamp": "2025-07-11T09:47:54.743231",
+    "estimated_duration_hours": 4
+  },
+  "agent_info": {
+    "id": "1900fc21-3c09-4402-b913-2f32b8f5d355",
+    "name": "ElenaRossi",
+    "role": "Project Manager",
+    "status": "available"
+  },
+  "workspace_id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "priority": "low",
+  "assigned_to_role": "Project Manager",
+  "progress_details": {
+    "is_enhancement_task": false,
+    "user_feedback": null,
+    "original_task_id": null,
+    "asset_name": null
+  }
+}
+2025-07-11 09:48:08,448 - INFO - ------------------------------------
+2025-07-11 09:48:23,843 - INFO - --- DIAGNOSTICS (Time: 15s) ---
+2025-07-11 09:48:23,843 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:48:23,843 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:48:23,843 - INFO - TASKS: {
+  "total": 3,
+  "pending": 2,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 1
+}
+2025-07-11 09:48:23,843 - INFO - ------------------------------------
+2025-07-11 09:48:39,135 - INFO - --- DIAGNOSTICS (Time: 31s) ---
+2025-07-11 09:48:39,135 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:48:39,135 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:48:39,135 - INFO - TASKS: {
+  "total": 3,
+  "pending": 2,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 1
+}
+2025-07-11 09:48:39,135 - INFO - ------------------------------------
+2025-07-11 09:48:54,413 - INFO - --- DIAGNOSTICS (Time: 46s) ---
+2025-07-11 09:48:54,413 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:48:54,413 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:48:54,413 - INFO - TASKS: {
+  "total": 3,
+  "pending": 2,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 1
+}
+2025-07-11 09:48:54,413 - INFO - ------------------------------------
+2025-07-11 09:49:09,769 - INFO - --- DIAGNOSTICS (Time: 61s) ---
+2025-07-11 09:49:09,769 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:49:09,770 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:49:09,770 - INFO - TASKS: {
+  "total": 3,
+  "pending": 1,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 2
+}
+2025-07-11 09:49:09,770 - ERROR - 🚨 DETECTED FAILED TASK: ace72735-f9ad-4594-8d3a-31a9d57b68cb. Retrieving details...
+2025-07-11 09:49:09,923 - ERROR - FAILED TASK DETAILS (ace72735-f9ad-4594-8d3a-31a9d57b68cb): {
+  "id": "ace72735-f9ad-4594-8d3a-31a9d57b68cb",
+  "name": "Create Asset: Lead Outreach Email Template",
+  "status": "failed",
+  "description": "Design a professional email template for outreach to the identified leads, including a subject line, greeting, body content, and closing statement.",
+  "created_at": "2025-07-11T07:48:07.730856+00:00",
+  "updated_at": "2025-07-11T09:49:01.911894+00:00",
+  "execution_time_seconds": 7254.181038,
+  "result": null,
+  "context_data": {
+    "task_type": "goal_driven",
+    "created_at": "2025-07-11T09:48:07.678626",
+    "generated_by": "goal_driven_task_planner",
+    "creation_type": "manual",
+    "auto_generated": true,
+    "is_goal_driven": true,
+    "required_skills": [],
+    "delegation_chain": [],
+    "delegation_depth": 0,
+    "deliverable_type": "project_output",
+    "numerical_target": {
+      "unit": "units",
+      "metric": "deliverable_quality",
+      "target": 30,
+      "validation_method": "manual_verification"
+    },
+    "success_criteria": [
+      "Email template is created in the specified format.",
+      "Template includes all required sections and is ready for customization."
+    ],
+    "assigned_agent_name": "ElenaRossi",
+    "created_by_agent_id": "1900fc21-3c09-4402-b913-2f32b8f5d355",
+    "original_metric_type": "deliverable_quality",
+    "goal_analysis_timestamp": "2025-07-11T09:48:02.884291",
+    "estimated_duration_hours": 4
+  },
+  "agent_info": {
+    "id": "1900fc21-3c09-4402-b913-2f32b8f5d355",
+    "name": "ElenaRossi",
+    "role": "Project Manager",
+    "status": "available"
+  },
+  "workspace_id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "priority": "low",
+  "assigned_to_role": "Project Manager",
+  "progress_details": {
+    "is_enhancement_task": false,
+    "user_feedback": null,
+    "original_task_id": null,
+    "asset_name": null
+  }
+}
+2025-07-11 09:49:09,923 - INFO - ------------------------------------
+2025-07-11 09:49:25,205 - INFO - --- DIAGNOSTICS (Time: 77s) ---
+2025-07-11 09:49:25,205 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:49:25,205 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:49:25,205 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:49:25,205 - ERROR - 🚨 DETECTED FAILED TASK: b606d0a3-d2e3-4c90-85a4-f3731a6f5e1b. Retrieving details...
+2025-07-11 09:49:25,340 - ERROR - FAILED TASK DETAILS (b606d0a3-d2e3-4c90-85a4-f3731a6f5e1b): {
+  "id": "b606d0a3-d2e3-4c90-85a4-f3731a6f5e1b",
+  "name": "Create Asset: Lead Qualification Criteria Document",
+  "status": "failed",
+  "description": "Draft a 2-page document outlining the criteria used to qualify the leads in the SaaS industry, including factors such as company size, revenue, and product offerings.",
+  "created_at": "2025-07-11T07:48:02.859212+00:00",
+  "updated_at": "2025-07-11T09:49:12.701783+00:00",
+  "execution_time_seconds": 7269.842571,
+  "result": null,
+  "context_data": {
+    "task_type": "goal_driven",
+    "created_at": "2025-07-11T09:48:02.800275",
+    "generated_by": "goal_driven_task_planner",
+    "creation_type": "manual",
+    "auto_generated": true,
+    "is_goal_driven": true,
+    "required_skills": [],
+    "delegation_chain": [],
+    "delegation_depth": 0,
+    "deliverable_type": "project_output",
+    "numerical_target": {
+      "unit": "units",
+      "metric": "deliverable_quality",
+      "target": 30,
+      "validation_method": "manual_verification"
+    },
+    "success_criteria": [
+      "Document is created in the specified format.",
+      "Document clearly outlines at least 5 qualification criteria."
+    ],
+    "assigned_agent_name": "LucaVerdi",
+    "created_by_agent_id": "419f2572-0b1f-453c-a72d-200952e8da9f",
+    "original_metric_type": "deliverable_quality",
+    "goal_analysis_timestamp": "2025-07-11T09:47:54.870936",
+    "estimated_duration_hours": 4
+  },
+  "agent_info": {
+    "id": "419f2572-0b1f-453c-a72d-200952e8da9f",
+    "name": "LucaVerdi",
+    "role": "Lead Research Specialist",
+    "status": "available"
+  },
+  "workspace_id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "priority": "low",
+  "assigned_to_role": "Lead Research Specialist",
+  "progress_details": {
+    "is_enhancement_task": false,
+    "user_feedback": null,
+    "original_task_id": null,
+    "asset_name": null
+  }
+}
+2025-07-11 09:49:25,341 - INFO - ------------------------------------
+2025-07-11 09:49:40,826 - INFO - --- DIAGNOSTICS (Time: 92s) ---
+2025-07-11 09:49:40,826 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:49:40,826 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:49:40,826 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:49:40,826 - INFO - ------------------------------------
+2025-07-11 09:49:56,115 - INFO - --- DIAGNOSTICS (Time: 108s) ---
+2025-07-11 09:49:56,115 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:49:56,115 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:49:56,115 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:49:56,115 - INFO - ------------------------------------
+2025-07-11 09:50:11,483 - INFO - --- DIAGNOSTICS (Time: 123s) ---
+2025-07-11 09:50:11,483 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:50:11,484 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:50:11,484 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:50:11,484 - INFO - ------------------------------------
+2025-07-11 09:50:26,774 - INFO - --- DIAGNOSTICS (Time: 138s) ---
+2025-07-11 09:50:26,774 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:50:26,775 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:50:26,775 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:50:26,775 - INFO - ------------------------------------
+2025-07-11 09:50:42,128 - INFO - --- DIAGNOSTICS (Time: 154s) ---
+2025-07-11 09:50:42,129 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:50:42,129 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:50:42,129 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:50:42,129 - INFO - ------------------------------------
+2025-07-11 09:50:57,474 - INFO - --- DIAGNOSTICS (Time: 169s) ---
+2025-07-11 09:50:57,474 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:50:57,475 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:50:57,475 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:50:57,475 - INFO - ------------------------------------
+2025-07-11 09:51:12,898 - INFO - --- DIAGNOSTICS (Time: 184s) ---
+2025-07-11 09:51:12,898 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:51:12,898 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:51:12,898 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:51:12,898 - INFO - ------------------------------------
+2025-07-11 09:51:28,255 - INFO - --- DIAGNOSTICS (Time: 200s) ---
+2025-07-11 09:51:28,255 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:51:28,255 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:51:28,255 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:51:28,255 - INFO - ------------------------------------
+2025-07-11 09:51:43,709 - INFO - --- DIAGNOSTICS (Time: 215s) ---
+2025-07-11 09:51:43,709 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:51:43,709 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:51:43,709 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:51:43,709 - INFO - ------------------------------------
+2025-07-11 09:51:59,175 - INFO - --- DIAGNOSTICS (Time: 231s) ---
+2025-07-11 09:51:59,176 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:51:59,176 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:51:59,176 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:51:59,176 - INFO - ------------------------------------
+2025-07-11 09:52:14,501 - INFO - --- DIAGNOSTICS (Time: 246s) ---
+2025-07-11 09:52:14,501 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:52:14,501 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:52:14,501 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:52:14,501 - INFO - ------------------------------------
+2025-07-11 09:52:29,910 - INFO - --- DIAGNOSTICS (Time: 261s) ---
+2025-07-11 09:52:29,910 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:52:29,910 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:52:29,911 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:52:29,911 - INFO - ------------------------------------
+2025-07-11 09:52:45,234 - INFO - --- DIAGNOSTICS (Time: 277s) ---
+2025-07-11 09:52:45,234 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:52:45,235 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:52:45,235 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:52:45,235 - INFO - ------------------------------------
+2025-07-11 09:53:00,644 - INFO - --- DIAGNOSTICS (Time: 292s) ---
+2025-07-11 09:53:00,646 - INFO - WORKSPACE STATUS: {
+  "id": "b34d892f-8c6f-4f14-b5fb-3e322ddc4074",
+  "name": "E2E Test Workspace - 85df4b4e-543b-4720-8cc4-6393a738a7d1",
+  "description": null,
+  "user_id": "26cdb910-cefe-45a1-a394-dffa320cc9c4",
+  "status": "active",
+  "created_at": "2025-07-11T07:47:35.030455Z",
+  "updated_at": "2025-07-11T07:48:07.796891Z",
+  "goal": "Generate a high-quality contact list of 10 potential leads in the SaaS industry.",
+  "budget": null
+}
+2025-07-11 09:53:00,646 - INFO - GOALS: [
+  {
+    "description": "Generate a high-quality contact list of ",
+    "current": 0.0,
+    "target": 90.0
+  }
+]
+2025-07-11 09:53:00,646 - INFO - TASKS: {
+  "total": 3,
+  "pending": 0,
+  "in_progress": 0,
+  "completed": 0,
+  "failed": 3
+}
+2025-07-11 09:53:00,646 - INFO - ------------------------------------
+2025-07-11 09:53:15,657 - ERROR - 
+❌❌❌ Extended E2E Test FAILED: Timeout: il workspace b34d892f-8c6f-4f14-b5fb-3e322ddc4074 non ha raggiunto lo stato COMPLETED in 300 secondi. ❌❌❌
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/extended_autonomous_test.py", line 46, in run_extended_e2e_test
+    assert completion_success, f"Timeout: il workspace {workspace_id} non ha raggiunto lo stato COMPLETED in {WORKSPACE_COMPLETION_TIMEOUT} secondi."
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: Timeout: il workspace b34d892f-8c6f-4f14-b5fb-3e322ddc4074 non ha raggiunto lo stato COMPLETED in 300 secondi.
+2025-07-11 09:53:15,661 - INFO - 
+--- FASE 5: CLEANUP ---
+2025-07-11 09:53:15,884 - INFO - Cleanup response: 200

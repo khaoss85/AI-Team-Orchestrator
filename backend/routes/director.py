@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
 @router.post("/proposal", response_model=DirectorTeamProposalResponse) 
-async def create_team_proposal(config: DirectorConfig, request: Request):
+async def create_team_proposal(proposal_request: DirectorTeamProposal, request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -42,13 +42,13 @@ async def create_team_proposal(config: DirectorConfig, request: Request):
     try:
         # Check if enhanced director is enabled and workspace has strategic goals
         use_enhanced_director = os.getenv("ENABLE_ENHANCED_DIRECTOR", "true").lower() == "true"
-        strategic_goals = await _get_strategic_goals(str(config.workspace_id)) if use_enhanced_director else None
+        strategic_goals = await _get_strategic_goals(str(proposal_request.workspace_id)) if use_enhanced_director else None
         
         # Check if we have extracted_goals from frontend (user-confirmed goals)
-        frontend_goals = getattr(config, 'extracted_goals', None)
+        frontend_goals = getattr(proposal_request, 'extracted_goals', None)
         
         if use_enhanced_director and (strategic_goals or frontend_goals):
-            logger.info(f"🎯 Using enhanced director for workspace {config.workspace_id}")
+            logger.info(f"🎯 Using enhanced director for workspace {proposal_request.workspace_id}")
             
             # If we have frontend goals (user-confirmed), prioritize them over database goals
             goals_to_use = strategic_goals
@@ -61,50 +61,46 @@ async def create_team_proposal(config: DirectorConfig, request: Request):
                 logger.info(f"📊 Using {len(strategic_goals.get('strategic_deliverables', []))} strategic goals from database")
             
             director = EnhancedDirectorAgent()
-            proposal = await director.create_proposal_with_goals(config, goals_to_use)
+            proposal = await director.create_proposal_with_goals(proposal_request, goals_to_use)
         else:
             reason = "enhanced director disabled" if not use_enhanced_director else "no strategic goals available"
-            logger.info(f"Using standard director for workspace {config.workspace_id} ({reason})")
+            logger.info(f"Using standard director for workspace {proposal_request.workspace_id} ({reason})")
             director = DirectorAgent()
-            proposal = await director.create_team_proposal(config)
+            proposal = await director.create_team_proposal(proposal_request)
         
         # Salva la proposta nel database
-        # proposal.model_dump(mode='json', by_alias=True) per assicurare che gli alias "from"/"to" siano usati
-        # se il modello HandoffProposalCreate li definisce per la serializzazione.
-        # Tuttavia, HandoffProposalCreate usa alias per la *deserializzazione*.
-        # Per il salvataggio in DB, i nomi dei campi sono generalmente preferiti.
-        # Se il DB si aspetta 'source_agent_name', model_dump() senza by_alias è corretto.
-        # La cosa importante è che la logica che *legge* dal DB e popola i modelli Pydantic
-        # sia consapevole di come i dati sono strutturati nel DB.
-        
-        # Per coerenza e per evitare problemi con Supabase che potrebbe non gradire chiavi come "from",
-        # usiamo i nomi dei campi per salvare nel DB.
         proposal_data_for_db = proposal.model_dump(mode='json')
-
 
         saved_proposal_db = await save_team_proposal(
             workspace_id=str(proposal.workspace_id),
             proposal_data=proposal_data_for_db
         )
         
-        # Costruisci la risposta. Qui `proposal.model_dump(mode='json', by_alias=True)`
-        # assicura che l'output JSON della API usi "from" e "to" se così definito negli alias
-        # di HandoffProposalCreate per la serializzazione.
-        # Dato che DirectorTeamProposalResponse usa HandoffProposalCreate,
-        # e HandoffProposalCreate definisce alias "from" e "to" per la *deserializzazione*,
-        # quando Pydantic costruisce DirectorTeamProposalResponse da un dict, si aspetterà
-        # le chiavi "from" e "to" se `populate_by_name=False` (default) o se l'input dict
-        # ha effettivamente quelle chiavi.
+        # Map DirectorTeamProposal to DirectorTeamProposalResponse with correct fields
+        team_members = []
+        for agent in proposal.agents:
+            team_members.append({
+                "name": agent.name,
+                "role": agent.role,
+                "seniority": agent.seniority.value if hasattr(agent.seniority, 'value') else str(agent.seniority),
+                "description": getattr(agent, 'description', ''),
+                "tools": getattr(agent, 'tools', [])
+            })
         
-        # Per costruire `response_data` che sarà usato per istanziare `DirectorTeamProposalResponse`,
-        # dobbiamo assicurarci che i nomi dei campi per gli handoff siano quelli attesi da `HandoffProposalCreate`
-        # (cioè, "from" e "to" a causa degli alias).
-        response_data_dict = proposal.model_dump(mode='json', by_alias=True)
-        response_data_dict["id"] = saved_proposal_db["id"] 
-        response_data_dict["created_at"] = saved_proposal_db.get("created_at")
-        response_data_dict["status"] = saved_proposal_db.get("status", "pending")
+        # Extract estimated cost value
+        estimated_cost = 0.0
+        if hasattr(proposal, 'estimated_cost') and proposal.estimated_cost:
+            if isinstance(proposal.estimated_cost, dict):
+                estimated_cost = proposal.estimated_cost.get('total_estimated_cost', 0.0)
+            else:
+                estimated_cost = float(proposal.estimated_cost)
         
-        return DirectorTeamProposalResponse(**response_data_dict)
+        return DirectorTeamProposalResponse(
+            proposal_id=saved_proposal_db["id"],
+            team_members=team_members,
+            estimated_cost=estimated_cost,
+            timeline="30 days"  # Default timeline
+        )
     except Exception as e:
         logger.error(f"Error creating team proposal: {e}", exc_info=True)
         raise HTTPException(
@@ -158,28 +154,64 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, 
         created_agents_db = []
         agent_name_to_id_map: Dict[str, str] = {} 
         
-        for agent_create_data in proposal.agents:
-            logger.info(f"Creating agent: {agent_create_data.name}")
-            logger.info(f"Tools configuration: {agent_create_data.tools}") 
+        logger.info(f"🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for {len(proposal.agents)} agents")
+        
+        for i, agent_create_data in enumerate(proposal.agents):
+            logger.info(f"📋 Creating agent {i+1}/{len(proposal.agents)}: {agent_create_data.name}")
+            logger.info(f"🔧 Tools configuration: {agent_create_data.tools}") 
 
-            tools_for_db = [t for t in (agent_create_data.tools or []) if isinstance(t, dict)]
+            # Costruisci il payload esplicitamente con i campi attesi da create_agent
+            agent_data_for_creation = {
+                "workspace_id": str(workspace_id),
+                "name": agent_create_data.name,
+                "role": agent_create_data.role,
+                "seniority": agent_create_data.seniority.value if hasattr(agent_create_data.seniority, 'value') else str(agent_create_data.seniority),
+                "description": agent_create_data.description,
+                "system_prompt": agent_create_data.system_prompt,
+                "llm_config": agent_create_data.llm_config,
+                "tools": [t for t in (agent_create_data.tools or []) if isinstance(t, dict)],
+                "first_name": agent_create_data.first_name,
+                "last_name": agent_create_data.last_name,
+                "personality_traits": agent_create_data.personality_traits,
+                "communication_style": agent_create_data.communication_style,
+                "hard_skills": agent_create_data.hard_skills,
+                "soft_skills": agent_create_data.soft_skills,
+                "background_story": agent_create_data.background_story
+            }
+            # Rimuovi eventuali chiavi con valore None per evitare problemi con la funzione create_agent
+            agent_data_for_creation = {k: v for k, v in agent_data_for_creation.items() if v is not None}
+
+            logger.info(f"🔍 Agent creation payload: {agent_data_for_creation}")
             
-            agent_payload_for_db = agent_create_data.model_dump()
-            agent_payload_for_db["workspace_id"] = str(workspace_id) 
-            agent_payload_for_db["seniority"] = agent_create_data.seniority.value
-            agent_payload_for_db["tools"] = tools_for_db 
-
-            #valid_agent_keys = ["workspace_id", "name", "role", "seniority", "description", "system_prompt", "llm_config", "tools", "can_create_tools"]
-            valid_agent_keys = list(AgentCreate.__annotations__.keys())
-            agent_data_for_creation = {k: v for k, v in agent_payload_for_db.items() if k in valid_agent_keys}
-
-            created_agent_db = await create_agent(**agent_data_for_creation)
-            if created_agent_db:
-                created_agents_db.append(created_agent_db)
-                agent_name_to_id_map[created_agent_db['name']] = str(created_agent_db['id']) # Assicura che l'ID sia una stringa
-                logger.info(f"Created agent {created_agent_db['id']}: {created_agent_db['name']}")
-            else:
-                logger.error(f"Failed to create agent in DB: {agent_create_data.name}")
+            try:
+                created_agent_db = await create_agent(**agent_data_for_creation)
+                if created_agent_db:
+                    created_agents_db.append(created_agent_db)
+                    agent_name_to_id_map[created_agent_db['name']] = str(created_agent_db['id']) # Assicura che l'ID sia una stringa
+                    logger.info(f"✅ Successfully created agent {created_agent_db['id']}: {created_agent_db['name']}")
+                else:
+                    logger.error(f"❌ create_agent returned None for agent: {agent_create_data.name}")
+                    logger.error(f"❌ This is a critical error - agent creation failed silently")
+            except Exception as agent_creation_error:
+                logger.error(f"❌ Exception during agent creation for {agent_create_data.name}: {agent_creation_error}", exc_info=True)
+        
+        logger.info(f"📊 AGENT CREATION SUMMARY: {len(created_agents_db)} agents created out of {len(proposal.agents)} proposed")
+        logger.info(f"🗂️ Agent name to ID mapping: {agent_name_to_id_map}")
+        
+        if len(created_agents_db) == 0:
+            logger.error("🚨 CRITICAL: No agents were created! Task assignment will fail.")
+            logger.error("🚨 This explains why tasks have assigned_to: null")
+        else:
+            # 🔄 CRITICAL FIX: Refresh AgentManager cache after creating new agents
+            try:
+                from executor import task_executor
+                refresh_success = await task_executor.refresh_agent_manager_cache(str(workspace_id))
+                if refresh_success:
+                    logger.info(f"✅ AgentManager cache refreshed successfully for workspace {workspace_id}")
+                else:
+                    logger.warning(f"⚠️ AgentManager cache refresh failed for workspace {workspace_id}")
+            except Exception as e:
+                logger.error(f"❌ Failed to refresh AgentManager cache: {e}")
         
         logger.info(f"Processing {len(proposal.handoffs)} handoff proposals for actual creation...")
         created_handoffs_db = []
@@ -190,9 +222,9 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, 
         logger.info(f"✅ Workspace {workspace_id} activated successfully")
         
         for handoff_proposal in proposal.handoffs: 
-            # Accedi tramite i nomi dei campi definiti in HandoffProposalCreate
-            source_agent_name = handoff_proposal.source_agent_name 
-            target_agent_names_prop = handoff_proposal.target_agent_names
+            # Accedi tramite i nomi dei campi definiti in DirectorHandoffProposal
+            source_agent_name = handoff_proposal.from_agent
+            target_agent_names_prop = handoff_proposal.to_agents
             
             source_agent_id_str = agent_name_to_id_map.get(source_agent_name)
             
@@ -242,14 +274,22 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, 
             if goals_response.data and len(goals_response.data) > 0:
                 logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
                 
-                from automated_goal_monitor import automated_goal_monitor
-                import asyncio
-                
-                # Trigger immediate goal analysis and task creation
-                asyncio.create_task(automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id)))
-                
-                auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
-                logger.info("✅ Auto-start triggered after team approval via director endpoint")
+                # 🚨 CRITICAL CHECK: Verify agents exist before triggering auto-start
+                if len(created_agents_db) == 0:
+                    logger.error("🚨 CRITICAL: Cannot trigger auto-start because no agents were created!")
+                    logger.error("🚨 This will cause tasks to be created with assigned_to: null")
+                    auto_start_message = "Team approved but auto-start failed: no agents created"
+                else:
+                    logger.info(f"✅ {len(created_agents_db)} agents available for task assignment")
+                    
+                    from automated_goal_monitor import automated_goal_monitor
+                    import asyncio
+                    
+                    # Trigger immediate goal analysis and task creation (synchronously for faster response)
+                    await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
+                    
+                    auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
+                    logger.info("✅ Auto-start triggered after team approval via director endpoint")
             else:
                 logger.warning(f"⚠️ No active goals found for workspace {workspace_id}")
                 auto_start_message = "Team approved. Please confirm goals to start task execution."
@@ -345,7 +385,7 @@ async def _convert_frontend_goals_to_strategic_format(frontend_goals: List[Dict[
 
 # Alias endpoint for compatibility with frontend expectations
 @router.post("/analyze-and-propose", response_model=DirectorTeamProposalResponse)
-async def analyze_and_propose_team(config: DirectorConfig, request: Request):
+async def analyze_and_propose_team(proposal_request: DirectorTeamProposal, request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -355,7 +395,7 @@ async def analyze_and_propose_team(config: DirectorConfig, request: Request):
     Alias for create_team_proposal endpoint
     Analyzes workspace and proposes a team configuration
     """
-    return await create_team_proposal(config)
+    return await create_team_proposal(proposal_request, request)
 
 async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
     """Get strategic goals and deliverables for workspace"""

@@ -1,0 +1,14 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Memory or Deliverable System not fully available: cannot import name 'unified_deliverable_engine' from partially initialized module 'backend.deliverable_system.unified_deliverable_engine' (most likely due to a circular import) (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/unified_deliverable_engine.py)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'check_and_create_final_deliverable' from 'backend.deliverable_system.unified_deliverable_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/unified_deliverable_engine.py)
+AI Quality Assurance system not fully available: cannot import name 'EnhancementPlan' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/main.py", line 29, in <module>
+    from routes.monitoring import router as monitoring_router
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/routes/monitoring.py", line 11, in <module>
+    from executor import task_executor
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 115, in <module>
+    asset_processor = AssetArtifactProcessor()
+                      ^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'AssetArtifactProcessor' is not defined

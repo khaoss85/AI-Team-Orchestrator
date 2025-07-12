@@ -9,8 +9,7 @@ from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from models import (
-    WorkspaceGoal, GoalStatus, TaskStatus,
-    WorkspaceGoalProgress
+    WorkspaceGoal, GoalStatus, TaskStatus
 )
 from database import supabase, create_task
 

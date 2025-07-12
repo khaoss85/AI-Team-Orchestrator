@@ -29,6 +29,7 @@ from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 from utils.project_settings import get_project_settings
+from backend.services.unified_memory_engine import unified_memory_engine
 
 logger = logging.getLogger(__name__)
 
@@ -104,15 +105,16 @@ except ImportError as e:
 
 # 🚀 CRITICAL FIX: Import Asset System for Task Completion Integration
 try:
-    from services.asset_artifact_processor import AssetArtifactProcessor
-    from services.ai_quality_gate_engine import AIQualityGateEngine
+    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+    from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
     from database_asset_extensions import AssetDrivenDatabaseManager
+    from services import AssetArtifactProcessor
     ASSET_SYSTEM_AVAILABLE = True
     logger.info("✅ Asset System integration available for TaskExecutor")
     
     # Initialize asset system components
-    asset_processor = AssetArtifactProcessor()
-    asset_quality_engine = AIQualityGateEngine()
+    asset_processor = AssetArtifactProcessor  # This is already an instance, not a class
+    asset_quality_engine = unified_quality_engine
     asset_db_manager = AssetDrivenDatabaseManager()
     
 except ImportError as e:
@@ -901,16 +903,16 @@ class TaskExecutor(AssetCoordinationMixin):
                     continue
                 self.active_task_ids.add(task_id)
 
-                logger.info(f"Worker {worker_id} picking up task: '{task_name}' (ID: {task_id}) from W: {workspace_id}. Q size: {self.task_queue.qsize()}")
+                logger.info(f"WORKER {worker_id}: Picking up task: '{task_name}' (ID: {task_id}) from W: {workspace_id}. Q size: {self.task_queue.qsize()}")
                 
                 # 🔧 FIX: Ensure manager is initialized if not present (legacy task format or lost reference)
                 if manager is None:
-                    logger.info(f"Attempting to initialize manager for task: {task_id}")
+                    logger.info(f"WORKER {worker_id}: Attempting to initialize manager for task: {task_id}")
                     try:
                         from ai_agents.manager import AgentManager
                         manager = AgentManager(workspace_id=UUID(workspace_id))
                         if not await manager.initialize(): # CRITICAL: Call initialize()
-                            logger.error(f"❌ Failed to initialize manager for task {task_id}. Skipping task.")
+                            logger.error(f"WORKER {worker_id}: ❌ Failed to initialize manager for task {task_id}. Skipping task.")
                             await self._force_complete_task(
                                 task_dict_from_queue, 
                                 f"Failed to initialize manager: {str(e)[:200]}",
@@ -919,9 +921,9 @@ class TaskExecutor(AssetCoordinationMixin):
                             self.task_queue.task_done()
                             self.active_task_ids.discard(task_id)
                             continue
-                        logger.debug(f"✅ Manager initialized successfully for task {task_id}")
+                        logger.debug(f"WORKER {worker_id}: ✅ Manager initialized successfully for task {task_id}")
                     except Exception as e:
-                        logger.error(f"❌ Exception during manager initialization for task {task_id}: {e}")
+                        logger.error(f"WORKER {worker_id}: ❌ Exception during manager initialization for task {task_id}: {e}")
                         await self._force_complete_task(
                             task_dict_from_queue, 
                             f"Exception initializing manager: {str(e)[:200]}",
@@ -937,7 +939,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 assigned_role = task_dict_from_queue.get("assigned_to_role")
                 
                 if not current_agent_id and assigned_role:
-                    logger.warning(f"⚠️ Task {task_id} reached execution without agent_id. Attempting backup assignment for role '{assigned_role}'")
+                    logger.warning(f"WORKER {worker_id}: ⚠️ Task {task_id} reached execution without agent_id. Attempting backup assignment for role '{assigned_role}'")
                     try:
                         assigned_agent_info = await self._assign_agent_to_task_by_role(
                             task_dict_from_queue, workspace_id, assigned_role
@@ -947,16 +949,16 @@ class TaskExecutor(AssetCoordinationMixin):
                             # Update the task dict for execution
                             task_dict_from_queue["agent_id"] = str(assigned_agent_info["id"])
                             current_agent_id = str(assigned_agent_info["id"])
-                            logger.info(f"✅ Backup assignment successful: Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id})")
+                            logger.info(f"WORKER {worker_id}: ✅ Backup assignment successful: Task {task_id} assigned to agent {assigned_agent_info['name']} (ID: {current_agent_id})")
                         else:
-                            logger.error(f"❌ Backup agent assignment failed for role '{assigned_role}' in task {task_id}")
+                            logger.error(f"WORKER {worker_id}: ❌ Backup agent assignment failed for role '{assigned_role}' in task {task_id}")
                     except Exception as e:
-                        logger.error(f"❌ Exception during backup agent assignment for task {task_id}: {e}")
+                        logger.error(f"WORKER {worker_id}: ❌ Exception during backup agent assignment for task {task_id}: {e}")
 
                 # CRITICAL CHECK: Ensure agent_id is present after backup assignment attempts
                 if not task_dict_from_queue.get("agent_id"):
                     error_msg = f"Task {task_id} ('{task_name}') cannot execute: no agent_id after all assignment attempts (role: {assigned_role})"
-                    logger.error(error_msg)
+                    logger.error(f"WORKER {worker_id}: {error_msg}")
                     await self._force_complete_task(
                         task_dict_from_queue, 
                         error_msg,
@@ -967,6 +969,7 @@ class TaskExecutor(AssetCoordinationMixin):
                     continue
                 
                 # Validazione anti-loop
+                logger.info(f"WORKER {worker_id}: Validating task {task_id} for anti-loop.")
                 if not await self._validate_task_execution(task_dict_from_queue):
                     logger.warning(f"Worker {worker_id} skipping task {task_id} - failed anti-loop validation")
                     self.task_queue.task_done()
@@ -977,25 +980,35 @@ class TaskExecutor(AssetCoordinationMixin):
                 # Esecuzione del task
                 self.active_tasks_count += 1
                 try:
+                    logger.info(f"WORKER {worker_id}: Preparing to execute task {task_id}.")
+                    logger.info(f"WORKER {worker_id}: Task data: {task_dict_from_queue}")
                     if manager is None:
-                        logger.error(f"Worker {worker_id}: Manager is None for task {task_id}. Skipping execution.")
-                        raise ValueError(f"Task {task_id} with null manager for worker {worker_id}")
-                    logger.info(f"Worker {worker_id}: Manager is {manager.__class__.__name__} for task {task_id}. Proceeding with execution.")
+                        raise ValueError(f"Manager is None for task {task_id}")
+                    
                     await self._execute_task_with_anti_loop_and_tracking(manager, task_dict_from_queue)
-                except Exception as e_exec:
-                    logger.error(f"Worker {worker_id} critical error for task {task_id}: {e_exec}", exc_info=True)
+                    logger.info(f"WORKER {worker_id}: Successfully processed task {task_id}.")
+
+                except (AttributeError, TypeError) as e_specific:
+                    logger.error(f"WORKER {worker_id}: SPECIFIC ERROR executing task {task_id}: {e_specific}", exc_info=True)
                     await self._force_complete_task(
                         task_dict_from_queue, 
-                        f"Critical worker error: {str(e_exec)[:200]}",
+                        f"Specific execution error: {str(e_specific)[:250]}",
+                        status_to_set=TaskStatus.FAILED.value
+                    )
+                except Exception as e_exec:
+                    logger.error(f"WORKER {worker_id}: CRITICAL error executing task {task_id}: {e_exec}", exc_info=True)
+                    await self._force_complete_task(
+                        task_dict_from_queue, 
+                        f"Critical worker error: {str(e_exec)[:250]}",
                         status_to_set=TaskStatus.FAILED.value
                     )
                 finally:
                     self.active_tasks_count -= 1
                     self.task_queue.task_done()
                     self.active_task_ids.discard(task_id)
-                    logger.info(f"Worker {worker_id} finished task: {task_id}. Active: {self.active_tasks_count}")
+                    logger.info(f"WORKER {worker_id}: Finished processing task {task_id}. Active tasks: {self.active_tasks_count}")
                     
-                    # Marca come completato nel tracker
+                    # Marca come completato nel tracker per anti-loop
                     if workspace_id and task_id:
                         self.task_completion_tracker[workspace_id].add(task_id)
 
@@ -1227,6 +1240,13 @@ Focus on delivering practical, actionable results that move the project forward.
 
         if not task_id or not workspace_id:
             logger.error(f"Invalid task data for validation: id={task_id}, ws={workspace_id}")
+            return False
+
+        # CIRCUIT BREAKER: Prevent infinite loops
+        total_workspace_tasks = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
+        if total_workspace_tasks > 50: # Max 50 tasks per workspace
+            logger.critical(f"CIRCUIT BREAKER TRIPPED: Workspace {workspace_id} exceeded 50 tasks. Forcing completion as error.")
+            await update_workspace_status(workspace_id, WorkspaceStatus.ERROR.value)
             return False
 
         # Check se il task è già stato completato
@@ -1463,6 +1483,39 @@ Focus on delivering practical, actionable results that move the project forward.
                 self.task_completion_tracker[workspace_id].add(task_id)
             self.active_task_ids.discard(task_id)
             self.queued_task_ids.discard(task_id)
+
+            # --- LINKING: Store Agent Performance and Failure/Success Patterns ---
+            agent_id = task_dict.get("agent_id")
+            if agent_id:
+                # Store performance for completed tasks
+                if status_to_set == TaskStatus.COMPLETED.value:
+                    quality_assessment = completion_result.get("quality_assessment", {})
+                    quality_score = quality_assessment.get("score", 0.0) if isinstance(quality_assessment, dict) else 0.0
+                    
+                    start_time_iso = next((log['timestamp'] for log in reversed(self.execution_log) if log.get('task_id') == task_id and log.get('event') == 'task_execution_started'), None)
+                    duration_seconds = (datetime.now() - datetime.fromisoformat(start_time_iso)).total_seconds() if start_time_iso else 0.0
+
+                    await unified_memory_engine.store_agent_performance_metric(
+                        agent_id=agent_id,
+                        workspace_id=workspace_id,
+                        quality_score=quality_score,
+                        duration_seconds=duration_seconds
+                    )
+                
+                # Store failure patterns for failed tasks
+                elif status_to_set == TaskStatus.FAILED.value:
+                    await unified_memory_engine.store_context(
+                        workspace_id=workspace_id,
+                        context_type="failure_pattern",
+                        content={
+                            "task_name": task_dict.get("name"),
+                            "failure_reason": reason,
+                            "agent_role": task_dict.get("assigned_to_role", "unknown"),
+                            "severity": "high"
+                        },
+                        importance_score=0.9 # Failures are important lessons
+                    )
+            # --- END LINKING ---
             
             # 🚀 CRITICAL FIX: Trigger deliverable creation check when task is completed
             if status_to_set == TaskStatus.COMPLETED.value and workspace_id:
@@ -1481,45 +1534,22 @@ Focus on delivering practical, actionable results that move the project forward.
                     }
                 )
                 
-                # 🎯 CRITICAL FIX: Update goal progress when task completes (MISSING LINK)
+                # 🛡️ AUTOMATIC QUALITY TRIGGER: Trigger quality validation on task completion
                 try:
-                    from services.unified_progress_manager import unified_progress_manager
-                    progress_result = await unified_progress_manager.handle_task_completion(
-                        task_id, completion_result
-                    )
-                    if progress_result.get("updated"):
-                        logger.info(f"✅ Task {task_id} completion updated goal progress: {progress_result}")
+                    from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+                    quality_trigger = unified_quality_engine.get_automatic_quality_trigger()
                     
-                    # 🎯 PRIORITY 2: Real-time validation of progress update flow
-                    try:
-                        from utils.progress_validation import progress_validation_engine
-                        validation_result = await progress_validation_engine.validate_task_completion_flow(task_id)
-                        if not validation_result.get("overall_success"):
-                            logger.warning(f"⚠️ Progress validation failed for task {task_id}: {validation_result['failures']}")
-                        else:
-                            logger.info(f"✅ Progress flow validation passed for task {task_id}")
-                    except Exception as validation_error:
-                        logger.error(f"Error in progress validation: {validation_error}")
+                    # Trigger immediate quality check for the workspace
+                    quality_result = await quality_trigger.trigger_immediate_quality_check(workspace_id)
                     
-                    # 🛡️ AUTOMATIC QUALITY TRIGGER: Trigger quality validation on task completion
-                    try:
-                        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
-                        quality_trigger = unified_quality_engine.get_automatic_quality_trigger()
+                    if quality_result.get("status") == "completed":
+                        logger.info(f"✅ Automatic quality validation triggered for task {task_id}: {quality_result.get('new_validations', 0)} validations created")
+                    else:
+                        logger.warning(f"⚠️ Automatic quality validation failed for task {task_id}: {quality_result.get('error', 'Unknown error')}")
                         
-                        # Trigger immediate quality check for the workspace
-                        quality_result = await quality_trigger.trigger_immediate_quality_check(workspace_id)
-                        
-                        if quality_result.get("status") == "completed":
-                            logger.info(f"✅ Automatic quality validation triggered for task {task_id}: {quality_result.get('new_validations', 0)} validations created")
-                        else:
-                            logger.warning(f"⚠️ Automatic quality validation failed for task {task_id}: {quality_result.get('error', 'Unknown error')}")
-                            
-                    except Exception as quality_error:
-                        logger.error(f"Error triggering automatic quality validation for task {task_id}: {quality_error}")
-                        # Don't fail the task completion due to quality trigger errors
-                        
-                except Exception as e:
-                    logger.error(f"Error updating goal progress for task {task_id}: {e}")
+                except Exception as quality_error:
+                    logger.error(f"Error triggering automatic quality validation for task {task_id}: {quality_error}")
+                    # Don't fail the task completion due to quality trigger errors
         except Exception as e:
             logger.error(f"Error force finalizing task {task_id}: {e}")
     
@@ -1663,8 +1693,8 @@ Focus on delivering practical, actionable results that move the project forward.
                 "agent_id": agent_id,
                 "workspace_id": workspace_id,
                 "task_name": task_name,
-                "assigned_role": task_pydantic_obj.assigned_to_role,
-                "priority": task_pydantic_obj.priority
+                "assigned_role": task_dict.get("assigned_to_role"),
+                "priority": task_dict.get("priority")
             }
             self.execution_log.append(execution_start_log)
             
@@ -1705,6 +1735,24 @@ Focus on delivering practical, actionable results that move the project forward.
                     agent_data_db.get("seniority", "senior"), 
                     self.budget_tracker.default_model
                 )
+
+            # Retrieve learned patterns from memory
+            success_patterns = await unified_memory_engine.get_relevant_context(workspace_id, task_name, context_types=["success_pattern"], max_results=2)
+            failure_patterns = await unified_memory_engine.get_relevant_context(workspace_id, task_name, context_types=["failure_pattern"], max_results=2)
+
+            learned_patterns_text = ""
+            if success_patterns:
+                learned_patterns_text += "## Relevant Success Patterns (apply these):\n"
+                for pattern in success_patterns:
+                    learned_patterns_text += f"- {pattern.content}\n"
+            
+            if failure_patterns:
+                learned_patterns_text += "\n## Relevant Failure Patterns (avoid these):\n"
+                for pattern in failure_patterns:
+                    learned_patterns_text += f"- {pattern.content}\n"
+
+            if learned_patterns_text:
+                task_pydantic_obj.prompt = f"Leverage these insights to improve your performance:\n{learned_patterns_text}\n---\nOriginal Task:\n{task_pydantic_obj.prompt}"
 
             logger.info(f"Executing task {task_id} ('{task_name}') with agent {agent_id} (Role: {agent_data_db.get('role', 'N/A')}) using model {model_for_budget}")
             
@@ -1747,12 +1795,16 @@ Focus on delivering practical, actionable results that move the project forward.
             task_input_text = f"{task_name} {task_pydantic_obj.description or ''}"
             estimated_input_tokens = max(1, len(task_input_text) // 4)
 
+            agent = await manager.get_agent(agent_id)
+            if not agent:
+                raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
+
             # ESECUZIONE DEL TASK
-            logger.info(f"Before manager.execute_task for task {task_id}")
-            await self.process_task_with_coordination(task_dict, manager, thinking_process_id)
-            logger.info(f"After manager.execute_task for task {task_id}")
-            await refresh_dependencies(task_id)
-            return
+            logger.info(f"Before agent.execute for task {task_id}")
+            agent = await manager.get_agent(agent_id)
+            if not agent:
+                raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
+            execution_result = await agent.execute(task_pydantic_obj)
         except Exception as e:
             # Gestione errori che non sono stati catturati dal coordination layer
             logger.error(f"Unhandled error in coordination layer for task {task_dict.get('id')}: {e}", exc_info=True)
@@ -3987,6 +4039,29 @@ Focus on delivering practical, actionable results that move the project forward.
             
         except Exception as e:
             logger.error(f"Failed to create integration event: {e}")
+
+    async def refresh_agent_manager_cache(self, workspace_id: str) -> bool:
+        """Refresh AgentManager cache after new agents are created"""
+        try:
+            workspace_uuid = UUID(workspace_id)
+            if workspace_uuid in self.workspace_managers:
+                # Re-initialize the existing agent manager to pick up new agents
+                await self.workspace_managers[workspace_uuid].initialize()
+                logger.info(f"🔄 Successfully refreshed existing agent manager cache for workspace {workspace_id}")
+                return True
+            else:
+                # 🚨 CRITICAL FIX: Create AgentManager immediately instead of deferring
+                logger.info(f"No existing agent manager found for workspace {workspace_id}, creating one now...")
+                manager = await self.get_agent_manager(workspace_id)
+                if manager:
+                    logger.info(f"✅ Successfully created and initialized agent manager for workspace {workspace_id}")
+                    return True
+                else:
+                    logger.error(f"❌ Failed to create agent manager for workspace {workspace_id}")
+                    return False
+        except Exception as e:
+            logger.error(f"⚠️ Failed to refresh agent manager cache for workspace {workspace_id}: {e}")
+            return False
 
 
 # Aggiungi queste funzioni helper:

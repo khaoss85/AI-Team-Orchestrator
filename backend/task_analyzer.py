@@ -17,8 +17,8 @@ from database import (
     # 🎯 Goal-driven database functions
     update_goal_progress, get_workspace_goals
 )
-from UniversalAIContentExtractor import UniversalAIContentExtractor
-from AISemanticMapper import AISemanticMapper
+# from UniversalAIContentExtractor import UniversalAIContentExtractor  # Module removed
+# from AISemanticMapper import AISemanticMapper  # Module removed
 
 logger = logging.getLogger(__name__)
 
@@ -1997,6 +1997,31 @@ class EnhancedTaskExecutor:
     def _should_analyze_task_ultra_conservative(self, task: Task, result: Dict[str, Any]) -> bool:
         """Ultra-conservative filter for task analysis"""
         if result.get("status") != "completed":
+            return False
+
+    async def check_project_completion_criteria(self, workspace_id: str) -> bool:
+        """
+        Checks if all completion criteria for a workspace have been met
+        by querying the v_workspace_completion_status view.
+        """
+        try:
+            # Query the single source of truth view
+            result = supabase.table("v_workspace_completion_status").select("calculated_status").eq("workspace_id", workspace_id).single().execute()
+
+            if result.data and result.data.get("calculated_status") == "completed":
+                logger.info(f"✅ DB view confirms completion for workspace {workspace_id}. Marking as completed.")
+                return True
+            
+            # Log a detailed reason if not completed
+            if result.data:
+                logger.info(f"Workspace {workspace_id}: Not yet complete. Reason from DB view: {result.data}")
+            else:
+                logger.warning(f"Could not retrieve completion status for workspace {workspace_id} from view.")
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error checking project completion criteria for workspace {workspace_id}: {e}", exc_info=True)
             return False
         
         task_name_lower = task.name.lower() if task.name else ""

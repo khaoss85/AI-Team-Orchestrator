@@ -11,7 +11,7 @@ from fastapi import Request, APIRouter, HTTPException
 from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from pydantic import BaseModel, Field
 
-from services.memory_system import memory_system
+from backend.services.unified_memory_engine import memory_system
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ async def search_memory_context(query_data: ContextQuery, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/context/{workspace_id}", response_model=List[ContextResponse])
-async def get_workspace_memory_context(workspace_id: UUID, limit: int = 20, request: Request):
+async def get_workspace_memory_context(request: Request, workspace_id: UUID, limit: int = 20):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

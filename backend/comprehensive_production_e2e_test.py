@@ -390,7 +390,7 @@ class ProductionE2ETest:
         logger.info("-" * 50)
         
         try:
-            from services.memory_system import memory_system
+            from backend.services.unified_memory_engine import memory_system
             
             # Store relevant business context and learnings
             context_entries = [

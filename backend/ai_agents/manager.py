@@ -459,6 +459,18 @@ class AgentManager:
         self.task_execution_cache.pop(task_id_str, None)
 
     # Metodi di utilità e monitoring
+    async def get_agent(self, agent_id: str) -> Optional[SpecialistAgent]:
+        """Ottieni un agente specifico per ID"""
+        try:
+            agent_uuid = UUID(agent_id)
+            return self.agents.get(agent_uuid)
+        except ValueError:
+            logger.error(f"Invalid agent_id format: {agent_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting agent {agent_id}: {e}")
+            return None
+
     def get_health_status(self) -> Dict[str, Any]:
         """Ritorna lo stato di salute del manager"""
         return {

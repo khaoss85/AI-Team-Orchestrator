@@ -1,0 +1,97 @@
+2025-07-09 15:32:05,506 - __main__ - INFO - 🚀 Production E2E Test initialized: 30ca688c-5d0e-4709-bfc6-ba9e488a04ce
+2025-07-09 15:32:05,506 - __main__ - INFO - 📊 Business Scenario: Customer Onboarding Optimization
+2025-07-09 15:32:05,506 - __main__ - INFO - ================================================================================
+2025-07-09 15:32:05,506 - __main__ - INFO - 🎯 STARTING COMPREHENSIVE PRODUCTION E2E TEST
+2025-07-09 15:32:05,506 - __main__ - INFO - ================================================================================
+2025-07-09 15:32:05,506 - __main__ - INFO - 
+🏗️ PHASE 1: WORKSPACE SETUP
+2025-07-09 15:32:05,506 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:05,719 - __main__ - ERROR - ❌ Phase 1 failed: No module named 'backend'
+2025-07-09 15:32:05,719 - __main__ - ERROR - ❌ Production E2E Test failed: No module named 'backend'
+2025-07-09 15:32:20,475 - __main__ - INFO - 🚀 Production E2E Test initialized: 1a9a76c3-fab7-4522-8c33-a22dfc70e4ec
+2025-07-09 15:32:20,476 - __main__ - INFO - 📊 Business Scenario: Customer Onboarding Optimization
+2025-07-09 15:32:20,476 - __main__ - INFO - ================================================================================
+2025-07-09 15:32:20,476 - __main__ - INFO - 🎯 STARTING COMPREHENSIVE PRODUCTION E2E TEST
+2025-07-09 15:32:20,476 - __main__ - INFO - ================================================================================
+2025-07-09 15:32:20,476 - __main__ - INFO - 
+🏗️ PHASE 1: WORKSPACE SETUP
+2025-07-09 15:32:20,476 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:20,686 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-09 15:32:20,930 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-09 15:32:20,930 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-09 15:32:20,930 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-09 15:32:20,937 - services.universal_ai_pipeline_engine - INFO - 🤖 UniversalAIPipelineEngine initialized with advanced features
+2025-07-09 15:32:20,937 - backend.deliverable_system - WARNING - Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+2025-07-09 15:32:20,937 - services - WARNING - Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+2025-07-09 15:32:20,942 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-09 15:32:20,942 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-09 15:32:20,948 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-09 15:32:20,952 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-09 15:32:21,020 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-09 15:32:21,022 - __main__ - INFO - ✅ Workspace created: addf7e0b-d652-4d9e-9a12-861e2835287e
+2025-07-09 15:32:21,022 - __main__ - INFO -    Name: TechStart Solutions - Customer Onboarding Optimization
+2025-07-09 15:32:21,022 - __main__ - INFO -    Description: We need to reduce customer onboarding time from 2 weeks to 3 days while maintaining quality and cust...
+2025-07-09 15:32:21,022 - __main__ - INFO - 
+🎯 PHASE 2: STRATEGIC GOAL SETTING
+2025-07-09 15:32:21,022 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:21,096 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-09 15:32:21,097 - __main__ - INFO - ✅ Goal created: Reduce customer onboarding time from 14 days to 3 days...
+2025-07-09 15:32:21,097 - __main__ - INFO -    Target: 3 days
+2025-07-09 15:32:21,140 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-09 15:32:21,140 - __main__ - INFO - ✅ Goal created: Maintain customer satisfaction above 95% during optimized on...
+2025-07-09 15:32:21,140 - __main__ - INFO -    Target: 95 percentage
+2025-07-09 15:32:21,220 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-09 15:32:21,222 - __main__ - INFO - ✅ Goal created: Create comprehensive onboarding documentation suite...
+2025-07-09 15:32:21,222 - __main__ - INFO -    Target: 100 percentage
+2025-07-09 15:32:21,222 - __main__ - INFO - 📊 Total goals created: 3
+2025-07-09 15:32:21,222 - __main__ - INFO - 
+🎭 PHASE 3: TEAM FORMATION & DIRECTOR ANALYSIS
+2025-07-09 15:32:21,222 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:21,234 - ai_agents.specialist - WARNING - Failed to import from 'agents' SDK. Attempting fallback to 'openai_agents'. Some features like native handoffs might be unavailable.
+2025-07-09 15:32:21,278 - backend.database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-09 15:32:21,278 - backend.database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-09 15:32:21,278 - backend.database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-09 15:32:21,284 - backend.database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-09 15:32:21,289 - backend.database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-09 15:32:21,296 - backend.ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-09 15:32:21,296 - backend.ai_quality_assurance.unified_quality_engine - INFO - ✅ Unified Quality Engine module loaded with full backward compatibility.
+2025-07-09 15:32:21,296 - backend.ai_quality_assurance - WARNING - AI Quality Assurance system not fully available: cannot import name 'EnhancementPlan' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-09 15:32:21,298 - ai_agents.specialist - INFO - ✅ Robust JSON parser available
+2025-07-09 15:32:21,307 - backend.services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-09 15:32:21,307 - backend.services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-09 15:32:21,307 - backend.services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-09 15:32:21,308 - backend.deliverable_system.unified_deliverable_engine - INFO - 🔧 Unified Deliverable Engine initialized.
+2025-07-09 15:32:21,312 - backend.services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-09 15:32:21,312 - backend.services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-09 15:32:21,312 - backend.services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-09 15:32:21,313 - backend.services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-09 15:32:21,313 - ai_agents.director - WARNING - Modern 'agents' SDK not found; falling back to 'openai_agents'. Advanced features may be unavailable.
+2025-07-09 15:32:21,313 - ai_agents.director - ERROR - No compatible Agent SDK found. DirectorAgent will operate in degraded mode.
+2025-07-09 15:32:21,313 - __main__ - INFO - ✅ Director agent initialized
+2025-07-09 15:32:21,313 - __main__ - INFO - ✅ Team proposed with 3 specialists:
+2025-07-09 15:32:21,313 - __main__ - INFO -    • Senior Process Analyst (senior) - Analyze current onboarding process and identify optimization...
+2025-07-09 15:32:21,313 - __main__ - INFO -    • UX Research Specialist (expert) - Ensure customer satisfaction during process optimization...
+2025-07-09 15:32:21,313 - __main__ - INFO -    • Technical Documentation Lead (senior) - Create comprehensive documentation and training materials...
+2025-07-09 15:32:21,313 - __main__ - INFO - 
+⚙️ PHASE 4: TASK ORCHESTRATION & EXECUTION
+2025-07-09 15:32:21,314 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:21,358 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-09 15:32:21,359 - __main__ - INFO - ✅ Task created: Current State Analysis - Onboarding Process Mapping...
+2025-07-09 15:32:21,359 - __main__ - INFO -    Agent: Senior Process Analyst
+2025-07-09 15:32:21,359 - __main__ - INFO -    Expected: Process map with bottleneck analysis and optimizat...
+2025-07-09 15:32:21,401 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-09 15:32:21,403 - __main__ - INFO - ✅ Task created: Customer Journey Mapping & Satisfaction Analysis...
+2025-07-09 15:32:21,403 - __main__ - INFO -    Agent: UX Research Specialist
+2025-07-09 15:32:21,403 - __main__ - INFO -    Expected: Customer journey map with satisfaction analysis an...
+2025-07-09 15:32:21,444 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-09 15:32:21,444 - __main__ - INFO - ✅ Task created: Onboarding Documentation Suite Creation...
+2025-07-09 15:32:21,444 - __main__ - INFO -    Agent: Technical Documentation Lead
+2025-07-09 15:32:21,444 - __main__ - INFO -    Expected: Complete documentation suite with quality-assured ...
+2025-07-09 15:32:21,444 - __main__ - INFO - 📊 Task orchestration completed - tasks ready for execution
+2025-07-09 15:32:21,445 - __main__ - INFO - ✅ All 3 tasks created successfully
+2025-07-09 15:32:21,445 - __main__ - INFO - 
+🧠 PHASE 5: MEMORY SYSTEM & LEARNING VERIFICATION
+2025-07-09 15:32:21,445 - __main__ - INFO - --------------------------------------------------
+2025-07-09 15:32:21,445 - database - ERROR - Supabase operation failed after 3 attempts: UnifiedMemoryEngine.store_context() got an unexpected keyword argument 'context'. Did you mean 'content'?
+2025-07-09 15:32:21,445 - __main__ - ERROR - ❌ Phase 5 failed: UnifiedMemoryEngine.store_context() got an unexpected keyword argument 'context'. Did you mean 'content'?
+2025-07-09 15:32:21,445 - __main__ - ERROR - ❌ Production E2E Test failed: UnifiedMemoryEngine.store_context() got an unexpected keyword argument 'context'. Did you mean 'content'?

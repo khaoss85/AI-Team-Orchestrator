@@ -5,8 +5,8 @@ import os
 class AgentSystemConfig:
     """Centralized agent configuration loaded from environment variables."""
 
-    # Timeout in seconds for SpecialistAgent task execution
-    SPECIALIST_EXECUTION_TIMEOUT: int = int(os.getenv("SPECIALIST_EXECUTION_TIMEOUT", "120"))
+    # Timeout in seconds for SpecialistAgent task execution - increased to 150 to match TaskExecutor
+    SPECIALIST_EXECUTION_TIMEOUT: int = int(os.getenv("SPECIALIST_EXECUTION_TIMEOUT", "150"))
 
     @classmethod
     def get_all_settings(cls):

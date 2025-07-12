@@ -8,7 +8,7 @@ from human_feedback_manager import human_feedback_manager, FeedbackStatus
 router = APIRouter(prefix="/human-feedback", tags=["human-feedback"])
 
 @router.get("/pending", response_model=List[Dict[str, Any]])
-async def get_pending_feedback_requests(workspace_id: Optional[str] = None, request: Request):
+async def get_pending_feedback_requests(request: Request, workspace_id: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

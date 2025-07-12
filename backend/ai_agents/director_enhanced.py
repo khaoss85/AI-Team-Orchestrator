@@ -11,59 +11,34 @@ logger = logging.getLogger(__name__)
 class EnhancedDirectorAgent(DirectorAgent):
     """Enhanced Director that considers strategic goals and deliverables when creating teams"""
     
-    async def create_proposal_with_goals(
-        self, 
-        config: DirectorConfig,
-        strategic_goals: Optional[Dict[str, Any]] = None
-    ) -> DirectorTeamProposal:
+    async def create_proposal_with_goals(self, proposal_request: DirectorTeamProposal, strategic_goals: Dict[str, Any]) -> DirectorTeamProposal:
         """
-        Create team proposal considering strategic goals and deliverables
-        
-        Args:
-            config: Standard director configuration
-            strategic_goals: Dictionary containing:
-                - final_metrics: List of final success metrics
-                - strategic_deliverables: List of deliverables with autonomy analysis
-                - execution_phases: List of project phases
+        Create a team proposal using strategic goals context.
         """
+        logger.info(f"🎯 Creating team with strategic goals context: {strategic_goals.get('total_deliverables', 0)} deliverables")
         
-        try:
-            # If no strategic goals provided, fall back to standard behavior
-            if not strategic_goals:
-                logger.info("No strategic goals provided, using standard team creation")
-                return await self.create_team_proposal(config)
-        except Exception as e:
-            logger.error(f"Error in enhanced director, falling back to standard: {e}")
-            return await self.create_team_proposal(config)
+        # Enhance the main goal/requirement with strategic context
+        enhanced_goal = self._enhance_goal_with_context(proposal_request.requirements, strategic_goals)
         
-        logger.info(f"🎯 Creating team with strategic goals context: {len(strategic_goals.get('strategic_deliverables', []))} deliverables")
+        # Create a new proposal request object with the enhanced goal
+        # This is a bit of a hack, but it allows us to reuse the standard director
+        # without major refactoring.
         
-        # Enhance the goal with strategic context
-        enhanced_goal = self._enhance_goal_with_context(config.goal, strategic_goals)
+        # Create a temporary DirectorConfig-like object for the standard director
+        class TempConfig:
+            def __init__(self, req):
+                self.workspace_id = req.workspace_id
+                self.goal = enhanced_goal
+                self.requirements = req.requirements
+                self.budget_constraint = {"max_amount": req.budget_limit} if req.budget_limit is not None else {}
+                self.budget_limit = req.budget_limit
+                self.user_feedback = getattr(req, 'user_feedback', '')
+
+        temp_config = TempConfig(proposal_request)
         
-        # Analyze skill requirements based on deliverables
-        required_skills = self._analyze_required_skills(strategic_goals)
-        
-        # Determine team composition based on autonomy levels
-        team_composition = self._determine_team_composition(strategic_goals, config.budget_constraint)
-        
-        # Create enhanced config with strategic context
-        enhanced_config = DirectorConfig(
-            workspace_id=config.workspace_id,
-            goal=enhanced_goal,
-            budget_constraint=config.budget_constraint,
-            user_id=config.user_id,
-            user_feedback=config.user_feedback,
-            extracted_goals=config.extracted_goals  # Pass through extracted goals
-        )
-        
-        # Add strategic context to the proposal generation
-        proposal = await self.create_team_proposal(enhanced_config)
-        
-        # Enhance proposal with strategic alignment
-        enhanced_proposal = self._enhance_proposal_with_deliverables(proposal, strategic_goals)
-        
-        return enhanced_proposal
+        # Use the standard director to create the proposal with the enhanced goal
+        standard_director = DirectorAgent()
+        return await standard_director.create_team_proposal(temp_config)
     
     def _enhance_goal_with_context(self, original_goal: str, strategic_goals: Dict[str, Any]) -> str:
         """Add strategic context to the goal description"""

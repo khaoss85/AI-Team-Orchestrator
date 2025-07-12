@@ -1,0 +1,294 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+/Users/pelleri/Documents/ai-team-orchestrator/backend/simple_server.py:58: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [28113]
+INFO:     Waiting for application startup.
+⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Workspaces routes registered
+✅ Director routes registered
+✅ Goals routes registered
+🚀 Starting simple server with task executor...
+🚀 Starting minimal components...
+✅ Task executor started
+INFO:     127.0.0.1:55366 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55384 - "POST /api/workspaces HTTP/1.1" 307 Temporary Redirect
+[2m2025-07-12T11:09:40.247038Z[0m [[32m[1minfo     [0m] [1mRoute create_new_workspace called[0m [36mendpoint[0m=[35mcreate_new_workspace[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55384 - "POST /api/workspaces/ HTTP/1.1" 201 Created
+❌ Failed to generate asset requirements for goal 7562dd4e-5973-4078-8831-daae30b96fde: 'UnifiedDeliverableEngine' object has no attribute 'generate_from_goal'
+Warning: Failed to log goal event: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'message' column of 'logs' in the schema cache"}
+INFO:     127.0.0.1:55386 - "POST /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:09:40.501581Z[0m [[32m[1minfo     [0m] [1mRoute create_team_proposal called[0m [36mendpoint[0m=[35mcreate_team_proposal[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:40.554684Z[0m [[32m[1minfo     [0m] [1m🎯 Using enhanced director for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:40.554828Z[0m [[32m[1minfo     [0m] [1m📊 Using 0 strategic goals from database[0m [36mtrace_id[0m=[35munknown[0m
+Preventing manager-to-manager handoff between similar roles: ElenaRossi (project manager) -> LucaVerdi (lead research specialist).
+INFO:     127.0.0.1:55388 - "POST /api/director/proposal HTTP/1.1" 200 OK
+[2m2025-07-12T11:09:51.357646Z[0m [[32m[1minfo     [0m] [1mRoute approve_team_proposal_endpoint called[0m [36mendpoint[0m=[35mapprove_team_proposal_endpoint[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.475049Z[0m [[32m[1minfo     [0m] [1m🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for 2 agents[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.475420Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 1/2: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.475566Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.476505Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '595d7fbf-39f1-4d12-acf8-43011d610a22', 'name': 'ElenaRossi', 'role': 'Project Manager', 'seniority': 'senior', 'description': 'Oversees the project, ensures quality and timely delivery, coordinates team efforts, and maintains communication with stakeholders.', 'system_prompt': 'You are a Project Manager. Your responsibilities include planning, coordinating, and supervising the generation of a high-quality SaaS industry contact list, ensuring all deliverables meet quality standards and deadlines.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Elena', 'last_name': 'Rossi', 'personality_traits': ['analytical', 'proactive'], 'communication_style': 'formal', 'hard_skills': [{'name': 'project management', 'level': 'expert'}, {'name': 'SaaS industry knowledge', 'level': 'advanced'}], 'soft_skills': [{'name': 'leadership', 'level': 'advanced'}, {'name': 'communication', 'level': 'advanced'}], 'background_story': 'Elena has over 10 years of experience managing technology projects in the SaaS sector, known for her structured approach and ability to drive teams towards high-quality outcomes.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.538687Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 3cb205d6-7d0e-4251-8a40-78c883586ea4: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.538834Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 2/2: LucaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.538885Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.538968Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '595d7fbf-39f1-4d12-acf8-43011d610a22', 'name': 'LucaVerdi', 'role': 'Lead Research Specialist', 'seniority': 'senior', 'description': 'Conducts in-depth research to identify and verify high-quality SaaS industry leads, ensuring data accuracy and relevance.', 'system_prompt': 'You are a Lead Research Specialist. Your responsibilities include sourcing, validating, and compiling a list of 10 high-quality SaaS industry leads, focusing on accuracy and relevance.', 'llm_config': {'model': 'gpt-4.1', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Luca', 'last_name': 'Verdi', 'personality_traits': ['detail-oriented', 'methodical'], 'communication_style': 'concise', 'hard_skills': [{'name': 'market research', 'level': 'expert'}, {'name': 'data validation', 'level': 'expert'}, {'name': 'SaaS industry analysis', 'level': 'advanced'}], 'soft_skills': [{'name': 'critical thinking', 'level': 'advanced'}, {'name': 'problem solving', 'level': 'advanced'}], 'background_story': 'Luca has specialized in B2B lead research for SaaS companies for over 7 years, with a reputation for precision and thoroughness in data gathering and verification.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.605852Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent d206d24b-b0fb-4af6-b12f-50002995967c: LucaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.606145Z[0m [[32m[1minfo     [0m] [1m📊 AGENT CREATION SUMMARY: 2 agents created out of 2 proposed[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.606260Z[0m [[32m[1minfo     [0m] [1m🗂️ Agent name to ID mapping: {'ElenaRossi': '3cb205d6-7d0e-4251-8a40-78c883586ea4', 'LucaVerdi': 'd206d24b-b0fb-4af6-b12f-50002995967c'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.910503Z[0m [[32m[1minfo     [0m] [1m✅ AgentManager cache refreshed successfully for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.910646Z[0m [[32m[1minfo     [0m] [1mProcessing 0 handoff proposals for actual creation...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.967522Z[0m [[32m[1minfo     [0m] [1m✅ Workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 activated successfully[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:51.967829Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:52.038087Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:09:52.038387Z[0m [[32m[1minfo     [0m] [1m✅ 2 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task 4988106f-168d-4dec-81f6-a637a788cf3e: 'Task' object has no attribute 'context_data'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T11:10:14.193044Z[0m [[32m[1minfo     [0m] [1m✅ Auto-start triggered after team approval via director endpoint[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55397 - "POST /api/director/approve/595d7fbf-39f1-4d12-acf8-43011d610a22?proposal_id=08f5721c-50a7-45da-8d6e-8f8bc2571ced HTTP/1.1" 200 OK
+[2m2025-07-12T11:10:14.199830Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:10:14.332106Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55415 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+[2m2025-07-12T11:10:14.337087Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55417 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55419 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:10:14.453229Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:10:14.585844Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55421 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55423 - "GET /monitoring/task/4988106f-168d-4dec-81f6-a637a788cf3e/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:595d7fbf - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:595d7fbf - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task b7d9f894-1cf3-4432-ba05-abfe3ad5c008: 'Task' object has no attribute 'context_data'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T11:10:29.597150Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55425 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55428 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:10:29.781232Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:10:29.906973Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55430 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55432 - "GET /monitoring/task/b7d9f894-1cf3-4432-ba05-abfe3ad5c008/status HTTP/1.1" 404 Not Found
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T11:10:44.923134Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55435 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55437 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:10:45.096654Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:10:45.243815Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55439 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-12T11:11:00.256643Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55446 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55449 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:11:00.478885Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:11:00.630122Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55451 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:595d7fbf - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:595d7fbf - recommending limit increase to 25
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Error retrieving relevant context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 220, in get_relevant_context
+    response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+Unhandled error in coordination layer for task eec1929e-b9a3-41e1-9b0e-8cd5b5853c34: 'Task' object has no attribute 'context_data'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+Error storing context: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/executor.py", line 1807, in _execute_task_with_anti_loop_and_tracking
+    execution_result = await agent.execute(task_pydantic_obj)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1004, in execute
+    self._current_task_context = task.context_data
+                                 ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'Task' object has no attribute 'context_data'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 174, in store_context
+    response = await self.supabase.table("memory_context").insert(db_record).execute()
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 78, in execute
+    raise APIError(r.json())
+postgrest.exceptions.APIError: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'content' column of 'memory_context' in the schema cache"}
+[2m2025-07-12T11:11:17.403668Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55455 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55457 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:11:17.579924Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:11:17.708830Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55459 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55461 - "GET /monitoring/task/eec1929e-b9a3-41e1-9b0e-8cd5b5853c34/status HTTP/1.1" 404 Not Found
+[2m2025-07-12T11:11:32.721223Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55464 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55467 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/goals HTTP/1.1" 200 OK
+[2m2025-07-12T11:11:32.927952Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-12T11:11:33.057971Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 595d7fbf-39f1-4d12-acf8-43011d610a22 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:55469 - "GET /api/workspaces/595d7fbf-39f1-4d12-acf8-43011d610a22/tasks HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [28113]

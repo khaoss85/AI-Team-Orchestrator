@@ -67,7 +67,12 @@ class AssetSystemMonitor:
     def __init__(self):
         self.db_manager = AssetDrivenDatabaseManager()
         self.quality_engine = unified_quality_engine
-        self.task_executor = AssetDrivenTaskExecutor()
+        try:
+            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+            self.task_executor = unified_deliverable_engine
+        except ImportError:
+            logger.warning("⚠️ Unified deliverable engine not available, using None")
+            self.task_executor = None
         
         # Configuration
         self.monitoring_enabled = os.getenv("ENABLE_PERFORMANCE_MONITORING", "true").lower() == "true"

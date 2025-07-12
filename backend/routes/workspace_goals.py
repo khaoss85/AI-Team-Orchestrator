@@ -13,8 +13,14 @@ import logging
 
 from database import supabase
 from models import (
-    WorkspaceGoal, 
-    WorkspaceGoalCreate, 
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    Workspace,
+    WorkspaceStatus,
+    TaskCreate,
+    Task,
+    WorkspaceGoal,
+    WorkspaceGoalCreate,
     WorkspaceGoalUpdate,
     GoalStatus
 )
@@ -24,8 +30,8 @@ logger = logging.getLogger(__name__)
 # Import asset system for goal → asset requirements integration
 asset_requirements_generator = None
 try:
-    from services.asset_requirements_generator import AssetRequirementsGenerator
-    asset_requirements_generator = AssetRequirementsGenerator()
+    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+    asset_requirements_generator = unified_deliverable_engine
     logger.info("✅ Asset Requirements Generator initialized for goal integration")
 except Exception as e:
     logger.error(f"Failed to initialize Asset Requirements Generator: {e}")

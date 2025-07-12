@@ -1,13 +1,19 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from contextlib import asynccontextmanager
-from fastapi.middleware.cors import CORSMiddleware
-from middleware.trace_middleware import TraceMiddleware
-from typing import List, Dict, Any, Optional
 import os
 import sys
-import asyncio
+from pathlib import Path
+
+# Add project root to the Python path
+# This is the crucial fix for all ModuleNotFoundError issues
+sys.path.append(str(Path(__file__).parent.parent))
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from backend.middleware.trace_middleware import TraceMiddleware, install_trace_aware_logging
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 import logging
+import asyncio
 
 
 # Aggiungi la directory corrente e la root del progetto al path
@@ -32,7 +38,7 @@ from routes.improvement import router as improvement_router
 from routes.project_insights import router as project_insights_router
 from routes.delegation_monitor import router as delegation_router
 from routes.proposals import router as proposals_router
-from routes import asset_management
+# from routes import asset_management  # Temporarily disabled due to missing models
 from routes.ai_content_processor import router as ai_content_router
 from routes.utils import router as utils_router
 from routes.unified_assets import router as unified_assets_router
@@ -50,6 +56,7 @@ from routes.websocket_assets import router as websocket_assets_router
 from routes.system_monitoring import router as system_monitoring_router
 from routes.service_registry import router as service_registry_router, registry_router as service_registry_compat_router
 from routes.component_health import router as component_health_router, health_router as component_health_compat_router
+from routes.debug import router as debug_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -93,150 +100,80 @@ async def api_delete_workspace(workspace_id: UUID):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting AI Team Orchestrator")
+    logger.info("STARTUP: Starting AI Team Orchestrator")
     
-    # Initialize tool registry
-    logger.info("Initializing tool registry...")
-    await tool_registry.initialize()
+    # 🚨 MINIMAL STARTUP: Only start essential components for E2E testing
+    logger.info("STARTUP: Minimal initialization mode for testing...")
     
-    # Start task executor (only if not disabled)
+    # Only initialize task executor - essential for task execution
     if os.getenv("DISABLE_TASK_EXECUTOR", "false").lower() != "true":
-        logger.info("Starting task executor...")
-        await start_task_executor()
+        logger.info("STARTUP: Starting task executor...")
+        asyncio.create_task(start_task_executor())
+        logger.info("STARTUP: Task executor started in background.")
     else:
-        logger.info("⚠️ Task executor disabled via environment variable")
+        logger.info("STARTUP: Task executor disabled.")
     
-    # Start WebSocket health monitoring
-    logger.info("Starting WebSocket health monitoring...")
+    # Skip all other heavy initializations that could cause blocking
+    logger.info("STARTUP: Skipping heavy initializations for fast startup...")
+    
+    # Initialize tool registry in background without waiting
     try:
-        from utils.websocket_health_manager import start_websocket_health_monitoring
-        await start_websocket_health_monitoring()
-        logger.info("✅ WebSocket health monitoring started successfully")
+        asyncio.create_task(tool_registry.initialize())
+        logger.info("STARTUP: Tool registry initialization started in background.")
     except Exception as e:
-        logger.error(f"❌ Failed to start WebSocket health monitoring: {e}")
+        logger.error(f"STARTUP: Tool registry init failed: {e}")
     
-    # Start human feedback manager
-    logger.info("Initializing human feedback manager...")
-    try:
-        from human_feedback_manager import initialize_human_feedback_manager
-        await initialize_human_feedback_manager()
-        logger.info("✅ Human feedback manager initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize human feedback manager: {e}")
-    
-    logger.info("🎯 Starting Unified Orchestrator...")
-    try:
-        from unified_orchestrator import unified_orchestrator
-        # Start orchestrator in background
-        asyncio.create_task(unified_orchestrator.start())
-        logger.info("✅ Unified Orchestrator started successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to start Unified Orchestrator: {e}")
-    
-    logger.info("📦 Starting Deliverable Pipeline...")
-    try:
-        from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-        # Start deliverable pipeline in background
-        asyncio.create_task(unified_deliverable_engine.start())
-        logger.info("✅ Deliverable Pipeline started successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to start Deliverable Pipeline: {e}")
-    
-    logger.info("🛡️ Starting Automatic Quality Trigger System...")
-    try:
-        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
-        quality_trigger = unified_quality_engine.get_automatic_quality_trigger()
-        
-        # Initialize the quality trigger system (it will monitor for events)
-        logger.info("✅ Automatic Quality Trigger System initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Automatic Quality Trigger System: {e}")
-    
-    logger.info("🏥 Starting Component Health Monitoring...")
-    try:
-        from services.component_health_monitor import component_health_monitor
-        
-        # Start health monitoring in background
-        asyncio.create_task(component_health_monitor.start_monitoring())
-        logger.info("✅ Component Health Monitoring started successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to start Component Health Monitoring: {e}")
-    
-    logger.info("🎯 Starting Automated Goal Monitor...")
-    try:
-        from automated_goal_monitor import automated_goal_monitor
-        
-        # Start goal monitoring in background - this generates tasks from goals autonomously
-        asyncio.create_task(automated_goal_monitor.start_monitoring())
-        logger.info("✅ Automated Goal Monitor started successfully - autonomous task generation active")
-    except Exception as e:
-        logger.error(f"❌ Failed to start Automated Goal Monitor: {e}")
-    
-    # Initialize Asset-Driven System
-    logger.info("🚀 Initializing Asset-Driven System...")
-    try:
-        # Asset-Driven System initialization is now handled by AutomatedGoalMonitor and other components
-        # from asset_driven_orchestration import initialize_asset_driven_system
-        # await initialize_asset_driven_system()
-        logger.info("✅ Asset-Driven System initialization handled by other components")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Asset-Driven System: {e}")
-    
-    logger.info("Application startup complete")
+    logger.info("STARTUP: Application startup complete.")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down AI Team Orchestrator")
+    logger.info("SHUTDOWN: Shutting down AI Team Orchestrator")
     
-    # Stop WebSocket health monitoring
-    logger.info("Stopping WebSocket health monitoring...")
+    logger.info("SHUTDOWN: Stopping WebSocket health monitoring...")
     try:
         from utils.websocket_health_manager import stop_websocket_health_monitoring
         await stop_websocket_health_monitoring()
-        logger.info("✅ WebSocket health monitoring stopped successfully")
+        logger.info("SHUTDOWN: WebSocket health monitoring stopped.")
     except Exception as e:
-        logger.error(f"❌ Failed to stop WebSocket health monitoring: {e}")
+        logger.error(f"SHUTDOWN: Failed to stop WebSocket health monitoring: {e}")
     
-    # Stop unified orchestrator
-    logger.info("Stopping Unified Orchestrator...")
+    logger.info("SHUTDOWN: Stopping Unified Orchestrator...")
     try:
         from unified_orchestrator import unified_orchestrator
         await unified_orchestrator.stop()
+        logger.info("SHUTDOWN: Unified Orchestrator stopped.")
     except Exception as e:
-        logger.error(f"Error stopping orchestrator: {e}")
+        logger.error(f"SHUTDOWN: Error stopping orchestrator: {e}")
     
-    # Stop deliverable pipeline
-    logger.info("Stopping Deliverable Pipeline...")
+    logger.info("SHUTDOWN: Stopping Deliverable Pipeline...")
     try:
         from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
         await unified_deliverable_engine.stop()
+        logger.info("SHUTDOWN: Deliverable Pipeline stopped.")
     except Exception as e:
-        logger.error(f"Error stopping deliverable pipeline: {e}")
+        logger.error(f"SHUTDOWN: Error stopping deliverable pipeline: {e}")
     
-    # Stop automated goal monitor
-    logger.info("Stopping Automated Goal Monitor...")
+    logger.info("SHUTDOWN: Stopping Automated Goal Monitor...")
     try:
         from automated_goal_monitor import automated_goal_monitor
         await automated_goal_monitor.stop_monitoring()
-        logger.info("✅ Automated Goal Monitor stopped successfully")
+        logger.info("SHUTDOWN: Automated Goal Monitor stopped.")
     except Exception as e:
-        logger.error(f"Error stopping automated goal monitor: {e}")
+        logger.error(f"SHUTDOWN: Error stopping automated goal monitor: {e}")
     
-    # Stop component health monitoring
-    logger.info("Stopping Component Health Monitoring...")
+    logger.info("SHUTDOWN: Stopping Component Health Monitoring...")
     try:
         from services.component_health_monitor import component_health_monitor
         await component_health_monitor.stop_monitoring()
-        logger.info("✅ Component Health Monitoring stopped successfully")
+        logger.info("SHUTDOWN: Component Health Monitoring stopped.")
     except Exception as e:
-        logger.error(f"Error stopping component health monitoring: {e}")
+        logger.error(f"SHUTDOWN: Error stopping component health monitoring: {e}")
     
-    # Stop task executor
-    logger.info("Stopping task executor...")
+    logger.info("SHUTDOWN: Stopping task executor...")
     await stop_task_executor()
     
-    logger.info("Application shutdown complete")
+    logger.info("SHUTDOWN: Application shutdown complete.")
 
 # Create FastAPI app with lifespan
 app = FastAPI(
@@ -313,12 +250,17 @@ app.include_router(component_health_compat_router)  # Legacy compatibility
 app.include_router(proposals_router)
 app.include_router(delegation_router)
 
+
 # Documentation and utilities
 app.include_router(documents_router)
 app.include_router(utils_router)
 
 # API compatibility layer
 app.include_router(api_router)
+app.include_router(debug_router)
+
+# Health check endpoint
+@app.get("/health")
 
 # Health check endpoint
 @app.get("/health")

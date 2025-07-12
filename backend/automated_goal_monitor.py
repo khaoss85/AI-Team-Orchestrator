@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Import asset system for automatic asset requirements generation
 asset_requirements_generator = None
 try:
-    from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetRequirementsGenerator
-    asset_requirements_generator = unified_deliverable_engine
+    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetRequirementsGenerator
+    asset_requirements_generator = AssetRequirementsGenerator
     logger.info("✅ Asset Requirements Generator initialized for goal monitoring")
 except Exception as e:
     logger.error(f"Failed to initialize Asset Requirements Generator in monitoring: {e}")

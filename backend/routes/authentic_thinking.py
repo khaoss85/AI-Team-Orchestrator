@@ -214,7 +214,7 @@ async def get_goal_thinking_process(goal_id: str, workspace_id: str, request: Re
         raise HTTPException(status_code=500, detail=f"Failed to get thinking process: {str(e)}")
 
 @router.get("/workspace/{workspace_id}/thinking/latest")
-async def get_latest_thinking_steps(workspace_id: str, limit: int = 10, request: Request):
+async def get_latest_thinking_steps(request: Request, workspace_id: str, limit: int = 10):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

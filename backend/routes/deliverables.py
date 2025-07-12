@@ -12,7 +12,7 @@ router = APIRouter(prefix="/deliverables", tags=["deliverables"])
 logger = logging.getLogger(__name__)
 
 @router.get("/workspace/{workspace_id}")
-async def get_workspace_deliverables(workspace_id: str, goal_id: Optional[str] = None, request: Request):
+async def get_workspace_deliverables(request: Request, workspace_id: str, goal_id: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

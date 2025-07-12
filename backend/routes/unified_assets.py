@@ -26,9 +26,10 @@ class UnifiedAssetManager:
     """
     
     def __init__(self):
-        self.concrete_extractor = concrete_extractor
-        self.markup_processor = markup_processor
-        self.smart_evaluator = smart_evaluator
+        # Stub components - modules were removed
+        self.concrete_extractor = unified_deliverable_engine  # Consolidated into unified engine
+        self.markup_processor = unified_deliverable_engine    # Consolidated into unified engine
+        self.smart_evaluator = unified_deliverable_engine     # Consolidated into unified engine
     
     async def get_workspace_assets(self, workspace_id: str) -> Dict[str, Any]:
         """

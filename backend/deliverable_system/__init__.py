@@ -29,7 +29,9 @@ try:
         DeliverablePipeline,
         RequirementsAnalyzer,
         AssetSchemaGenerator,
-        AIDisplayEnhancer
+        AIDisplayEnhancer,
+        MultiSourceAssetExtractor,
+        UniversalAIContentExtractor
     )
     
     # Primary exports (unified engine)
@@ -39,6 +41,8 @@ try:
     requirements_analyzer = unified_deliverable_engine
     schema_generator = unified_deliverable_engine
     ai_display_enhancer = unified_deliverable_engine
+    multi_source_extractor = unified_deliverable_engine
+    universal_ai_content_extractor = unified_deliverable_engine
     
     __all__ = [
         # Unified engine
@@ -63,6 +67,8 @@ try:
         'RequirementsAnalyzer',
         'AssetSchemaGenerator',
         'AIDisplayEnhancer',
+        'MultiSourceAssetExtractor',
+        'UniversalAIContentExtractor',
         
         # Singleton instances for compatibility
         'concrete_extractor',
@@ -70,7 +76,9 @@ try:
         'deliverable_pipeline',
         'requirements_analyzer',
         'schema_generator',
-        'ai_display_enhancer'
+        'ai_display_enhancer',
+        'multi_source_extractor',
+        'universal_ai_content_extractor'
     ]
     
     DELIVERABLE_SYSTEM_AVAILABLE = True

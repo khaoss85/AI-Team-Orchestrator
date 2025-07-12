@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from services.memory_system import memory_system
+from backend.services.unified_memory_engine import memory_system
 
 logger = logging.getLogger(__name__)
 

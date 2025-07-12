@@ -9,7 +9,15 @@ from uuid import UUID
 import uuid
 from datetime import datetime, timedelta
 import json
-from models import (
+import sys
+from pathlib import Path
+
+# Add project root to Python path for consistent imports
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from backend.models import (
     TaskStatus, AssetArtifact, QualityRule, QualityValidation, 
     AssetRequirement, EnhancedWorkspaceGoal, EnhancedTask, GoalProgressLog
 )
@@ -1932,20 +1940,28 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
             if enhanced_update_successful:
                 return None # Already returned the updated goal, so exit here
         
-        # 🚨 CRITICAL FIX: ENFORCE "NO ASSETS = NO PROGRESS" RULE
-        # NO MORE NUMERICAL FALLBACK - ALL PROGRESS MUST BE ASSET-DRIVEN
-        logger.warning(f"🚫 BLOCKED: Goal progress update for {goal_id} rejected - no business context provided or enhanced update failed.")
-        logger.warning(f"🚫 PILLAR 12 ENFORCEMENT: All goal progress must be based on approved asset artifacts.")
-        logger.warning(f"🚫 Use asset-driven progress calculation instead of numerical increments.")
+        # Fallback to simple numerical increment if enhanced update fails or is not applicable
+        logger.info(f"Executing fallback numerical goal update for {goal_id} with increment {increment}.")
         
-        # Return current goal without changes - force callers to use asset-driven approach
-        goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
-        if goal_result.data:
-            goal = goal_result.data[0]
-            logger.info(f"🎯 Goal {goal_id} current status: {goal['current_value']}/{goal['target_value']} ({goal['status']})")
-            logger.info(f"🎯 To update progress, provide task_business_context with deliverable assets.")
-            return goal
+        # Get current goal value
+        goal_result = supabase.table("workspace_goals").select("current_value, target_value").eq("id", goal_id).single().execute()
+        if not goal_result.data:
+            raise ValueError(f"Goal {goal_id} not found")
+            
+        current_value = goal_result.data.get("current_value", 0)
+        target_value = goal_result.data.get("target_value", 0)
         
+        new_value = current_value + increment
+        
+        # Update goal in database
+        update_payload = {"current_value": new_value}
+        if new_value >= target_value:
+            update_payload["status"] = "completed"
+            
+        result = supabase.table("workspace_goals").update(update_payload).eq("id", goal_id).execute()
+        
+        if result.data:
+            return result.data[0]
         return None
         
     except Exception as e:

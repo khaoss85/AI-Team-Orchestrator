@@ -17,7 +17,7 @@ from models import (
 )
 from database import get_workspace_goals
 from database_asset_extensions import AssetDrivenDatabaseManager
-from services.asset_requirements_generator import AssetRequirementsGenerator
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from services.universal_ai_pipeline_engine import (
     UniversalAIPipelineEngine, 
     PipelineStepType, 
@@ -32,7 +32,7 @@ class EnhancedGoalDrivenPlanner:
     
     def __init__(self, ai_pipeline_engine: UniversalAIPipelineEngine = None):
         self.ai_pipeline_engine = ai_pipeline_engine or universal_ai_pipeline_engine
-        self.requirements_generator = AssetRequirementsGenerator(self.ai_pipeline_engine)
+        self.requirements_generator = self # Use self as it will be part of the unified engine
         self.asset_db_manager = AssetDrivenDatabaseManager()
         
         # Configuration from environment (Pillar-compliant)

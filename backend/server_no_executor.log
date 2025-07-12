@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/main.py", line 30, in <module>
+    from tools.registry import tool_registry
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/tools/__init__.py", line 3, in <module>
+    from .registry import tool_registry, ToolRegistry
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/tools/registry.py", line 11, in <module>
+    from backend.ai_agents.tools import function_tool
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/__init__.py", line 1, in <module>
+    from .specialist import SpecialistAgent
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 2221
+    try:
+SyntaxError: expected 'except' or 'finally' block

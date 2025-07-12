@@ -165,7 +165,7 @@ async def validate_workspace_goals(
         )
 
 @router.get("/{workspace_id}/quality-gate/{target_phase}", response_model=Dict[str, Any])
-async def evaluate_quality_gate(workspace_id: UUID, target_phase: str, current_phase: Optional[str] = None, request: Request):
+async def evaluate_quality_gate(request: Request, workspace_id: UUID, target_phase: str, current_phase: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

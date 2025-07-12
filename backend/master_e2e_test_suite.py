@@ -72,7 +72,7 @@ except ImportError:
     DELIVERABLE_ENGINE_AVAILABLE = False
 
 try:
-    from services.unified_memory_engine import unified_memory_engine
+    from backend.services.unified_memory_engine import unified_memory_engine
     MEMORY_ENGINE_AVAILABLE = True
 except ImportError:
     MEMORY_ENGINE_AVAILABLE = False

@@ -36,7 +36,7 @@ async def health_check(request: Request):
     return {"status": "healthy", "service": "workspaces"}
 
 @router.get("/", response_model=List[Workspace])
-async def get_all_workspaces(limit: Optional[int] = 50, user_id: Optional[str] = None, request: Request):
+async def get_all_workspaces(request: Request, limit: Optional[int] = 50, user_id: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -273,7 +273,7 @@ async def get_workspace_settings(workspace_id: UUID, request: Request):
 # Human Interaction Endpoints for Human-in-the-Loop Workflow
 
 @router.post("/{workspace_id}/ask-question", status_code=status.HTTP_200_OK)
-async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any], request: Request):
+async def ask_question_to_team(workspace_id: UUID, request_data: Dict[str, Any], request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -285,8 +285,8 @@ async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any], requ
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        question = request.get("question", "")
-        target_agent = request.get("target_agent")
+        question = request_data.get("question", "")
+        target_agent = request_data.get("target_agent")
         
         if not question.strip():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question cannot be empty")
@@ -321,7 +321,7 @@ async def ask_question_to_team(workspace_id: UUID, request: Dict[str, Any], requ
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send question: {str(e)}")
 
 @router.post("/{workspace_id}/provide-feedback", status_code=status.HTTP_200_OK)
-async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any], request: Request):
+async def provide_feedback_to_team(workspace_id: UUID, request_data: Dict[str, Any], request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -333,8 +333,8 @@ async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any], 
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        feedback = request.get("feedback", "")
-        context = request.get("context", {})
+        feedback = request_data.get("feedback", "")
+        context = request_data.get("context", {})
         
         if not feedback.strip():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback cannot be empty")
@@ -367,7 +367,7 @@ async def provide_feedback_to_team(workspace_id: UUID, request: Dict[str, Any], 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to provide feedback: {str(e)}")
 
 @router.post("/{workspace_id}/request-iteration", status_code=status.HTTP_200_OK)
-async def request_iteration(workspace_id: UUID, request: Dict[str, Any], request: Request):
+async def request_iteration(workspace_id: UUID, request_data: Dict[str, Any], request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -379,7 +379,7 @@ async def request_iteration(workspace_id: UUID, request: Dict[str, Any], request
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        changes = request.get("changes", [])
+        changes = request_data.get("changes", [])
         
         if not changes or (isinstance(changes, list) and not any(changes)):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Changes list cannot be empty")
@@ -446,7 +446,7 @@ async def approve_project_completion(workspace_id: UUID, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to approve completion: {str(e)}")
 
 @router.post("/{workspace_id}/request-changes", status_code=status.HTTP_200_OK)
-async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, Any], request: Request):
+async def request_changes_to_completion(workspace_id: UUID, request_data: Dict[str, Any], request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -458,8 +458,8 @@ async def request_changes_to_completion(workspace_id: UUID, request: Dict[str, A
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        changes = request.get("changes", "")
-        priority = request.get("priority", "medium")
+        changes = request_data.get("changes", "")
+        priority = request_data.get("priority", "medium")
         
         if not changes.strip():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Changes description cannot be empty")
@@ -545,7 +545,7 @@ async def create_workspace_goals(workspace_id: UUID, request: Request):
         )
 
 @router.get("/{workspace_id}/tasks", status_code=status.HTTP_200_OK)
-async def get_workspace_tasks(workspace_id: UUID, task_type: Optional[str] = None, request: Request):
+async def get_workspace_tasks(request: Request, workspace_id: UUID, task_type: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

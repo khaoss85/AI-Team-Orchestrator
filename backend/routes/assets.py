@@ -18,10 +18,10 @@ from models import (
     EnhancedWorkspaceGoal, WorkspaceGoal, EnhancedTask
 )
 from database import get_supabase_client
-from services.asset_requirements_generator import AssetRequirementsGenerator
-from services.asset_artifact_processor import AssetArtifactProcessor
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
-from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
+# AssetDrivenTaskExecutor is now unified_deliverable_engine
 from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 # Initialize services
-requirements_generator = AssetRequirementsGenerator()
-artifact_processor = AssetArtifactProcessor()
+requirements_generator = unified_deliverable_engine
+artifact_processor = unified_deliverable_engine  # Consolidated into unified engine
 quality_gate_engine = unified_quality_engine
-task_executor = AssetDrivenTaskExecutor()
+task_executor = unified_deliverable_engine
 goal_planner = EnhancedGoalDrivenPlanner()
 
 # Request/Response Models
@@ -48,9 +48,11 @@ class AssetRequirementCreate(BaseModel):
 
 class AssetArtifactCreate(BaseModel):
     requirement_id: UUID
-    artifact_name: str
-    artifact_type: str
-    content: str
+    name: str  # Database field name
+    artifact_name: str  # Backward compatibility
+    type: str  # Database field name
+    artifact_type: str  # Backward compatibility
+    content: Dict[str, Any] = {}  # JSONB field
     metadata: Dict[str, Any] = {}
     tags: List[str] = []
 
@@ -181,18 +183,33 @@ async def get_workspace_artifacts(workspace_id: UUID, request: Request):
     try:
         supabase = get_supabase_client()
         
-        # Get artifacts through requirements
-        artifacts_response = supabase.table("asset_artifacts") \
-            .select("""
-                *, 
-                goal_asset_requirements!inner(
-                    workspace_goals!inner(workspace_id)
-                )
-            """) \
-            .eq("goal_asset_requirements.workspace_goals.workspace_id", str(workspace_id)) \
-            .execute()
+        # Get artifacts directly by workspace_id if column exists, otherwise through requirements
+        try:
+            artifacts_response = supabase.table("asset_artifacts") \
+                .select("*") \
+                .eq("workspace_id", str(workspace_id)) \
+                .execute()
+        except:
+            # Fallback to requirements join if workspace_id column doesn't exist
+            artifacts_response = supabase.table("asset_artifacts") \
+                .select("""
+                    *, 
+                    goal_asset_requirements!inner(
+                        workspace_goals!inner(workspace_id)
+                    )
+                """) \
+                .eq("goal_asset_requirements.workspace_goals.workspace_id", str(workspace_id)) \
+                .execute()
         
-        artifacts = [AssetArtifact(**artifact) for artifact in artifacts_response.data]
+        # Map database fields for compatibility
+        artifacts = []
+        for artifact_data in artifacts_response.data:
+            artifact_data = artifact_data.copy()
+            if 'name' in artifact_data and not artifact_data.get('artifact_name'):
+                artifact_data['artifact_name'] = artifact_data['name']
+            if 'type' in artifact_data and not artifact_data.get('artifact_type'):
+                artifact_data['artifact_type'] = artifact_data['type']
+            artifacts.append(AssetArtifact(**artifact_data))
         return artifacts
         
     except Exception as e:
@@ -208,32 +225,41 @@ async def create_asset_artifact(
     try:
         supabase = get_supabase_client()
         
-        # Create artifact
+        # Create artifact with database-aligned field names
         artifact_data = {
             "id": str(uuid4()),
             "requirement_id": str(artifact.requirement_id),
-            "artifact_name": artifact.artifact_name,
-            "artifact_type": artifact.artifact_type,
-            "content": artifact.content,
+            "name": artifact.name or artifact.artifact_name,  # Database field
+            "type": artifact.type or artifact.artifact_type,  # Database field
+            "content": artifact.content,  # JSONB
             "metadata": artifact.metadata,
-            "tags": artifact.tags,
+            "category": "general",  # Database field
             "status": "draft",
+            "validation_status": "pending",  # Database field
             "quality_score": 0.0,
-            "business_value_score": 0.0,
-            "actionability_score": 0.0,
-            "ai_enhanced": False,
-            "validation_passed": False,
+            "completeness_score": 0.0,  # Database field
+            "authenticity_score": 0.0,  # Database field
+            "actionability_score": 0.0,  # Database field
+            "generation_method": "manual",  # Database field
+            "ai_confidence": 0.0,  # Database field
+            "source_tools": [],  # Database field
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
         
         response = supabase.table("asset_artifacts").insert(artifact_data).execute()
-        created_artifact = AssetArtifact(**response.data[0])
+        # Map database fields back to model for backward compatibility
+        artifact_result = response.data[0].copy()
+        if 'name' in artifact_result and not artifact_result.get('artifact_name'):
+            artifact_result['artifact_name'] = artifact_result['name']
+        if 'type' in artifact_result and not artifact_result.get('artifact_type'):
+            artifact_result['artifact_type'] = artifact_result['type']
+        created_artifact = AssetArtifact(**artifact_result)
         
         # Run quality validation in background
         background_tasks.add_task(validate_artifact_quality_background, created_artifact.id)
         
-        logger.info(f"✅ Created artifact: {created_artifact.artifact_name}")
+        logger.info(f"✅ Created artifact: {created_artifact.name or getattr(created_artifact, 'artifact_name', 'Unknown')}")
         return created_artifact
         
     except Exception as e:
@@ -261,9 +287,15 @@ async def download_artifact(artifact_id: UUID, request: Request):
         
         artifact = AssetArtifact(**artifact_response.data[0])
         
-        # Create file content
-        content = artifact.content.encode('utf-8')
-        filename = f"{artifact.artifact_name}.{artifact.content_format}"
+        # Create file content - handle Dict content properly
+        if isinstance(artifact.content, dict):
+            import json
+            content_str = json.dumps(artifact.content, indent=2)
+        else:
+            content_str = str(artifact.content)
+        
+        content = content_str.encode('utf-8')
+        filename = f"{getattr(artifact, 'name', None) or artifact.artifact_name}.{artifact.content_format}"
         
         def generate():
             yield content

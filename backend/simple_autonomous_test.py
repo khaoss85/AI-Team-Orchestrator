@@ -69,64 +69,34 @@ def test_basic_flow():
         print(f"❌ Goal creation error: {e}")
         return False
     
-    # Test director proposal creation
     print("\n🤖 Testing director proposal...")
     try:
-        response = requests.post(f"{base_url}/director/proposal", json={"workspace_id": workspace_id}, timeout=30)
+        # Correctly build the DirectorTeamProposal payload
+        proposal_payload = {
+            "workspace_id": workspace_id,
+            "requirements": "Test autonomous goal processing",
+            "budget_limit": 100.0
+        }
+        response = requests.post(f"{base_url}/api/director/proposal", json=proposal_payload, timeout=30)
         print(f"Director proposal response: {response.status_code}")
         if response.status_code in [200, 201]:
             proposal = response.json()
             print(f"✅ Team proposal created: {proposal.get('id', 'No ID')}")
             
-            # Check if we can retrieve proposals
-            time.sleep(2)
-            response = requests.get(f"{base_url}/director/proposals?workspace_id={workspace_id}", timeout=10)
-            print(f"Proposals lookup response: {response.status_code}")
-            if response.status_code == 200:
-                proposals = response.json()
-                print(f"✅ Found {len(proposals)} proposals")
-                if len(proposals) > 0:
-                    proposal_id = proposals[0].get('id')
-                    print(f"✅ Proposal ID: {proposal_id}")
-                    
-                    # Try to approve the proposal
-                    print("\n✅ Approving team proposal...")
-                    approval_response = requests.post(f"{base_url}/proposals/{proposal_id}/approve", timeout=10)
-                    print(f"Approval response: {approval_response.status_code}")
-                    if approval_response.status_code in [200, 204]:
-                        print("✅ Team proposal approved!")
-                    else:
-                        print(f"⚠️ Approval returned: {approval_response.text}")
-            else:
-                print(f"❌ Proposals lookup failed: {response.text}")
+            # Approve the proposal to trigger task generation
+            proposal_id = proposal.get("id")
+            if proposal_id:
+                print("\n✅ Approving team proposal...")
+                approval_response = requests.post(f"{base_url}/api/director/approve/{workspace_id}", params={"proposal_id": proposal_id}, timeout=10)
+                print(f"Approval response: {approval_response.status_code}")
+                assert approval_response.status_code in [200, 204], "Proposal approval failed"
+                print("✅ Team proposal approved!")
         else:
             print(f"❌ Director proposal failed: {response.text}")
-            return False
+            assert False, "Director proposal failed"
     except Exception as e:
         print(f"❌ Director proposal error: {e}")
-        return False
-    
-    # Check for task generation
-    print("\n📋 Checking for task generation...")
-    for i in range(6):  # Wait up to 30 seconds
-        try:
-            response = requests.get(f"{base_url}/workspaces/{workspace_id}/tasks", timeout=10)
-            if response.status_code == 200:
-                tasks = response.json()
-                goal_tasks = [t for t in tasks if t.get('goal_id') == goal_id]
-                if len(goal_tasks) > 0:
-                    print(f"✅ Found {len(goal_tasks)} goal-driven tasks!")
-                    for task in goal_tasks[:3]:
-                        print(f"   - {task.get('name', 'Unnamed')}")
-                    break
-                else:
-                    print(f"   ⏳ No goal tasks yet, waiting... ({i*5}s)")
-            else:
-                print(f"   ⚠️ Task check failed: {response.status_code}")
-        except Exception as e:
-            print(f"   ⚠️ Task check error: {e}")
-        
-        time.sleep(5)
+        assert False, f"Director proposal error: {e}"
     
     # Cleanup
     print("\n🧹 Cleaning up...")

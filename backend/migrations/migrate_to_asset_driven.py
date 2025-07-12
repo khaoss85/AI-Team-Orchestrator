@@ -29,7 +29,7 @@ from database import DatabaseManager
 from models import WorkspaceGoal, Task
 
 # Import new asset system components
-from services.asset_requirements_generator import AssetRequirementsGenerator
+from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from database_asset_extensions import AssetDrivenDatabaseManager
 from monitoring.asset_system_monitor import AssetSystemMonitor
 
@@ -54,7 +54,7 @@ class AssetDrivenMigrationManager:
     def __init__(self):
         self.db_manager = DatabaseManager()
         self.asset_db_manager = AssetDrivenDatabaseManager()
-        self.requirements_generator = AssetRequirementsGenerator()
+        self.requirements_generator = unified_deliverable_engine
         self.monitor = AssetSystemMonitor()
         
         # Migration state tracking

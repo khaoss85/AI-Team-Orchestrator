@@ -40,7 +40,7 @@ async def get_system_health(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/components")
-async def get_all_components_health(include_metrics: bool = Query(False, description="Include detailed metrics"), request: Request):
+async def get_all_components_health(request: Request, include_metrics: bool = Query(False, description="Include detailed metrics")):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -179,7 +179,7 @@ async def get_component_health(component_name: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/events/recent")
-async def get_recent_health_events(limit: int = Query(50, description="Number of recent events to retrieve"), request: Request):
+async def get_recent_health_events(request: Request, limit: int = Query(50, description="Number of recent events to retrieve")):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

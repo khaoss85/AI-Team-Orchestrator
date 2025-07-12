@@ -284,7 +284,7 @@ class AutonomousSystemVerifier:
             
             # Check asset requirements generator
             try:
-                from services.asset_requirements_generator import AssetRequirementsGenerator
+                from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
                 logger.info("   ✅ AssetRequirementsGenerator available")
                 self.verification_results["asset_system"]["status"] = "PASS"
                 self.verification_results["asset_system"]["details"] = "Ready for autonomous asset generation"

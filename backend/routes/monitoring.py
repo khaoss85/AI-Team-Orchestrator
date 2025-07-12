@@ -248,7 +248,7 @@ async def get_workspace_status_endpoint(workspace_id: UUID, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get workspace status: {str(e)}")
 
 @router.get("/global/activity", response_model=List[Dict[str, Any]])
-async def get_global_activity(limit: int = Query(default=50, le=200), request: Request):
+async def get_global_activity(request: Request, limit: int = Query(default=50, le=200)):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -1257,7 +1257,7 @@ async def get_task_detailed_status(task_id: str, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get task status: {str(e)}")
 
 @router.get("/workspace/{workspace_id}/enhancement-tasks", response_model=List[Dict[str, Any]])
-async def get_workspace_enhancement_tasks(workspace_id: UUID, status_filter: Optional[str] = None, request: Request):
+async def get_workspace_enhancement_tasks(request: Request, workspace_id: UUID, status_filter: Optional[str] = None):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

@@ -54,7 +54,7 @@ class ThinkingStepResponse(BaseModel):
 # === THINKING PROCESS ENDPOINTS ===
 
 @router.get("/{workspace_id}")
-async def get_workspace_thinking_processes(workspace_id: UUID, limit: int = 10, request: Request):
+async def get_workspace_thinking_processes(request: Request, workspace_id: UUID, limit: int = 10):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -211,7 +211,7 @@ async def add_thinking_step(step_data: ThinkingStepCreate, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/complete/{process_id}")
-async def complete_thinking_process(process_id: str, conclusion: str, confidence: float = 0.8, request: Request):
+async def complete_thinking_process(request: Request, process_id: str, conclusion: str, confidence: float = 0.8):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -285,7 +285,7 @@ async def generate_o3_style_thinking(query: ThinkingQuery, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/o3-demo/{workspace_id}")
-async def o3_thinking_demo(workspace_id: UUID, query: str = "How should I approach building a new feature?", request: Request):
+async def o3_thinking_demo(request: Request, workspace_id: UUID, query: str = "How should I approach building a new feature?"):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)

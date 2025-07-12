@@ -228,7 +228,7 @@ async def delete_tool(tool_id: UUID, request: Request):
         )
 
 @router.get("/social-media/analyze-hashtags", status_code=status.HTTP_200_OK)
-async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram", request: Request):
+async def analyze_hashtags_universal(request: Request, hashtags: str, platform: str = "instagram"):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
@@ -253,7 +253,7 @@ async def analyze_hashtags_universal(hashtags: str, platform: str = "instagram",
         )
 
 @router.get("/social-media/analyze-account/{username}", status_code=status.HTTP_200_OK)
-async def analyze_account_universal(username: str, platform: str = "instagram", request: Request):
+async def analyze_account_universal(request: Request, username: str, platform: str = "instagram"):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
