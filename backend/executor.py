@@ -11,7 +11,7 @@ from collections import defaultdict, Counter
 import difflib
 
 # Import da modelli del progetto
-from models import TaskStatus, Task, AgentStatus, WorkspaceStatus, Agent as AgentModelPydantic
+from models import TaskStatus, Task, AgentStatus, WorkspaceStatus, Agent as AgentModelPydantic, TaskExecutionOutput
 from database import (
     list_tasks,
     update_task_status,
@@ -23,6 +23,7 @@ from database import (
     get_workspaces_with_pending_tasks,
     update_workspace_status,
     get_task,
+    update_agent_status,
     supabase
 )
 from improvement_loop import controlled_iteration, refresh_dependencies
@@ -1799,12 +1800,32 @@ Focus on delivering practical, actionable results that move the project forward.
             if not agent:
                 raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
 
-            # ESECUZIONE DEL TASK
+            # ESECUZIONE DEL TASK CON TIMEOUT
             logger.info(f"Before agent.execute for task {task_id}")
             agent = await manager.get_agent(agent_id)
             if not agent:
                 raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
-            execution_result = await agent.execute(task_pydantic_obj)
+            
+            # 🚨 TIMEOUT CRITICO: 5 minuti massimo per task execution
+            try:
+                execution_result = await asyncio.wait_for(
+                    agent.execute(task_pydantic_obj), 
+                    timeout=300.0  # 5 minuti
+                )
+                logger.info(f"✅ Task {task_id} completed successfully in under 5 minutes")
+            except asyncio.TimeoutError:
+                logger.error(f"🚨 TIMEOUT: Task {task_id} exceeded 5 minutes, forcing completion")
+                execution_result = TaskExecutionOutput(
+                    task_id=task_pydantic_obj.id,
+                    status=TaskStatus.FAILED,
+                    error_message="Task execution timeout (5 minutes exceeded)",
+                    summary="Task was terminated due to timeout. Agent may be stuck in infinite loop."
+                )
+                # Reset agent status  
+                try:
+                    await update_agent_status(str(agent_id), AgentStatus.IDLE.value)
+                except:
+                    pass
         except Exception as e:
             # Gestione errori che non sono stati catturati dal coordination layer
             logger.error(f"Unhandled error in coordination layer for task {task_dict.get('id')}: {e}", exc_info=True)

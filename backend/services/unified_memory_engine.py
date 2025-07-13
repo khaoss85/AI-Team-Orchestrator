@@ -217,7 +217,7 @@ class UnifiedMemoryEngine:
             if context_types:
                 query_builder = query_builder.in_("context_type", context_types)
 
-            response = await query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
+            response = query_builder.order("importance_score", desc=True).limit(100).execute() # Fetch a larger pool for AI ranking
             
             if not response.data:
                 return []

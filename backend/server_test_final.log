@@ -1,0 +1,56 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+/Users/pelleri/Documents/ai-team-orchestrator/backend/simple_server.py:58: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [36361]
+INFO:     Waiting for application startup.
+⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Workspaces routes registered
+✅ Director routes registered
+✅ Goals routes registered
+🚀 Starting simple server with task executor...
+🚀 Starting minimal components...
+✅ Task executor started
+INFO:     127.0.0.1:61468 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61478 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61487 - "POST /api/workspaces HTTP/1.1" 307 Temporary Redirect
+[2m2025-07-13T08:57:56.301462Z[0m [[32m[1minfo     [0m] [1mRoute create_new_workspace called[0m [36mendpoint[0m=[35mcreate_new_workspace[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61487 - "POST /api/workspaces/ HTTP/1.1" 201 Created
+❌ Failed to generate asset requirements for goal 5ca7ddff-0ed2-48da-84ed-992fb854c03a: 'UnifiedDeliverableEngine' object has no attribute 'generate_from_goal'
+Warning: Failed to log goal event: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'message' column of 'logs' in the schema cache"}
+INFO:     127.0.0.1:61490 - "POST /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:57:56.647523Z[0m [[32m[1minfo     [0m] [1mRoute create_team_proposal called[0m [36mendpoint[0m=[35mcreate_team_proposal[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:57:56.718990Z[0m [[32m[1minfo     [0m] [1m🎯 Using enhanced director for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:57:56.719804Z[0m [[32m[1minfo     [0m] [1m📊 Using 0 strategic goals from database[0m [36mtrace_id[0m=[35munknown[0m
+Preventing manager-to-manager handoff between similar roles: ElenaRossi (project manager) -> MarcoBianchi (lead generation specialist).
+INFO:     127.0.0.1:61492 - "POST /api/director/proposal HTTP/1.1" 200 OK
+[2m2025-07-13T08:58:15.898797Z[0m [[32m[1minfo     [0m] [1mRoute approve_team_proposal_endpoint called[0m [36mendpoint[0m=[35mapprove_team_proposal_endpoint[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.030094Z[0m [[32m[1minfo     [0m] [1m🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for 2 agents[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.031913Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 1/2: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.032109Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.032351Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '45d33ee0-0979-4d6d-96e2-a4e055e7965b', 'name': 'ElenaRossi', 'role': 'Project Manager', 'seniority': 'senior', 'description': 'Oversees the project, ensures quality standards, manages timelines, and coordinates communication between team members.', 'system_prompt': 'You are a Project Manager. Your responsibilities include overseeing the project to generate a high-quality contact list of 10 potential SaaS leads, ensuring quality control, managing timelines, and facilitating communication between team members.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Elena', 'last_name': 'Rossi', 'personality_traits': ['analytical', 'diplomatic'], 'communication_style': 'formal', 'hard_skills': [{'name': 'project management', 'level': 'expert'}, {'name': 'SaaS industry knowledge', 'level': 'advanced'}], 'soft_skills': [{'name': 'leadership', 'level': 'expert'}, {'name': 'communication', 'level': 'expert'}], 'background_story': 'Elena has over 10 years of experience managing B2B SaaS projects across Europe. She is known for her structured approach and ability to align diverse teams towards common goals, ensuring projects are delivered on time and to specification.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.103562Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 987ee984-c744-4683-80eb-b692089ad806: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.103874Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 2/2: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.103971Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.104138Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '45d33ee0-0979-4d6d-96e2-a4e055e7965b', 'name': 'MarcoBianchi', 'role': 'Lead Generation Specialist', 'seniority': 'senior', 'description': 'Conducts targeted research to identify and qualify 10 high-quality SaaS leads, ensuring data accuracy and relevance.', 'system_prompt': 'You are a Lead Generation Specialist. Your responsibilities include conducting targeted research to identify and qualify 10 high-quality potential leads in the SaaS industry, ensuring data accuracy and relevance.', 'llm_config': {'model': 'gpt-4.1', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Marco', 'last_name': 'Bianchi', 'personality_traits': ['detail-oriented', 'proactive'], 'communication_style': 'concise', 'hard_skills': [{'name': 'lead research', 'level': 'expert'}, {'name': 'data validation', 'level': 'advanced'}], 'soft_skills': [{'name': 'adaptability', 'level': 'advanced'}, {'name': 'problem-solving', 'level': 'advanced'}], 'background_story': 'Marco is a seasoned lead generation expert with 8 years of experience in SaaS prospecting. He has a reputation for uncovering high-value contacts and ensuring lists are both accurate and actionable, leveraging advanced research methodologies.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.176728Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 26cee752-2db5-4c3c-bafa-dc08b414b520: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.176880Z[0m [[32m[1minfo     [0m] [1m📊 AGENT CREATION SUMMARY: 2 agents created out of 2 proposed[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.176947Z[0m [[32m[1minfo     [0m] [1m🗂️ Agent name to ID mapping: {'ElenaRossi': '987ee984-c744-4683-80eb-b692089ad806', 'MarcoBianchi': '26cee752-2db5-4c3c-bafa-dc08b414b520'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.496653Z[0m [[32m[1minfo     [0m] [1m✅ AgentManager cache refreshed successfully for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.496822Z[0m [[32m[1minfo     [0m] [1mProcessing 0 handoff proposals for actual creation...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.563083Z[0m [[32m[1minfo     [0m] [1m✅ Workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b activated successfully[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.563249Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.633629Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:16.633781Z[0m [[32m[1minfo     [0m] [1m✅ 2 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m

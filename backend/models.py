@@ -451,6 +451,15 @@ class ProjectDeliverableCard(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class WorkspaceInsight(BaseModel):
+    id: UUID
+    workspace_id: UUID
+    insight_type: str
+    insight_data: Dict[str, Any]
+    confidence_score: float = 0.0
+    created_at: datetime
+    updated_at: datetime
+
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):
     """Create a model instance with data harmonization"""

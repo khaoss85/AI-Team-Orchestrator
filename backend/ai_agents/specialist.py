@@ -998,46 +998,6 @@ class SpecialistAgent(Generic[T]):
 
         return enhanced_prompt
 
-    async def execute(self, task: Task) -> TaskExecutionOutput:
-        self._current_task_being_processed_id = str(task.id)
-        self._current_task_context = task.context_data
-        self._handoff_attempts_for_current_task = set()
-
-        start_time = time.time()
-        estimated_input_tokens = max(1, len(str(task.model_dump())) // 4)
-
-        try:
-            await update_agent_status(str(self.agent_data.id), AgentStatus.BUSY.value)
-            
-            run_result = await Runner.run(self.agent, str(task.model_dump()))
-            
-            if not run_result.final_output:
-                raise ValueError("LLM returned empty output.")
-
-            if ROBUST_JSON_AVAILABLE:
-                parsed_data, success, method = parse_llm_json_robust(
-                    run_result.final_output, str(task.id)
-                )
-                logger.info(
-                    f"Robust JSON parsing used (method: {method}, success: {success})"
-                )
-            else:
-                parsed_data = json.loads(run_result.final_output)
-
-            processed_data = self._preprocess_task_output_data(parsed_data, task)
-            
-            final_output = TaskExecutionOutput(**processed_data)
-            final_output.execution_time = time.time() - start_time
-            
-            return final_output
-        except Exception as e:
-            logger.error(f"Error during agent execution: {e}", exc_info=True)
-            return TaskExecutionOutput(
-                task_id=task.id,
-                status=TaskStatus.FAILED,
-                summary=f"Agent execution failed: {e}",
-                error_message=str(e),
-            )
 
     async def execute(self, task: Task) -> TaskExecutionOutput:
         logger.info(f"AGENT_EXECUTE: Starting execution for task {task.id} by agent {self.agent_data.name}")
