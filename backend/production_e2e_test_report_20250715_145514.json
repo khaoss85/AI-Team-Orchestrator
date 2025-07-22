@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "'AssetRequirement' object has no attribute 'decomposition_id'"
-}

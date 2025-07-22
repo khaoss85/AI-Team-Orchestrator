@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "{'code': 'PGRST204', 'details': None, 'hint': None, 'message': \"Could not find the 'name' column of 'asset_artifacts' in the schema cache\"}"
-}

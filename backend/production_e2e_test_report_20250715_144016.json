@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "'list' object has no attribute 'get'"
-}

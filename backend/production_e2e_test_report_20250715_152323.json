@@ -1,4 +1,0 @@
-{
-  "test_status": "FAILED",
-  "error": "{'code': '23502', 'details': 'Failing row contains (f1c42279-874c-4c05-a4d3-d26aff8151e4, 0d7ffa24-5964-4cc0-9118-539e2d7b8266, null, null, Process Optimization Workflow, structured_data, {\"text\":\"# Process Optimization Workflow - 3-Day Onboarding\\\\n\\\\n#..., text, null, null, null, {}, null, null, null, 0.92, f, {}, null, {}, draft, 1, f, 0.00, 0.88, f, f, {}, null, auto, t, {}, {}, {}, null, 2025-07-15 15:23:23.913881+00, 2025-07-15 15:23:23.9139+00, null, null, null).', 'hint': None, 'message': 'null value in column \"workspace_id\" of relation \"asset_artifacts\" violates not-null constraint'}"
-}
