@@ -97,7 +97,9 @@ async def refresh_dependencies(task_id: str) -> None:
     workspace_id = task["workspace_id"]
     tasks = await list_tasks(workspace_id)
     for t in tasks:
-        deps = t.get("depends_on_task_ids") or []
+        # Cerca le dipendenze nella nuova tabella di giunzione
+        deps_result = await supabase_service.table('task_dependencies').select('depends_on_task_id').eq('task_id', t['id']).execute()
+        deps = [dep['depends_on_task_id'] for dep in deps_result.data] if deps_result.data else []
         if task_id in deps:
             try:
                 await update_task_status(t["id"], TaskStatus.STALE.value)

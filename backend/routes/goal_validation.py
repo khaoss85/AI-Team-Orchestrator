@@ -7,13 +7,39 @@ from uuid import UUID
 import logging
 from datetime import datetime
 
-from backend.ai_quality_assurance.unified_quality_engine import goal_validator, ValidationSeverity
-from backend.ai_quality_assurance.unified_quality_engine import quality_gates, GateStatus
+from ai_quality_assurance.unified_quality_engine import goal_validator, ValidationSeverity
+from ai_quality_assurance.unified_quality_engine import quality_gates, GateStatus
 from database import get_workspace, list_tasks
 from models import TaskStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/goal-validation", tags=["goal-validation"])
+
+# Compatibility endpoint for E2E tests
+@router.post("/trigger-quality-check")
+async def trigger_quality_check(data: Dict[str, Any], request: Request):
+    """Trigger quality check - compatibility endpoint"""
+    workspace_id = data.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="workspace_id required")
+    
+    # Trigger quality validation
+    try:
+        result = await validate_workspace_goals(UUID(workspace_id), use_database_goals=True)
+        return {
+            "success": True,
+            "workspace_id": workspace_id,
+            "quality_check_triggered": True,
+            "validation_result": result
+        }
+    except Exception as e:
+        logger.error(f"Quality check failed: {e}")
+        return {
+            "success": False,
+            "workspace_id": workspace_id,
+            "quality_check_triggered": False,
+            "error": str(e)
+        }
 
 @router.get("/{workspace_id}/validate", response_model=Dict[str, Any])
 async def validate_workspace_goals(

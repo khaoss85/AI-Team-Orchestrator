@@ -183,6 +183,7 @@ export function useGoalPreview(workspaceId: string) {
       const data: GoalPreviewResponse = await response.json();
       
       if (data.success && data.extracted_goals.length > 0) {
+        console.log('✅ Setting extracted goals:', data.extracted_goals);
         setExtractedGoals(data.extracted_goals);
         setFinalMetrics(data.final_metrics || []);
         setStrategicDeliverables(data.strategic_deliverables || []);

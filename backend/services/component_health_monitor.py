@@ -207,12 +207,12 @@ class ComponentHealthMonitor:
         """Verifica disponibilità base di un componente"""
         try:
             if component_name == 'unified_orchestrator':
-                from unified_orchestrator import unified_orchestrator
+                from services.unified_orchestrator import unified_orchestrator
                 return hasattr(unified_orchestrator, 'start')
             
             elif component_name == 'deliverable_pipeline':
                 from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-                return hasattr(deliverable_pipeline, 'start')
+                return hasattr(unified_deliverable_engine, 'stop')
             
             elif component_name == 'executor':
                 import executor
@@ -233,6 +233,9 @@ class ComponentHealthMonitor:
             elif component_name == 'asset_requirements_generator':
                 from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
                 return True
+            return False
+        except Exception:
+            return False
     
     def _calculate_health_status(self, metrics: HealthMetrics) -> HealthStatus:
         """Calcola stato di salute basato su metriche"""

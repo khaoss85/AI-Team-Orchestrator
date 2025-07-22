@@ -1,0 +1,31 @@
+{
+  "test_start": "2025-07-18T15:20:50.088426",
+  "phases_completed": [
+    "environment_verification",
+    "complete_workspace_setup",
+    "team_formation"
+  ],
+  "phases_failed": [
+    "goal_creation",
+    "critical_error: Goal creation failed: 200 - {\"success\":true,\"goal\":{\"id\":\"1f9a9b30-7a36-4689-8f4a-ac13a6f954cd\",\"workspace_id\":\"bf749416-37f5-4bbb-b974-9e16f5786788\",\"metric_type\":\"qualified_leads\",\"target_value\":500.0,\"current_value\":0.0,\"unit\":\"leads\",\"priority\":1,\"status\":\"active\",\"success_criteria\":{},\"metadata\":{},\"description\":\"Generate 500 qualified enterprise leads through comprehensive marketing campaign\",\"source_goal_text\":null,\"created_at\":\"2025-07-18T15:21:26.585984+00:00\",\"updated_at\":\"2025-07-18T15:21:26.58599+00:00\",\"completed_at\":null,\"last_validation_at\":null,\"validation_frequency_minutes\":20,\"confidence\":0.8,\"semantic_context\":{},\"goal_type\":\"deliverable\",\"is_percentage\":false,\"is_minimum\":true,\"asset_completion_rate\":0.0,\"quality_score\":0.0,\"asset_requirements_count\":0,\"assets_completed_count\":0,\"ai_validation_enabled\":true,\"memory_insights\":{},\"progress_history\":[],\"last_progress_update\":\"2025-07-18T13:21:26.649564+00:00\"},\"asset_requirements_count\":1,\"message\":\"Goal created: qualified_leads target 500.0 with 1 asset requirements\"}"
+  ],
+  "integrations_verified": [],
+  "feedback_loops_tested": [],
+  "assets_extracted": 0,
+  "quality_rules_used": 0,
+  "memory_insights_applied": 0,
+  "strategic_insights_generated": 0,
+  "complete_success": false,
+  "performance_metrics": {
+    "total_duration": "36.90s",
+    "real_api_calls": 7,
+    "real_db_queries": 1,
+    "phases_completed": 3,
+    "phases_failed": 2,
+    "success_rate": "30.0%"
+  },
+  "real_api_calls": 7,
+  "real_db_queries": 1,
+  "test_end": "2025-07-18T15:21:26.985753",
+  "total_duration_seconds": 36.897327
+}

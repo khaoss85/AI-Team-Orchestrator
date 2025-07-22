@@ -30,9 +30,19 @@ from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
 from utils.project_settings import get_project_settings
-from backend.services.unified_memory_engine import unified_memory_engine
+from services.unified_memory_engine import unified_memory_engine
 
 logger = logging.getLogger(__name__)
+
+# 🚦 Import API Rate Limiter for external API call management
+try:
+    from services.api_rate_limiter import api_rate_limiter, execute_with_rate_limit
+    API_RATE_LIMITER_AVAILABLE = True
+    logger.info("✅ API Rate Limiter available for external API management")
+except ImportError as e:
+    logger.warning(f"⚠️ API Rate Limiter not available: {e}")
+    API_RATE_LIMITER_AVAILABLE = False
+    api_rate_limiter = None
 
 # Import WebSocket functions for real-time updates
 try:
@@ -104,26 +114,48 @@ except ImportError as e:
     TELEMETRY_MONITOR_AVAILABLE = False
     system_telemetry_monitor = None
 
-# 🚀 CRITICAL FIX: Import Asset System for Task Completion Integration
+# 🔍 Import Task Execution Monitor for hang detection
 try:
-    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-    from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
-    from database_asset_extensions import AssetDrivenDatabaseManager
-    from services import AssetArtifactProcessor
-    ASSET_SYSTEM_AVAILABLE = True
-    logger.info("✅ Asset System integration available for TaskExecutor")
-    
-    # Initialize asset system components
-    asset_processor = AssetArtifactProcessor  # This is already an instance, not a class
-    asset_quality_engine = unified_quality_engine
-    asset_db_manager = AssetDrivenDatabaseManager()
-    
+    from task_execution_monitor import task_monitor, ExecutionStage, trace_task_start, trace_stage, trace_error, trace_task_complete, start_monitoring
+    TASK_MONITOR_AVAILABLE = True
+    logger.info("✅ TaskExecutionMonitor available for hang detection")
 except ImportError as e:
-    logger.warning(f"⚠️ Asset System not available in TaskExecutor: {e}")
-    ASSET_SYSTEM_AVAILABLE = False
-    asset_processor = None
-    asset_quality_engine = None
-    asset_db_manager = None
+    logger.warning(f"⚠️ TaskExecutionMonitor not available: {e}")
+    TASK_MONITOR_AVAILABLE = False
+    task_monitor = None
+
+# 🚀 CRITICAL FIX: Lazy Load Asset System to Break Circular Imports
+ASSET_SYSTEM_AVAILABLE = False
+asset_processor = None
+asset_quality_engine = None  
+asset_db_manager = None
+
+def _initialize_asset_system():
+    """Lazy initialization of asset system to break circular imports"""
+    global ASSET_SYSTEM_AVAILABLE, asset_processor, asset_quality_engine, asset_db_manager
+    
+    if ASSET_SYSTEM_AVAILABLE:
+        return True
+        
+    try:
+        from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+        from database_asset_extensions import AssetDrivenDatabaseManager
+        from services import AssetArtifactProcessor
+        
+        # Initialize asset system components
+        asset_processor = AssetArtifactProcessor  # This is already an instance, not a class
+        asset_quality_engine = unified_quality_engine
+        asset_db_manager = AssetDrivenDatabaseManager()
+        
+        ASSET_SYSTEM_AVAILABLE = True
+        logger.info("✅ Asset System integration loaded on-demand for TaskExecutor")
+        return True
+        
+    except ImportError as e:
+        logger.warning(f"⚠️ Asset System not available in TaskExecutor: {e}")
+        ASSET_SYSTEM_AVAILABLE = False
+        return False
 
 try:
     from config.quality_system_config import QualitySystemConfig
@@ -461,12 +493,17 @@ class TaskExecutor(AssetCoordinationMixin):
         # ANTI-LOOP CONFIGURATIONS (these can be overridden per workspace)
         self.default_max_concurrent_tasks: int = 3  # Numero di worker paralleli
         self.max_tasks_per_workspace_anti_loop: int = int(os.getenv("MAX_TASKS_PER_WORKSPACE_ANTI_LOOP", "15"))  # 🤖 AI-DRIVEN: Increased from 10 to 15, configurable
-        self.default_execution_timeout: int = 150  # secondi per task
+        self.default_execution_timeout: int = 300  # secondi per task
         self.max_delegation_depth: int = 2
 
         # Tracking per anti-loop
         self.task_completion_tracker: Dict[str, Set[str]] = defaultdict(set)
         self.delegation_chain_tracker: Dict[str, List[str]] = defaultdict(list)
+        
+        # 🔍 Initialize task execution monitoring (will be started when executor starts)
+        self.monitoring_started = False
+        if TASK_MONITOR_AVAILABLE:
+            logger.info("✅ Task execution monitoring ready (will start with executor)")
         self.workspace_anti_loop_task_counts: Dict[str, int] = defaultdict(int)
 
         # Track task IDs currently queued or running to avoid duplicates
@@ -690,6 +727,15 @@ class TaskExecutor(AssetCoordinationMixin):
         self.pause_event.set()
         self.execution_log = []
 
+        # 🔍 Start task execution monitoring
+        if TASK_MONITOR_AVAILABLE and not self.monitoring_started:
+            try:
+                await start_monitoring()
+                self.monitoring_started = True
+                logger.info("✅ Task execution monitoring started")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to start task monitoring: {e}")
+
         logger.info("Starting task executor with anti-loop protection")
         logger.info(f"Max concurrent tasks: {self.max_concurrent_tasks}")
         logger.info(f"Task timeout: {self.execution_timeout}s")
@@ -697,6 +743,14 @@ class TaskExecutor(AssetCoordinationMixin):
         logger.info(f"Runaway check interval: {self.runaway_check_interval}s")
         logger.info(f"FINALIZATION priority boost: {FINALIZATION_TASK_PRIORITY_BOOST}")
         logger.info(f"Smart prioritization: {'ENABLED' if ENABLE_SMART_PRIORITIZATION else 'DISABLED'}")
+        
+        # 🚦 Check rate limiting availability
+        if API_RATE_LIMITER_AVAILABLE:
+            logger.info("🚦 API Rate Limiter: ENABLED - Managing external API calls")
+            # Log initial rate limit stats
+            stats = api_rate_limiter.get_stats()
+            for provider, provider_stats in stats.items():
+                logger.info(f"  {provider}: {provider_stats['available_tokens']} tokens available")
 
         # Avvia worker per processare la queue
         self.worker_tasks = [
@@ -986,7 +1040,58 @@ class TaskExecutor(AssetCoordinationMixin):
                     if manager is None:
                         raise ValueError(f"Manager is None for task {task_id}")
                     
-                    await self._execute_task_with_anti_loop_and_tracking(manager, task_dict_from_queue)
+                    # LOGGING DETTAGLIATO
+                    logger.info(f"--- TASK LIFECYCLE START: {task_id} ---")
+                    logger.info(f"Task Name: {task_name}")
+                    logger.info(f"Assigned Agent ID: {task_dict_from_queue.get('agent_id')}")
+                    
+                    # Execute task with anti-loop and tracking
+                    execution_result = await self._execute_task_with_anti_loop_and_tracking(manager, task_dict_from_queue)
+
+                    # LOGGING DETTAGLIATO
+                    logger.info(f"--- TASK LIFECYCLE END: {task_id} ---")
+                    logger.info(f"Agent Execution Result: {execution_result}")
+                    
+                    if execution_result and hasattr(execution_result, 'status'):
+                        final_status = execution_result.status.value
+                        logger.info(f"Final Status from ExecutionResult: {final_status}")
+                        
+                        # Handle UUID serialization for model_dump
+                        try:
+                            import uuid
+                            from datetime import datetime
+                            result_dict = execution_result.model_dump()
+                            
+                            # Convert UUID objects to strings recursively
+                            def convert_uuids(obj):
+                                if isinstance(obj, uuid.UUID):
+                                    return str(obj)
+                                elif isinstance(obj, dict):
+                                    return {k: convert_uuids(v) for k, v in obj.items()}
+                                elif isinstance(obj, list):
+                                    return [convert_uuids(item) for item in obj]
+                                else:
+                                    return obj
+                            
+                            serializable_result = convert_uuids(result_dict)
+                            await update_task_status(task_id, final_status, serializable_result)
+                        except Exception as serialize_error:
+                            logger.error(f"Failed to serialize execution result for task {task_id}: {serialize_error}")
+                            # Fallback to basic result
+                            from datetime import datetime
+                            basic_result = {
+                                "status": final_status,
+                                "output": str(execution_result)[:1000],
+                                "timestamp": datetime.now().isoformat(),
+                                "serialization_error": str(serialize_error)
+                            }
+                            await update_task_status(task_id, final_status, basic_result)
+                        
+                        logger.info(f"Task {task_id} status updated to {final_status} in database.")
+                    else:
+                        logger.error(f"Execution result for task {task_id} was invalid or missing status. Forcing to FAILED.")
+                        await self._force_complete_task(task_dict_from_queue, "Invalid execution result", status_to_set=TaskStatus.FAILED.value)
+
                     logger.info(f"WORKER {worker_id}: Successfully processed task {task_id}.")
 
                 except (AttributeError, TypeError) as e_specific:
@@ -1454,14 +1559,20 @@ Focus on delivering practical, actionable results that move the project forward.
         # Check for agent inactivity reason
         if "inactive" in reason.lower() or "no active team members" in reason.lower():
             try:
-                from backend.services.memory_system import memory_system
-                await memory_system.store_insight(
+                # Use unified memory engine instead of old memory_system
+                await unified_memory_engine.store_context(
                     workspace_id=workspace_id,
-                    insight_type="constraint",
-                    content=f"Operational Block: Task assignment is blocked because all agents are inactive. Pausing corrective actions for 10 minutes.",
-                    relevance_tags=["agent_status", "operational_block"],
-                    confidence_score=1.0,
-                    expires_at=datetime.now(timezone.utc) + timedelta(minutes=10)
+                    context_type="constraint",
+                    content={
+                        "message": "Operational Block: Task assignment is blocked because all agents are inactive. Pausing corrective actions for 10 minutes.",
+                        "constraint_type": "agent_inactive",
+                        "impact": "task_assignment_blocked"
+                    },
+                    importance_score=1.0,
+                    metadata={
+                        "tags": ["agent_status", "operational_block"],
+                        "expires_at": (datetime.now() + timedelta(minutes=10)).isoformat()
+                    }
                 )
                 logger.warning(f"Stored operational constraint for workspace {workspace_id} due to inactive agents.")
             except Exception as e:
@@ -1619,6 +1730,15 @@ Focus on delivering practical, actionable results that move the project forward.
         Esegue un task convertendo prima il dict in oggetto Pydantic Task
         e gestendo tutti gli aspetti di tracking, budget, e post-completion
         """
+        task_id = task_dict.get("id", "unknown")
+        workspace_id = task_dict.get("workspace_id", "unknown")
+        agent_id = task_dict.get("agent_id")
+        
+        # 🔍 Start task execution monitoring
+        if TASK_MONITOR_AVAILABLE:
+            trace_task_start(task_id, workspace_id, agent_id)
+            trace_stage(task_id, ExecutionStage.TASK_RECEIVED, "Task received for execution")
+        
         # Prima converte il dict in un oggetto Pydantic Task
         try:
             # FIXED: Validate and sanitize priority before Pydantic validation
@@ -1640,7 +1760,7 @@ Focus on delivering practical, actionable results that move the project forward.
                 "status": task_dict.get("status", TaskStatus.PENDING.value),
                 "priority": task_priority,  # FIXED: Use validated priority
                 "parent_task_id": task_dict.get("parent_task_id"),
-                "depends_on_task_ids": task_dict.get("depends_on_task_ids"),
+                
                 "estimated_effort_hours": task_dict.get("estimated_effort_hours"),
                 "deadline": task_dict.get("deadline"),
                 "context_data": task_dict.get("context_data"),  # Già dict, non JSON string
@@ -1796,25 +1916,76 @@ Focus on delivering practical, actionable results that move the project forward.
             task_input_text = f"{task_name} {task_pydantic_obj.description or ''}"
             estimated_input_tokens = max(1, len(task_input_text) // 4)
 
+            # 🔍 Trace agent assignment
+            if TASK_MONITOR_AVAILABLE:
+                trace_stage(task_id, ExecutionStage.AGENT_ASSIGNED, f"Agent {agent_id} assigned")
+
             agent = await manager.get_agent(agent_id)
             if not agent:
+                if TASK_MONITOR_AVAILABLE:
+                    trace_error(task_id, f"Agent {agent_id} not found in manager", ExecutionStage.AGENT_ASSIGNED)
                 raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
+
+            # 🔍 Trace agent initialization
+            if TASK_MONITOR_AVAILABLE:
+                trace_stage(task_id, ExecutionStage.AGENT_INITIALIZED, f"Agent {agent.agent_data.name} initialized")
+
+            # 🧠 SDK Session integration (handled in specialist.py now)
+            session = None  # Session creation is now handled in SpecialistAgent.execute()
 
             # ESECUZIONE DEL TASK CON TIMEOUT
             logger.info(f"Before agent.execute for task {task_id}")
-            agent = await manager.get_agent(agent_id)
             if not agent:
                 raise ValueError(f"Agent {agent_id} not found in manager for task {task_id}")
             
-            # 🚨 TIMEOUT CRITICO: 5 minuti massimo per task execution
+            # 🔍 Trace runner start
+            if TASK_MONITOR_AVAILABLE:
+                trace_stage(task_id, ExecutionStage.RUNNER_START, "Starting agent execution with timeout")
+            
+            # Task execution with timeout protection
             try:
-                execution_result = await asyncio.wait_for(
-                    agent.execute(task_pydantic_obj), 
-                    timeout=300.0  # 5 minuti
-                )
-                logger.info(f"✅ Task {task_id} completed successfully in under 5 minutes")
+                # 🚦 Apply rate limiting if available
+                if API_RATE_LIMITER_AVAILABLE:
+                    # Determine provider based on agent seniority
+                    agent_seniority = agent.agent_data.seniority.lower() if hasattr(agent.agent_data, 'seniority') else 'senior'
+                    provider = "openai_gpt4" if agent_seniority == "expert" else "openai_gpt35"
+                    
+                    # Determine priority based on task priority
+                    task_priority = task_dict.get("priority", "medium").lower()
+                    api_priority = "high" if task_priority == "high" or task_dict.get("is_corrective", False) else "normal"
+                    
+                    logger.info(f"🚦 Applying rate limiting for task {task_id}: provider={provider}, priority={api_priority}")
+                    
+                    # Execute with rate limiting
+                    execution_result = await execute_with_rate_limit(
+                        lambda: asyncio.wait_for(
+                            agent.execute(task_pydantic_obj, session), 
+                            timeout=300.0
+                        ),
+                        provider=provider,
+                        priority=api_priority
+                    )
+                else:
+                    # Fallback to direct execution without rate limiting
+                    execution_result = await asyncio.wait_for(
+                        agent.execute(task_pydantic_obj, session), 
+                        timeout=300.0
+                    )
+                
+                logger.info(f"✅ Task {task_id} execution finished. Result: {execution_result}")
+                # 🔍 Trace successful completion
+                if TASK_MONITOR_AVAILABLE:
+                    trace_stage(task_id, ExecutionStage.RUNNER_COMPLETED, "Agent execution completed successfully")
+                
+                # Ensure we have a valid result object
+                if not isinstance(execution_result, TaskExecutionOutput):
+                    raise TypeError(f"Agent returned invalid type: {type(execution_result)}")
+
             except asyncio.TimeoutError:
-                logger.error(f"🚨 TIMEOUT: Task {task_id} exceeded 5 minutes, forcing completion")
+                logger.error(f"⏰ Task {task_id} exceeded 5 minutes, forcing completion")
+                # 🔍 Trace timeout error
+                if TASK_MONITOR_AVAILABLE:
+                    trace_error(task_id, "Task execution timeout (5 minutes exceeded)", ExecutionStage.RUNNER_EXECUTING)
                 execution_result = TaskExecutionOutput(
                     task_id=task_pydantic_obj.id,
                     status=TaskStatus.FAILED,
@@ -1826,14 +1997,41 @@ Focus on delivering practical, actionable results that move the project forward.
                     await update_agent_status(str(agent_id), AgentStatus.IDLE.value)
                 except:
                     pass
+            except Exception as e:
+                # 🚦 Check if it's a rate limit error that wasn't handled
+                error_str = str(e).lower()
+                if any(code in error_str for code in ["429", "529", "rate_limit", "overloaded"]):
+                    logger.error(f"🚫 Rate limit error for task {task_id}: {e}")
+                    if TASK_MONITOR_AVAILABLE:
+                        trace_error(task_id, "API rate limit exceeded", ExecutionStage.RUNNER_EXECUTING)
+                    execution_result = TaskExecutionOutput(
+                        task_id=task_pydantic_obj.id,
+                        status=TaskStatus.FAILED,
+                        error_message=f"API rate limit exceeded: {str(e)[:100]}",
+                        summary="Task failed due to API rate limiting. Will be retried later."
+                    )
+                    # Don't mark as permanently failed - it can be retried
+                    await update_task_status(task_id, TaskStatus.PENDING.value)
+                else:
+                    raise  # Re-raise non-rate-limit errors
+            
+            return execution_result
         except Exception as e:
             # Gestione errori che non sono stati catturati dal coordination layer
             logger.error(f"Unhandled error in coordination layer for task {task_dict.get('id')}: {e}", exc_info=True)
+            # 🔍 Trace unhandled error
+            if TASK_MONITOR_AVAILABLE:
+                trace_error(task_id, f"Unhandled coordination layer error: {str(e)[:100]}")
+                trace_task_complete(task_id, success=False)
             await self._force_complete_task(
                 task_dict,
                 f"Coordination layer error: {str(e)[:200]}",
                 status_to_set=TaskStatus.FAILED.value
             )
+            return None
+        
+        # Return the execution result
+        return execution_result
 
     async def check_project_completion_after_task(self, completed_task_id: str, workspace_id: str):
         """Verifica se il progetto è completato dopo un task importante"""
@@ -1934,7 +2132,7 @@ Focus on delivering practical, actionable results that move the project forward.
                     await asyncio.sleep(60)
                     continue
 
-                logger.debug("Main exec loop: processing pending tasks, asset coordination, checking workspaces")
+                logger.info("🔄 MAIN LOOP: Processing pending tasks, asset coordination, checking workspaces")
                 
                 # Processa task pendenti (esistente)
                 await self.process_pending_tasks_anti_loop()
@@ -1971,6 +2169,30 @@ Focus on delivering practical, actionable results that move the project forward.
                     except Exception as telemetry_error:
                         logger.warning(f"Telemetry collection error: {telemetry_error}")
 
+                # 🚦 Check and adjust rate limiting status
+                if API_RATE_LIMITER_AVAILABLE:
+                    try:
+                        # Check rate limit stats every minute
+                        if (not hasattr(self, 'last_rate_limit_check') or 
+                            (datetime.now() - self.last_rate_limit_check).total_seconds() > 60):
+                            
+                            stats = api_rate_limiter.get_stats()
+                            
+                            # Log warnings if approaching limits
+                            for provider, provider_stats in stats.items():
+                                if provider_stats['in_cooldown']:
+                                    logger.warning(f"🚦 {provider} is in rate limit cooldown")
+                                elif provider_stats['calls_last_minute'] > 0:
+                                    config = api_rate_limiter.configs.get(provider)
+                                    if config and provider_stats['calls_last_minute'] > config.requests_per_minute * 0.8:
+                                        logger.warning(f"🚦 {provider} approaching rate limit: "
+                                                     f"{provider_stats['calls_last_minute']}/{config.requests_per_minute} calls/min")
+                            
+                            self.last_rate_limit_check = datetime.now()
+                            
+                    except Exception as rate_limit_error:
+                        logger.warning(f"Rate limit status check error: {rate_limit_error}")
+                
                 # Cleanup periodico (esistente)
                 if datetime.now() - self.last_cleanup > timedelta(minutes=5):
                     await self._cleanup_tracking_data()
@@ -1996,10 +2218,14 @@ Focus on delivering practical, actionable results that move the project forward.
             workspaces_with_pending = await get_workspaces_with_pending_tasks()
             
             if workspaces_with_pending:
-                logger.debug(f"Found {len(workspaces_with_pending)} workspaces with pending tasks. Checking queue/health")
+                logger.info(f"🔍 POLLING: Found {len(workspaces_with_pending)} workspaces with pending tasks: {workspaces_with_pending}")
+            else:
+                logger.info(f"🔍 POLLING: No workspaces with pending tasks found")
             
             # Limita il numero di workspace processati per ciclo
             for workspace_id in workspaces_with_pending[:self.max_concurrent_tasks * 2]:
+                logger.info(f"🔍 POLLING: Processing workspace {workspace_id}")
+                
                 if self.task_queue.full():
                     logger.warning(f"Anti-loop Task Queue is full ({self.task_queue.qsize()}/{self.max_queue_size}). Skipping further workspace processing in this cycle")
                     break
@@ -2020,9 +2246,13 @@ Focus on delivering practical, actionable results that move the project forward.
                     self._current_execution_timeout = self.default_execution_timeout
                 
                 # Pre-warm caches to avoid repeated DB hits in quick succession
-                await self._cached_list_tasks(workspace_id)
-                await self._cached_list_agents(workspace_id)
+                tasks_count = len(await self._cached_list_tasks(workspace_id))
+                agents_count = len(await self._cached_list_agents(workspace_id))
+                logger.info(f"🔍 POLLING: Workspace {workspace_id} has {tasks_count} tasks, {agents_count} agents")
+                
+                logger.info(f"🔍 POLLING: Calling process_workspace_tasks_anti_loop_with_health_check_enhanced for {workspace_id}")
                 await self.process_workspace_tasks_anti_loop_with_health_check_enhanced(workspace_id)
+                logger.info(f"🔍 POLLING: Finished processing workspace {workspace_id}")
                 
         except Exception as e:
             logger.error(f"Error in process_pending_tasks_anti_loop: {e}", exc_info=True)
@@ -2038,22 +2268,23 @@ Focus on delivering practical, actionable results that move the project forward.
         try:
             # Check for operational constraints
             try:
-                from backend.services.memory_system import memory_system
-                constraints = await memory_system.get_relevant_context(
+                # Use unified memory engine instead of old memory_system
+                constraints = await unified_memory_engine.get_relevant_context(
                     workspace_id=workspace_id,
-                    context_filter={"insight_types": ["constraint"]}
+                    query="operational constraints"
                 )
-                # 🔧 FIX: Handle case where constraints might be strings instead of dicts
+                # 🔧 FIX: Handle ContextEntry objects from unified memory engine
                 if constraints:
                     has_operational_block = False
-                    constraint_items = constraints if isinstance(constraints, list) else [constraints]
-                    for c in constraint_items:
-                        if isinstance(c, dict):
-                            content = c.get("content", "")
-                        elif isinstance(c, str):
-                            content = c
-                        else:
-                            continue
+                    for context_entry in constraints:
+                        # ContextEntry objects have content and metadata attributes
+                        content = ""
+                        if hasattr(context_entry, 'content'):
+                            if isinstance(context_entry.content, dict):
+                                content = context_entry.content.get("message", "")
+                            else:
+                                content = str(context_entry.content)
+                        
                         if "operational block" in content.lower():
                             has_operational_block = True
                             break
@@ -2065,12 +2296,20 @@ Focus on delivering practical, actionable results that move the project forward.
                 logger.error(f"Failed to check operational constraints: {e}")
 
             # 🏥 ENHANCED: Health check with intelligent auto-recovery
+            health_status = None  # Initialize to avoid None errors later
             if WORKSPACE_HEALTH_AVAILABLE and workspace_health_manager:
                 try:
                     # Use comprehensive health check with auto-recovery
                     health_report = await workspace_health_manager.check_workspace_health_with_recovery(
                         workspace_id, attempt_auto_recovery=True
                     )
+                    
+                    # Convert health_report to health_status format for compatibility
+                    health_status = {
+                        'is_healthy': health_report.is_healthy,
+                        'task_counts': {'pending': len([t for t in await self._cached_list_tasks(workspace_id) if t.get('status') == 'pending'])},
+                        'health_score': health_report.overall_score
+                    }
                     
                     if not health_report.is_healthy:
                         critical_issues = [
@@ -2094,8 +2333,8 @@ Focus on delivering practical, actionable results that move the project forward.
                     # Fall back to basic health check
                     health_status = await self.check_workspace_health(workspace_id)
                     
-                    if not health_status.get('is_healthy', True):
-                        health_issues = health_status.get('health_issues', [])
+                    if not health_status or not health_status.get('is_healthy', True):
+                        health_issues = health_status.get('health_issues', []) if health_status else []
                         logger.warning(f"W:{workspace_id} health issues (fallback): {health_issues}")
                         
                         critical_issues = [
@@ -2112,8 +2351,8 @@ Focus on delivering practical, actionable results that move the project forward.
                 # Fallback to original logic if WorkspaceHealthManager not available
                 health_status = await self.check_workspace_health(workspace_id)
                 
-                if not health_status.get('is_healthy', True):
-                    health_issues = health_status.get('health_issues', [])
+                if not health_status or not health_status.get('is_healthy', True):
+                    health_issues = health_status.get('health_issues', []) if health_status else []
                     logger.warning(f"W:{workspace_id} health issues: {health_issues}")
                     
                     critical_issues = [
@@ -2130,7 +2369,7 @@ Focus on delivering practical, actionable results that move the project forward.
 
             # Auto-generation resume check (mantieni logica esistente)
             if workspace_id in self.workspace_auto_generation_paused:
-                if (health_status.get('is_healthy') and 
+                if (health_status and health_status.get('is_healthy') and 
                     health_status.get('task_counts', {}).get('pending', self.max_pending_tasks_per_workspace) < 10):
                     await self._resume_auto_generation_for_workspace(workspace_id)
                     logger.info(f"Auto-gen resumed for healthy W:{workspace_id}")
@@ -2204,8 +2443,10 @@ Focus on delivering practical, actionable results that move the project forward.
                 if pending_eligible_tasks:
                     top_task = pending_eligible_tasks[0]
                     top_priority = get_task_priority_score_enhanced(top_task, workspace_id)
+                    top_context_data = top_task.get('context_data') or {}
+                    top_phase = top_context_data.get('project_phase', 'N/A') if isinstance(top_context_data, dict) else 'N/A'
                     logger.info(f"🔥 TOP PRIORITY: '{top_task.get('name', 'Unknown')[:50]}' "
-                               f"Priority: {top_priority}, Phase: {top_task.get('context_data', {}).get('project_phase', 'N/A')}")
+                               f"Priority: {top_priority}, Phase: {top_phase}")
             else:
                 # Fallback: uso prioritizzazione standard
                 pending_eligible_tasks.sort(
@@ -2240,7 +2481,8 @@ Focus on delivering practical, actionable results that move the project forward.
                 self.task_queue.put_nowait((manager, task_to_queue_dict))
                 self.queued_task_ids.add(task_id_to_queue)
                 
-                task_phase = task_to_queue_dict.get('context_data', {}).get('project_phase', 'N/A')
+                context_data = task_to_queue_dict.get('context_data') or {}
+                task_phase = context_data.get('project_phase', 'N/A') if isinstance(context_data, dict) else 'N/A'
                 needs_assign = not task_to_queue_dict.get('agent_id') and task_to_queue_dict.get('assigned_to_role')
                 priority_score = get_task_priority_score_enhanced(task_to_queue_dict, workspace_id) if ENABLE_SMART_PRIORITIZATION else "standard"
                 
@@ -5008,12 +5250,16 @@ Return ONLY a number between 0-200 representing urgency boost.
                 goal_data = goal_response.data[0]
                 
                 # Recalculate asset completion rate for this goal
-                goal_requirements = await asset_db_manager.get_asset_requirements_for_goal(goal_id)
-                goal_artifacts = []
-                
-                for req in goal_requirements:
-                    req_artifacts = await asset_db_manager.get_artifacts_for_requirement(req.id)
-                    goal_artifacts.extend(req_artifacts)
+                if _initialize_asset_system():
+                    goal_requirements = await asset_db_manager.get_workspace_asset_requirements(workspace_id)
+                    goal_artifacts = []
+                    
+                    for req in goal_requirements:
+                        req_artifacts = await asset_db_manager.get_artifacts_for_requirement(req.id)
+                        goal_artifacts.extend(req_artifacts)
+                else:
+                    goal_requirements = []
+                    goal_artifacts = []
                 
                 total_requirements = len(goal_requirements)
                 approved_artifacts = len([a for a in goal_artifacts if a.status == "approved"])

@@ -97,9 +97,7 @@ class UniversalAIPipelineEngine:
         circuit_breaker_timeout: int = 60,
         cache_ttl_seconds: int = 3600
     ):
-        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
-        self.ai_available = bool(api_key)
+        self.ai_available = bool(os.getenv("OPENAI_API_KEY"))
         
         # Rate limiting
         self.max_requests_per_minute = max_requests_per_minute
@@ -263,24 +261,42 @@ class UniversalAIPipelineEngine:
             self.request_times.append(current_time)
     
     async def _execute_ai_request(self, prompt: str, model: str, context: PipelineContext) -> str:
-        """Execute actual AI request with timeout"""
+        """Execute actual AI request with timeout using the AI Provider Abstraction."""
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.universal_pipeline_agent import get_universal_pipeline_agent_config
+
         try:
+            pipeline_agent_config = get_universal_pipeline_agent_config(model)
+
             response = await asyncio.wait_for(
-                self.client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
+                ai_provider_manager.call_ai(
+                    provider_type='openai_sdk',
+                    agent=pipeline_agent_config,
+                    prompt=prompt,
                     temperature=0.7,
                     max_tokens=2000
                 ),
                 timeout=context.timeout_seconds
             )
-            return response.choices[0].message.content
+            
+            # Assuming the provider returns a dict with a 'response' key for text content
+            if isinstance(response, dict) and 'response' in response:
+                return response['response']
+            elif isinstance(response, str):
+                 return response
+            else:
+                # Handle unexpected response format
+                logger.warning(f"Unexpected AI response format: {type(response)}. Converting to string.")
+                return str(response)
+
         except asyncio.TimeoutError:
             raise Exception(f"AI request timed out after {context.timeout_seconds}s")
-        except openai.RateLimitError as e:
-            logger.warning(f"🚫 OpenAI rate limit hit: {str(e)}")
-            raise
         except Exception as e:
+            # Catch potential rate limit errors from the provider if they are not handled internally
+            error_str = str(e).lower()
+            if any(code in error_str for code in ["429", "rate_limit", "overloaded"]):
+                 logger.warning(f"🚫 OpenAI rate limit hit: {str(e)}")
+                 raise
             raise Exception(f"AI request failed: {str(e)}")
     
     def _get_default_prompt(self, step_type: PipelineStepType, input_data: Any, context: PipelineContext) -> str:

@@ -6,8 +6,8 @@ import logging
 import json
 from datetime import datetime
 
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 from database import list_tasks, list_agents, get_workspace
 from models import DeliverableRequirements, AssetSchema
 

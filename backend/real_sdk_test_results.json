@@ -1,0 +1,17 @@
+{
+  "test_type": "real_sdk_e2e",
+  "timestamp": "2025-07-14T12:26:17.952408",
+  "sdk_functional": true,
+  "test_results": {
+    "sdk_import": true,
+    "agent_creation": true,
+    "agent_execution": true,
+    "function_tools": true,
+    "guardrails": false,
+    "handoffs_configured": true,
+    "websearch_available": true,
+    "runresult_structure": true
+  },
+  "api_calls_made": true,
+  "no_simulations": true
+}

@@ -9,11 +9,13 @@ from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from models import (
-    WorkspaceGoal, GoalStatus, TaskStatus
+    WorkspaceGoal, GoalStatus, TaskCreate, TaskStatus
 )
-from database import supabase, create_task
+from services.task_deduplication_manager import task_deduplication_manager
+from database import get_supabase_client
 
 logger = logging.getLogger(__name__)
+supabase = get_supabase_client()
 
 # 🤖 AI-DRIVEN ROOT CAUSE FIX: Import resilient similarity engine for robust task similarity detection
 try:
@@ -105,18 +107,25 @@ class GoalDrivenTaskPlanner:
             goal = WorkspaceGoal(**workspace_goal)
             
             # 🛡️ ENHANCED DUPLICATE PREVENTION: Check for similar tasks across workspace
-            similar_tasks = await self._check_similar_tasks_workspace_wide(workspace_id, str(goal.id), str(goal.metric_type))
-            if similar_tasks:
-                logger.info(f"🔄 Goal {goal.metric_type} has similar tasks ({len(similar_tasks)} found) - evaluating sufficiency")
+            # 🔧 FIX: Check similar tasks ONLY for the same goal, not workspace-wide
+            similar_tasks_same_goal = await self._check_similar_tasks_for_goal(workspace_id, str(goal.id), str(goal.metric_type))
+            if similar_tasks_same_goal:
+                logger.info(f"🔄 Goal {goal.metric_type} has similar tasks in same goal ({len(similar_tasks_same_goal)} found)")
                 
-                # 🔧 FIX CRITICO 3: Non bloccare sempre - valutare se i task simili sono sufficienti
-                # Se abbiamo meno di 2 task simili, potremmo aver bisogno di task aggiuntivi
-                if len(similar_tasks) >= 2:
-                    logger.info(f"✅ Sufficient similar tasks ({len(similar_tasks)}) found for goal {goal.metric_type}")
-                    return similar_tasks
+                # Only block if we have enough similar tasks FOR THIS SPECIFIC GOAL
+                if len(similar_tasks_same_goal) >= 2:
+                    logger.info(f"✅ Sufficient similar tasks ({len(similar_tasks_same_goal)}) found for goal {goal.metric_type}")
+                    return similar_tasks_same_goal
                 else:
-                    logger.info(f"⚠️ Only {len(similar_tasks)} similar tasks found - may need additional tasks")
-                    # Continua la creazione normale per completare il goal
+                    logger.info(f"⚠️ Only {len(similar_tasks_same_goal)} similar tasks found for this goal - creating additional tasks")
+                    # Continue with normal task creation
+            
+            # DISABLED: Workspace-wide similarity check causing false positives
+            # The system was erroneously blocking task creation when goals had different purposes
+            # but similar semantic keywords (e.g., "deliverable", "email"). This prevents goal isolation.
+            # workspace_similar_tasks = await self._check_similar_tasks_workspace_wide(workspace_id, str(goal.id), str(goal.metric_type))
+            # if workspace_similar_tasks and len(workspace_similar_tasks) >= 4:  # Increased from 2 to 4
+            #     logger.warning(f"⚠️ Found {len(workspace_similar_tasks)} very similar tasks workspace-wide - consider if more are needed")
             
             # 🛡️ DUPLICATE PREVENTION: Check if tasks already exist for this goal  
             existing_tasks_response = supabase.table("tasks").select("id, name").eq(
@@ -133,12 +142,14 @@ class GoalDrivenTaskPlanner:
             # Generate tasks using the internal method
             tasks = await self._generate_tasks_for_goal(goal)
             
-            # Get available agents for task assignment (agents change to "available" after start_team)
-            agents_response = supabase.table("agents").select("*").eq("workspace_id", workspace_id).eq("status", "available").execute()
+            # Get available agents for task assignment (accept any status except "inactive")
+            agents_response = supabase.table("agents").select("*").eq("workspace_id", workspace_id).neq("status", "inactive").execute()
             available_agents = agents_response.data or []
             
             if not available_agents:
-                logger.warning(f"⚠️ No available agents found for workspace {workspace_id} - tasks will be created unassigned")
+                logger.warning(f"⚠️ No agents found for workspace {workspace_id} - tasks will be created unassigned")
+            else:
+                logger.info(f"✅ Found {len(available_agents)} agents for task assignment in workspace {workspace_id}")
             
             # Create tasks in database and trigger execution
             created_tasks = []
@@ -157,28 +168,26 @@ class GoalDrivenTaskPlanner:
                     logger.info(f"🎯 Assigning task '{task_data['name']}' to agent {assigned_agent.get('name')} ({assigned_agent_role})")
                 
                 # 🚫 ENHANCED TASK CREATION with Deduplication
-                context_data = {
-                    **(task_data.get("context_data", {})),
-                    "is_goal_driven": True,
-                    "auto_generated": True,
-                    "generated_by": "goal_driven_task_planner",
-                    "goal_analysis_timestamp": datetime.now().isoformat(),
-                    "assigned_agent_name": assigned_agent.get('name') if available_agents else None
-                }
-                
-                # Use create_task function which includes deduplication
-                created_task = await create_task(
-                    workspace_id=workspace_id,
-                    goal_id=str(goal.id),
+                task_to_create = TaskCreate(
+                    workspace_id=UUID(workspace_id),
+                    goal_id=goal.id,
                     name=task_data.get("name"),
-                    status="pending",
-                    agent_id=assigned_agent_id,
-                    assigned_to_role=assigned_agent_role,
                     description=task_data.get("description"),
+                    status=TaskStatus.PENDING,
+                    agent_id=assigned_agent_id,
                     priority=task_data.get("priority", "medium"),
-                    context_data=context_data,
-                    auto_build_context=True
+                    context_data={
+                        **(task_data.get("context_data", {})),
+                        "is_goal_driven": True,
+                        "auto_generated": True,
+                        "generated_by": "goal_driven_task_planner",
+                        "goal_analysis_timestamp": datetime.now().isoformat(),
+                        "assigned_agent_name": assigned_agent.get('name') if available_agents else None,
+                        "assigned_agent_role": assigned_agent_role
+                    }
                 )
+
+                created_task = await task_deduplication_manager.create_task_with_deduplication(task_to_create)
                 
                 if created_task:
                     created_tasks.append(created_task)
@@ -241,49 +250,29 @@ class GoalDrivenTaskPlanner:
         # Get workspace context for better task generation
         workspace_context = await self._get_workspace_context(goal.workspace_id)
         
-        # Use AI for ALL goal types - no more hardcoded templates
-        tasks.extend(await self._generate_ai_driven_tasks(goal, gap, workspace_context))
-        
-        return tasks
-    
-    async def _get_workspace_context(self, workspace_id: UUID) -> Dict[str, Any]:
-        """
-        🎯 Get workspace context for better AI task generation
-        """
-        try:
-            # Get workspace info
-            response = supabase.table("workspaces").select("*").eq(
-                "id", str(workspace_id)
-            ).single().execute()
-            
-            workspace_data = response.data
-            
-            return {
-                "name": workspace_data.get("name", "Project"),
-                "description": workspace_data.get("goal", "Universal business project"),
-                "industry": workspace_data.get("industry", "General business"),
-                "project_type": workspace_data.get("project_type", "Universal")
-            }
-            
-        except Exception as e:
-            logger.warning(f"Could not get workspace context: {e}")
-            return {
-                "name": "Universal Project",
-                "description": "Universal business project",
-                "industry": "General business",
-                "project_type": "Universal"
-            }
-    
-    async def _generate_ai_driven_tasks(
+        # Check migration flag to decide which implementation to use
+        from config.migration_config import is_sdk_migrated
+        if is_sdk_migrated('task_generation_sdk'):
+            from goal_driven_task_planner_sdk import goal_driven_task_planner_sdk
+            logger.info("🚀 Using SDK-based task generation.")
+            return await goal_driven_task_planner_sdk._generate_ai_driven_tasks(goal, gap, workspace_context)
+        else:
+            logger.info("Legacy task generation in use.")
+            # Use AI for ALL goal types - no more hardcoded templates
+            return await self._generate_ai_driven_tasks_legacy(goal, gap, workspace_context)
+
+    async def _generate_ai_driven_tasks_legacy(
         self, 
         goal: WorkspaceGoal, 
         gap: float, 
         workspace_context: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
-        🤖 AI-DRIVEN UNIVERSAL TASK GENERATION
+        🤖 AI-DRIVEN UNIVERSAL TASK GENERATION (Legacy - MIGRATED TO SDK)
         Sostituisce tutti i template hardcoded con AI che comprende il contesto
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+
         if not self.ai_available:
             return await self._fallback_generic_tasks(goal, gap)
         
@@ -330,29 +319,54 @@ Examples of GOOD vs BAD tasks:
 
 Focus on the specific gap ({gap} {goal.unit}) and create tasks that produce assets to close it."""
 
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an expert project manager who creates specific, actionable tasks for any industry."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
+            # Define a temporary agent for this task
+            task_generator_agent = {
+                "name": "LegacyTaskGeneratorAgent",
+                "model": "gpt-4o-mini",
+                "instructions": "You are an expert project manager who creates specific, actionable tasks for any industry. Respond only with valid JSON.",
+            }
+
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=task_generator_agent,
+                prompt=prompt,
                 response_format={"type": "json_object"}
             )
             
-            raw_ai_response_content = response.choices[0].message.content
-            logger.debug(f"AI raw response content: {raw_ai_response_content}")
+            logger.info(f"🔍 DEBUG: AI response type: {type(result)}")
+            logger.info(f"🔍 DEBUG: AI response: {result}")
             
-            try:
-                result = json.loads(raw_ai_response_content)
-                logger.debug(f"Parsed AI result: {result}")
-            except json.JSONDecodeError as e:
-                logger.error(f"JSONDecodeError parsing AI response: {e}. Raw content: {raw_ai_response_content}")
-                raise # Re-raise to be caught by outer exception handler
+            # Handle different response formats
+            if isinstance(result, str):
+                try:
+                    import json
+                    result = json.loads(result)
+                except:
+                    logger.error(f"Failed to parse AI response as JSON: {result}")
+                    return []
+            
+            # Extract tasks from various possible response structures
+            tasks_data = []
+            if isinstance(result, dict):
+                if "tasks" in result:
+                    tasks_data = result["tasks"]
+                elif "data" in result and isinstance(result["data"], dict) and "tasks" in result["data"]:
+                    tasks_data = result["data"]["tasks"]
+                elif "content" in result:
+                    # Handle if content is a JSON string
+                    try:
+                        import json
+                        content_data = json.loads(result["content"])
+                        tasks_data = content_data.get("tasks", [])
+                    except:
+                        logger.error(f"Failed to parse content as JSON: {result['content']}")
+                        return []
+            
+            logger.info(f"🔍 DEBUG: Extracted {len(tasks_data)} tasks from AI response")
             
             tasks = []
             
-            for task_data in result.get("tasks", []):
+            for task_data in tasks_data:
                 # Store all metadata in context_data to avoid database schema issues
                 context_data = {
                     "is_goal_driven": True,
@@ -389,45 +403,6 @@ Focus on the specific gap ({gap} {goal.unit}) and create tasks that produce asse
                 
             logger.info(f"🤖 AI generated {len(tasks)} universal tasks for {goal.metric_type} goal")
             logger.debug(f"Generated tasks list: {tasks}")
-            return tasks
-            tasks = []
-            
-            for task_data in result.get("tasks", []):
-                # Store all metadata in context_data to avoid database schema issues
-                context_data = {
-                    "is_goal_driven": True,
-                    "auto_generated": True,
-                    "task_type": task_data.get("type", "goal_driven"),
-                    "deliverable_type": task_data.get("deliverable_type", "project_output"),
-                    "estimated_duration_hours": task_data.get("estimated_duration_hours", 4),
-                    "required_skills": task_data.get("required_skills", []),
-                    "success_criteria": task_data.get("success_criteria", []),
-                    "numerical_target": {
-                        "metric": str(goal.metric_type),
-                        "target": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                        "unit": goal.unit,
-                        "validation_method": "manual_verification"
-                    }
-                }
-                
-                # 🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification (universal)
-                compatible_metric_type = await self._classify_metric_type_ai(str(goal.metric_type))
-                
-                task = {
-                    "goal_id": str(goal.id),
-                    "metric_type": compatible_metric_type,
-                    "name": task_data["name"],
-                    "description": task_data["description"],
-                    "priority": self._convert_numeric_priority(task_data.get("priority", 3)),
-                    "contribution_expected": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                    "context_data": {
-                        **context_data,
-                        "original_metric_type": str(goal.metric_type)  # Preserve original for future use
-                    }
-                }
-                tasks.append(task)
-                
-            logger.info(f"🤖 AI generated {len(tasks)} universal tasks for {goal.metric_type} goal")
             return tasks
             
         except Exception as e:
@@ -972,6 +947,39 @@ Return ONLY the category name that best fits this metric.
             
         except Exception as e:
             logger.error(f"Error adding corrective task cooldown: {e}")
+
+    async def _get_workspace_context(self, workspace_id: str) -> Dict[str, Any]:
+        """Get workspace context for AI-driven task generation"""
+        try:
+            # Get workspace details
+            workspace_response = supabase.table("workspaces").select("*").eq(
+                "id", workspace_id
+            ).single().execute()
+            
+            if not workspace_response.data:
+                return {"workspace_goal": "General workspace tasks", "domain": "general"}
+            
+            workspace = workspace_response.data
+            
+            # Get agents for context
+            agents_response = supabase.table("agents").select("role, seniority").eq(
+                "workspace_id", workspace_id
+            ).execute()
+            
+            agents = agents_response.data or []
+            
+            return {
+                "workspace_goal": workspace.get("goal", "General workspace tasks"),
+                "workspace_description": workspace.get("description", ""),
+                "domain": workspace.get("domain", "general"),
+                "budget": workspace.get("budget", 1000),
+                "team_roles": [agent.get("role", "Specialist") for agent in agents],
+                "team_count": len(agents)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting workspace context: {e}")
+            return {"workspace_goal": "General workspace tasks", "domain": "general"}
     
     async def _check_corrective_task_cooldown(self, workspace_id: str, goal_id: str) -> bool:
         """
@@ -1042,6 +1050,39 @@ Return ONLY the category name that best fits this metric.
             logger.error(f"Error checking recent corrective task duplicates: {e}")
             return False
     
+    async def _check_similar_tasks_for_goal(self, workspace_id: str, goal_id: str, metric_type: str) -> List[Dict]:
+        """
+        🎯 GOAL-SPECIFIC: Check for semantically similar tasks ONLY within the same goal
+        
+        This prevents blocking task creation for different goals with similar themes.
+        """
+        try:
+            # Get tasks ONLY for this specific goal
+            response = supabase.table("tasks").select("id, name, goal_id, created_at, status, description").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "goal_id", goal_id  # CRITICAL: Only check within same goal
+            ).in_(
+                "status", ["pending", "in_progress", "blocked", "completed"]
+            ).execute()
+            
+            goal_tasks = response.data or []
+            
+            if not goal_tasks:
+                return []
+            
+            # Use AI to detect similar tasks within this goal
+            similar_tasks = await self._detect_similar_tasks_ai_driven(goal_tasks, metric_type)
+            
+            if similar_tasks:
+                logger.info(f"🎯 Found {len(similar_tasks)} similar tasks within goal {goal_id}")
+            
+            return similar_tasks
+            
+        except Exception as e:
+            logger.error(f"Error checking similar tasks for goal: {e}")
+            return []
+
     async def _check_similar_tasks_workspace_wide(self, workspace_id: str, goal_id: str, metric_type: str) -> List[Dict]:
         """
         🛡️ ENHANCED PREVENTION: Check for semantically similar tasks across the entire workspace
@@ -1049,12 +1090,16 @@ Return ONLY the category name that best fits this metric.
         Prevents creation of duplicate tasks even if they're for different goals but same purpose.
         """
         try:
+            # CRITICAL FIX: Use the class-level supabase client, not undefined variable
+            from database import get_supabase_client
+            supabase_client = get_supabase_client()
+            
             from datetime import datetime, timedelta
             import difflib
             
             # CRITICAL FIX: Get ALL active/pending tasks from workspace (not just recent)
             # This prevents cross-goal duplicates regardless of creation time
-            response = supabase.table("tasks").select("id, name, goal_id, created_at, status, description").eq(
+            response = supabase_client.table("tasks").select("id, name, goal_id, created_at, status, description").eq(
                 "workspace_id", workspace_id
             ).in_(
                 "status", ["pending", "in_progress", "blocked"]
@@ -1125,12 +1170,12 @@ Return ONLY the category name that best fits this metric.
                         context={
                             "metric_type": metric_type,
                             "business_context": "cross-goal task similarity detection",
-                            "similarity_threshold": 0.7  # High threshold for duplicate detection
+                            "similarity_threshold": 0.85  # Very high threshold - only catch true duplicates
                         }
                     )
                     
                     # If tasks are similar enough, add both to similar_tasks list
-                    if similarity_result.similarity_score >= 0.7:
+                    if similarity_result.similarity_score >= 0.85:  # Increased threshold
                         if task1 not in similar_tasks:
                             similar_tasks.append(task1)
                         if task2 not in similar_tasks:

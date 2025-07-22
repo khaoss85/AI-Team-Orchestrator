@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "Object of type UUID is not JSON serializable"
+}

@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from uuid import UUID
 import logging
 import json
+from datetime import datetime
 
 from models import (
     AgentCreate,
@@ -48,7 +49,7 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate, request: Requ
             workspace_id=str(agent.workspace_id),
             name=agent.name,
             role=agent.role,
-            seniority=agent.seniority.value,
+            seniority=agent.seniority,
             description=agent.description
         )
         
@@ -82,8 +83,26 @@ async def get_workspace_agents(workspace_id: str, request: Request):
         
         # Deserializza i campi JSON prima della validazione Pydantic
         for agent in agents_data:
-            # Map legacy status values to current enum
-            if agent.get('status') == 'available':
+            # Map backend/database status values to frontend AgentStatus enum
+            status_mapping = {
+                'available': 'active',  # Legacy: available agents should be active
+                'busy': 'active',       # Busy agents are still active (just executing tasks)
+                'idle': 'active',       # Idle agents are active and ready for tasks
+                'offline': 'paused',    # Offline agents are effectively paused
+                'error': 'error',       # Error status maps directly
+                # Keep existing valid statuses as-is
+                'active': 'active',
+                'paused': 'paused',
+                'terminated': 'terminated',
+                'created': 'created',
+                'initializing': 'initializing'
+            }
+            
+            current_status = agent.get('status')
+            if current_status in status_mapping:
+                agent['status'] = status_mapping[current_status]
+            else:
+                # Default fallback for unknown statuses
                 agent['status'] = 'active'
             
             # Deserializza llm_config se è una stringa

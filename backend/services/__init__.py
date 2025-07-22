@@ -25,26 +25,49 @@ try:
         MemoryEnhancedAIAssetGenerator
     )
     
-    # Import deliverable engine for aliasing
-    import sys
-    from pathlib import Path
-    # Add project root to Python path for consistent imports
-    project_root = Path(__file__).parent.parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    
-    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine as deliverable_engine
-    
     # Primary exports (unified engine)
     memory_system = unified_memory_engine
     universal_memory_architecture = unified_memory_engine
     memory_enhanced_ai_asset_generator = unified_memory_engine
     
+    # --- LAZY LOADING FOR DELIVERABLE SYSTEM ---
+    # Break circular import by loading deliverable engine on-demand
+    _deliverable_engine = None
+    
+    def _get_deliverable_engine():
+        """Lazy load deliverable engine to break circular imports"""
+        global _deliverable_engine
+        if _deliverable_engine is None:
+            try:
+                import sys
+                from pathlib import Path
+                # Add project root to Python path for consistent imports
+                project_root = Path(__file__).parent.parent.parent
+                if str(project_root) not in sys.path:
+                    sys.path.insert(0, str(project_root))
+                
+                from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+                _deliverable_engine = unified_deliverable_engine
+                logger.info("✅ Deliverable engine loaded on-demand")
+            except ImportError as e:
+                logger.warning(f"Failed to load deliverable engine: {e}")
+                _deliverable_engine = None
+        return _deliverable_engine
+    
+    # Create lazy-loading property classes for backward compatibility
+    class LazyDeliverableAlias:
+        """Lazy loading wrapper for deliverable system aliases"""
+        def __getattr__(self, name):
+            engine = _get_deliverable_engine()
+            if engine is None:
+                raise ImportError("Deliverable engine not available")
+            return getattr(engine, name)
+    
     # --- DELIVERABLE SYSTEM ALIASES ---
     # This ensures that old imports like `from services.asset_artifact_processor import ...` still work
-    AssetArtifactProcessor = deliverable_engine
-    AssetRequirementsGenerator = deliverable_engine
-    AssetFirstDeliverableSystem = deliverable_engine
+    AssetArtifactProcessor = LazyDeliverableAlias()
+    AssetRequirementsGenerator = LazyDeliverableAlias() 
+    AssetFirstDeliverableSystem = LazyDeliverableAlias()
     
     __all__ = [
         # Unified memory engine

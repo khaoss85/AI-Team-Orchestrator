@@ -313,9 +313,9 @@ class WorkspaceHealthManager:
         goals_response = supabase.table("workspace_goals").select("*").eq("workspace_id", workspace_id).execute()
         goals = goals_response.data or []
         
-        # Get recent logs (last hour)
+        # Get recent execution logs (last hour)
         one_hour_ago = (datetime.now() - timedelta(hours=1)).isoformat()
-        logs_response = supabase.table("logs").select("*").eq(
+        logs_response = supabase.table("execution_logs").select("*").eq(
             "workspace_id", workspace_id
         ).gte("created_at", one_hour_ago).execute()
         recent_logs = logs_response.data or []

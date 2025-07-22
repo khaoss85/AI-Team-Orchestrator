@@ -1,0 +1,66 @@
+2025-07-16 10:06:25,751 [INFO] ================================================================================
+2025-07-16 10:06:25,751 [INFO] 🚦 TESTING RATE LIMITED SYSTEM
+2025-07-16 10:06:25,751 [INFO] ================================================================================
+2025-07-16 10:06:25,751 [INFO] 
+🔍 TEST 1: Rate Limiter Availability
+2025-07-16 10:06:25,751 [INFO] --------------------------------------------------
+2025-07-16 10:06:26,191 [WARNING] ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-16 10:06:26,233 [INFO] ✅ Constraint Violation Preventer available for database operations
+2025-07-16 10:06:26,233 [INFO] Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-16 10:06:26,238 [INFO] ✅ Supabase client (user-level) created successfully
+2025-07-16 10:06:26,243 [INFO] ✅ Supabase service client (admin-level) created successfully
+2025-07-16 10:06:26,250 [INFO] ✅ AI client initialized for memory processing
+2025-07-16 10:06:26,250 [INFO] 🧠 Unified Memory Engine initialized successfully
+2025-07-16 10:06:26,250 [INFO] ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-16 10:06:26,250 [INFO] 🧠 Unified Memory System loaded successfully
+2025-07-16 10:06:26,250 [INFO]    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-16 10:06:26,250 [INFO]    ├─ Backward compatibility maintained for all imports
+2025-07-16 10:06:26,250 [INFO]    └─ Memory patterns, context storage, and AI generation unified
+2025-07-16 10:06:26,251 [INFO] Added rate limit config for openai_gpt4: 40 req/min, burst: 10
+2025-07-16 10:06:26,251 [INFO] Added rate limit config for openai_gpt35: 60 req/min, burst: 15
+2025-07-16 10:06:26,251 [INFO] Added rate limit config for default: 30 req/min, burst: 5
+2025-07-16 10:06:26,251 [INFO] 🚦 API Rate Limiter initialized
+2025-07-16 10:06:26,251 [INFO] ✅ Rate limiter loaded with 3 provider configs
+2025-07-16 10:06:26,251 [INFO]   openai_gpt4: 40 req/min, burst: 10
+2025-07-16 10:06:26,251 [INFO]   openai_gpt35: 60 req/min, burst: 15
+2025-07-16 10:06:26,251 [INFO]   default: 30 req/min, burst: 5
+2025-07-16 10:06:26,251 [INFO] 
+⚙️ TEST 2: Rate Limiter Functionality
+2025-07-16 10:06:26,251 [INFO] --------------------------------------------------
+2025-07-16 10:06:26,251 [INFO] ✅ Basic acquire: wait_time=0.00s, elapsed=0.00s
+2025-07-16 10:06:26,251 [INFO] ✅ Stats retrieved: 3 providers
+2025-07-16 10:06:26,251 [INFO] ✅ Average acquisition time for 5 calls: 0.00s
+2025-07-16 10:06:26,251 [INFO] 
+🔄 TEST 3: Concurrent Execution with Rate Limiting
+2025-07-16 10:06:26,251 [INFO] --------------------------------------------------
+2025-07-16 10:06:26,251 [INFO]   Mock API call 0 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 1 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 2 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 3 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 4 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 5 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 6 starting
+2025-07-16 10:06:26,251 [INFO]   Mock API call 7 starting
+2025-07-16 10:06:26,352 [INFO]   Mock API call 0 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 1 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 2 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 3 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 4 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 5 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 6 completed
+2025-07-16 10:06:26,352 [INFO]   Mock API call 7 completed
+2025-07-16 10:06:26,353 [INFO] ✅ Completed 8 concurrent API calls in 0.10s
+2025-07-16 10:06:26,353 [WARNING] ⚠️ Rate limiting may not be working: 0.10s
+2025-07-16 10:06:26,353 [INFO] 
+🚫 TEST 4: Error Handling for Rate Limits
+2025-07-16 10:06:26,353 [INFO] --------------------------------------------------
+2025-07-16 10:06:26,353 [ERROR] 🚫 Rate limit error for openai_gpt4 (attempt 1): backing off 60.0s
+2025-07-16 10:06:26,353 [INFO] ✅ Error handling: backoff_time=60.00s
+2025-07-16 10:06:26,353 [INFO] ✅ Provider correctly marked as in cooldown
+2025-07-16 10:06:26,353 [INFO] 
+📊 GENERATING TEST REPORT
+2025-07-16 10:06:26,353 [INFO] --------------------------------------------------
+2025-07-16 10:06:26,353 [INFO] 📈 Test Summary:
+2025-07-16 10:06:26,353 [INFO]   Status: PASSED
+2025-07-16 10:06:26,353 [INFO]   Duration: 0.60s
+2025-07-16 10:06:26,353 [INFO]   Tests Passed: 4/4

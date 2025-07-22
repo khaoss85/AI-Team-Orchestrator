@@ -2,6 +2,7 @@
 import logging
 import os
 import asyncio
+import json
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -13,16 +14,16 @@ from database import (
     update_task_status,
     update_agent_status
 )
+from services.memory_similarity_engine import memory_similarity_engine
 from models import (
     Agent as AgentModelPydantic,
     Task,
     TaskStatus,
     AgentStatus,
     AgentHealth,
-    HealthStatus,
-    create_model_with_harmonization
+    HealthStatus
 )
-from ai_agents.specialist import SpecialistAgent
+from ai_agents.specialist_enhanced import SpecialistAgent
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class AgentManager:
         self.agents: Dict[UUID, SpecialistAgent] = {}
         
         # ANTI-LOOP CONFIGURATIONS
-        self.execution_timeout = 180  # 3 minuti timeout per task
+        self.execution_timeout = 300  # 5 minuti timeout per task
         self.max_retries = 1  # Massimo 1 retry per task
         self.task_execution_cache: Dict[str, datetime] = {}
         self.failed_tasks_cache: Dict[str, int] = {}
@@ -142,6 +143,10 @@ class AgentManager:
         for i, agent_model in enumerate(valid_agents):
             try:
                 logger.debug(f"Creating SpecialistAgent {i+1}/{len(valid_agents)}: {agent_model.name} (ID: {agent_model.id})")
+                logger.info(f"🔍 Agent_model type: {type(agent_model)}")
+                logger.info(f"🔍 Agent_model hard_skills type: {type(agent_model.hard_skills)}")
+                logger.info(f"🔍 Agent_model hard_skills: {agent_model.hard_skills}")
+                
                 # Crea SpecialistAgent passando tutti gli agenti per handoff
                 specialist = SpecialistAgent(
                     agent_data=agent_model,
@@ -156,6 +161,9 @@ class AgentManager:
                     exc_info=True
                 )
                 # Continua comunque con altri agenti
+
+        if not successful_agents:
+            raise Exception("No valid SpecialistAgents could be created from the provided agent data.")
 
         logger.info(f"Successfully created {len(successful_agents)}/{len(valid_agents)} SpecialistAgents")
         logger.info(f"Initialized agent IDs: {[str(aid) for aid in self.agents.keys()]}")
@@ -268,7 +276,10 @@ class AgentManager:
             if not task:
                 raise ValueError(f"Task {task_id} non trovato in workspace {self.workspace_id}")
 
-            # 2. Verifica agent_id
+            # 2. 🧠 MEMORY ENHANCEMENT: Retrieve relevant insights before execution
+            relevant_insights = await self._get_task_insights(task)
+
+            # 3. Verifica agent_id
             if not task.agent_id:
                 await self._handle_task_failure(
                     task_id_str, 
@@ -324,13 +335,83 @@ class AgentManager:
                 "agent_id": str(specialist.agent_data.id)
             }
             
+            # 🚀 NEW: Create execution record for full traceability
+            from database import create_task_execution, update_task_execution
+            
+            execution_id = await create_task_execution(
+                task_id_str,
+                str(specialist.agent_data.id),
+                str(task.workspace_id),
+                openai_trace_id=getattr(task, 'openai_trace_id', None)
+            )
+            
+            execution_start_time = asyncio.get_event_loop().time()
+            
             try:
-                logger.info(f"Calling specialist.execute_task for task {task_id}")
+                logger.info(f"[{task_id}] AGENT EXECUTION START: Calling specialist.execute for agent '{specialist.agent_data.name}'")
+                logger.info(f"[{task_id}] Task Name: {task.name}")
+                logger.info(f"[{task_id}] Task Description: {task.description}")
+
+                # 🧠 MEMORY: Enhance task with insights before execution
+                enhanced_task = await self._enhance_task_with_insights(task, relevant_insights)
+                
                 result = await asyncio.wait_for(
-                    specialist.execute_task(task, context=task_context),
+                    specialist.execute(enhanced_task, session=None),
                     timeout=self.execution_timeout
                 )
+                
+                logger.info(f"[{task_id}] AGENT EXECUTION END: specialist.execute returned successfully.")
                 logger.info(f"specialist.execute_task for task {task_id} returned: {result}")
+                
+                execution_time = asyncio.get_event_loop().time() - execution_start_time
+                
+                # Update task status and result based on execution
+                if result and result.status:
+                    logger.info(f"Updating task {task_id} status to: {result.status.value}")
+                    await update_task_status(task_id_str, result.status.value)
+                    
+                    # Update task result in database
+                    from database import supabase
+                    try:
+                        update_data = {
+                            "result": result.result,
+                            "updated_at": datetime.now().isoformat()
+                        }
+                        
+                        await asyncio.to_thread(
+                            supabase.table("tasks")
+                            .update(update_data)
+                            .eq("id", task_id_str)
+                            .execute
+                        )
+                        logger.info(f"✅ Updated task {task_id} result in database")
+                    except Exception as e:
+                        logger.error(f"Failed to update task result: {e}")
+                    
+                    # 🚀 NEW: Update execution record with success
+                    if execution_id:
+                        await update_task_execution(
+                            execution_id,
+                            'completed',
+                            result={'result': result.result, 'status': result.status.value} if result else None,
+                            logs=f"Task executed successfully in {execution_time:.2f}s",
+                            execution_time_seconds=execution_time
+                        )
+                    
+                    # If task failed, handle appropriately
+                    if result.status == TaskStatus.FAILED:
+                        await self._handle_task_failure(
+                            task_id_str,
+                            result.error_message or "Task execution failed",
+                            {"execution_result": "failed"}
+                        )
+                
+                # 📦 ASSET EXTRACTION: Extract assets from completed task (moved from database.py to resolve circular dependency)
+                if result.status == TaskStatus.COMPLETED:
+                    await self._extract_task_assets(task, result)
+                
+                # 🧠 MEMORY: Store execution insights for future learning
+                await self._store_execution_insights(task, result, relevant_insights)
                 
                 # Cleanup cache su successo
                 self.failed_tasks_cache.pop(task_id_str, None)
@@ -340,6 +421,19 @@ class AgentManager:
             except asyncio.TimeoutError:
                 error_msg = f"Task {task_id} execution timed out after {self.execution_timeout}s"
                 logger.error(error_msg)
+                
+                # 🚀 NEW: Update execution record with timeout error
+                if execution_id:
+                    execution_time = asyncio.get_event_loop().time() - execution_start_time
+                    await update_task_execution(
+                        execution_id,
+                        'failed_retriable',
+                        error_message=error_msg,
+                        error_type='TimeoutError',
+                        execution_time_seconds=execution_time,
+                        logs=f"Task timed out after {execution_time:.2f}s"
+                    )
+                
                 await self._handle_task_failure(
                     task_id_str,
                     error_msg,
@@ -356,6 +450,18 @@ class AgentManager:
             
             error_msg = f"Unexpected error executing task {task_id}: {str(e)}"
             logger.error(error_msg, exc_info=True)
+            
+            # 🚀 NEW: Update execution record with unexpected error
+            if 'execution_id' in locals() and execution_id:
+                execution_time = asyncio.get_event_loop().time() - execution_start_time
+                await update_task_execution(
+                    execution_id,
+                    'failed_retriable',
+                    error_message=error_msg,
+                    error_type=type(e).__name__,
+                    execution_time_seconds=execution_time,
+                    logs=f"Unexpected error after {execution_time:.2f}s: {str(e)}"
+                )
             
             await self._handle_task_failure(
                 task_id_str,
@@ -381,25 +487,15 @@ class AgentManager:
                 task_record = next((t for t in all_tasks if UUID(t["id"]) == task_id), None)
                 
                 if task_record:
-                    # 🤖 AI-DRIVEN SCHEMA HARMONIZATION: Fix validation errors automatically
+                    # Direct Task model creation with fallback processing
                     try:
-                        return await create_model_with_harmonization(
-                            model_class=Task,
-                            raw_data=task_record,
-                            table_context="tasks table from db_list_tasks_from_db"
-                        )
-                    except Exception as harmonization_error:
-                        logger.warning(f"⚠️ Schema harmonization failed for task {task_id}, using fallback: {harmonization_error}")
+                        return Task.model_validate(task_record)
+                    except Exception as validation_error:
+                        logger.warning(f"⚠️ Task validation failed for task {task_id}, using fallback: {validation_error}")
                         
-                        # Emergency fallback: use create_model_with_harmonization even for processed_record
-                        # This ensures that even if the first harmonization attempt fails,
-                        # the fallback also benefits from harmonization logic.
+                        # Emergency fallback: process fields manually
                         processed_record = self._emergency_task_field_processing(task_record)
-                        return await create_model_with_harmonization(
-                            model_class=Task,
-                            raw_data=processed_record, # Use the processed record here
-                            table_context="tasks table from db_list_tasks_from_db (fallback)"
-                        )
+                        return Task.model_validate(processed_record)
                 else:
                     return None
                     
@@ -458,18 +554,310 @@ class AgentManager:
         await asyncio.sleep(300)  # 5 minuti delay
         self.task_execution_cache.pop(task_id_str, None)
 
+    # 🧠 MEMORY ENHANCEMENT METHODS
+    
+    async def _get_task_insights(self, task: Task) -> List[Dict[str, Any]]:
+        """Retrieve relevant insights from memory for task execution"""
+        try:
+            # Create task context for similarity search
+            task_context = {
+                'name': task.name,
+                'description': task.description,
+                'type': getattr(task, 'type', 'unknown'),
+                'agent_role': getattr(task, 'agent_role', 'unknown'),
+                'task_id': str(task.id)
+            }
+            
+            # 1. Get task-specific insights via similarity search
+            task_specific_insights = await memory_similarity_engine.get_relevant_insights(
+                workspace_id=str(self.workspace_id),
+                task_context=task_context,
+                insight_types=['task_success_pattern', 'task_failure_lesson', 'agent_performance_insight']
+            )
+            
+            # 2. 🎯 STRATEGIC LEARNING: Get strategic insights from LearningFeedbackEngine
+            strategic_insights = await self._get_strategic_insights(task)
+            
+            # 3. Combine both types of insights
+            all_insights = task_specific_insights + strategic_insights
+            
+            if task_specific_insights:
+                logger.info(f"🧠 Found {len(task_specific_insights)} task-specific insights for task {task.name}")
+                for insight in task_specific_insights:
+                    logger.info(f"  - {insight.get('insight_type')}: {insight.get('similarity_score', 0):.2f} similarity")
+            
+            if strategic_insights:
+                logger.info(f"🎯 Found {len(strategic_insights)} strategic insights for task {task.name}")
+                for insight in strategic_insights:
+                    logger.info(f"  - {insight.get('insight_type')}: strategic learning insight")
+            
+            if not all_insights:
+                logger.info(f"🧠 No insights found for task {task.name}")
+            
+            return all_insights
+            
+        except Exception as e:
+            logger.error(f"Error retrieving task insights: {e}")
+            return []
+    
+    async def _get_strategic_insights(self, task: Task) -> List[Dict[str, Any]]:
+        """Retrieve strategic insights generated by LearningFeedbackEngine"""
+        try:
+            from database import get_memory_insights
+            
+            # Get recent strategic insights generated by learning system
+            strategic_insights = await get_memory_insights(
+                workspace_id=str(self.workspace_id),
+                insight_type=None,  # Get all types
+                limit=10  # Get recent insights
+            )
+            
+            # Filter for learning system insights only
+            learning_system_insights = []
+            for insight in strategic_insights:
+                agent_role = insight.get('agent_role')
+                insight_type = insight.get('insight_type')
+                
+                # Include insights from learning system that are strategic
+                if (agent_role == 'learning_system' and 
+                    insight_type in ['task_success_pattern', 'task_failure_lesson', 
+                                   'agent_performance_insight', 'timing_optimization_insight']):
+                    
+                    # Add strategic flag to distinguish from similarity-based insights
+                    insight_copy = insight.copy()
+                    insight_copy['strategic'] = True
+                    insight_copy['source'] = 'learning_feedback_engine'
+                    learning_system_insights.append(insight_copy)
+            
+            return learning_system_insights
+            
+        except Exception as e:
+            logger.error(f"Error retrieving strategic insights: {e}")
+            return []
+    
+    async def _enhance_task_with_insights(self, task: Task, insights: List[Dict[str, Any]]) -> Task:
+        """Enhance task description with relevant insights from memory"""
+        try:
+            if not insights:
+                return task
+            
+            # Create enhanced description with insights
+            enhanced_description = task.description or ""
+            
+            # Separate insights by type
+            task_specific_insights = [i for i in insights if not i.get('strategic', False)]
+            strategic_insights = [i for i in insights if i.get('strategic', False)]
+            
+            # Add insights section
+            insights_section = "\n\n🧠 RELEVANT INSIGHTS FROM PAST EXPERIENCE:\n"
+            
+            insight_counter = 1
+            
+            # Add task-specific insights
+            if task_specific_insights:
+                insights_section += "\n📋 TASK-SPECIFIC INSIGHTS:\n"
+                for insight in task_specific_insights[:2]:  # Limit to top 2
+                    insight_type = insight.get('insight_type', 'unknown')
+                    similarity_score = insight.get('similarity_score', 0)
+                    content = insight.get('content', '')
+                    
+                    insights_section += f"\n{insight_counter}. {insight_type.upper()} (relevance: {similarity_score:.2f}):\n"
+                    insights_section += self._format_insight_content(content)
+                    insight_counter += 1
+            
+            # Add strategic insights
+            if strategic_insights:
+                insights_section += "\n🎯 STRATEGIC LEARNING FROM SYSTEM ANALYSIS:\n"
+                for insight in strategic_insights[:2]:  # Limit to top 2
+                    insight_type = insight.get('insight_type', 'unknown')
+                    content = insight.get('content', '')
+                    
+                    insights_section += f"\n{insight_counter}. {insight_type.upper()} (from learning system):\n"
+                    insights_section += self._format_insight_content(content)
+                    insight_counter += 1
+            
+            insights_section += "\n⚡ IMPORTANT: Consider both task-specific patterns and strategic system insights when executing this task.\n"
+            
+            # Create enhanced task copy
+            enhanced_task = task.model_copy()
+            enhanced_task.description = enhanced_description + insights_section
+            
+            logger.info(f"🧠 Enhanced task {task.name} with {len(insights)} insights")
+            return enhanced_task
+            
+        except Exception as e:
+            logger.error(f"Error enhancing task with insights: {e}")
+            return task
+    
+    def _format_insight_content(self, content: str) -> str:
+        """Format insight content for display in task enhancement"""
+        try:
+            parsed_content = json.loads(content)
+            if isinstance(parsed_content, dict):
+                formatted = ""
+                if 'success_factors' in parsed_content:
+                    formatted += f"   ✅ Success factors: {', '.join(parsed_content['success_factors'])}\n"
+                if 'recommendations' in parsed_content:
+                    formatted += f"   💡 Recommendations: {', '.join(parsed_content['recommendations'])}\n"
+                if 'prevention_strategies' in parsed_content:
+                    formatted += f"   🛡️ Prevention strategies: {', '.join(parsed_content['prevention_strategies'])}\n"
+                if 'performance_category' in parsed_content:
+                    formatted += f"   📈 Performance: {parsed_content['performance_category']}\n"
+                if 'pattern_name' in parsed_content:
+                    formatted += f"   🎯 Pattern: {parsed_content['pattern_name']}\n"
+                if 'failure_pattern' in parsed_content:
+                    formatted += f"   ⚠️ Failure pattern: {parsed_content['failure_pattern']}\n"
+                return formatted if formatted else f"   {content[:200]}...\n"
+            else:
+                return f"   {content[:200]}...\n"
+        except:
+            # If not structured, just use first 200 chars
+            return f"   {content[:200]}...\n"
+    
+    async def _store_execution_insights(self, task: Task, result: Any, relevant_insights: List[Dict[str, Any]]):
+        """Store insights from task execution for future learning"""
+        try:
+            # Create execution context
+            execution_context = {
+                'task_id': str(task.id),
+                'name': task.name,
+                'description': task.description,
+                'type': getattr(task, 'type', 'unknown'),
+                'agent_role': getattr(task, 'agent_role', 'unknown')
+            }
+            
+            # Create execution result data
+            execution_result = {
+                'success': result.status == TaskStatus.COMPLETED if result else False,
+                'result': result.result if result else None,
+                'execution_time': getattr(result, 'execution_time', 0),
+                'tools_used': getattr(result, 'tools_used', []),
+                'insights_applied': len(relevant_insights)
+            }
+            
+            # Store insight for future learning
+            await memory_similarity_engine.store_task_execution_insight(
+                workspace_id=str(self.workspace_id),
+                task_context=execution_context,
+                execution_result=execution_result,
+                agent_id=str(task.agent_id) if task.agent_id else None
+            )
+            
+            logger.info(f"🧠 Stored execution insights for task {task.name}")
+            
+        except Exception as e:
+            logger.error(f"Error storing execution insights: {e}")
+
     # Metodi di utilità e monitoring
+    async def _get_all_workspace_agents(self) -> List[AgentModelPydantic]:
+        """Get all workspace agents for handoff support"""
+        try:
+            db_agents = await db_list_agents_from_db(workspace_id=self.workspace_id)
+            agents = []
+            for db_agent in db_agents:
+                try:
+                    agent_model = AgentModelPydantic(**db_agent)
+                    agents.append(agent_model)
+                except Exception as e:
+                    logger.warning(f"Failed to create agent model for {db_agent.get('id')}: {e}")
+            return agents
+        except Exception as e:
+            logger.error(f"Failed to get all workspace agents: {e}")
+            return []
+    
     async def get_agent(self, agent_id: str) -> Optional[SpecialistAgent]:
-        """Ottieni un agente specifico per ID"""
+        """
+        Ottieni un agente specifico per ID con auto-sync DB↔Manager
+        
+        Se l'agente non viene trovato nel manager cache, verifica se esiste nel DB
+        e fa refresh automatico per sincronizzare la cache.
+        """
         try:
             agent_uuid = UUID(agent_id)
-            return self.agents.get(agent_uuid)
+            
+            # Prima prova: cerca nella cache
+            agent = self.agents.get(agent_uuid)
+            if agent:
+                return agent
+            
+            # 🔄 Auto-sync: Se non trovato nella cache, verifica nel DB
+            logger.info(f"🔄 Agent {agent_id} not found in cache, checking DB and auto-refreshing...")
+            
+            # Verifica se l'agente esiste nel database
+            from database import get_agent as db_get_agent
+            db_agent = await db_get_agent(agent_id)
+            
+            if db_agent and str(db_agent.get('workspace_id')) == str(self.workspace_id):
+                # L'agente esiste nel DB ma non nel manager - sync necessario
+                logger.info(f"✅ Agent {agent_id} found in DB, adding to manager cache...")
+                
+                # Usa il metodo efficiente per aggiungere solo questo agente
+                add_success = await self.add_agent_to_cache(agent_id)
+                if add_success:
+                    # Riprova dopo l'aggiunta
+                    agent = self.agents.get(agent_uuid)
+                    if agent:
+                        logger.info(f"✅ Auto-sync successful: Agent {agent_id} now available in manager")
+                        return agent
+                    else:
+                        logger.warning(f"⚠️ Auto-sync failed: Agent {agent_id} still not in cache after adding")
+                else:
+                    logger.error(f"❌ Failed to add agent {agent_id} to manager cache during auto-sync")
+            else:
+                logger.debug(f"Agent {agent_id} not found in DB or wrong workspace")
+            
+            return None
+            
         except ValueError:
             logger.error(f"Invalid agent_id format: {agent_id}")
             return None
         except Exception as e:
             logger.error(f"Error getting agent {agent_id}: {e}")
             return None
+
+    async def add_agent_to_cache(self, agent_id: str) -> bool:
+        """
+        🚀 Aggiunge un singolo agente alla cache del manager senza re-initialize completo
+        
+        Più efficiente di initialize() quando serve aggiungere solo un agente specifico.
+        """
+        try:
+            from database import get_agent as db_get_agent
+            
+            # Recupera l'agente dal DB
+            db_agent = await db_get_agent(agent_id)
+            if not db_agent:
+                logger.warning(f"Agent {agent_id} not found in database")
+                return False
+            
+            if str(db_agent.get('workspace_id')) != str(self.workspace_id):
+                logger.warning(f"Agent {agent_id} belongs to different workspace")
+                return False
+            
+            # Crea il SpecialistAgent
+            from ai_agents.specialist_enhanced import SpecialistAgent
+            from models import Agent as AgentModelPydantic
+            
+            try:
+                agent_model = AgentModelPydantic(**db_agent)
+                # Get all workspace agents for handoff support
+                all_workspace_agents = await self._get_all_workspace_agents()
+                specialist = SpecialistAgent(agent_model, all_workspace_agents)
+                
+                # Aggiunge alla cache
+                agent_uuid = UUID(agent_id)
+                self.agents[agent_uuid] = specialist
+                
+                logger.info(f"✅ Successfully added agent {agent_id} ({db_agent.get('name')}) to manager cache")
+                return True
+                
+            except Exception as creation_error:
+                logger.error(f"Failed to create SpecialistAgent for {agent_id}: {creation_error}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error adding agent {agent_id} to cache: {e}")
+            return False
 
     def get_health_status(self) -> Dict[str, Any]:
         """Ritorna lo stato di salute del manager"""
@@ -505,6 +893,48 @@ class AgentManager:
             logger.info(f"Cache cleanup completed for workspace {self.workspace_id}")
         except Exception as e:
             logger.error(f"Cache cleanup failed: {e}", exc_info=True)
+
+    async def _extract_task_assets(self, task: Task, result: Any) -> None:
+        """
+        Extract assets from completed task result (moved from database.py to resolve circular dependency)
+        """
+        try:
+            from deliverable_system.concrete_asset_extractor import ConcreteAssetExtractor
+            
+            asset_extractor = ConcreteAssetExtractor()
+            
+            # Prepare result payload for asset extraction
+            result_payload = {
+                'result': result.result,
+                'status': result.status.value,
+                'summary': getattr(result, 'summary', None),
+                'structured_content': getattr(result, 'structured_content', None),
+                'execution_time': getattr(result, 'execution_time', 0)
+            }
+            
+            workspace_id = str(task.workspace_id)
+            # Extract assets using the correct method signature
+            task_result_str = str(result_payload) if result_payload else ""
+            context = {
+                "task_id": str(task.id),
+                "task_name": task.name,
+                "workspace_id": workspace_id
+            }
+            
+            extracted_assets = await asset_extractor.extract_assets(
+                content=task_result_str,
+                context=context
+            )
+            
+            if extracted_assets:
+                logger.info(f"📦 ASSET EXTRACTION: Extracted {len(extracted_assets)} assets from completed task {task.id}")
+            else:
+                logger.debug(f"📦 ASSET EXTRACTION: No assets extracted from completed task {task.id}")
+                
+        except ImportError as e:
+            logger.warning(f"ConcreteAssetExtractor not available: {e}")
+        except Exception as e:
+            logger.warning(f"Asset extraction failed for completed task {task.id}: {e}")
 
     async def shutdown(self):
         """Shutdown graceful del manager"""

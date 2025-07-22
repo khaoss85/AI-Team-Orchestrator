@@ -1,0 +1,189 @@
+2025-07-17 09:33:30,213 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-17 09:33:30,214 [INFO] ================================================================================
+2025-07-17 09:33:30,214 [INFO] Project: AI-Powered Content Management System
+2025-07-17 09:33:30,214 [INFO] Goals to test: 3
+2025-07-17 09:33:30,214 [INFO] ================================================================================
+2025-07-17 09:33:30,214 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-17 09:33:30,214 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-17 09:33:31,638 [INFO] ✅ Created workspace: 31033823-e6e5-4e6c-9af7-d4f9f7749b75
+2025-07-17 09:33:32,902 [INFO] ✅ Created goal 1: feature_completion_rate (ID: 8e8daa6a-b469-44cc-af37-026aa5c6b0e3)
+2025-07-17 09:33:35,244 [INFO] ✅ Created goal 2: ai_integration_score (ID: e3615b1b-1a51-442e-9adb-26367a4ecd45)
+2025-07-17 09:33:37,589 [INFO] ✅ Created goal 3: quality_assurance_coverage (ID: 04432680-9bad-4531-a3a3-0d868f1de91f)
+2025-07-17 09:33:39,590 [INFO] ✅ Phase 1 Complete - Created 3 goals
+2025-07-17 09:33:39,591 [INFO] 🎯 PHASE 2: ASSET REQUIREMENTS GENERATION
+2025-07-17 09:33:39,591 [INFO] Generating asset requirements for goal: 8e8daa6a-b469-44cc-af37-026aa5c6b0e3
+2025-07-17 09:33:39,661 [INFO] ✅ Generated 1 asset requirements for goal 8e8daa6a-b469-44cc-af37-026aa5c6b0e3
+2025-07-17 09:33:39,661 [WARNING] ⚠️ Asset requirement Asset for feature_completion_rate may not be concrete enough
+2025-07-17 09:33:44,662 [INFO] Generating asset requirements for goal: e3615b1b-1a51-442e-9adb-26367a4ecd45
+2025-07-17 09:33:44,752 [INFO] ✅ Generated 1 asset requirements for goal e3615b1b-1a51-442e-9adb-26367a4ecd45
+2025-07-17 09:33:44,754 [WARNING] ⚠️ Asset requirement Asset for ai_integration_score may not be concrete enough
+2025-07-17 09:33:49,755 [INFO] Generating asset requirements for goal: 04432680-9bad-4531-a3a3-0d868f1de91f
+2025-07-17 09:33:49,828 [INFO] ✅ Generated 1 asset requirements for goal 04432680-9bad-4531-a3a3-0d868f1de91f
+2025-07-17 09:33:49,828 [WARNING] ⚠️ Asset requirement Asset for quality_assurance_coverage may not be concrete enough
+2025-07-17 09:33:54,928 [INFO] ✅ Phase 2 Complete - Total asset requirements: 0
+2025-07-17 09:33:54,928 [INFO] 🤖 PHASE 3: MULTI-AGENT ORCHESTRATION (EXTENDED LOGIC)
+2025-07-17 09:33:54,929 [INFO] ⏳ Generating team proposal...
+2025-07-17 09:34:08,450 [INFO] ✅ Team proposal generated: 680ea070-2a8e-4497-9b64-96985dd2f0a6
+2025-07-17 09:34:08,451 [INFO] ⏳ Approving team proposal and initiating task generation...
+2025-07-17 09:34:09,796 [INFO] ✅ Team proposal approved.
+2025-07-17 09:34:09,797 [INFO] ⏱️ Waiting for task creation (up to 120 seconds)...
+2025-07-17 09:34:09,797 [INFO] Checking for tasks in workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75...
+2025-07-17 09:34:09,921 [INFO] ⏳ No tasks found yet... waiting. (0s)
+2025-07-17 09:34:19,922 [INFO] Checking for tasks in workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75...
+2025-07-17 09:34:20,058 [INFO] ✅ Found 1 tasks.
+2025-07-17 09:34:20,172 [INFO] ✅ Phase 3 Complete - 1 tasks created.
+2025-07-17 09:34:20,172 [INFO] 🛡️ PHASE 4: TASK EXECUTION AND QUALITY GATES
+2025-07-17 09:34:20,534 [INFO] 🔧 Unified Quality Engine initialized successfully
+2025-07-17 09:34:20,534 [WARNING] AI Quality Assurance system not fully available: cannot import name 'AIQualityEvaluator' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-17 09:34:20,534 [INFO] 🚀 Triggering immediate quality validation for workspace...
+2025-07-17 09:34:20,534 [INFO] Triggering quality check for workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75
+2025-07-17 09:34:20,634 [INFO] ✅ Quality trigger result: {'status': 'triggered', 'workspace_id': '31033823-e6e5-4e6c-9af7-d4f9f7749b75'}
+2025-07-17 09:34:20,635 [INFO] ⏱️ Monitoring task execution and quality validation for 120 seconds...
+2025-07-17 09:34:20,953 [INFO] 🛡️ 643 new quality validations
+2025-07-17 09:35:40,030 [INFO] 🔄 1 tasks in progress
+2025-07-17 09:36:25,860 [INFO] ✅ Phase 4 Complete - Executed 0 tasks, 643 quality validations
+2025-07-17 09:36:25,867 [INFO] 🧠 PHASE 5: MEMORY SYSTEM AND LEARNING
+2025-07-17 09:36:26,008 [INFO] ✅ Memory system active with 0 context entries
+2025-07-17 09:36:26,027 [INFO] ✅ Learning patterns identified: 0
+2025-07-17 09:36:26,027 [INFO] ✅ Phase 5 Complete - Memory system validation
+2025-07-17 09:36:26,027 [INFO] 💭 PHASE 6: REAL-TIME THINKING VALIDATION
+2025-07-17 09:36:26,174 [INFO] ✅ Thinking process captured: 2 reasoning steps across 1 processes
+2025-07-17 09:36:26,175 [INFO] 🧠 Thinking quality score: 100.00% (2/2 high-confidence steps)
+2025-07-17 09:36:26,176 [INFO] ✅ Thinking process meets o3/Claude reasoning standards
+2025-07-17 09:36:26,184 [INFO] ✅ Phase 6 Complete - Thinking validation
+2025-07-17 09:36:26,185 [INFO] 🧠 Thinking quality score: 100.00% (2/2 high-confidence steps)
+2025-07-17 09:36:26,186 [INFO] 📦 PHASE 7: DELIVERABLES AND CONTENT QUALITY
+/opt/homebrew/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+2025-07-17 09:36:26,298 [INFO] Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-17 09:36:26,339 [INFO] ✅ Supabase client (user-level) created successfully
+2025-07-17 09:36:26,344 [INFO] ✅ Supabase service client (admin-level) created successfully
+2025-07-17 09:36:26,344 [INFO] 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-17 09:36:26,345 [INFO] 🔧 Unified Deliverable Engine initialized
+2025-07-17 09:36:26,345 [INFO] 🔧 Unified Deliverable System loaded successfully
+2025-07-17 09:36:26,345 [INFO]    ├─ Consolidated 6 files into unified_deliverable_engine.py
+2025-07-17 09:36:26,345 [INFO]    ├─ Backward compatibility maintained for all imports
+2025-07-17 09:36:26,345 [INFO]    └─ Eliminated duplicate functionality across deliverable components
+2025-07-17 09:36:26,345 [INFO] 🚀 Triggering deliverable creation for workspace...
+2025-07-17 09:36:26,345 [INFO] check_and_create_final_deliverable called
+2025-07-17 09:36:26,446 [INFO] ✅ Deliverable created successfully: True
+2025-07-17 09:36:26,508 [INFO] ✅ Found 0 deliverables
+2025-07-17 09:36:26,508 [INFO] ✅ Phase 7 Complete - 0 specific, 0 generic deliverables
+2025-07-17 09:36:26,508 [INFO] 🔧 PHASE 8: RECENT FIXES VALIDATION
+2025-07-17 09:36:26,508 [INFO] ✅ JSON parsing robustness: PASSED
+2025-07-17 09:36:26,623 [INFO] ✅ Loop prevention: PASSED
+2025-07-17 09:36:26,784 [INFO] ✅ Quality validation enhancement: PASSED
+2025-07-17 09:36:26,784 [INFO] ✅ Phase 8 Complete - Recent fixes validation
+2025-07-17 09:36:26,784 [INFO] 🗄️ PHASE 9: DATABASE INTEGRITY AND ANTI-LOOP PROTECTION
+2025-07-17 09:36:26,787 [INFO] Goals validation: False (status: 404)
+2025-07-17 09:36:26,903 [INFO] Tasks validation: True (status: 200)
+2025-07-17 09:36:26,994 [INFO] Deliverables accessibility: True (status: 200)
+2025-07-17 09:36:26,994 [INFO] ✅ Database linkage validation: FAILED
+2025-07-17 09:36:27,119 [INFO] ✅ Duplicate task check: 0 duplicates found
+2025-07-17 09:36:27,183 [INFO] ✅ Workspace status: active
+2025-07-17 09:36:27,183 [INFO] ✅ Phase 9 Complete - Database integrity validation
+2025-07-17 09:36:27,184 [INFO] 🏛️ PHASE 10: STRATEGIC PILLARS COMPLIANCE (ALL 14)
+2025-07-17 09:36:27,205 [INFO] ✅ Strategic pillars compliance: 12/14 (85.7%)
+2025-07-17 09:36:27,205 [INFO]   pillar_1_openai_sdk: ✅ COMPLIANT
+2025-07-17 09:36:27,205 [INFO]   pillar_2_ai_driven: ✅ COMPLIANT
+2025-07-17 09:36:27,205 [INFO]   pillar_3_universal: ✅ COMPLIANT
+2025-07-17 09:36:27,205 [INFO]   pillar_4_scalable: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_5_goal_driven: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_6_memory_system: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_7_autonomous_pipeline: ❌ NON-COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_8_quality_gates: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_9_minimal_ui: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_10_real_time_thinking: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_11_production_ready: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_12_concrete_deliverables: ❌ NON-COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_13_course_correction: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO]   pillar_14_modular_tools: ✅ COMPLIANT
+2025-07-17 09:36:27,206 [INFO] ⏱️ FINAL POLLING: Waiting for workspace to complete...
+2025-07-17 09:36:27,206 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:36:27,277 [INFO] Polling workspace status: active (0s)
+2025-07-17 09:36:27,407 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:36:42,409 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:36:42,576 [INFO] Polling workspace status: active (15s)
+2025-07-17 09:36:42,733 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:36:57,737 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:36:57,820 [INFO] Polling workspace status: active (30s)
+2025-07-17 09:36:57,955 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:37:12,956 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:37:13,108 [INFO] Polling workspace status: active (45s)
+2025-07-17 09:37:13,245 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:37:28,246 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:37:28,315 [INFO] Polling workspace status: active (61s)
+2025-07-17 09:37:28,438 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:37:43,438 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:37:43,516 [INFO] Polling workspace status: active (76s)
+2025-07-17 09:37:43,665 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:37:58,667 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:37:58,805 [INFO] Polling workspace status: active (91s)
+2025-07-17 09:37:58,934 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:38:13,935 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:38:14,002 [INFO] Polling workspace status: active (106s)
+2025-07-17 09:38:14,128 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:38:29,130 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:38:29,215 [INFO] Polling workspace status: active (122s)
+2025-07-17 09:38:29,361 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:38:44,362 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:38:45,445 [INFO] Polling workspace status: active (138s)
+2025-07-17 09:38:46,601 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:39:01,603 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:39:01,720 [INFO] Polling workspace status: active (154s)
+2025-07-17 09:39:01,860 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:39:16,862 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:39:16,998 [INFO] Polling workspace status: active (169s)
+2025-07-17 09:39:17,139 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:39:32,141 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:39:32,216 [INFO] Polling workspace status: active (185s)
+2025-07-17 09:39:32,344 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:39:47,346 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:39:47,415 [INFO] Polling workspace status: active (200s)
+2025-07-17 09:39:47,545 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:40:02,546 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:40:02,680 [INFO] Polling workspace status: active (215s)
+2025-07-17 09:40:02,809 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:40:17,812 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:40:17,892 [INFO] Polling workspace status: active (230s)
+2025-07-17 09:40:18,030 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:40:33,031 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:40:33,167 [INFO] Polling workspace status: active (245s)
+2025-07-17 09:40:33,295 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:40:48,297 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:40:48,603 [INFO] Polling workspace status: active (261s)
+2025-07-17 09:40:48,969 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:41:03,971 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:41:04,213 [INFO] Polling workspace status: active (277s)
+2025-07-17 09:41:04,350 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:41:19,353 [INFO] Polling workspace 31033823-e6e5-4e6c-9af7-d4f9f7749b75 for completion...
+2025-07-17 09:41:19,490 [INFO] Polling workspace status: active (292s)
+2025-07-17 09:41:19,671 [INFO] Task status: 0 pending, 0 in progress, 0 completed.
+2025-07-17 09:41:34,675 [ERROR] ❌ COMPREHENSIVE TEST FAILED: Workspace did not reach 'completed' status within timeout.
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_test.py", line 162, in run_full_test_suite
+    assert completion_success, "Workspace did not reach 'completed' status within timeout."
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: Workspace did not reach 'completed' status within timeout.
+2025-07-17 09:41:34,681 [ERROR] ❌ Test suite execution failed: Workspace did not reach 'completed' status within timeout.
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_test.py", line 948, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_test.py", line 941, in main
+    report = await test_suite.run_full_test_suite()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_test.py", line 162, in run_full_test_suite
+    assert completion_success, "Workspace did not reach 'completed' status within timeout."
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: Workspace did not reach 'completed' status within timeout.

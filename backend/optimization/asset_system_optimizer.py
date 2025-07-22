@@ -31,7 +31,7 @@ from enum import Enum
 # Import system components
 from database_asset_extensions import AssetDrivenDatabaseManager
 from monitoring.asset_system_monitor import AssetSystemMonitor, AssetSystemHealth
-from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 
 logger = logging.getLogger(__name__)
 

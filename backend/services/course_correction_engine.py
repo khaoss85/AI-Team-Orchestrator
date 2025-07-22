@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from database_asset_extensions import asset_db_manager
-from backend.services.unified_memory_engine import memory_system
+from services.unified_memory_engine import memory_system
 from services.thinking_process import thinking_engine
 
 logger = logging.getLogger(__name__)
@@ -237,11 +237,25 @@ class CourseCorrectionEngine:
         """Calculate expected progress based on goal timeline and complexity"""
         try:
             # Simple calculation - in real implementation would be more sophisticated
-            days_since_creation = (datetime.utcnow() - datetime.fromisoformat(goal.created_at.replace('Z', '+00:00'))).days
+            # Handle different datetime formats and types
+            created_at = goal.created_at if hasattr(goal, 'created_at') else goal.get('created_at')
+            
+            if isinstance(created_at, str):
+                # Handle string datetime
+                created_at_cleaned = created_at.replace('Z', '+00:00')
+                created_datetime = datetime.fromisoformat(created_at_cleaned)
+            elif hasattr(created_at, 'replace'):
+                # Handle datetime object
+                created_datetime = created_at.replace(tzinfo=None) if created_at.tzinfo else created_at
+            else:
+                # Fallback: use current time (0 days difference)
+                created_datetime = datetime.utcnow()
+            
+            days_since_creation = (datetime.utcnow() - created_datetime.replace(tzinfo=None)).days
             
             # Assume goals should make steady progress over 30 days
-            expected_daily_progress = 100 / 30
-            expected_progress = min(days_since_creation * expected_daily_progress, 100)
+            expected_daily_progress = 100.0 / 30.0  # Ensure float division
+            expected_progress = min(float(days_since_creation) * expected_daily_progress, 100.0)
             
             return expected_progress
             

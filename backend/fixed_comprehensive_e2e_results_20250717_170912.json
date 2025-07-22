@@ -1,0 +1,30 @@
+{
+  "test_start": "2025-07-17T17:08:23.489331",
+  "phases_completed": [
+    "workspace_setup",
+    "director_orchestration",
+    "agent_verification",
+    "task_generation",
+    "deliverable_generation",
+    "quality_validation"
+  ],
+  "phases_failed": [],
+  "workspace_id": "422ccd39-d9bb-4ba6-87e6-394d52a33824",
+  "goal_ids": [],
+  "agent_ids": [
+    "c2ddd5f6-9f80-4ac7-971b-8b4d5579f4e1",
+    "ca7d066e-fa6c-473a-9f9d-2f465530574f",
+    "1f3da2cf-a6ab-40c0-b659-af12625d96ba",
+    "a0f5fb86-e4c4-43f8-a702-8d70292926bd"
+  ],
+  "task_ids": [
+    "035cd9d5-cc81-46cb-a613-f1acd309cc62"
+  ],
+  "deliverable_ids": [],
+  "openai_calls_traced": 0,
+  "deliverables_generated": 0,
+  "qa_validations": 3,
+  "overall_success": true,
+  "test_end": "2025-07-17T17:09:12.252727",
+  "success_rate": 1.0
+}

@@ -1,2 +1,2 @@
-from .specialist import SpecialistAgent
+from .specialist_sdk_complete import SpecialistAgent
 from .director import DirectorAgent

@@ -90,11 +90,8 @@ export default function NewProjectPage() {
       console.error('Failed to create project:', err);
       setError(err instanceof Error ? err.message : 'Si è verificato un errore durante la creazione del progetto');
       
-      // For testing without backend, simulate success
-      setTimeout(() => {
-        const fakeId = 'fake-id-123';
-        router.push(`/projects/${fakeId}/configure`);
-      }, 1000);
+      // Don't redirect to fake ID - let user see error and retry
+      // If backend is down, user should fix connection and retry
     } finally {
       setLoading(false);
     }

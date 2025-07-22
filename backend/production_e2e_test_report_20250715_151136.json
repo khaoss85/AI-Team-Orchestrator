@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "3 validation errors for AssetArtifact\nname\n  Field required [type=missing, input_value={'id': UUID('cb79a923-bb4...boarding_optimization'}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ntype\n  Field required [type=missing, input_value={'id': UUID('cb79a923-bb4...boarding_optimization'}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent\n  Input should be a valid dictionary [type=dict_type, input_value='# Process Optimization W...etrics and KPI tracking', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/dict_type"
+}

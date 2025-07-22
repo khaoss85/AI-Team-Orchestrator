@@ -170,8 +170,14 @@ class UnifiedMemoryEngine:
 
             db_record = asdict(context_entry)
             db_record['created_at'] = db_record['created_at'].isoformat()
+            
+            # Remove metadata if not supported by schema, add goal_context
+            if 'metadata' in db_record:
+                del db_record['metadata']
+            if 'goal_context' not in db_record:
+                db_record['goal_context'] = None
 
-            response = await self.supabase.table("memory_context").insert(db_record).execute()
+            response = self.supabase.table("memory_context_entries").insert(db_record).execute()
 
             if response.data:
                 logger.debug(f"✅ Context stored in DB: {entry_id} for workspace {workspace_id_str}")
@@ -189,7 +195,8 @@ class UnifiedMemoryEngine:
         workspace_id: Union[str, UUID],
         query: str,
         context_types: Optional[List[str]] = None,
-        max_results: int = 10
+        max_results: int = 10,
+        limit: Optional[int] = None  # Ignored for compatibility
     ) -> List[ContextEntry]:
         """Retrieves relevant context using AI-driven semantic search from the database."""
         self.stats["contexts_retrieved"] += 1
@@ -240,6 +247,9 @@ class UnifiedMemoryEngine:
 
     async def _ai_semantic_search(self, query: str, contexts: List[ContextEntry], max_results: int) -> List[ContextEntry]:
         """AI-powered semantic search to rank contexts."""
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.semantic_search_agent import SEMANTIC_SEARCH_AGENT_CONFIG
+        
         context_summaries = [{"id": ctx.id, "summary": f"{ctx.context_type}: {str(ctx.content)[:200]}..."} for ctx in contexts]
         
         ranking_prompt = f"""
@@ -247,19 +257,16 @@ class UnifiedMemoryEngine:
         Contexts:
         {json.dumps(context_summaries, indent=2)}
         Return a JSON list of context IDs, ordered from most to least relevant.
-        Example: {{\"ranked_ids\": [\"id1\", \"id3\", \"id2\"]}}
+        Example: {{"ranked_ids": ["id1", "id3", "id2"]}}
         """
         try:
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an expert semantic relevance ranker."},
-                    {"role": "user", "content": ranking_prompt}
-                ],
-                temperature=0.1,
+            ranking_result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=SEMANTIC_SEARCH_AGENT_CONFIG,
+                prompt=ranking_prompt,
                 response_format={"type": "json_object"}
             )
-            ranking_result = json.loads(response.choices[0].message.content)
+
             ranked_ids = ranking_result.get("ranked_ids", [])
             
             context_map = {ctx.id: ctx for ctx in contexts}
@@ -427,6 +434,9 @@ class UnifiedMemoryEngine:
         self, content_type, business_context, requirements, contexts, patterns
     ) -> AssetGenerationResult:
         """Internal AI generation logic."""
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.memory_enhanced_asset_generator_agent import get_memory_enhanced_asset_generator_agent_config
+
         context_summaries = [f"Context: {ctx.context_type} - {str(ctx.content)[:150]}..." for ctx in contexts]
         pattern_summaries = [f"Pattern: {p.successful_approach.get('name', 'Unnamed')} - Effectiveness: {p.effectiveness_score:.2f}" for p in patterns]
 
@@ -458,16 +468,14 @@ class UnifiedMemoryEngine:
         }}
         """
         try:
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": f"You are an expert {content_type} generator."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
+            asset_generator_agent_config = get_memory_enhanced_asset_generator_agent_config(content_type)
+            
+            ai_response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=asset_generator_agent_config,
+                prompt=prompt,
                 response_format={"type": "json_object"}
             )
-            ai_response = json.loads(response.choices[0].message.content)
             
             specificity = ai_response.get("business_specificity_score", 0)
             confidence = ai_response.get("confidence", 0)
@@ -576,6 +584,41 @@ class UnifiedMemoryEngine:
             return []
         except Exception as e:
             logger.error(f"Error getting best performing agents: {e}", exc_info=True)
+            return []
+
+    async def get_memory_insights(self, workspace_id: Union[str, UUID], limit: int = 10) -> List[Dict[str, Any]]:
+        """Get memory insights for a workspace - required for compatibility"""
+        try:
+            workspace_id_str = str(workspace_id)
+            
+            # Retrieve recent contexts with high importance
+            if self.supabase:
+                response = self.supabase.table("memory_context_entries").select("*") \
+                    .eq("workspace_id", workspace_id_str) \
+                    .gte("importance_score", 0.7) \
+                    .order("created_at", desc=True) \
+                    .limit(limit) \
+                    .execute()
+                
+                insights = []
+                for record in response.data:
+                    insights.append({
+                        "id": record.get("id"),
+                        "content": record.get("content", {}),
+                        "type": record.get("context_type", "unknown"),
+                        "importance": record.get("importance_score", 0.0),
+                        "created_at": record.get("created_at"),
+                        "metadata": record.get("metadata", {})
+                    })
+                
+                logger.info(f"Retrieved {len(insights)} memory insights for workspace {workspace_id_str}")
+                return insights
+            else:
+                logger.warning("Supabase not available - returning empty insights")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error retrieving memory insights: {e}")
             return []
 
     # === BACKWARD COMPATIBILITY ALIASES ===

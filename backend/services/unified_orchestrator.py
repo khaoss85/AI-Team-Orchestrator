@@ -28,6 +28,7 @@ CONSOLIDATED FEATURES:
 import asyncio
 import logging
 import json
+import os
 import time
 import statistics
 from datetime import datetime, timedelta
@@ -43,7 +44,7 @@ from database import (
 )
 from models import TaskStatus, WorkspaceStatus, GoalStatus, WorkspaceGoal
 from config.quality_system_config import get_env_bool, get_env_int, get_env_float
-from backend.services.unified_memory_engine import get_universal_memory_architecture
+from services.unified_memory_engine import get_universal_memory_architecture
 
 # Initialize logger first before any usage
 logger = logging.getLogger(__name__)
@@ -641,6 +642,10 @@ class UnifiedOrchestrator:
         self.threshold_adjustments = 0
         
         logger.info("🎼 Unified Orchestrator initialized with complete integration capabilities")
+        
+        # Lifecycle management (Pillar 7: Autonomous Pipeline)
+        self._running = False
+        self._autonomous_mode = os.getenv("PIPELINE_FULLY_AUTONOMOUS", "true").lower() == "true"
 
     # ========================================================================
     # 🚀 WORKFLOW MANAGEMENT (from WorkflowOrchestrator)
@@ -1890,6 +1895,123 @@ class UnifiedOrchestrator:
                 "active_workflows": len(self.active_workflows),
                 "timestamp": datetime.now().isoformat()
             }
+
+    # ========================================================================
+    # 🚀 LIFECYCLE MANAGEMENT (Pillar 7: Autonomous Pipeline)
+    # ========================================================================
+
+    async def start(self):
+        """Start the autonomous orchestrator pipeline (Pillar 7: Autonomous Pipeline)"""
+        try:
+            logger.info("🚀 Starting Unified Orchestrator autonomous pipeline...")
+            
+            self._running = True
+            
+            # Initialize autonomous components
+            if self._autonomous_mode:
+                logger.info("🤖 Autonomous mode enabled - pipeline will operate without human intervention")
+            
+            # Start AI pipeline if available
+            if self.ai_pipeline_engine and hasattr(self.ai_pipeline_engine, 'start'):
+                await self.ai_pipeline_engine.start()
+                logger.info("✅ AI Pipeline Engine started")
+            
+            # Initialize UMA if available
+            if self.uma and hasattr(self.uma, 'start'):
+                await self.uma.start()
+                logger.info("✅ Universal Memory Architecture started")
+            
+            # Mark as started
+            logger.info("🎼 Unified Orchestrator pipeline started successfully")
+            return {"status": "started", "autonomous_mode": self._autonomous_mode}
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to start Unified Orchestrator: {e}")
+            self._running = False
+            raise e
+
+    async def stop(self):
+        """Stop the autonomous orchestrator pipeline"""
+        try:
+            logger.info("🛑 Stopping Unified Orchestrator pipeline...")
+            
+            self._running = False
+            
+            # Stop AI pipeline if available
+            if self.ai_pipeline_engine and hasattr(self.ai_pipeline_engine, 'stop'):
+                await self.ai_pipeline_engine.stop()
+                logger.info("✅ AI Pipeline Engine stopped")
+            
+            # Stop UMA if available
+            if self.uma and hasattr(self.uma, 'stop'):
+                await self.uma.stop()
+                logger.info("✅ Universal Memory Architecture stopped")
+            
+            logger.info("🎼 Unified Orchestrator pipeline stopped successfully")
+            return {"status": "stopped"}
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to stop Unified Orchestrator: {e}")
+            raise e
+
+    def is_running(self) -> bool:
+        """Check if the orchestrator pipeline is running"""
+        return self._running
+    
+    async def update_workspace_metrics(self, workspace_id: str, task_completion_data: Dict[str, Any]) -> None:
+        """
+        Update workspace metrics after task completion
+        
+        This method tracks workspace performance and updates relevant metrics
+        for future orchestration decisions.
+        """
+        try:
+            # Extract relevant data from task completion
+            task_id = task_completion_data.get('task_id')
+            success = task_completion_data.get('success', False)
+            duration = task_completion_data.get('duration_seconds', 0)
+            
+            # Log execution data for future analysis
+            execution_log = {
+                "workspace_id": workspace_id,
+                "task_id": task_id,
+                "type": "task_completion",
+                "message": f"Task {'completed successfully' if success else 'failed'}",
+                "content": {
+                    "success": success,
+                    "duration_seconds": duration,
+                    "timestamp": datetime.now().isoformat()
+                }
+            }
+            
+            # Insert into execution_logs table
+            try:
+                if hasattr(self, 'ato_engine') and self.ato_engine:
+                    # Use ATO engine's supabase client
+                    self.ato_engine.supabase.table("execution_logs").insert(execution_log).execute()
+                elif hasattr(self, 'workflow_engine') and self.workflow_engine:
+                    # Use workflow engine's supabase client
+                    self.workflow_engine.supabase.table("execution_logs").insert(execution_log).execute()
+            except Exception as e:
+                logger.warning(f"Failed to log execution data: {e}")
+            
+            # Update in-memory metrics cache if needed
+            if hasattr(self, '_metrics_cache') and workspace_id in self._metrics_cache:
+                # Update cache with latest performance data
+                cache_entry = self._metrics_cache[workspace_id]
+                if success:
+                    cache_entry['successful_completions'] = cache_entry.get('successful_completions', 0) + 1
+                else:
+                    cache_entry['failed_completions'] = cache_entry.get('failed_completions', 0) + 1
+                    
+            logger.info(f"✅ Updated workspace metrics for {workspace_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to update workspace metrics: {e}")
+
+    def is_autonomous(self) -> bool:
+        """Check if the orchestrator is in autonomous mode (Pillar 7)"""
+        return self._autonomous_mode
 
 # ========================================================================
 # 🏭 SINGLETON FACTORY

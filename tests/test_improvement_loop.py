@@ -13,7 +13,11 @@ async def _update_status(*a, **k):
     return None
 
 async def _list_tasks(ws):
-    return [{"id": "2", "depends_on_task_ids": ["1"]}]
+    # Simula la nuova struttura di dipendenze
+        mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
+            {'depends_on_task_id': '1'}
+        ]
+        return [{"id": "2"}]
 
 async def _create_task(**k):
     return {"id": "new"}

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from database_asset_extensions import AssetDrivenDatabaseManager
-from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
 
 logger = logging.getLogger(__name__)

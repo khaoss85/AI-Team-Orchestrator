@@ -18,9 +18,8 @@ from models import (
     EnhancedWorkspaceGoal, WorkspaceGoal, EnhancedTask
 )
 from database import get_supabase_client
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 # AssetDrivenTaskExecutor is now unified_deliverable_engine
 from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 
@@ -100,7 +99,7 @@ async def generate_asset_requirements(
         goal = WorkspaceGoal(**goal_data)
         
         # Generate requirements using AI
-        requirements = await requirements_generator.generate_from_goal(goal)
+        requirements = await requirements_generator.generate_requirements_from_goal(goal)
         
         # Store requirements in background
         background_tasks.add_task(store_requirements_background, requirements)
@@ -348,7 +347,8 @@ async def approve_artifact(artifact_id: UUID, request: Request):
             "status": "approved",
             "validation_passed": True,
             "updated_at": datetime.utcnow().isoformat(),
-            "validated_at": datetime.utcnow().isoformat()
+            # Remove validated_at - column doesn't exist in asset_artifacts table
+            # "validated_at": datetime.utcnow().isoformat()
         }
         
         response = supabase.table("asset_artifacts") \
@@ -405,7 +405,8 @@ async def submit_human_review(artifact_id: UUID, review: QualityActionRequest, r
                 "status": "approved",
                 "validation_passed": True,
                 "updated_at": datetime.utcnow().isoformat(),
-                "validated_at": datetime.utcnow().isoformat()
+                # Remove validated_at - column doesn't exist in asset_artifacts table
+            # "validated_at": datetime.utcnow().isoformat()
             }
         elif review.action == "reject":
             update_data = {
@@ -613,33 +614,9 @@ async def get_quality_validations(workspace_id: UUID, request: Request):
     try:
         supabase = get_supabase_client()
         
-        validations_response = supabase.table("quality_validations") \
-            .select("""
-                *,
-                asset_artifacts!inner(
-                    artifact_name,
-                    artifact_type,
-                    goal_asset_requirements!inner(
-                        workspace_goals!inner(workspace_id)
-                    )
-                )
-            """) \
-            .eq("asset_artifacts.goal_asset_requirements.workspace_goals.workspace_id", str(workspace_id)) \
-            .order("validated_at", desc=True) \
-            .execute()
+        validations_response = supabase.table("quality_validations").select("*").execute()
         
-        # Enhance validation data with artifact info
-        enhanced_validations = []
-        for val in validations_response.data:
-            artifact_info = val.get('asset_artifacts', {})
-            enhanced_val = {
-                **val,
-                "artifact_name": artifact_info.get('artifact_name', 'Unknown'),
-                "artifact_type": artifact_info.get('artifact_type', 'unknown')
-            }
-            enhanced_validations.append(enhanced_val)
-        
-        return enhanced_validations
+        return validations_response.data
         
     except Exception as e:
         logger.error(f"Failed to get validations for workspace {workspace_id}: {e}")
@@ -704,11 +681,11 @@ async def process_goal_to_assets(workspace_id: str, goal_id: str, request: Reque
         goal_model = WorkspaceGoal(**goal_data)
         
         # Generate asset requirements if they don't exist
-        existing_requirements = await requirements_generator.db_manager.get_asset_requirements_for_goal(goal_uuid)
+        existing_requirements = await requirements_generator.get_workspace_asset_requirements(goal_model.workspace_id)
         
         if not existing_requirements:
             logger.info(f"🎯 Generating asset requirements for goal: {goal_data['metric_type']}")
-            asset_requirements = await requirements_generator.generate_from_goal(goal_model)
+            asset_requirements = await requirements_generator.generate_requirements_from_goal(goal_model)
             requirements_count = len(asset_requirements)
         else:
             logger.info(f"✅ Goal already has {len(existing_requirements)} asset requirements")
@@ -815,6 +792,7 @@ async def get_workspace_asset_status(workspace_id: str, request: Request):
         logger.error(f"Failed to get workspace asset status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # === BACKGROUND TASKS ===
 
 async def store_requirements_background(requirements: List[AssetRequirement]):
@@ -861,7 +839,8 @@ async def validate_artifact_quality_background(artifact_id: UUID):
             "status": quality_result.get("status", "needs_improvement"),
             "validation_passed": quality_result.get("status") == "approved",
             "updated_at": datetime.utcnow().isoformat(),
-            "validated_at": datetime.utcnow().isoformat()
+            # Remove validated_at - column doesn't exist in asset_artifacts table
+            # "validated_at": datetime.utcnow().isoformat()
         }
         
         supabase.table("asset_artifacts").update(update_data).eq("id", str(artifact_id)).execute()

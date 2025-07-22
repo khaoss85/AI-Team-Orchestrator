@@ -1,0 +1,19 @@
+{
+  "test_start": "2025-07-18T14:50:57.605298",
+  "fasi_completate": [
+    "setup_workspace",
+    "verifica_quality_rules"
+  ],
+  "fasi_fallite": [
+    "prepara_memory_insights"
+  ],
+  "integrazioni_verificate": [
+    "Quality Rules Database"
+  ],
+  "feedback_loops_testati": [],
+  "asset_estratti": 0,
+  "quality_rules_utilizzate": 9,
+  "memory_insights_applicati": 0,
+  "successo_completo": false,
+  "test_end": "2025-07-18T14:51:23.316768"
+}

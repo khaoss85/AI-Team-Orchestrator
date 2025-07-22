@@ -4,8 +4,8 @@ from uuid import uuid4
 from unittest.mock import patch, AsyncMock, Mock
 from datetime import datetime
 
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine, DeliverableType
-from backend.models import WorkspaceGoal, AssetRequirement
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine, DeliverableType
+from models import WorkspaceGoal, AssetRequirement
 
 @pytest.fixture
 def sample_goal():

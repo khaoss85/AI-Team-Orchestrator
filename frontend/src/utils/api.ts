@@ -389,8 +389,8 @@ export const api = {
     getProjectDeliverables: async (workspaceId: string, goalId?: string): Promise<ProjectDeliverablesExtended> => {
       try {
         const url = goalId 
-          ? `${API_BASE_URL}/deliverables/workspace/${workspaceId}?goal_id=${goalId}`
-          : `${API_BASE_URL}/deliverables/workspace/${workspaceId}`;
+          ? `${API_BASE_URL}/api/deliverables/workspace/${workspaceId}?goal_id=${goalId}`
+          : `${API_BASE_URL}/api/deliverables/workspace/${workspaceId}`;
         const response = await fetch(url);
         if (!response.ok) {
           const errorText = await response.text();
@@ -399,10 +399,23 @@ export const api = {
         
         const data = await response.json();
         
+        // Ensure data is valid
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid response data from deliverables API');
+        }
+        
         // 🆕 Enhanced validation and transformation for assets
         const transformedData: ProjectDeliverablesExtended = {
+          workspace_id: workspaceId,
+          project_name: data.project_name || '',
+          status: data.status || 'unknown',
+          completion_percentage: data.completion_percentage || 0,
+          total_tasks: data.total_tasks || 0,
+          completed_tasks: data.completed_tasks || 0,
+          created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || new Date().toISOString(),
           ...data,
-          key_outputs: data.key_outputs.map((output: any) => ({
+          key_outputs: (data.key_outputs || []).map((output: any) => ({
             ...output,
             created_at: typeof output.created_at === 'string' 
               ? output.created_at 
@@ -470,7 +483,7 @@ export const api = {
     // 🔥 NEW: Trigger final deliverable creation
     triggerFinalDeliverable: async (workspaceId: string): Promise<FinalizationResponse> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}/create`, {
+        const response = await fetch(`${API_BASE_URL}/api/deliverables/workspace/${workspaceId}/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -486,7 +499,7 @@ export const api = {
     // 🔥 NEW: Force project finalization (emergency)
     forceFinalization: async (workspaceId: string, reason?: string): Promise<FinalizationResponse> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/deliverables/workspace/${workspaceId}/force-finalize`, {
+        const response = await fetch(`${API_BASE_URL}/api/deliverables/workspace/${workspaceId}/force-finalize`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -960,12 +973,19 @@ export const api = {
     
     create: async (data: WorkspaceCreateData): Promise<Workspace> => {
       try {
+        // Transform frontend budget object to backend number format
+        const requestData = {
+          ...data,
+          // Backend expects budget as a simple number, not an object
+          budget: data.budget?.max_amount || undefined
+        };
+        
         const response = await fetch(`${API_BASE_URL}/workspaces`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(requestData),
         });
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
@@ -1491,7 +1511,7 @@ export const api = {
   director: {
     createProposal: async (config: DirectorConfig): Promise<DirectorTeamProposal> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/director/proposal`, {
+        const response = await fetch(`${API_BASE_URL}/api/director/proposal`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1501,7 +1521,23 @@ export const api = {
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
-        return await response.json();
+        const data = await response.json();
+        
+        // Transform DirectorTeamProposalResponse to DirectorTeamProposal
+        if (data.team_members && !data.agents) {
+          return {
+            id: data.proposal_id,
+            workspace_id: config.workspace_id,
+            agents: data.team_members,
+            handoffs: [],
+            estimated_cost: {
+              total_estimated_cost: data.estimated_cost || 0
+            },
+            timeline: data.timeline || "30 days"
+          };
+        }
+        
+        return data;
       } catch (error) {
         return handleApiError(error);
       }
@@ -1510,7 +1546,7 @@ export const api = {
     approveProposal: async (workspaceId: string, proposalId: string): Promise<any> => {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/director/approve/${workspaceId}?proposal_id=${proposalId}`,
+          `${API_BASE_URL}/api/director/approve/${workspaceId}?proposal_id=${proposalId}`,
           {
             method: 'POST'
           }
@@ -1527,7 +1563,7 @@ export const api = {
     // 🔥 NEW: Get proposal details
     getProposal: async (proposalId: string): Promise<DirectorTeamProposal> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/director/proposal/${proposalId}`);
+        const response = await fetch(`${API_BASE_URL}/api/director/proposal/${proposalId}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1735,27 +1771,27 @@ export const api = {
   assets: {
     // Asset Dependencies
     getDependencies: (assetId: string) =>
-      fetch(`${API_BASE_URL}/assets/${assetId}/dependencies`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/assets/${assetId}/dependencies`).then(res => res.json()),
     
     updateDependencies: (assetId: string, updates: any) =>
-      fetch(`${API_BASE_URL}/assets/${assetId}/apply-updates`, {
+      fetch(`${API_BASE_URL}/api/assets/${assetId}/apply-updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       }).then(res => res.json()),
     
     getHistory: (assetId: string, options?: any) =>
-      fetch(`${API_BASE_URL}/assets/${assetId}/history${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/assets/${assetId}/history${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
     
     compareVersions: (assetId: string, fromVersion: string, toVersion: string) =>
-      fetch(`${API_BASE_URL}/assets/${assetId}/compare`, {
+      fetch(`${API_BASE_URL}/api/assets/${assetId}/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from_version: fromVersion, to_version: toVersion }),
       }).then(res => res.json()),
     
     predictImpact: (assetId: string, changeData: any) =>
-      fetch(`${API_BASE_URL}/assets/${assetId}/predict-impact`, {
+      fetch(`${API_BASE_URL}/api/assets/${assetId}/predict-impact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(changeData),
@@ -1763,7 +1799,7 @@ export const api = {
 
     checkDependencies: async (assetId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/assets/${assetId}/dependencies`, {
+        const response = await fetch(`${API_BASE_URL}/api/assets/${assetId}/dependencies`, {
           method: 'GET',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -1775,7 +1811,7 @@ export const api = {
 
     applyDependencyUpdates: async (assetId: string, updateRequest: any): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/assets/${assetId}/apply-updates`, {
+        const response = await fetch(`${API_BASE_URL}/api/assets/${assetId}/apply-updates`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1806,8 +1842,8 @@ export const api = {
     },
   },
 
-  // Workspace Management APIs
-  workspaces: {
+  // REMOVED DUPLICATE workspaces object - using the one with budget transformation above
+  /*
     // Basic CRUD operations
     list: async (userId: string): Promise<Workspace[]> => {
       try {
@@ -1955,6 +1991,7 @@ export const api = {
       }
     },
   },
+  */
 
   // Analytics APIs
   analytics: {

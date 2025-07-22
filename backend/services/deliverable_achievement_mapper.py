@@ -124,23 +124,15 @@ class DeliverableAchievementMapper:
     
     async def _extract_with_ai_semantic(self, task_result: Dict[str, Any], task_name: str) -> AchievementResult:
         """AI semantic analysis with improved prompting"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.achievement_extractor_agent import ACHIEVEMENT_EXTRACTOR_AGENT_CONFIG
+        
         try:
-            # Try to use OpenAI directly with robust error handling
-            try:
-                import openai
-                from openai import OpenAI
-                
-                api_key = os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("No OpenAI API key available")
-                
-                client = OpenAI(api_key=api_key)
-                
-                # Prepare data sample
-                result_text = json.dumps(task_result, default=str)[:1500]
-                
-                # Enhanced prompt with specific examples
-                prompt = f"""Analyze this task completion to identify measurable achievements. Be precise and conservative.
+            # Prepare data sample
+            result_text = json.dumps(task_result, default=str)[:1500]
+            
+            # Enhanced prompt with specific examples
+            prompt = f"""Analyze this task completion to identify measurable achievements. Be precise and conservative.
 
 TASK: {task_name}
 
@@ -148,106 +140,28 @@ RESULT DATA:
 {result_text}
 
 Look for these specific achievement types:
+1. ITEMS_CREATED
+2. DELIVERABLES_COMPLETED
+3. DATA_PROCESSED
+4. METRICS_ACHIEVED
 
-1. ITEMS_CREATED: 
-   - Contact lists (count the contacts: "500 ICP contacts" = 500)
-   - Lead databases, prospect lists, customer directories
-   - Email templates, content pieces
-   
-2. DELIVERABLES_COMPLETED:
-   - Email sequences, marketing campaigns, strategies
-   - Reports, analyses, business plans
-   - Complete documents or frameworks
-   
-3. DATA_PROCESSED:
-   - Records processed, data points analyzed
-   - Research entries compiled
-   
-4. METRICS_ACHIEVED:
-   - Performance improvements, targets met
-   - Quality scores, completion rates
+Return ONLY a JSON object with the extracted data.
+"""
+            result_data = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=ACHIEVEMENT_EXTRACTOR_AGENT_CONFIG,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
 
-EXAMPLES:
-- "Compiled list of 500 ICP contacts" → items_created: 500, deliverables_completed: 1
-- "Created 7-email sequence" → items_created: 7, deliverables_completed: 1  
-- "Analyzed 250 customer records" → data_processed: 250, deliverables_completed: 1
-
-IMPORTANT RULES:
-- Most completed tasks should have deliverables_completed >= 1 (the task output itself)
-- Items created = count of individual items (contacts, emails, records, etc.)
-- Data processed = count of records/entries analyzed  
-- Always count the main deliverable as deliverables_completed: 1
-
-Extract ONLY clear, quantifiable achievements. Look for numbers!
-
-Respond in JSON:
-{{
-    "items_created": <number>,
-    "data_processed": <number>,
-    "deliverables_completed": <number>, 
-    "metrics_achieved": <number>,
-    "confidence_score": <0.0-1.0>,
-    "reasoning": "What specific achievements were found"
-}}"""
-
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                    max_tokens=300,
-                    response_format={"type": "json_object"}
-                )
-                
-                content = response.choices[0].message.content
-                logger.info(f"AI Achievement Extraction Prompt: {prompt}")
-                logger.info(f"AI Achievement Extraction Raw Content: {content}")
-                if content:
-                    result_data = json.loads(content)
-                    logger.info(f"AI Achievement Extraction Parsed Data: {result_data}")
-                    
-                    return AchievementResult(
-                        items_created=int(result_data.get("items_created", 0)),
-                        data_processed=int(result_data.get("data_processed", 0)),
-                        deliverables_completed=int(result_data.get("deliverables_completed", 0)),
-                        metrics_achieved=int(result_data.get("metrics_achieved", 0)),
-                        confidence_score=float(result_data.get("confidence_score", 0.0)),
-                        reasoning=result_data.get("reasoning", "AI analysis completed"),
-                        extraction_method="ai_semantic_analysis"
-                    )
-                
-            except Exception as ai_error:
-                logger.debug(f"Direct OpenAI call failed: {ai_error}")
-                
-                # Fallback to existing AI quality validator
-                try:
-                    from backend.ai_quality_assurance.unified_quality_engine import AIQualityValidator
-                    quality_validator = AIQualityValidator()
-                    
-                    if quality_validator.openai_available:
-                        # Use existing validator but with our enhanced prompt
-                        ai_result = await quality_validator._call_openai_api(prompt, "achievement_analysis")
-                        
-                        if ai_result and "raw_response" in ai_result:
-                            response = ai_result["raw_response"]
-                            confidence = response.get("confidence_score", 0.0)
-                            
-                            return AchievementResult(
-                                items_created=int(response.get("items_created", 0)),
-                                data_processed=int(response.get("data_processed", 0)),
-                                deliverables_completed=int(response.get("deliverables_completed", 0)),
-                                metrics_achieved=int(response.get("metrics_achieved", 0)),
-                                confidence_score=confidence,
-                                reasoning=response.get("reasoning", "AI validator analysis"),
-                                extraction_method="ai_quality_validator"
-                            )
-                except Exception as validator_error:
-                    logger.debug(f"AI quality validator failed: {validator_error}")
-            
-            # AI not available or failed
             return AchievementResult(
-                confidence_score=0.0,
-                reasoning="AI analysis not available",
-                extraction_method="ai_failed"
+                items_created=int(result_data.get("items_created", 0)),
+                data_processed=int(result_data.get("data_processed", 0)),
+                deliverables_completed=int(result_data.get("deliverables_completed", 0)),
+                metrics_achieved=int(result_data.get("metrics_achieved", 0)),
+                confidence_score=float(result_data.get("confidence_score", 0.0)),
+                reasoning=result_data.get("reasoning", "AI analysis completed"),
+                extraction_method="ai_semantic_analysis"
             )
             
         except Exception as e:

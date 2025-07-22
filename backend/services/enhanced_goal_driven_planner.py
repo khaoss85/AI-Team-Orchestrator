@@ -17,7 +17,7 @@ from models import (
 )
 from database import get_workspace_goals
 from database_asset_extensions import AssetDrivenDatabaseManager
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from services.universal_ai_pipeline_engine import (
     UniversalAIPipelineEngine, 
     PipelineStepType, 
@@ -96,13 +96,13 @@ class EnhancedGoalDrivenPlanner:
         
         try:
             # Get existing asset requirements for this goal
-            asset_requirements = await self.asset_db_manager.get_asset_requirements_for_goal(goal.id)
+            asset_requirements = await self.asset_db_manager.get_workspace_asset_requirements(goal.workspace_id)
             logger.info(f"🔍 Found {len(asset_requirements)} existing asset requirements for goal {goal.id}")
             
             # If no asset requirements exist, generate them first
             if not asset_requirements:
                 logger.info(f"Generating asset requirements for goal: {goal.metric_type}")
-                asset_requirements = await self.requirements_generator.generate_from_goal(goal)
+                asset_requirements = await self.requirements_generator.generate_requirements_from_goal(goal)
                 logger.info(f"🔍 Generated {len(asset_requirements)} new asset requirements")
             
             if not asset_requirements:

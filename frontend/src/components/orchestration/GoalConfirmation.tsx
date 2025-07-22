@@ -420,14 +420,29 @@ export function GoalConfirmation({
         )}
 
         {/* Action Buttons */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            <p className="text-sm font-medium text-yellow-800">
+              ⚡ Azione Richiesta
+            </p>
+          </div>
+          <p className="text-xs text-yellow-700">
+            Gli obiettivi sono stati estratti con successo! Clicca "Conferma e Procedi" per salvarli nel database e avviare il team.
+          </p>
+        </div>
+        
         <div className="flex gap-3 pt-4">
           <button
-            onClick={() => onConfirm(goals)}
+            onClick={() => {
+              console.log('🎯 User clicking Confirm button with goals:', goals);
+              onConfirm(goals);
+            }}
             disabled={isLoading || goals.length === 0}
-            className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             <CheckCircle2 className="h-4 w-4 mr-2" />
-            Conferma e Procedi
+            ✅ Conferma e Procedi ({goals.length} obiettivi)
           </button>
           
           <button

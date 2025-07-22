@@ -10,9 +10,8 @@ import logging
 import json
 from datetime import datetime
 
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.ai_quality_assurance.unified_quality_engine import smart_evaluator
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from ai_quality_assurance.unified_quality_engine import smart_evaluator
 from database import list_tasks, get_workspace
 from models import TaskStatus
 

@@ -7,7 +7,7 @@ import json  # NUOVO: Aggiunto import json
 from datetime import datetime, timedelta
 import os
 from collections import Counter
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from models import (
     ProjectDeliverables,
     ProjectOutput,
@@ -25,8 +25,8 @@ from database import (
     create_task,
 )
 from executor import task_executor
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["project-insights"])

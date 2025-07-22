@@ -17,21 +17,7 @@ try:
         # Standalone functions for backward compatibility
         check_and_create_final_deliverable,
         create_intelligent_deliverable,
-        deliverable_aggregator,
-        # deliverable_aggregator.py compatibility aliases
-        IntelligentDeliverableAggregator,
-        AIDeliverableAnalyzer,
-        DynamicAssetExtractor,
-        IntelligentDeliverablePackager,
-        # Backward compatibility aliases
-        ConcreteAssetExtractor,
-        DeliverableMarkupProcessor,
-        DeliverablePipeline,
-        RequirementsAnalyzer,
-        AssetSchemaGenerator,
-        AIDisplayEnhancer,
-        MultiSourceAssetExtractor,
-        UniversalAIContentExtractor
+        deliverable_aggregator
     )
     
     # Primary exports (unified engine)
@@ -61,11 +47,6 @@ try:
         'IntelligentDeliverablePackager',
         
         # Backward compatibility classes
-        'ConcreteAssetExtractor',
-        'DeliverableMarkupProcessor',
-        'DeliverablePipeline',
-        'RequirementsAnalyzer',
-        'AssetSchemaGenerator',
         'AIDisplayEnhancer',
         'MultiSourceAssetExtractor',
         'UniversalAIContentExtractor',
@@ -80,6 +61,21 @@ try:
         'multi_source_extractor',
         'universal_ai_content_extractor'
     ]
+    
+    # Backward compatibility aliases
+    deliverable_aggregator = unified_deliverable_engine
+    IntelligentDeliverableAggregator = unified_deliverable_engine
+    AIDeliverableAnalyzer = unified_deliverable_engine
+    DynamicAssetExtractor = unified_deliverable_engine
+    IntelligentDeliverablePackager = unified_deliverable_engine
+    ConcreteAssetExtractor = unified_deliverable_engine
+    AIDisplayEnhancer = unified_deliverable_engine
+    MultiSourceAssetExtractor = unified_deliverable_engine
+    UniversalAIContentExtractor = unified_deliverable_engine
+    DeliverableMarkupProcessor = unified_deliverable_engine
+    DeliverablePipeline = unified_deliverable_engine
+    RequirementsAnalyzer = unified_deliverable_engine
+    AssetSchemaGenerator = unified_deliverable_engine
     
     DELIVERABLE_SYSTEM_AVAILABLE = True
     

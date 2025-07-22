@@ -1,0 +1,43 @@
+{
+  "test_start": "2025-07-17T14:09:49.180090",
+  "phases_completed": [
+    "openai_api_direct",
+    "api_health",
+    "workspace_creation",
+    "goal_creation",
+    "team_orchestration",
+    "quality_system"
+  ],
+  "phases_failed": [
+    "task_execution"
+  ],
+  "workspace_id": "4a4dcfa7-c667-432a-a6c5-0aa610734d41",
+  "goal_ids": [
+    "c283843e-504f-40b5-aa1d-931087106970",
+    "fb3b3426-4a70-4b7a-ab59-8ac5b9e74378"
+  ],
+  "task_ids": [
+    "bcfd2e0b-9dd9-4d93-9538-eb5d6c9424c5"
+  ],
+  "agents_created": [
+    "87c9ef52-d81f-44e2-b260-230982786662"
+  ],
+  "openai_calls_traced": 0,
+  "real_api_responses": [
+    {
+      "type": "direct_test",
+      "response": "API_TEST_SUCCESS",
+      "timestamp": "2025-07-17T14:09:50.396944"
+    }
+  ],
+  "trace_validations": [],
+  "deliverables_generated": 0,
+  "qa_validations": 0,
+  "overall_success": true,
+  "openai_api_available": true,
+  "sdk_trace_working": true,
+  "success_rate": 0.8571428571428571,
+  "passed_phases": 6,
+  "total_phases": 7,
+  "test_end": "2025-07-17T14:10:18.066773"
+}

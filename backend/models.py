@@ -134,6 +134,7 @@ class Agent(BaseModel):
 class Task(BaseModel):
     id: UUID
     workspace_id: UUID
+    goal_id: Optional[UUID] = None
     agent_id: Optional[UUID] = None
     name: str
     description: Optional[str] = None
@@ -146,11 +147,13 @@ class Task(BaseModel):
 
 class TaskCreate(BaseModel):
     workspace_id: UUID
+    goal_id: Optional[UUID] = None
     agent_id: Optional[UUID] = None
     name: str
     description: Optional[str] = None
     status: Optional[TaskStatus] = TaskStatus.PENDING
     priority: Optional[str] = "medium"
+    semantic_hash: Optional[str] = None
 
 class EnhancedTask(Task):
     result: Optional[str] = None
@@ -294,8 +297,17 @@ class AssetArtifact(BaseModel):
 
 class QualityRule(BaseModel):
     id: Optional[UUID] = None
-    asset_type: str
     rule_name: str
+    rule_type: Optional[str] = None  # Make optional for backward compatibility
+    asset_type: str
+    validation_logic: Dict[str, Any] = Field(default_factory=dict)
+    ai_validation_prompt: str
+    threshold_score: float = 0.7
+    severity: Optional[str] = "medium"  # Make optional for backward compatibility
+    rule_order: int = 1
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     
 class QualityValidation(BaseModel):
     id: Optional[UUID] = None
@@ -326,20 +338,24 @@ class WorkspaceGoalUpdate(BaseModel):
     unit: Optional[str] = None
 
 class GoalProgressLog(BaseModel):
-    id: UUID
+    """Model that exactly matches the goal_progress_logs database table schema"""
+    id: UUID = Field(default_factory=uuid4)
     goal_id: UUID
-    previous_value: float
-    new_value: float
-    change_reason: str
-    created_at: datetime
-
-# Director and Agent models
+    task_id: Optional[UUID] = None
+    progress_percentage: float
+    quality_score: Optional[float] = None
+    timestamp: datetime = Field(default_factory=datetime.now)
+    calculation_method: Optional[str] = "manual"
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 class DirectorConfig(BaseModel):
     max_agents: int = 5
     budget_limit: Optional[float] = None
     specialized_roles: List[str] = []
     
 class DirectorTeamProposal(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
     workspace_id: UUID
     budget_limit: Optional[float] = None
     requirements: Optional[str] = None
@@ -388,9 +404,13 @@ class HandoffProposalCreate(BaseModel):
 
 class DirectorHandoffProposal(BaseModel):
     """Handoff proposal from Director for team structure"""
-    from_agent: str = Field(alias="from")
-    to_agents: List[str] = Field(alias="to")
+    from_agent: str
+    to_agents: List[str] 
     description: Optional[str] = None
+    
+    class Config:
+        # Support both field names for backward compatibility
+        allow_population_by_field_name = True
 
 class Handoff(BaseModel):
     id: UUID
@@ -416,6 +436,45 @@ class TaskExecutionOutput(BaseModel):
     error_message: Optional[str] = None
     execution_time: Optional[float] = None
     artifacts: Optional[List[Dict[str, Any]]] = []
+
+# --- AI-Driven Models for Robust Parsing ---
+
+class AIAgentTool(BaseModel):
+    type: str
+    name: str
+    description: Optional[str] = None
+
+class AIAgentLLMConfig(BaseModel):
+    model: str
+    temperature: float = 0.3
+
+class AIHandoff(BaseModel):
+    from_agent: str = Field(..., alias='from')
+    to_agents: List[str] = Field(..., alias='to')
+    description: Optional[str] = None
+
+class AIAgent(BaseModel):
+    name: str
+    role: str
+    seniority: AgentSeniority
+    description: str
+    system_prompt: str
+    llm_config: AIAgentLLMConfig
+    tools: List[AIAgentTool] = []
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    personality_traits: List[str] = []
+    communication_style: Optional[str] = None
+    hard_skills: List[Dict[str, Any]] = []
+    soft_skills: List[Dict[str, Any]] = []
+    background_story: Optional[str] = None
+
+class AITeamProposal(BaseModel):
+    agents: List[AIAgent]
+    handoffs: List[AIHandoff] = []
+    estimated_cost: Dict[str, Any]
+    rationale: str
+
 
 # Project insight models
 class ProjectDeliverables(BaseModel):
@@ -451,6 +510,12 @@ class ProjectDeliverableCard(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class InsightType(str, Enum):
+    PROGRESS = "progress"
+    RISK = "risk"
+    OPPORTUNITY = "opportunity"
+    RESOURCE = "resource"
+
 class WorkspaceInsight(BaseModel):
     id: UUID
     workspace_id: UUID
@@ -459,6 +524,12 @@ class WorkspaceInsight(BaseModel):
     confidence_score: float = 0.0
     created_at: datetime
     updated_at: datetime
+
+class MemoryQueryRequest(BaseModel):
+    workspace_id: Optional[UUID] = None
+    query_text: str
+    context_types: Optional[List[str]] = None
+    limit: int = 10
 
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):

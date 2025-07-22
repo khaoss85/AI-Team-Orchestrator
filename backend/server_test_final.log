@@ -54,3 +54,123 @@ INFO:     127.0.0.1:61492 - "POST /api/director/proposal HTTP/1.1" 200 OK
 [2m2025-07-13T08:58:16.563249Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
 [2m2025-07-13T08:58:16.633629Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
 [2m2025-07-13T08:58:16.633781Z[0m [[32m[1minfo     [0m] [1m✅ 2 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to query project memory: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+[2m2025-07-13T08:58:37.349501Z[0m [[32m[1minfo     [0m] [1m✅ Auto-start triggered after team approval via director endpoint[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61497 - "POST /api/director/approve/45d33ee0-0979-4d6d-96e2-a4e055e7965b?proposal_id=118d6c18-0e4b-42bf-a1e3-a80989240207 HTTP/1.1" 200 OK
+[2m2025-07-13T08:58:37.353459Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:37.489859Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61508 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+[2m2025-07-13T08:58:37.495711Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61510 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61512 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:58:37.655682Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:37.801772Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61514 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+Failed to get workspace discoveries: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get workspace discoveries: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:45d33ee0 - recommending limit increase to 25
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Error during agent execution: Max turns (10) exceeded
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1017, in execute
+    run_result = await Runner.run(self.agent, str(task.model_dump()))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/agents/run.py", line 212, in run
+    raise MaxTurnsExceeded(f"Max turns ({max_turns}) exceeded")
+agents.exceptions.MaxTurnsExceeded: Max turns (10) exceeded
+[2m2025-07-13T08:58:52.815795Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61519 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61522 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:58:53.038981Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:58:53.169425Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61524 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:45d33ee0 - recommending limit increase to 25
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:45d33ee0 - recommending limit increase to 25
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Error during agent execution: 'TaskExecutionOutput' object has no attribute 'strip'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1027, in execute
+    parsed_data, success, method = parse_llm_json_robust(
+                                   ~~~~~~~~~~~~~~~~~~~~~^
+        raw_output_from_llm, str(task.id)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 881, in parse_llm_json_robust
+    return robust_json_parser.parse_llm_output(raw_output, expected_schema, task_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 86, in parse_llm_output
+    prevalidation_result = self._prevalidate_output(raw_output, task_id)
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 150, in _prevalidate_output
+    if not raw_output or len(raw_output.strip()) < 10:
+                             ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'TaskExecutionOutput' object has no attribute 'strip'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-13T08:59:08.180178Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61547 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61549 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:59:08.316645Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:59:08.468032Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61551 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+[2m2025-07-13T08:59:23.479951Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61554 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61557 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:59:23.707404Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:59:23.851909Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61559 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:45d33ee0 - recommending limit increase to 25
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:45d33ee0 - recommending limit increase to 25
+[2m2025-07-13T08:59:41.895849Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_by_id called[0m [36mendpoint[0m=[35mget_workspace_by_id[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61564 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61566 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/goals HTTP/1.1" 200 OK
+[2m2025-07-13T08:59:42.085506Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T08:59:42.247387Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 45d33ee0-0979-4d6d-96e2-a4e055e7965b (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:61568 - "GET /api/workspaces/45d33ee0-0979-4d6d-96e2-a4e055e7965b/tasks HTTP/1.1" 200 OK
+Failed to get project context: cannot import name 'InsightType' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Error during agent execution: 'TaskExecutionOutput' object has no attribute 'strip'
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1027, in execute
+    parsed_data, success, method = parse_llm_json_robust(
+                                   ~~~~~~~~~~~~~~~~~~~~~^
+        raw_output_from_llm, str(task.id)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 881, in parse_llm_json_robust
+    return robust_json_parser.parse_llm_output(raw_output, expected_schema, task_id)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 86, in parse_llm_output
+    prevalidation_result = self._prevalidate_output(raw_output, task_id)
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/utils/robust_json_parser.py", line 150, in _prevalidate_output
+    if not raw_output or len(raw_output.strip()) < 10:
+                             ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pydantic/main.py", line 991, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'TaskExecutionOutput' object has no attribute 'strip'

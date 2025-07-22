@@ -9,7 +9,7 @@ from uuid import UUID
 
 from models import WorkspaceGoal, GoalStatus
 from database import supabase
-from backend.ai_quality_assurance.unified_quality_engine import goal_validator
+from ai_quality_assurance.unified_quality_engine import goal_validator
 from goal_driven_task_planner import goal_driven_task_planner
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Import asset system for automatic asset requirements generation
 asset_requirements_generator = None
 try:
-    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetRequirementsGenerator
+    from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetRequirementsGenerator
     asset_requirements_generator = AssetRequirementsGenerator
     logger.info("✅ Asset Requirements Generator initialized for goal monitoring")
 except Exception as e:
@@ -1304,7 +1304,7 @@ class AutomatedGoalMonitor:
                     metric_type = goal_data.get("metric_type", "Unknown Goal")
                     
                     # Check if this goal already has asset requirements
-                    existing_requirements = await asset_requirements_generator.db_manager.get_asset_requirements_for_goal(goal_id)
+                    existing_requirements = await asset_requirements_generator.get_workspace_asset_requirements(goal_model.workspace_id)
                     
                     if not existing_requirements:
                         logger.info(f"🎯 Goal '{metric_type}' has no asset requirements - generating automatically")
@@ -1313,7 +1313,7 @@ class AutomatedGoalMonitor:
                         goal_model = WorkspaceGoal(**goal_data)
                         
                         # Generate asset requirements
-                        asset_requirements = await asset_requirements_generator.generate_from_goal(goal_model)
+                        asset_requirements = await asset_requirements_generator.generate_requirements_from_goal(goal_model)
                         requirements_count = len(asset_requirements)
                         total_generated += requirements_count
                         

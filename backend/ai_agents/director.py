@@ -19,8 +19,8 @@ from typing import List, Dict, Any, Optional, Union, Set  # Per type hints compa
 from uuid import UUID
 from enum import Enum
 
-from backend.services.unified_memory_engine import unified_memory_engine
-from backend.utils.model_settings_factory import create_model_settings
+from services.unified_memory_engine import unified_memory_engine
+from utils.model_settings_factory import create_model_settings
 
 # ---------------------------------------------------------------------------
 # logging first (serve prima di eventuali fallback che usano logger)
@@ -1249,40 +1249,28 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             if run_result_obj is not None:
                 raw_llm_output_json_str = run_result_obj.final_output
             # else: raw_llm_output_json_str already set in timeout case
+            
             logger.debug(
                 f"Director LLM raw output for proposal: {raw_llm_output_json_str}"
             )
 
-            proposal_dict: Optional[Dict[str, Any]] = None
             try:
-                proposal_dict = json.loads(raw_llm_output_json_str)
-            except json.JSONDecodeError:
-                logger.warning(
-                    "LLM output for proposal is not valid JSON, attempting extraction..."
-                )
-                # Regex to find JSON block, even if wrapped in markdown
-                match_obj = re.search(
-                    r"```json\s*({[\s\S]*?})\s*```", raw_llm_output_json_str, re.DOTALL
-                ) or re.search(r"({[\s\S]*})", raw_llm_output_json_str, re.DOTALL)
-                if match_obj:
-                    try:
-                        proposal_dict = json.loads(match_obj.group(1))
-                    except json.JSONDecodeError as e_inner:
-                        logger.error(
-                            f"Failed to parse extracted JSON for proposal: {e_inner}. Extracted: {match_obj.group(1)[:200]}"
-                        )
+                # 🤖 PILLAR 2: AI-DRIVEN PARSING
+                # Use Pydantic for robust, AI-aware JSON validation instead of fragile text parsing.
+                from models import AITeamProposal
+                
+                # This single line replaces complex regex and multiple json.loads calls.
+                # It will automatically handle variations in the LLM's output, as long
+                # as the core fields defined in AITeamProposal are present.
+                ai_proposal = AITeamProposal.model_validate_json(raw_llm_output_json_str)
+                proposal_dict = ai_proposal.model_dump(by_alias=True) # Use by_alias=True for handoffs
 
-            if (
-                proposal_dict is None
-                or not isinstance(proposal_dict, dict)
-                or not proposal_dict.get("agents")
-            ):
+            except Exception as pydantic_error:
                 logger.error(
-                    f"Could not parse or extract valid JSON proposal from LLM. Using fallback. Output: {raw_llm_output_json_str[:300]}"
+                    f"Pydantic validation failed for AI proposal: {pydantic_error}. Raw output: {raw_llm_output_json_str[:300]}"
                 )
-                proposal_dict = self._create_fallback_dict(
-                    proposal_request
-                )  # Use dict fallback first
+                # If Pydantic fails, it means the output is fundamentally broken, so we use a safe fallback.
+                proposal_dict = self._create_fallback_dict(proposal_request)
 
             # Validate and sanitize the dictionary before creating Pydantic models
             validated_proposal_data = self._validate_and_sanitize_proposal(

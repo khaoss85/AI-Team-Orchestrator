@@ -28,6 +28,23 @@ from database import supabase
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
+# Compatibility endpoints for E2E tests
+@router.post("/generate-team-proposal")
+async def generate_team_proposal(proposal_request: DirectorTeamProposal, request: Request):
+    """Generate team proposal - compatibility endpoint"""
+    return await create_team_proposal(proposal_request, request)
+
+@router.post("/approve-team-proposal")
+async def approve_team_proposal_compat(data: Dict[str, Any], request: Request):
+    """Approve team proposal - compatibility endpoint"""
+    proposal_id = data.get("proposal_id")
+    if not proposal_id:
+        raise HTTPException(status_code=400, detail="proposal_id required")
+    
+    # Import the approve function from proposals route
+    from routes.proposals import approve_proposal
+    return await approve_proposal(UUID(proposal_id), request)
+
 @router.post("/proposal", response_model=DirectorTeamProposalResponse) 
 async def create_team_proposal(proposal_request: DirectorTeamProposal, request: Request):
     # Get trace ID and create traced logger
@@ -95,6 +112,9 @@ async def create_team_proposal(proposal_request: DirectorTeamProposal, request: 
             else:
                 estimated_cost = float(proposal.estimated_cost)
         
+        if not saved_proposal_db or "id" not in saved_proposal_db:
+            raise HTTPException(status_code=500, detail="Failed to save team proposal and retrieve its ID.")
+
         return DirectorTeamProposalResponse(
             proposal_id=saved_proposal_db["id"],
             team_members=team_members,
@@ -274,25 +294,47 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, 
             if goals_response.data and len(goals_response.data) > 0:
                 logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
                 
-                # 🚨 CRITICAL CHECK: Verify agents exist before triggering auto-start
-                if len(created_agents_db) == 0:
-                    logger.error("🚨 CRITICAL: Cannot trigger auto-start because no agents were created!")
-                    logger.error("🚨 This will cause tasks to be created with assigned_to: null")
-                    auto_start_message = "Team approved but auto-start failed: no agents created"
-                else:
-                    logger.info(f"✅ {len(created_agents_db)} agents available for task assignment")
-                    
-                    from automated_goal_monitor import automated_goal_monitor
-                    import asyncio
-                    
-                    # Trigger immediate goal analysis and task creation (synchronously for faster response)
-                    await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
-                    
-                    auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
-                    logger.info("✅ Auto-start triggered after team approval via director endpoint")
+                from automated_goal_monitor import automated_goal_monitor
+                await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
+                
+                auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
+                logger.info("✅ Auto-start triggered after team approval via director endpoint")
             else:
-                logger.warning(f"⚠️ No active goals found for workspace {workspace_id}")
-                auto_start_message = "Team approved. Please confirm goals to start task execution."
+                # ✅ CRITICAL FIX: Auto-extract goals from workspace.goal before falling back to default task
+                logger.info(f"🎯 No active goals found. Attempting to auto-extract from workspace.goal...")
+                try:
+                    from database import get_workspace, _auto_create_workspace_goals
+                    
+                    workspace = await get_workspace(str(workspace_id))
+                    if workspace and workspace.get("goal"):
+                        goal_text = workspace["goal"]
+                        logger.info(f"📝 Found workspace goal text: {goal_text[:100]}...")
+                        
+                        # Extract goals from workspace goal text
+                        created_goals = await _auto_create_workspace_goals(str(workspace_id), goal_text)
+                        
+                        if created_goals and len(created_goals) > 0:
+                            logger.info(f"✅ Auto-extracted {len(created_goals)} goals from workspace text")
+                            
+                            # Now trigger auto-start for the extracted goals
+                            from automated_goal_monitor import automated_goal_monitor
+                            await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
+                            
+                            auto_start_message = f"Team approved, auto-extracted {len(created_goals)} goals, and triggered auto-start!"
+                            logger.info("✅ Auto-extracted goals and triggered auto-start after team approval")
+                        else:
+                            logger.warning("⚠️ Goal extraction returned no goals, falling back to planning task")
+                            await _create_fallback_planning_task(workspace_id, created_agents_db)
+                            auto_start_message = "Team approved. Goal extraction failed, created default planning task."
+                    else:
+                        logger.warning("⚠️ No workspace goal text found, falling back to planning task")
+                        await _create_fallback_planning_task(workspace_id, created_agents_db)
+                        auto_start_message = "Team approved. No goal text found, created default planning task."
+                        
+                except Exception as extraction_error:
+                    logger.error(f"❌ Failed to auto-extract goals: {extraction_error}")
+                    await _create_fallback_planning_task(workspace_id, created_agents_db)
+                    auto_start_message = "Team approved. Goal extraction failed, created default planning task."
                 
         except Exception as e:
             logger.warning(f"⚠️ Failed to trigger auto-start after team approval: {e}")
@@ -472,3 +514,28 @@ async def _get_strategic_goals(workspace_id: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error getting strategic goals for workspace {workspace_id}: {e}")
         return None
+
+async def _create_fallback_planning_task(workspace_id: UUID, created_agents_db: List[Dict[str, Any]]):
+    """Create a default planning task when goal extraction fails"""
+    logger.warning(f"⚠️ Creating fallback planning task for workspace {workspace_id}")
+    from database import create_task
+    
+    assignee_agent_id = None
+    if created_agents_db:
+        pm_agent = next((agent for agent in created_agents_db if agent.get("role") == "Project Manager"), None)
+        assignee_agent_id = pm_agent["id"] if pm_agent else created_agents_db[0]["id"]
+
+    if assignee_agent_id:
+        # Create default planning task
+        await create_task(
+            workspace_id=str(workspace_id),
+            name="Project Setup & Strategic Planning Kick-off",
+            status="pending",
+            description="Define project phases, key deliverables, assess team skills, and create initial sub-tasks for Phase 1.",
+            priority="high",
+            agent_id=assignee_agent_id
+        )
+        logger.info("✅ Created default planning task to ensure workflow starts.")
+    else:
+        logger.error("🚨 Cannot create initial task because no agents were successfully created.")
+

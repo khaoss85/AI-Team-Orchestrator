@@ -35,7 +35,7 @@ try:
     logger.info("✅ Asset Requirements Generator initialized for goal integration")
 except Exception as e:
     logger.error(f"Failed to initialize Asset Requirements Generator: {e}")
-router = APIRouter(prefix="/api", tags=["workspace-goals"])
+router = APIRouter(tags=["workspace-goals"])
 
 # Create a separate router for direct goal access (without /api prefix)
 direct_router = APIRouter(tags=["workspace-goals-direct"])
@@ -184,7 +184,7 @@ async def preview_goals(
                     "value": goal.target_value,
                     "unit": goal.unit,
                     "type": goal.metric_type,
-                    "description": _generate_simple_description_from_dataclass(goal),
+                    "description": getattr(goal, 'description', _generate_simple_description_from_dataclass(goal)),  # Use AI description first
                     "confidence": goal.confidence,
                     "editable": True,
                     "semantic_context": goal.semantic_context or {}
@@ -210,7 +210,7 @@ async def preview_goals(
                     "value": goal.get("target_value", 0),
                     "unit": goal.get("unit", ""),
                     "type": goal.get("metric_type", "deliverables"),
-                    "description": _generate_simple_description(goal),
+                    "description": goal.get("description", _generate_simple_description(goal)),  # Use AI description first, fallback to generated
                     "confidence": goal.get("confidence", 0.9),
                     "editable": True,
                     "semantic_context": goal.get("semantic_context", {})
@@ -427,7 +427,14 @@ async def confirm_goals(
         )
 
 @router.post("/workspaces/{workspace_id}/goals")
-async def create_workspace_goal(
+async def create_workspace_goal_main(
+    workspace_id: str,
+    goal_data: WorkspaceGoalCreate
+) -> Dict[str, Any]:
+    """Create a new workspace goal - main endpoint"""
+    return await create_workspace_goal_v2(workspace_id, goal_data)
+
+async def create_workspace_goal_v2(
     workspace_id: str,
     goal_data: WorkspaceGoalCreate
 ) -> Dict[str, Any]:
@@ -469,7 +476,7 @@ async def create_workspace_goal(
                 goal_model = WorkspaceGoal(**created_goal)
                 
                 # Generate asset requirements automatically
-                asset_requirements = await asset_requirements_generator.generate_from_goal(goal_model)
+                asset_requirements = await asset_requirements_generator.generate_requirements_from_goal(goal_model)
                 asset_requirements_count = len(asset_requirements)
                 
                 logger.info(f"✅ Generated {asset_requirements_count} asset requirements for goal {created_goal['id']}")
@@ -506,6 +513,14 @@ async def create_workspace_goal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating goal: {str(e)}")
 
+@router.post("/v2/workspaces/{workspace_id}/goals")
+async def create_workspace_goal_v2_endpoint(
+    workspace_id: str,
+    goal_data: WorkspaceGoalCreate
+) -> Dict[str, Any]:
+    """Create a new workspace goal - v2 endpoint"""
+    return await create_workspace_goal_v2(workspace_id, goal_data)
+
 @router.get("/workspaces/{workspace_id}/goals")
 async def get_workspace_goals(
     workspace_id: str,
@@ -541,53 +556,10 @@ async def get_workspace_goals(
         if deliverables_only:
             goals = [g for g in goals if isinstance(g, dict) and (g.get("metric_type", "").startswith("deliverable_") or g.get("metric_type") == "deliverables")]
         
-        # Separate deliverables from other metrics for better organization
-        deliverable_goals = []
-        metric_goals = []
-        
-        for goal in goals:
-            # 🔧 FIX: Handle case where goal might be a string instead of dict
-            if not isinstance(goal, dict):
-                logger.warning(f"Skipping invalid goal data (not a dict): {type(goal)} - {goal}")
-                continue
-                
-            # Check if this is a deliverable based on metric_type or metadata
-            if (goal.get("metric_type", "").startswith("deliverable_") or 
-                goal.get("metric_type") == "deliverables" or
-                (goal.get("metadata", {}).get("base_type") == "deliverables")):
-                deliverable_goals.append(goal)
-            else:
-                metric_goals.append(goal)
-        
-        # Calculate summary statistics with type safety
-        valid_goals = [g for g in goals if isinstance(g, dict)]
-        total_goals = len(valid_goals)
-        active_goals = len([g for g in valid_goals if g.get("status") == "active"])
-        completed_goals = len([g for g in valid_goals if g.get("status") == "completed"])
-        
-        # Calculate overall progress
-        overall_progress = 0.0
-        if active_goals > 0:
-            progress_sum = sum(
-                (g.get("current_value", 0) / g.get("target_value", 1) * 100) if g.get("target_value", 0) > 0 else 0
-                for g in valid_goals if g.get("status") == "active"
-            )
-            overall_progress = progress_sum / active_goals
-        
         return {
             "success": True,
-            "goals": valid_goals,
-            "deliverable_goals": deliverable_goals,
-            "metric_goals": metric_goals,
-            "summary": {
-                "total_goals": total_goals,
-                "deliverable_goals_count": len(deliverable_goals),
-                "metric_goals_count": len(metric_goals),
-                "active_goals": active_goals,
-                "completed_goals": completed_goals,
-                "overall_progress_pct": round(overall_progress, 1)
-            },
-            "message": f"Found {len(deliverable_goals)} deliverables and {len(metric_goals)} metrics"
+            "goals": goals,
+            "total": len(goals)
         }
         
     except Exception as e:

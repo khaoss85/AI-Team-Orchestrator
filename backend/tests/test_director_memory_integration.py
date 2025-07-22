@@ -4,8 +4,8 @@ import asyncio
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.ai_agents.director import DirectorAgent
-from backend.models import DirectorTeamProposal, AgentSeniority
+from ai_agents.director import DirectorAgent
+from models import DirectorTeamProposal, AgentSeniority
 
 @pytest.fixture
 def director_agent():

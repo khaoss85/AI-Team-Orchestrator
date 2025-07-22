@@ -29,7 +29,7 @@ from database import DatabaseManager
 from models import WorkspaceGoal, Task
 
 # Import new asset system components
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
 from database_asset_extensions import AssetDrivenDatabaseManager
 from monitoring.asset_system_monitor import AssetSystemMonitor
 
@@ -263,7 +263,7 @@ class AssetDrivenMigrationManager:
             for goal in goals:
                 try:
                     # Generate requirements using the AI service
-                    goal_requirements = await self.requirements_generator.generate_from_goal(goal)
+                    goal_requirements = await self.requirements_generator.generate_requirements_from_goal(goal)
                     
                     if not dry_run:
                         # Save requirements to database

@@ -140,8 +140,8 @@ async def delete_workspace_by_id(workspace_id: UUID, request: Request):
             )
         
         # Clean up human feedback requests first
-        from human_feedback_manager import human_feedback_manager
-        await human_feedback_manager.cleanup_workspace_requests(str(workspace_id))
+        # from human_feedback_manager import human_feedback_manager
+        # await human_feedback_manager.cleanup_workspace_requests(str(workspace_id))
         
         # Elimina il workspace (cascading delete will handle related records)
         await delete_workspace(str(workspace_id))

@@ -1,0 +1,43 @@
+2025-07-17 08:46:35,889 [INFO] 🚀 COMPREHENSIVE E2E TEST SUITE INITIALIZED
+2025-07-17 08:46:35,889 [INFO] ================================================================================
+2025-07-17 08:46:35,889 [INFO] Project: AI-Powered Content Management System
+2025-07-17 08:46:35,889 [INFO] Goals to test: 3
+2025-07-17 08:46:35,889 [INFO] ================================================================================
+2025-07-17 08:46:35,889 [INFO] 🎯 STARTING COMPREHENSIVE E2E TEST - NO SIMULATIONS
+2025-07-17 08:46:35,889 [INFO] 📋 PHASE 1: SETUP AND GOAL CREATION
+2025-07-17 08:46:35,971 [INFO] ✅ Created workspace: 4a4d1bfc-5bbe-4794-8c50-9329b5ec378e
+2025-07-17 08:46:36,288 [INFO] ✅ Created goal 1: feature_completion_rate (ID: dbb874ac-342e-4c3b-9ab1-f60380e3cef7)
+2025-07-17 08:46:38,621 [INFO] ✅ Created goal 2: ai_integration_score (ID: 548d8dd7-ffd3-49a8-9996-c30d61f3471e)
+2025-07-17 08:46:40,932 [INFO] ✅ Created goal 3: quality_assurance_coverage (ID: 4877d491-2efc-465b-9617-88cf6590c211)
+2025-07-17 08:46:42,934 [INFO] ✅ Phase 1 Complete - Created 3 goals
+2025-07-17 08:46:42,935 [INFO] 🎯 PHASE 2: ASSET REQUIREMENTS GENERATION
+2025-07-17 08:46:42,935 [INFO] Generating asset requirements for goal: dbb874ac-342e-4c3b-9ab1-f60380e3cef7
+2025-07-17 08:46:43,011 [INFO] ✅ Generated 1 asset requirements for goal dbb874ac-342e-4c3b-9ab1-f60380e3cef7
+2025-07-17 08:46:43,012 [WARNING] ⚠️ Asset requirement Asset for feature_completion_rate may not be concrete enough
+2025-07-17 08:46:48,014 [INFO] Generating asset requirements for goal: 548d8dd7-ffd3-49a8-9996-c30d61f3471e
+2025-07-17 08:46:48,094 [INFO] ✅ Generated 1 asset requirements for goal 548d8dd7-ffd3-49a8-9996-c30d61f3471e
+2025-07-17 08:46:48,095 [WARNING] ⚠️ Asset requirement Asset for ai_integration_score may not be concrete enough
+2025-07-17 08:46:53,097 [INFO] Generating asset requirements for goal: 4877d491-2efc-465b-9617-88cf6590c211
+2025-07-17 08:46:53,381 [INFO] ✅ Generated 1 asset requirements for goal 4877d491-2efc-465b-9617-88cf6590c211
+2025-07-17 08:46:53,381 [WARNING] ⚠️ Asset requirement Asset for quality_assurance_coverage may not be concrete enough
+2025-07-17 08:46:58,453 [INFO] ✅ Phase 2 Complete - Total asset requirements: 0
+2025-07-17 08:46:58,454 [INFO] 🤖 PHASE 3: MULTI-AGENT ORCHESTRATION (EXTENDED LOGIC)
+2025-07-17 08:46:58,454 [INFO] ⏳ Generating team proposal...
+2025-07-17 08:47:10,708 [INFO] ✅ Team proposal generated: a1f858a2-b0c9-4afd-a3c7-7bd1e74692ec
+2025-07-17 08:47:10,710 [INFO] ⏳ Approving team proposal and initiating task generation...
+2025-07-17 08:47:12,144 [INFO] ✅ Team proposal approved.
+2025-07-17 08:47:12,145 [INFO] ⏱️ Waiting for task creation (up to 120 seconds)...
+2025-07-17 08:47:12,145 [INFO] Checking for tasks in workspace 4a4d1bfc-5bbe-4794-8c50-9329b5ec378e...
+2025-07-17 08:47:12,275 [INFO] ⏳ No tasks found yet... waiting. (0s)
+2025-07-17 08:47:22,276 [INFO] Checking for tasks in workspace 4a4d1bfc-5bbe-4794-8c50-9329b5ec378e...
+2025-07-17 08:47:22,410 [INFO] ✅ Found 1 tasks.
+2025-07-17 08:47:22,545 [INFO] ✅ Phase 3 Complete - 1 tasks created.
+2025-07-17 08:47:22,545 [INFO] 🛡️ PHASE 4: TASK EXECUTION AND QUALITY GATES
+2025-07-17 08:47:22,850 [INFO] 🔧 Unified Quality Engine initialized successfully
+2025-07-17 08:47:22,850 [WARNING] AI Quality Assurance system not fully available: cannot import name 'AIQualityEvaluator' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-17 08:47:22,850 [INFO] 🚀 Triggering immediate quality validation for workspace...
+2025-07-17 08:47:22,850 [INFO] Triggering quality check for workspace 4a4d1bfc-5bbe-4794-8c50-9329b5ec378e
+2025-07-17 08:47:22,951 [INFO] ✅ Quality trigger result: {'status': 'triggered', 'workspace_id': '4a4d1bfc-5bbe-4794-8c50-9329b5ec378e'}
+2025-07-17 08:47:22,951 [INFO] ⏱️ Monitoring task execution and quality validation for 120 seconds...
+2025-07-17 08:47:23,304 [INFO] 🛡️ 643 new quality validations
+2025-07-17 08:48:24,822 [INFO] 🔄 1 tasks in progress

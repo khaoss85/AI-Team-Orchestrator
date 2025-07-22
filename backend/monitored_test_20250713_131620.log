@@ -1,0 +1,103 @@
+2025-07-13 13:16:20,421 - __main__ - INFO - 🚀 Starting Quick Monitored Test for SDK 0.1.0
+2025-07-13 13:16:20,421 - __main__ - INFO - ================================================================================
+2025-07-13 13:16:20,421 - __main__ - INFO - 
+1️⃣ Testing SDK 0.1.0 availability...
+2025-07-13 13:16:20,421 - __main__ - INFO - 🔍 Testing SDK 0.1.0 availability...
+2025-07-13 13:16:20,823 - __main__ - ERROR - ❌ SDK import failed: cannot import name 'SQLiteSession' from 'agents' (/opt/homebrew/lib/python3.13/site-packages/agents/__init__.py)
+2025-07-13 13:16:20,823 - __main__ - INFO - 
+2️⃣ Testing task execution monitoring...
+2025-07-13 13:16:20,823 - __main__ - INFO - 🔍 Testing task execution monitoring...
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Task monitoring import successful
+2025-07-13 13:16:20,824 - task_execution_monitor - INFO - 🔍 Task Execution Monitor started
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Monitoring started
+2025-07-13 13:16:20,824 - task_execution_monitor - INFO - 📝 Started tracking task test_task_123
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Task trace started
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Stage transitions recorded
+2025-07-13 13:16:20,824 - task_execution_monitor - INFO - 📊 Task test_task_123 completed in 0.00s (5 stages, 0 errors)
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Task trace completed
+2025-07-13 13:16:20,824 - __main__ - INFO - ✅ Trace summary retrieved: 5 stages
+2025-07-13 13:16:20,824 - __main__ - INFO - 
+3️⃣ Testing session adapter...
+2025-07-13 13:16:20,824 - __main__ - INFO - 🔍 Testing orchestrator session adapter...
+2025-07-13 13:16:20,881 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-13 13:16:20,889 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-13 13:16:20,889 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-13 13:16:20,894 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-13 13:16:20,898 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-13 13:16:20,904 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-13 13:16:20,904 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-13 13:16:20,904 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-13 13:16:20,910 - services.universal_ai_pipeline_engine - INFO - 🤖 UniversalAIPipelineEngine initialized with advanced features
+2025-07-13 13:16:20,926 - backend.deliverable_system.unified_deliverable_engine - INFO - 🔧 Unified Deliverable Engine initialized.
+2025-07-13 13:16:20,931 - backend.deliverable_system - WARNING - Deliverable System not fully available: cannot import name 'IntelligentDeliverableAggregator' from 'backend.deliverable_system.unified_deliverable_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/deliverable_system/unified_deliverable_engine.py)
+2025-07-13 13:16:20,931 - services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-13 13:16:20,931 - services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-13 13:16:20,931 - services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-13 13:16:20,931 - services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-13 13:16:20,931 - __main__ - INFO - ✅ Session adapter import successful
+2025-07-13 13:16:20,932 - services.orchestrator_session_adapter - WARNING - SDK sessions not available - using fallback for agent test_agent_789
+2025-07-13 13:16:20,932 - __main__ - WARNING - ⚠️ Session creation returned None (fallback mode)
+2025-07-13 13:16:20,932 - __main__ - INFO - 
+4️⃣ Testing simple task execution...
+2025-07-13 13:16:20,932 - __main__ - INFO - 🔍 Testing simple task execution...
+2025-07-13 13:16:20,935 - ai_agents.specialist - INFO - Using 'agents' SDK v0.0.15+ features.
+2025-07-13 13:16:20,943 - backend.database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-13 13:16:20,943 - backend.database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-13 13:16:20,943 - backend.database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-13 13:16:20,947 - backend.database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-13 13:16:20,952 - backend.database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance.unified_quality_engine - INFO - ✅ Unified Quality Engine module loaded with full backward compatibility.
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance - INFO - Legacy quality_integration module consolidated into unified engine
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance - INFO - 🔧 Unified Quality Assurance System loaded successfully
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance - INFO -    ├─ Consolidated 13 files into unified_quality_engine.py
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-13 13:16:20,959 - backend.ai_quality_assurance - INFO -    └─ Duplicate functions eliminated (unified __init__, reset_stats, _detect_fake_content)
+2025-07-13 13:16:20,960 - ai_agents.specialist - INFO - ✅ Robust JSON parser available
+2025-07-13 13:16:20,967 - backend.services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-13 13:16:20,967 - backend.services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-13 13:16:20,967 - backend.services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-13 13:16:20,967 - backend.services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-13 13:16:20,967 - backend.services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-13 13:16:20,967 - backend.services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-13 13:16:20,967 - backend.services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-13 13:16:21,059 - executor - INFO - ✅ WebSocket real-time updates available in TaskExecutor
+2025-07-13 13:16:21,060 - services.thinking_process - INFO - 💭 Real-Time Thinking Engine initialized
+2025-07-13 13:16:21,060 - executor - INFO - ✅ Thinking Process Engine available for real-time reasoning
+2025-07-13 13:16:21,063 - services.workspace_health_manager - INFO - WorkspaceHealthManager initialized - auto_recovery: True, base_task_limit: 200, check_interval: 300s
+2025-07-13 13:16:21,063 - executor - INFO - ✅ WorkspaceHealthManager available for intelligent health checks
+2025-07-13 13:16:21,064 - services.agent_status_manager - INFO - AgentStatusManager initialized - auto_sync: True, sync_interval: 120s, activity_timeout: 30min
+2025-07-13 13:16:21,064 - executor - INFO - ✅ AgentStatusManager available for unified agent management
+2025-07-13 13:16:21,065 - services.dynamic_anti_loop_manager - INFO - 🤖 DynamicAntiLoopManager initialized with AI-driven adaptation
+2025-07-13 13:16:21,065 - executor - INFO - ✅ DynamicAntiLoopManager available for AI-driven limit management
+2025-07-13 13:16:21,069 - services.unified_orchestrator - INFO - 🎼 Unified Orchestrator initialized with complete integration capabilities
+2025-07-13 13:16:21,069 - services.unified_orchestrator - INFO - 🏭 Created singleton Unified Orchestrator instance
+2025-07-13 13:16:21,069 - executor - INFO - ✅ Unified Orchestrator available for complete orchestration capabilities
+2025-07-13 13:16:21,069 - services.system_telemetry_monitor - INFO - 🤖 SystemTelemetryMonitor initialized with proactive alerting
+2025-07-13 13:16:21,069 - executor - INFO - ✅ SystemTelemetryMonitor available for proactive monitoring
+2025-07-13 13:16:21,070 - executor - INFO - ✅ TaskExecutionMonitor available for hang detection
+2025-07-13 13:16:21,070 - database_asset_extensions - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-13 13:16:21,070 - executor - INFO - ✅ Asset System integration available for TaskExecutor
+2025-07-13 13:16:21,070 - database_asset_extensions - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-13 13:16:21,070 - executor - INFO - ✅ Quality System integration available for TaskExecutor
+2025-07-13 13:16:21,070 - executor - INFO - ✅ Task execution monitoring started
+2025-07-13 13:16:21,070 - task_analyzer - CRITICAL - 🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+2025-07-13 13:16:21,070 - task_analyzer - CRITICAL - auto_generation_enabled: True
+2025-07-13 13:16:21,070 - task_analyzer - CRITICAL - analysis_enabled: True
+2025-07-13 13:16:21,070 - task_analyzer - INFO - EnhancedTaskExecutor initialized with complete fixes
+2025-07-13 13:16:21,071 - executor - INFO - 🚀 ATOE initialized successfully for skip rate optimization
+2025-07-13 13:16:21,071 - executor - INFO - 🔍 EXECUTOR: Quality assurance integration enabled
+2025-07-13 13:16:21,071 - executor - INFO - 🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version
+2025-07-13 13:16:21,071 - __main__ - ERROR - ❌ Task execution test failed: create_workspace() missing 2 required positional arguments: 'description' and 'user_id'
+2025-07-13 13:16:21,071 - __main__ - INFO - 
+================================================================================
+2025-07-13 13:16:21,071 - __main__ - INFO - 📊 TEST RESULTS SUMMARY
+2025-07-13 13:16:21,071 - __main__ - INFO - ================================================================================
+2025-07-13 13:16:21,071 - __main__ - INFO - sdk_available       : ❌ FAIL
+2025-07-13 13:16:21,071 - __main__ - INFO - monitoring_works    : ✅ PASS
+2025-07-13 13:16:21,071 - __main__ - INFO - adapter_works       : ✅ PASS
+2025-07-13 13:16:21,071 - __main__ - INFO - task_execution      : ❌ FAIL
+2025-07-13 13:16:21,071 - __main__ - INFO - 
+Overall: 2/4 tests passed
+2025-07-13 13:16:21,071 - __main__ - INFO - 🔴 Multiple test failures. Further investigation needed.
+2025-07-13 13:16:21,071 - task_execution_monitor - INFO - 🔍 Task Execution Monitor started

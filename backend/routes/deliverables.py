@@ -12,79 +12,18 @@ router = APIRouter(prefix="/deliverables", tags=["deliverables"])
 logger = logging.getLogger(__name__)
 
 @router.get("/workspace/{workspace_id}")
-async def get_workspace_deliverables(request: Request, workspace_id: str, goal_id: Optional[str] = None):
-    # Get trace ID and create traced logger
+async def get_workspace_deliverables(request: Request, workspace_id: str):
+    """Get all deliverables for a workspace"""
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
-    logger.info(f"Route get_workspace_deliverables called", endpoint="get_workspace_deliverables", trace_id=trace_id)
-
-    """Get all deliverables for a workspace - Frontend compatible format"""
+    logger.info(f"Route get_workspace_deliverables called for workspace {workspace_id}", endpoint="get_workspace_deliverables", trace_id=trace_id)
     try:
-        if goal_id:
-            logger.info(f"🔍 Fetching deliverables for workspace {workspace_id}, goal {goal_id}")
-        else:
-            logger.info(f"🔍 Fetching deliverables for workspace {workspace_id}")
-        
-        # Use CRUD function
+        logger.info(f"Querying deliverables for workspace {workspace_id}...")
         deliverables = await get_deliverables(workspace_id)
-        
-        # Filter by goal_id if provided
-        if goal_id:
-            filtered_deliverables = []
-            for deliverable in deliverables:
-                metadata = deliverable.get("metadata", {})
-                if metadata.get("goal_id") == goal_id:
-                    filtered_deliverables.append(deliverable)
-            deliverables = filtered_deliverables
-            logger.info(f"📋 Filtered to {len(deliverables)} deliverables for goal {goal_id}")
-        
-        # Transform deliverables to frontend-expected format
-        key_outputs = []
-        for deliverable in deliverables:
-            # Transform deliverable to ProjectOutput format
-            output = {
-                "id": deliverable["id"],
-                "title": deliverable["title"],
-                "task_name": deliverable["title"],  # Alias for compatibility
-                "description": deliverable.get("metadata", {}).get("description", ""),
-                "type": deliverable["type"],
-                "category": "final_deliverable" if deliverable["type"] == "final_report" else deliverable["type"],
-                "content": deliverable["content"],
-                "status": deliverable["status"],
-                "created_at": deliverable["created_at"],
-                "updated_at": deliverable.get("updated_at", deliverable["created_at"]),
-                "readiness_score": deliverable.get("readiness_score", 100),
-                "completion_percentage": deliverable.get("completion_percentage", 100),
-                "business_value_score": deliverable.get("business_value_score", 85),
-                "quality_metrics": deliverable.get("quality_metrics", {}),
-                "metadata": deliverable.get("metadata", {}),
-                # Frontend expected fields
-                "key_insights": [],
-                "metrics": deliverable.get("quality_metrics", {}),
-                "actionable_assets": deliverable.get("content", {}),
-                "actionability_score": deliverable.get("readiness_score", 100),
-                "automation_ready": deliverable.get("completion_percentage", 0) >= 100,
-                "visual_summary": None
-            }
-            key_outputs.append(output)
-        
-        # Return in frontend-expected format
-        return {
-            "workspace_id": workspace_id,
-            "total_tasks": len(deliverables),
-            "completed_tasks": len([d for d in deliverables if d["status"] == "completed"]),
-            "key_outputs": key_outputs,
-            "business_impact": {
-                "deliverable_count": len(deliverables),
-                "readiness_average": sum(d.get("readiness_score", 100) for d in deliverables) / len(deliverables) if deliverables else 0,
-                "business_value_average": sum(d.get("business_value_score", 85) for d in deliverables) / len(deliverables) if deliverables else 0
-            },
-            "project_phase": "completed" if any(d["status"] == "completed" for d in deliverables) else "active",
-            "last_updated": max([d["updated_at"] for d in deliverables], default=None) if deliverables else None
-        }
-        
+        logger.info(f"Deliverables query completed for workspace {workspace_id}. Found {len(deliverables)} deliverables. Data: {deliverables}")
+        return deliverables
     except Exception as e:
-        logger.error(f"❌ Error fetching deliverables for workspace {workspace_id}: {e}")
+        logger.error(f"❌ Error fetching deliverables for workspace {workspace_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch deliverables: {str(e)}")
 
 @router.post("/workspace/{workspace_id}/create")
@@ -233,14 +172,13 @@ async def force_finalize_deliverables(workspace_id: str, request: Request):
         logger.info(f"🚀 Force finalizing deliverables for workspace {workspace_id}")
         
         # Import the AI-driven deliverable creation logic
-        from fix_deliverable_creation import check_and_fix_deliverable_creation
+        from deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
         
-        # Run the AI-driven deliverable creation
-        await check_and_fix_deliverable_creation()
+        # Run the AI-driven deliverable creation (force mode)
+        await check_and_create_final_deliverable(workspace_id, force=True)
         
-        # Return updated deliverables
-        result = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id).execute()
-        deliverables = result.data or []
+        # Return updated deliverables using the proper function
+        deliverables = await get_deliverables(workspace_id)
         
         logger.info(f"✅ Force finalization complete. {len(deliverables)} deliverables available")
         

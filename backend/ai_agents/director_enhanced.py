@@ -46,7 +46,7 @@ class EnhancedDirectorAgent(DirectorAgent):
         deliverables = strategic_goals.get('strategic_deliverables', [])
         metrics = strategic_goals.get('final_metrics', [])
         
-        context_parts = [original_goal]
+        context_parts = [original_goal] if original_goal else []
         
         # Add key deliverables
         if deliverables:
@@ -74,7 +74,7 @@ class EnhancedDirectorAgent(DirectorAgent):
                 f"AI autonomy: {autonomous_count} fully autonomous, {assisted_count} assisted deliverables"
             )
         
-        return " | ".join(context_parts)
+        return " | ".join(context_parts) if context_parts else "No specific requirements provided"
     
     def _analyze_required_skills(self, strategic_goals: Dict[str, Any]) -> List[str]:
         """Extract required skills from deliverables"""

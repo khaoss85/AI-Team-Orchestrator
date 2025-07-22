@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "3 validation errors for AssetArtifact\nname\n  Field required [type=missing, input_value={'id': '5075001e-f160-44a...4c38-96c2-e3fb6f1a2fbe'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ntype\n  Field required [type=missing, input_value={'id': '5075001e-f160-44a...4c38-96c2-e3fb6f1a2fbe'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent\n  Input should be a valid dictionary [type=dict_type, input_value='{\"text\":\"# Process Optim...ing\",\"type\":\"markdown\"}', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/dict_type"
+}

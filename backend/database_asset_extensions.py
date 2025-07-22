@@ -34,28 +34,29 @@ class AssetDrivenDatabaseManager:
             requirement_data = {
                 "id": str(requirement.id),
                 "goal_id": str(requirement.goal_id),
-                "decomposition_id": str(requirement.decomposition_id) if requirement.decomposition_id else str(requirement.id),  # Use id as decomposition_id if none
+                "workspace_id": str(requirement.workspace_id),
+                "decomposition_id": str(requirement.id),  # Use id as decomposition_id
                 "internal_id": str(requirement.id),  # Same as id - required for legacy compatibility
                 "todo_type": "simple",  # Valid enum value for todo_type check constraint
                 "name": requirement.asset_name,  # Required field - name of the asset
-                "description": requirement.asset_name,  # Use asset_name as description (renamed field)
+                "description": requirement.description,  # Use actual description field
                 "asset_type": requirement.asset_type,
-                "asset_format": requirement.asset_format,
-                "priority": requirement.priority,
-                "estimated_effort": requirement.estimated_effort,
-                "user_impact": requirement.user_impact,
-                "weight": requirement.weight,
-                "mandatory": requirement.mandatory,
-                "business_value_score": requirement.business_value_score,
-                "acceptance_criteria": requirement.acceptance_criteria,
-                "validation_rules": requirement.validation_rules,
-                "supports_assets": requirement.supports_assets or [],
-                "value_proposition": requirement.value_proposition,
-                "status": requirement.status,
-                "progress_percentage": requirement.progress_percentage,
-                "ai_generated": requirement.ai_generated,
-                "language_agnostic": requirement.language_agnostic,
-                "sdk_compatible": requirement.sdk_compatible,
+                "asset_format": getattr(requirement, 'asset_format', 'text'),
+                "priority": "medium",  # Default value since not in model
+                "estimated_effort": "medium",  # Default value since not in model
+                "user_impact": "medium",  # Default value since not in model - must be: low, medium, high, critical
+                "weight": 1.0,  # Default value since not in model
+                "mandatory": True,  # Default value since not in model
+                "business_value_score": getattr(requirement, 'business_value_score', 0.5),
+                "acceptance_criteria": {},  # Default value since not in model
+                "validation_rules": {},  # Default value since not in model
+                "supports_assets": [],  # Default value since not in model
+                "value_proposition": requirement.description,  # Use description as value prop
+                "status": "pending",  # Default value since not in model - must be: pending, in_progress, completed, blocked
+                "progress_percentage": 0,  # Default value since not in model
+                "ai_generated": getattr(requirement, 'ai_generated', True),
+                "language_agnostic": True,  # Default value since not in model
+                "sdk_compatible": True,  # Default value since not in model
                 "created_at": datetime.utcnow().isoformat(),
                 "updated_at": datetime.utcnow().isoformat()
             }
@@ -143,29 +144,28 @@ class AssetDrivenDatabaseManager:
     async def create_asset_artifact(self, artifact: AssetArtifact) -> AssetArtifact:
         """Create new asset artifact with enhanced metadata"""
         try:
-            # Database-aligned field names
-            artifact_data = {
-                "id": str(artifact.id),
-                "requirement_id": str(artifact.requirement_id),
-                "task_id": str(artifact.task_id) if artifact.task_id else None,
-                "workspace_id": str(artifact.workspace_id) if artifact.workspace_id else None,
-                "name": getattr(artifact, 'name', None) or artifact.artifact_name,  # Database field
-                "type": getattr(artifact, 'type', None) or artifact.artifact_type,  # Database field
-                "category": getattr(artifact, 'category', 'general'),  # Database field
-                "content": artifact.content,  # JSONB
-                "metadata": artifact.metadata,
-                "quality_score": artifact.quality_score,
-                "completeness_score": getattr(artifact, 'completeness_score', 0.0),  # Database field
-                "authenticity_score": getattr(artifact, 'authenticity_score', 0.0),  # Database field
-                "actionability_score": artifact.actionability_score,
-                "status": artifact.status,
-                "validation_status": getattr(artifact, 'validation_status', 'pending'),  # Database field
-                "generation_method": getattr(artifact, 'generation_method', 'manual'),  # Database field
-                "ai_confidence": getattr(artifact, 'ai_confidence', 0.0),  # Database field
-                "source_tools": getattr(artifact, 'source_tools', []),  # Database field
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
-            }
+            # Use the same approach as the original database.py
+            artifact_data = artifact.model_dump(exclude={'id'}) if hasattr(artifact, 'model_dump') else artifact.dict(exclude={'id'})
+            
+            # Convert UUID fields to strings for JSON serialization
+            for key, value in artifact_data.items():
+                if hasattr(value, 'hex'):  # UUID objects have hex attribute
+                    artifact_data[key] = str(value)
+            
+            # Filter out fields that don't exist in the database schema
+            # Based on the database errors, these fields don't exist in the schema
+            fields_to_remove = [
+                'name', 'type', 'category', 'completeness_score', 'authenticity_score',
+                'validation_status', 'generation_method', 'ai_confidence', 'source_tools',
+                'content_format', 'validation_passed', 'ai_enhanced'
+            ]
+            
+            for field in fields_to_remove:
+                artifact_data.pop(field, None)
+            
+            # Ensure timestamps are ISO format
+            artifact_data['created_at'] = datetime.utcnow().isoformat()
+            artifact_data['updated_at'] = datetime.utcnow().isoformat()
             
             response = self.supabase.table("asset_artifacts").insert(artifact_data).execute()
             
@@ -173,9 +173,22 @@ class AssetDrivenDatabaseManager:
                 logger.info(f"✅ Created asset artifact: {getattr(artifact, 'name', None) or artifact.artifact_name}")
                 # Map database fields back to model for backward compatibility
                 artifact_result = response.data[0].copy()
+                
+                # Add required fields that were filtered out during creation
+                artifact_result['name'] = getattr(artifact, 'name', None) or artifact.artifact_name
+                artifact_result['type'] = getattr(artifact, 'type', None) or artifact.artifact_type
                 artifact_result['artifact_name'] = artifact_result.get('name', '')
                 artifact_result['artifact_type'] = artifact_result.get('type', '')
                 artifact_result['content_format'] = 'json'  # Default for JSONB
+                
+                # Ensure content is a dictionary
+                if isinstance(artifact_result.get('content'), str):
+                    import json
+                    try:
+                        artifact_result['content'] = json.loads(artifact_result['content'])
+                    except (json.JSONDecodeError, TypeError):
+                        artifact_result['content'] = {"text": artifact_result['content']}
+                
                 artifact_data = self._filter_asset_artifact_fields(artifact_result)
                 created_artifact = AssetArtifact(**artifact_data)
                 
@@ -228,7 +241,8 @@ class AssetDrivenDatabaseManager:
                 
             if status == "approved":
                 update_data["validation_passed"] = True
-                update_data["validated_at"] = datetime.utcnow().isoformat()
+                # Remove validated_at - column doesn't exist in asset_artifacts table
+                # update_data["validated_at"] = datetime.utcnow().isoformat()
             
             response = self.supabase.table("asset_artifacts") \
                 .update(update_data) \
@@ -357,7 +371,8 @@ class AssetDrivenDatabaseManager:
                 "actionability_assessment": validation.actionability_assessment,
                 "quality_dimensions": _ensure_json_serializable(validation.quality_dimensions),
                 "validation_model": validation.validation_model,
-                "validated_at": datetime.utcnow().isoformat(),
+                # Remove validated_at - column doesn't exist in asset_artifacts table
+                # "validated_at": datetime.utcnow().isoformat(),
                 "processing_time_ms": validation.processing_time_ms,
                 "ai_driven": validation.ai_driven,
                 "pillar_compliance_check": _ensure_json_serializable(validation.pillar_compliance_check)
@@ -547,15 +562,21 @@ class AssetDrivenDatabaseManager:
             logger.error(f"Failed to enforce zero progress for goal {goal_id}: {e}")
 
     @supabase_retry(max_attempts=3)
-    async def log_goal_progress(self, goal_id: UUID, progress: float, quality_score: float):
+    async def log_goal_progress(self, goal_id: UUID, progress: float, quality_score: float, task_id: Optional[UUID] = None):
         """Log goal progress change for tracking and analytics"""
         try:
+            # Use current timestamp for both timestamp and created_at fields
+            current_time = datetime.utcnow().isoformat()
+            
             progress_log = {
                 "id": str(uuid4()),
                 "goal_id": str(goal_id),
+                "task_id": str(task_id) if task_id else None,
                 "progress_percentage": progress,
                 "quality_score": quality_score,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": current_time,
+                "created_at": current_time,
+                "updated_at": current_time,
                 "calculation_method": "asset_driven",
                 "metadata": {
                     "system": "asset_driven_orchestrator",
@@ -620,7 +641,7 @@ class AssetDrivenDatabaseManager:
             response = self.supabase.table("asset_artifacts") \
                 .select("""
                     *,
-                    goal_asset_requirements!inner(
+                    goal_asset_requirements!asset_artifacts_requirement_id_fkey(
                         workspace_goals!inner(workspace_id)
                     )
                 """) \

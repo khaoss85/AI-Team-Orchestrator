@@ -11,7 +11,7 @@ from fastapi import Request, APIRouter, HTTPException
 from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 from pydantic import BaseModel, Field
 
-from backend.services.unified_memory_engine import memory_system
+from services.unified_memory_engine import memory_system
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ async def search_memory_context(query_data: ContextQuery, request: Request):
     try:
         logger.info(f"🔍 Searching context for workspace: {query_data.workspace_id}")
         
-        contexts = await memory_system.retrieve_context(
+        contexts = await memory_system.get_relevant_context(
             workspace_id=query_data.workspace_id,
             query=query_data.query,
             limit=query_data.limit
@@ -126,7 +126,7 @@ async def get_workspace_memory_context(request: Request, workspace_id: UUID, lim
         logger.info(f"📋 Getting memory context for workspace: {workspace_id}")
         
         # Use empty query to get recent contexts by importance
-        contexts = await memory_system.retrieve_context(
+        contexts = await memory_system.get_relevant_context(
             workspace_id=workspace_id,
             query="",  # Empty query returns by importance
             limit=limit
@@ -164,7 +164,7 @@ async def get_workspace_memory_insights(workspace_id: UUID, request: Request):
     try:
         logger.info(f"🧠 Getting memory insights for workspace: {workspace_id}")
         
-        insights = await memory_system.get_memory_insights(workspace_id)
+        insights = memory_system.get_stats()
         
         if not insights:
             # Return empty insights if none available
@@ -197,7 +197,7 @@ async def get_workspace_learning_patterns(workspace_id: UUID, request: Request):
     try:
         logger.info(f"📊 Getting learning patterns for workspace: {workspace_id}")
         
-        insights = await memory_system.get_memory_insights(workspace_id)
+        insights = memory_system.get_stats()
         patterns = insights.get("learning_patterns", [])
         
         # Enhance patterns with analysis
@@ -234,7 +234,7 @@ async def get_memory_system_health(workspace_id: UUID, request: Request):
     try:
         logger.info(f"🏥 Checking memory health for workspace: {workspace_id}")
         
-        insights = await memory_system.get_memory_insights(workspace_id)
+        insights = memory_system.get_stats()
         
         health_data = {
             "workspace_id": str(workspace_id),

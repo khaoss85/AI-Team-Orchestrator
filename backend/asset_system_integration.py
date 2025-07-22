@@ -11,9 +11,9 @@ from uuid import UUID
 from fastapi import FastAPI, APIRouter
 
 # Import all asset system components
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+from deliverable_system.requirements_generator import requirements_generator
+from deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 from deliverable_system.unified_deliverable_engine import unified_deliverable_engine as AssetDrivenTaskExecutor
 from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 
@@ -36,7 +36,7 @@ class AssetDrivenOrchestrator:
     
     def __init__(self):
         # Initialize all services
-        self.requirements_generator = unified_deliverable_engine
+        self.requirements_generator = requirements_generator
         self.artifact_processor = unified_deliverable_engine
         self.quality_gate_engine = unified_quality_engine
         self.task_executor = unified_deliverable_engine
@@ -130,7 +130,7 @@ class AssetDrivenOrchestrator:
             workflow_result["steps_completed"].append("goal_retrieved")
             
             # Step 2: Generate asset requirements
-            requirements = await self.requirements_generator.generate_from_goal(target_goal)
+            requirements = await self.requirements_generator.generate_requirements_from_goal(target_goal)
             workflow_result["requirements_generated"] = len(requirements)
             workflow_result["steps_completed"].append("requirements_generated")
             

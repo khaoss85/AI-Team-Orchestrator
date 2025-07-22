@@ -1,0 +1,499 @@
+2025-07-15 17:29:09,303 - __main__ - INFO - 🚀 Production E2E Test initialized: 5cdbfdcc-bb64-43cd-bd84-e2aab009767d
+2025-07-15 17:29:09,303 - __main__ - INFO - 📊 Business Scenario: Customer Onboarding Optimization
+2025-07-15 17:29:09,303 - __main__ - INFO - ================================================================================
+2025-07-15 17:29:09,303 - __main__ - INFO - 🎯 STARTING COMPREHENSIVE PRODUCTION E2E TEST
+2025-07-15 17:29:09,303 - __main__ - INFO - ================================================================================
+2025-07-15 17:29:09,303 - __main__ - INFO - 
+🏗️ PHASE 1: WORKSPACE SETUP
+2025-07-15 17:29:09,303 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:09,528 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-15 17:29:09,739 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-15 17:29:09,739 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-15 17:29:09,739 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-15 17:29:09,739 - services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-15 17:29:09,739 - services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-15 17:29:09,739 - services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-15 17:29:09,739 - services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-15 17:29:09,745 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-15 17:29:09,745 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-15 17:29:09,750 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-15 17:29:09,754 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-15 17:29:10,071 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-15 17:29:10,078 - __main__ - INFO - ✅ Workspace created: 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6
+2025-07-15 17:29:10,079 - __main__ - INFO -    Name: TechStart Solutions - Customer Onboarding Optimization
+2025-07-15 17:29:10,079 - __main__ - INFO -    Description: We need to reduce customer onboarding time from 2 weeks to 3 days while maintaining quality and cust...
+2025-07-15 17:29:10,079 - __main__ - INFO - 
+🎯 PHASE 2: STRATEGIC GOAL SETTING
+2025-07-15 17:29:10,079 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:10,143 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-15 17:29:10,144 - __main__ - INFO - ✅ Goal created: Reduce customer onboarding time from 14 days to 3 days...
+2025-07-15 17:29:10,144 - __main__ - INFO -    Target: 3 days
+2025-07-15 17:29:10,199 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-15 17:29:10,200 - __main__ - INFO - ✅ Goal created: Maintain customer satisfaction above 95% during optimized on...
+2025-07-15 17:29:10,200 - __main__ - INFO -    Target: 95 percentage
+2025-07-15 17:29:10,270 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-15 17:29:10,271 - __main__ - INFO - ✅ Goal created: Create comprehensive onboarding documentation suite...
+2025-07-15 17:29:10,271 - __main__ - INFO -    Target: 100 percentage
+2025-07-15 17:29:10,271 - __main__ - INFO - 📊 Total goals created: 3
+2025-07-15 17:29:10,271 - __main__ - INFO - 
+🎭 PHASE 3: TEAM FORMATION & DIRECTOR ANALYSIS
+2025-07-15 17:29:10,271 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:10,495 - ai_agents.specialist_sdk_complete - INFO - ✅ OpenAI Agents SDK loaded successfully
+2025-07-15 17:29:10,515 - ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-15 17:29:10,515 - ai_quality_assurance - WARNING - AI Quality Assurance system not fully available: cannot import name 'QualityAssessment' from 'ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-15 17:29:10,521 - backend.services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-15 17:29:10,521 - backend.services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-15 17:29:10,521 - backend.services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-15 17:29:10,521 - backend.services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-15 17:29:10,521 - backend.services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-15 17:29:10,521 - backend.services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-15 17:29:10,521 - backend.services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-15 17:29:10,524 - __main__ - INFO - ✅ Director agent initialized
+2025-07-15 17:29:10,524 - __main__ - INFO - ✅ Team proposed with 3 specialists:
+2025-07-15 17:29:10,524 - __main__ - INFO -    • Senior Process Analyst (senior) - Analyze current onboarding process and identify optimization...
+2025-07-15 17:29:10,524 - __main__ - INFO -    • UX Research Specialist (expert) - Ensure customer satisfaction during process optimization...
+2025-07-15 17:29:10,524 - __main__ - INFO -    • Technical Documentation Lead (senior) - Create comprehensive documentation and training materials...
+2025-07-15 17:29:10,524 - __main__ - INFO - 
+⚙️ PHASE 4: TASK ORCHESTRATION & EXECUTION
+2025-07-15 17:29:10,524 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:10,592 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-15 17:29:10,594 - __main__ - INFO - ✅ Task created: Current State Analysis - Onboarding Process Mapping...
+2025-07-15 17:29:10,594 - __main__ - INFO -    Agent: Senior Process Analyst
+2025-07-15 17:29:10,594 - __main__ - INFO -    Expected: Process map with bottleneck analysis and optimizat...
+2025-07-15 17:29:10,650 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-15 17:29:10,651 - __main__ - INFO - ✅ Task created: Customer Journey Mapping & Satisfaction Analysis...
+2025-07-15 17:29:10,651 - __main__ - INFO -    Agent: UX Research Specialist
+2025-07-15 17:29:10,651 - __main__ - INFO -    Expected: Customer journey map with satisfaction analysis an...
+2025-07-15 17:29:10,715 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-15 17:29:10,716 - __main__ - INFO - ✅ Task created: Onboarding Documentation Suite Creation...
+2025-07-15 17:29:10,716 - __main__ - INFO -    Agent: Technical Documentation Lead
+2025-07-15 17:29:10,716 - __main__ - INFO -    Expected: Complete documentation suite with quality-assured ...
+2025-07-15 17:29:10,716 - __main__ - INFO - 📊 Task orchestration completed - tasks ready for execution
+2025-07-15 17:29:10,716 - __main__ - INFO - ✅ All 3 tasks created successfully
+2025-07-15 17:29:10,716 - __main__ - INFO - 
+🧠 PHASE 5: MEMORY SYSTEM & LEARNING VERIFICATION
+2025-07-15 17:29:10,716 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:10,804 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-15 17:29:10,806 - backend.services.unified_memory_engine - ERROR - Error storing context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 180, in store_context
+    response = await self.supabase.table("memory_context_entries").insert(db_record).execute()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+2025-07-15 17:29:10,809 - __main__ - INFO - ✅ Context stored: business_objective - 
+2025-07-15 17:29:10,870 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-15 17:29:10,871 - backend.services.unified_memory_engine - ERROR - Error storing context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 180, in store_context
+    response = await self.supabase.table("memory_context_entries").insert(db_record).execute()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+2025-07-15 17:29:10,872 - __main__ - INFO - ✅ Context stored: business_constraint - 
+2025-07-15 17:29:10,933 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-15 17:29:10,934 - backend.services.unified_memory_engine - ERROR - Error storing context: object APIResponse[TypeVar] can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/services/unified_memory_engine.py", line 180, in store_context
+    response = await self.supabase.table("memory_context_entries").insert(db_record).execute()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object APIResponse[TypeVar] can't be used in 'await' expression
+2025-07-15 17:29:10,935 - __main__ - INFO - ✅ Context stored: team_structure - 
+2025-07-15 17:29:10,993 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context?select=%2A&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6&created_at=gte.2025-04-16T15%3A29%3A10.935800&order=importance_score.desc&limit=100 "HTTP/2 200 OK"
+2025-07-15 17:29:10,994 - __main__ - INFO - 📚 Retrieved 0 relevant contexts
+2025-07-15 17:29:11,052 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries?select=%2A&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6&importance_score=gte.0.7&order=created_at.desc&limit=10 "HTTP/2 200 OK"
+2025-07-15 17:29:11,054 - backend.services.unified_memory_engine - INFO - Retrieved 2 memory insights for workspace 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6
+2025-07-15 17:29:11,054 - __main__ - INFO - 🧠 Memory insights generated:
+2025-07-15 17:29:11,054 - __main__ - INFO -    Total entries: 2
+2025-07-15 17:29:11,054 - __main__ - INFO -    High importance entries: 2
+2025-07-15 17:29:11,054 - __main__ - INFO - 
+💭 PHASE 6: THINKING PROCESS MONITORING
+2025-07-15 17:29:11,054 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:11,057 - services.thinking_process - INFO - 💭 Real-Time Thinking Engine initialized
+2025-07-15 17:29:11,131 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_processes "HTTP/2 201 Created"
+2025-07-15 17:29:11,132 - services.thinking_process - INFO - 💭 Started thinking process: 01a24ed7-5c86-4502-9905-16120a1f429e
+2025-07-15 17:29:11,132 - __main__ - INFO - ✅ Thinking process started: 01a24ed7-5c86-4502-9905-16120a1f429e
+2025-07-15 17:29:11,202 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-15 17:29:11,204 - __main__ - INFO - 🔍 Thinking step added: analysis - Analyzing current 14-day onboarding process to ide...
+2025-07-15 17:29:11,574 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-15 17:29:11,575 - __main__ - INFO - 🔍 Thinking step added: reasoning - Hypothesis: 60% of time waste comes from manual ha...
+2025-07-15 17:29:11,947 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-15 17:29:11,949 - __main__ - INFO - 🔍 Thinking step added: evaluation - Risk assessment: Aggressive timeline reduction cou...
+2025-07-15 17:29:12,318 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-15 17:29:12,318 - __main__ - INFO - 🔍 Thinking step added: conclusion - Recommended approach: Implement parallel automated...
+2025-07-15 17:29:12,685 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_processes?process_id=eq.01a24ed7-5c86-4502-9905-16120a1f429e "HTTP/2 200 OK"
+2025-07-15 17:29:12,688 - services.thinking_process - INFO - 💭 Completed thinking process: 01a24ed7-5c86-4502-9905-16120a1f429e with 4 steps
+2025-07-15 17:29:12,688 - __main__ - INFO - ✅ Thinking process completed with 4 steps
+2025-07-15 17:29:12,688 - __main__ - INFO - 📊 Overall confidence: 0.85
+2025-07-15 17:29:12,688 - __main__ - INFO - 
+🛡️ PHASE 7: QUALITY ASSURANCE & COURSE CORRECTION
+2025-07-15 17:29:12,688 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:12,702 - backend.ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-15 17:29:12,702 - backend.ai_quality_assurance - WARNING - AI Quality Assurance system not fully available: cannot import name 'QualityAssessment' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-15 17:29:12,706 - database_asset_extensions - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-15 17:29:12,707 - services.course_correction_engine - INFO - 🔄 Course Correction Engine initialized - Pillar 13: Auto-Correction
+2025-07-15 17:29:12,707 - backend.ai_quality_assurance.unified_quality_engine - INFO - ✅ Auto-processed artifact: review (score: 0.85)
+2025-07-15 17:29:12,707 - __main__ - INFO - ✅ Quality validation completed:
+2025-07-15 17:29:12,707 - __main__ - INFO -    Decision: review
+2025-07-15 17:29:12,707 - __main__ - INFO -    Quality score: 0.85
+2025-07-15 17:29:12,707 - __main__ - INFO -    Automated: False
+2025-07-15 17:29:12,771 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6&order=created_at "HTTP/2 200 OK"
+2025-07-15 17:29:12,772 - database_asset_extensions - INFO - 🎯 Retrieved 3 goals for workspace 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6
+2025-07-15 17:29:12,772 - services.course_correction_engine - ERROR - Failed to calculate expected progress: 'str' object cannot be interpreted as an integer
+2025-07-15 17:29:12,772 - services.course_correction_engine - ERROR - Failed to calculate expected progress: 'str' object cannot be interpreted as an integer
+2025-07-15 17:29:12,772 - services.course_correction_engine - ERROR - Failed to calculate expected progress: 'str' object cannot be interpreted as an integer
+2025-07-15 17:29:12,832 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?select=%2A%2Cgoal_asset_requirements%21inner%28workspace_goals%21inner%28workspace_id%29%29&goal_asset_requirements.workspace_goals.workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6&order=created_at "HTTP/2 300 Multiple Choices"
+2025-07-15 17:29:12,832 - database_asset_extensions - ERROR - Failed to get asset artifacts for workspace 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6: {'code': 'PGRST201', 'details': [{'cardinality': 'many-to-one', 'embedding': 'asset_artifacts with goal_asset_requirements', 'relationship': 'asset_artifacts_requirement_id_fkey using asset_artifacts(requirement_id) and goal_asset_requirements(id)'}, {'cardinality': 'many-to-one', 'embedding': 'asset_artifacts with goal_asset_requirements', 'relationship': 'fk_asset_artifacts_requirement using asset_artifacts(requirement_id) and goal_asset_requirements(id)'}], 'hint': "Try changing 'goal_asset_requirements' to one of the following: 'goal_asset_requirements!asset_artifacts_requirement_id_fkey', 'goal_asset_requirements!fk_asset_artifacts_requirement'. Find the desired relationship in the 'details' key.", 'message': "Could not embed because more than one relationship was found for 'asset_artifacts' and 'goal_asset_requirements'"}
+2025-07-15 17:29:12,832 - __main__ - INFO - 🔄 Course correction analysis:
+2025-07-15 17:29:12,832 - __main__ - INFO -    Deviations detected: 0
+2025-07-15 17:29:12,833 - __main__ - INFO - 
+📦 PHASE 8: DELIVERABLE GENERATION & VALIDATION
+2025-07-15 17:29:12,833 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:12,893 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-15 17:29:12,895 - database_asset_extensions - INFO - ✅ Created asset requirement: Process Optimization Workflow
+2025-07-15 17:29:12,895 - __main__ - INFO - ✅ Asset requirement created: Process Optimization Workflow
+2025-07-15 17:29:12,895 - __main__ - INFO -    Goal: time_reduction
+2025-07-15 17:29:12,895 - __main__ - INFO -    Business value: 0.9
+2025-07-15 17:29:12,963 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-15 17:29:12,964 - database_asset_extensions - INFO - ✅ Created asset requirement: Customer Satisfaction Monitoring Framework
+2025-07-15 17:29:12,964 - __main__ - INFO - ✅ Asset requirement created: Customer Satisfaction Monitoring Framework
+2025-07-15 17:29:12,965 - __main__ - INFO -    Goal: satisfaction_score
+2025-07-15 17:29:12,965 - __main__ - INFO -    Business value: 0.85
+2025-07-15 17:29:13,040 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-15 17:29:13,041 - database_asset_extensions - INFO - ✅ Created asset requirement: Comprehensive Onboarding Documentation Suite
+2025-07-15 17:29:13,041 - __main__ - INFO - ✅ Asset requirement created: Comprehensive Onboarding Documentation Suite
+2025-07-15 17:29:13,041 - __main__ - INFO -    Goal: documentation_completeness
+2025-07-15 17:29:13,041 - __main__ - INFO -    Business value: 0.95
+2025-07-15 17:29:13,105 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-15 17:29:13,106 - database_asset_extensions - INFO - ✅ Created asset artifact: Process Optimization Workflow
+2025-07-15 17:29:13,106 - __main__ - INFO - ✅ High-quality artifact created: Process Optimization Workflow
+2025-07-15 17:29:13,106 - __main__ - INFO -    Content length: 1665 characters
+2025-07-15 17:29:13,107 - __main__ - INFO -    Quality score: 0.92
+2025-07-15 17:29:13,169 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.a32e3182-a9e7-417c-ab3f-14b81ab0c327 "HTTP/2 400 Bad Request"
+2025-07-15 17:29:13,170 - database_asset_extensions - ERROR - Failed to update artifact status: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'validated_at' column of 'asset_artifacts' in the schema cache"}
+2025-07-15 17:29:13,170 - __main__ - INFO - ✅ Artifact approved: Process Optimization Workflow
+2025-07-15 17:29:13,241 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-15 17:29:13,241 - database_asset_extensions - INFO - ✅ Created asset artifact: Customer Satisfaction Monitoring Framework
+2025-07-15 17:29:13,241 - __main__ - INFO - ✅ High-quality artifact created: Customer Satisfaction Monitoring Framework
+2025-07-15 17:29:13,241 - __main__ - INFO -    Content length: 1516 characters
+2025-07-15 17:29:13,241 - __main__ - INFO -    Quality score: 0.92
+2025-07-15 17:29:13,297 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.ed30d96d-369c-4351-b324-87d51d45e219 "HTTP/2 400 Bad Request"
+2025-07-15 17:29:13,299 - database_asset_extensions - ERROR - Failed to update artifact status: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'validated_at' column of 'asset_artifacts' in the schema cache"}
+2025-07-15 17:29:13,299 - __main__ - INFO - ✅ Artifact approved: Customer Satisfaction Monitoring Framework
+2025-07-15 17:29:13,358 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-15 17:29:13,359 - database_asset_extensions - INFO - ✅ Created asset artifact: Comprehensive Onboarding Documentation Suite
+2025-07-15 17:29:13,359 - __main__ - INFO - ✅ High-quality artifact created: Comprehensive Onboarding Documentation Suite
+2025-07-15 17:29:13,359 - __main__ - INFO -    Content length: 1842 characters
+2025-07-15 17:29:13,359 - __main__ - INFO -    Quality score: 0.92
+2025-07-15 17:29:13,419 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.9580498f-ad09-4fe8-9eab-83001ad233fa "HTTP/2 400 Bad Request"
+2025-07-15 17:29:13,420 - database_asset_extensions - ERROR - Failed to update artifact status: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'validated_at' column of 'asset_artifacts' in the schema cache"}
+2025-07-15 17:29:13,420 - __main__ - INFO - ✅ Artifact approved: Comprehensive Onboarding Documentation Suite
+2025-07-15 17:29:13,420 - __main__ - INFO - 📊 Deliverable generation summary:
+2025-07-15 17:29:13,420 - __main__ - INFO -    Requirements created: 3
+2025-07-15 17:29:13,420 - __main__ - INFO -    Artifacts generated: 3
+2025-07-15 17:29:13,420 - __main__ - INFO -    Average quality score: 0.92
+2025-07-15 17:29:13,420 - __main__ - INFO - 
+📊 PHASE 9: PROGRESS ANALYTICS & GOAL TRACKING
+2025-07-15 17:29:13,420 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:13,519 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.aeae21c1-126e-4177-8467-c3e1771ad81d&order=created_at "HTTP/2 200 OK"
+2025-07-15 17:29:13,525 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal aeae21c1-126e-4177-8467-c3e1771ad81d
+2025-07-15 17:29:13,526 - database_asset_extensions - ERROR - Failed to recalculate goal progress for aeae21c1-126e-4177-8467-c3e1771ad81d: 'AssetRequirement' object has no attribute 'weight'
+2025-07-15 17:29:13,526 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-15 17:29:13,526 - __main__ - INFO -    Goal: time_reduction
+2025-07-15 17:29:13,526 - __main__ - INFO -    Progress: 0.0%
+2025-07-15 17:29:13,526 - __main__ - INFO -    Target: 3.0 days
+2025-07-15 17:29:13,583 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.a3322398-ee1a-44ec-b93f-b94be0e9a0d7&order=created_at "HTTP/2 200 OK"
+2025-07-15 17:29:13,584 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal a3322398-ee1a-44ec-b93f-b94be0e9a0d7
+2025-07-15 17:29:13,584 - database_asset_extensions - ERROR - Failed to recalculate goal progress for a3322398-ee1a-44ec-b93f-b94be0e9a0d7: 'AssetRequirement' object has no attribute 'weight'
+2025-07-15 17:29:13,584 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-15 17:29:13,584 - __main__ - INFO -    Goal: satisfaction_score
+2025-07-15 17:29:13,584 - __main__ - INFO -    Progress: 0.0%
+2025-07-15 17:29:13,584 - __main__ - INFO -    Target: 95.0 percentage
+2025-07-15 17:29:13,641 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.c6cdfb27-dbd0-45a8-926e-761a6da61cc0&order=created_at "HTTP/2 200 OK"
+2025-07-15 17:29:13,642 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal c6cdfb27-dbd0-45a8-926e-761a6da61cc0
+2025-07-15 17:29:13,642 - database_asset_extensions - ERROR - Failed to recalculate goal progress for c6cdfb27-dbd0-45a8-926e-761a6da61cc0: 'AssetRequirement' object has no attribute 'weight'
+2025-07-15 17:29:13,642 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-15 17:29:13,642 - __main__ - INFO -    Goal: documentation_completeness
+2025-07-15 17:29:13,642 - __main__ - INFO -    Progress: 0.0%
+2025-07-15 17:29:13,642 - __main__ - INFO -    Target: 100.0 percentage
+2025-07-15 17:29:13,703 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=id&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6 "HTTP/2 200 OK"
+2025-07-15 17:29:13,771 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?select=status%2Cartifact_type%2Cquality_score&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6 "HTTP/2 200 OK"
+2025-07-15 17:29:13,830 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/quality_validations?select=id&workspace_id=eq.5fadfecd-3b94-4b4b-8bf1-808d3e430ff6 "HTTP/2 200 OK"
+2025-07-15 17:29:13,831 - database_asset_extensions - INFO - 📊 Generated asset system metrics for workspace 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6
+2025-07-15 17:29:13,831 - __main__ - INFO - 🎯 Workspace metrics:
+2025-07-15 17:29:13,831 - __main__ - INFO -    Total requirements: 3
+2025-07-15 17:29:13,831 - __main__ - INFO -    Total artifacts: 3
+2025-07-15 17:29:13,831 - __main__ - INFO -    Approved artifacts: 0
+2025-07-15 17:29:13,831 - __main__ - INFO -    Average quality: 0.92
+2025-07-15 17:29:13,831 - __main__ - INFO - ✅ Progress validation:
+2025-07-15 17:29:13,831 - __main__ - INFO -    Average goal progress: 0.0%
+2025-07-15 17:29:13,831 - __main__ - INFO -    Real high-quality deliverables: 0
+2025-07-15 17:29:13,831 - __main__ - INFO -    Fake progress detected: False
+2025-07-15 17:29:13,831 - __main__ - INFO - 
+✅ PHASE 10: FINAL SYSTEM VALIDATION
+2025-07-15 17:29:13,832 - __main__ - INFO - --------------------------------------------------
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ Workspace creation: PASSED
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ Goal creation: PASSED (3 goals)
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ Team formation: PASSED (3 agents)
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ Task orchestration: PASSED (3 tasks)
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ Deliverable generation: PASSED (3 deliverables)
+2025-07-15 17:29:13,832 - __main__ - ERROR - ❌ Content quality: FAILED (0 high-quality deliverables)
+2025-07-15 17:29:13,832 - __main__ - INFO - ✅ System integration: PASSED (9/10 phases successful)
+2025-07-15 17:29:13,832 - __main__ - INFO - 🎯 Final validation summary:
+2025-07-15 17:29:13,832 - __main__ - INFO -    Validations passed: 6/7
+2025-07-15 17:29:13,832 - __main__ - INFO -    Success rate: 85.7%
+2025-07-15 17:29:13,832 - __main__ - INFO -    Overall result: ✅ PASSED
+2025-07-15 17:29:13,832 - __main__ - INFO - ================================================================================
+2025-07-15 17:29:13,832 - __main__ - INFO - 📊 COMPREHENSIVE PRODUCTION E2E TEST - FINAL REPORT
+2025-07-15 17:29:13,832 - __main__ - INFO - ================================================================================
+2025-07-15 17:29:13,832 - __main__ - INFO - 🎯 Overall Status: PASSED
+2025-07-15 17:29:13,832 - __main__ - INFO - 📈 Success Rate: 100.0%
+2025-07-15 17:29:13,832 - __main__ - INFO - ⏱️  Duration: 4.5 seconds
+2025-07-15 17:29:13,833 - __main__ - INFO - 🏗️  Workspace: 5fadfecd-3b94-4b4b-8bf1-808d3e430ff6
+2025-07-15 17:29:13,833 - __main__ - INFO - 🎯 Goals: 3
+2025-07-15 17:29:13,833 - __main__ - INFO - 👥 Agents: 3
+2025-07-15 17:29:13,833 - __main__ - INFO - ⚙️  Tasks: 3
+2025-07-15 17:29:13,833 - __main__ - INFO - 📦 Deliverables: 3
+2025-07-15 17:29:13,833 - __main__ - INFO - ⭐ Quality Score: 0.92
+2025-07-15 17:29:13,833 - __main__ - INFO - 🎉 PRODUCTION E2E TEST: SUCCESS!
+2025-07-15 17:29:13,833 - __main__ - INFO - ✅ All critical systems validated in realistic scenario
+2025-07-16 08:12:03,497 - __main__ - INFO - 🚀 Production E2E Test initialized: 88556f26-f4e2-4f56-8a9b-c6f8577c291b
+2025-07-16 08:12:03,497 - __main__ - INFO - 📊 Business Scenario: Customer Onboarding Optimization
+2025-07-16 08:12:03,497 - __main__ - INFO - ================================================================================
+2025-07-16 08:12:03,497 - __main__ - INFO - 🎯 STARTING COMPREHENSIVE PRODUCTION E2E TEST
+2025-07-16 08:12:03,497 - __main__ - INFO - ================================================================================
+2025-07-16 08:12:03,497 - __main__ - INFO - 
+🏗️ PHASE 1: WORKSPACE SETUP
+2025-07-16 08:12:03,497 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:03,773 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-16 08:12:03,999 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-16 08:12:03,999 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-16 08:12:03,999 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-16 08:12:03,999 - services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-16 08:12:03,999 - services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-16 08:12:03,999 - services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-16 08:12:03,999 - services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-16 08:12:04,005 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-16 08:12:04,005 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-16 08:12:04,010 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-16 08:12:04,014 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-16 08:12:04,881 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-16 08:12:04,887 - __main__ - INFO - ✅ Workspace created: da8f2629-5848-46a8-a7e9-733fc3b42289
+2025-07-16 08:12:04,887 - __main__ - INFO -    Name: TechStart Solutions - Customer Onboarding Optimization
+2025-07-16 08:12:04,887 - __main__ - INFO -    Description: We need to reduce customer onboarding time from 2 weeks to 3 days while maintaining quality and cust...
+2025-07-16 08:12:04,887 - __main__ - INFO - 
+🎯 PHASE 2: STRATEGIC GOAL SETTING
+2025-07-16 08:12:04,887 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:05,133 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-16 08:12:05,135 - __main__ - INFO - ✅ Goal created: Reduce customer onboarding time from 14 days to 3 days...
+2025-07-16 08:12:05,135 - __main__ - INFO -    Target: 3 days
+2025-07-16 08:12:05,246 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-16 08:12:05,248 - __main__ - INFO - ✅ Goal created: Maintain customer satisfaction above 95% during optimized on...
+2025-07-16 08:12:05,248 - __main__ - INFO -    Target: 95 percentage
+2025-07-16 08:12:05,321 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-16 08:12:05,322 - __main__ - INFO - ✅ Goal created: Create comprehensive onboarding documentation suite...
+2025-07-16 08:12:05,322 - __main__ - INFO -    Target: 100 percentage
+2025-07-16 08:12:05,322 - __main__ - INFO - 📊 Total goals created: 3
+2025-07-16 08:12:05,322 - __main__ - INFO - 
+🎭 PHASE 3: TEAM FORMATION & DIRECTOR ANALYSIS
+2025-07-16 08:12:05,322 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:05,564 - ai_agents.specialist_sdk_complete - INFO - ✅ OpenAI Agents SDK loaded successfully
+2025-07-16 08:12:05,584 - ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-16 08:12:05,584 - ai_quality_assurance - WARNING - AI Quality Assurance system not fully available: cannot import name 'QualityAssessment' from 'ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-16 08:12:05,591 - backend.services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-16 08:12:05,591 - backend.services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-16 08:12:05,591 - backend.services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-16 08:12:05,591 - backend.services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-16 08:12:05,591 - backend.services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-16 08:12:05,591 - backend.services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-16 08:12:05,591 - backend.services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-16 08:12:05,595 - __main__ - INFO - ✅ Director agent initialized
+2025-07-16 08:12:05,595 - __main__ - INFO - ✅ Team proposed with 3 specialists:
+2025-07-16 08:12:05,595 - __main__ - INFO -    • Senior Process Analyst (senior) - Analyze current onboarding process and identify optimization...
+2025-07-16 08:12:05,595 - __main__ - INFO -    • UX Research Specialist (expert) - Ensure customer satisfaction during process optimization...
+2025-07-16 08:12:05,595 - __main__ - INFO -    • Technical Documentation Lead (senior) - Create comprehensive documentation and training materials...
+2025-07-16 08:12:05,595 - __main__ - INFO - 
+⚙️ PHASE 4: TASK ORCHESTRATION & EXECUTION
+2025-07-16 08:12:05,595 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:05,791 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-16 08:12:05,794 - __main__ - INFO - ✅ Task created: Current State Analysis - Onboarding Process Mapping...
+2025-07-16 08:12:05,794 - __main__ - INFO -    Agent: Senior Process Analyst
+2025-07-16 08:12:05,794 - __main__ - INFO -    Expected: Process map with bottleneck analysis and optimizat...
+2025-07-16 08:12:05,870 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-16 08:12:05,870 - __main__ - INFO - ✅ Task created: Customer Journey Mapping & Satisfaction Analysis...
+2025-07-16 08:12:05,871 - __main__ - INFO -    Agent: UX Research Specialist
+2025-07-16 08:12:05,871 - __main__ - INFO -    Expected: Customer journey map with satisfaction analysis an...
+2025-07-16 08:12:05,942 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks "HTTP/2 201 Created"
+2025-07-16 08:12:05,944 - __main__ - INFO - ✅ Task created: Onboarding Documentation Suite Creation...
+2025-07-16 08:12:05,944 - __main__ - INFO -    Agent: Technical Documentation Lead
+2025-07-16 08:12:05,944 - __main__ - INFO -    Expected: Complete documentation suite with quality-assured ...
+2025-07-16 08:12:05,944 - __main__ - INFO - 📊 Task orchestration completed - tasks ready for execution
+2025-07-16 08:12:05,944 - __main__ - INFO - ✅ All 3 tasks created successfully
+2025-07-16 08:12:05,944 - __main__ - INFO - 
+🧠 PHASE 5: MEMORY SYSTEM & LEARNING VERIFICATION
+2025-07-16 08:12:05,944 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:06,051 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-16 08:12:06,053 - __main__ - INFO - ✅ Context stored: business_objective - 81e3be9f-3527-4720-bfbc-d9c909015d3b
+2025-07-16 08:12:06,124 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-16 08:12:06,125 - __main__ - INFO - ✅ Context stored: business_constraint - 89b6f548-94c8-4849-bff3-41c0f1196533
+2025-07-16 08:12:06,214 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries "HTTP/2 201 Created"
+2025-07-16 08:12:06,216 - __main__ - INFO - ✅ Context stored: team_structure - bbdff848-d578-4b25-bafb-6694525eb781
+2025-07-16 08:12:06,287 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context?select=%2A&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289&created_at=gte.2025-04-17T06%3A12%3A06.216279&order=importance_score.desc&limit=100 "HTTP/2 200 OK"
+2025-07-16 08:12:06,289 - __main__ - INFO - 📚 Retrieved 0 relevant contexts
+2025-07-16 08:12:06,397 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/memory_context_entries?select=%2A&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289&importance_score=gte.0.7&order=created_at.desc&limit=10 "HTTP/2 200 OK"
+2025-07-16 08:12:06,398 - backend.services.unified_memory_engine - INFO - Retrieved 2 memory insights for workspace da8f2629-5848-46a8-a7e9-733fc3b42289
+2025-07-16 08:12:06,398 - __main__ - INFO - 🧠 Memory insights generated:
+2025-07-16 08:12:06,398 - __main__ - INFO -    Total entries: 2
+2025-07-16 08:12:06,398 - __main__ - INFO -    High importance entries: 2
+2025-07-16 08:12:06,398 - __main__ - INFO - 
+💭 PHASE 6: THINKING PROCESS MONITORING
+2025-07-16 08:12:06,398 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:06,400 - services.thinking_process - INFO - 💭 Real-Time Thinking Engine initialized
+2025-07-16 08:12:06,480 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_processes "HTTP/2 201 Created"
+2025-07-16 08:12:06,481 - services.thinking_process - INFO - 💭 Started thinking process: 6b107d61-3f61-4d30-8444-d541fba27e96
+2025-07-16 08:12:06,481 - __main__ - INFO - ✅ Thinking process started: 6b107d61-3f61-4d30-8444-d541fba27e96
+2025-07-16 08:12:06,572 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-16 08:12:06,573 - __main__ - INFO - 🔍 Thinking step added: analysis - Analyzing current 14-day onboarding process to ide...
+2025-07-16 08:12:06,951 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-16 08:12:06,953 - __main__ - INFO - 🔍 Thinking step added: reasoning - Hypothesis: 60% of time waste comes from manual ha...
+2025-07-16 08:12:07,327 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-16 08:12:07,328 - __main__ - INFO - 🔍 Thinking step added: evaluation - Risk assessment: Aggressive timeline reduction cou...
+2025-07-16 08:12:07,707 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_steps "HTTP/2 201 Created"
+2025-07-16 08:12:07,708 - __main__ - INFO - 🔍 Thinking step added: conclusion - Recommended approach: Implement parallel automated...
+2025-07-16 08:12:08,085 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/thinking_processes?process_id=eq.6b107d61-3f61-4d30-8444-d541fba27e96 "HTTP/2 200 OK"
+2025-07-16 08:12:08,087 - services.thinking_process - INFO - 💭 Completed thinking process: 6b107d61-3f61-4d30-8444-d541fba27e96 with 4 steps
+2025-07-16 08:12:08,087 - __main__ - INFO - ✅ Thinking process completed with 4 steps
+2025-07-16 08:12:08,087 - __main__ - INFO - 📊 Overall confidence: 0.85
+2025-07-16 08:12:08,087 - __main__ - INFO - 
+🛡️ PHASE 7: QUALITY ASSURANCE & COURSE CORRECTION
+2025-07-16 08:12:08,087 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:08,097 - backend.ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-16 08:12:08,097 - backend.ai_quality_assurance - WARNING - AI Quality Assurance system not fully available: cannot import name 'QualityAssessment' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+2025-07-16 08:12:08,112 - database_asset_extensions - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-16 08:12:08,113 - services.course_correction_engine - INFO - 🔄 Course Correction Engine initialized - Pillar 13: Auto-Correction
+2025-07-16 08:12:08,113 - backend.ai_quality_assurance.unified_quality_engine - INFO - ✅ Auto-processed artifact: review (score: 0.85)
+2025-07-16 08:12:08,114 - __main__ - INFO - ✅ Quality validation completed:
+2025-07-16 08:12:08,114 - __main__ - INFO -    Decision: review
+2025-07-16 08:12:08,114 - __main__ - INFO -    Quality score: 0.85
+2025-07-16 08:12:08,114 - __main__ - INFO -    Automated: False
+2025-07-16 08:12:08,196 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals?select=%2A&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289&order=created_at "HTTP/2 200 OK"
+2025-07-16 08:12:08,197 - database_asset_extensions - INFO - 🎯 Retrieved 3 goals for workspace da8f2629-5848-46a8-a7e9-733fc3b42289
+2025-07-16 08:12:08,312 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?select=%2A%2Cgoal_asset_requirements%21asset_artifacts_requirement_id_fkey%28workspace_goals%21inner%28workspace_id%29%29&goal_asset_requirements.workspace_goals.workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289&order=created_at "HTTP/2 200 OK"
+2025-07-16 08:12:08,314 - database_asset_extensions - ERROR - Failed to get asset artifacts for workspace da8f2629-5848-46a8-a7e9-733fc3b42289: 3 validation errors for AssetArtifact
+name
+  Field required [type=missing, input_value={'id': '5075001e-f160-44a...set_requirements': None}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+type
+  Field required [type=missing, input_value={'id': '5075001e-f160-44a...set_requirements': None}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+content
+  Input should be a valid dictionary [type=dict_type, input_value='{"text":"# Process Optim...ing","type":"markdown"}', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/dict_type
+2025-07-16 08:12:08,314 - __main__ - INFO - 🔄 Course correction analysis:
+2025-07-16 08:12:08,314 - __main__ - INFO -    Deviations detected: 0
+2025-07-16 08:12:08,314 - __main__ - INFO - 
+📦 PHASE 8: DELIVERABLE GENERATION & VALIDATION
+2025-07-16 08:12:08,314 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:08,408 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-16 08:12:08,409 - database_asset_extensions - INFO - ✅ Created asset requirement: Process Optimization Workflow
+2025-07-16 08:12:08,409 - __main__ - INFO - ✅ Asset requirement created: Process Optimization Workflow
+2025-07-16 08:12:08,409 - __main__ - INFO -    Goal: time_reduction
+2025-07-16 08:12:08,409 - __main__ - INFO -    Business value: 0.9
+2025-07-16 08:12:08,477 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-16 08:12:08,499 - database_asset_extensions - INFO - ✅ Created asset requirement: Customer Satisfaction Monitoring Framework
+2025-07-16 08:12:08,500 - __main__ - INFO - ✅ Asset requirement created: Customer Satisfaction Monitoring Framework
+2025-07-16 08:12:08,500 - __main__ - INFO -    Goal: satisfaction_score
+2025-07-16 08:12:08,500 - __main__ - INFO -    Business value: 0.85
+2025-07-16 08:12:08,571 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements "HTTP/2 201 Created"
+2025-07-16 08:12:08,571 - database_asset_extensions - INFO - ✅ Created asset requirement: Comprehensive Onboarding Documentation Suite
+2025-07-16 08:12:08,571 - __main__ - INFO - ✅ Asset requirement created: Comprehensive Onboarding Documentation Suite
+2025-07-16 08:12:08,572 - __main__ - INFO -    Goal: documentation_completeness
+2025-07-16 08:12:08,572 - __main__ - INFO -    Business value: 0.95
+2025-07-16 08:12:08,652 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-16 08:12:08,653 - database_asset_extensions - INFO - ✅ Created asset artifact: Process Optimization Workflow
+2025-07-16 08:12:08,653 - __main__ - INFO - ✅ High-quality artifact created: Process Optimization Workflow
+2025-07-16 08:12:08,653 - __main__ - INFO -    Content length: 1665 characters
+2025-07-16 08:12:08,653 - __main__ - INFO -    Quality score: 0.92
+2025-07-16 08:12:08,723 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.64ff7f15-0a8e-4532-b5a9-997b485cb9da "HTTP/2 200 OK"
+2025-07-16 08:12:08,723 - __main__ - INFO - ✅ Artifact approved: Process Optimization Workflow
+2025-07-16 08:12:08,803 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-16 08:12:08,804 - database_asset_extensions - INFO - ✅ Created asset artifact: Customer Satisfaction Monitoring Framework
+2025-07-16 08:12:08,804 - __main__ - INFO - ✅ High-quality artifact created: Customer Satisfaction Monitoring Framework
+2025-07-16 08:12:08,804 - __main__ - INFO -    Content length: 1516 characters
+2025-07-16 08:12:08,804 - __main__ - INFO -    Quality score: 0.92
+2025-07-16 08:12:08,880 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.0236335a-9cd9-4cf0-93ac-10be98a7b592 "HTTP/2 200 OK"
+2025-07-16 08:12:08,882 - __main__ - INFO - ✅ Artifact approved: Customer Satisfaction Monitoring Framework
+2025-07-16 08:12:08,953 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts "HTTP/2 201 Created"
+2025-07-16 08:12:08,954 - database_asset_extensions - INFO - ✅ Created asset artifact: Comprehensive Onboarding Documentation Suite
+2025-07-16 08:12:08,954 - __main__ - INFO - ✅ High-quality artifact created: Comprehensive Onboarding Documentation Suite
+2025-07-16 08:12:08,954 - __main__ - INFO -    Content length: 1842 characters
+2025-07-16 08:12:08,954 - __main__ - INFO -    Quality score: 0.92
+2025-07-16 08:12:09,024 - httpx - INFO - HTTP Request: PATCH https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?id=eq.6dda5e72-8f7c-4eba-8a9e-fc86a323e9cc "HTTP/2 200 OK"
+2025-07-16 08:12:09,026 - __main__ - INFO - ✅ Artifact approved: Comprehensive Onboarding Documentation Suite
+2025-07-16 08:12:09,027 - __main__ - INFO - 📊 Deliverable generation summary:
+2025-07-16 08:12:09,027 - __main__ - INFO -    Requirements created: 3
+2025-07-16 08:12:09,027 - __main__ - INFO -    Artifacts generated: 3
+2025-07-16 08:12:09,027 - __main__ - INFO -    Average quality score: 0.92
+2025-07-16 08:12:09,027 - __main__ - INFO - 
+📊 PHASE 9: PROGRESS ANALYTICS & GOAL TRACKING
+2025-07-16 08:12:09,027 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:09,102 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.70fbbc8d-abae-41fc-a1f2-7a2f37d30608&order=created_at "HTTP/2 200 OK"
+2025-07-16 08:12:09,102 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal 70fbbc8d-abae-41fc-a1f2-7a2f37d30608
+2025-07-16 08:12:09,102 - database_asset_extensions - ERROR - Failed to recalculate goal progress for 70fbbc8d-abae-41fc-a1f2-7a2f37d30608: 'AssetRequirement' object has no attribute 'weight'
+2025-07-16 08:12:09,103 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-16 08:12:09,103 - __main__ - INFO -    Goal: time_reduction
+2025-07-16 08:12:09,103 - __main__ - INFO -    Progress: 0.0%
+2025-07-16 08:12:09,103 - __main__ - INFO -    Target: 3.0 days
+2025-07-16 08:12:09,185 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.61170b38-b6e7-4963-b1ef-bbb9c98d60c3&order=created_at "HTTP/2 200 OK"
+2025-07-16 08:12:09,188 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal 61170b38-b6e7-4963-b1ef-bbb9c98d60c3
+2025-07-16 08:12:09,188 - database_asset_extensions - ERROR - Failed to recalculate goal progress for 61170b38-b6e7-4963-b1ef-bbb9c98d60c3: 'AssetRequirement' object has no attribute 'weight'
+2025-07-16 08:12:09,188 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-16 08:12:09,188 - __main__ - INFO -    Goal: satisfaction_score
+2025-07-16 08:12:09,188 - __main__ - INFO -    Progress: 0.0%
+2025-07-16 08:12:09,188 - __main__ - INFO -    Target: 95.0 percentage
+2025-07-16 08:12:09,253 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=%2A&goal_id=eq.09113d59-f252-408c-a77a-2ef63b125def&order=created_at "HTTP/2 200 OK"
+2025-07-16 08:12:09,255 - database_asset_extensions - INFO - 📋 Retrieved 1 requirements for goal 09113d59-f252-408c-a77a-2ef63b125def
+2025-07-16 08:12:09,255 - database_asset_extensions - ERROR - Failed to recalculate goal progress for 09113d59-f252-408c-a77a-2ef63b125def: 'AssetRequirement' object has no attribute 'weight'
+2025-07-16 08:12:09,255 - __main__ - INFO - 📈 Goal progress calculated:
+2025-07-16 08:12:09,255 - __main__ - INFO -    Goal: documentation_completeness
+2025-07-16 08:12:09,255 - __main__ - INFO -    Progress: 0.0%
+2025-07-16 08:12:09,255 - __main__ - INFO -    Target: 100.0 percentage
+2025-07-16 08:12:09,345 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/goal_asset_requirements?select=id&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289 "HTTP/2 200 OK"
+2025-07-16 08:12:09,417 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/asset_artifacts?select=status%2Cartifact_type%2Cquality_score&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289 "HTTP/2 200 OK"
+2025-07-16 08:12:09,494 - httpx - INFO - HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/quality_validations?select=id&workspace_id=eq.da8f2629-5848-46a8-a7e9-733fc3b42289 "HTTP/2 200 OK"
+2025-07-16 08:12:09,496 - database_asset_extensions - INFO - 📊 Generated asset system metrics for workspace da8f2629-5848-46a8-a7e9-733fc3b42289
+2025-07-16 08:12:09,497 - __main__ - INFO - 🎯 Workspace metrics:
+2025-07-16 08:12:09,497 - __main__ - INFO -    Total requirements: 3
+2025-07-16 08:12:09,497 - __main__ - INFO -    Total artifacts: 3
+2025-07-16 08:12:09,497 - __main__ - INFO -    Approved artifacts: 0
+2025-07-16 08:12:09,497 - __main__ - INFO -    Average quality: 0.92
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Progress validation:
+2025-07-16 08:12:09,497 - __main__ - INFO -    Average goal progress: 0.0%
+2025-07-16 08:12:09,497 - __main__ - INFO -    Real high-quality deliverables: 0
+2025-07-16 08:12:09,497 - __main__ - INFO -    Fake progress detected: False
+2025-07-16 08:12:09,497 - __main__ - INFO - 
+✅ PHASE 10: FINAL SYSTEM VALIDATION
+2025-07-16 08:12:09,497 - __main__ - INFO - --------------------------------------------------
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Workspace creation: PASSED
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Goal creation: PASSED (3 goals)
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Team formation: PASSED (3 agents)
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Task orchestration: PASSED (3 tasks)
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ Deliverable generation: PASSED (3 deliverables)
+2025-07-16 08:12:09,497 - __main__ - ERROR - ❌ Content quality: FAILED (0 high-quality deliverables)
+2025-07-16 08:12:09,497 - __main__ - INFO - ✅ System integration: PASSED (9/10 phases successful)
+2025-07-16 08:12:09,497 - __main__ - INFO - 🎯 Final validation summary:
+2025-07-16 08:12:09,497 - __main__ - INFO -    Validations passed: 6/7
+2025-07-16 08:12:09,497 - __main__ - INFO -    Success rate: 85.7%
+2025-07-16 08:12:09,497 - __main__ - INFO -    Overall result: ✅ PASSED
+2025-07-16 08:12:09,497 - __main__ - INFO - ================================================================================
+2025-07-16 08:12:09,497 - __main__ - INFO - 📊 COMPREHENSIVE PRODUCTION E2E TEST - FINAL REPORT
+2025-07-16 08:12:09,497 - __main__ - INFO - ================================================================================
+2025-07-16 08:12:09,497 - __main__ - INFO - 🎯 Overall Status: PASSED
+2025-07-16 08:12:09,497 - __main__ - INFO - 📈 Success Rate: 100.0%
+2025-07-16 08:12:09,498 - __main__ - INFO - ⏱️  Duration: 6.0 seconds
+2025-07-16 08:12:09,498 - __main__ - INFO - 🏗️  Workspace: da8f2629-5848-46a8-a7e9-733fc3b42289
+2025-07-16 08:12:09,498 - __main__ - INFO - 🎯 Goals: 3
+2025-07-16 08:12:09,498 - __main__ - INFO - 👥 Agents: 3
+2025-07-16 08:12:09,498 - __main__ - INFO - ⚙️  Tasks: 3
+2025-07-16 08:12:09,498 - __main__ - INFO - 📦 Deliverables: 3
+2025-07-16 08:12:09,498 - __main__ - INFO - ⭐ Quality Score: 0.92
+2025-07-16 08:12:09,498 - __main__ - INFO - 🎉 PRODUCTION E2E TEST: SUCCESS!
+2025-07-16 08:12:09,498 - __main__ - INFO - ✅ All critical systems validated in realistic scenario

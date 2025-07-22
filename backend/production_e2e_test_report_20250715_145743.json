@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "{'code': '23514', 'details': 'Failing row contains (ac3e966c-6f09-4ecc-ba3f-9d247989b34b, ac3e966c-6f09-4ecc-ba3f-9d247989b34b, 761aabf2-0ef9-47b1-b366-9bd5bb66cd3c, 5f73fc77-eee4-416f-b674-a2e6883320b7, simple, ac3e966c-6f09-4ecc-ba3f-9d247989b34b, Process Optimization Workflow, Detailed workflow showing optimized 3-day onboarding process wit..., medium, 3, medium, null, Detailed workflow showing optimized 3-day onboarding process wit..., null, null, {}, draft, 0, null, 2025-07-15 14:57:43.067486+00, 2025-07-15 14:57:43.067497+00, null, structured_data, structured_document, {}, 1.00, t, 0.90, {}, f, t, t, t).', 'hint': None, 'message': 'new row for relation \"goal_asset_requirements\" violates check constraint \"goal_todos_estimated_effort_check\"'}"
+}

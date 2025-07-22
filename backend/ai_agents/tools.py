@@ -387,25 +387,23 @@ class CommonTools:
             Search results as JSON string
         """
         try:
-            # In a real implementation, this would use a real search API
-            # For now, we'll just return placeholder results
+            from google_web_search import google_web_search
             logger.info(f"Searching web for: {query}")
-            time.sleep(1)  # Simulate network delay
             
+            # Use the real web_search tool
+            search_results = await google_web_search(queries=[query])
+            
+            # Format results into a consistent JSON structure
             results = {
                 "results": [
                     {
-                        "title": f"Search result 1 for '{query}'",
-                        "url": "https://example.com/1",
-                        "snippet": "This is a snippet of the first search result."
-                    },
-                    {
-                        "title": f"Search result 2 for '{query}'",
-                        "url": "https://example.com/2",
-                        "snippet": "This is a snippet of the second search result."
-                    },
+                        "title": item.get("title", "No Title"),
+                        "url": item.get("link", "#"),
+                        "snippet": item.get("snippet", "No snippet available.")
+                    }
+                    for item in search_results
                 ],
-                "total": 2
+                "total": len(search_results)
             }
             return json.dumps(results)
         except Exception as e:
@@ -425,14 +423,15 @@ class CommonTools:
             The content of the URL as JSON string
         """
         try:
-            # In a real implementation, this would use requests or aiohttp
-            # For now, we'll just return placeholder content
+            from web_fetch import web_fetch
             logger.info(f"Fetching URL: {url}")
-            time.sleep(1)  # Simulate network delay
+            
+            # Use the real web_fetch tool
+            fetched_content = await web_fetch(urls=[url])
             
             result = {
                 "url": url,
-                "content": f"This is placeholder content for {url}",
+                "content": fetched_content,
                 "status": 200
             }
             return json.dumps(result)
@@ -455,33 +454,27 @@ class ContentTools:
         Returns:
             Analysis results as JSON string
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        
         try:
-            # In a real implementation, this would use a NLP service
-            # For now, we'll just return placeholder results
             logger.info(f"Analyzing text: {text[:100]}...")
-            time.sleep(0.5)  # Simulate processing delay
             
-            # Simple sentiment analysis based on keywords
-            sentiment = "neutral"
-            if any(word in text.lower() for word in ["great", "good", "excellent", "happy", "love"]):
-                sentiment = "positive"
-            elif any(word in text.lower() for word in ["bad", "terrible", "awful", "sad", "hate"]):
-                sentiment = "negative"
-                
-            # Simple entity extraction using regex
-            emails = re.findall(r'[\w\.-]+@[\w\.-]+', text)
-            urls = re.findall(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+', text)
+            prompt = f"Analyze the following text for sentiment, entities (like emails and URLs), and a general summary. Respond with a JSON object. Text: \"{text}\"";
             
-            result = {
-                "sentiment": sentiment,
-                "entities": {
-                    "emails": emails,
-                    "urls": urls
-                },
-                "length": len(text),
-                "word_count": len(text.split())
+            text_analyzer_agent = {
+                "name": "TextAnalyzerAgent",
+                "model": "gpt-4o-mini",
+                "instructions": "You are an expert text analyzer. Respond only with valid JSON.",
             }
-            return json.dumps(result)
+
+            analysis_result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=text_analyzer_agent,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+            
+            return json.dumps(analysis_result)
         except Exception as e:
             logger.error(f"Failed to analyze text: {e}")
             return json.dumps({"error": str(e)})
@@ -499,26 +492,27 @@ class ContentTools:
         Returns:
             List of headline ideas as JSON string
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        
         try:
-            # In a real implementation, this would use a creative AI service
-            # For now, we'll just return placeholder headlines
             logger.info(f"Generating {count} headlines for topic: {topic}")
             
-            prefixes = [
-                "The Ultimate Guide to",
-                "10 Ways to Improve Your",
-                "Why You Should Care About",
-                "The Future of",
-                "How to Master",
-                "Understanding",
-                "The Secret to",
-                "What Nobody Tells You About",
-                "The Rise of",
-                "Exploring"
-            ]
+            prompt = f"Generate {count} compelling headline ideas for the topic: '{topic}'. Respond with a JSON array of strings."
             
-            headlines = [f"{prefixes[i % len(prefixes)]} {topic}" for i in range(count)]
-            return json.dumps(headlines)
+            headline_generator_agent = {
+                "name": "HeadlineGeneratorAgent",
+                "model": "gpt-4o-mini",
+                "instructions": "You are a creative copywriter. Respond only with a valid JSON array of strings.",
+            }
+
+            headlines = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=headline_generator_agent,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+            
+            return json.dumps(headlines.get("headlines", []))
         except Exception as e:
             logger.error(f"Failed to generate headlines: {e}")
             return json.dumps([])
@@ -581,25 +575,27 @@ class DataTools:
         Returns:
             Correlation information as JSON string
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        
         try:
-            # Parse the JSON data
-            data_list = json.loads(data)
+            logger.info(f"Finding correlation between '{column1}' and '{column2}'")
             
-            # Extract paired values
-            pairs = [(item.get(column1), item.get(column2)) for item in data_list 
-                     if column1 in item and column2 in item]
+            prompt = f"Analyze the following data and determine the correlation between '{column1}' and '{column2}'. Provide a correlation score (from -1.0 to 1.0) and a brief interpretation. Data: {data}"
             
-            if not pairs:
-                return json.dumps({"error": f"No paired data found for columns '{column1}' and '{column2}'"})
-                
-            # In a real implementation, we would calculate actual correlation
-            # For now, just return a placeholder
-            result = {
-                "correlation": 0.7,  # Placeholder value
-                "interpretation": "Strong positive correlation",
-                "sample_size": len(pairs)
+            correlation_agent = {
+                "name": "CorrelationAgent",
+                "model": "gpt-4o-mini",
+                "instructions": "You are a data analyst. Respond with a JSON object containing the correlation score and interpretation.",
             }
-            return json.dumps(result)
+
+            correlation_result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=correlation_agent,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+            
+            return json.dumps(correlation_result)
         except Exception as e:
             logger.error(f"Failed to find correlation: {e}")
             return json.dumps({"error": str(e)})

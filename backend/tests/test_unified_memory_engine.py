@@ -7,7 +7,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Import the singleton instance from the unified engine
-from backend.services.unified_memory_engine import (
+from services.unified_memory_engine import (
     unified_memory_engine,
     ContentQuality,
     AssetGenerationResult,

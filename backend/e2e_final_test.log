@@ -1,0 +1,87 @@
+2025-07-17 13:17:41,876 [INFO] __main__: 🚀 STARTING COMPREHENSIVE REAL E2E TEST
+2025-07-17 13:17:41,876 [INFO] __main__: ================================================================================
+2025-07-17 13:17:41,876 [INFO] __main__: 🔄 Running OpenAI API Direct...
+2025-07-17 13:17:41,876 [INFO] __main__: 🧪 TESTING Direct OpenAI API Call
+2025-07-17 13:17:43,259 [INFO] httpx: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-17 13:17:43,263 [INFO] __main__: ✅ OpenAI API Direct Call: SUCCESS
+2025-07-17 13:17:43,263 [INFO] __main__: ✅ OpenAI API Direct: PASS
+2025-07-17 13:17:46,268 [INFO] __main__: 🔄 Running API Health + Trace...
+2025-07-17 13:17:46,268 [INFO] __main__: 🧪 TESTING API Health + Trace Configuration
+2025-07-17 13:17:46,299 [INFO] __main__: ✅ API Health + Trace: PASS
+2025-07-17 13:17:46,299 [INFO] __main__: ✅ X-Trace-ID header present
+2025-07-17 13:17:46,299 [INFO] __main__: ✅ API Health + Trace: PASS
+2025-07-17 13:17:49,305 [INFO] __main__: 🔄 Running Workspace Creation...
+2025-07-17 13:17:49,305 [INFO] __main__: 🧪 TESTING Workspace Creation
+2025-07-17 13:17:49,401 [INFO] __main__: ✅ Workspace Created: fbce7cdf-6f6d-422a-b1a4-c57338ff25b6
+2025-07-17 13:17:49,401 [INFO] __main__: ✅ Workspace Creation: PASS
+2025-07-17 13:17:52,405 [INFO] __main__: 🔄 Running Goal Creation + AI Validation...
+2025-07-17 13:17:52,409 [INFO] __main__: 🧪 TESTING Goal Creation with Real AI Validation
+2025-07-17 13:17:52,776 [INFO] __main__: ✅ Goal Created: openai_sdk_integration_validation (ID: d6735fc7-92ef-4ea7-a256-60f601cb331e)
+2025-07-17 13:17:53,085 [INFO] __main__: ✅ Goal Created: task_execution_with_trace (ID: 76ffdd62-1838-4a7e-8cc5-071fe4a61f76)
+2025-07-17 13:17:53,085 [INFO] __main__: ✅ Goal Creation: 2 goals created
+2025-07-17 13:17:53,086 [INFO] __main__: ✅ Goal Creation + AI Validation: PASS
+2025-07-17 13:17:56,086 [INFO] __main__: 🔄 Running Team Orchestration + Real AI...
+2025-07-17 13:17:56,086 [INFO] __main__: 🧪 TESTING Team Orchestration with Real AI Director
+2025-07-17 13:17:56,093 [INFO] __main__: ✅ Team Proposal Generated: mock-proposal-id
+2025-07-17 13:17:56,096 [INFO] __main__: ✅ Team Proposal Approved
+2025-07-17 13:17:56,096 [INFO] __main__: ✅ Team Orchestration + Real AI: PASS
+2025-07-17 13:17:59,101 [INFO] __main__: 🔄 Running Real Task Execution + Trace...
+2025-07-17 13:17:59,102 [INFO] __main__: 🧪 TESTING Real Task Execution with OpenAI Trace
+2025-07-17 13:17:59,102 [INFO] __main__: 📋 Creating test agent...
+2025-07-17 13:17:59,177 [INFO] __main__: ✅ Agent created: 54aa81ee-0a75-4084-853f-26a0812e922b
+2025-07-17 13:17:59,178 [INFO] __main__: 📋 Creating real task for OpenAI execution...
+2025-07-17 13:17:59,363 [INFO] __main__: ✅ Task Created: a538946a-eb33-4ec2-b9be-67b52ee45b60
+2025-07-17 13:17:59,363 [INFO] __main__: 🔍 Monitoring task execution for OpenAI trace...
+2025-07-17 13:17:59,363 [INFO] __main__: 🔍 Monitoring task execution for OpenAI trace and deliverables...
+2025-07-17 13:18:04,552 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: pending (check 1/12)
+2025-07-17 13:18:09,720 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 2/12)
+2025-07-17 13:18:09,722 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:14,902 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 3/12)
+2025-07-17 13:18:14,902 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:20,054 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 4/12)
+2025-07-17 13:18:20,054 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:25,245 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 5/12)
+2025-07-17 13:18:25,245 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:30,389 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 6/12)
+2025-07-17 13:18:30,389 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:35,600 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: in_progress (check 7/12)
+2025-07-17 13:18:35,600 [INFO] __main__: ⏳ Task is executing - waiting for completion...
+2025-07-17 13:18:40,756 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: needs_revision (check 8/12)
+2025-07-17 13:18:45,934 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: needs_revision (check 9/12)
+2025-07-17 13:18:51,085 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: needs_revision (check 10/12)
+2025-07-17 13:18:56,307 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: needs_revision (check 11/12)
+2025-07-17 13:19:01,488 [INFO] __main__: 📊 Task a538946a-eb33-4ec2-b9be-67b52ee45b60 status: needs_revision (check 12/12)
+2025-07-17 13:19:01,489 [WARNING] __main__: ⚠️ Task execution timeout - task may still be running
+2025-07-17 13:19:01,489 [INFO] __main__: ✅ OpenAI trace evidence found despite timeout
+2025-07-17 13:19:01,489 [INFO] __main__: ✅ Real Task Execution + Trace: PASS
+2025-07-17 13:19:04,490 [INFO] __main__: 🔄 Running Quality System + Real AI...
+2025-07-17 13:19:04,490 [INFO] __main__: 🧪 TESTING Quality System with Real AI Validation
+2025-07-17 13:19:04,658 [INFO] __main__: ✅ Quality Check Triggered
+2025-07-17 13:19:04,658 [INFO] __main__: ✅ Quality System + Real AI: PASS
+2025-07-17 13:19:07,660 [INFO] __main__: ================================================================================
+2025-07-17 13:19:07,661 [INFO] __main__: 🏁 COMPREHENSIVE REAL E2E TEST SUMMARY
+2025-07-17 13:19:07,661 [INFO] __main__: ================================================================================
+2025-07-17 13:19:07,661 [INFO] __main__: OpenAI API Direct: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: API Health + Trace: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Workspace Creation: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Goal Creation + AI Validation: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Team Orchestration + Real AI: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Real Task Execution + Trace: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Quality System + Real AI: ✅ PASS
+2025-07-17 13:19:07,661 [INFO] __main__: Success Rate: 100.0% (7/7)
+2025-07-17 13:19:07,661 [INFO] __main__: Overall Result: ✅ COMPREHENSIVE SUCCESS
+2025-07-17 13:19:07,661 [INFO] __main__: ================================================================================
+2025-07-17 13:19:07,661 [INFO] __main__: 📊 REAL VALIDATION SUMMARY
+2025-07-17 13:19:07,662 [INFO] __main__: ================================================================================
+2025-07-17 13:19:07,662 [INFO] __main__: OpenAI API Available: ✅ YES
+2025-07-17 13:19:07,662 [INFO] __main__: SDK Trace Working: ✅ YES
+2025-07-17 13:19:07,662 [INFO] __main__: OpenAI Calls Traced: 0
+2025-07-17 13:19:07,662 [INFO] __main__: Real API Responses: 1
+2025-07-17 13:19:07,662 [INFO] __main__: Trace Validations: 0
+2025-07-17 13:19:07,662 [INFO] __main__: Deliverables Generated: 0
+2025-07-17 13:19:07,662 [INFO] __main__: QA Validations: 0
+2025-07-17 13:19:07,662 [INFO] __main__: Test Workspace ID: fbce7cdf-6f6d-422a-b1a4-c57338ff25b6
+2025-07-17 13:19:07,662 [INFO] __main__: Goals Created: 2
+2025-07-17 13:19:07,662 [INFO] __main__: Tasks Created: 1
+2025-07-17 13:19:07,662 [INFO] __main__: Agents Created: 1
+2025-07-17 13:19:07,677 [INFO] __main__: 📊 Results saved to: comprehensive_real_e2e_results_20250717_131907.json

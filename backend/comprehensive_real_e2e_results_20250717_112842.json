@@ -1,0 +1,28 @@
+{
+  "test_start": "2025-07-17T11:28:20.038196",
+  "phases_completed": [
+    "api_health",
+    "workspace_creation",
+    "goal_creation",
+    "team_orchestration",
+    "quality_system"
+  ],
+  "phases_failed": [],
+  "workspace_id": "e5d75ed5-e4ec-48c7-86b6-0ba34a52e3dc",
+  "goal_ids": [
+    "d449a9dc-c38b-4775-b27d-2b0422f4a3f6",
+    "42930555-83e2-4e73-959e-af13af565467"
+  ],
+  "task_ids": [],
+  "agents_created": [],
+  "openai_calls_traced": 0,
+  "real_api_responses": [],
+  "trace_validations": [],
+  "overall_success": false,
+  "openai_api_available": false,
+  "sdk_trace_working": true,
+  "success_rate": 0.7142857142857143,
+  "passed_phases": 5,
+  "total_phases": 7,
+  "test_end": "2025-07-17T11:28:42.158163"
+}

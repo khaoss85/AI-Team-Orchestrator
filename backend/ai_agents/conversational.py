@@ -12,7 +12,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 from openai import OpenAI
 
-from ai_agents.specialist import SpecialistAgent
+from ai_agents.specialist_enhanced import SpecialistAgent
 from models import AgentSeniority, AgentStatus
 from database import get_supabase_client
 from utils.context_manager import get_workspace_context

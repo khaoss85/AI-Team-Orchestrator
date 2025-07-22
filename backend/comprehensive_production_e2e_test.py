@@ -396,17 +396,17 @@ class ProductionE2ETest:
             context_entries = [
                 {
                     "context": f"Project: {self.business_scenario['project']} - Reducing onboarding from 14 to 3 days while maintaining 95% customer satisfaction",
-                    "importance": "critical",
+                    "importance": 0.9,  # critical = 0.9
                     "context_type": "business_objective"
                 },
                 {
                     "context": "Key constraint: Must maintain quality during optimization. Customer satisfaction cannot drop below 95%",
-                    "importance": "high", 
+                    "importance": 0.8,  # high = 0.8
                     "context_type": "business_constraint"
                 },
                 {
                     "context": f"Team composition: {len(self.agents)} specialists covering process analysis, UX research, and documentation",
-                    "importance": "medium",
+                    "importance": 0.6,  # medium = 0.6
                     "context_type": "team_structure"
                 }
             ]
@@ -415,8 +415,8 @@ class ProductionE2ETest:
             for entry in context_entries:
                 context_id = await memory_system.store_context(
                     workspace_id=self.workspace_id,
-                    context=entry["context"],
-                    importance=entry["importance"],
+                    content={"text": entry["context"]},  # Dict[str, Any] as required
+                    importance_score=entry["importance"],
                     context_type=entry["context_type"]
                 )
                 
@@ -424,7 +424,7 @@ class ProductionE2ETest:
                 logger.info(f"✅ Context stored: {entry['context_type']} - {context_id}")
             
             # Test context retrieval
-            retrieved_contexts = await memory_system.retrieve_context(
+            retrieved_contexts = await memory_system.get_relevant_context(
                 workspace_id=self.workspace_id,
                 query="onboarding optimization project context"
             )
@@ -435,8 +435,8 @@ class ProductionE2ETest:
             memory_insights = await memory_system.get_memory_insights(self.workspace_id)
             
             logger.info(f"🧠 Memory insights generated:")
-            logger.info(f"   Total entries: {memory_insights.get('total_context_entries', 0)}")
-            logger.info(f"   High importance: {memory_insights.get('high_importance_entries', 0)}")
+            logger.info(f"   Total entries: {len(memory_insights)}")
+            logger.info(f"   High importance entries: {len([i for i in memory_insights if i.get('importance', 0) > 0.7])}")
             
             self.test_results["phase_5"] = {
                 "status": "SUCCESS",
@@ -545,44 +545,34 @@ class ProductionE2ETest:
                 id=uuid4(),
                 requirement_id=uuid4(),
                 workspace_id=self.workspace_id,
-                artifact_name="Onboarding Process Optimization Plan",
-                artifact_type="strategic_document",
-                artifact_format="structured_document",
-                content="""# Onboarding Process Optimization Plan
-
-## Executive Summary
-This plan outlines the strategy to reduce customer onboarding time from 14 days to 3 days while maintaining 95%+ customer satisfaction.
-
-## Current State Analysis
-- Average onboarding time: 14 days
-- Customer satisfaction: 87%
-- Main bottlenecks: Manual approvals (5 days), Documentation review (3 days), System setup (4 days)
-
-## Optimization Strategy
-1. **Automated Approval Workflows** - Reduce manual approval time by 80%
-2. **Pre-validated Documentation Templates** - Standardize and pre-approve common scenarios
-3. **Parallel System Provisioning** - Setup systems while documentation is being reviewed
-
-## Implementation Roadmap
-### Week 1-2: Infrastructure Setup
-- Deploy automated workflow engine
-- Create pre-validated templates
-- Setup parallel provisioning system
-
-### Week 3-4: Testing & Rollout
-- Pilot with 10 new customers
-- Monitor satisfaction metrics
-- Adjust based on feedback
-
-## Success Metrics
-- Target: 3-day onboarding time
-- Maintain: 95%+ customer satisfaction
-- Quality: 0.9+ documentation score
-
-## Risk Mitigation
-- Real-time satisfaction monitoring
-- Rollback procedures for quality issues
-- Escalation paths for complex cases""",
+                name="Onboarding Process Optimization Plan",  # Required field
+                type="strategic_document",  # Required field
+                artifact_name="Onboarding Process Optimization Plan",  # Backward compatibility
+                artifact_type="strategic_document",  # Backward compatibility
+                content={  # Dict[str, Any] as required
+                    "title": "Onboarding Process Optimization Plan",
+                    "executive_summary": "This plan outlines the strategy to reduce customer onboarding time from 14 days to 3 days while maintaining 95%+ customer satisfaction.",
+                    "current_state": {
+                        "average_onboarding_time": "14 days",
+                        "customer_satisfaction": "87%",
+                        "bottlenecks": [
+                            "Manual approvals (5 days)",
+                            "Documentation review (3 days)",
+                            "System setup (4 days)"
+                        ]
+                    },
+                    "target_state": {
+                        "target_onboarding_time": "3 days",
+                        "target_satisfaction": "95%+",
+                        "improvement_goals": [
+                            "Reduce onboarding time by 80%",
+                            "Maintain 95%+ customer satisfaction",
+                            "Create scalable process documentation",
+                            "Implement automated quality checks"
+                        ]
+                    }
+                },
+                content_format="json",
                 quality_score=0.85,
                 business_value_score=0.9,
                 status="pending"
@@ -855,10 +845,13 @@ Streamlined onboarding process reducing time from 14 to 3 days through automatio
                 artifact = AssetArtifact(
                     id=uuid4(),
                     requirement_id=requirement.id,
-                    artifact_name=requirement.asset_name,
-                    artifact_type=requirement.asset_type,
+                    workspace_id=requirement.workspace_id,  # Required field
+                    name=requirement.asset_name,  # Required field
+                    type=requirement.asset_type,  # Required field
+                    artifact_name=requirement.asset_name,  # Backward compatibility
+                    artifact_type=requirement.asset_type,  # Backward compatibility
                     content_format=requirement.asset_format,
-                    content=content,
+                    content={"text": content, "type": "markdown"},  # Dict[str, Any] as required
                     quality_score=0.92,  # High quality score
                     business_value_score=requirement.business_value_score,
                     actionability_score=0.88,

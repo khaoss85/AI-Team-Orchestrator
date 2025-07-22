@@ -97,6 +97,7 @@ export default function AgentEditModal({
   useEffect(() => {
     if (agent && isOpen) {
       console.log('Agent data loaded:', agent); // Debug - rimuovere in produzione
+      console.log('System prompt from agent:', agent.system_prompt); // Debug system prompt
       
       // Crea una copia sicura di agent per evitare problemi di mutability
       const agentData = {...agent};
@@ -107,7 +108,7 @@ export default function AgentEditModal({
         role: agentData.role,
         seniority: agentData.seniority,
         description: agentData.description || '',
-        system_prompt: agentData.system_prompt || '',
+        system_prompt: agentData.system_prompt || `You are a ${agentData.role || 'AI Assistant'}. Your primary responsibility is to complete tasks efficiently and professionally. Work collaboratively with your team and provide high-quality outputs. Always strive for accuracy and clarity in your work.`,
         llm_config: {
           model: (agentData.llm_config as { model?: string })?.model ?? 'gpt-4.1-mini',
           temperature: (agentData.llm_config as { temperature?: number })?.temperature ?? 0.3,

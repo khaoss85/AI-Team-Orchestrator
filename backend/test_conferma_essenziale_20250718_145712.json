@@ -1,0 +1,96 @@
+{
+  "test_start": "2025-07-18T14:57:08.510494",
+  "integrazioni_testate": [
+    "quality_rules_integration",
+    "asset_extraction_integration",
+    "end_to_end_system"
+  ],
+  "risultati_integrazione": {
+    "quality_rules_integration": {
+      "successo": true,
+      "total_rules": 9,
+      "dettagli": [
+        {
+          "asset_type": "code",
+          "rule_count": 3,
+          "sample_rule": "Code Syntax Validation",
+          "threshold": 0.9
+        },
+        {
+          "asset_type": "json",
+          "rule_count": 2,
+          "sample_rule": "JSON Syntax Validation",
+          "threshold": 0.95
+        },
+        {
+          "asset_type": "configuration",
+          "rule_count": 2,
+          "sample_rule": "Configuration Completeness",
+          "threshold": 0.85
+        },
+        {
+          "asset_type": "api_spec",
+          "rule_count": 1,
+          "sample_rule": "API Documentation Quality",
+          "threshold": 0.8
+        },
+        {
+          "asset_type": "test_case",
+          "rule_count": 1,
+          "sample_rule": "Test Coverage Quality",
+          "threshold": 0.8
+        }
+      ],
+      "messaggio": "\u2705 9 regole di qualit\u00e0 verificate"
+    },
+    "asset_extraction_integration": {
+      "successo": true,
+      "assets_extracted": 2,
+      "integration_keywords": [
+        "ConcreteAssetExtractor",
+        "extract_assets",
+        "create_asset_artifact"
+      ],
+      "messaggio": "\u2705 2 asset estratti, integrazione verificata"
+    },
+    "memory_enhancement_integration": {
+      "successo": false,
+      "errore": "badly formed hexadecimal UUID string"
+    },
+    "end_to_end_system": {
+      "successo": true,
+      "server_health": true,
+      "endpoints_ok": "1/2",
+      "components_ok": "2/3",
+      "endpoints_test": [
+        {
+          "endpoint": "workspaces",
+          "status": 405,
+          "ok": false
+        },
+        {
+          "endpoint": "director",
+          "status": 404,
+          "ok": true
+        }
+      ],
+      "components_test": [
+        {
+          "component": "ConcreteAssetExtractor",
+          "ok": true
+        },
+        {
+          "component": "AgentManager",
+          "ok": false,
+          "error": "badly formed hexadecimal UUID string"
+        },
+        {
+          "component": "QualityEngine",
+          "ok": true
+        }
+      ],
+      "messaggio": "\u2705 Sistema end-to-end funzionante"
+    }
+  },
+  "successo_completo": true
+}

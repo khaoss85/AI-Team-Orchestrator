@@ -96,6 +96,13 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   // Handle goal preview when workspace has a goal
   useEffect(() => {
     const checkExistingGoalsAndStart = async () => {
+      console.log('🔍 Goal effect triggered:', {
+        hasGoal: !!workspace?.goal,
+        goalsConfirmed,
+        extractedGoalsCount: extractedGoals.length,
+        workspaceId: workspace?.id
+      });
+      
       if (workspace?.goal && !goalsConfirmed && extractedGoals.length === 0) {
         // First check if goals already exist from previous analysis
         try {
@@ -138,8 +145,10 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
         // No existing goals, start fresh goal extraction
         console.log('🔄 Starting fresh goal extraction and preview process');
+        console.log('📝 Goal text to extract:', workspace.goal);
         const cleanup = startProgressMonitoring();
-        previewGoals(workspace.goal);
+        const previewResult = await previewGoals(workspace.goal);
+        console.log('📊 Preview result:', previewResult);
         
         return cleanup;
       }
@@ -518,7 +527,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
           <h3 className="text-md font-medium mb-3">Agenti Proposti</h3>
           <div className="space-y-4 mb-6">
-            {proposal.agents.map((agent, index) => (
+            {proposal.agents?.length > 0 ? proposal.agents.map((agent, index) => (
               <div key={index} className="border border-gray-200 rounded-md p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -531,7 +540,11 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{agent.description}</p>
               </div>
-            ))}
+            )) : (
+              <div className="text-center text-gray-500 py-4">
+                <p>Nessun agente disponibile nella proposta</p>
+              </div>
+            )}
           </div>
 
 <div className="flex justify-end space-x-3">

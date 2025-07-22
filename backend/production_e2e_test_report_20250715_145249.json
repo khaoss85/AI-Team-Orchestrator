@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "'UnifiedQualityEngine' object has no attribute 'auto_process_new_artifact'"
+}

@@ -4,7 +4,7 @@ import json
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.ai_quality_assurance.unified_quality_engine import (
+from ai_quality_assurance.unified_quality_engine import (
     unified_quality_engine,
     GoalValidationResult,
     ValidationSeverity,

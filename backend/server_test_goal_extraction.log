@@ -1,0 +1,13 @@
+/opt/homebrew/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+AI Quality Assurance system not fully available: cannot import name 'AIQualityEvaluator' from 'ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+AI Quality Assurance system not fully available: cannot import name 'AIQualityEvaluator' from 'backend.ai_quality_assurance.unified_quality_engine' (/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_quality_assurance/unified_quality_engine.py)
+[2m2025-07-22T07:22:05.012634Z[0m [[32m[1minfo     [0m] [1m✅ X-Trace-ID middleware and trace-aware logging installed[0m [36mfilename[0m=[35mmain.py[0m [36mfuncName[0m=[35m<module>[0m [36mlineno[0m=[35m220[0m [36mtrace_id[0m=[35mno-trace[0m
+[2m2025-07-22T07:22:05.017539Z[0m [[32m[1minfo     [0m] [1m✅ Asset system routes registered with FastAPI[0m [36mfilename[0m=[35masset_system_integration.py[0m [36mfuncName[0m=[35mregister_with_fastapi[0m [36mlineno[0m=[35m281[0m [36mtrace_id[0m=[35mno-trace[0m
+INFO:     Will watch for changes in these directories: ['/Users/pelleri/Documents/ai-team-orchestrator/backend']
+ERROR:    [Errno 48] Address already in use

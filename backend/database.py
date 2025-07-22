@@ -17,7 +17,7 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from backend.models import (
+from models import (
     TaskStatus, AssetArtifact, QualityRule, QualityValidation, 
     AssetRequirement, EnhancedWorkspaceGoal, EnhancedTask, GoalProgressLog
 )
@@ -370,7 +370,7 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
     """
     try:
         # Import here to avoid circular imports
-        from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+        from ai_quality_assurance.unified_quality_engine import unified_quality_engine
         from models import GoalStatus
         from uuid import uuid4
         # datetime already imported globally
@@ -535,13 +535,19 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
         logger.error(f"❌ Error creating deliverable: {e}")
         raise
 
-async def get_deliverables(workspace_id: str) -> List[dict]:
-    """Get all deliverables for a workspace"""
+async def get_deliverables(workspace_id: str, limit: Optional[int] = None, **kwargs) -> List[dict]:
+    """Get deliverables for a workspace with optional limit - consolidated compatibility function"""
     try:
-        result = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id).order('created_at', desc=True).execute()
+        query = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id).order('created_at', desc=True)
+        
+        # Apply limit if provided
+        if limit:
+            query = query.limit(limit)
+            
+        result = query.execute()
         deliverables = result.data or []
         
-        logger.info(f"📦 Found {len(deliverables)} deliverables for workspace {workspace_id}")
+        logger.info(f"📦 Found {len(deliverables)} deliverables for workspace {workspace_id} (limit: {limit or 'none'})")
         return deliverables
         
     except Exception as e:
@@ -769,7 +775,7 @@ async def create_agent(
             "name": name,
             "role": role,
             "seniority": seniority,
-            "status": "available",  # 🔧 FIX: Use "available" status so agents can be found by task planner
+            "status": "active",  # 🔧 FIX: Use "active" status (standardized) so agents can be found by task planner
             "health": {"status": "unknown", "last_update": datetime.now().isoformat()},
             "can_create_tools": can_create_tools
         }
@@ -1143,6 +1149,9 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         data_to_update = {"status": status, "updated_at": datetime.now().isoformat()}
         
         if result_payload is not None:
+            # Store the result payload in the result field
+            data_to_update["result"] = sanitize_unicode_for_postgres(result_payload)
+            
             # List of task fields that can be updated via result_payload
             task_field_keys = ["agent_id", "assigned_to_role", "priority", "estimated_effort_hours", "deadline"]
             
@@ -1154,7 +1163,7 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         # 🎯 STEP 1: QUALITY VALIDATION FOR COMPLETED TASKS
         if status == "completed" and result_payload is not None:
             try:
-                
+                from ai_quality_assurance.unified_quality_engine import quality_gate
                 
                 task = await get_task(task_id)
                 goal = await get_workspace_goal(task['goal_id']) if task and task.get('goal_id') else None
@@ -1211,35 +1220,31 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         # 🎯 STEP 2: UPDATE GOAL PROGRESS IF TASK COMPLETED SUCCESSFULLY
         if status == "completed" and result.data:
             try:
+                # Get workspace_id from task - CRITICAL FIX for undefined workspace_id
+                task = await get_task(task_id)
+                workspace_id = task["workspace_id"] if task else None
+                
+                if not workspace_id:
+                    logger.error(f"Cannot find workspace_id for task {task_id}")
+                    return result.data[0] if result.data and len(result.data) > 0 else {"id": task_id, "status": status}
+                
                 # Update goal progress
                 await _update_goal_progress_from_task_completion(task_id, result_payload)
                 
-                # Extract assets for deliverable system
-                try:
-                    from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
-                    asset_extractor = ConcreteAssetExtractor()
-                    
-                    # Get task details for asset extraction
-                    task = await get_task(task_id)
-                    if task:
-                        workspace_id = task.get("workspace_id")
-                        extracted_assets = await asset_extractor.extract_from_task_result(
-                            task_id=task_id,
-                            task_result=result_payload,
-                            task_name=task.get("name", ""),
-                            workspace_id=workspace_id
-                        )
-                        
-                        if extracted_assets:
-                            logger.info(f"📦 ASSET EXTRACTION: Extracted {len(extracted_assets)} assets from completed task {task_id}")
-                        else:
-                            logger.debug(f"📦 ASSET EXTRACTION: No assets extracted from completed task {task_id}")
-                            
-                except Exception as asset_error:
-                    logger.warning(f"Asset extraction failed for completed task {task_id}: {asset_error}")
-                
+                # NOTE: Asset extraction moved to AgentManager.execute_task to resolve circular dependency
+                # This function now only handles database operations
                 # 🎯 STEP 3: TRIGGER GOAL VALIDATION AND CORRECTIVE ACTIONS
                 await _trigger_goal_validation_and_correction(task_id, workspace_id)
+                
+                # 🚀 STEP 4: AUTONOMOUS DELIVERABLE TRIGGER
+                try:
+                    if await should_trigger_deliverable_aggregation(workspace_id):
+                        logger.info(f"📦 AUTONOMOUS TRIGGER: Starting deliverable aggregation for workspace {workspace_id}")
+                        # Use asyncio.create_task for non-blocking background execution
+                        import asyncio
+                        asyncio.create_task(trigger_deliverable_aggregation(workspace_id))
+                except Exception as trigger_error:
+                    logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Error during trigger evaluation: {trigger_error}")
                     
             except Exception as goal_error:
                 logger.warning(f"Failed to update goal progress for completed task {task_id}: {goal_error}")
@@ -1902,47 +1907,10 @@ async def get_workspace_goals(workspace_id: str, status: Optional[str] = None) -
 
 async def update_goal_progress(goal_id: str, increment: float, task_id: Optional[str] = None, task_business_context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """
-    🎯 ENHANCED: Update goal progress with business value awareness
-    
-    If task_business_context is provided, uses the enhanced goal-driven task planner
-    that calculates progress based on actual business value, not just numerical increments.
+    🎯 ENHANCED: Update goal progress with business value awareness and robust logging.
+    This version is fully aligned with the corrected GoalProgressLog model and schema.
     """
     try:
-        # Initialize enhanced_update_successful flag
-        enhanced_update_successful = False
-        
-        # 🎯 ENHANCED: Use business-aware progress calculation if context available
-        if task_business_context is not None:
-            try:
-                from goal_driven_task_planner import goal_driven_task_planner
-                from uuid import UUID
-                
-                # Use the enhanced progress calculation
-                success = await goal_driven_task_planner.update_goal_progress(
-                    goal_id=UUID(goal_id),
-                    progress_increment=increment,
-                    task_context=task_business_context
-                )
-                
-                if success:
-                    # Get updated goal to return
-                    goal_result = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
-                    if goal_result.data:
-                        enhanced_update_successful = True
-                        return goal_result.data[0]
-                    else:
-                        logger.warning(f"Enhanced goal progress update succeeded for {goal_id} but failed to retrieve updated goal.")
-                else:
-                    logger.warning(f"Enhanced goal progress update failed for {goal_id}. Enforcing 'no assets = no progress' rule.")
-            except Exception as e:
-                logger.warning(f"Enhanced goal progress update error for {goal_id}: {e}. Enforcing 'no assets = no progress' rule.")
-            
-            if enhanced_update_successful:
-                return None # Already returned the updated goal, so exit here
-        
-        # Fallback to simple numerical increment if enhanced update fails or is not applicable
-        logger.info(f"Executing fallback numerical goal update for {goal_id} with increment {increment}.")
-        
         # Get current goal value
         goal_result = supabase.table("workspace_goals").select("current_value, target_value").eq("id", goal_id).single().execute()
         if not goal_result.data:
@@ -1960,6 +1928,35 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
             
         result = supabase.table("workspace_goals").update(update_payload).eq("id", goal_id).execute()
         
+        # Log the progress using direct insert with correct schema
+        try:
+            from datetime import datetime
+            current_time = datetime.now()
+            
+            progress_log_data = {
+                "goal_id": goal_id,
+                "task_id": task_id,
+                "progress_percentage": (new_value / target_value * 100) if target_value > 0 else 0,
+                "quality_score": task_business_context.get("quality_score") if task_business_context else None,
+                "timestamp": current_time.isoformat(),
+                "calculation_method": "task_completion",
+                "metadata": {
+                    "task_id": task_id,
+                    "increment": increment,
+                    "old_value": current_value,
+                    "new_value": new_value
+                },
+                "created_at": current_time.isoformat(),
+                "updated_at": current_time.isoformat()
+            }
+            
+            # Insert directly to avoid any Pydantic conversion issues
+            supabase.table("goal_progress_logs").insert(progress_log_data).execute()
+            logger.info(f"✅ Logged progress for goal {goal_id}: {current_value} -> {new_value}")
+            
+        except Exception as log_exc:
+            logger.error(f"Failed to log goal progress for goal {goal_id}: {log_exc}", exc_info=True)
+
         if result.data:
             return result.data[0]
         return None
@@ -2148,107 +2145,42 @@ def _determine_asset_type(task_name: str, result_payload: Dict[str, Any]) -> str
     # Default fallback
     return "generic_deliverable"
 
-async def _update_goal_progress_from_task_completion(task_id: str, result_payload: Dict[str, Any]):
+async def _update_goal_progress_from_task_completion(task_id: str, task_result: Optional[Dict[str, Any]] = None):
     """
-    🎯 AUTOMATIC GOAL PROGRESS TRACKING - Updates workspace goals when tasks complete
-    
-    This function analyzes completed task results and automatically updates
-    the corresponding workspace goals with measurable progress.
+    🎯 INTERNAL: Update goal progress when a task is completed.
+    This function is now aligned with the corrected GoalProgressLog model and schema.
     """
     try:
-        # Get task details
         task = await get_task(task_id)
-        if not task:
-            logger.warning(f"Task {task_id} not found for goal progress update")
+        if not task or not task.get("goal_id"):
             return
+
+        goal_id = task["goal_id"]
+        workspace_id = task["workspace_id"]  # CRITICAL: Missing workspace_id variable
         
-        # 🛡️ BUSINESS VALUE FIX: Only update goals for successfully completed tasks
-        task_status = task.get("status", "")
-        if task_status != "completed":
-            logger.warning(f"⚠️ GOAL UPDATE BLOCKED: Task {task_id} status is '{task_status}', not 'completed'")
-            return
+        # Build business context for the task
+        agent_role = "Unknown"
+        if task.get("agent_id"):
+            agent = await get_agent(task["agent_id"])
+            if agent:
+                agent_role = agent.get("role", "Unknown")
+
+        business_context = {
+            "task_name": task.get("name"),
+            "task_description": task.get("description"),
+            "task_result": task_result,
+            "agent_role": agent_role,
+            "workspace_id": workspace_id
+        }
         
-        # 🛡️ Validate task has real content, not just error messages
-        task_result = task.get("result", {})
-        if isinstance(task_result, dict):
-            # Check for error indicators
-            if any(key in str(task_result).lower() for key in ["error", "failed", "quota", "limit"]):
-                logger.warning(f"⚠️ GOAL UPDATE BLOCKED: Task {task_id} result contains error indicators")
-                return
+        # Use a default increment of 1.0, but this can be enhanced
+        # to be calculated based on the task's contribution.
+        await update_goal_progress(goal_id, 1.0, task_id=task_id, task_business_context=business_context)
         
-        workspace_id = task.get("workspace_id")
-        task_name = task.get("name", "")
+        logger.info(f"Updated goal {goal_id} progress from completed task {task_id}")
         
-        # Get workspace goals
-        workspace_goals = await get_workspace_goals(workspace_id, status="active")
-        if not workspace_goals:
-            logger.debug(f"No active goals found for workspace {workspace_id}")
-            return
-            
-        logger.info(f"🎯 GOAL PROGRESS UPDATE: Analyzing task '{task_name}' for {len(workspace_goals)} workspace goals")
-        
-        # 🤖 AI-DRIVEN: Extract measurable achievements from task result with enhanced mapping
-        achievements = await extract_task_achievements(result_payload, task_name)  # Use public enhanced version
-        
-        # 🎯 ENHANCED: Try intelligent goal mapping if enhanced mapper is available
-        try:
-            from services.deliverable_achievement_mapper import deliverable_achievement_mapper, AchievementResult
-            
-            # Create achievement result for goal mapping
-            achievement_result = AchievementResult(
-                items_created=achievements.get("items_created", 0),
-                data_processed=achievements.get("data_processed", 0),
-                deliverables_completed=achievements.get("deliverables_completed", 0),
-                metrics_achieved=achievements.get("metrics_achieved", 0),
-                extraction_method="enhanced_wrapper"
-            )
-            
-            # Try intelligent goal mapping
-            goal_updates = await deliverable_achievement_mapper.map_achievements_to_goals(workspace_id, achievement_result)
-            
-            if goal_updates:
-                logger.info(f"🎯 INTELLIGENT GOAL MAPPING: {len(goal_updates)} goals updated automatically")
-                for update in goal_updates:
-                    logger.debug(f"  - {update['metric_type']}: {update['old_value']}→{update['new_value']} (+{update['increment']})")
-                return  # Skip legacy mapping if intelligent mapping succeeded
-            else:
-                logger.debug("No intelligent goal mappings found, using legacy method")
-                
-        except ImportError:
-            logger.debug("Enhanced goal mapping not available, using legacy method")
-        except Exception as mapping_error:
-            logger.warning(f"Enhanced goal mapping failed: {mapping_error}, using legacy method")
-        
-        if not achievements:
-            logger.debug(f"No measurable achievements found in task {task_id} result")
-            return
-            
-        # Update each matching goal
-        for goal in workspace_goals:
-            try:
-                goal_metric_type = goal.get("metric_type", "")
-                goal_id = goal.get("id")
-                current_value = goal.get("current_value", 0)
-                target_value = goal.get("target_value", 0)
-                
-                # Map achievements to goal metrics
-                increment = _calculate_goal_increment(achievements, goal_metric_type)
-                
-                if increment > 0:
-                    # Update goal progress
-                    await update_goal_progress(goal_id, increment, task_id)
-                    
-                    new_value = min(current_value + increment, target_value)
-                    completion_pct = (new_value / target_value * 100) if target_value > 0 else 0
-                    
-                    logger.info(f"✅ GOAL UPDATED: {goal_metric_type} += {increment} "
-                               f"({new_value}/{target_value} = {completion_pct:.1f}% complete)")
-                               
-            except Exception as goal_error:
-                logger.error(f"Error updating individual goal {goal.get('id')}: {goal_error}")
-                
     except Exception as e:
-        logger.error(f"Error in goal progress update for task {task_id}: {e}", exc_info=True)
+        logger.error(f"Error updating goal progress from task {task_id}: {e}")
 
 async def extract_task_achievements(result_payload: Dict[str, Any], task_name: str) -> Dict[str, int]:
     """
@@ -3368,10 +3300,10 @@ class AssetDrivenDatabaseManager:
     async def get_goal_progress_log(self, goal_id: UUID, limit: int = 10) -> List[GoalProgressLog]:
         """Get recent goal progress log entries"""
         try:
-            result = self.supabase.table("goal_progress_log")\
+            result = self.supabase.table("goal_progress_logs")\
                 .select("*")\
                 .eq("goal_id", str(goal_id))\
-                .order("changed_at", desc=True)\
+                .order("created_at", desc=True)\
                 .limit(limit)\
                 .execute()
             
@@ -3534,3 +3466,413 @@ async def get_real_time_goal_completion(workspace_id: UUID) -> List[Dict[str, An
 async def get_pillar_compliance_status() -> List[Dict[str, Any]]:
     """Convenience function for pillar compliance monitoring"""
     return await asset_db.get_pillar_compliance_status()
+
+# ============================================================================
+# AUTONOMOUS DELIVERABLE TRIGGER SYSTEM
+# ============================================================================
+
+async def should_trigger_deliverable_aggregation(workspace_id: str) -> bool:
+    """
+    🚀 AUTONOMOUS TRIGGER: Determines if conditions are met to trigger deliverable aggregation
+    
+    Conditions:
+    - At least 2 tasks completed
+    - Tasks have substantive results (not just placeholders)
+    - No recent deliverable aggregation (cooldown)
+    """
+    try:
+        logger.info(f"🔍 AUTONOMOUS TRIGGER: Evaluating conditions for workspace {workspace_id}")
+        
+        # Check if at least 2 tasks completed
+        completed_tasks = await list_tasks(workspace_id, status="completed", limit=10)
+        if not completed_tasks or len(completed_tasks) < 2:
+            logger.info(f"❌ AUTONOMOUS TRIGGER: Only {len(completed_tasks) if completed_tasks else 0} completed tasks (need 2+)")
+            return False
+        
+        logger.info(f"✅ AUTONOMOUS TRIGGER: Found {len(completed_tasks)} completed tasks")
+        
+        # Check for substantive task results using AI-driven semantic analysis
+        substantive_tasks = 0
+        for task in completed_tasks:
+            result = task.get('result')
+            if result and isinstance(result, (str, dict)):
+                result_str = str(result).strip()
+                
+                # Basic length check first
+                if len(result_str) < 500:
+                    continue
+                
+                # AI-DRIVEN FAKE CONTENT DETECTION (Pillar compliance)
+                try:
+                    # Use AI to semantically detect if content is fake/placeholder
+                    is_substantive = await _ai_detect_substantive_content(result_str)
+                    if is_substantive:
+                        substantive_tasks += 1
+                        logger.info(f"✅ AUTONOMOUS TRIGGER: Task '{task.get('name', 'Unknown')}' has substantive AI-validated content")
+                    else:
+                        logger.info(f"❌ AUTONOMOUS TRIGGER: Task '{task.get('name', 'Unknown')}' flagged as non-substantive by AI")
+                except Exception as e:
+                    # Fallback: Use length-based heuristic when AI not available
+                    logger.warning(f"⚠️ AUTONOMOUS TRIGGER: AI fake detection failed, using fallback: {e}")
+                    if len(result_str) > 1000:  # Simple fallback
+                        substantive_tasks += 1
+        
+        if substantive_tasks < 2:
+            logger.info(f"❌ AUTONOMOUS TRIGGER: Only {substantive_tasks} tasks with substantive results (need 2+)")
+            return False
+        
+        logger.info(f"✅ AUTONOMOUS TRIGGER: Found {substantive_tasks} tasks with substantive results")
+        
+        # Check for cooldown - no deliverable created in last 5 minutes
+        try:
+            recent_deliverables = await get_deliverables(workspace_id, limit=1)
+            if recent_deliverables:
+                last_deliverable = recent_deliverables[0]
+                created_at = last_deliverable.get('created_at')
+                if created_at:
+                    from datetime import datetime, timedelta
+                    if isinstance(created_at, str):
+                        created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    else:
+                        created_time = created_at
+                    
+                    cooldown_period = timedelta(minutes=5)
+                    if datetime.now(created_time.tzinfo) - created_time < cooldown_period:
+                        logger.info(f"❌ AUTONOMOUS TRIGGER: Recent deliverable found, cooldown active")
+                        return False
+        except Exception as e:
+            logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Could not check deliverable cooldown: {e}")
+        
+        logger.info(f"🚀 AUTONOMOUS TRIGGER: All conditions met - triggering deliverable aggregation")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ AUTONOMOUS TRIGGER: Error evaluating conditions: {e}")
+        return False
+
+async def _ai_detect_substantive_content(content: str) -> bool:
+    """
+    🧠 AI-DRIVEN SEMANTIC FAKE CONTENT DETECTION
+    Uses AI to semantically determine if content is substantive vs fake/placeholder
+    Pillar-compliant: Domain agnostic, semantic understanding, no hard-coded rules
+    """
+    try:
+        # Check if AI fake detection is enabled
+        enable_ai_fake_detection = os.getenv('ENABLE_AI_FAKE_DETECTION', 'true').lower() == 'true'
+        if not enable_ai_fake_detection:
+            # Fallback to simple length check when AI disabled
+            return len(content.strip()) > 1000
+        
+        # Import OpenAI client
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI()
+        
+        # Truncate content for analysis (first 2000 chars should be enough)
+        analysis_content = content[:2000] if len(content) > 2000 else content
+        
+        # AI prompt for semantic fake detection
+        prompt = f"""Analyze this task output content and determine if it contains SUBSTANTIVE, REAL work vs FAKE/PLACEHOLDER content.
+
+CONTENT TO ANALYZE:
+{analysis_content}
+
+EVALUATION CRITERIA:
+- SUBSTANTIVE: Real analysis, genuine research, specific data, concrete insights, professional deliverables
+- FAKE/PLACEHOLDER: Lorem ipsum, "TODO", "TBD", obvious dummy text, template placeholders, mock data
+
+IMPORTANT DISTINCTIONS:
+- Instructions saying "no placeholders" = SUBSTANTIVE (it's telling someone NOT to use fake content)
+- Actual placeholder content = FAKE
+- References to testing/examples in context of real work = SUBSTANTIVE  
+- Obvious test/dummy content = FAKE
+
+RESPONSE FORMAT:
+Return ONLY "SUBSTANTIVE" or "FAKE" - no explanation needed."""
+
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.1
+        )
+        
+        result = response.choices[0].message.content.strip().upper()
+        is_substantive = result == "SUBSTANTIVE"
+        
+        logger.info(f"🧠 AI FAKE DETECTION: Content classified as '{result}' -> substantive={is_substantive}")
+        return is_substantive
+        
+    except Exception as e:
+        logger.warning(f"⚠️ AI fake detection failed: {e}")
+        # Graceful fallback: length-based heuristic
+        return len(content.strip()) > 1000
+
+async def trigger_deliverable_aggregation(workspace_id: str):
+    """
+    🚀 AUTONOMOUS TRIGGER: Asynchronously triggers the deliverable aggregation process
+    """
+    try:
+        logger.info(f"🚀 AUTONOMOUS TRIGGER: Starting deliverable aggregation for workspace {workspace_id}")
+        
+        # Import deliverable engine
+        from deliverable_system.unified_deliverable_engine import check_and_create_final_deliverable
+        
+        # Trigger deliverable creation with force=True for autonomous operation
+        result = await check_and_create_final_deliverable(workspace_id, force=True)
+        
+        if result and result.get('success'):
+            deliverables_created = len(result.get('deliverables', []))
+            logger.info(f"✅ AUTONOMOUS TRIGGER: Successfully created {deliverables_created} deliverables")
+        else:
+            logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Deliverable creation returned: {result}")
+            
+    except ImportError as e:
+        logger.error(f"❌ AUTONOMOUS TRIGGER: Deliverable engine not available: {e}")
+    except Exception as e:
+        logger.error(f"❌ AUTONOMOUS TRIGGER: Error during deliverable aggregation: {e}")
+        import traceback
+        traceback.print_exc()
+
+# ============================================================================
+# MEMORY INSIGHTS COMPATIBILITY FUNCTIONS
+# ============================================================================
+
+async def get_memory_insights(workspace_id: str, limit: int = 10, **kwargs) -> List[Dict[str, Any]]:
+    """Get memory insights for a workspace - compatibility function"""
+    try:
+        from services.unified_memory_engine import unified_memory_engine
+        return await unified_memory_engine.get_memory_insights(workspace_id, limit)
+    except ImportError:
+        logger.warning("Unified memory engine not available")
+        return []
+    except Exception as e:
+        logger.error(f"Error getting memory insights: {e}")
+        return []
+
+async def add_memory_insight(workspace_id: str, insight_type: str, content: str, agent_role: str = "system", task_id: str = None, **kwargs) -> bool:
+    """Add memory insight - compatibility function"""
+    try:
+        from services.unified_memory_engine import unified_memory_engine
+        await unified_memory_engine.store_insight(
+            workspace_id=workspace_id,
+            insight_type=insight_type,
+            content=content,
+            relevance_tags=["agent", agent_role],
+            metadata={"type": insight_type, "source": agent_role}
+        )
+        return True
+    except ImportError:
+        logger.warning("Unified memory engine not available")
+        return False
+    except Exception as e:
+        logger.error(f"Error adding memory insight: {e}")
+        return False
+
+# ============================================================================
+# ADDITIONAL COMPATIBILITY FUNCTIONS
+# ============================================================================
+
+async def get_ready_tasks_python(workspace_id: str) -> List[Dict[str, Any]]:
+    """Get tasks ready for execution - compatibility function"""
+    try:
+        # Get pending tasks that are ready (no dependencies or dependencies completed)
+        tasks = await list_tasks(workspace_id, status="pending")
+        ready_tasks = []
+        
+        for task in tasks:
+            # Check if task has dependencies
+            depends_on = task.get('depends_on', [])
+            if not depends_on:
+                # No dependencies, task is ready
+                ready_tasks.append(task)
+            else:
+                # Check if all dependencies are completed
+                all_deps_complete = True
+                for dep_id in depends_on:
+                    dep_task = await get_task(dep_id)
+                    if dep_task and dep_task.get('status') != 'completed':
+                        all_deps_complete = False
+                        break
+                
+                if all_deps_complete:
+                    ready_tasks.append(task)
+        
+        return ready_tasks
+    except Exception as e:
+        logger.error(f"Error getting ready tasks: {e}")
+        return []
+
+async def get_task_execution_stats_python(workspace_id: str, days: int = 7) -> Dict[str, Any]:
+    """Get task execution statistics - compatibility function"""
+    try:
+        from datetime import datetime, timedelta
+        
+        # Get all tasks from the workspace
+        all_tasks = await list_tasks(workspace_id)
+        
+        # Calculate date threshold
+        threshold = datetime.now() - timedelta(days=days)
+        
+        # Filter and calculate stats
+        recent_tasks = [t for t in all_tasks if t.get('created_at', '') > threshold.isoformat()]
+        completed_tasks = [t for t in recent_tasks if t.get('status') == 'completed']
+        failed_tasks = [t for t in recent_tasks if t.get('status') == 'failed']
+        
+        # Calculate execution times for completed tasks
+        execution_times = []
+        for task in completed_tasks:
+            if 'result' in task and isinstance(task['result'], dict):
+                exec_time = task['result'].get('execution_time', 0)
+                if exec_time > 0:
+                    execution_times.append(exec_time)
+        
+        avg_execution_time = sum(execution_times) / len(execution_times) if execution_times else 0
+        
+        return {
+            "total_tasks": len(recent_tasks),
+            "completed_tasks": len(completed_tasks),
+            "failed_tasks": len(failed_tasks),
+            "success_rate": len(completed_tasks) / len(recent_tasks) if recent_tasks else 0,
+            "average_execution_time": avg_execution_time,
+            "period_days": days
+        }
+    except Exception as e:
+        logger.error(f"Error getting task execution stats: {e}")
+        return {
+            "total_tasks": 0,
+            "completed_tasks": 0,
+            "failed_tasks": 0,
+            "success_rate": 0,
+            "average_execution_time": 0,
+            "period_days": days
+        }
+
+async def get_workspace_execution_stats(workspace_id: str) -> Dict[str, Any]:
+    """Get workspace execution statistics - compatibility function"""
+    try:
+        # Get task execution stats for the workspace
+        task_stats = await get_task_execution_stats_python(workspace_id)
+        
+        # Get additional workspace metrics
+        all_tasks = await list_tasks(workspace_id)
+        agents = await list_agents(workspace_id)
+        
+        # Count tasks by status
+        status_counts = {}
+        for task in all_tasks:
+            status = task.get('status', 'unknown')
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        # Calculate agent utilization
+        agent_task_counts = {}
+        for task in all_tasks:
+            agent_id = task.get('agent_id')
+            if agent_id:
+                agent_task_counts[agent_id] = agent_task_counts.get(agent_id, 0) + 1
+        
+        avg_tasks_per_agent = sum(agent_task_counts.values()) / len(agents) if agents else 0
+        
+        return {
+            **task_stats,
+            "total_agents": len(agents),
+            "tasks_by_status": status_counts,
+            "average_tasks_per_agent": avg_tasks_per_agent,
+            "workspace_id": workspace_id
+        }
+    except Exception as e:
+        logger.error(f"Error getting workspace execution stats: {e}")
+        return {
+            "total_tasks": 0,
+            "completed_tasks": 0,
+            "failed_tasks": 0,
+            "success_rate": 0,
+            "average_execution_time": 0,
+            "total_agents": 0,
+            "tasks_by_status": {},
+            "average_tasks_per_agent": 0,
+            "workspace_id": workspace_id
+        }
+
+# ============================================================================
+# TASK EXECUTION TRACKING FUNCTIONS
+# ============================================================================
+
+async def create_task_execution(task_id: str, agent_id: str, status: str = "running", **kwargs) -> Optional[Dict[str, Any]]:
+    """Create a task execution record - compatibility function"""
+    try:
+        execution_data = {
+            "task_id": task_id,
+            "agent_id": agent_id,
+            "status": status,
+            "started_at": datetime.now().isoformat(),
+            "execution_metadata": {}
+        }
+        
+        # Store in tasks table context_data for now
+        task = await get_task(task_id)
+        if task:
+            context_data = task.get('context_data', {})
+            context_data['execution'] = execution_data
+            
+            result = supabase.table("tasks").update({
+                "context_data": context_data,
+                "status": "in_progress"
+            }).eq("id", task_id).execute()
+            
+            if result.data:
+                return execution_data
+    except Exception as e:
+        logger.error(f"Error creating task execution: {e}")
+    return None
+
+async def update_task_execution(
+    execution_id: str, 
+    status: str, 
+    result: Optional[Dict[str, Any]] = None, 
+    error: Optional[str] = None,
+    logs: Optional[str] = None,
+    error_message: Optional[str] = None,
+    error_type: Optional[str] = None,
+    execution_time_seconds: Optional[float] = None,
+    **kwargs  # Accept any additional parameters for forward compatibility
+) -> bool:
+    """Update task execution record - compatibility function with full parameter support"""
+    try:
+        # Since we're storing in task context_data, use task_id as execution_id
+        task_id = execution_id
+        task = await get_task(task_id)
+        
+        if task:
+            context_data = task.get('context_data', {})
+            if 'execution' not in context_data:
+                context_data['execution'] = {}
+            
+            # Update all provided execution details
+            execution_data = context_data['execution']
+            execution_data['status'] = status
+            execution_data['updated_at'] = datetime.now().isoformat()
+            
+            if result:
+                execution_data['result'] = result
+            if error or error_message:
+                execution_data['error'] = error or error_message
+            if error_type:
+                execution_data['error_type'] = error_type
+            if logs:
+                execution_data['logs'] = logs
+            if execution_time_seconds is not None:
+                execution_data['execution_time_seconds'] = execution_time_seconds
+            
+            # Add any additional kwargs
+            for key, value in kwargs.items():
+                if value is not None:
+                    execution_data[key] = value
+                
+            result = supabase.table("tasks").update({
+                "context_data": context_data
+            }).eq("id", task_id).execute()
+            
+            return bool(result.data)
+    except Exception as e:
+        logger.error(f"Error updating task execution: {e}")
+    return False

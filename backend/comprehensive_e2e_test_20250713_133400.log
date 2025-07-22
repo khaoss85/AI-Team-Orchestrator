@@ -1,0 +1,93 @@
+2025-07-13 13:34:00,564 - __main__ - INFO - 🚀 Starting Comprehensive E2E Integrated Test
+2025-07-13 13:34:00,564 - __main__ - INFO - 🚀 Starting Comprehensive E2E Integrated Test
+2025-07-13 13:34:00,564 - __main__ - INFO - ================================================================================
+2025-07-13 13:34:00,564 - __main__ - INFO - 
+🔧 PHASE 1: System Architecture Validation
+2025-07-13 13:34:00,566 - task_execution_monitor - INFO - 🔍 Task Execution Monitor started
+2025-07-13 13:34:00,566 - __main__ - INFO - ✅ Task Execution Monitor initialized
+2025-07-13 13:34:00,717 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-13 13:34:00,868 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-13 13:34:00,868 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-13 13:34:00,868 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-13 13:34:00,874 - services.universal_ai_pipeline_engine - INFO - 🤖 UniversalAIPipelineEngine initialized with advanced features
+2025-07-13 13:34:00,874 - backend.deliverable_system - WARNING - Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+2025-07-13 13:34:00,874 - services - WARNING - Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+2025-07-13 13:34:00,879 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-13 13:34:00,879 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-13 13:34:00,884 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-13 13:34:00,888 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-13 13:34:00,888 - __main__ - INFO - ✅ Database connection validated
+2025-07-13 13:34:01,032 - ai_agents.specialist - INFO - Using 'agents' SDK v0.0.15+ features.
+2025-07-13 13:34:01,053 - backend.database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-13 13:34:01,053 - backend.database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-13 13:34:01,053 - backend.database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-13 13:34:01,058 - backend.database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-13 13:34:01,062 - backend.database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-13 13:34:01,068 - backend.ai_quality_assurance.unified_quality_engine - INFO - 🔧 Unified Quality Engine initialized successfully
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance.unified_quality_engine - INFO - ✅ Unified Quality Engine module loaded with full backward compatibility.
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance - INFO - Legacy quality_integration module consolidated into unified engine
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance - INFO - 🔧 Unified Quality Assurance System loaded successfully
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance - INFO -    ├─ Consolidated 13 files into unified_quality_engine.py
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-13 13:34:01,069 - backend.ai_quality_assurance - INFO -    └─ Duplicate functions eliminated (unified __init__, reset_stats, _detect_fake_content)
+2025-07-13 13:34:01,069 - ai_agents.specialist - INFO - ✅ Robust JSON parser available
+2025-07-13 13:34:01,077 - backend.services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-13 13:34:01,077 - backend.services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-13 13:34:01,077 - backend.services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-13 13:34:01,078 - backend.deliverable_system.unified_deliverable_engine - INFO - 🔧 Unified Deliverable Engine initialized.
+2025-07-13 13:34:01,082 - backend.services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-13 13:34:01,082 - backend.services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-13 13:34:01,082 - backend.services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-13 13:34:01,082 - backend.services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-13 13:34:01,170 - executor - INFO - ✅ WebSocket real-time updates available in TaskExecutor
+2025-07-13 13:34:01,171 - services.thinking_process - INFO - 💭 Real-Time Thinking Engine initialized
+2025-07-13 13:34:01,171 - executor - INFO - ✅ Thinking Process Engine available for real-time reasoning
+2025-07-13 13:34:01,172 - services.workspace_health_manager - INFO - WorkspaceHealthManager initialized - auto_recovery: True, base_task_limit: 200, check_interval: 300s
+2025-07-13 13:34:01,172 - executor - INFO - ✅ WorkspaceHealthManager available for intelligent health checks
+2025-07-13 13:34:01,173 - services.agent_status_manager - INFO - AgentStatusManager initialized - auto_sync: True, sync_interval: 120s, activity_timeout: 30min
+2025-07-13 13:34:01,173 - executor - INFO - ✅ AgentStatusManager available for unified agent management
+2025-07-13 13:34:01,174 - services.dynamic_anti_loop_manager - INFO - 🤖 DynamicAntiLoopManager initialized with AI-driven adaptation
+2025-07-13 13:34:01,174 - executor - INFO - ✅ DynamicAntiLoopManager available for AI-driven limit management
+2025-07-13 13:34:01,177 - services.unified_orchestrator - INFO - 🎼 Unified Orchestrator initialized with complete integration capabilities
+2025-07-13 13:34:01,177 - services.unified_orchestrator - INFO - 🏭 Created singleton Unified Orchestrator instance
+2025-07-13 13:34:01,177 - executor - INFO - ✅ Unified Orchestrator available for complete orchestration capabilities
+2025-07-13 13:34:01,178 - services.system_telemetry_monitor - INFO - 🤖 SystemTelemetryMonitor initialized with proactive alerting
+2025-07-13 13:34:01,178 - executor - INFO - ✅ SystemTelemetryMonitor available for proactive monitoring
+2025-07-13 13:34:01,178 - executor - INFO - ✅ TaskExecutionMonitor available for hang detection
+2025-07-13 13:34:01,178 - database_asset_extensions - INFO - 🗄️ AssetDrivenDatabaseManager initialized
+2025-07-13 13:34:01,178 - executor - WARNING - ⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+2025-07-13 13:34:01,178 - executor - INFO - ✅ Quality System integration available for TaskExecutor
+2025-07-13 13:34:01,179 - executor - INFO - ✅ Task execution monitoring started
+2025-07-13 13:34:01,179 - task_analyzer - CRITICAL - 🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+2025-07-13 13:34:01,179 - task_analyzer - CRITICAL - auto_generation_enabled: True
+2025-07-13 13:34:01,179 - task_analyzer - CRITICAL - analysis_enabled: True
+2025-07-13 13:34:01,179 - task_analyzer - INFO - EnhancedTaskExecutor initialized with complete fixes
+2025-07-13 13:34:01,179 - executor - INFO - 🚀 ATOE initialized successfully for skip rate optimization
+2025-07-13 13:34:01,179 - executor - INFO - 🔍 EXECUTOR: Quality assurance integration enabled
+2025-07-13 13:34:01,179 - executor - INFO - 🔍 TASK EXECUTOR INITIALIZED: Quality-enhanced version
+2025-07-13 13:34:01,179 - __main__ - INFO - ✅ Agent architecture components validated
+2025-07-13 13:34:01,179 - __main__ - INFO - ✅ Phase 1: System architecture validation PASSED
+2025-07-13 13:34:01,179 - __main__ - INFO - 
+📝 PHASE 2: Workspace & Goals Setup
+2025-07-13 13:34:01,179 - database - INFO - Attempting to insert new workspace with data: {'name': 'E-Commerce Platform Development', 'description': 'Build comprehensive e-commerce platform with advanced features', 'user_id': '17e2aae5-3e2f-4691-a8ff-bbb474f60770', 'status': 'created'}
+2025-07-13 13:34:01,179 - database - INFO - 🔍 Validating INSERT operation on workspaces with constraint prevention
+2025-07-13 13:34:01,179 - services.constraint_violation_preventer - INFO - 🔍 Validating INSERT operation on workspaces
+2025-07-13 13:34:01,374 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-13 13:34:01,377 - database - INFO - ✅ Constraint-safe INSERT completed successfully on workspaces
+2025-07-13 13:34:01,377 - database - INFO - Successfully created workspace: 376e483a-20bb-4789-b18f-5b4863b4acaa
+2025-07-13 13:34:01,377 - database - INFO - ⚠️ Workspace goals creation delayed - will be done in /configure page
+2025-07-13 13:34:01,378 - __main__ - INFO - ✅ Workspace created: 376e483a-20bb-4789-b18f-5b4863b4acaa
+2025-07-13 13:34:01,378 - database - INFO - 🔍 Validating INSERT operation on workspace_goals with constraint prevention
+2025-07-13 13:34:01,378 - services.constraint_violation_preventer - INFO - 🔍 Validating INSERT operation on workspace_goals
+2025-07-13 13:34:01,448 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-13 13:34:01,449 - database - INFO - ✅ Constraint-safe INSERT completed successfully on workspace_goals
+2025-07-13 13:34:01,449 - __main__ - INFO - ✅ Goal created: Set up development environment and project structu...
+2025-07-13 13:34:01,449 - database - INFO - 🔍 Validating INSERT operation on workspace_goals with constraint prevention
+2025-07-13 13:34:01,449 - services.constraint_violation_preventer - INFO - 🔍 Validating INSERT operation on workspace_goals
+2025-07-13 13:34:01,521 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 409 Conflict"
+2025-07-13 13:34:01,524 - database - ERROR - ❌ Safe database operation failed: {'code': '23505', 'details': 'Key (workspace_id, metric_type)=(376e483a-20bb-4789-b18f-5b4863b4acaa, completion_percentage) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "workspace_goals_workspace_id_metric_type_key"'}
+2025-07-13 13:34:01,524 - database - ERROR - Error creating workspace goal: {'code': '23505', 'details': 'Key (workspace_id, metric_type)=(376e483a-20bb-4789-b18f-5b4863b4acaa, completion_percentage) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "workspace_goals_workspace_id_metric_type_key"'}
+2025-07-13 13:34:01,524 - __main__ - ERROR - ❌ Goal creation failed: {'code': '23505', 'details': 'Key (workspace_id, metric_type)=(376e483a-20bb-4789-b18f-5b4863b4acaa, completion_percentage) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "workspace_goals_workspace_id_metric_type_key"'}
+2025-07-13 13:34:01,524 - __main__ - ERROR - ❌ Comprehensive test failed: {'code': '23505', 'details': 'Key (workspace_id, metric_type)=(376e483a-20bb-4789-b18f-5b4863b4acaa, completion_percentage) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "workspace_goals_workspace_id_metric_type_key"'}
+2025-07-13 13:34:01,528 - __main__ - ERROR - ❌ COMPREHENSIVE E2E TEST FAILED!
+2025-07-13 13:34:01,528 - task_execution_monitor - INFO - 🔍 Task Execution Monitor started

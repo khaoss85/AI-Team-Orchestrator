@@ -1,0 +1,4 @@
+{
+  "test_status": "FAILED",
+  "error": "{'code': '22P02', 'details': None, 'hint': None, 'message': 'invalid input syntax for type integer: \"0.0\"'}"
+}

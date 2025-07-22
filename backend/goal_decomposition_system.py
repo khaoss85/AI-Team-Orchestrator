@@ -32,18 +32,12 @@ class GoalDecomposition:
     """Decompose goals into concrete deliverables and thinking processes"""
     
     def __init__(self):
-        self.openai_client = None
-        self._init_ai_client()
+        pass
     
     def _init_ai_client(self):
         """Initialize AI client for goal decomposition"""
-        try:
-            import openai
-            import os
-            self.openai_client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            logger.info("✅ Goal Decomposition AI client initialized")
-        except Exception as e:
-            logger.warning(f"⚠️ AI client not available for goal decomposition: {e}")
+        # This is now handled by the AIProviderManager
+        pass
     
     async def decompose_goal(self, goal: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -102,13 +96,15 @@ class GoalDecomposition:
             return self._emergency_decomposition(goal)
     
     async def _ai_decompose_goal(self, goal: Dict[str, Any]) -> Dict[str, Any]:
-        """🤖 AI-driven goal decomposition using GPT"""
+        """🤖 AI-driven goal decomposition using the AI Provider Abstraction."""
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.goal_decomposer_agent import GOAL_DECOMPOSER_AGENT_CONFIG
+        
         try:
             goal_description = goal.get("description", "")
             goal_metric_type = goal.get("metric_type", "")
             goal_target_value = goal.get("target_value", 0)
             
-            # 🌍 PILLAR 2: Domain-agnostic decomposition prompt
             decomposition_prompt = f"""Analyze this business goal and decompose it into concrete deliverables and strategic thinking components.
 
 GOAL: "{goal_description}"
@@ -116,77 +112,42 @@ TYPE: {goal_metric_type}
 TARGET: {goal_target_value}
 
 Decompose into:
-
-1. ASSET DELIVERABLES (concrete, actionable outputs for the user):
-   - What specific documents, templates, content, or tools will the user receive?
-   - Each must be immediately usable and provide direct business value
-
-2. THINKING COMPONENTS (strategic planning and analysis):
-   - What research, analysis, planning, or strategic thinking is needed?
-   - What background work supports the asset creation?
-
-3. COMPLETION CRITERIA:
-   - How do we validate each deliverable is complete and valuable?
-   - What quality standards must be met?
-
-4. USER VALUE ASSESSMENT:
-   - Rate expected user value 0-100
-   - Identify complexity level: simple/medium/complex
+1. ASSET DELIVERABLES (concrete, actionable outputs for the user)
+2. THINKING COMPONENTS (strategic planning and analysis)
+3. COMPLETION CRITERIA
+4. USER VALUE ASSESSMENT
 
 Return as JSON:
 {{
-  "asset_deliverables": [
-    {{
-      "name": "Deliverable name",
-      "description": "What the user receives",
-      "value_proposition": "Why this is valuable",
-      "completion_criteria": "How to validate completion",
-      "estimated_effort": "low/medium/high",
-      "user_impact": "immediate/short-term/long-term"
-    }}
-  ],
-  "thinking_components": [
-    {{
-      "name": "Thinking component name", 
-      "description": "What analysis/planning is needed",
-      "supports_deliverables": ["deliverable1", "deliverable2"],
-      "complexity": "simple/medium/complex"
-    }}
-  ],
-  "completion_criteria": {{
-    "asset_quality_threshold": 85,
-    "thinking_depth_required": "medium",
-    "user_validation_needed": true/false
-  }},
+  "asset_deliverables": [{{...}}],
+  "thinking_components": [{{...}}],
+  "completion_criteria": {{...}},
   "user_value_score": 85,
   "complexity_level": "medium",
   "domain_category": "universal/specific",
-  "pillar_adherence": {{
-    "domain_agnostic": true/false,
-    "user_value_focused": true/false,
-    "minimal_interface_ready": true/false
-  }}
+  "pillar_adherence": {{...}}
 }}"""
 
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": decomposition_prompt}],
-                temperature=0.1,
-                max_tokens=2000
+            response_content = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=GOAL_DECOMPOSER_AGENT_CONFIG,
+                prompt=decomposition_prompt,
             )
             
-            response_content = response.choices[0].message.content.strip()
-            
-            # Extract JSON from response
-            import re
-            json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
-            if json_match:
-                decomposition_data = json.loads(json_match.group())
-                logger.info("🤖 AI goal decomposition successful")
-                return decomposition_data
+            # The provider should ideally return a parsed dict, but we handle string case for robustness
+            if isinstance(response_content, str):
+                json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
+                if json_match:
+                    decomposition_data = json.loads(json_match.group())
+                else:
+                    raise ValueError("No valid JSON found in AI response")
+            elif isinstance(response_content, dict):
+                decomposition_data = response_content
             else:
-                logger.warning("⚠️ AI response didn't contain valid JSON, using fallback")
-                return self._fallback_decompose_goal(goal)
+                raise TypeError(f"Unexpected response type from AI provider: {type(response_content)}")
+
+            logger.info("🤖 AI goal decomposition successful via SDK Provider.")
+            return decomposition_data
                 
         except Exception as e:
             logger.error(f"❌ AI goal decomposition failed: {e}")

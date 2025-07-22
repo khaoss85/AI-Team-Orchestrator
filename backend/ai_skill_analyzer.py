@@ -20,7 +20,8 @@ class AISkillAnalyzer:
     """
     
     def __init__(self):
-        self.client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # The AI client is now managed by the AIProviderManager
+        pass
     
     async def analyze_asset_quality(
         self, 
@@ -30,9 +31,12 @@ class AISkillAnalyzer:
         domain: str = "unknown"
     ) -> Dict[str, Any]:
         """
-        🤖 AI-DRIVEN QUALITY ANALYSIS
+        🤖 AI-DRIVEN QUALITY ANALYSIS (MIGRATED TO SDK)
         Universal quality analysis that works for any domain/asset type
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.asset_quality_analyzer_agent import ASSET_QUALITY_ANALYZER_AGENT_CONFIG
+        
         try:
             prompt = f"""
 Analyze the quality and business value of this asset using AI reasoning.
@@ -43,12 +47,11 @@ DOMAIN: {domain}
 CONTENT: {asset_content}
 
 Perform a comprehensive analysis without using predefined criteria. Use AI reasoning to evaluate:
-
-1. BUSINESS ACTIONABILITY: How immediately useful is this for business operations?
-2. CONTENT COMPLETENESS: How complete and detailed is the information?
-3. REAL-WORLD APPLICABILITY: Can this be used as-is in a professional setting?
-4. DOMAIN APPROPRIATENESS: How well does this fit the business context?
-5. PLACEHOLDER DETECTION: Does this contain fake/example data?
+1. BUSINESS ACTIONABILITY
+2. CONTENT COMPLETENESS
+3. REAL-WORLD APPLICABILITY
+4. DOMAIN APPROPRIATENESS
+5. PLACEHOLDER DETECTION
 
 Provide scores (0-100) and detailed reasoning for each dimension.
 
@@ -64,42 +67,18 @@ Response format:
     "enhancement_suggestions": ["specific suggestion 1", "specific suggestion 2"],
     "usability_assessment": "detailed explanation of how this can be used",
     "improvement_priority": "high|medium|low",
-    "reasoning": {{
-        "strengths": ["strength 1", "strength 2"],
-        "weaknesses": ["weakness 1", "weakness 2"],
-        "business_impact": "assessment of business value"
-    }}
+    "reasoning": {{ ... }}
 }}
 """
-
-            # Use rate limiting if available
-            try:
-                from utils.rate_limiter import safe_openai_call
-                response = await safe_openai_call(
-                    self.client, "skill_analysis",
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are an AI business analyst specializing in universal content quality assessment. Analyze any content type for any industry without relying on predefined criteria."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.2,
-                    response_format={"type": "json_object"}
-                )
-            except ImportError:
-                # Fallback without rate limiting
-                response = await self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are an AI business analyst specializing in universal content quality assessment. Analyze any content type for any industry without relying on predefined criteria."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.2,
-                    response_format={"type": "json_object"}
-                )
+            analysis = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=ASSET_QUALITY_ANALYZER_AGENT_CONFIG,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
             
-            analysis = json.loads(response.choices[0].message.content)
             analysis["analyzed_at"] = datetime.now().isoformat()
-            analysis["analysis_method"] = "ai_driven_universal"
+            analysis["analysis_method"] = "ai_driven_universal_sdk"
             
             return analysis
             
@@ -113,9 +92,12 @@ Response format:
         business_context: str
     ) -> Dict[str, Any]:
         """
-        🤖 AI-DRIVEN ASSET TYPE DETECTION
+        🤖 AI-DRIVEN ASSET TYPE DETECTION (MIGRATED TO SDK)
         Let AI determine what type of asset this is, no hardcoded types
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.asset_type_detector_agent import ASSET_TYPE_DETECTOR_AGENT_CONFIG
+        
         try:
             prompt = f"""
 Analyze this content and determine what type of business asset it represents.
@@ -138,18 +120,12 @@ Response format:
     "reasoning": "why this classification makes sense"
 }}
 """
-
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an AI business analyst that intelligently classifies any content into business asset types without predefined categories."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
+            return await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=ASSET_TYPE_DETECTOR_AGENT_CONFIG,
+                prompt=prompt,
                 response_format={"type": "json_object"}
             )
-            
-            return json.loads(response.choices[0].message.content)
             
         except Exception as e:
             logger.error(f"🤖 AI asset type detection failed: {e}")
@@ -166,9 +142,12 @@ Response format:
         business_context: str
     ) -> List[Dict[str, Any]]:
         """
-        🤖 AI-DRIVEN ENHANCEMENT SUGGESTIONS
+        🤖 AI-DRIVEN ENHANCEMENT SUGGESTIONS (MIGRATED TO SDK)
         Generate specific, actionable suggestions to improve content quality
         """
+        from services.ai_provider_abstraction import ai_provider_manager
+        from project_agents.enhancement_suggester_agent import ENHANCEMENT_SUGGESTER_AGENT_CONFIG
+        
         try:
             prompt = f"""
 Based on this quality analysis, suggest specific enhancement actions.
@@ -177,13 +156,7 @@ BUSINESS CONTEXT: {business_context}
 CURRENT CONTENT: {current_content}
 QUALITY ANALYSIS: {json.dumps(quality_analysis, indent=2)}
 
-Generate 3-5 specific, actionable enhancement suggestions that will:
-1. Replace placeholder content with real data
-2. Improve business actionability
-3. Enhance professional quality
-4. Increase immediate usability
-
-Each suggestion should be specific enough to implement.
+Generate 3-5 specific, actionable enhancement suggestions.
 
 Response format:
 {{
@@ -196,24 +169,16 @@ Response format:
             "priority": "high|medium|low",
             "implementation": "how to implement this"
         }}
-    ],
-    "content_gaps": ["gap 1", "gap 2"],
-    "quick_wins": ["quick improvement 1", "quick improvement 2"],
-    "strategic_improvements": ["strategic improvement 1", "strategic improvement 2"]
+    ]
 }}
 """
-
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an AI business consultant specializing in content enhancement and business asset optimization."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
+            suggestions = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=ENHANCEMENT_SUGGESTER_AGENT_CONFIG,
+                prompt=prompt,
                 response_format={"type": "json_object"}
             )
             
-            suggestions = json.loads(response.choices[0].message.content)
             return suggestions.get("enhancement_actions", [])
             
         except Exception as e:

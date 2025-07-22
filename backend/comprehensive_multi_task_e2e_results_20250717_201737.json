@@ -1,0 +1,58 @@
+{
+  "test_start": "2025-07-17T20:15:45.851436",
+  "phases_completed": [
+    "comprehensive_setup",
+    "multi_task_execution",
+    "handoff_monitoring",
+    "deliverable_generation",
+    "loop_closure_validation"
+  ],
+  "phases_failed": [],
+  "workspace_id": "4eaaaf40-150f-4d29-add0-6843db3070b4",
+  "goal_ids": [],
+  "agent_ids": [
+    "6aaedac5-d0b6-422a-872c-f9590e6a004d",
+    "5e05e270-eb09-41a4-b970-1772f645026d",
+    "c56786fc-559e-47d8-8b6c-6264df6b4aa4",
+    "2990d0be-85ed-4766-b286-36895989a7b1"
+  ],
+  "task_ids": [
+    "f8f02ba8-4f8d-45e5-9b4f-763187c2e0b8"
+  ],
+  "executed_tasks": [
+    {
+      "task_id": "f8f02ba8-4f8d-45e5-9b4f-763187c2e0b8",
+      "task_name": "Project Setup & Strategic Planning Kick-off",
+      "execution_time": 20.400301933288574,
+      "status": "completed",
+      "agent_used": "5e05e270-eb09-41a4-b970-1772f645026d",
+      "result_length": 1820
+    }
+  ],
+  "tasks_with_handoffs": [
+    {
+      "task_id": "f8f02ba8-4f8d-45e5-9b4f-763187c2e0b8",
+      "task_name": "Project Setup & Strategic Planning Kick-off",
+      "execution_time": 20.400301933288574,
+      "status": "completed",
+      "agent_used": "5e05e270-eb09-41a4-b970-1772f645026d",
+      "result_length": 1820
+    }
+  ],
+  "deliverable_ids": [],
+  "deliverables_generated": 0,
+  "total_execution_time": 20.400301933288574,
+  "agent_interactions": [
+    {
+      "task_id": "f8f02ba8-4f8d-45e5-9b4f-763187c2e0b8",
+      "task_name": "Project Setup & Strategic Planning Kick-off",
+      "primary_agent": "MarcoBianchi",
+      "handoff_available": true,
+      "execution_time": 20.400301933288574,
+      "handoff_detected": true
+    }
+  ],
+  "overall_success": true,
+  "test_end": "2025-07-17T20:17:37.744807",
+  "loop_closure_percentage": 87.5
+}

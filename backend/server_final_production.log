@@ -1,0 +1,171 @@
+/opt/homebrew/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+/opt/homebrew/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'validate_by_name'
+  warnings.warn(message, UserWarning)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+Memory or Deliverable System not fully available: cannot import name 'get_supabase_client' from 'database' (consider renaming '/Users/pelleri/Documents/ai-team-orchestrator/backend/database.py' if it has the same name as a library you intended to import)
+⚠️ Schema verification system not available: No module named 'schema_verification'
+/Users/pelleri/Documents/ai-team-orchestrator/backend/simple_server.py:58: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [37695]
+INFO:     Waiting for application startup.
+⚠️ Asset System not available in TaskExecutor: cannot import name 'AssetArtifactProcessor' from 'services' (/Users/pelleri/Documents/ai-team-orchestrator/backend/services/__init__.py)
+🔧 ENHANCED TASK EXECUTOR CONFIGURATION
+auto_generation_enabled: True
+analysis_enabled: True
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+✅ Workspaces routes registered
+✅ Director routes registered
+✅ Goals routes registered
+🚀 Starting simple server with task executor...
+🚀 Starting minimal components...
+✅ Task executor started
+INFO:     127.0.0.1:62462 - "GET /health HTTP/1.1" 200 OK
+[2m2025-07-13T09:31:04.249489Z[0m [[32m[1minfo     [0m] [1mRoute create_new_workspace called[0m [36mendpoint[0m=[35mcreate_new_workspace[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62469 - "POST /api/workspaces/ HTTP/1.1" 201 Created
+❌ Failed to generate asset requirements for goal 805ab996-0867-42fa-898b-ec9cd4cabbbb: 'UnifiedDeliverableEngine' object has no attribute 'generate_from_goal'
+Warning: Failed to log goal event: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'message' column of 'logs' in the schema cache"}
+INFO:     127.0.0.1:62469 - "POST /api/workspaces/5af97ec4-8f2b-443a-bc16-45a349232bc3/goals HTTP/1.1" 200 OK
+[2m2025-07-13T09:31:04.585994Z[0m [[32m[1minfo     [0m] [1mRoute create_team_proposal called[0m [36mendpoint[0m=[35mcreate_team_proposal[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:04.655431Z[0m [[32m[1minfo     [0m] [1m🎯 Using enhanced director for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:04.655519Z[0m [[32m[1minfo     [0m] [1m📊 Using 0 strategic goals from database[0m [36mtrace_id[0m=[35munknown[0m
+Preventing manager-to-manager handoff between similar roles: ElenaRossi (project manager) -> MarcoBianchi (lead developer).
+Skipping invalid handoff spec {'from': 'ElenaRossi', 'to': ['GiuliaVerdi', 'LucaNeri'], 'description': 'Project Manager delegates tasks, coordinates progress, and escalates issues to respective specialists as needed.'}: 2 validation errors for DirectorHandoffProposal
+from_agent
+  Field required [type=missing, input_value={'from': 'ElenaRossi', 't...specialists as needed.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+to_agents
+  Field required [type=missing, input_value={'from': 'ElenaRossi', 't...specialists as needed.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+INFO:     127.0.0.1:62469 - "POST /api/director/proposal HTTP/1.1" 200 OK
+[2m2025-07-13T09:31:19.274654Z[0m [[32m[1minfo     [0m] [1mRoute approve_team_proposal_endpoint called[0m [36mendpoint[0m=[35mapprove_team_proposal_endpoint[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.421912Z[0m [[32m[1minfo     [0m] [1m🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for 4 agents[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.422066Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 1/4: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.422134Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.422206Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '5af97ec4-8f2b-443a-bc16-45a349232bc3', 'name': 'ElenaRossi', 'role': 'Project Manager', 'seniority': 'senior', 'description': 'Oversees project execution, coordinates team, manages timeline and budget, ensures quality delivery.', 'system_prompt': 'You are a Project Manager. Your responsibilities include planning, coordinating, and monitoring all project activities, ensuring timely delivery, managing resources, and facilitating communication among stakeholders.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Elena', 'last_name': 'Rossi', 'personality_traits': ['analytical', 'decisive'], 'communication_style': 'formal', 'hard_skills': [{'name': 'project management', 'level': 'expert'}, {'name': 'risk assessment', 'level': 'advanced'}], 'soft_skills': [{'name': 'leadership', 'level': 'expert'}, {'name': 'diplomacy', 'level': 'advanced'}], 'background_story': 'Elena has over 10 years of experience managing cross-functional teams in the tech sector, specializing in agile methodologies and stakeholder engagement. She is known for her structured approach and ability to deliver complex projects on time and within budget.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.493058Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent d5c0975d-206e-456a-a264-b490556a68ed: ElenaRossi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.493181Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 2/4: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.493233Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.493326Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '5af97ec4-8f2b-443a-bc16-45a349232bc3', 'name': 'MarcoBianchi', 'role': 'Lead Developer', 'seniority': 'expert', 'description': 'Designs and implements technical solutions, oversees code quality, mentors developers, ensures best practices.', 'system_prompt': 'You are a Lead Developer. Your responsibilities include architecting solutions, writing high-quality code, reviewing team output, and ensuring technical excellence.', 'llm_config': {'model': 'gpt-4.1', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Marco', 'last_name': 'Bianchi', 'personality_traits': ['detail-oriented', 'innovative'], 'communication_style': 'technical', 'hard_skills': [{'name': 'software architecture', 'level': 'expert'}, {'name': 'full-stack development', 'level': 'expert'}], 'soft_skills': [{'name': 'problem solving', 'level': 'expert'}, {'name': 'mentoring', 'level': 'advanced'}], 'background_story': 'Marco is a seasoned software architect with 15 years of experience in developing scalable web applications. He is passionate about clean code and innovative solutions, and has led several successful product launches.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.573130Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 6928bb3e-68cb-4480-ab44-5a1ca52a81d9: MarcoBianchi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.573247Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 3/4: GiuliaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.573295Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.573367Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '5af97ec4-8f2b-443a-bc16-45a349232bc3', 'name': 'GiuliaVerdi', 'role': 'UX/UI Designer', 'seniority': 'senior', 'description': 'Designs user interfaces, conducts user research, ensures usability and visual appeal of products.', 'system_prompt': 'You are a UX/UI Designer. Your responsibilities include creating user-centered designs, conducting user research, prototyping, and collaborating with developers to implement interfaces.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Giulia', 'last_name': 'Verdi', 'personality_traits': ['creative', 'collaborative'], 'communication_style': 'empathetic', 'hard_skills': [{'name': 'UI design', 'level': 'expert'}, {'name': 'user research', 'level': 'advanced'}], 'soft_skills': [{'name': 'empathy', 'level': 'expert'}, {'name': 'adaptability', 'level': 'advanced'}], 'background_story': 'Giulia has a background in psychology and digital design, with 8 years of experience crafting intuitive and visually engaging interfaces. She excels at translating user needs into elegant design solutions.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.662963Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 5386e498-4390-430a-86df-94b6c564566f: GiuliaVerdi[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.663247Z[0m [[32m[1minfo     [0m] [1m📋 Creating agent 4/4: LucaNeri[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.663574Z[0m [[32m[1minfo     [0m] [1m🔧 Tools configuration: [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}][0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.663718Z[0m [[32m[1minfo     [0m] [1m🔍 Agent creation payload: {'workspace_id': '5af97ec4-8f2b-443a-bc16-45a349232bc3', 'name': 'LucaNeri', 'role': 'QA Specialist', 'seniority': 'senior', 'description': 'Ensures product quality through rigorous testing, develops test plans, identifies and documents bugs.', 'system_prompt': 'You are a QA Specialist. Your responsibilities include developing and executing test plans, identifying bugs, ensuring product meets quality standards, and collaborating with developers to resolve issues.', 'llm_config': {'model': 'gpt-4.1-mini', 'temperature': 0.3}, 'tools': [{'name': 'web_search', 'type': 'web_search', 'description': 'Web search capability'}], 'first_name': 'Luca', 'last_name': 'Neri', 'personality_traits': ['methodical', 'proactive'], 'communication_style': 'concise', 'hard_skills': [{'name': 'test automation', 'level': 'advanced'}, {'name': 'bug tracking', 'level': 'expert'}], 'soft_skills': [{'name': 'attention to detail', 'level': 'expert'}, {'name': 'communication', 'level': 'advanced'}], 'background_story': 'Luca has 9 years of experience in quality assurance for software products, specializing in automated testing and process optimization. He is known for his thoroughness and proactive approach to preventing issues.'}[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.737394Z[0m [[32m[1minfo     [0m] [1m✅ Successfully created agent 58736baf-fbb3-4116-b37b-a48a53ab9a07: LucaNeri[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.737481Z[0m [[32m[1minfo     [0m] [1m📊 AGENT CREATION SUMMARY: 4 agents created out of 4 proposed[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:19.737551Z[0m [[32m[1minfo     [0m] [1m🗂️ Agent name to ID mapping: {'ElenaRossi': 'd5c0975d-206e-456a-a264-b490556a68ed', 'MarcoBianchi': '6928bb3e-68cb-4480-ab44-5a1ca52a81d9', 'GiuliaVerdi': '5386e498-4390-430a-86df-94b6c564566f', 'LucaNeri': '58736baf-fbb3-4116-b37b-a48a53ab9a07'}[0m [36mtrace_id[0m=[35munknown[0m
+Quality prompt enhancement failed for GiuliaVerdi: name 'DynamicPromptEnhancer' is not defined
+Quality prompt enhancement failed for LucaNeri: name 'DynamicPromptEnhancer' is not defined
+[2m2025-07-13T09:31:20.226475Z[0m [[32m[1minfo     [0m] [1m✅ AgentManager cache refreshed successfully for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:20.226560Z[0m [[32m[1minfo     [0m] [1mProcessing 0 handoff proposals for actual creation...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:20.298300Z[0m [[32m[1minfo     [0m] [1m✅ Workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3 activated successfully[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:20.298402Z[0m [[32m[1minfo     [0m] [1m🎯 Team approved for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3, checking for goals...[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:20.368212Z[0m [[32m[1minfo     [0m] [1m✅ Found 1 active goals, triggering auto-start[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:20.368294Z[0m [[32m[1minfo     [0m] [1m✅ 4 agents available for task assignment[0m [36mtrace_id[0m=[35munknown[0m
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🔧 Missing summary in parsed result - generated intelligent summary
+[2m2025-07-13T09:31:39.066017Z[0m [[32m[1minfo     [0m] [1m✅ Auto-start triggered after team approval via director endpoint[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62469 - "POST /api/director/approve/5af97ec4-8f2b-443a-bc16-45a349232bc3?proposal_id=ecd78a87-9607-4595-a7eb-0a6d4563e223 HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:5af97ec4 - recommending limit increase to 25
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (50.0%) for W:5af97ec4 - recommending limit increase to 25
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get workspace discoveries: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get workspace discoveries: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+[2m2025-07-13T09:31:59.071343Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:31:59.203015Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62500 - "GET /api/workspaces/5af97ec4-8f2b-443a-bc16-45a349232bc3/tasks HTTP/1.1" 200 OK
+Failed to get workspace discoveries: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+[2m2025-07-13T09:32:20.418363Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:32:20.587412Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62508 - "GET /api/workspaces/5af97ec4-8f2b-443a-bc16-45a349232bc3/tasks HTTP/1.1" 200 OK
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+❌ Error executing task c5c2b886-3521-4271-8d53-ff3206dc25e1: Max turns (30) exceeded
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/ai_agents/specialist.py", line 1014, in execute
+    run_result = await Runner.run(self.agent, str(task.model_dump()), max_turns=30)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/agents/run.py", line 212, in run
+    raise MaxTurnsExceeded(f"Max turns ({max_turns}) exceeded")
+agents.exceptions.MaxTurnsExceeded: Max turns (30) exceeded
+[2m2025-07-13T09:32:40.598363Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:32:40.901455Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62514 - "GET /api/workspaces/5af97ec4-8f2b-443a-bc16-45a349232bc3/tasks HTTP/1.1" 200 OK
+Failed to check operational constraints: No module named 'backend.services.memory_system'
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+Failed to calculate skip metrics: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.execution_logs" does not exist'}
+ATOE orchestration error, falling back to dynamic anti-loop: 'UnifiedOrchestrator' object has no attribute 'update_workspace_metrics'
+🚨 High skip rate (66.7%) for W:5af97ec4 - recommending limit increase to 25
+Failed to get project context: cannot import name 'MemoryQueryResponse' from 'models' (/Users/pelleri/Documents/ai-team-orchestrator/backend/models.py)
+🔧 Missing summary in parsed result - generated intelligent summary
+🔧 Invalid status 'in_progress' - applying intelligent correction
+INFO:     127.0.0.1:62675 - "GET /api/workspaces HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:62681 - "GET /api/workspaces HTTP/1.1" 307 Temporary Redirect
+[2m2025-07-13T09:36:00.795470Z[0m [[32m[1minfo     [0m] [1mRoute get_all_workspaces called[0m [36mendpoint[0m=[35mget_all_workspaces[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62684 - "GET /api/workspaces/ HTTP/1.1" 200 OK
+[2m2025-07-13T09:36:07.431804Z[0m [[32m[1minfo     [0m] [1mRoute get_workspace_tasks called[0m [36mendpoint[0m=[35mget_workspace_tasks[0m [36mtrace_id[0m=[35munknown[0m
+[2m2025-07-13T09:36:07.587240Z[0m [[32m[1minfo     [0m] [1m📋 Retrieved 3 tasks for workspace 5af97ec4-8f2b-443a-bc16-45a349232bc3 (filter: None)[0m [36mtrace_id[0m=[35munknown[0m
+INFO:     127.0.0.1:62691 - "GET /api/workspaces/5af97ec4-8f2b-443a-bc16-45a349232bc3/tasks HTTP/1.1" 200 OK
