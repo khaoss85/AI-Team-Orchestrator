@@ -25,8 +25,9 @@ class UnifiedAssetManager:
     """
     
     def __init__(self):
-        # Stub components - modules were removed
-        self.concrete_extractor = unified_deliverable_engine  # Consolidated into unified engine
+        # Import the correct concrete asset extractor
+        from deliverable_system.concrete_asset_extractor import concrete_asset_extractor
+        self.concrete_extractor = concrete_asset_extractor    # Use the real ConcreteAssetExtractor
         self.markup_processor = unified_deliverable_engine    # Consolidated into unified engine
         self.smart_evaluator = unified_deliverable_engine     # Consolidated into unified engine
     
@@ -54,12 +55,15 @@ class UnifiedAssetManager:
             logger.info(f"🔍 [UnifiedAssets] Processing {len(completed_tasks)} completed tasks for workspace {workspace_id}")
             
             # Extract concrete assets using the proven ConcreteAssetExtractor
-            workspace_goal = workspace.get("goal", "")
-            deliverable_type = workspace.get("deliverable_type", "business")
+            # Use the extract_assets_from_task_batch method which handles multiple completed tasks
+            raw_assets_dict = await self.concrete_extractor.extract_assets_from_task_batch(completed_tasks)
             
-            raw_assets = await self.concrete_extractor.extract_concrete_assets(
-                completed_tasks, workspace_goal, deliverable_type
-            )
+            # Convert the task_id -> assets mapping to a flat list for processing
+            raw_assets = {}
+            for task_id, task_assets in raw_assets_dict.items():
+                for i, asset in enumerate(task_assets):
+                    asset_id = f"{task_id}_{i}"
+                    raw_assets[asset_id] = asset
             
             logger.info(f"🔍 [UnifiedAssets] Raw assets extracted: {len(raw_assets)}")
             for asset_id, asset in raw_assets.items():

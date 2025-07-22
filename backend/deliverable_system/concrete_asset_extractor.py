@@ -305,8 +305,18 @@ Return as JSON array of assets. Focus on REAL, CONCRETE content only - no placeh
                         'task_type': task.get('type'),
                         'workspace_id': task.get('workspace_id')
                     }
+                    
+                    # Convert result to string if it's a dict or other object
+                    task_result = task['result']
+                    if isinstance(task_result, dict):
+                        content_str = json.dumps(task_result, indent=2, default=str)
+                    elif isinstance(task_result, str):
+                        content_str = task_result
+                    else:
+                        content_str = str(task_result)
+                    
                     extraction_tasks.append(
-                        self.extract_assets(task['result'], context)
+                        self.extract_assets(content_str, context)
                     )
             
             # Execute in parallel
