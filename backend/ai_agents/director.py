@@ -20,6 +20,11 @@ from uuid import UUID
 from enum import Enum
 
 from services.unified_memory_engine import unified_memory_engine
+from database import get_supabase_client, get_workspace_goals, create_agent, get_agent, update_agent_status
+from models import Agent as AgentModel, Task, AgentStatus, DirectorTeamProposal, AgentCreate, DirectorHandoffProposal
+from .specialist_enhanced import SpecialistAgent
+from utils.context_manager import get_workspace_context
+from services.sdk_memory_bridge import create_workspace_session
 from utils.model_settings_factory import create_model_settings
 
 # ---------------------------------------------------------------------------
@@ -41,7 +46,7 @@ except ImportError:
     )
     try:
         # legacy sdk
-        from openai_agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool  # type: ignore
+        from agents import Agent as OpenAIAgent, Runner, ModelSettings, function_tool  # type: ignore
         
         # For legacy SDK, create a dummy AgentOutputSchema
         class AgentOutputSchema:  # type: ignore
@@ -75,7 +80,7 @@ except ImportError:
                 )
                 error_payload = {
                     "error": "SDK unavailable",
-                    "message": "Cannot execute LLM call without 'agents' or 'openai_agents' package.",
+                    "message": "Cannot execute LLM call without 'agents' or 'agents' package.",
                 }
                 # Per i tool che si aspettano un JSON di un certo tipo, questo potrebbe comunque fallire
                 # ma almeno il Runner.run non dà AttributeError
@@ -273,9 +278,10 @@ Return *only* valid JSON:
             data: Dict[str, Any] = {}
             parsed_ok = False
             try:
-                data = json.loads(raw_output)
+                # 🤖 PILLAR 2: Use Pydantic for robust, AI-aware JSON validation.
+                data = ProjectAnalysisOutput.model_validate_json(raw_output).model_dump()
                 parsed_ok = True
-            except json.JSONDecodeError:
+            except Exception: # Catches both JSONDecodeError and ValidationError
                 match = re.search(
                     r"```json\s*({[\s\S]*?})\s*```", raw_output, re.DOTALL
                 ) or re.search(
@@ -283,11 +289,11 @@ Return *only* valid JSON:
                 )  # DOTALL per multiline
                 if match:
                     try:
-                        data = json.loads(match.group(1))
+                        data = ProjectAnalysisOutput.model_validate_json(match.group(1)).model_dump()
                         parsed_ok = True
-                    except json.JSONDecodeError:
+                    except Exception as e:
                         logger.error(
-                            f"analyze_project: Could not parse extracted JSON: {match.group(1)[:200]}"
+                            f"analyze_project: Could not parse extracted JSON with Pydantic: {e}"
                         )
                 else:
                     logger.error(
@@ -358,7 +364,16 @@ Return *only* valid JSON:
         )
 
         try:
-            agents_specs: List[Dict[str, Any]] = json.loads(team_composition_json)
+            from pydantic import TypeAdapter
+
+            # Define a simple model for validation
+            class AgentSpec(BaseModel):
+                name: str
+                seniority: Union[AgentSeniority, str]
+
+            AgentSpecListAdapter = TypeAdapter(List[AgentSpec])
+            agents_specs = [spec.model_dump() for spec in AgentSpecListAdapter.validate_json(team_composition_json)]
+            
             if not isinstance(agents_specs, list):
                 raise ValueError(
                     "team_composition_json must be a list of agent specifications."
@@ -411,7 +426,16 @@ Return *only* valid JSON:
             f"Director Tool: design_team_structure invoked. Max_agents: {max_agents}, Budget: {budget_total}, User feedback: '{user_feedback}'"
         )
         try:
-            required_skills: List[str] = json.loads(required_skills_json)
+            from pydantic import TypeAdapter
+
+            # Use TypeAdapter for validating a list of strings
+            StringListAdapter = TypeAdapter(List[str])
+            try:
+                required_skills = StringListAdapter.validate_json(required_skills_json)
+            except Exception:
+                # Fallback for non-JSON string
+                required_skills = [s.strip() for s in required_skills_json.split(',')]
+                logger.warning("required_skills_json was not a valid JSON list, treated as comma-separated string.")
 
             # Parse user feedback for team size preference
             user_requested_size = None
@@ -570,8 +594,7 @@ Return *only* valid JSON:
                     )
                     
                     ai_result = response.choices[0].message.content.strip()
-                    import json
-                    personality_data = json.loads(ai_result)
+                    personality_data = AgentPersonality.model_validate_json(ai_result).model_dump()
                     
                     # Add default fields and names
                     import random
@@ -675,37 +698,41 @@ Return ONLY a JSON array in this format:
                     result = await Runner.run(analyzer, "Categorize the skills into functional groups.")
                     raw_output = result.final_output
                     
-                    # Parse AI response
+                    # Parse AI response with Pydantic
                     try:
-                        categorized_groups = json.loads(raw_output)
-                        if isinstance(categorized_groups, list):
-                            # Convert to expected format
-                            final_groups = []
-                            for group in categorized_groups:
-                                if isinstance(group, dict) and group.get("skills"):
-                                    final_groups.append({
-                                        "domain": group.get("category", "functional_group"),
-                                        "skills": group.get("skills", []),
-                                        "importance": group.get("importance", "medium")
-                                    })
-                            return final_groups
-                    except json.JSONDecodeError:
+                        # The model should return a list of SkillGroup objects
+                        categorized_groups_validated = [SkillGroup.model_validate(g) for g in json.loads(raw_output)]
+                        
+                        # Convert to expected format
+                        final_groups = [
+                            {
+                                "domain": group.category,
+                                "skills": group.skills,
+                                "importance": group.importance,
+                            }
+                            for group in categorized_groups_validated
+                        ]
+                        return final_groups
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.debug(f"Initial Pydantic parsing failed: {e}")
                         # Try to extract JSON from response
                         import re
                         match = re.search(r'\[(.*?)\]', raw_output, re.DOTALL)
                         if match:
                             try:
-                                categorized_groups = json.loads(f"[{match.group(1)}]")
-                                final_groups = []
-                                for group in categorized_groups:
-                                    if isinstance(group, dict) and group.get("skills"):
-                                        final_groups.append({
-                                            "domain": group.get("category", "functional_group"),
-                                            "skills": group.get("skills", []),
-                                            "importance": group.get("importance", "medium")
-                                        })
+                                cleaned_json = f"[{match.group(1)}]"
+                                categorized_groups_validated = [SkillGroup.model_validate(g) for g in json.loads(cleaned_json)]
+                                final_groups = [
+                                    {
+                                        "domain": group.category,
+                                        "skills": group.skills,
+                                        "importance": group.importance,
+                                    }
+                                    for group in categorized_groups_validated
+                                ]
                                 return final_groups
-                            except json.JSONDecodeError:
+                            except (json.JSONDecodeError, ValidationError) as e2:
+                                logger.error(f"Could not parse extracted JSON with Pydantic: {e2}")
                                 pass
                                 
                 except Exception as e:
@@ -862,8 +889,21 @@ Return ONLY a JSON array in this format:
                             "role": "Project Manager",
                             "seniority": pm_s_val,
                             "description": "Oversees project execution, coordinates team, manages communication and ensures goal alignment.",
-                            "system_prompt": "You are a Project Manager. Your primary goal is to lead the team to successfully complete the project. Coordinate tasks, manage resources, resolve blockers, and ensure clear communication. You are expected to handle coordination tasks yourself rather than delegating them further.",
-                            "llm_config": {
+                        "system_prompt": """You are a Project Manager. Your primary goal is to lead the team to successfully complete the project by ensuring concrete deliverables are produced.
+
+🎯 DELIVERABLE-FIRST MANAGEMENT:
+1. **FINAL ARTIFACTS FOCUS**: Your success is measured by concrete deliverables (reports, lists, documents, code), not by task organization.
+2. **NO TASK DECOMPOSITION**: Do not break goals into sub-tasks. Instead, assign complete work packages that produce finished outputs.
+3. **ENABLE DIRECT EXECUTION**: Provide specialists with all context, resources, and authority needed to complete work in one step.
+4. **CONCRETE TASK ASSIGNMENT**: Instead of "Research target market," assign "Produce a target market analysis document with demographics, competitors, and opportunities."
+5. **MANAGE OUTPUTS, NOT PROCESSES**: Focus on what gets delivered, not how it gets done.
+
+EXAMPLES:
+❌ Bad: "Create sub-tasks: 1) Research, 2) Analyze, 3) Document"  
+✅ Good: "Produce complete competitive analysis with 10 competitors, pricing, strengths/weaknesses, and recommendations"
+
+Your role: Remove barriers so specialists produce final, substantial deliverables directly.""",
+                        "llm_config": {
                                 "model": _get_model_for_design(pm_s_val),
                                 "temperature": 0.3,
                             },
@@ -1000,7 +1040,20 @@ Return ONLY a JSON array in this format:
                         "role": agent_role_title.strip(),
                         "seniority": s_val,
                         "description": f"Handles tasks related to: {', '.join(group_item['skills'])} within the {group_item['domain'] or 'general'} domain.",
-                        "system_prompt": f"You are a {agent_role_title.strip()}. Your expertise covers: {', '.join(group_item['skills'])}. Complete tasks efficiently, collaborate when necessary, and avoid re-delegating tasks within your scope.",
+                        "system_prompt": f"""You are a {agent_role_title.strip()}. Your expertise covers: {', '.join(group_item['skills'])}.
+
+🎯 EXECUTION-FIRST PRINCIPLES:
+1. PRODUCE CONCRETE DELIVERABLES: Create actual content, data, documents, or code - not plans or todo lists.
+2. NO SUB-TASK CREATION: If asked to "research competitors," provide the actual competitor list with details, not a research plan.
+3. SINGLE-STEP COMPLETION: Finish tasks completely in one execution cycle.
+4. REAL DATA OVER TEMPLATES: Generate actual emails, contacts, reports - not "template for emails" or "example reports."
+5. ESCALATE ONLY FOR BLOCKERS: Only escalate if you need external resources or permissions, not for task breakdown.
+
+EXAMPLES:
+❌ Bad: "Here's a plan to research target audience: 1. Identify demographics 2. Analyze preferences..."
+✅ Good: "Target Audience: Age 25-40, Income €40K-€80K, Location: Milan/Rome, Interests: Tech/Sustainability..."
+
+Execute tasks directly and provide substantial, actionable results.""",
                         "llm_config": {
                             "model": _get_model_for_design(s_val),
                             "temperature": 0.35,
@@ -1227,8 +1280,31 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             timeout_seconds = 180.0  # 3 minutes should be enough for any project
                 
             try:
+                # 🧠 SDK MEMORY: Create session for Director agent memory persistence
+                director_session = None
+                try:
+                    # Try using SDK native SQLiteSession first
+                    if SDK_AVAILABLE:
+                        from agents import SQLiteSession
+                        director_session = SQLiteSession(f"director_{str(proposal_request.workspace_id)[:8]}")
+                        logger.info(f"🌉 Created SDK SQLiteSession for Director in workspace {str(proposal_request.workspace_id)[:8]}...")
+                    else:
+                        # Fallback to our custom bridge
+                        director_session = create_workspace_session(
+                            workspace_id=str(proposal_request.workspace_id),
+                            agent_id="director_agent"
+                        )
+                        logger.info(f"🌉 Created custom session for Director in workspace {str(proposal_request.workspace_id)[:8]}...")
+                except Exception as session_error:
+                    logger.warning(f"⚠️ Director session creation failed, proceeding without memory: {session_error}")
+                
+                # Run with session for memory persistence (as per SDK documentation)
+                run_params = {"starting_agent": llm_director_agent, "input": initial_user_prompt}
+                if director_session:
+                    run_params["session"] = director_session
+                
                 run_result_obj = await asyncio.wait_for(
-                    Runner.run(llm_director_agent, initial_user_prompt),
+                    Runner.run(**run_params), 
                     timeout=timeout_seconds
                 )
                 execution_time = time.time() - start_time
@@ -1608,9 +1684,16 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             "role": "Project Manager",
             "seniority": AgentSeniority.SENIOR.value,
             "description": "Fallback: Manages project execution, coordinates team, ensures efficient completion.",
-            "system_prompt": self._create_specialist_prompt(
-                "Project Manager", ["project planning", "team coordination"]
-            ),
+            "system_prompt": """You are a Project Manager. Your primary goal is to lead the team to successfully complete the project by ensuring concrete deliverables are produced.
+
+🎯 DELIVERABLE-FIRST MANAGEMENT:
+1. **FINAL ARTIFACTS FOCUS**: Your success is measured by concrete deliverables (reports, lists, documents, code), not by task organization.
+2. **NO TASK DECOMPOSITION**: Do not break goals into sub-tasks. Instead, assign complete work packages that produce finished outputs.
+3. **ENABLE DIRECT EXECUTION**: Provide specialists with all context, resources, and authority needed to complete work in one step.
+4. **CONCRETE TASK ASSIGNMENT**: Instead of "Research target market," assign "Produce a target market analysis document with demographics, competitors, and opportunities."
+5. **MANAGE OUTPUTS, NOT PROCESSES**: Focus on what gets delivered, not how it gets done.
+
+Your role: Remove barriers so specialists produce final, substantial deliverables directly.""",
             "llm_config": {
                 "model": self._get_model_for_seniority(AgentSeniority.SENIOR.value),
                 "temperature": 0.3,
@@ -1749,9 +1832,16 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             else "assigned tasks according to your role"
         )
         return f"""You are a {role_str}. Your expertise covers: {skills_str_display}.
-KEY PRINCIPLES:
-1. Execute tasks within your defined area of expertise with precision and high quality.
-2. Provide concrete, actionable results and complete deliverables directly.
-3. Do NOT delegate tasks back to the Project Manager that fall within your expertise. Escalate to the Project Manager ONLY for critical roadblocks, tasks clearly outside your scope (after attempting to clarify), or for significant project-level decisions.
-4. Focus on task completion and quality, minimizing unnecessary coordination overhead.
-5. Collaborate directly with other specialists when interdependent tasks arise, keeping the Project Manager informed of significant progress and critical interactions that may impact the project timeline or scope."""
+
+🎯 EXECUTION-FIRST PRINCIPLES:
+1. PRODUCE CONCRETE DELIVERABLES: Create actual content, data, documents, or code - not plans or todo lists.
+2. NO SUB-TASK CREATION: If asked to "research competitors," provide the actual competitor list with details, not a research plan.
+3. SINGLE-STEP COMPLETION: Finish tasks completely in one execution cycle.
+4. REAL DATA OVER TEMPLATES: Generate actual emails, contacts, reports - not "template for emails" or "example reports."
+5. ESCALATE ONLY FOR BLOCKERS: Only escalate if you need external resources or permissions, not for task breakdown.
+
+EXAMPLES:
+❌ Bad: "Here's a plan to research target audience: 1. Identify demographics 2. Analyze preferences..."
+✅ Good: "Target Audience: Age 25-40, Income €40K-€80K, Location: Milan/Rome, Interests: Tech/Sustainability..."
+
+Execute tasks directly and provide substantial, actionable results."""

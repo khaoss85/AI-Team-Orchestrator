@@ -69,6 +69,13 @@ class ContextEntry:
     semantic_hash: str
     created_at: datetime = field(default_factory=datetime.utcnow)
     metadata: Optional[Dict[str, Any]] = field(default_factory=dict)
+    # Additional fields present in database schema
+    goal_context: Optional[Dict[str, Any]] = None
+    accessed_at: Optional[datetime] = None
+    access_count: int = 0
+    ai_session_id: Optional[str] = None  # SDK session ID for agent context tracking
+    ai_agent_role: Optional[str] = None  # Agent role for context attribution
+    ai_filtering_applied: Optional[bool] = None  # Whether AI filtering was applied to this context
 
 @dataclass
 class MemoryPattern:
@@ -108,32 +115,36 @@ class UnifiedMemoryEngine:
         return cls._instance
 
     def __init__(self, openai_client: Optional[AsyncOpenAI] = None):
-        # Ensure __init__ is called only once for the singleton
-        if hasattr(self, '_initialized') and self._initialized:
-            return
-        self._initialized = True
+        if not hasattr(self, '_initialized') or not self._initialized:
+            self._initialized = True
 
-        self.openai_client = openai_client
-        if not self.openai_client and HAS_OPENAI and os.getenv("OPENAI_API_KEY"):
-            try:
-                self.openai_client = AsyncOpenAI()
-                logger.info("✅ AI client initialized for memory processing")
-            except Exception as e:
-                logger.warning(f"AI client initialization failed: {e}")
+            self.openai_client = openai_client
+            if not self.openai_client and HAS_OPENAI and os.getenv("OPENAI_API_KEY"):
+                try:
+                    self.openai_client = AsyncOpenAI()
+                    logger.info("✅ AI client initialized for memory processing")
+                except Exception as e:
+                    logger.warning(f"AI client initialization failed: {e}")
 
-        self.supabase = get_supabase_client()
-        self.relevance_cache: Dict[str, Tuple[List[ContextEntry], datetime]] = {}
+            self.supabase = get_supabase_client()
+            self.relevance_cache: Dict[str, Tuple[List[ContextEntry], datetime]] = {}
 
-        self.stats = {
-            "contexts_stored": 0,
-            "contexts_retrieved": 0,
-            "patterns_learned": 0,
-            "assets_generated": 0,
-            "ai_calls": 0,
-            "cache_hits": 0,
-            "cache_misses": 0,
-        }
-        logger.info("🧠 Unified Memory Engine initialized successfully")
+            self.stats = {
+                "contexts_stored": 0,
+                "contexts_retrieved": 0,
+                "patterns_learned": 0,
+                "assets_generated": 0,
+                "ai_calls": 0,
+                "cache_hits": 0,
+                "cache_misses": 0,
+            }
+            logger.info("🧠 Unified Memory Engine initialized successfully")
+
+        # Lazy initialization of Supabase client
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client re-initialized on demand")
 
     # === CORE CONTEXT MANAGEMENT (from memory_system.py & UMA) ===
 
@@ -150,6 +161,12 @@ class UnifiedMemoryEngine:
         self.stats["contexts_stored"] += 1
         workspace_id_str = str(workspace_id)
         
+        # Ensure Supabase client is available (lazy initialization)
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for context storage")
+        
         try:
             entry_id = str(uuid4())
             semantic_hash = hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
@@ -165,8 +182,7 @@ class UnifiedMemoryEngine:
             )
 
             if not self.supabase:
-                logger.warning("Supabase client not available. Storing context in-memory only.")
-                return entry_id # Fallback for environments without DB
+                return entry_id # Fallback for environments without DB (already logged above)
 
             db_record = asdict(context_entry)
             db_record['created_at'] = db_record['created_at'].isoformat()
@@ -202,6 +218,12 @@ class UnifiedMemoryEngine:
         self.stats["contexts_retrieved"] += 1
         workspace_id_str = str(workspace_id)
 
+        # Ensure Supabase client is available (lazy initialization)
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for context retrieval")
+
         cache_key = f"{workspace_id_str}_{query}_{str(context_types)}_{max_results}"
         if cache_key in self.relevance_cache:
             cached_results, cache_time = self.relevance_cache[cache_key]
@@ -212,12 +234,13 @@ class UnifiedMemoryEngine:
         self.stats["cache_misses"] += 1
 
         try:
+            # Supabase client should already be initialized by lazy initialization above
+            # If it's still None, return empty list silently (already logged above)
             if not self.supabase:
-                logger.warning("Supabase client not available. Cannot retrieve context.")
                 return []
 
-            # Base query
-            query_builder = self.supabase.table("memory_context").select("*") \
+            # Base query - FIX: use correct table name
+            query_builder = self.supabase.table("memory_context_entries").select("*") \
                 .eq("workspace_id", workspace_id_str) \
                 .gte("created_at", (datetime.utcnow() - timedelta(days=MEMORY_RETENTION_DAYS)).isoformat())
             
@@ -248,7 +271,21 @@ class UnifiedMemoryEngine:
     async def _ai_semantic_search(self, query: str, contexts: List[ContextEntry], max_results: int) -> List[ContextEntry]:
         """AI-powered semantic search to rank contexts."""
         from services.ai_provider_abstraction import ai_provider_manager
-        from project_agents.semantic_search_agent import SEMANTIC_SEARCH_AGENT_CONFIG
+        try:
+            # Try to import from project_agents directory 
+            import sys
+            import os
+            project_agents_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'project_agents')
+            if project_agents_path not in sys.path:
+                sys.path.append(project_agents_path)
+            from semantic_search_agent import SEMANTIC_SEARCH_AGENT_CONFIG
+        except ImportError:
+            # Fallback: use basic semantic search configuration
+            SEMANTIC_SEARCH_AGENT_CONFIG = {
+                "model": "gpt-4o-mini",
+                "temperature": 0.1,
+                "max_tokens": 1000
+            }
         
         context_summaries = [{"id": ctx.id, "summary": f"{ctx.context_type}: {str(ctx.content)[:200]}..."} for ctx in contexts]
         
@@ -309,6 +346,13 @@ class UnifiedMemoryEngine:
     ) -> str:
         """Learns and stores a pattern from a successful operation in the database."""
         self.stats["patterns_learned"] += 1
+        
+        # Ensure Supabase client is available (lazy initialization)
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for pattern learning")
+        
         try:
             pattern_id = str(uuid4())
             effectiveness_score = sum(success_metrics.values()) / len(success_metrics) if success_metrics else 0.0
@@ -323,13 +367,12 @@ class UnifiedMemoryEngine:
             )
             
             if not self.supabase:
-                logger.warning("Supabase client not available. Storing pattern in-memory only.")
-                return pattern_id
+                return pattern_id # Fallback for environments without DB (already logged above)
 
             db_record = asdict(pattern)
             db_record['last_used'] = None # Ensure it's null on creation
 
-            response = await self.supabase.table("learning_patterns").insert(db_record).execute()
+            response = self.supabase.table("memory_patterns").insert(db_record).execute()
 
             if response.data:
                 logger.info(f"🧠 Learned new pattern: {pattern_id} for {content_type}")
@@ -349,15 +392,20 @@ class UnifiedMemoryEngine:
         max_patterns: int = 5
     ) -> List[MemoryPattern]:
         """Gets applicable patterns from the database based on content type and context."""
+        # Ensure Supabase client is available (lazy initialization)
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for pattern retrieval")
+        
         try:
             if not self.supabase:
-                logger.warning("Supabase client not available. Cannot retrieve patterns.")
-                return []
+                return [] # Fallback for environments without DB (already logged above)
 
-            response = await self.supabase.table("learning_patterns") \
+            response = self.supabase.table("memory_patterns") \
                 .select("*") \
-                .eq("content_type", content_type) \
-                .order("effectiveness_score", desc=True) \
+                .eq("pattern_type", content_type) \
+                .order("confidence", desc=True) \
                 .limit(50) \
                 .execute()
 
@@ -539,13 +587,18 @@ class UnifiedMemoryEngine:
         duration_seconds: float
     ):
         """Stores or updates an agent's performance metrics."""
+        # Ensure Supabase client is available (lazy initialization)
         if not self.supabase:
-            logger.warning("Supabase client not available. Cannot store agent performance.")
-            return
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for agent performance storage")
+        
+        if not self.supabase:
+            return # Fallback for environments without DB (already logged above)
 
         try:
             # Use an RPC call to an upsert function for atomic updates
-            await self.supabase.rpc(
+            self.supabase.rpc(
                 'update_agent_performance',
                 {
                     'p_agent_id': str(agent_id),
@@ -566,12 +619,17 @@ class UnifiedMemoryEngine:
         limit: int = 3
     ) -> List[Dict[str, Any]]:
         """Gets the best performing agents for a specific role."""
+        # Ensure Supabase client is available (lazy initialization)
         if not self.supabase:
-            logger.warning("Supabase client not available. Cannot get best performing agents.")
-            return []
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for agent performance retrieval")
+        
+        if not self.supabase:
+            return [] # Fallback for environments without DB (already logged above)
         
         try:
-            response = await self.supabase.table('agent_performance_metrics') \
+            response = self.supabase.table('agent_performance_metrics') \
                 .select('agent_id, avg_quality_score, agents(name, role, seniority)') \
                 .eq('workspace_id', str(workspace_id)) \
                 .ilike('agents.role', f'%{role}%') \
@@ -588,6 +646,12 @@ class UnifiedMemoryEngine:
 
     async def get_memory_insights(self, workspace_id: Union[str, UUID], limit: int = 10) -> List[Dict[str, Any]]:
         """Get memory insights for a workspace - required for compatibility"""
+        # Ensure Supabase client is available (lazy initialization)
+        if not self.supabase:
+            self.supabase = get_supabase_client()
+            if self.supabase:
+                logger.info("✅ Supabase client initialized on demand for memory insights")
+        
         try:
             workspace_id_str = str(workspace_id)
             
@@ -614,13 +678,50 @@ class UnifiedMemoryEngine:
                 logger.info(f"Retrieved {len(insights)} memory insights for workspace {workspace_id_str}")
                 return insights
             else:
-                logger.warning("Supabase not available - returning empty insights")
-                return []
+                return [] # Fallback for environments without DB (already logged above)
                 
         except Exception as e:
             logger.error(f"Error retrieving memory insights: {e}")
             return []
 
+    async def learn_from_successful_execution(
+        self,
+        workspace_id: Union[str, UUID],
+        task_result: Dict[str, Any],
+        execution_context: Dict[str, Any],
+        execution_type: str = "task_execution"
+    ) -> bool:
+        """Learn from successful task execution for backward compatibility"""
+        try:
+            content_type = execution_context.get('task_type', 'general_task')
+            business_context = execution_context.get('business_context', 'general business context')
+            
+            successful_approach = {
+                'task_result': task_result,
+                'execution_method': execution_context.get('execution_method', 'standard'),
+                'tools_used': execution_context.get('tools_used', []),
+                'agent_id': execution_context.get('agent_id')
+            }
+            
+            success_metrics = {
+                'quality_score': execution_context.get('quality_score', 0.8),
+                'completion_time': execution_context.get('completion_time', 1.0),
+                'user_satisfaction': execution_context.get('user_satisfaction', 0.8)
+            }
+            
+            pattern_id = await self.learn_pattern_from_success(
+                content_type=content_type,
+                business_context=business_context,
+                successful_approach=successful_approach,
+                success_metrics=success_metrics
+            )
+            
+            return bool(pattern_id)
+            
+        except Exception as e:
+            logger.error(f"Error learning from successful execution: {e}")
+            return False
+    
     # === BACKWARD COMPATIBILITY ALIASES ===
     
     async def store_insight(self, workspace_id: str, insight_type: str, content: str, 

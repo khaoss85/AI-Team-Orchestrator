@@ -18,7 +18,7 @@ try:
     SDK_AVAILABLE = True
 except ImportError:
     try:
-        from openai_agents import function_tool
+        from agents import function_tool
         SDK_AVAILABLE = True
     except ImportError:
         SDK_AVAILABLE = False

@@ -60,11 +60,11 @@ class RealToolIntegrationPipeline:
         try:
             # Import all AI-driven components
             from services.ai_tool_aware_validator import ai_tool_aware_validator
-            from services.ai_tool_orchestrator import ai_tool_orchestrator
+            from services.simple_tool_orchestrator import simple_tool_orchestrator
             from backend.services.unified_memory_engine import memory_enhanced_ai_asset_generator, memory_system
             
             self.validator = ai_tool_aware_validator
-            self.orchestrator = ai_tool_orchestrator
+            self.orchestrator = simple_tool_orchestrator
             self.generator = memory_enhanced_ai_asset_generator
             self.memory_system = memory_system
             
@@ -287,22 +287,47 @@ class RealToolIntegrationPipeline:
             # Get required tools from validation
             required_tools = validation_result.get("tools_required", ["websearch"])
             
-            # Execute tool orchestration
-            orchestration_result = await self.orchestrator.orchestrate_tools_for_task(
-                task_objective=task_objective,
-                required_tools=required_tools,
-                business_context=business_context
-            )
+            # Execute tool orchestration with real tools
+            if self.orchestrator:
+                orchestration_result_obj = await self.orchestrator.orchestrate_tools_for_task(
+                    task_objective=task_objective,
+                    required_tools=required_tools,
+                    business_context=business_context
+                )
+                
+                # Convert to expected format
+                orchestration_result = {
+                    "orchestration_complete": True,
+                    "tools_executed": [r.tool_name for r in orchestration_result_obj.tool_results],
+                    "data_collected": orchestration_result_obj.synthesized_data,
+                    "tool_usage_score": orchestration_result_obj.data_quality_score,
+                    "overall_success": orchestration_result_obj.overall_success,
+                    "execution_reasoning": orchestration_result_obj.completion_reasoning,
+                    "auto_improvements": orchestration_result_obj.auto_improvements,
+                    "confidence": 80 if orchestration_result_obj.overall_success else 40
+                }
+            else:
+                # Fallback if orchestrator not available
+                orchestration_result = {
+                    "orchestration_complete": False,
+                    "tools_executed": [],
+                    "data_collected": {},
+                    "tool_usage_score": 0,
+                    "overall_success": False,
+                    "execution_reasoning": "Tool orchestrator not available",
+                    "auto_improvements": [],
+                    "confidence": 0
+                }
             
             return {
-                "orchestration_complete": True,
-                "tools_executed": [r.tool_name for r in orchestration_result.tool_results],
-                "data_collected": orchestration_result.synthesized_data,
-                "tool_usage_score": orchestration_result.data_quality_score,
-                "overall_success": orchestration_result.overall_success,
-                "execution_reasoning": orchestration_result.completion_reasoning,
-                "auto_improvements": orchestration_result.auto_improvements,
-                "confidence": 80 if orchestration_result.overall_success else 40
+                "orchestration_complete": orchestration_result["orchestration_complete"],
+                "tools_executed": orchestration_result["tools_executed"],
+                "data_collected": orchestration_result["data_collected"],
+                "tool_usage_score": orchestration_result["tool_usage_score"],
+                "overall_success": orchestration_result["overall_success"],
+                "execution_reasoning": orchestration_result["execution_reasoning"],
+                "auto_improvements": orchestration_result["auto_improvements"],
+                "confidence": orchestration_result["confidence"]
             }
             
         except Exception as e:
@@ -335,11 +360,11 @@ class RealToolIntegrationPipeline:
                 task_results.append(existing_task_result)
             
             # Generate real business asset
-            generation_result = await self.generator.generate_real_business_asset(
-                asset_type=asset_type,
+            generation_result = await self.generator.generate_memory_enhanced_asset(
+                workspace_id=business_context.get("workspace_id"),
+                content_type=asset_type,
                 business_context=business_context,
-                task_results=task_results,
-                goal_context=task_objective
+                requirements=existing_task_result or {}
             )
             
             return {
@@ -497,11 +522,10 @@ class RealToolIntegrationPipeline:
                 }
                 
                 await self.memory_system.learn_from_successful_execution(
-                    execution_type="complete_pipeline",
-                    context=execution_context,
-                    approach_used=successful_approach,
-                    performance_metrics=performance_metrics,
-                    outcome_quality=quality_result.get("overall_quality_score", 0)
+                    workspace_id=business_context.get("workspace_id"),
+                    task_result=generation_result,
+                    execution_context=execution_context,
+                    execution_type="complete_pipeline"
                 )
                 
                 patterns_created = 1

@@ -28,10 +28,29 @@ CONSOLIDATED FEATURES:
 import asyncio
 import logging
 import json
+from datetime import datetime
 import os
 import time
 import statistics
 from datetime import datetime, timedelta
+
+# JSON serializer helper for datetime objects
+def json_serialize_safe(obj):
+    """JSON serializer that handles datetime objects"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif hasattr(obj, '__dict__'):
+        return {k: json_serialize_safe(v) for k, v in obj.__dict__.items()}
+    elif isinstance(obj, dict):
+        return {k: json_serialize_safe(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [json_serialize_safe(item) for item in obj]
+    return obj
+
+# Safe JSON dumps wrapper
+def safe_json_dumps(obj, **kwargs):
+    """Safe JSON dumps that automatically serializes datetime objects"""
+    return json.dumps(json_serialize_safe(obj), **kwargs)
 from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field, asdict
 from uuid import uuid4, UUID
@@ -966,7 +985,7 @@ class UnifiedOrchestrator:
                     # Include adaptive settings in the analysis
                     analysis_data = {
                         "goal": goal.description, 
-                        "workspace_context": goal.title,
+                        "workspace_context": goal.description,
                         "adaptive_settings": adaptive_settings
                     }
                     
@@ -1004,17 +1023,17 @@ class UnifiedOrchestrator:
                     workspace_id=str(goal.workspace_id), 
                     goal_id=str(goal.id),
                     user_context={
-                        "goal_title": goal.title, 
+                        "goal_title": goal.description, 
                         "goal_description": goal.description,
                         "adaptive_settings": adaptive_settings
                     }
                 )
                 
                 analysis_data = {
-                    "title": goal.title,
+                    "title": goal.description,
                     "description": goal.description,
-                    "success_criteria": goal.success_criteria or [],
-                    "target_completion": goal.target_completion_date,
+                    "success_criteria": getattr(goal, 'success_criteria', {}) or {},
+                    "target_completion": getattr(goal, 'target_completion_date', None),
                     "optimization_context": adaptive_settings
                 }
                 
@@ -1049,12 +1068,12 @@ class UnifiedOrchestrator:
                     "description": req.get("description", ""),
                     "priority": req.get("priority", "medium"),
                     "complexity": req.get("complexity", "medium"),
-                    "gap": f"Requirements: {json.dumps(req.get('acceptance_criteria', []))}"
+                    "requirements_text": f"Requirements: {safe_json_dumps(req.get('acceptance_criteria', []))}"
                 }
                 
                 # Add optimization metadata if available
                 if adaptive_settings:
-                    req_data["optimization_metadata"] = json.dumps(adaptive_settings)
+                    req_data["optimization_metadata"] = safe_json_dumps(adaptive_settings)
                 
                 supabase.table("goal_asset_requirements").insert(req_data).execute()
                 stored_count += 1
@@ -1109,7 +1128,7 @@ class UnifiedOrchestrator:
                             "requirement_description": asset_req.get("description"),
                             "requirement_type": asset_req.get("requirement_type"),
                             "priority": asset_req.get("priority"),
-                            "gap": asset_req.get("gap"),
+                            "description": asset_req.get("gap", asset_req.get("description", "Asset requirement")),
                             "adaptive_optimization": adaptive_thresholds
                         }
                         
@@ -1139,15 +1158,15 @@ class UnifiedOrchestrator:
                             "description": task.get("description", ""),
                             "type": task.get("type", "analysis"),
                             "priority": task.get("priority", 50),
-                            "status": "pending",
+                            "status": "active",
                             "assigned_agent_id": None,
-                            "deliverables": json.dumps(task.get("deliverables", [])),
-                            "acceptance_criteria": json.dumps(task.get("acceptance_criteria", []))
+                            "deliverables": safe_json_dumps(task.get("deliverables", [])),
+                            "acceptance_criteria": safe_json_dumps(task.get("acceptance_criteria", []))
                         }
                         
                         # Add adaptive optimization metadata
                         if adaptive_thresholds:
-                            task_data["adaptive_metadata"] = json.dumps(adaptive_thresholds)
+                            task_data["adaptive_metadata"] = safe_json_dumps(adaptive_thresholds)
                         
                         supabase.table("tasks").insert(task_data).execute()
                         total_tasks += 1
@@ -1263,7 +1282,7 @@ class UnifiedOrchestrator:
         return [
             {
                 "type": "analysis",
-                "title": f"Analysis for {goal.title}",
+                "title": f"Analysis for {goal.description}",
                 "description": f"Detailed analysis and planning for: {goal.description}",
                 "priority": "high",
                 "complexity": "medium",
@@ -1271,7 +1290,7 @@ class UnifiedOrchestrator:
             },
             {
                 "type": "documentation", 
-                "title": f"Documentation for {goal.title}",
+                "title": f"Documentation for {goal.description}",
                 "description": f"Create documentation for: {goal.description}",
                 "priority": "medium",
                 "complexity": "low",
@@ -1491,7 +1510,7 @@ class UnifiedOrchestrator:
                 "workspace_id": str(result.workspace_id),
                 "goal_id": str(result.goal_id),
                 "title": f"Unified Workflow Report - {goal.get('title')}",
-                "content": json.dumps(deliverable_content, indent=2),
+                "content": safe_json_dumps(deliverable_content, indent=2),
                 "type": "unified_workflow_report",
                 "format": "json",
                 "quality_score": result.quality_score,
@@ -1520,19 +1539,19 @@ class UnifiedOrchestrator:
             }
             
             if adaptive_settings:
-                update_data["optimization_metadata"] = json.dumps(adaptive_settings)
+                update_data["optimization_metadata"] = safe_json_dumps(adaptive_settings)
             
             supabase.table("workspaces").update(update_data).eq("id", str(result.workspace_id)).execute()
             
             # Update goal status with optimization results
             goal_update_data = {
                 "status": "completed",
-                "completion_percentage": 100,
+                "asset_completion_rate": 100,
                 "updated_at": datetime.now().isoformat()
             }
             
             if adaptive_settings:
-                goal_update_data["optimization_results"] = json.dumps({
+                goal_update_data["optimization_results"] = safe_json_dumps({
                     "quality_score": result.quality_score,
                     "execution_time": result.execution_time,
                     "adaptive_optimization": result.adaptive_optimization
@@ -1562,8 +1581,8 @@ class UnifiedOrchestrator:
                 logger.info(f"🗑️ Rolled back {result.assets_generated} asset requirements")
             
             supabase.table("workspace_goals").update({
-                "status": "pending",
-                "completion_percentage": 0,
+                "status": "active",
+                "asset_completion_rate": 0,
                 "updated_at": datetime.now().isoformat()
             }).eq("id", str(result.goal_id)).execute()
             

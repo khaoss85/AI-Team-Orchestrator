@@ -10,7 +10,7 @@ try:
     from agents import function_tool
 except ImportError:
     try:  # pragma: no cover - fallback if optional deps missing
-        from openai_agents import function_tool  # type: ignore
+        from agents import function_tool  # type: ignore
     except ImportError:  # pragma: no cover - final fallback for tests
         import asyncio
 

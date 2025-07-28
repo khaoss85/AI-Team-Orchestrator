@@ -12,10 +12,10 @@ import json
 import sys
 from pathlib import Path
 
-# Add project root to Python path for consistent imports
-project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+# Add backend directory to Python path for consistent imports
+backend_root = Path(__file__).parent
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
 
 from models import (
     TaskStatus, AssetArtifact, QualityRule, QualityValidation, 
@@ -386,6 +386,17 @@ async def _auto_create_workspace_goals(workspace_id: str, goal_text: str):
         created_goals = []
         for goal_data in workspace_goals_data:
             try:
+                # FIXED: Check if goal with same metric_type already exists
+                existing_goal = supabase.table("workspace_goals").select("id").eq(
+                    "workspace_id", workspace_id
+                ).eq(
+                    "metric_type", goal_data["metric_type"]
+                ).execute()
+                
+                if existing_goal.data:
+                    logger.debug(f"⚠️ Goal with metric_type '{goal_data['metric_type']}' already exists for workspace {workspace_id}, skipping")
+                    continue
+                
                 # Add database-specific fields
                 goal_data.update({
                     "id": str(uuid4()),
@@ -484,7 +495,7 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     'content': pipeline_result.final_content,
                     'status': 'completed' if pipeline_result.execution_successful else 'draft',
                     'goal_id': mapped_goal_id,
-                    'deliverable_type': 'real_business_asset',
+                    'type': 'real_business_asset',
                     'quality_level': 'excellent' if pipeline_result.content_quality_score >= 80 else 'good' if pipeline_result.content_quality_score >= 60 else 'acceptable',
                     'business_specificity_score': pipeline_result.business_readiness_score,
                     'tool_usage_score': pipeline_result.tool_usage_score,
@@ -493,13 +504,13 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     'creation_reasoning': pipeline_result.pipeline_reasoning,
                     'learning_patterns_created': pipeline_result.learning_patterns_created,
                     'execution_time': pipeline_result.execution_time,
-                    'stages_completed': pipeline_result.stages_completed,
+                    'stages_completed': len(pipeline_result.stages_completed),
                     'auto_improvements': pipeline_result.auto_improvements,
                     'workspace_id': workspace_id
                 }
                 
                 # Insert AI-generated deliverable
-                result = await safe_database_operation("INSERT", "deliverables", ai_deliverable_data, operation_context={"workspace_id": workspace_id, "deliverable_type": "ai_driven"})
+                result = await safe_database_operation("INSERT", "deliverables", ai_deliverable_data, operation_context={"workspace_id": workspace_id})
                 
                 if result.data:
                     deliverable = result.data[0]
@@ -535,10 +546,16 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
         logger.error(f"❌ Error creating deliverable: {e}")
         raise
 
-async def get_deliverables(workspace_id: str, limit: Optional[int] = None, **kwargs) -> List[dict]:
-    """Get deliverables for a workspace with optional limit - consolidated compatibility function"""
+async def get_deliverables(workspace_id: str, limit: Optional[int] = None, goal_id: Optional[str] = None, **kwargs) -> List[dict]:
+    """Get deliverables for a workspace with optional limit and goal filter - consolidated compatibility function"""
     try:
-        query = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id).order('created_at', desc=True)
+        query = supabase.table('deliverables').select('*').eq('workspace_id', workspace_id)
+        
+        # Apply goal filter if provided
+        if goal_id:
+            query = query.eq('goal_id', goal_id)
+            
+        query = query.order('created_at', desc=True)
         
         # Apply limit if provided
         if limit:
@@ -547,7 +564,8 @@ async def get_deliverables(workspace_id: str, limit: Optional[int] = None, **kwa
         result = query.execute()
         deliverables = result.data or []
         
-        logger.info(f"📦 Found {len(deliverables)} deliverables for workspace {workspace_id} (limit: {limit or 'none'})")
+        filter_desc = f" (limit: {limit or 'none'}" + (f", goal: {goal_id}" if goal_id else "") + ")"
+        logger.info(f"📦 Found {len(deliverables)} deliverables for workspace {workspace_id}{filter_desc}")
         return deliverables
         
     except Exception as e:
@@ -629,6 +647,17 @@ async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: st
         for req in requirements:
             try:
                 metric_type = _map_requirement_to_metric_type(req.get('type', 'general'))
+                
+                # FIXED: Check if goal with same metric_type already exists (fallback method)
+                existing_goal = supabase.table("workspace_goals").select("id").eq(
+                    "workspace_id", workspace_id
+                ).eq(
+                    "metric_type", metric_type.value
+                ).execute()
+                
+                if existing_goal.data:
+                    logger.debug(f"⚠️ Goal with metric_type '{metric_type.value}' already exists for workspace {workspace_id}, skipping (fallback)")
+                    continue
                 
                 goal_data = {
                     "id": str(uuid4()),
@@ -1163,13 +1192,14 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
         # 🎯 STEP 1: QUALITY VALIDATION FOR COMPLETED TASKS
         if status == "completed" and result_payload is not None:
             try:
-                from ai_quality_assurance.unified_quality_engine import quality_gate
+                from ai_quality_assurance.unified_quality_engine import quality_gates
                 
                 task = await get_task(task_id)
-                goal = await get_workspace_goal(task['goal_id']) if task and task.get('goal_id') else None
+                from routes.workspace_goals import get_workspace_goal_by_id
+                goal = await get_workspace_goal_by_id(task['goal_id']) if task and task.get('goal_id') else None
                 goal_context = {"description": goal.get("description"), "metric_type": goal.get("metric_type")} if goal else {}
 
-                assessment = await quality_gate.validate_asset(result_payload, goal_context)
+                assessment = await quality_gates.validate_asset(result_payload, goal_context)
 
                 if not assessment.passes_quality_gate:
                     status = "needs_revision"
@@ -1233,16 +1263,38 @@ async def update_task_status(task_id: str, status: str, result_payload: Optional
                 
                 # NOTE: Asset extraction moved to AgentManager.execute_task to resolve circular dependency
                 # This function now only handles database operations
-                # 🎯 STEP 3: TRIGGER GOAL VALIDATION AND CORRECTIVE ACTIONS
-                await _trigger_goal_validation_and_correction(task_id, workspace_id)
+                # 🎯 STEP 3: Goal validation is now handled by AutomatedGoalMonitor (started in main.py)
+                # The old _trigger_goal_validation_and_correction function has been deprecated
                 
-                # 🚀 STEP 4: AUTONOMOUS DELIVERABLE TRIGGER
+                # 🚀 STEP 4: AUTONOMOUS DELIVERABLE TRIGGER (GOAL-SPECIFIC SUPPORT)
                 try:
-                    if await should_trigger_deliverable_aggregation(workspace_id):
-                        logger.info(f"📦 AUTONOMOUS TRIGGER: Starting deliverable aggregation for workspace {workspace_id}")
-                        # Use asyncio.create_task for non-blocking background execution
-                        import asyncio
-                        asyncio.create_task(trigger_deliverable_aggregation(workspace_id))
+                    # Check if goal-specific deliverables are enabled
+                    should_create_goal_specific = os.getenv("ENABLE_GOAL_SPECIFIC_DELIVERABLES", "true").lower() == "true"
+                    
+                    if should_create_goal_specific:
+                        # NEW: Goal-specific deliverable triggers
+                        # Get the updated task data from result
+                        updated_task_data = result.data[0] if result.data and len(result.data) > 0 else None
+                        task_goal_id = updated_task_data.get('goal_id') if updated_task_data else None
+                        if task_goal_id:
+                            logger.info(f"🎯 GOAL TRIGGER: Checking goal-specific deliverable for goal {task_goal_id}")
+                            if await should_trigger_goal_specific_deliverable(workspace_id, task_goal_id):
+                                logger.info(f"📦 GOAL TRIGGER: Starting goal-specific deliverable for goal {task_goal_id}")
+                                import asyncio
+                                from deliverable_system.unified_deliverable_engine import create_goal_specific_deliverable
+                                asyncio.create_task(create_goal_specific_deliverable(workspace_id, task_goal_id))
+                        
+                        # Also check workspace-level deliverables as fallback
+                        if await should_trigger_deliverable_aggregation(workspace_id):
+                            logger.info(f"📦 WORKSPACE TRIGGER: Starting workspace-level deliverable aggregation")
+                            import asyncio
+                            asyncio.create_task(trigger_deliverable_aggregation(workspace_id))
+                    else:
+                        # FALLBACK: Original workspace-level logic only
+                        if await should_trigger_deliverable_aggregation(workspace_id):
+                            logger.info(f"📦 AUTONOMOUS TRIGGER: Starting deliverable aggregation for workspace {workspace_id}")
+                            import asyncio
+                            asyncio.create_task(trigger_deliverable_aggregation(workspace_id))
                 except Exception as trigger_error:
                     logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Error during trigger evaluation: {trigger_error}")
                     
@@ -1319,6 +1371,7 @@ async def list_tasks(
     workspace_id: str,
     status: Optional[str] = None,
     agent_id: Optional[str] = None,
+    goal_id: Optional[str] = None,
     asset_only: bool = False,
     limit: Optional[int] = None,
     offset: int = 0,
@@ -1331,6 +1384,8 @@ async def list_tasks(
             query = query.eq("status", status)
         if agent_id:
             query = query.eq("agent_id", agent_id)
+        if goal_id:
+            query = query.eq("goal_id", goal_id)
 
         query = query.order("created_at", desc=True)
 
@@ -1933,15 +1988,24 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
             from datetime import datetime
             current_time = datetime.now()
             
+            # FIXED: Only log if task_id exists in database or is None
+            should_log_progress = True
+            if task_id:
+                # Verify task exists before logging
+                task_check = supabase.table("tasks").select("id").eq("id", task_id).execute()
+                if not task_check.data:
+                    logger.warning(f"Task {task_id} not found in database, logging progress without task reference")
+                    task_id = None  # Set to None to avoid foreign key constraint
+            
             progress_log_data = {
                 "goal_id": goal_id,
-                "task_id": task_id,
+                "task_id": task_id,  # This can now be None
                 "progress_percentage": (new_value / target_value * 100) if target_value > 0 else 0,
                 "quality_score": task_business_context.get("quality_score") if task_business_context else None,
                 "timestamp": current_time.isoformat(),
                 "calculation_method": "task_completion",
                 "metadata": {
-                    "task_id": task_id,
+                    "original_task_id": task_id,
                     "increment": increment,
                     "old_value": current_value,
                     "new_value": new_value
@@ -2735,71 +2799,33 @@ async def _trigger_goal_validation_and_correction(task_id: str, workspace_id: st
         logger.info(f"🎯 REAL-TIME GOAL VALIDATION: Analyzing {len(completed_tasks)} completed tasks against workspace goal")
         
         # Validate goal achievement
-        validation_results = await goal_validator.validate_workspace_goal_achievement(
-            workspace_goal=workspace_goal,
-            completed_tasks=completed_tasks,
-            workspace_id=workspace_id
-        )
+        # This function is now deprecated and should be handled by the AutomatedGoalMonitor
+        logger.warning("DEPRECATED: _trigger_goal_validation_and_correction called. This logic is now in AutomatedGoalMonitor.")
+        # To prevent crashes, we'll just log and return.
+        # The new flow in AutomatedGoalMonitor handles this logic.
+        return
         
-        if not validation_results:
-            logger.debug(f"No goal validation results for workspace {workspace_id}")
-            return
-        
-        # Check for critical gaps
-        critical_gaps = [
-            result for result in validation_results 
-            if result.gap_percentage > 50.0  # More than 50% gap is critical
-        ]
-        
-        if critical_gaps:
-            logger.warning(f"🚨 CRITICAL GOAL GAPS DETECTED: {len(critical_gaps)} gaps found in workspace {workspace_id}")
+        # The old logic is preserved below for reference, but commented out.
+        # try:
+        #     from ai_quality_assurance.unified_quality_engine import goal_validator
             
-            # Trigger immediate corrective actions
-            corrective_tasks = await goal_validator.trigger_corrective_actions(
-                validation_results=validation_results,
-                workspace_id=workspace_id
-            )
+        #     # Get all active goals for the workspace
+        #     workspace_goals = await get_workspace_goals(workspace_id, status="active")
             
-            if corrective_tasks:
-                logger.info(f"🔄 COURSE CORRECTION ACTIVATED: Created {len(corrective_tasks)} corrective tasks")
-                
-                # Create the corrective tasks in database
-                for corrective_task_data in corrective_tasks:
-                    try:
-                        corrective_task = await create_task(
-                            workspace_id=workspace_id,
-                            name=corrective_task_data.get("name", "Goal Correction Task"),
-                            status="pending",
-                            priority="high",
-                            description=corrective_task_data.get("description", "Corrective action for goal alignment"),
-                            creation_type="goal_correction",
-                            context_data={
-                                "triggered_by_task": task_id,
-                                "goal_gap_percentage": max([gap.gap_percentage for gap in critical_gaps]),
-                                "corrective_action_type": corrective_task_data.get("action_type", "unknown"),
-                                "target_metric": corrective_task_data.get("target_metric", "unknown")
-                            }
-                        )
-                        
-                        if corrective_task:
-                            logger.info(f"✅ CORRECTIVE TASK CREATED: {corrective_task['id']} - {corrective_task['name']}")
-                        
-                    except Exception as task_error:
-                        logger.error(f"Failed to create corrective task: {task_error}")
-            else:
-                logger.warning("🔴 COURSE CORRECTION FAILED: No corrective tasks generated")
-        else:
-            logger.info(f"✅ GOALS ON TRACK: No critical gaps detected in workspace {workspace_id}")
-            
-            # Check for completion opportunities
-            near_completion = [
-                result for result in validation_results
-                if result.gap_percentage < 20.0 and result.gap_percentage > 0.0
-            ]
-            
-            if near_completion:
-                logger.info(f"🎯 GOALS NEAR COMPLETION: {len(near_completion)} goals close to target")
-        
+        #     for goal in workspace_goals:
+        #         try:
+        #             validation_result = goal_validator.validate_goal(goal)
+        #             if not validation_result.get("valid", True):
+        #                 logger.warning(f"Real-time validation failed for goal {goal.get('id')}: {validation_result.get('issues')}")
+        #                 # Corrective action logic would be here
+        #         except Exception as e:
+        #             logger.error(f"Error during real-time validation of goal {goal.get('id')}: {e}")
+
+        # except ImportError:
+        #     logger.warning("Goal validator not available for real-time validation.")
+        # except Exception as e:
+        #     logger.error(f"Error in real-time goal validation for task {task_id}: {e}", exc_info=True)
+
     except Exception as e:
         logger.error(f"Error in real-time goal validation for task {task_id}: {e}", exc_info=True)
 
@@ -3550,6 +3576,73 @@ async def should_trigger_deliverable_aggregation(workspace_id: str) -> bool:
         logger.error(f"❌ AUTONOMOUS TRIGGER: Error evaluating conditions: {e}")
         return False
 
+async def should_trigger_goal_specific_deliverable(workspace_id: str, goal_id: str) -> bool:
+    """
+    🎯 GOAL-SPECIFIC TRIGGER: Determines if conditions are met to trigger goal-specific deliverable aggregation
+    
+    Conditions:
+    - At least 1 task completed for this goal
+    - Tasks have substantive results (not just placeholders)
+    - No existing deliverable for this goal (unless forced)
+    """
+    try:
+        logger.info(f"🎯 GOAL TRIGGER: Evaluating conditions for goal {goal_id} in workspace {workspace_id}")
+        
+        # Check if at least 1 task completed for this goal
+        completed_tasks = await list_tasks(workspace_id, status="completed", goal_id=goal_id)
+        min_tasks = int(os.getenv("MIN_COMPLETED_TASKS_FOR_DELIVERABLE", 1))
+        
+        if not completed_tasks or len(completed_tasks) < min_tasks:
+            logger.info(f"❌ GOAL TRIGGER: Only {len(completed_tasks) if completed_tasks else 0} completed tasks for goal (need {min_tasks}+)")
+            return False
+        
+        logger.info(f"✅ GOAL TRIGGER: Found {len(completed_tasks)} completed tasks for goal")
+        
+        # Check if this goal already has deliverables
+        existing_goal_deliverables = await get_deliverables(workspace_id, goal_id=goal_id)
+        max_deliverables_per_goal = int(os.getenv("MAX_DELIVERABLES_PER_GOAL", 1))
+        
+        if len(existing_goal_deliverables) >= max_deliverables_per_goal:
+            logger.info(f"❌ GOAL TRIGGER: Goal already has {len(existing_goal_deliverables)} deliverables (max: {max_deliverables_per_goal})")
+            return False
+        
+        # Check for substantive task results using AI-driven semantic analysis
+        substantive_tasks = 0
+        for task in completed_tasks:
+            result = task.get('result')
+            if result and isinstance(result, (str, dict)):
+                result_str = str(result).strip()
+                
+                # Basic length check first
+                if len(result_str) < 200:  # Lower threshold for goal-specific
+                    continue
+                
+                # AI-DRIVEN FAKE CONTENT DETECTION
+                try:
+                    is_substantive = await _ai_detect_substantive_content(result_str)
+                    if is_substantive:
+                        substantive_tasks += 1
+                        logger.info(f"✅ GOAL TRIGGER: Task '{task.get('name', 'Unknown')}' has substantive AI-validated content")
+                    else:
+                        logger.info(f"❌ GOAL TRIGGER: Task '{task.get('name', 'Unknown')}' flagged as non-substantive by AI")
+                except Exception as e:
+                    # Fallback: Use length-based heuristic when AI not available
+                    logger.warning(f"⚠️ GOAL TRIGGER: AI fake detection failed, using fallback: {e}")
+                    if len(result_str) > 500:  # Simple fallback
+                        substantive_tasks += 1
+        
+        if substantive_tasks < 1:
+            logger.info(f"❌ GOAL TRIGGER: Only {substantive_tasks} tasks with substantive results (need 1+)")
+            return False
+        
+        logger.info(f"✅ GOAL TRIGGER: Found {substantive_tasks} tasks with substantive results")
+        logger.info(f"✅ GOAL TRIGGER: All conditions met for goal {goal_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ GOAL TRIGGER: Error evaluating conditions: {e}")
+        return False
+
 async def _ai_detect_substantive_content(content: str) -> bool:
     """
     🧠 AI-DRIVEN SEMANTIC FAKE CONTENT DETECTION
@@ -3620,11 +3713,17 @@ async def trigger_deliverable_aggregation(workspace_id: str):
         # Trigger deliverable creation with force=True for autonomous operation
         result = await check_and_create_final_deliverable(workspace_id, force=True)
         
-        if result and result.get('success'):
-            deliverables_created = len(result.get('deliverables', []))
-            logger.info(f"✅ AUTONOMOUS TRIGGER: Successfully created {deliverables_created} deliverables")
+        # 🛡️ ROBUSTNESS FIX: Handle both dict and string return types
+        if result:
+            if isinstance(result, dict) and result.get('success'):
+                deliverables_created = len(result.get('deliverables', []))
+                logger.info(f"✅ AUTONOMOUS TRIGGER: Successfully created {deliverables_created} deliverables")
+            elif isinstance(result, str):
+                logger.info(f"✅ AUTONOMOUS TRIGGER: Deliverable creation completed with message: {result}")
+            else:
+                logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Deliverable creation returned unexpected format: {result}")
         else:
-            logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Deliverable creation returned: {result}")
+            logger.warning(f"⚠️ AUTONOMOUS TRIGGER: Deliverable creation returned no result")
             
     except ImportError as e:
         logger.error(f"❌ AUTONOMOUS TRIGGER: Deliverable engine not available: {e}")

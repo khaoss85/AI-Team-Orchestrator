@@ -181,9 +181,7 @@ async def extract_concrete_assets(workspace_id: UUID, request: Request):
         workspace_goal = workspace.get("goal", "")
         deliverable_type = workspace.get("deliverable_type", "business")
         
-        extracted_assets = await concrete_extractor.extract_concrete_assets(
-            completed_tasks, workspace_goal, deliverable_type
-        )
+        extracted_assets = await concrete_extractor.extract_assets_from_task_batch(completed_tasks)
         
         # Filter out metadata and convert to list of assets
         asset_list = [asset for key, asset in extracted_assets.items() if not key.startswith('_')]

@@ -149,7 +149,7 @@ class AIToolAwareValidator:
             tool_usage_analysis = ToolUsageAnalysis(
                 tools_used=actual_tool_usage.get("tools_identified", []),
                 tools_required=required_tools.get("required_tools", []),
-                tools_missing=required_tools.get("required_tools", []) - actual_tool_usage.get("tools_identified", []),
+                tools_missing=[tool for tool in required_tools.get("required_tools", []) if tool not in actual_tool_usage.get("tools_identified", [])],
                 tool_effectiveness_score=tool_effectiveness.get("effectiveness_score", 0),
                 real_data_collected=actual_tool_usage.get("real_data_found", False),
                 tool_usage_reasoning=tool_effectiveness.get("reasoning", "")

@@ -12,7 +12,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 from openai import OpenAI
 
-from ai_agents.specialist_enhanced import SpecialistAgent
+from .specialist import SpecialistAgent
 from models import AgentSeniority, AgentStatus
 from database import get_supabase_client
 from utils.context_manager import get_workspace_context
@@ -23,7 +23,7 @@ try:
     SDK_AVAILABLE = True
 except ImportError:
     try:
-        from openai_agents import Agent, function_tool
+        from agents import Agent, function_tool
         SDK_AVAILABLE = True
         AgentOutputSchema = None
     except ImportError:

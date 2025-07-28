@@ -109,6 +109,7 @@ class AgentStatusManager:
             "failed": UnifiedAgentStatus.FAILED,
             "terminated": UnifiedAgentStatus.TERMINATED,
             # Additional legacy mappings
+            "idle": UnifiedAgentStatus.AVAILABLE,  # Idle agents are available for tasks
             "working": UnifiedAgentStatus.ACTIVE,
             "online": UnifiedAgentStatus.AVAILABLE,
             "offline": UnifiedAgentStatus.INACTIVE,
@@ -288,8 +289,8 @@ class AgentStatusManager:
                 "updated_at": datetime.now().isoformat()
             }
             
-            if reason:
-                update_data["status_reason"] = reason
+            # if reason:
+            #     update_data["status_reason"] = reason
             
             result = supabase.table("agents").update(update_data).eq("id", agent_id).execute()
             

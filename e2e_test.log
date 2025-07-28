@@ -1,0 +1,70 @@
+⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-28 08:42:53,846 [INFO] Comprehensive E2E Pillar Test initialized with ID: 96fe5ad7-a995-406c-a1fd-63dae1330b1b
+2025-07-28 08:42:53,846 [INFO] --- STARTING TEST ---
+2025-07-28 08:42:53,846 [INFO] PHASE 1: Creating workspace and goal...
+2025-07-28 08:42:54,183 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-28 08:42:54,184 [INFO] Workspace 'e2e_pillar_test_stock_recommender_1753684973' created with ID: 89521580-627e-4696-998e-3fb596e5475e
+2025-07-28 08:42:54,399 [INFO] HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-28 08:42:54,400 [INFO] Goal 'Creare un motore di raccomandazione per opzioni su azioni di società tecnologiche, analizzando trend di mercato e volatilità.' created with ID: c100796e-71ba-4f9f-b6ec-d2c72ebf610c
+2025-07-28 08:42:54,400 [INFO] PHASE 1: COMPLETE
+2025-07-28 08:42:54,400 [INFO] PHASE 2: Waiting for team proposal and task generation...
+2025-07-28 08:42:54,400 [INFO] Waiting for initial tasks to be generated...
+2025-07-28 08:42:54,462 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:43:09,603 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:43:24,813 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:43:39,943 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:43:55,073 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:44:10,205 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:44:25,335 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:44:40,630 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:44:55,755 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:45:10,883 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:45:26,020 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:45:41,158 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:45:56,276 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:46:11,407 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:46:26,692 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:46:41,816 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:46:56,954 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:47:12,087 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:47:27,200 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:47:42,326 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&goal_id=eq.c100796e-71ba-4f9f-b6ec-d2c72ebf610c "HTTP/2 200 OK"
+2025-07-28 08:47:57,331 [ERROR] --- TEST FAILED: Timed out waiting for tasks to be generated. ---
+Traceback (most recent call last):
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_pillar_test.py", line 63, in run
+    self._2_approve_team_and_wait_for_tasks()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/pelleri/Documents/ai-team-orchestrator/backend/comprehensive_e2e_pillar_test.py", line 117, in _2_approve_team_and_wait_for_tasks
+    raise TimeoutError("Timed out waiting for tasks to be generated.")
+TimeoutError: Timed out waiting for tasks to be generated.
+2025-07-28 08:47:57,334 [INFO] --- CLEANING UP TEST DATA ---
+2025-07-28 08:47:57,334 [INFO] Deleting workspace 89521580-627e-4696-998e-3fb596e5475e and all associated data...
+2025-07-28 08:47:57,606 [INFO] HTTP Request: DELETE https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces?id=eq.89521580-627e-4696-998e-3fb596e5475e "HTTP/2 200 OK"
+2025-07-28 08:47:57,607 [INFO] Cleanup complete.
+2025-07-28 08:47:57,607 [INFO] 
+
+============================================================
+2025-07-28 08:47:57,607 [INFO]  COMPREHENSIVE E2E PILLAR TEST REPORT
+2025-07-28 08:47:57,607 [INFO] ============================================================
+2025-07-28 08:47:57,607 [INFO] Test ID: 96fe5ad7-a995-406c-a1fd-63dae1330b1b
+2025-07-28 08:47:57,607 [INFO] Workspace: e2e_pillar_test_stock_recommender_1753684973 (89521580-627e-4696-998e-3fb596e5475e)
+2025-07-28 08:47:57,607 [INFO] Goal: Creare un motore di raccomandazione per opzioni su azioni di società tecnologiche, analizzando trend di mercato e volatilità.
+2025-07-28 08:47:57,607 [INFO] ------------------------------------------------------------
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 1 (SDK Nativo)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting SDK log analysis.
+2025-07-28 08:47:57,607 [INFO] [PASS] Pillar 2 (AI-Driven)
+2025-07-28 08:47:57,607 [INFO]     Details: Conceptually validated by goal complexity.
+2025-07-28 08:47:57,607 [INFO] [PASS] Pillar 3 (Universal)
+2025-07-28 08:47:57,607 [INFO]     Details: Conceptually validated by non-English, domain-specific goal.
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 5 (Goal-Driven Tracking)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting task generation.
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 6 (Memory System)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting goal completion.
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 7 (Pipeline Autonoma)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting pipeline execution monitoring.
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 8 (Quality Gates)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting quality gate activations.
+2025-07-28 08:47:57,607 [INFO] [PENDING] Pillar 12 (Concrete Deliverables)
+2025-07-28 08:47:57,607 [INFO]     Details: Awaiting deliverable generation.
+2025-07-28 08:47:57,607 [INFO] ============================================================
+

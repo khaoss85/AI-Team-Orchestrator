@@ -1027,10 +1027,16 @@ You can think step-by-step before providing the final JSON.
 
             if ROBUST_JSON_AVAILABLE:
                 parsed_data, success, method = parse_llm_json_robust(
-                    raw_output_str, str(task.id)
+                    raw_output_str, str(task.id), expected_schema=TaskExecutionOutput.model_json_schema()
                 )
+                if not success:
+                    logger.warning(f"Robust JSON parsing failed with method {method}. Falling back to direct Pydantic validation.")
+                    # If robust parsing fails, we still try Pydantic directly as a last resort
+                    parsed_data = TaskExecutionOutput.model_validate_json(raw_output_str).model_dump()
+
             else:
-                parsed_data = json.loads(raw_output_str)
+                # Fallback to Pydantic validation directly if robust parser is not available
+                parsed_data = TaskExecutionOutput.model_validate_json(raw_output_str).model_dump()
 
             processed_data = self._preprocess_task_output_data(parsed_data, task)
 

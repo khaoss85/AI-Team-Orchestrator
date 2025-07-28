@@ -1,0 +1,162 @@
+{
+  "test_timestamp": "2025-07-28T16:13:50.579589",
+  "total_tests": 4,
+  "total_assets": 12,
+  "ai_classification_rate": 50.0,
+  "ai_quality_scoring_rate": 100.0,
+  "ai_features_detected": [
+    "AI Structured Extraction",
+    "AI Content Analysis",
+    "AI Asset Classification"
+  ],
+  "compliance_violations": [],
+  "is_compliant": true,
+  "detailed_results": [
+    {
+      "test_name": "Business Content (Italian)",
+      "assets_count": 5,
+      "assets": [
+        {
+          "name": "Identified ICP Contacts",
+          "type": "list",
+          "quality_score": 0.87,
+          "confidence": 0.9,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 149
+        },
+        {
+          "name": "Proposed Email Sequence",
+          "type": "document",
+          "quality_score": 0.84,
+          "confidence": 0.8,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 129
+        },
+        {
+          "name": "Marco Rossi",
+          "type": "structured_content",
+          "quality_score": 0.8999999999999999,
+          "confidence": 1.0,
+          "extraction_method": "ai_structured",
+          "ai_classification": false,
+          "content_length": 101
+        },
+        {
+          "name": "Sofia Bianchi",
+          "type": "structured_content",
+          "quality_score": 0.8999999999999999,
+          "confidence": 1.0,
+          "extraction_method": "ai_structured",
+          "ai_classification": false,
+          "content_length": 120
+        },
+        {
+          "name": "Email Sequence",
+          "type": "structured_content",
+          "quality_score": 0.84,
+          "confidence": 0.8,
+          "extraction_method": "ai_structured",
+          "ai_classification": false,
+          "content_length": 124
+        }
+      ],
+      "ai_driven_features": [
+        "AI Structured Extraction",
+        "AI Content Analysis",
+        "AI Asset Classification"
+      ]
+    },
+    {
+      "test_name": "Technical Content",
+      "assets_count": 5,
+      "assets": [
+        {
+          "name": "calculate_metrics_function",
+          "type": "code",
+          "quality_score": 0.6,
+          "confidence": 0.8,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 61
+        },
+        {
+          "name": "database_configuration",
+          "type": "data",
+          "quality_score": 0.7,
+          "confidence": 0.9,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 91
+        },
+        {
+          "name": "python_snippet_1",
+          "type": "code",
+          "quality_score": 0.7,
+          "confidence": 0.95,
+          "extraction_method": "pattern",
+          "ai_classification": false,
+          "content_length": 77
+        },
+        {
+          "name": "json_data_1",
+          "type": "data",
+          "quality_score": 0.7,
+          "confidence": 0.9,
+          "extraction_method": "pattern",
+          "ai_classification": false,
+          "content_length": 85
+        },
+        {
+          "name": "Database Configuration",
+          "type": "structured_content",
+          "quality_score": 0.87,
+          "confidence": 0.9,
+          "extraction_method": "ai_structured",
+          "ai_classification": false,
+          "content_length": 77
+        }
+      ],
+      "ai_driven_features": [
+        "AI Structured Extraction",
+        "AI Content Analysis",
+        "AI Asset Classification"
+      ]
+    },
+    {
+      "test_name": "Creative Content",
+      "assets_count": 2,
+      "assets": [
+        {
+          "name": "Advertising Campaign Details",
+          "type": "list",
+          "quality_score": 0.87,
+          "confidence": 0.9,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 147
+        },
+        {
+          "name": "Marketing Channels",
+          "type": "list",
+          "quality_score": 0.84,
+          "confidence": 0.8,
+          "extraction_method": "ai_analysis",
+          "ai_classification": true,
+          "content_length": 71
+        }
+      ],
+      "ai_driven_features": [
+        "AI Content Analysis",
+        "AI Asset Classification"
+      ]
+    },
+    {
+      "test_name": "Placeholder Content (Should be rejected)",
+      "assets_count": 0,
+      "assets": [],
+      "ai_driven_features": []
+    }
+  ]
+}

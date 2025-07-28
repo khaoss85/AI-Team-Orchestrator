@@ -128,6 +128,142 @@ async def create_team_proposal(proposal_request: DirectorTeamProposal, request: 
             detail=f"Failed to create team proposal: {str(e)}"
         )
 
+async def _process_team_creation_background(
+    workspace_id: UUID, 
+    proposal_id: UUID, 
+    proposal: DirectorTeamProposal, 
+    logger
+):
+    """
+    Background task that handles the heavy lifting of team creation:
+    - Create agents
+    - Process handoffs  
+    - Activate workspace
+    - Trigger goal analysis and task generation
+    """
+    try:
+        logger.info(f"🔄 BACKGROUND: Starting team creation for workspace {workspace_id}")
+        
+        created_agents_db = []
+        agent_name_to_id_map: Dict[str, str] = {} 
+        
+        # Create agents
+        for i, agent_create_data in enumerate(proposal.agents):
+            logger.info(f"📋 Creating agent {i+1}/{len(proposal.agents)}: {agent_create_data.name}")
+
+            # Build agent creation payload using model_dump for proper serialization
+            agent_data_for_creation = agent_create_data.model_dump(mode='json')
+            
+            # Ensure workspace_id is a string
+            agent_data_for_creation["workspace_id"] = str(workspace_id)
+
+            # Ensure seniority is the string value
+            if hasattr(agent_create_data.seniority, 'value'):
+                agent_data_for_creation["seniority"] = agent_create_data.seniority.value
+            
+            # CRITICAL FIX: Remove 'status' before calling create_agent
+            agent_data_for_creation.pop('status', None)
+
+            # Create agent in database - expand dict as keyword arguments
+            created_agent_db = await create_agent(**agent_data_for_creation)
+            if created_agent_db:
+                created_agents_db.append(created_agent_db)
+                agent_name_to_id_map[agent_create_data.name] = str(created_agent_db['id'])
+                logger.info(f"✅ Agent created: {agent_create_data.name} -> {created_agent_db['id']}")
+            else:
+                logger.error(f"❌ Failed to create agent: {agent_create_data.name}")
+
+        # Refresh AgentManager cache
+        if created_agents_db:
+            try:
+                from executor import task_executor
+                refresh_success = await task_executor.refresh_agent_manager_cache(str(workspace_id))
+                logger.info(f"✅ AgentManager cache refreshed: {refresh_success}")
+            except Exception as e:
+                logger.error(f"❌ Failed to refresh AgentManager cache: {e}")
+
+        # Activate workspace
+        from database import update_workspace_status
+        await update_workspace_status(str(workspace_id), "active")
+        logger.info(f"✅ Workspace {workspace_id} activated")
+
+        # Process handoffs
+        created_handoffs_db = []
+        for handoff_proposal in proposal.handoffs: 
+            source_agent_name = handoff_proposal.from_agent
+            target_agent_names_prop = handoff_proposal.to_agents
+            source_agent_id_str = agent_name_to_id_map.get(source_agent_name)
+            
+            if not source_agent_id_str:
+                logger.error(f"❌ Source agent {source_agent_name} not found in created agents")
+                continue
+
+            for target_agent_name in target_agent_names_prop:
+                target_agent_id_str = agent_name_to_id_map.get(target_agent_name)
+                if not target_agent_id_str:
+                    logger.error(f"❌ Target agent {target_agent_name} not found in created agents")
+                    continue
+
+                try:
+                    handoff_data = {
+                        "source_agent_id": source_agent_id_str,
+                        "target_agent_id": target_agent_id_str,
+                        "description": handoff_proposal.description or f"Handoff from {source_agent_name} to {target_agent_name}",
+                        "workspace_id": str(workspace_id)
+                    }
+                    created_handoff_db = await create_handoff(
+                        source_agent_id=UUID(handoff_data["source_agent_id"]),
+                        target_agent_id=UUID(handoff_data["target_agent_id"]),
+                        description=handoff_data["description"]
+                    )
+                    if created_handoff_db:
+                        created_handoffs_db.append(created_handoff_db)
+                        logger.info(f"✅ Handoff created: {source_agent_name} -> {target_agent_name}")
+                except Exception as e_handoff:
+                    logger.error(f"❌ Error creating handoff from {source_agent_name} to {target_agent_name}: {e_handoff}")
+
+        # Trigger goal analysis and task generation
+        try:
+            goals_response = supabase.table("workspace_goals").select("id").eq(
+                "workspace_id", str(workspace_id)
+            ).eq("status", "active").execute()
+            
+            if goals_response.data and len(goals_response.data) > 0:
+                logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
+                from automated_goal_monitor import automated_goal_monitor
+                await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
+                logger.info("✅ Auto-start triggered successfully")
+            else:
+                # Auto-extract goals from workspace.goal
+                logger.info(f"🎯 No active goals found, attempting auto-extraction...")
+                from database import get_workspace, _auto_create_workspace_goals
+                
+                workspace = await get_workspace(str(workspace_id))
+                if workspace and workspace.get("goal"):
+                    created_goals = await _auto_create_workspace_goals(str(workspace_id), workspace["goal"])
+                    if created_goals and len(created_goals) > 0:
+                        logger.info(f"✅ Auto-extracted {len(created_goals)} goals")
+                        from automated_goal_monitor import automated_goal_monitor
+                        await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
+                        logger.info("✅ Goal extraction and auto-start completed")
+                    else:
+                        await _create_fallback_planning_task(workspace_id, created_agents_db)
+                        logger.info("⚠️ Created fallback planning task")
+                else:
+                    await _create_fallback_planning_task(workspace_id, created_agents_db)
+                    logger.info("⚠️ Created fallback planning task (no goal text)")
+                        
+        except Exception as e:
+            logger.error(f"❌ Failed to trigger auto-start: {e}")
+            # Don't fail the whole process, just log the error
+
+        logger.info(f"✅ BACKGROUND: Team creation completed for workspace {workspace_id}")
+        logger.info(f"📊 Created: {len(created_agents_db)} agents, {len(created_handoffs_db)} handoffs")
+        
+    except Exception as e:
+        logger.error(f"��� BACKGROUND: Team creation failed for workspace {workspace_id}: {e}", exc_info=True)
+
+
 @router.post("/approve/{workspace_id}", status_code=status.HTTP_200_OK)
 async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, request: Request):
     # Get trace ID and create traced logger
@@ -171,184 +307,26 @@ async def approve_team_proposal_endpoint(workspace_id: UUID, proposal_id: UUID, 
 
         await approve_team_proposal(str(proposal_id))
         
-        created_agents_db = []
-        agent_name_to_id_map: Dict[str, str] = {} 
+        # 🚀 IMMEDIATE RESPONSE: Return immediately and process team creation in background
+        logger.info(f"🚀 PROPOSAL APPROVAL: Starting background team creation for {len(proposal.agents)} agents")
         
-        logger.info(f"🚀 PROPOSAL APPROVAL DEBUG: Starting agent creation for {len(proposal.agents)} agents")
+        # Start background task for team creation
+        import asyncio
+        asyncio.create_task(_process_team_creation_background(
+            workspace_id=workspace_id,
+            proposal_id=proposal_id, 
+            proposal=proposal,
+            logger=logger
+        ))
         
-        for i, agent_create_data in enumerate(proposal.agents):
-            logger.info(f"📋 Creating agent {i+1}/{len(proposal.agents)}: {agent_create_data.name}")
-            logger.info(f"🔧 Tools configuration: {agent_create_data.tools}") 
-
-            # Costruisci il payload esplicitamente con i campi attesi da create_agent
-            agent_data_for_creation = {
-                "workspace_id": str(workspace_id),
-                "name": agent_create_data.name,
-                "role": agent_create_data.role,
-                "seniority": agent_create_data.seniority.value if hasattr(agent_create_data.seniority, 'value') else str(agent_create_data.seniority),
-                "description": agent_create_data.description,
-                "system_prompt": agent_create_data.system_prompt,
-                "llm_config": agent_create_data.llm_config,
-                "tools": [t for t in (agent_create_data.tools or []) if isinstance(t, dict)],
-                "first_name": agent_create_data.first_name,
-                "last_name": agent_create_data.last_name,
-                "personality_traits": agent_create_data.personality_traits,
-                "communication_style": agent_create_data.communication_style,
-                "hard_skills": agent_create_data.hard_skills,
-                "soft_skills": agent_create_data.soft_skills,
-                "background_story": agent_create_data.background_story
-            }
-            # Rimuovi eventuali chiavi con valore None per evitare problemi con la funzione create_agent
-            agent_data_for_creation = {k: v for k, v in agent_data_for_creation.items() if v is not None}
-
-            logger.info(f"🔍 Agent creation payload: {agent_data_for_creation}")
-            
-            try:
-                created_agent_db = await create_agent(**agent_data_for_creation)
-                if created_agent_db:
-                    created_agents_db.append(created_agent_db)
-                    agent_name_to_id_map[created_agent_db['name']] = str(created_agent_db['id']) # Assicura che l'ID sia una stringa
-                    logger.info(f"✅ Successfully created agent {created_agent_db['id']}: {created_agent_db['name']}")
-                else:
-                    logger.error(f"❌ create_agent returned None for agent: {agent_create_data.name}")
-                    logger.error(f"❌ This is a critical error - agent creation failed silently")
-            except Exception as agent_creation_error:
-                logger.error(f"❌ Exception during agent creation for {agent_create_data.name}: {agent_creation_error}", exc_info=True)
-        
-        logger.info(f"📊 AGENT CREATION SUMMARY: {len(created_agents_db)} agents created out of {len(proposal.agents)} proposed")
-        logger.info(f"🗂️ Agent name to ID mapping: {agent_name_to_id_map}")
-        
-        if len(created_agents_db) == 0:
-            logger.error("🚨 CRITICAL: No agents were created! Task assignment will fail.")
-            logger.error("🚨 This explains why tasks have assigned_to: null")
-        else:
-            # 🔄 CRITICAL FIX: Refresh AgentManager cache after creating new agents
-            try:
-                from executor import task_executor
-                refresh_success = await task_executor.refresh_agent_manager_cache(str(workspace_id))
-                if refresh_success:
-                    logger.info(f"✅ AgentManager cache refreshed successfully for workspace {workspace_id}")
-                else:
-                    logger.warning(f"⚠️ AgentManager cache refresh failed for workspace {workspace_id}")
-            except Exception as e:
-                logger.error(f"❌ Failed to refresh AgentManager cache: {e}")
-        
-        logger.info(f"Processing {len(proposal.handoffs)} handoff proposals for actual creation...")
-        created_handoffs_db = []
-        
-        # 🚀 ACTIVATE WORKSPACE: Update workspace status to active before processing handoffs
-        from database import update_workspace_status
-        await update_workspace_status(str(workspace_id), "active")
-        logger.info(f"✅ Workspace {workspace_id} activated successfully")
-        
-        for handoff_proposal in proposal.handoffs: 
-            # Accedi tramite i nomi dei campi definiti in DirectorHandoffProposal
-            source_agent_name = handoff_proposal.from_agent
-            target_agent_names_prop = handoff_proposal.to_agents
-            
-            source_agent_id_str = agent_name_to_id_map.get(source_agent_name)
-            
-            if not source_agent_id_str:
-                logger.warning(f"Could not find source agent ID for name: '{source_agent_name}' in handoff: {handoff_proposal.description}. Skipping handoff.")
-                continue
-
-            targets_to_process_names = []
-            if isinstance(target_agent_names_prop, str):
-                targets_to_process_names.append(target_agent_names_prop)
-            elif isinstance(target_agent_names_prop, list):
-                targets_to_process_names.extend(target_agent_names_prop)
-
-            for target_agent_name in targets_to_process_names:
-                target_agent_id_str = agent_name_to_id_map.get(target_agent_name)
-                
-                if not target_agent_id_str:
-                    logger.warning(f"Could not find target agent ID for name: '{target_agent_name}' in handoff: {handoff_proposal.description}. Skipping this target.")
-                    continue
-                
-                try:
-                    logger.info(f"Attempting to create handoff from {source_agent_name} ({source_agent_id_str}) to {target_agent_name} ({target_agent_id_str})")
-                    created_handoff_db = await create_handoff(
-                        source_agent_id=UUID(source_agent_id_str), # Converti in UUID per la funzione create_handoff
-                        target_agent_id=UUID(target_agent_id_str), # Converti in UUID
-                        description=handoff_proposal.description
-                    )
-                    if created_handoff_db:
-                        created_handoffs_db.append(created_handoff_db)
-                        logger.info(f"Successfully created handoff from {source_agent_name} to {target_agent_name}")
-                    else:
-                        logger.error(f"DB call to create_handoff returned None for handoff from {source_agent_name} to {target_agent_name}")
-                except Exception as e_handoff:
-                    logger.error(f"Error during DB creation of handoff from {source_agent_name} to {target_agent_name}: {e_handoff}", exc_info=True)
-        
-        # 🚀 AUTO-START: When team is approved, check if goals exist and trigger task generation
-        # This mirrors the behavior in routes/proposals.py to ensure consistency
-        logger.info(f"🎯 Team approved for workspace {workspace_id}, checking for goals...")
-        
-        auto_start_message = "Team approved and agents created. Handoffs processed."
-        try:
-            # Check if workspace has confirmed goals
-            goals_response = supabase.table("workspace_goals").select("id").eq(
-                "workspace_id", str(workspace_id)
-            ).eq("status", "active").execute()
-            
-            if goals_response.data and len(goals_response.data) > 0:
-                logger.info(f"✅ Found {len(goals_response.data)} active goals, triggering auto-start")
-                
-                from automated_goal_monitor import automated_goal_monitor
-                await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
-                
-                auto_start_message = f"Team approved and auto-start triggered for {len(goals_response.data)} goals!"
-                logger.info("✅ Auto-start triggered after team approval via director endpoint")
-            else:
-                # ✅ CRITICAL FIX: Auto-extract goals from workspace.goal before falling back to default task
-                logger.info(f"🎯 No active goals found. Attempting to auto-extract from workspace.goal...")
-                try:
-                    from database import get_workspace, _auto_create_workspace_goals
-                    
-                    workspace = await get_workspace(str(workspace_id))
-                    if workspace and workspace.get("goal"):
-                        goal_text = workspace["goal"]
-                        logger.info(f"📝 Found workspace goal text: {goal_text[:100]}...")
-                        
-                        # Extract goals from workspace goal text
-                        created_goals = await _auto_create_workspace_goals(str(workspace_id), goal_text)
-                        
-                        if created_goals and len(created_goals) > 0:
-                            logger.info(f"✅ Auto-extracted {len(created_goals)} goals from workspace text")
-                            
-                            # Now trigger auto-start for the extracted goals
-                            from automated_goal_monitor import automated_goal_monitor
-                            await automated_goal_monitor._trigger_immediate_goal_analysis(str(workspace_id))
-                            
-                            auto_start_message = f"Team approved, auto-extracted {len(created_goals)} goals, and triggered auto-start!"
-                            logger.info("✅ Auto-extracted goals and triggered auto-start after team approval")
-                        else:
-                            logger.warning("⚠️ Goal extraction returned no goals, falling back to planning task")
-                            await _create_fallback_planning_task(workspace_id, created_agents_db)
-                            auto_start_message = "Team approved. Goal extraction failed, created default planning task."
-                    else:
-                        logger.warning("⚠️ No workspace goal text found, falling back to planning task")
-                        await _create_fallback_planning_task(workspace_id, created_agents_db)
-                        auto_start_message = "Team approved. No goal text found, created default planning task."
-                        
-                except Exception as extraction_error:
-                    logger.error(f"❌ Failed to auto-extract goals: {extraction_error}")
-                    await _create_fallback_planning_task(workspace_id, created_agents_db)
-                    auto_start_message = "Team approved. Goal extraction failed, created default planning task."
-                
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to trigger auto-start after team approval: {e}")
-            # Don't fail the approval, just log the warning
-            auto_start_message = "Team approved (auto-start check failed, see logs)"
-
+        # Return immediately to prevent frontend blocking
         return {
-            "status": "success",
-            "message": auto_start_message,
+            "status": "success", 
+            "message": "Team approval started. Agents are being created in background.",
             "workspace_id": str(workspace_id),
             "proposal_id": str(proposal_id),
-            "created_agent_ids": [str(agent['id']) for agent in created_agents_db], # Assicura stringhe
-            "created_handoff_ids": [str(handoff['id']) for handoff in created_handoffs_db if handoff and 'id' in handoff], # Assicura stringhe e che id esista
-            "auto_start_triggered": len(goals_response.data) > 0 if 'goals_response' in locals() else False
+            "background_processing": True,
+            "estimated_completion_seconds": 30
         }
     except HTTPException:
         raise

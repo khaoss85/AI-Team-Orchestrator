@@ -480,6 +480,40 @@ export const api = {
       }
     },
 
+    // 🎯 NEW: Goal-specific deliverable methods
+    getGoalDeliverables: async (workspaceId: string, goalId: string): Promise<any[]> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/deliverables/workspace/${workspaceId}/goal/${goalId}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching goal deliverables:', error);
+        return handleApiError(error);
+      }
+    },
+
+    createGoalDeliverable: async (workspaceId: string, goalId: string): Promise<any> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/deliverables/workspace/${workspaceId}/goal/${goalId}/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error creating goal deliverable:', error);
+        return handleApiError(error);
+      }
+    },
+
     // 🔥 NEW: Trigger final deliverable creation
     triggerFinalDeliverable: async (workspaceId: string): Promise<FinalizationResponse> => {
       try {

@@ -1,0 +1,72 @@
+{
+  "timestamp": "20250728_160348",
+  "workspace_id": "40284998-3fd1-4a7b-8cb9-07d3b85fe993",
+  "tests": [
+    {
+      "test": "workspace_data",
+      "workspace_name": "B2B Outbound Sales Lists",
+      "completed_tasks": 6,
+      "status": "success"
+    },
+    {
+      "test": "asset_extraction",
+      "total_assets": 7,
+      "extraction_results": [
+        {
+          "task_title": "Create Asset: Key benefits highlighted by clients that showcase social proof.",
+          "assets_found": 0,
+          "asset_types": [],
+          "avg_quality": 0
+        },
+        {
+          "task_title": "Create Asset: Brand messaging and guidelines for email content creation.",
+          "assets_found": 5,
+          "asset_types": [
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown"
+          ],
+          "avg_quality": 0.8532617983209002
+        },
+        {
+          "task_title": "Create Asset: List of target audience segments for email marketing.",
+          "assets_found": 2,
+          "asset_types": [
+            "unknown",
+            "unknown"
+          ],
+          "avg_quality": 0.8890758280849633
+        }
+      ],
+      "status": "success"
+    },
+    {
+      "test": "deliverable_assembly",
+      "input_assets_count": 7,
+      "avg_input_quality": 0.8634943782534897,
+      "deliverable_quality": 0.95,
+      "status": "warning"
+    },
+    {
+      "test": "unified_engine",
+      "goals_found": 6,
+      "creation_result": false,
+      "deliverable_quality": 0,
+      "status": "warning"
+    },
+    {
+      "test": "quality_improvements",
+      "deliverable_count": 3,
+      "quality_scores": [
+        0,
+        0,
+        0
+      ],
+      "avg_quality": 0.0,
+      "in_target_range": false,
+      "status": "warning"
+    }
+  ]
+}

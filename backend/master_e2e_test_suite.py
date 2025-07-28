@@ -684,11 +684,9 @@ class MasterE2ETestSuite:
                 }
             ]
             
-            extracted_assets = await unified_deliverable_engine.extract_concrete_assets(
-                test_tasks,
-                "Test workspace goal",
-                "business"
-            )
+            # Use the correct ConcreteAssetExtractor instead of UnifiedDeliverableEngine
+            from deliverable_system.concrete_asset_extractor import concrete_asset_extractor
+            extracted_assets = await concrete_asset_extractor.extract_assets_from_task_batch(test_tasks)
             
             return {
                 "status": "passed",

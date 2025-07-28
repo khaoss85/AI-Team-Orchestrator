@@ -1034,6 +1034,7 @@ class TaskExecutor(AssetCoordinationMixin):
                 
                 # Esecuzione del task
                 self.active_tasks_count += 1
+                execution_result = None  # Inizializza a None
                 try:
                     logger.info(f"WORKER {worker_id}: Preparing to execute task {task_id}.")
                     logger.info(f"WORKER {worker_id}: Task data: {task_dict_from_queue}")
@@ -1048,51 +1049,9 @@ class TaskExecutor(AssetCoordinationMixin):
                     # Execute task with anti-loop and tracking
                     execution_result = await self._execute_task_with_anti_loop_and_tracking(manager, task_dict_from_queue)
 
-                    # LOGGING DETTAGLIATO
-                    logger.info(f"--- TASK LIFECYCLE END: {task_id} ---")
-                    logger.info(f"Agent Execution Result: {execution_result}")
-                    
-                    if execution_result and hasattr(execution_result, 'status'):
-                        final_status = execution_result.status.value
-                        logger.info(f"Final Status from ExecutionResult: {final_status}")
-                        
-                        # Handle UUID serialization for model_dump
-                        try:
-                            import uuid
-                            from datetime import datetime
-                            result_dict = execution_result.model_dump()
-                            
-                            # Convert UUID objects to strings recursively
-                            def convert_uuids(obj):
-                                if isinstance(obj, uuid.UUID):
-                                    return str(obj)
-                                elif isinstance(obj, dict):
-                                    return {k: convert_uuids(v) for k, v in obj.items()}
-                                elif isinstance(obj, list):
-                                    return [convert_uuids(item) for item in obj]
-                                else:
-                                    return obj
-                            
-                            serializable_result = convert_uuids(result_dict)
-                            await update_task_status(task_id, final_status, serializable_result)
-                        except Exception as serialize_error:
-                            logger.error(f"Failed to serialize execution result for task {task_id}: {serialize_error}")
-                            # Fallback to basic result
-                            from datetime import datetime
-                            basic_result = {
-                                "status": final_status,
-                                "output": str(execution_result)[:1000],
-                                "timestamp": datetime.now().isoformat(),
-                                "serialization_error": str(serialize_error)
-                            }
-                            await update_task_status(task_id, final_status, basic_result)
-                        
-                        logger.info(f"Task {task_id} status updated to {final_status} in database.")
-                    else:
-                        logger.error(f"Execution result for task {task_id} was invalid or missing status. Forcing to FAILED.")
-                        await self._force_complete_task(task_dict_from_queue, "Invalid execution result", status_to_set=TaskStatus.FAILED.value)
-
-                    logger.info(f"WORKER {worker_id}: Successfully processed task {task_id}.")
+                    # 🚀 ASYNCHRONOUS FINALIZATION: Schedule post-execution logic to run in the background
+                    # This prevents the worker from being blocked by DB updates and trigger logic, resolving hanging tasks.
+                    asyncio.create_task(self._finalize_task_completion(task_id, execution_result))
 
                 except (AttributeError, TypeError) as e_specific:
                     logger.error(f"WORKER {worker_id}: SPECIFIC ERROR executing task {task_id}: {e_specific}", exc_info=True)
@@ -1126,6 +1085,70 @@ class TaskExecutor(AssetCoordinationMixin):
                 await asyncio.sleep(5)  # Pausa prima di ritentare
         
         logger.info(f"Anti-loop worker {worker_id} exiting")
+
+    async def _finalize_task_completion(self, task_id: str, execution_result: Optional[TaskExecutionOutput]):
+        """
+        Handles all post-execution logic for a task in a non-blocking way.
+        This includes updating the database, logging, and triggering subsequent actions.
+        """
+        start_time = asyncio.get_event_loop().time()
+        try:
+            logger.info(f"--- TASK FINALIZATION START: {task_id} ---")
+            logger.info(f"Agent Execution Result: {execution_result}")
+
+            if execution_result and hasattr(execution_result, 'status'):
+                final_status = execution_result.status.value
+                logger.info(f"Final Status from ExecutionResult: {final_status}")
+
+                try:
+                    import uuid
+                    from datetime import datetime
+                    result_dict = execution_result.model_dump()
+
+                    def convert_uuids(obj):
+                        if isinstance(obj, uuid.UUID):
+                            return str(obj)
+                        elif isinstance(obj, dict):
+                            return {k: convert_uuids(v) for k, v in obj.items()}
+                        elif isinstance(obj, list):
+                            return [convert_uuids(item) for item in obj]
+                        else:
+                            return obj
+                    
+                    serializable_result = convert_uuids(result_dict)
+                    await update_task_status(task_id, final_status, serializable_result)
+                except Exception as serialize_error:
+                    logger.error(f"Failed to serialize execution result for task {task_id}: {serialize_error}")
+                    from datetime import datetime
+                    basic_result = {
+                        "status": final_status,
+                        "output": str(execution_result)[:1000],
+                        "timestamp": datetime.now().isoformat(),
+                        "serialization_error": str(serialize_error)
+                    }
+                    await update_task_status(task_id, final_status, basic_result)
+                
+                logger.info(f"Task {task_id} status updated to {final_status} in database.")
+            else:
+                logger.error(f"Execution result for task {task_id} was invalid or missing status. Forcing to FAILED.")
+                task_dict = await get_task(task_id)
+                if task_dict:
+                    await self._force_complete_task(task_dict, "Invalid execution result", status_to_set=TaskStatus.FAILED.value)
+
+            logger.info(f"--- TASK FINALIZATION END: {task_id} ---")
+
+        except Exception as e:
+            logger.error(f"CRITICAL error during task finalization for {task_id}: {e}", exc_info=True)
+            # Attempt to mark the task as failed as a last resort
+            try:
+                task_dict = await get_task(task_id)
+                if task_dict:
+                    await self._force_complete_task(task_dict, f"Finalization failed: {e}", status_to_set=TaskStatus.FAILED.value)
+            except Exception as finalization_fail_error:
+                logger.error(f"Could not even force-fail task {task_id} after finalization error: {finalization_fail_error}")
+        finally:
+            duration = asyncio.get_event_loop().time() - start_time
+            logger.info(f"--- TASK FINALIZATION END: {task_id} in {duration:.2f}s ---")
 
     async def _assign_agent_to_task_by_role(self, task_dict: Dict, workspace_id: str, role: str) -> Optional[Dict]:
         """
@@ -1298,7 +1321,18 @@ class TaskExecutor(AssetCoordinationMixin):
                 "role": role,
                 "seniority": "senior",  # Default to senior for reliability
                 "description": f"Auto-provisioned agent for {role} tasks. Created when no agents were available for this role.",
-                "system_prompt": f"""You are a {role} specialist. Your primary responsibility is to execute {role.lower()} tasks efficiently and accurately. 
+                "system_prompt": f"""You are a {role} specialist. Your primary responsibility is to execute {role.lower()} tasks efficiently and accurately.
+
+🚫 **ZERO-PLANNING RULE: CRITICAL**
+- **DO NOT** output a plan, an outline, or a description of the work to be done.
+- **DO** produce the final, complete, and ready-to-use asset itself.
+- **Example of what NOT to do**: "To create the report, I will first analyze the data, then structure the sections..."
+- **Example of what TO DO**: Directly output the full, formatted report.
+
+🏁 **FINAL OUTPUT REQUIREMENTS:**
+- The `result` field MUST contain the complete, final, and ready-to-use asset.
+- DO NOT put a summary or description in the `result` field.
+
 Use your tools and expertise to complete assigned tasks. Always provide structured outputs in the required JSON format.
 Focus on delivering practical, actionable results that move the project forward.""",
                 "llm_config": {
@@ -1397,10 +1431,12 @@ Focus on delivering practical, actionable results that move the project forward.
                     # Update ATOE metrics for continuous improvement
                     await self.atoe.update_workspace_metrics(
                         workspace_id=workspace_id,
-                        current_metrics={
+                        task_completion_data={
+                            "task_id": task_id,
                             "pending_tasks": current_anti_loop_count,
                             "task_skip_count": 0,  # Will be updated if skipped
-                            "task_execution_count": 1
+                            "task_execution_count": 1,
+                            "status": "approved"
                         }
                     )
                 else:
@@ -1410,10 +1446,12 @@ Focus on delivering practical, actionable results that move the project forward.
                     # Update skip metrics for ATOE learning
                     await self.atoe.update_workspace_metrics(
                         workspace_id=workspace_id,
-                        current_metrics={
+                        task_completion_data={
+                            "task_id": task_id,
                             "pending_tasks": current_anti_loop_count,
                             "task_skip_count": 1,
-                            "task_execution_count": 0
+                            "task_execution_count": 0,
+                            "status": "skipped"
                         }
                     )
                     return False
@@ -1873,7 +1911,11 @@ Focus on delivering practical, actionable results that move the project forward.
                     learned_patterns_text += f"- {pattern.content}\n"
 
             if learned_patterns_text:
-                task_pydantic_obj.prompt = f"Leverage these insights to improve your performance:\n{learned_patterns_text}\n---\nOriginal Task:\n{task_pydantic_obj.prompt}"
+                task_pydantic_obj.description = f"""Leverage these insights to improve your performance:
+{learned_patterns_text}
+---
+Original Task:
+{task_pydantic_obj.description}"""
 
             logger.info(f"Executing task {task_id} ('{task_name}') with agent {agent_id} (Role: {agent_data_db.get('role', 'N/A')}) using model {model_for_budget}")
             
@@ -2281,11 +2323,15 @@ Focus on delivering practical, actionable results that move the project forward.
                         content = ""
                         if hasattr(context_entry, 'content'):
                             if isinstance(context_entry.content, dict):
-                                content = context_entry.content.get("message", "")
+                                content = str(context_entry.content.get("message", ""))
+                            elif isinstance(context_entry.content, list):
+                                content = str(context_entry.content)
                             else:
                                 content = str(context_entry.content)
                         
-                        if "operational block" in content.lower():
+                        # Ensure content is always a string before calling .lower()
+                        content_str = str(content) if content else ""
+                        if "operational block" in content_str.lower():
                             has_operational_block = True
                             break
                     

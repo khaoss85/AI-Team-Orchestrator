@@ -1,0 +1,11 @@
+{
+  "test_timestamp": "2025-07-28T18:08:30.343856",
+  "prompt_analysis": {
+    "total_agents": 2,
+    "agents_with_execution_first": 0,
+    "agents_with_concrete_deliverable_focus": 0,
+    "project_managers_with_deliverable_first": 1,
+    "prompt_strength_score": 0.3
+  },
+  "team_proposal": {
+    "id": 

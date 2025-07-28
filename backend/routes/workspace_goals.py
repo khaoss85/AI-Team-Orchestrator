@@ -1113,9 +1113,9 @@ async def _create_project_description_artifact(
             "total_goals": len(saved_goals),
             "strategic_deliverables": [g for g in saved_goals if g.get("metadata", {}).get("base_type") == "deliverables"],
             "metrics_goals": [g for g in saved_goals if g.get("metadata", {}).get("base_type") != "deliverables"],
-            "estimated_budget": workspace.get("budget", {}).get("max_budget", 10),
-            "max_iterations": workspace.get("budget", {}).get("max_iterations", 3),
-            "quality_threshold": workspace.get("budget", {}).get("settings", {}).get("quality_threshold", 85),
+            "estimated_budget": workspace.get("budget", 10) if isinstance(workspace.get("budget"), (int, float)) else workspace.get("budget", {}).get("max_budget", 10) if isinstance(workspace.get("budget"), dict) else 10,
+            "max_iterations": workspace.get("budget", {}).get("max_iterations", 3) if isinstance(workspace.get("budget"), dict) else 3,
+            "quality_threshold": workspace.get("budget", {}).get("settings", {}).get("quality_threshold", 85) if isinstance(workspace.get("budget"), dict) else 85,
             "created_at": datetime.now().isoformat(),
             "status": "active"
         }

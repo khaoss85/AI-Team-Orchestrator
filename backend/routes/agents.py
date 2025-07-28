@@ -144,8 +144,17 @@ async def get_workspace_handoffs(workspace_id: UUID, request: Request):
     """Get all handoffs for a workspace"""
     try:
         handoffs_data = await db_list_handoffs(str(workspace_id))
-        # Il modello Handoff dovrebbe gestire la validazione se i dati dal DB sono corretti
-        return handoffs_data # Pydantic convertirà automaticamente i dict in istanze di Handoff
+        
+        # Add missing fields for model validation
+        for handoff in handoffs_data:
+            if 'status' not in handoff:
+                handoff['status'] = 'pending'  # Default status
+            if 'task_id' not in handoff:
+                handoff['task_id'] = None  # Optional field
+            if 'updated_at' not in handoff:
+                handoff['updated_at'] = None  # Optional field
+        
+        return [Handoff.model_validate(handoff) for handoff in handoffs_data]
     except Exception as e:
         logger.error(f"Error getting handoffs for workspace {workspace_id}: {e}", exc_info=True)
         raise HTTPException(

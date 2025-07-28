@@ -19,9 +19,14 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set, Any
 from dataclasses import dataclass
 from enum import Enum
+
+try:
+    from dateutil import parser as date_parser
+except ImportError:
+    date_parser = None
 
 from database import supabase, list_tasks, get_workspace
 from models import TaskStatus, WorkspaceStatus
@@ -346,6 +351,42 @@ class WorkspaceHealthManager:
                 auto_recoverable=True,
                 recovery_confidence=0.9
             ))
+        elif workspace_status == "processing_tasks":
+            # Check if workspace has been stuck in processing_tasks for too long
+            updated_at = health_data["workspace"].get("updated_at")
+            if updated_at:
+                try:
+                    if date_parser:
+                        last_update = date_parser.parse(updated_at)
+                        stuck_minutes = (datetime.now() - last_update.replace(tzinfo=None)).total_seconds() / 60
+                    else:
+                        # Fallback: try basic ISO parsing
+                        if updated_at.endswith('Z'):
+                            updated_at = updated_at[:-1] + '+00:00'
+                        last_update = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                        stuck_minutes = (datetime.now() - last_update.replace(tzinfo=None)).total_seconds() / 60
+                    
+                    # Consider stuck if processing for more than 10 minutes
+                    if stuck_minutes > 10:
+                        issues.append(HealthIssue(
+                            level=HealthIssueLevel.CRITICAL,
+                            issue_type="workspace_stuck_processing",
+                            description=f"Workspace stuck in 'processing_tasks' for {stuck_minutes:.1f} minutes",
+                            suggested_recovery=RecoveryStrategy.STATUS_RESET,
+                            auto_recoverable=True,
+                            recovery_confidence=0.95
+                        ))
+                except Exception as e:
+                    logger.warning(f"Could not parse workspace updated_at timestamp: {e}")
+                    # If we can't parse timestamp, still flag as potential issue
+                    issues.append(HealthIssue(
+                        level=HealthIssueLevel.WARNING,
+                        issue_type="workspace_processing_unknown_duration",
+                        description="Workspace in 'processing_tasks' status (duration unknown)",
+                        suggested_recovery=RecoveryStrategy.STATUS_RESET,
+                        auto_recoverable=True,
+                        recovery_confidence=0.7
+                    ))
         
         # 2. Check task overload (using dynamic limits)
         dynamic_limit = await self.get_dynamic_task_limit(workspace_id)
@@ -476,11 +517,21 @@ class WorkspaceHealthManager:
             logger.info(f"🔧 Applying recovery strategy {strategy.value} for {issue.issue_type}")
             
             if strategy == RecoveryStrategy.STATUS_RESET:
-                # Reset workspace status to active
+                # Reset workspace status to active with enhanced logging
+                current_status_response = supabase.table("workspaces").select("status, updated_at").eq("id", workspace_id).single().execute()
+                current_status = current_status_response.data.get("status") if current_status_response.data else "unknown"
+                
                 supabase.table("workspaces").update({
-                    "status": "active"
+                    "status": "active",
+                    "updated_at": datetime.now().isoformat()
                 }).eq("id", workspace_id).execute()
-                logger.info(f"✅ Reset workspace {workspace_id} status to active")
+                
+                logger.info(f"✅ Reset workspace {workspace_id} status from '{current_status}' to 'active'")
+                
+                # If we were stuck in processing_tasks, also log the recovery
+                if current_status == "processing_tasks":
+                    logger.info(f"🔧 RECOVERY: Workspace {workspace_id} was stuck in 'processing_tasks', now reset to 'active'")
+                
                 return True
                 
             elif strategy == RecoveryStrategy.DUPLICATE_REMOVAL:
@@ -529,6 +580,68 @@ class WorkspaceHealthManager:
         except Exception as e:
             logger.error(f"Error applying recovery strategy {strategy.value}: {e}")
             return False
+    
+    async def monitor_all_workspaces_for_stuck_processing(self) -> Dict[str, Any]:
+        """
+        🚨 CRITICAL FUNCTION: Monitor all workspaces for stuck processing_tasks status
+        
+        This addresses the core issue where workspaces get stuck in 'processing_tasks'
+        when asyncio.create_task() doesn't complete properly.
+        """
+        try:
+            logger.info("🔍 Starting system-wide check for stuck workspaces...")
+            
+            # Get all workspaces in processing_tasks status
+            stuck_workspaces_response = supabase.table("workspaces").select(
+                "id, name, status, updated_at"
+            ).eq("status", "processing_tasks").execute()
+            
+            stuck_workspaces = stuck_workspaces_response.data or []
+            recovery_results = {}
+            
+            if not stuck_workspaces:
+                logger.info("✅ No workspaces stuck in 'processing_tasks' status")
+                return {"stuck_workspaces": 0, "recovered": 0, "details": {}}
+            
+            logger.warning(f"⚠️  Found {len(stuck_workspaces)} workspace(s) in 'processing_tasks' status")
+            
+            for workspace in stuck_workspaces:
+                workspace_id = workspace["id"]
+                workspace_name = workspace.get("name", "Unknown")
+                
+                logger.info(f"🔍 Checking workspace '{workspace_name}' ({workspace_id})")
+                
+                # Run health check with auto-recovery
+                health_report = await self.check_workspace_health_with_recovery(
+                    workspace_id, attempt_auto_recovery=True
+                )
+                
+                recovery_results[workspace_id] = {
+                    "name": workspace_name,
+                    "was_recovered": health_report.is_healthy,
+                    "health_score": health_report.overall_score,
+                    "issues_found": len(health_report.issues),
+                    "recovery_attempted": health_report.can_auto_recover
+                }
+                
+                if health_report.is_healthy:
+                    logger.info(f"✅ Workspace '{workspace_name}' recovered successfully")
+                else:
+                    logger.warning(f"⚠️  Workspace '{workspace_name}' still needs attention: {health_report.issues}")
+            
+            recovered_count = sum(1 for result in recovery_results.values() if result["was_recovered"])
+            
+            logger.info(f"🔧 Recovery complete: {recovered_count}/{len(stuck_workspaces)} workspaces recovered")
+            
+            return {
+                "stuck_workspaces": len(stuck_workspaces),
+                "recovered": recovered_count,
+                "details": recovery_results
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in system-wide workspace monitoring: {e}")
+            return {"error": str(e), "stuck_workspaces": 0, "recovered": 0}
     
     def _create_error_report(self, workspace_id: str, error_message: str) -> WorkspaceHealthReport:
         """Create error report for failed health checks"""

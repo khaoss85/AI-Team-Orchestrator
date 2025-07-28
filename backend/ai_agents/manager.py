@@ -24,6 +24,7 @@ from models import (
     HealthStatus
 )
 from ai_agents.specialist_enhanced import SpecialistAgent
+from services.sdk_memory_bridge import create_workspace_session
 
 logger = logging.getLogger(__name__)
 
@@ -355,8 +356,15 @@ class AgentManager:
                 # 🧠 MEMORY: Enhance task with insights before execution
                 enhanced_task = await self._enhance_task_with_insights(task, relevant_insights)
                 
+                # 🌉 SDK MEMORY BRIDGE: Create session for the workspace to enable native memory persistence
+                session = create_workspace_session(
+                    workspace_id=str(task.workspace_id),
+                    agent_id=str(specialist.agent_data.id)
+                )
+                logger.info(f"🌉 Created SDK memory session for task {task_id} -> agent {specialist.agent_data.name}")
+                
                 result = await asyncio.wait_for(
-                    specialist.execute(enhanced_task, session=None),
+                    specialist.execute(enhanced_task, session=session),
                     timeout=self.execution_timeout
                 )
                 

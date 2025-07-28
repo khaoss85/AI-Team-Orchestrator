@@ -291,22 +291,43 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       setLoading(true);
       setError(null);
 
-      await api.director.approveProposal(workspace.id, proposalId);
+      // Create timeout promise for approval API call
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('APPROVAL_TIMEOUT')), 15000); // 15 seconds timeout
+      });
 
-      if (workspace) {
-         router.push(`/projects/${workspace.id}`);
-      }
-    } catch (err) {
+      const approvalPromise = api.director.approveProposal(workspace.id, proposalId);
+      
+      // Race between API call and timeout
+      await Promise.race([approvalPromise, timeoutPromise]);
+
+      // If we get here, approval was successful
+      console.log('✅ Team approved successfully, redirecting...');
+      router.push(`/projects/${workspace.id}`);
+      
+    } catch (err: any) {
       console.error('Failed to approve team proposal:', err);
-      setError('Impossibile approvare la proposta di team. Riprova più tardi.');
-
-      if (workspace) {
-        setTimeout(() => {
-          router.push(`/projects/${workspace.id}`);
-        }, 1000);
+      
+      if (err.message === 'APPROVAL_TIMEOUT') {
+        // Timeout case - team is likely being created in background
+        setError('Il team sta ancora essere creato in background. Ti stiamo reindirizzando al progetto...');
+        console.log('⏰ Approval timed out, but team creation likely started - redirecting anyway');
+      } else {
+        setError('Impossibile approvare la proposta di team. Il processo potrebbe essere ancora in corso...');
       }
+
+      // Always redirect after a short delay, regardless of error type
+      // The team creation process likely started even if the API didn't respond in time
+      setTimeout(() => {
+        console.log('🔄 Redirecting to project page...');
+        router.push(`/projects/${workspace.id}`);
+      }, 2000); // 2 second delay to show the message
+      
     } finally {
-      setLoading(false);
+      // Don't reset loading immediately - wait for redirect
+      setTimeout(() => {
+        setLoading(false);
+      }, 2100);
     }
   };
 
@@ -630,7 +651,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     {loading ? (
       <>
         <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-        Creazione Team...
+        Approvazione in corso...
       </>
     ) : (
       'Approva e Crea Team'

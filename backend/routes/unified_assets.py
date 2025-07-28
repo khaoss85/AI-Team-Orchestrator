@@ -96,6 +96,7 @@ class UnifiedAssetManager:
             grouped_assets = self._group_and_version_assets(filtered_assets, completed_tasks)
             
             # Process each asset group with AI content enhancement
+            workspace_goal = workspace.get("goal", "No goal defined")
             processed_assets = await self._process_assets_with_ai(grouped_assets, workspace_goal)
             
             # Create final response

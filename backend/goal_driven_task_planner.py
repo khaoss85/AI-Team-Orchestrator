@@ -147,7 +147,18 @@ class GoalDrivenTaskPlanner:
             available_agents = agents_response.data or []
             
             if not available_agents:
-                logger.warning(f"⚠️ No agents found for workspace {workspace_id} - tasks will be created unassigned")
+                logger.warning(f"⚠️ No agents found for workspace {workspace_id} - attempting to create basic agents")
+                
+                # FIXED: Auto-create basic agents for workspace
+                try:
+                    basic_agents = await self._create_basic_agents_for_workspace(workspace_id)
+                    if basic_agents:
+                        available_agents = basic_agents
+                        logger.info(f"✅ Created {len(basic_agents)} basic agents for workspace {workspace_id}")
+                    else:
+                        logger.warning(f"⚠️ Failed to create basic agents - tasks will be created unassigned")
+                except Exception as e:
+                    logger.error(f"Error creating basic agents for workspace {workspace_id}: {e}")
             else:
                 logger.info(f"✅ Found {len(available_agents)} agents for task assignment in workspace {workspace_id}")
             
@@ -268,143 +279,69 @@ class GoalDrivenTaskPlanner:
         workspace_context: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """
-        🤖 AI-DRIVEN UNIVERSAL TASK GENERATION (Legacy - MIGRATED TO SDK)
-        Sostituisce tutti i template hardcoded con AI che comprende il contesto
+        🤖 **RE-ARCHITECTED** AI-Driven Task Generation
+        This function now uses a two-stage process: Analysis and Generation, controlled by Python logic.
         """
         from services.ai_provider_abstraction import ai_provider_manager
 
         if not self.ai_available:
             return await self._fallback_generic_tasks(goal, gap)
-        
+
         try:
-            prompt = f"""You are a universal project management AI. Your goal is to break down a high-level objective into a series of concrete, asset-focused tasks. Each task MUST result in a specific, tangible asset.
+            # STAGE 1: ANALYSIS - Use the Analyst Agent to determine data requirements
+            analysis_result = await self._analyze_goal_requirements_ai(goal, workspace_context)
+            requires_data_gathering = analysis_result.get("requires_data_gathering", False)
+            data_points_needed = analysis_result.get("data_points_needed", [])
 
-GOAL CONTEXT:
-- Goal: {goal.description}
-- Metric Type: {goal.metric_type}
-- Target: {goal.target_value} {goal.unit}
-- Gap to fill: {gap} {goal.unit}
-- Workspace: {workspace_context.get('name', 'Unknown')}
-- Industry context: {workspace_context.get('description', 'Universal business')}
-
-🚨 CRITICAL INSTRUCTIONS:
-1.  **Asset-Focused Tasks:** Every task must produce a tangible asset (e.g., a document, a list, a diagram, a code module, a set of images).
-2.  **No Vague Actions:** Do not create tasks like "research", "analyze", or "plan". Instead, create tasks that produce the *output* of that action (e.g., "Create a 5-page research summary document", "Generate a competitor analysis report").
-3.  **Quantify Deliverables:** Be specific about the asset. Instead of "Create a contact list", specify "Create a CSV file with 50 new contacts, including name, email, and company".
-4.  **One Asset Per Task:** Each task should be responsible for producing a single, well-defined asset.
-
-Generate 1-3 specific, asset-focused tasks in this JSON format:
-{{
-    "tasks": [
-        {{
-            "name": "Create Asset: [Asset Name]",
-            "description": "Detailed description of the asset to be created and its purpose.",
-            "asset_type": "document/list/code/image/etc.",
-            "deliverable_format": "markdown/csv/json/png/etc.",
-            "success_criteria": [
-                "Asset is created in the specified format.",
-                "Asset contains all required information."
-            ],
-            "contribution_expected": 25
-        }}
-    ]
-}}
-
-Examples of GOOD vs BAD tasks:
-❌ BAD: "Research the market"
-✅ GOOD: "Create Asset: Market Research Summary Document (5 pages)"
-
-❌ BAD: "Improve email marketing"
-✅ GOOD: "Create Asset: 3-part email onboarding sequence (Markdown)"
-
-Focus on the specific gap ({gap} {goal.unit}) and create tasks that produce assets to close it."""
-
-            # Define a temporary agent for this task
-            task_generator_agent = {
-                "name": "LegacyTaskGeneratorAgent",
-                "model": "gpt-4o-mini",
-                "instructions": "You are an expert project manager who creates specific, actionable tasks for any industry. Respond only with valid JSON.",
-            }
-
-            result = await ai_provider_manager.call_ai(
-                provider_type='openai_sdk',
-                agent=task_generator_agent,
-                prompt=prompt,
-                response_format={"type": "json_object"}
-            )
-            
-            logger.info(f"🔍 DEBUG: AI response type: {type(result)}")
-            logger.info(f"🔍 DEBUG: AI response: {result}")
-            
-            # Handle different response formats
-            if isinstance(result, str):
-                try:
-                    import json
-                    result = json.loads(result)
-                except:
-                    logger.error(f"Failed to parse AI response as JSON: {result}")
-                    return []
-            
-            # Extract tasks from various possible response structures
-            tasks_data = []
-            if isinstance(result, dict):
-                if "tasks" in result:
-                    tasks_data = result["tasks"]
-                elif "data" in result and isinstance(result["data"], dict) and "tasks" in result["data"]:
-                    tasks_data = result["data"]["tasks"]
-                elif "content" in result:
-                    # Handle if content is a JSON string
-                    try:
-                        import json
-                        content_data = json.loads(result["content"])
-                        tasks_data = content_data.get("tasks", [])
-                    except:
-                        logger.error(f"Failed to parse content as JSON: {result['content']}")
-                        return []
-            
-            logger.info(f"🔍 DEBUG: Extracted {len(tasks_data)} tasks from AI response")
-            
             tasks = []
+
+            if requires_data_gathering and data_points_needed:
+                logger.info(f"Analyst Agent identified {len(data_points_needed)} data gathering tasks for goal '{goal.description}'")
+                # STAGE 2a: DATA GATHERING TASKS (Programmatically created)
+                for i, data_point in enumerate(data_points_needed):
+                    task = {
+                        "name": f"Create Asset: {data_point}",
+                        "description": f"Task {i+1} of {len(data_points_needed)+1}: Gather the following data required for the final asset: {data_point}.",
+                        "asset_type": "list",
+                        "deliverable_format": "json",
+                        "success_criteria": ["A JSON list containing the requested data is produced."],
+                        "contribution_expected": 10, # Small contribution for data gathering
+                        "priority": "high"
+                    }
+                    tasks.append(task)
+
+                # STAGE 2b: FINAL ASSEMBLY TASK (Programmatically created)
+                final_task_name = f"Create Asset: Final Deliverable for '{goal.description}'"
+                final_task_description = f"Final assembly task: Use the data gathered from the previous tasks ({', '.join(data_points_needed)}) to produce the complete, final asset for the goal: '{goal.description}'. Do not produce a plan or a template."
+                
+                assembly_task = {
+                    "name": final_task_name,
+                    "description": final_task_description,
+                    "asset_type": "document", # Generic, agent will determine final format
+                    "deliverable_format": "markdown",
+                    "success_criteria": ["The final asset is complete, contains all gathered data, and is ready for use."],
+                    "contribution_expected": 80, # Major contribution for final assembly
+                    "priority": "medium"
+                }
+                tasks.append(assembly_task)
             
-            for task_data in tasks_data:
-                # Store all metadata in context_data to avoid database schema issues
-                context_data = {
-                    "is_goal_driven": True,
-                    "auto_generated": True,
-                    "task_type": task_data.get("type", "goal_driven"),
-                    "deliverable_type": task_data.get("deliverable_type", "project_output"),
-                    "estimated_duration_hours": task_data.get("estimated_duration_hours", 4),
-                    "required_skills": task_data.get("required_skills", []),
-                    "success_criteria": task_data.get("success_criteria", []),
-                    "numerical_target": {
-                        "metric": str(goal.metric_type),
-                        "target": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                        "unit": goal.unit,
-                        "validation_method": "manual_verification"
-                    }
+            else:
+                logger.info(f"Analyst Agent determined no data gathering is needed for goal '{goal.description}'. Creating a direct asset production task.")
+                # DIRECT ASSET PRODUCTION TASK
+                direct_task = {
+                    "name": f"Create Asset: {goal.description}",
+                    "description": f"Directly produce the final, complete, and ready-to-use asset for the goal: '{goal.description}'. No planning or templates.",
+                    "asset_type": "document",
+                    "deliverable_format": "markdown",
+                    "success_criteria": ["The final asset is complete and ready for use."],
+                    "contribution_expected": 100,
+                    "priority": "high"
                 }
-                
-                # 🌍 PILLAR 2 & 3 COMPLIANCE: AI-driven metric type classification (universal)
-                compatible_metric_type = await self._classify_metric_type_ai(str(goal.metric_type))
-                
-                task = {
-                    "goal_id": str(goal.id),
-                    "metric_type": compatible_metric_type,
-                    "name": task_data["name"],
-                    "description": task_data["description"],
-                    "priority": self._convert_numeric_priority(task_data.get("priority", 3)),
-                    "contribution_expected": task_data.get("contribution_expected", gap / len(result["tasks"])),
-                    "context_data": {
-                        **context_data,
-                        "original_metric_type": str(goal.metric_type)  # Preserve original for future use
-                    }
-                }
-                tasks.append(task)
-                
-            logger.info(f"🤖 AI generated {len(tasks)} universal tasks for {goal.metric_type} goal")
-            logger.debug(f"Generated tasks list: {tasks}")
+                tasks.append(direct_task)
+
+            logger.info(f"🤖 Created a task plan with {len(tasks)} steps for goal '{goal.description}'")
             return tasks
-            
+
         except Exception as e:
             logger.error(f"AI task generation failed: {e}")
             return await self._fallback_generic_tasks(goal, gap)
@@ -442,6 +379,75 @@ Focus on the specific gap ({gap} {goal.unit}) and create tasks that produce asse
                 "original_metric_type": str(goal.metric_type)
             }
         }]
+
+    async def _analyze_goal_requirements_ai(self, goal: WorkspaceGoal, workspace_context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        🤖 **NEW Analyst Agent**
+        Uses AI to determine if a goal requires real-world data gathering before the final asset can be assembled.
+        """
+        from services.ai_provider_abstraction import ai_provider_manager
+
+        if not self.ai_available:
+            return {"requires_data_gathering": False, "data_points_needed": []}
+
+        try:
+            prompt = f"""You are a meticulous Analyst Agent. Your only job is to analyze a business goal and determine if creating the final asset requires gathering specific, real-world data points first.
+
+**Goal to Analyze:**
+- **Description:** {goal.description}
+- **Metric:** {goal.metric_type}
+- **Business Context:** {workspace_context.get('description', 'General business operations')}
+
+**Your Task:**
+Analyze the goal. Does producing the final deliverable require concrete data that is not yet available?
+- **Example 1:** If the goal is "Create a competitor analysis report", it **requires data gathering** (competitor names, pricing, features).
+- **Example 2:** If the goal is "Write a generic welcome email template", it **does not require data gathering** as it uses placeholders.
+- **Example 3:** If the goal is "Write a welcome email for our new client, Acme Corp", it **requires data gathering** (details about Acme Corp).
+
+Respond ONLY with a JSON object in the following format:
+```json
+{{
+    "requires_data_gathering": boolean,
+    "data_points_needed": [
+        "A very specific, short description of the first data point to find (e.g., 'List of 3 competitor names').",
+        "A very specific, short description of the second data point to find (e.g., 'Pricing information for each competitor')."
+    ]
+}}
+```
+
+**Instructions:**
+- If `requires_data_gathering` is `false`, `data_points_needed` must be an empty array.
+- Be very specific in `data_points_needed`. Each item should be a clear instruction for a data collection task.
+- Do not list more than 3 essential data points.
+"""
+
+            analyst_agent = {
+                "name": "AnalystAgent",
+                "model": "gpt-4o-mini",
+                "instructions": "You are an analyst that determines data requirements for business goals. Respond only with the requested JSON format.",
+            }
+
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=analyst_agent,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+
+            if isinstance(result, str):
+                result = json.loads(result)
+            
+            # Validate the response structure
+            if "requires_data_gathering" in result and "data_points_needed" in result:
+                logger.info(f"✅ Analyst Agent determined data requirements for '{goal.description}': {result}")
+                return result
+            else:
+                logger.warning(f"⚠️ Analyst Agent returned invalid format. Defaulting to no data gathering. Response: {result}")
+                return {"requires_data_gathering": False, "data_points_needed": []}
+
+        except Exception as e:
+            logger.error(f"Error in Analyst Agent execution: {e}")
+            return {"requires_data_gathering": False, "data_points_needed": []}
     
     def _convert_numeric_priority(self, priority: Union[int, str]) -> str:
         """
@@ -544,9 +550,13 @@ Return ONLY the category name."""
             
             ai_classification = response.choices[0].message.content.strip().lower()
             
+            # FIXED: Clean AI response from quotes and extra characters
+            ai_classification = ai_classification.strip('"').strip("'").strip()
+            
             # Validate response
             valid_categories = ["quantified_outputs", "quality_measures", "time_based_metrics", 
-                              "engagement_metrics", "completion_metrics"]
+                              "engagement_metrics", "completion_metrics", "performance_metrics",
+                              "user_metrics", "business_metrics"]
             
             if ai_classification in valid_categories:
                 logger.info(f"🤖 AI classified '{metric_type}' → '{ai_classification}'")
@@ -1460,6 +1470,61 @@ Return ONLY the category name that best fits this metric.
         except Exception as e:
             logger.error(f"Error scoring task business value: {e}")
             return 0.0
+    
+    async def _create_basic_agents_for_workspace(self, workspace_id: str) -> List[Dict[str, Any]]:
+        """
+        FIXED: Auto-create basic agents when none exist for a workspace
+        """
+        try:
+            from uuid import uuid4
+            from datetime import datetime
+            
+            basic_agents_data = [
+                {
+                    "id": str(uuid4()),
+                    "workspace_id": workspace_id,
+                    "name": "General Task Agent",
+                    "role": "generalist",
+                    "seniority": "senior",
+                    "skills": ["general_tasks", "documentation", "analysis"],
+                    "personality": "efficient and thorough",
+                    "status": "active",
+                    "model": "gpt-4o-mini",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "metadata": {"auto_created": True, "reason": "no_agents_found"}
+                },
+                {
+                    "id": str(uuid4()),
+                    "workspace_id": workspace_id,
+                    "name": "Technical Specialist",
+                    "role": "specialist",
+                    "seniority": "expert",
+                    "skills": ["technical_tasks", "development", "implementation"],
+                    "personality": "detail-oriented and analytical",
+                    "status": "active",
+                    "model": "gpt-4o-mini",
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                    "metadata": {"auto_created": True, "reason": "no_agents_found"}
+                }
+            ]
+            
+            created_agents = []
+            for agent_data in basic_agents_data:
+                try:
+                    result = supabase.table("agents").insert(agent_data).execute()
+                    if result.data:
+                        created_agents.append(result.data[0])
+                        logger.info(f"✅ Created basic agent: {agent_data['name']}")
+                except Exception as e:
+                    logger.error(f"Error creating basic agent {agent_data['name']}: {e}")
+            
+            return created_agents
+            
+        except Exception as e:
+            logger.error(f"Error creating basic agents for workspace {workspace_id}: {e}")
+            return []
 
 # Singleton instance
 goal_driven_task_planner = GoalDrivenTaskPlanner()

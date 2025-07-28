@@ -6,7 +6,7 @@ try:
     from agents import ModelSettings  # type: ignore
 except Exception:  # pragma: no cover - fallback
     try:
-        from openai_agents import ModelSettings  # type: ignore
+        from agents import ModelSettings  # type: ignore
     except Exception:  # pragma: no cover
 
         class ModelSettings:  # type: ignore

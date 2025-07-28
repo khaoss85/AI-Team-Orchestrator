@@ -53,6 +53,11 @@ async def get_all_workspaces(request: Request, limit: Optional[int] = 50, user_i
             result = supabase.table("workspaces").select("*").limit(limit).execute()
         
         workspaces = result.data or []
+        
+        # Transform budget format for each workspace
+        if workspaces:
+            workspaces = [transform_workspace_budget(ws) for ws in workspaces]
+        
         return workspaces
     except Exception as e:
         logger.error(f"Error fetching workspaces: {e}")
@@ -73,13 +78,27 @@ async def create_new_workspace(workspace: WorkspaceCreate, request: Request):
         from uuid import uuid4
         user_id = str(workspace.user_id) if workspace.user_id else str(uuid4())
         
+        # Transform budget from object to float for database storage
+        budget_value = workspace.budget
+        if hasattr(budget_value, 'max_amount'):
+            # It's a BudgetInfo object
+            budget_value = budget_value.max_amount
+        elif isinstance(budget_value, dict) and "max_amount" in budget_value:
+            # It's a dict
+            budget_value = budget_value["max_amount"]
+        
         created_workspace = await create_workspace(
             name=workspace.name,
             description=workspace.description,
             user_id=user_id,
             goal=workspace.goal,
-            budget=workspace.budget
+            budget=budget_value
         )
+        
+        # Transform the returned workspace budget back to object format
+        if created_workspace:
+            created_workspace = transform_workspace_budget(created_workspace)
+        
         return created_workspace
     except Exception as e:
         logger.error(f"Error creating workspace: {e}")
@@ -87,6 +106,18 @@ async def create_new_workspace(workspace: WorkspaceCreate, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create workspace: {str(e)}"
         )
+
+def transform_workspace_budget(workspace: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform workspace budget from float to object format for frontend compatibility"""
+    if workspace and "budget" in workspace:
+        budget_value = workspace["budget"]
+        if isinstance(budget_value, (int, float)):
+            # Transform float/int to object format expected by frontend
+            workspace["budget"] = {
+                "max_amount": budget_value,
+                "currency": "EUR"  # Default currency
+            }
+    return workspace
 
 @router.get("/{workspace_id}", response_model=Workspace)
 async def get_workspace_by_id(workspace_id: UUID, request: Request):
@@ -101,6 +132,10 @@ async def get_workspace_by_id(workspace_id: UUID, request: Request):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace not found"
         )
+    
+    # Transform budget format for frontend compatibility
+    workspace = transform_workspace_budget(workspace)
+    
     return workspace
 
 @router.get("/user/{user_id}", response_model=List[Workspace])
@@ -114,6 +149,11 @@ async def get_user_workspaces(user_id: UUID, request: Request):
         logger.info(f"Fetching workspaces for user: {user_id}")
         workspaces = await list_workspaces(str(user_id))
         logger.info(f"Successfully fetched {len(workspaces) if workspaces else 0} workspaces for user {user_id}")
+        
+        # Transform budget format for each workspace
+        if workspaces:
+            workspaces = [transform_workspace_budget(ws) for ws in workspaces]
+        
         return workspaces or []
     except Exception as e:
         logger.error(f"Error fetching workspaces for user {user_id}: {e}")

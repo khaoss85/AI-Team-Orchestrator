@@ -1,0 +1,66 @@
+2025-07-28 12:15:06,226 [INFO] 🚀 STARTING COMPLETE PRODUCTION E2E TEST
+2025-07-28 12:15:06,226 [INFO] ================================================================================
+2025-07-28 12:15:06,226 [INFO] 🎯 OBIETTIVO: Test completo senza simulazioni in scenario reale
+2025-07-28 12:15:06,226 [INFO] 📋 SCENARIO: Startup SaaS che vuole lanciare campagna marketing
+2025-07-28 12:15:06,226 [INFO] ================================================================================
+2025-07-28 12:15:06,227 [INFO] 🔧 PHASE 1: Environment Verification
+2025-07-28 12:15:26,231 [INFO]    - Checking server health...
+2025-07-28 12:15:35,764 [INFO]    ✅ Server is healthy
+2025-07-28 12:15:35,939 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/quality_rules?select=%2A&asset_type=eq.code&is_active=eq.True&order=rule_order "HTTP/2 200 OK"
+2025-07-28 12:15:35,943 [INFO] ✅ Database connected: 3 quality rules found
+2025-07-28 12:15:35,943 [INFO] 🔧 PHASE 2: Complete Workspace Setup
+2025-07-28 12:15:39,393 [INFO] ✅ Workspace created: 1ccbb681-d39f-4306-a0dd-4c1b4b854758
+2025-07-28 12:15:39,393 [INFO] 🔧 PHASE 3: Team Formation
+2025-07-28 12:15:57,160 [INFO] ✅ Director proposal created: 6c1ceffa-024f-4c5c-b513-10241d1a8afd
+2025-07-28 12:15:58,538 [INFO] ✅ Team approved: 0 agents created
+2025-07-28 12:15:58,539 [INFO] 🔧 PHASE 4: Strategic Goal Creation
+2025-07-28 12:15:58,879 [INFO] ✅ Goal created
+2025-07-28 12:15:58,879 [INFO] 🔧 PHASE 5: Real Task Execution
+2025-07-28 12:15:58,879 [INFO] ⏳ Waiting for task generation...
+2025-07-28 12:16:19,074 [INFO] HTTP Request: GET https://szerliaxjcverzdoisik.supabase.co/rest/v1/tasks?select=%2A&workspace_id=eq.1ccbb681-d39f-4306-a0dd-4c1b4b854758&order=created_at.desc "HTTP/2 200 OK"
+2025-07-28 12:16:19,076 [ERROR] ❌ Phase 5 failed: No tasks generated
+2025-07-28 12:16:19,076 [ERROR] ❌ CRITICAL ERROR in production test: No tasks generated
+2025-07-28 13:08:51,656 - __main__ - INFO - 🚀 Production E2E Test initialized: ff95dc4d-44c0-49d0-9111-ffcc8d03cd51
+2025-07-28 13:08:51,658 - __main__ - INFO - 📊 Business Scenario: Customer Onboarding Optimization
+2025-07-28 13:08:51,658 - __main__ - INFO - ================================================================================
+2025-07-28 13:08:51,658 - __main__ - INFO - 🎯 STARTING COMPREHENSIVE PRODUCTION E2E TEST
+2025-07-28 13:08:51,658 - __main__ - INFO - ================================================================================
+2025-07-28 13:08:51,658 - __main__ - INFO - 
+🏗️ PHASE 1: WORKSPACE SETUP
+2025-07-28 13:08:51,658 - __main__ - INFO - --------------------------------------------------
+2025-07-28 13:08:51,814 - database - WARNING - ⚠️ Schema verification system not available: No module named 'schema_verification'
+2025-07-28 13:08:51,963 - services.unified_memory_engine - INFO - ✅ AI client initialized for memory processing
+2025-07-28 13:08:51,963 - services.unified_memory_engine - INFO - 🧠 Unified Memory Engine initialized successfully
+2025-07-28 13:08:51,963 - services.unified_memory_engine - INFO - ✅ Unified Memory Engine module loaded with backward compatibility.
+2025-07-28 13:08:51,963 - services - INFO - 🧠 Unified Memory System loaded successfully
+2025-07-28 13:08:51,963 - services - INFO -    ├─ Consolidated 3 files into unified_memory_engine.py
+2025-07-28 13:08:51,963 - services - INFO -    ├─ Backward compatibility maintained for all imports
+2025-07-28 13:08:51,963 - services - INFO -    └─ Memory patterns, context storage, and AI generation unified
+2025-07-28 13:08:51,969 - database - INFO - ✅ Constraint Violation Preventer available for database operations
+2025-07-28 13:08:51,969 - database - INFO - Connecting to Supabase at: https://szerliaxjcverzdoisik.supabase.co
+2025-07-28 13:08:51,973 - database - INFO - ✅ Supabase client (user-level) created successfully
+2025-07-28 13:08:51,978 - database - INFO - ✅ Supabase service client (admin-level) created successfully
+2025-07-28 13:08:52,425 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspaces "HTTP/2 201 Created"
+2025-07-28 13:08:52,428 - __main__ - INFO - ✅ Workspace created: dc8d3ab2-01fe-425c-872d-3ace7f9f007e
+2025-07-28 13:08:52,428 - __main__ - INFO -    Name: TechStart Solutions - Customer Onboarding Optimization
+2025-07-28 13:08:52,428 - __main__ - INFO -    Description: We need to reduce customer onboarding time from 2 weeks to 3 days while maintaining quality and cust...
+2025-07-28 13:08:52,428 - __main__ - INFO - 
+🎯 PHASE 2: STRATEGIC GOAL SETTING
+2025-07-28 13:08:52,428 - __main__ - INFO - --------------------------------------------------
+2025-07-28 13:08:52,511 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-28 13:08:52,512 - __main__ - INFO - ✅ Goal created: Reduce customer onboarding time from 14 days to 3 days...
+2025-07-28 13:08:52,512 - __main__ - INFO -    Target: 3 days
+2025-07-28 13:08:52,573 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-28 13:08:52,575 - __main__ - INFO - ✅ Goal created: Maintain customer satisfaction above 95% during optimized on...
+2025-07-28 13:08:52,575 - __main__ - INFO -    Target: 95 percentage
+2025-07-28 13:08:52,638 - httpx - INFO - HTTP Request: POST https://szerliaxjcverzdoisik.supabase.co/rest/v1/workspace_goals "HTTP/2 201 Created"
+2025-07-28 13:08:52,638 - __main__ - INFO - ✅ Goal created: Create comprehensive onboarding documentation suite...
+2025-07-28 13:08:52,638 - __main__ - INFO -    Target: 100 percentage
+2025-07-28 13:08:52,638 - __main__ - INFO - 📊 Total goals created: 3
+2025-07-28 13:08:52,638 - __main__ - INFO - 
+🎭 PHASE 3: TEAM FORMATION & DIRECTOR ANALYSIS
+2025-07-28 13:08:52,638 - __main__ - INFO - --------------------------------------------------
+2025-07-28 13:08:52,655 - ai_agents.specialist_enhanced - INFO - 🔍 Configuring OpenAI trace for specialist agent
+2025-07-28 13:08:52,817 - ai_agents.specialist_enhanced - INFO - ✅ OpenAI Agents SDK loaded successfully with trace configuration
+2025-07-28 13:08:52,817 - __main__ - ERROR - ❌ Phase 3 failed: attempted relative import beyond top-level package
+2025-07-28 13:08:52,817 - __main__ - ERROR - ❌ Production E2E Test failed: attempted relative import beyond top-level package

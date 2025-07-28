@@ -12,8 +12,13 @@ from uuid import UUID, uuid4
 
 from database import get_supabase_client, supabase_retry, _ensure_json_serializable
 from models import (
-    AssetRequirement, AssetArtifact, QualityValidation, QualityRule,
-    EnhancedWorkspaceGoal, WorkspaceGoal, EnhancedTask, GoalProgressLog
+    AssetArtifact,
+    AssetRequirement,
+    QualityRule,
+    QualityValidation,
+    WorkspaceGoal,
+    Task,
+    TaskStatus
 )
 
 logger = logging.getLogger(__name__)

@@ -19,6 +19,8 @@ class WorkspaceStatus(str, Enum):
     PAUSED = "paused"
     COMPLETED = "completed"
     ERROR = "error"
+    PROCESSING_TASKS = "processing_tasks"  # Temporary state during task generation
+    NEEDS_INTERVENTION = "needs_intervention"  # State requiring human intervention
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
@@ -82,6 +84,10 @@ PHASE_DESCRIPTIONS = {
 
 # --- Main Models ---
 
+class BudgetInfo(BaseModel):
+    max_amount: float
+    currency: str = "EUR"
+
 class Workspace(BaseModel):
     id: UUID
     name: str
@@ -91,7 +97,7 @@ class Workspace(BaseModel):
     created_at: datetime
     updated_at: datetime
     goal: Optional[str] = None
-    budget: Optional[float] = None
+    budget: Optional[Union[float, BudgetInfo]] = None
     model_config = ConfigDict(from_attributes=True)
 
 class WorkspaceCreate(BaseModel):
@@ -99,14 +105,14 @@ class WorkspaceCreate(BaseModel):
     description: Optional[str] = None
     user_id: Optional[UUID] = None
     goal: Optional[str] = None
-    budget: Optional[float] = None
+    budget: Optional[Union[float, BudgetInfo]] = None
 
 class WorkspaceUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[WorkspaceStatus] = None
     goal: Optional[str] = None
-    budget: Optional[float] = None
+    budget: Optional[Union[float, BudgetInfo]] = None
 
 class Agent(BaseModel):
     id: UUID
@@ -404,23 +410,28 @@ class HandoffProposalCreate(BaseModel):
 
 class DirectorHandoffProposal(BaseModel):
     """Handoff proposal from Director for team structure"""
-    from_agent: str
-    to_agents: List[str] 
+    from_agent: str = Field(..., alias='from')
+    to_agents: List[str] = Field(..., alias='to')
     description: Optional[str] = None
     
-    class Config:
-        # Support both field names for backward compatibility
-        allow_population_by_field_name = True
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
 
 class Handoff(BaseModel):
     id: UUID
-    from_agent_id: UUID
-    to_agent_id: UUID
-    task_id: UUID
-    handoff_reason: Optional[str] = None
+    from_agent_id: UUID = Field(alias="source_agent_id")
+    to_agent_id: UUID = Field(alias="target_agent_id")
+    task_id: Optional[UUID] = None  # Make optional as not all handoffs have tasks
+    handoff_reason: Optional[str] = Field(default=None, alias="description")  # Map to DB field
     status: str = "pending"
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # Make optional as not all handoffs have this field
+    
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True  # Allow both original field names and aliases
+    )
 
 class AgentHealth(BaseModel):
     agent_id: UUID

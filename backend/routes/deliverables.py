@@ -192,3 +192,52 @@ async def force_finalize_deliverables(workspace_id: str, request: Request):
     except Exception as e:
         logger.error(f"❌ Error force finalizing deliverables for workspace {workspace_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to force finalize deliverables: {str(e)}")
+
+@router.get("/workspace/{workspace_id}/goal/{goal_id}")
+async def get_goal_deliverables(request: Request, workspace_id: str, goal_id: str):
+    """Get deliverables for a specific goal"""
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_goal_deliverables called for goal {goal_id}", endpoint="get_goal_deliverables", trace_id=trace_id)
+    try:
+        logger.info(f"Querying deliverables for goal {goal_id} in workspace {workspace_id}...")
+        deliverables = await get_deliverables(workspace_id, goal_id=goal_id)
+        logger.info(f"Goal deliverables query completed. Found {len(deliverables)} deliverables for goal {goal_id}")
+        return deliverables
+    except Exception as e:
+        logger.error(f"❌ Error fetching deliverables for goal {goal_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch goal deliverables: {str(e)}")
+
+@router.post("/workspace/{workspace_id}/goal/{goal_id}/create")
+async def create_goal_deliverable(workspace_id: str, goal_id: str, request: Request):
+    """Force creation of deliverable for a specific goal"""
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route create_goal_deliverable called for goal {goal_id}", endpoint="create_goal_deliverable", trace_id=trace_id)
+    
+    try:
+        logger.info(f"🎯 Force creating goal-specific deliverable for goal {goal_id} in workspace {workspace_id}")
+        
+        # Import the goal-specific deliverable creation logic
+        from deliverable_system.unified_deliverable_engine import create_goal_specific_deliverable
+        
+        # Create goal-specific deliverable (force mode)
+        deliverable = await create_goal_specific_deliverable(workspace_id, goal_id, force=True)
+        
+        if deliverable:
+            logger.info(f"✅ Goal-specific deliverable created: {deliverable.get('id')}")
+            return {
+                "success": True,
+                "deliverable": deliverable,
+                "message": f"Goal-specific deliverable created successfully"
+            }
+        else:
+            logger.warning(f"⚠️ No deliverable created for goal {goal_id}")
+            return {
+                "success": False,
+                "message": "No deliverable was created (conditions not met or no completed tasks)"
+            }
+        
+    except Exception as e:
+        logger.error(f"❌ Error creating goal-specific deliverable for goal {goal_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create goal deliverable: {str(e)}")

@@ -61,6 +61,10 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
   
+  // 🎯 NEW: Goal-specific deliverables state
+  const [goalDeliverables, setGoalDeliverables] = useState<{[goalId: string]: any[]}>({});
+  const [deliverablesLoading, setDeliverablesLoading] = useState<{[goalId: string]: boolean}>({});
+  
   // Team control states
   const [workspaceStatus, setWorkspaceStatus] = useState<'active' | 'paused' | 'completed' | 'created'>('active');
   const [teamControlLoading, setTeamControlLoading] = useState(false);
@@ -169,6 +173,39 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       }
     } catch (err) {
       console.error('Error fetching validation:', err);
+    }
+  };
+
+  // 🎯 NEW: Goal-specific deliverable functions
+  const fetchGoalDeliverables = async (goalId: string) => {
+    if (deliverablesLoading[goalId]) return;
+    
+    setDeliverablesLoading(prev => ({ ...prev, [goalId]: true }));
+    try {
+      const deliverables = await api.monitoring.getGoalDeliverables(workspaceId, goalId);
+      setGoalDeliverables(prev => ({ ...prev, [goalId]: deliverables || [] }));
+    } catch (error) {
+      console.error(`Error fetching deliverables for goal ${goalId}:`, error);
+      setGoalDeliverables(prev => ({ ...prev, [goalId]: [] }));
+    } finally {
+      setDeliverablesLoading(prev => ({ ...prev, [goalId]: false }));
+    }
+  };
+
+  const createGoalDeliverable = async (goalId: string) => {
+    setDeliverablesLoading(prev => ({ ...prev, [goalId]: true }));
+    try {
+      const result = await api.monitoring.createGoalDeliverable(workspaceId, goalId);
+      if (result.success) {
+        // Refresh deliverables for this goal
+        await fetchGoalDeliverables(goalId);
+      }
+      return result;
+    } catch (error) {
+      console.error(`Error creating deliverable for goal ${goalId}:`, error);
+      throw error;
+    } finally {
+      setDeliverablesLoading(prev => ({ ...prev, [goalId]: false }));
     }
   };
 
@@ -560,6 +597,85 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                                     </div>
                                   )}
 
+                                  {/* 🎯 NEW: Goal-specific deliverable details */}
+                                  {goal.completion_pct! >= 80 && (
+                                    <div className="bg-white rounded p-2 border border-green-200">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-medium text-green-700">📦 Goal Deliverables</span>
+                                        <div className="flex space-x-1">
+                                          {!goalDeliverables[goal.id] && (
+                                            <button
+                                              onClick={() => fetchGoalDeliverables(goal.id)}
+                                              disabled={deliverablesLoading[goal.id]}
+                                              className="px-2 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded text-xs font-medium border border-purple-200 transition-colors disabled:opacity-50"
+                                            >
+                                              {deliverablesLoading[goal.id] ? '⏳' : '📋'} Check
+                                            </button>
+                                          )}
+                                          {goalDeliverables[goal.id] && goalDeliverables[goal.id].length === 0 && (
+                                            <button
+                                              onClick={() => createGoalDeliverable(goal.id)}
+                                              disabled={deliverablesLoading[goal.id]}
+                                              className="px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded text-xs font-medium border border-green-200 transition-colors disabled:opacity-50"
+                                            >
+                                              {deliverablesLoading[goal.id] ? '⏳' : '📦'} Create
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      {goalDeliverables[goal.id] && goalDeliverables[goal.id].length > 0 ? (
+                                        <div className="space-y-2">
+                                          {goalDeliverables[goal.id].map((deliverable, idx) => (
+                                            <div key={idx} className={`rounded p-2 border ${
+                                              deliverable.type === 'low_value_warning' 
+                                                ? 'bg-yellow-50 border-yellow-200' 
+                                                : 'bg-green-50 border-green-100'
+                                            }`}>
+                                              {deliverable.type === 'low_value_warning' ? (
+                                                <>
+                                                  <div className="flex items-center mb-1">
+                                                    <div className="text-yellow-600 mr-1">⚠️</div>
+                                                    <div className="text-xs font-medium text-yellow-800">
+                                                      System Improvement Notice
+                                                    </div>
+                                                  </div>
+                                                  <div className="text-xs text-yellow-700">
+                                                    AI planner generated abstract tasks. System is learning to create more concrete outputs.
+                                                  </div>
+                                                  <div className="text-xs text-yellow-600 mt-1">
+                                                    Created: {new Date(deliverable.created_at).toLocaleDateString()}
+                                                  </div>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <div className="text-xs font-medium text-green-800">
+                                                    {deliverable.title || 'Goal Deliverable'}
+                                                  </div>
+                                                  <div className="text-xs text-green-600 mt-1">
+                                                    Created: {new Date(deliverable.created_at).toLocaleDateString()}
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : goalDeliverables[goal.id] && goalDeliverables[goal.id].length === 0 ? (
+                                        <div className="text-xs text-gray-600">
+                                          No deliverables yet. This goal is eligible for deliverable creation.
+                                        </div>
+                                      ) : deliverablesLoading[goal.id] ? (
+                                        <div className="text-xs text-gray-600">
+                                          ⏳ Loading deliverables...
+                                        </div>
+                                      ) : (
+                                        <div className="text-xs text-gray-600">
+                                          Click "Check" to see if deliverables are available for this goal.
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
                                   {/* Informazioni aggiuntive per l'utente */}
                                   <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 border-l-2 border-blue-300">
                                     <strong>ℹ️ Info:</strong> Questo obiettivo viene aggiornato automaticamente quando i task correlati vengono completati dal team di agenti.
@@ -806,6 +922,45 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
                     )}
                   </div>
                   <div className="flex items-center space-x-2">
+                    {/* 🎯 NEW: Goal-specific deliverable actions */}
+                    {goal.completion_pct! >= 80 && (
+                      <div className="flex items-center space-x-1">
+                        {!goalDeliverables[goal.id] && !deliverablesLoading[goal.id] && (
+                          <button
+                            onClick={() => fetchGoalDeliverables(goal.id)}
+                            className="px-2 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded text-xs font-medium border border-purple-200 transition-colors"
+                          >
+                            📋 Check Deliverables
+                          </button>
+                        )}
+                        {goalDeliverables[goal.id] && goalDeliverables[goal.id].length === 0 && (
+                          <button
+                            onClick={() => createGoalDeliverable(goal.id)}
+                            disabled={deliverablesLoading[goal.id]}
+                            className="px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded text-xs font-medium border border-green-200 transition-colors disabled:opacity-50"
+                          >
+                            {deliverablesLoading[goal.id] ? '⏳' : '📦'} Create Deliverable
+                          </button>
+                        )}
+                        {goalDeliverables[goal.id] && goalDeliverables[goal.id].length > 0 && (
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${
+                            goalDeliverables[goal.id].some(d => d.type === 'low_value_warning')
+                              ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                              : 'bg-green-100 text-green-700 border-green-200'
+                          }`}>
+                            {goalDeliverables[goal.id].some(d => d.type === 'low_value_warning') ? '⚠️' : '✅'} 
+                            {goalDeliverables[goal.id].length} Deliverable{goalDeliverables[goal.id].length > 1 ? 's' : ''}
+                            {goalDeliverables[goal.id].some(d => d.type === 'low_value_warning') && ' (Review)'}
+                          </span>
+                        )}
+                        {deliverablesLoading[goal.id] && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                            ⏳ Loading...
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
                     {goal.status === 'completed' && onViewAssets && (
                       <button
                         onClick={onViewAssets}

@@ -75,7 +75,7 @@ async def debug_agent_execution():
                 
                 # Try legacy SDK
                 try:
-                    from openai_agents import Agent as OpenAIAgent
+                    from agents import Agent as OpenAIAgent
                     logger.info("✅ Legacy OpenAI Agents SDK available")
                 except ImportError as e2:
                     logger.error(f"❌ No agent SDK available: {e2}")

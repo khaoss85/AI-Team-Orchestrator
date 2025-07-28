@@ -1,0 +1,45 @@
+{
+  "timestamp": "2025-07-24T20:25:14.157567",
+  "overall_status": "healthy",
+  "components": {
+    "workspace_health": {
+      "status": "healthy",
+      "score": 100,
+      "stuck_workspaces": 0,
+      "recovered_workspaces": 0,
+      "details": "Workspace status transition monitoring"
+    },
+    "quality_system": {
+      "status": "healthy",
+      "score": 100,
+      "sample_quality_score": 0.8318172876299217,
+      "details": "Quality scoring system validation"
+    },
+    "goal_system": {
+      "status": "warning",
+      "score": 70,
+      "workspaces_checked": 4,
+      "goal_creation_issues": 1,
+      "details": "Goal creation and progress system validation"
+    },
+    "deliverable_pipeline": {
+      "status": "warning",
+      "score": 70,
+      "workspaces_checked": 1,
+      "deliverable_issues": 1,
+      "details": "Deliverable creation pipeline validation"
+    },
+    "database": {
+      "status": "healthy",
+      "score": 100,
+      "response_time_ms": 64.655,
+      "details": "Database connectivity and performance"
+    }
+  },
+  "alerts": [
+    {
+      "level": "warning",
+      "component": "goal_system",
+      "message": "Found 1 workspaces with goals but no workspace_goals entries",
+      "workspace_id": null,
+      "timestamp": 
