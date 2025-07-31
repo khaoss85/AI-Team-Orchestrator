@@ -125,7 +125,16 @@ class DeliverableAchievementMapper:
     async def _extract_with_ai_semantic(self, task_result: Dict[str, Any], task_name: str) -> AchievementResult:
         """AI semantic analysis with improved prompting"""
         from services.ai_provider_abstraction import ai_provider_manager
-        from project_agents.achievement_extractor_agent import ACHIEVEMENT_EXTRACTOR_AGENT_CONFIG
+        # 🤖 **SELF-CONTAINED**: Create achievement extractor config internally
+        ACHIEVEMENT_EXTRACTOR_AGENT_CONFIG = {
+            "name": "AchievementExtractor",
+            "instructions": """
+                You are an achievement extraction specialist.
+                Analyze task results to identify concrete achievements and deliverables.
+                Focus on extracting tangible outputs that provide business value.
+            """,
+            "model": "gpt-4"
+        }
         
         try:
             # Prepare data sample

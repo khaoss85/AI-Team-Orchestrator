@@ -17,6 +17,14 @@ from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 
+# 🎯 **HOLISTIC INTEGRATION**: Use UniversalAIPipelineEngine for all AI operations
+from services.universal_ai_pipeline_engine import (
+    universal_ai_pipeline_engine, 
+    PipelineStepType, 
+    PipelineContext
+)
+from tools.registry import ToolRegistry
+
 logger = logging.getLogger(__name__)
 
 class PipelineStage(Enum):
@@ -53,6 +61,9 @@ class RealToolIntegrationPipeline:
     
     def __init__(self):
         self.execution_history = []
+        # 🤖 **AI-DRIVEN PIPELINE**: Use UniversalAIPipelineEngine for all AI operations
+        self.universal_pipeline = universal_ai_pipeline_engine
+        self.tool_registry = ToolRegistry()
         self._initialize_components()
         
     def _initialize_components(self):
@@ -61,7 +72,7 @@ class RealToolIntegrationPipeline:
             # Import all AI-driven components
             from services.ai_tool_aware_validator import ai_tool_aware_validator
             from services.simple_tool_orchestrator import simple_tool_orchestrator
-            from backend.services.unified_memory_engine import memory_enhanced_ai_asset_generator, memory_system
+            from services.unified_memory_engine import memory_enhanced_ai_asset_generator, memory_system
             
             self.validator = ai_tool_aware_validator
             self.orchestrator = simple_tool_orchestrator
@@ -351,8 +362,8 @@ class RealToolIntegrationPipeline:
             if not self.generator:
                 return self._fallback_content_generation(task_name, business_context)
             
-            # Determine asset type from task
-            asset_type = await self._ai_classify_asset_type(task_name, task_objective)
+            # 🤖 **AI-DRIVEN ASSET CLASSIFICATION**: Use UniversalAIPipelineEngine
+            asset_type = await self._ai_classify_asset_type(task_name, task_objective, business_context)
             
             # Prepare task results for content generation
             task_results = []
@@ -547,65 +558,113 @@ class RealToolIntegrationPipeline:
         task_objective: str,
         business_context: Dict[str, Any]
     ) -> List[str]:
-        """AI-driven determination of required tools"""
+        """🤖 **AI-DRIVEN Tool Requirements**: Use UniversalAIPipelineEngine for intelligent tool analysis"""
         try:
-            import os
-            from openai import AsyncOpenAI
-            
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            if not client.api_key:
-                return self._fallback_tool_requirements(task_name)
-            
-            prompt = f"""
-Determina quali tools sono necessari per completare questo task con dati reali.
-
-TASK: {task_name}
-OBJECTIVE: {task_objective}
-BUSINESS CONTEXT: {json.dumps(business_context, indent=2)}
-
-TOOLS DISPONIBILI:
-- websearch: Ricerca web per dati reali ed esempi
-- competitor_analysis: Analisi competitor e benchmarking  
-- content_generator: Generazione contenuti
-- data_analyzer: Analisi dati
-
-Rispondi con array JSON: ["tool1", "tool2"]
-"""
-            
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert tool requirement analyst. Respond only with JSON array."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=200,
-                temperature=0.1
+            # 🎯 **HOLISTIC INTEGRATION**: Use UniversalAIPipelineEngine instead of direct OpenAI calls
+            context = PipelineContext(
+                workspace_id=business_context.get("workspace_id"),
+                user_context=business_context,
+                cache_enabled=True,
+                fallback_enabled=True
             )
             
-            ai_response = response.choices[0].message.content
+            # Prepare input for AI analysis
+            analysis_input = {
+                "task_name": task_name,
+                "task_objective": task_objective,
+                "business_context": business_context,
+                "available_tools": await self._get_available_tools_dynamically()
+            }
             
-            try:
-                return json.loads(ai_response)
-            except json.JSONDecodeError:
-                return self._fallback_tool_requirements(task_name)
+            # Use UniversalAIPipelineEngine for tool requirements analysis
+            result = await self.universal_pipeline.execute_pipeline_step(
+                step_type=PipelineStepType.TOOL_REQUIREMENTS_ANALYSIS,
+                input_data=analysis_input,
+                context=context
+            )
+            
+            if result.success and result.data:
+                # 🔧 **FIX**: Handle nested response format from UniversalAIPipelineEngine
+                response_data = result.data
+                
+                # Check if response is nested in 'response' field (as string or dict)
+                if "response" in response_data:
+                    response_content = response_data["response"]
+                    
+                    # If response is a string, parse as JSON
+                    if isinstance(response_content, str):
+                        try:
+                            import json
+                            import ast
+                            
+                            # First try to parse as literal (handles Python dict format with single quotes)
+                            try:
+                                response_content = ast.literal_eval(response_content)
+                            except (ValueError, SyntaxError):
+                                # Fallback: replace single quotes and try JSON
+                                response_content = json.loads(response_content.replace("'", '"'))
+                                
+                        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
+                            logger.warning(f"⚠️ Failed to parse response JSON string: {e}")
+                            logger.warning(f"⚠️ Raw response content: {response_content[:500]}...")
+                            response_content = {}
+                    
+                    # Now extract tool categories from parsed response
+                    tool_categories = response_content.get("required_tool_categories", [])
+                else:
+                    # Direct format (fallback)
+                    tool_categories = response_data.get("required_tool_categories", [])
+                
+                # Extract category names
+                if tool_categories:
+                    categories = [category.get("category", "web_research") for category in tool_categories]
+                    logger.info(f"✅ Extracted {len(categories)} tool categories: {categories}")
+                    return categories
+                else:
+                    logger.warning("⚠️ No tool categories found in AI response")
+                    return await self._fallback_tool_requirements_dynamic(task_name, business_context)
+            else:
+                logger.warning(f"⚠️ Tool requirements analysis failed: {result.error}")
+                return await self._fallback_tool_requirements_dynamic(task_name, business_context)
                 
         except Exception as e:
-            logger.error(f"Error determining required tools: {e}")
-            return self._fallback_tool_requirements(task_name)
+            logger.error(f"❌ AI-driven tool determination failed: {e}")
+            return await self._fallback_tool_requirements_dynamic(task_name, business_context)
     
-    async def _ai_classify_asset_type(self, task_name: str, task_objective: str) -> str:
-        """AI-driven classification of asset type"""
-        task_lower = f"{task_name} {task_objective}".lower()
-        
-        if any(keyword in task_lower for keyword in ['email', 'sequence', 'outreach']):
-            return "email_sequences"
-        elif any(keyword in task_lower for keyword in ['contact', 'list', 'lead']):
-            return "lead_list"
-        elif any(keyword in task_lower for keyword in ['content', 'strategy', 'plan']):
-            return "content_strategy"
-        else:
-            return "business_asset"
+    async def _ai_classify_asset_type(self, task_name: str, task_objective: str, business_context: Dict[str, Any] = None) -> str:
+        """🤖 **AI-DRIVEN Asset Classification**: Use UniversalAIPipelineEngine for semantic analysis"""
+        try:
+            # 🎯 **NO HARDCODING**: Replace keyword matching with AI-driven semantic analysis
+            context = PipelineContext(
+                workspace_id=business_context.get("workspace_id") if business_context else None,
+                user_context=business_context or {},
+                cache_enabled=True,
+                fallback_enabled=True
+            )
+            
+            # Prepare input for semantic classification
+            classification_input = {
+                "task_name": task_name,
+                "task_objective": task_objective,
+                "business_context": business_context or {}
+            }
+            
+            # Use UniversalAIPipelineEngine for asset type classification
+            result = await self.universal_pipeline.execute_pipeline_step(
+                step_type=PipelineStepType.ASSET_TYPE_CLASSIFICATION,
+                input_data=classification_input,
+                context=context
+            )
+            
+            if result.success and result.data:
+                return result.data.get("primary_asset_type", "business_asset")
+            else:
+                logger.warning(f"⚠️ Asset classification failed: {result.error}")
+                return "business_asset"  # Fallback
+                
+        except Exception as e:
+            logger.error(f"❌ AI-driven asset classification failed: {e}")
+            return "business_asset"  # Fallback
     
     def _compile_pipeline_reasoning(
         self,
@@ -683,9 +742,137 @@ Rispondi con array JSON: ["tool1", "tool2"]
             "confidence": 30
         }
     
+    async def _get_available_tools_dynamically(self) -> List[Dict[str, Any]]:
+        """🔧 **DYNAMIC TOOL DISCOVERY**: Get available tools from registry instead of hardcoding"""
+        try:
+            # Initialize tool registry if not already done
+            if not self.tool_registry.initialized:
+                await self.tool_registry.initialize()
+            
+            # 🔧 **ELIMINATE TOOL REGISTRY SILO**: Get tools from OpenAI SDK tools manager and registry
+            available_tools = []
+            
+            # Get system tools from OpenAI SDK tools manager
+            try:
+                from tools.openai_sdk_tools import openai_tools_manager
+                
+                # Get all available OpenAI SDK tools
+                sdk_tools = openai_tools_manager.get_all_tools()
+                tool_descriptions = openai_tools_manager.get_tool_descriptions()
+                
+                for tool_name, description in tool_descriptions.items():
+                    # Map tool to structured format
+                    tool_category = self._determine_tool_category(tool_name)
+                    capabilities = self._determine_tool_capabilities(tool_name)
+                    
+                    available_tools.append({
+                        "name": tool_name,
+                        "category": tool_category,
+                        "description": description,
+                        "capabilities": capabilities,
+                        "source": "openai_sdk"
+                    })
+                
+                logger.info(f"🔧 Dynamic tool discovery: Found {len(available_tools)} OpenAI SDK tools")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI SDK tools manager not available: {e}")
+            
+            # Get registry-based custom tools
+            try:
+                # Get all tools from registry cache
+                registry_tools = []
+                for tool_name, tool_info in self.tool_registry.tools_cache.items():
+                    registry_tools.append({
+                        "name": tool_name,
+                        "category": "custom",
+                        "description": tool_info["description"],
+                        "capabilities": ["custom_logic"],
+                        "source": "registry",
+                        "created_by": tool_info["created_by"]
+                    })
+                
+                available_tools.extend(registry_tools)
+                logger.info(f"🔧 Dynamic tool discovery: Found {len(registry_tools)} registry tools")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Tool registry access failed: {e}")
+            
+            return available_tools
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Dynamic tool discovery failed: {e}")
+            # Fallback to minimal OpenAI SDK tools
+            return [
+                {
+                    "name": "web_search",
+                    "category": "web_research", 
+                    "description": "Search the web for real-time information",
+                    "capabilities": ["real_data_collection"],
+                    "source": "fallback"
+                },
+                {
+                    "name": "file_search",
+                    "category": "document_analysis",
+                    "description": "Search through workspace documents", 
+                    "capabilities": ["document_search"],
+                    "source": "fallback"
+                }
+            ]
+
+    def _determine_tool_category(self, tool_name: str) -> str:
+        """🔧 **DYNAMIC CATEGORIZATION**: Determine tool category based on name"""
+        if "search" in tool_name or "web" in tool_name:
+            return "web_research"
+        elif "file" in tool_name or "document" in tool_name:
+            return "document_analysis"
+        elif "code" in tool_name or "interpreter" in tool_name:
+            return "code_execution"
+        elif "image" in tool_name or "generate" in tool_name:
+            return "content_generation"
+        else:
+            return "general_utility"
+    
+    def _determine_tool_capabilities(self, tool_name: str) -> List[str]:
+        """🔧 **DYNAMIC CAPABILITIES**: Determine tool capabilities based on name"""
+        capabilities = []
+        
+        if "web_search" in tool_name:
+            capabilities.extend(["real_data_collection", "competitor_analysis", "market_research"])
+        elif "file_search" in tool_name:
+            capabilities.extend(["document_search", "content_analysis", "information_retrieval"])
+        elif "code_interpreter" in tool_name:
+            capabilities.extend(["code_execution", "data_processing", "calculations"])
+        elif "image_generation" in tool_name or "generate_image" in tool_name:
+            capabilities.extend(["image_creation", "visual_content", "design_assets"])
+        else:
+            capabilities.append("general_utility")
+        
+        return capabilities
+    
+    async def _fallback_tool_requirements_dynamic(self, task_name: str, business_context: Dict[str, Any]) -> List[str]:
+        """🔧 **AI-DRIVEN FALLBACK**: Dynamic fallback based on task analysis"""
+        try:
+            # Use basic semantic analysis for fallback
+            task_lower = f"{task_name}".lower()
+            
+            if any(keyword in task_lower for keyword in ['research', 'find', 'search', 'analyze']):
+                return ["web_research"]
+            elif any(keyword in task_lower for keyword in ['create', 'write', 'generate', 'content']):
+                return ["content_generation"]
+            elif any(keyword in task_lower for keyword in ['data', 'process', 'calculate', 'report']):
+                return ["data_analysis"]
+            else:
+                return ["web_research"]  # Default fallback
+                
+        except Exception as e:
+            logger.error(f"❌ Fallback tool requirements failed: {e}")
+            return ["web_research"]
+
     def _fallback_tool_requirements(self, task_name: str) -> List[str]:
-        """Fallback tool requirements"""
-        return ["websearch"]
+        """Legacy fallback tool requirements (deprecated)"""
+        logger.warning("⚠️ Using deprecated fallback method - should use _fallback_tool_requirements_dynamic")
+        return ["web_research"]
 
 # Global instance
 real_tool_integration_pipeline = RealToolIntegrationPipeline()

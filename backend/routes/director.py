@@ -64,6 +64,31 @@ async def create_team_proposal(proposal_request: DirectorTeamProposal, request: 
         # Check if we have extracted_goals from frontend (user-confirmed goals)
         frontend_goals = getattr(proposal_request, 'extracted_goals', None)
         
+        # 🧠 AI-DRIVEN: Enhance user feedback with AI intent analysis
+        enhanced_user_feedback = proposal_request.user_feedback
+        try:
+            from services.ai_driven_director_enhancer import enhance_director_with_ai_intent
+            
+            logger.info(f"🧠 Enhancing Director with AI intent analysis...")
+            ai_enhancement = await enhance_director_with_ai_intent(
+                workspace_goal=proposal_request.workspace_goal,
+                user_feedback=proposal_request.user_feedback,
+                budget_constraint=proposal_request.budget_constraint.model_dump() if proposal_request.budget_constraint else {},
+                extracted_goals=frontend_goals or []
+            )
+            
+            enhanced_user_feedback = ai_enhancement["enhanced_user_feedback"]
+            logger.info(f"✅ AI enhanced user feedback with intent insights")
+            logger.info(f"🧠 AI reasoning: {ai_enhancement.get('ai_reasoning', 'No reasoning available')[:200]}...")
+            
+            # Modify the proposal request to use enhanced feedback
+            original_feedback = proposal_request.user_feedback
+            proposal_request.user_feedback = enhanced_user_feedback
+            
+        except Exception as e:
+            logger.error(f"❌ AI director enhancement failed, using original feedback: {e}")
+            enhanced_user_feedback = proposal_request.user_feedback
+        
         if use_enhanced_director and (strategic_goals or frontend_goals):
             logger.info(f"🎯 Using enhanced director for workspace {proposal_request.workspace_id}")
             

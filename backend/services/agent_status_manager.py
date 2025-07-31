@@ -20,7 +20,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -184,15 +184,18 @@ class AgentStatusManager:
         workspace_id: str, 
         required_role: str,
         task_name: Optional[str] = None,
-        task_description: Optional[str] = None
+        task_description: Optional[str] = None,
+        task_type: Optional[str] = None,
+        classification_result: Optional[Dict[str, Any]] = None
     ) -> AgentMatchResult:
         """
         🎯 INTELLIGENT AGENT MATCHING: Find best agent for specific task
         
-        Uses AI-driven matching with multiple fallback strategies
+        Uses AI-driven matching with multiple fallback strategies.
+        Now enhanced with task_type awareness for optimal agent assignment.
         """
         try:
-            logger.info(f"Finding best agent for role '{required_role}' in workspace {workspace_id}")
+            logger.info(f"🎯 Finding best agent for role '{required_role}' (task_type: {task_type}) in workspace {workspace_id}")
             
             # Get available agents
             available_agents = await self.get_available_agents(workspace_id)
@@ -205,30 +208,58 @@ class AgentStatusManager:
                     reason="No agents available in workspace"
                 )
             
-            # Strategy 1: Exact role match
+            # 🤖 **ENHANCED STRATEGY 1: AI Classification-Driven Matching**
+            # Use full AI classification results for optimal agent assignment
+            if classification_result and task_type and required_role:
+                ai_matched_agent = await self._ai_match_agent_with_classification(
+                    available_agents, required_role, task_type, task_name, task_description, classification_result
+                )
+                if ai_matched_agent:
+                    return AgentMatchResult(
+                        agent=ai_matched_agent,
+                        match_confidence=0.98,  # Higher confidence with full classification data
+                        match_method="ai_classification_driven_match",
+                        reason=f"AI classification-driven match using detailed agent requirements"
+                    )
+            
+            # 🤖 **FALLBACK STRATEGY 1A: Task Type + Role Matching**  
+            # Use basic task type matching if no full classification available
+            elif task_type and required_role:
+                ai_matched_agent = await self._ai_match_agent_for_task_type(
+                    available_agents, required_role, task_type, task_name, task_description
+                )
+                if ai_matched_agent:
+                    return AgentMatchResult(
+                        agent=ai_matched_agent,
+                        match_confidence=0.90,
+                        match_method="ai_task_type_match",
+                        reason=f"AI-driven match for role '{required_role}' and task_type '{task_type}'"
+                    )
+            
+            # Strategy 2: Exact role match (fallback)
             exact_matches = self._filter_agents_by_role(available_agents, required_role)
             if exact_matches:
                 best_agent = exact_matches[0]  # Already sorted by preference
                 return AgentMatchResult(
                     agent=best_agent,
-                    match_confidence=1.0,
+                    match_confidence=0.85,  # Lower confidence since no task_type consideration
                     match_method="exact_role_match",
                     reason=f"Exact match for role '{required_role}'"
                 )
             
-            # Strategy 2: Seniority-based fallback
+            # Strategy 3: Seniority-based fallback
             if required_role.lower() == "expert":
                 expert_agents = [a for a in available_agents if a.seniority.lower() == "expert"]
                 if expert_agents:
                     return AgentMatchResult(
                         agent=expert_agents[0],
-                        match_confidence=0.8,
+                        match_confidence=0.75,
                         match_method="seniority_fallback",
                         fallback_used=True,
                         reason="Expert-level agent for expert role requirement"
                     )
             
-            # Strategy 3: Fuzzy role matching
+            # Strategy 4: Fuzzy role matching
             fuzzy_matches = self._fuzzy_role_match(available_agents, required_role)
             if fuzzy_matches:
                 return AgentMatchResult(
@@ -239,7 +270,7 @@ class AgentStatusManager:
                     reason=f"Fuzzy match for role '{required_role}'"
                 )
             
-            # Strategy 4: Best available agent (last resort)
+            # Strategy 5: Best available agent (last resort)
             if available_agents:
                 return AgentMatchResult(
                     agent=available_agents[0],  # Highest preference score
@@ -503,6 +534,233 @@ class AgentStatusManager:
                 continue
         
         return fuzzy_matches
+    
+    async def _ai_match_agent_for_task_type(
+        self, 
+        available_agents: List[AgentInfo], 
+        required_role: str, 
+        task_type: str,
+        task_name: Optional[str] = None,
+        task_description: Optional[str] = None
+    ) -> Optional[AgentInfo]:
+        """
+        🤖 **AI-DRIVEN AGENT MATCHING**: Match agents based on task type and role
+        
+        Uses semantic AI analysis to find the best agent for a specific task type.
+        This ensures optimal agent assignment for content creation vs data gathering tasks.
+        """
+        try:
+            from services.ai_provider_abstraction import ai_provider_manager
+            
+            # First filter by role to get potential candidates
+            role_matches = self._filter_agents_by_role(available_agents, required_role)
+            if not role_matches:
+                # Use fuzzy matching if no exact role matches
+                role_matches = self._fuzzy_role_match(available_agents, required_role)
+                if not role_matches:
+                    # Use all available agents as last resort
+                    role_matches = available_agents
+            
+            if not role_matches:
+                return None
+            
+            # If only one agent available, return it
+            if len(role_matches) == 1:
+                return role_matches[0]
+            
+            # Prepare agent profiles for AI analysis
+            agent_profiles = []
+            for agent in role_matches:
+                profile = {
+                    "id": agent.id,
+                    "name": agent.name,
+                    "role": agent.role,
+                    "seniority": agent.seniority,
+                    "skills": getattr(agent, 'skills', []),
+                    "domain_expertise": getattr(agent, 'domain_expertise', []),
+                    "recent_tasks": getattr(agent, 'recent_task_types', [])
+                }
+                agent_profiles.append(profile)
+            
+            # AI-driven agent selection prompt
+            agent_selection_prompt = f"""Analyze the available agents and select the BEST match for this specific task.
+
+TASK DETAILS:
+- Task Type: {task_type}
+- Required Role: {required_role}
+- Task Name: {task_name or 'Not specified'}
+- Task Description: {task_description or 'Not specified'}
+
+AVAILABLE AGENTS:
+{agent_profiles}
+
+**TASK TYPE SPECIALIZATIONS:**
+- CONTENT_CREATION: Choose agents with writing, creativity, communication skills
+- DATA_GATHERING: Choose agents with research, analysis, web search capabilities  
+- STRATEGY_PLANNING: Choose agents with strategic thinking, planning experience
+- IMPLEMENTATION: Choose agents with technical, building, setup skills
+- QUALITY_ASSURANCE: Choose agents with review, testing, validation experience
+- COORDINATION: Choose agents with management, communication, organization skills
+
+**SELECTION CRITERIA:**
+1. Specialization match for the task type
+2. Seniority level appropriateness  
+3. Domain expertise relevance
+4. Recent experience with similar task types
+
+Return the agent ID of the BEST match as a simple string (just the ID, no JSON).
+If no clear best match, return the ID of the most senior agent.
+
+BEST AGENT ID:"""
+
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={
+                    "name": "Agent Selector", 
+                    "role": "AI agent selection specialist",
+                    "capabilities": ["agent_matching", "task_analysis"]
+                },
+                prompt=agent_selection_prompt,
+            )
+            
+            # Parse the response to get agent ID
+            if isinstance(response, str):
+                selected_agent_id = response.strip()
+                
+                # Find the agent with the selected ID
+                for agent in role_matches:
+                    if str(agent.id) == selected_agent_id or agent.id == selected_agent_id:
+                        logger.info(f"🤖 AI selected agent {agent.name} (ID: {agent.id}) for task_type: {task_type}")
+                        return agent
+                
+                # If ID not found, log warning and fall back to first agent
+                logger.warning(f"⚠️ AI selected agent ID '{selected_agent_id}' not found in role_matches, using first available")
+                return role_matches[0]
+            
+            else:
+                logger.warning(f"⚠️ Unexpected AI response format: {type(response)}, using first available agent")
+                return role_matches[0]
+                
+        except Exception as e:
+            logger.error(f"❌ AI agent matching failed: {e}")
+            # Fall back to the first role-matched agent
+            role_matches = self._filter_agents_by_role(available_agents, required_role)
+            if role_matches:
+                return role_matches[0]
+            return None
+    
+    async def _ai_match_agent_with_classification(
+        self,
+        available_agents: List[AgentInfo],
+        required_role: str,
+        task_type: str,
+        task_name: Optional[str] = None,
+        task_description: Optional[str] = None,
+        classification_result: Dict[str, Any] = None
+    ) -> Optional[AgentInfo]:
+        """
+        🎯 **HOLISTIC INTEGRATION**: Use full AI classification for optimal agent matching
+        
+        This bridges the gap between AI task classification and agent assignment,
+        ensuring sophisticated analysis is fully utilized for orchestration.
+        """
+        try:
+            from services.ai_provider_abstraction import ai_provider_manager
+            
+            # Extract agent requirements from classification
+            agent_requirements = classification_result.get("agent_requirements", {})
+            content_specs = classification_result.get("content_specifications", {})
+            primary_deliverable = classification_result.get("primary_deliverable", "")
+            
+            # Filter by role first
+            role_matches = self._filter_agents_by_role(available_agents, required_role)
+            if not role_matches:
+                role_matches = self._fuzzy_role_match(available_agents, required_role)
+                if not role_matches:
+                    role_matches = available_agents
+            
+            if not role_matches or len(role_matches) == 1:
+                return role_matches[0] if role_matches else None
+            
+            # Prepare detailed matching prompt using classification results
+            agent_profiles = []
+            for agent in role_matches:
+                profile = {
+                    "id": agent.id,
+                    "name": agent.name,
+                    "role": agent.role,
+                    "seniority": agent.seniority,
+                    "skills": getattr(agent, 'skills', []),
+                    "domain_expertise": getattr(agent, 'domain_expertise', []),
+                    "recent_tasks": getattr(agent, 'recent_task_types', [])
+                }
+                agent_profiles.append(profile)
+            
+            # Enhanced AI-driven selection using classification data
+            enhanced_selection_prompt = f"""🎯 **HOLISTIC AGENT MATCHING**: Select the optimal agent using detailed task classification.
+
+TASK ANALYSIS RESULTS:
+- Task Type: {task_type}
+- Primary Deliverable: {primary_deliverable}
+- Required Skills: {agent_requirements.get('skills_needed', [])}
+- Preferred Seniority: {agent_requirements.get('seniority_level', 'senior')}
+- Domain Knowledge: {agent_requirements.get('domain_knowledge', 'general')}
+
+CONTENT SPECIFICATIONS:
+- Output Format: {content_specs.get('output_format', 'unknown')}
+- Includes Actual Content: {content_specs.get('includes_actual_content', False)}
+- Quality Criteria: {content_specs.get('quality_criteria', 'standard')}
+
+TASK DETAILS:
+- Name: {task_name or 'Not specified'}
+- Description: {task_description or 'Not specified'}
+- Required Role: {required_role}
+
+AVAILABLE AGENTS:
+{agent_profiles}
+
+**HOLISTIC MATCHING CRITERIA:**
+1. Skills alignment with classification requirements
+2. Seniority match for complexity level
+3. Domain expertise relevance 
+4. Content creation capability (if required)
+5. Historical performance with similar task types
+
+Return ONLY the agent ID of the best match. If no clear winner, choose the most senior agent.
+
+BEST AGENT ID:"""
+
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={
+                    "name": "Holistic Agent Matcher", 
+                    "role": "AI-driven agent orchestration specialist",
+                    "capabilities": ["agent_matching", "classification_analysis", "orchestration"]
+                },
+                prompt=enhanced_selection_prompt,
+            )
+            
+            # Parse response and find matching agent
+            if isinstance(response, str):
+                selected_agent_id = response.strip()
+                
+                for agent in role_matches:
+                    if str(agent.id) == selected_agent_id or agent.id == selected_agent_id:
+                        logger.info(f"🎯 Holistic AI selected agent {agent.name} (ID: {agent.id}) using full classification data")
+                        return agent
+                
+                logger.warning(f"⚠️ Agent ID '{selected_agent_id}' not found, using first available")
+                return role_matches[0]
+            else:
+                logger.warning(f"⚠️ Unexpected response format, using first available agent")
+                return role_matches[0]
+                
+        except Exception as e:
+            logger.error(f"❌ Holistic agent matching failed: {e}")
+            # Fallback to previous method
+            return await self._ai_match_agent_for_task_type(
+                available_agents, required_role, task_type, task_name, task_description
+            )
     
     def _agent_preference_score(self, agent: AgentInfo) -> float:
         """Calculate preference score for agent ranking"""

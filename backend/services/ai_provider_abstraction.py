@@ -124,6 +124,19 @@ class OpenAISDKProvider(BaseProvider):
                             return output_data
                         except Exception as e:
                             logger.warning(f"Failed to parse JSON from markdown: {e}")
+                            # Try to fix common JSON issues
+                            try:
+                                # Fix common issues: trailing commas, single quotes, missing quotes
+                                fixed_json = json_content
+                                # Remove trailing commas
+                                fixed_json = re.sub(r',\s*}', '}', fixed_json)
+                                fixed_json = re.sub(r',\s*]', ']', fixed_json)
+                                # Try again with fixed JSON
+                                output_data = json.loads(fixed_json)
+                                logger.info("✅ Fixed and parsed JSON from markdown format.")
+                                return output_data
+                            except:
+                                pass
                     
                     # Try parsing the whole thing as JSON
                     try:
@@ -131,9 +144,22 @@ class OpenAISDKProvider(BaseProvider):
                         output_data = json.loads(final_output)
                         logger.info("✅ Parsed RunResult final_output as JSON.")
                         return output_data
-                    except:
-                        logger.info("✅ RunResult final_output as string.")
-                        return {"content": final_output}
+                    except Exception as parse_error:
+                        logger.debug(f"JSON parsing failed: {parse_error}")
+                        # Try to fix common JSON issues in the full output
+                        try:
+                            fixed_output = final_output
+                            # Remove trailing commas
+                            fixed_output = re.sub(r',\s*}', '}', fixed_output)
+                            fixed_output = re.sub(r',\s*]', ']', fixed_output)
+                            # Remove BOM and other invisible characters
+                            fixed_output = fixed_output.strip().lstrip('\ufeff')
+                            output_data = json.loads(fixed_output)
+                            logger.info("✅ Fixed and parsed RunResult final_output as JSON.")
+                            return output_data
+                        except:
+                            logger.info("✅ RunResult final_output as string (JSON parsing failed).")
+                            return {"content": final_output}
                 else:
                     return {"content": str(final_output)}
             else:

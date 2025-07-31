@@ -29,75 +29,60 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [workspaceHealthStatus, setWorkspaceHealthStatus] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
 
-  // 🎯 ENHANCED: Business Value Scoring Function
-  const calculateTaskBusinessValueScore = useCallback((task: any, goalData: any): number => {
-    let score = 0
+  // 🤖 AI-DRIVEN: Semantic Business Value Scoring Function - replaces hardcoded logic
+  const calculateTaskBusinessValueScore = useCallback(async (task: any, goalData: any): Promise<number> => {
+    try {
+      // Call AI-driven semantic analysis endpoint
+      const response = await fetch('/api/analyze-task-business-value', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: task,
+          goal_context: goalData || {}
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          console.log(`🤖 AI Business Value Analysis for "${task.name}": ${result.business_value_score} (${result.content_type}) - ${result.reasoning}`)
+          return result.business_value_score
+        }
+      }
+      
+      // Fallback to basic content-based scoring
+      console.warn(`⚠️ AI analysis failed for task "${task.name}", using content-based fallback`)
+      return calculateTaskBusinessValueScoreFallback(task, goalData)
+      
+    } catch (error) {
+      console.error(`❌ AI analysis error for task "${task.name}":`, error)
+      return calculateTaskBusinessValueScoreFallback(task, goalData)
+    }
+  }, [])
+  
+  // Fallback function for when AI analysis fails
+  const calculateTaskBusinessValueScoreFallback = useCallback((task: any, goalData: any): number => {
     const result = task.result || {}
-    
-    // High-value indicators from detailed results
-    if (result.detailed_results_json) {
-      try {
-        const detailed = typeof result.detailed_results_json === 'string' 
-          ? JSON.parse(result.detailed_results_json) 
-          : result.detailed_results_json
-        
-        // Rendered HTML = High business value (visual/interactive content)
-        if (detailed.rendered_html && detailed.rendered_html.length > 100) {
-          score += 40
-        }
-        
-        // Structured content = Medium-high business value
-        if (detailed.structured_content) {
-          score += 30
-        }
-        
-        // Direct deliverable/business content = High value
-        if (detailed.deliverable_content || detailed.business_content) {
-          score += 35
-        }
-        
-        // Strategy, guidelines, posts = Medium-high value
-        if (detailed.strategy || detailed.guidelines || detailed.posts) {
-          score += 25
-        }
-        
-      } catch (e) {
-        // Invalid JSON, reduce score
-        score -= 10
-      }
-    }
-    
-    // Analyze summary for business value indicators
     const summary = result.summary || ''
-    if (summary) {
-      const businessKeywords = [
-        'document created', 'content generated', 'strategy developed',
-        'analysis completed', 'deliverable produced', 'template created',
-        'framework established', 'plan finalized', 'content delivered'
-      ]
-      
-      const lowValueKeywords = [
-        'sub-task has been created', 'task has been assigned',
-        'analysis will be conducted', 'plan has been created'
-      ]
-      
-      // Bonus for business-creating activities
-      if (businessKeywords.some(keyword => summary.toLowerCase().includes(keyword))) {
-        score += 20
-      }
-      
-      // Penalty for meta-task activities
-      if (lowValueKeywords.some(keyword => summary.toLowerCase().includes(keyword))) {
-        score = Math.max(5, score - 20)  // Cap minimum at 5
-      }
-    }
     
-    // Length bonus for substantial content
-    const contentLength = (result.summary || '').length + 
-                         (result.detailed_results_json ? JSON.stringify(result.detailed_results_json).length : 0)
-    if (contentLength > 500) {
-      score += 5
-    }
+    // Basic content-based scoring (minimal hardcoding)
+    let score = 30 // Base score
+    
+    // Content length bonus
+    const contentLength = summary.length + JSON.stringify(result.detailed_results_json || '').length
+    if (contentLength > 1000) score += 25
+    else if (contentLength > 500) score += 15
+    else if (contentLength > 200) score += 10
+    
+    // Structured content bonus
+    if (result.detailed_results_json) score += 20
+    
+    // Very basic keyword analysis (minimal)
+    const summaryLower = summary.toLowerCase()
+    if (summaryLower.includes('created') || summaryLower.includes('generated')) score += 15
+    if (summaryLower.includes('sub-task') || summaryLower.includes('assigned')) score = Math.max(10, score - 20)
     
     return Math.min(100, Math.max(0, score))
   }, [])
@@ -107,11 +92,13 @@ export function useConversationalWorkspace(workspaceId: string) {
     try {
       console.log('📝 [ENHANCED extractBusinessContentFromTasks] Processing', completedTasks.length, 'completed tasks for goal:', goalData?.description)
       
-      // 🧠 PILLAR 7: Intelligent business content scoring and filtering
-      const scoredTasks = completedTasks.map((task: any) => {
-        const score = calculateTaskBusinessValueScore(task, goalData)
-        return { ...task, businessValueScore: score }
-      })
+      // 🧠 PILLAR 7: AI-driven intelligent business content scoring and filtering
+      const scoredTasks = await Promise.all(
+        completedTasks.map(async (task: any) => {
+          const score = await calculateTaskBusinessValueScore(task, goalData)
+          return { ...task, businessValueScore: score }
+        })
+      )
       
       // 🎯 ENHANCED: Separate high-value deliverable tasks from thinking/meta tasks
       const highValueTasks = scoredTasks

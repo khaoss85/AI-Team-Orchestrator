@@ -28,12 +28,35 @@ class TaskStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+class TaskType(str, Enum):
+    """🤖 **AI-DRIVEN Task Classification System**
+    
+    Semantic classification of tasks based on their intent and deliverable type.
+    Used by the AI Intent Recognition System to ensure proper content creation.
+    """
+    CONTENT_CREATION = "content_creation"     # Writing actual content (emails, documents, scripts)
+    DATA_GATHERING = "data_gathering"         # Collecting information, research, lists
+    STRATEGY_PLANNING = "strategy_planning"   # Strategic thinking, analysis, planning
+    IMPLEMENTATION = "implementation"         # Building, setup, technical implementation  
+    QUALITY_ASSURANCE = "quality_assurance"  # Review, testing, validation
+    COORDINATION = "coordination"             # Team coordination, communication
+    HYBRID = "hybrid"                         # Mixed task requiring multiple types
+
 class AgentStatus(str, Enum):
     ACTIVE = "active"
     IDLE = "idle" 
     BUSY = "busy"
     ERROR = "error"
     OFFLINE = "offline"
+
+class BookLeadRole(str, Enum):
+    CEO = "ceo"
+    CTO = "cto"
+    DEVELOPER = "developer"
+    MANAGER = "manager"
+    CONSULTANT = "consultant"
+    STUDENT = "student"
+    OTHER = "other"
 
 class HealthStatus(str, Enum):
     HEALTHY = "healthy"
@@ -145,6 +168,7 @@ class Task(BaseModel):
     name: str
     description: Optional[str] = None
     status: TaskStatus
+    task_type: Optional[TaskType] = TaskType.HYBRID  # 🤖 AI-driven task classification
     priority: Optional[str] = "medium"
     context_data: Optional[Dict[str, Any]] = None
     created_at: datetime
@@ -158,6 +182,7 @@ class TaskCreate(BaseModel):
     name: str
     description: Optional[str] = None
     status: Optional[TaskStatus] = TaskStatus.PENDING
+    task_type: Optional[TaskType] = TaskType.HYBRID  # 🤖 AI-driven task classification
     priority: Optional[str] = "medium"
     semantic_hash: Optional[str] = None
 
@@ -355,6 +380,10 @@ class GoalProgressLog(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+class BudgetConstraint(BaseModel):
+    max_cost: float
+    currency: str = "USD"
+
 class DirectorConfig(BaseModel):
     max_agents: int = 5
     budget_limit: Optional[float] = None
@@ -363,8 +392,12 @@ class DirectorConfig(BaseModel):
 class DirectorTeamProposal(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     workspace_id: UUID
-    budget_limit: Optional[float] = None
-    requirements: Optional[str] = None
+    workspace_goal: Optional[str] = None
+    user_feedback: Optional[str] = None
+    budget_constraint: Optional["BudgetConstraint"] = None
+    extracted_goals: Optional[List[Dict[str, Any]]] = None
+    budget_limit: Optional[float] = None  # Backward compatibility
+    requirements: Optional[str] = None     # Backward compatibility
     # Fields for response from DirectorAgent
     agents: Optional[List["AgentCreate"]] = None
     handoffs: Optional[List["DirectorHandoffProposal"]] = None
@@ -446,6 +479,7 @@ class TaskExecutionOutput(BaseModel):
     status: TaskStatus
     error_message: Optional[str] = None
     execution_time: Optional[float] = None
+    summary: Optional[str] = None  # Added for holistic pipeline validation
     artifacts: Optional[List[Dict[str, Any]]] = []
 
 # --- AI-Driven Models for Robust Parsing ---
@@ -541,6 +575,49 @@ class MemoryQueryRequest(BaseModel):
     query_text: str
     context_types: Optional[List[str]] = None
     limit: int = 10
+
+# --- Book Lead Models ---
+class BookLeadCreate(BaseModel):
+    """Model for creating a new book lead"""
+    name: str = Field(..., min_length=1, max_length=255, description="Nome completo del lead")
+    email: str = Field(..., description="Email del lead")
+    role: Optional[BookLeadRole] = Field(None, description="Ruolo professionale")
+    challenge: Optional[str] = Field(None, max_length=2000, description="Sfida principale con AI")
+    gdpr_consent: bool = Field(..., description="Consenso GDPR obbligatorio")
+    marketing_consent: bool = Field(default=False, description="Consenso opzionale per newsletter")
+    book_chapter: str = Field(default="chapter-2", description="Capitolo dove è apparso il popup")
+    user_agent: Optional[str] = Field(None, description="Browser info per analytics")
+    referrer_url: Optional[str] = Field(None, description="URL di provenienza")
+
+    @validator('email')
+    def validate_email(cls, v):
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError('Email format not valid')
+        return v.lower()
+
+class BookLead(BaseModel):
+    """Complete book lead model with database fields"""
+    id: UUID
+    name: str
+    email: str
+    role: Optional[BookLeadRole] = None
+    challenge: Optional[str] = None
+    gdpr_consent: bool
+    marketing_consent: bool
+    book_chapter: str
+    user_agent: Optional[str] = None
+    ip_address: Optional[str] = None
+    referrer_url: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class BookLeadResponse(BaseModel):
+    """Response model for book lead operations"""
+    success: bool
+    message: str
+    lead_id: Optional[UUID] = None
 
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):

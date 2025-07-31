@@ -58,20 +58,46 @@ class AIToolAwareValidator:
     
     def __init__(self):
         self.validation_history = []
-        self.available_tools = self._get_available_tools()
+        self.available_tools = []  # Will be populated dynamically
         
-    def _get_available_tools(self) -> List[str]:
-        """Get list of available tools in the system"""
-        return [
-            "websearch",
-            "file_search", 
-            "document_processor",
-            "data_analyzer",
-            "competitor_analysis",
-            "content_generator",
-            "email_validator",
-            "contact_finder"
-        ]
+    async def _get_available_tools(self) -> List[str]:
+        """🔧 **DYNAMIC TOOL REGISTRY**: Get list of available tools from registry"""
+        try:
+            # 🔧 **ELIMINATE TOOL REGISTRY SILO**: Use dynamic tool discovery
+            from tools.registry import tool_registry
+            from tools.openai_sdk_tools import openai_tools_manager
+            
+            available_tools = []
+            
+            # Get dynamic tools from registry
+            await tool_registry.initialize()
+            # Tool registry is primarily for user/agent-created custom tools
+            # We get the base system tools from the OpenAI SDK tools manager
+            
+            # Get system tools from OpenAI SDK tools manager
+            system_tools = openai_tools_manager.get_tool_descriptions()
+            available_tools.extend(system_tools.keys())
+            
+            # Add core analysis tools that are always available
+            core_analysis_tools = [
+                "content_analyzer",
+                "data_processor", 
+                "competitor_research",
+                "email_validator",
+                "contact_discovery"
+            ]
+            available_tools.extend(core_analysis_tools)
+            
+            logger.info(f"🔧 Dynamic tool discovery: Found {len(available_tools)} available tools")
+            return list(set(available_tools))  # Remove duplicates
+            
+        except Exception as e:
+            logger.error(f"❌ Dynamic tool discovery failed: {e}")
+            logger.warning("🔄 Falling back to minimal tool set")
+            # Fallback to minimal tool set if registry fails
+            return ["web_search", "file_search", "content_analyzer"]
+            
+            # Note: content generation is NOT a tool - it's a pipeline stage
     
     async def validate_task_completion_with_tools(
         self,
@@ -94,6 +120,10 @@ class AIToolAwareValidator:
         """
         try:
             logger.info(f"🔍 Validating task completion with tool analysis: {task_name}")
+            
+            # Step 0: Get dynamic tool list
+            if not self.available_tools:
+                self.available_tools = await self._get_available_tools()
             
             # Step 1: AI Analysis of Required Tools
             required_tools = await self._ai_analyze_required_tools(
@@ -201,14 +231,15 @@ class AIToolAwareValidator:
         🤖 AI analysis of what tools should be required for this task
         """
         try:
-            # Use simple OpenAI call for now (can be enhanced later)
-            import os
-            from openai import AsyncOpenAI
+            # 🤖 **AI PROVIDER ABSTRACTION**: Use unified AI provider instead of direct OpenAI
+            from services.ai_provider_abstraction import ai_provider_manager
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            if not client.api_key:
-                return self._fallback_required_tools_analysis(task_name)
+            # Create agent configuration for tool analysis
+            tool_analysis_agent = {
+                "name": "ToolRequirementsAnalyst",
+                "role": "Expert tool orchestration analyst specializing in business task completion",
+                "capabilities": ["tool_analysis", "business_requirements", "task_decomposition"]
+            }
             
             prompt = f"""
 Analizza quale tools dovrebbero essere usati per completare questo task in modo professionale.
@@ -243,17 +274,17 @@ Rispondi in JSON:
 }}
 """
             
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert tool orchestration analyst. Respond only with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.1
+            # Use AI Provider Abstraction for tool requirements analysis
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=tool_analysis_agent,
+                prompt=prompt,
+                temperature=0.1,
+                max_tokens=1000
             )
             
-            ai_response = response.choices[0].message.content
+            # Extract AI response from provider abstraction
+            ai_response = response if isinstance(response, str) else response.get('response', str(response))
             
             try:
                 return json.loads(ai_response)
@@ -262,7 +293,8 @@ Rispondi in JSON:
                 return self._fallback_required_tools_analysis(task_name)
                 
         except Exception as e:
-            logger.error(f"Error in AI required tools analysis: {e}")
+            logger.error(f"❌ AI Provider Abstraction tool requirements analysis failed: {e}")
+            logger.warning("🔄 Falling back to hardcoded analysis")
             return self._fallback_required_tools_analysis(task_name)
     
     async def _ai_analyze_actual_tool_usage(
@@ -274,13 +306,15 @@ Rispondi in JSON:
         🤖 AI analysis of what tools were actually used in task execution
         """
         try:
-            import os
-            from openai import AsyncOpenAI
+            # 🤖 **AI PROVIDER ABSTRACTION**: Use unified AI provider
+            from services.ai_provider_abstraction import ai_provider_manager
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            if not client.api_key:
-                return self._fallback_actual_tools_analysis(task_result)
+            # Create agent configuration for actual tools analysis
+            actual_tools_agent = {
+                "name": "ActualToolsAnalyst",
+                "role": "Expert at analyzing what tools were actually used in task completion",
+                "capabilities": ["tool_detection", "content_analysis", "data_source_identification"]
+            }
             
             # Extract relevant parts of task result for analysis
             task_result_sample = self._extract_task_result_sample(task_result)
@@ -316,17 +350,17 @@ Rispondi in JSON:
 }}
 """
             
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert task execution analyzer. Respond only with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.1
+            # Use AI Provider Abstraction for actual tools analysis
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=actual_tools_agent,
+                prompt=prompt,
+                temperature=0.1,
+                max_tokens=1000
             )
             
-            ai_response = response.choices[0].message.content
+            # Extract AI response from provider abstraction
+            ai_response = response if isinstance(response, str) else response.get('response', str(response))
             
             try:
                 return json.loads(ai_response)
@@ -348,13 +382,15 @@ Rispondi in JSON:
         🤖 AI analysis of tool usage effectiveness
         """
         try:
-            import os
-            from openai import AsyncOpenAI
+            # 🤖 **AI PROVIDER ABSTRACTION**: Use unified AI provider
+            from services.ai_provider_abstraction import ai_provider_manager
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            if not client.api_key:
-                return self._fallback_effectiveness_analysis(required_tools, actual_tool_usage)
+            # Create agent configuration for effectiveness analysis
+            effectiveness_agent = {
+                "name": "ToolEffectivenessAnalyst",
+                "role": "Expert tool effectiveness evaluator specialized in business task completion",
+                "capabilities": ["effectiveness_analysis", "quality_assessment", "tool_optimization"]
+            }
             
             prompt = f"""
 Valuta l'efficacia dell'uso dei tools per questo task.
@@ -389,17 +425,17 @@ Rispondi in JSON:
 }}
 """
             
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert tool effectiveness evaluator. Respond only with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.1
+            # Use AI Provider Abstraction for effectiveness analysis
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=effectiveness_agent,
+                prompt=prompt,
+                temperature=0.1,
+                max_tokens=1000
             )
             
-            ai_response = response.choices[0].message.content
+            # Extract AI response from provider abstraction
+            ai_response = response if isinstance(response, str) else response.get('response', str(response))
             
             try:
                 return json.loads(ai_response)
@@ -420,13 +456,15 @@ Rispondi in JSON:
         🤖 AI analysis of content authenticity vs template/generic content
         """
         try:
-            import os
-            from openai import AsyncOpenAI
+            # 🤖 **AI PROVIDER ABSTRACTION**: Use unified AI provider
+            from services.ai_provider_abstraction import ai_provider_manager
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
-            if not client.api_key:
-                return {"authenticity_score": 50, "confidence": 20}
+            # Create agent configuration for authenticity analysis
+            authenticity_agent = {
+                "name": "ContentAuthenticityAnalyst",
+                "role": "Expert content authenticity analyzer specialized in detecting real vs template content",
+                "capabilities": ["authenticity_analysis", "content_validation", "data_source_detection"]
+            }
             
             task_content = self._extract_task_result_sample(task_result)
             
@@ -461,17 +499,17 @@ Rispondi in JSON:
 }}
 """
             
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are an expert content authenticity analyzer. Respond only with valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1000,
-                temperature=0.1
+            # Use AI Provider Abstraction for authenticity analysis
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=authenticity_agent,
+                prompt=prompt,
+                temperature=0.1,
+                max_tokens=1000
             )
             
-            ai_response = response.choices[0].message.content
+            # Extract AI response from provider abstraction
+            ai_response = response if isinstance(response, str) else response.get('response', str(response))
             
             try:
                 return json.loads(ai_response)
@@ -656,23 +694,24 @@ Rispondi in JSON:
     
     # Fallback methods for when AI is not available
     def _fallback_required_tools_analysis(self, task_name: str) -> Dict[str, Any]:
-        """Fallback analysis when AI not available"""
-        # Basic keyword-based analysis as fallback
-        task_lower = task_name.lower()
+        """Fallback analysis when AI not available - uses minimal tool set"""
+        # When AI is not available, suggest minimal tools that are always safe
+        # The actual tool selection should be done by AI whenever possible
         
-        required_tools = []
-        if any(keyword in task_lower for keyword in ['email', 'sequence', 'outreach']):
-            required_tools = ['websearch', 'competitor_analysis', 'content_generator']
-        elif any(keyword in task_lower for keyword in ['contact', 'list', 'prospect']):
-            required_tools = ['websearch', 'contact_finder', 'data_analyzer']
-        elif any(keyword in task_lower for keyword in ['research', 'analyze', 'competitor']):
-            required_tools = ['websearch', 'data_analyzer', 'competitor_analysis']
+        # Default to websearch as it's universally useful for gathering real data
+        required_tools = ['websearch']
+        
+        # Note: Content generation is NOT a tool - it's handled by the pipeline's
+        # Stage 3 (Content Generation) which uses memory_enhanced_ai_asset_generator
         
         return {
             "required_tools": required_tools,
-            "optional_tools": [],
-            "tool_justification": {tool: f"Required for {task_name}" for tool in required_tools},
-            "confidence": 30
+            "optional_tools": ['data_analyzer'],  # Always useful for insights
+            "tool_justification": {
+                'websearch': f"Essential for gathering real data for {task_name}",
+                'data_analyzer': "Optional for deeper insights and analysis"
+            },
+            "confidence": 30  # Low confidence as this is just a fallback
         }
     
     def _fallback_actual_tools_analysis(self, task_result: Dict[str, Any]) -> Dict[str, Any]:

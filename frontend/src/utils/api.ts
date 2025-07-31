@@ -1545,12 +1545,23 @@ export const api = {
   director: {
     createProposal: async (config: DirectorConfig): Promise<DirectorTeamProposal> => {
       try {
+        // Transform DirectorConfig to match backend DirectorTeamProposal model
+        const backendPayload = {
+          workspace_id: config.workspace_id,
+          workspace_goal: config.goal,
+          user_feedback: config.user_feedback || '',
+          budget_constraint: {
+            max_cost: config.budget_constraint.max_amount,
+            currency: config.budget_constraint.currency
+          }
+        };
+        
         const response = await fetch(`${API_BASE_URL}/api/director/proposal`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(config),
+          body: JSON.stringify(backendPayload),
         });
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);

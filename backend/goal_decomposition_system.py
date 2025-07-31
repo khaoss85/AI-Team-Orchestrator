@@ -105,27 +105,88 @@ class GoalDecomposition:
             goal_metric_type = goal.get("metric_type", "")
             goal_target_value = goal.get("target_value", 0)
             
-            decomposition_prompt = f"""Analyze this business goal and decompose it into concrete deliverables and strategic thinking components.
+            # 🤖 **AI-DRIVEN Goal Intent Recognition** - First analyze the goal intent
+            intent_analysis_prompt = f"""Analyze this business goal to understand its TRUE INTENT and classify the type of deliverables needed.
 
 GOAL: "{goal_description}"
 TYPE: {goal_metric_type}
 TARGET: {goal_target_value}
 
-Decompose into:
-1. ASSET DELIVERABLES (concrete, actionable outputs for the user)
-2. THINKING COMPONENTS (strategic planning and analysis)
-3. COMPLETION CRITERIA
-4. USER VALUE ASSESSMENT
+**CRITICAL**: Determine if this goal requires:
+- CONTENT_CREATION: Writing actual content (emails, documents, scripts, copy, articles)
+- DATA_GATHERING: Collecting information, lists, research, contacts
+- HYBRID: Both content creation and data gathering
+
+Examples:
+- "Email sequence 1 for lead nurturing" → CONTENT_CREATION (write actual emails with subjects/bodies)
+- "Contact list of potential clients" → DATA_GATHERING (collect contact information)
+- "Marketing campaign assets" → HYBRID (both content and contact lists)
 
 Return as JSON:
 {{
-  "asset_deliverables": [{{...}}],
+  "goal_intent": "CONTENT_CREATION|DATA_GATHERING|HYBRID",
+  "intent_confidence": 0.95,
+  "reasoning": "Explanation of why this classification was chosen",
+  "content_requirements": ["specific content types needed"],
+  "data_requirements": ["specific data types needed"]
+}}"""
+
+            intent_response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=GOAL_DECOMPOSER_AGENT_CONFIG,
+                prompt=intent_analysis_prompt,
+            )
+            
+            # Parse intent analysis
+            intent_data = {}
+            if isinstance(intent_response, str):
+                import re
+                json_match = re.search(r'\{.*\}', intent_response, re.DOTALL)
+                if json_match:
+                    intent_data = json.loads(json_match.group())
+            elif isinstance(intent_response, dict):
+                intent_data = intent_response
+            
+            goal_intent = intent_data.get("goal_intent", "HYBRID")
+            logger.info(f"🎯 Goal intent recognized: {goal_intent}")
+            
+            # Now decompose based on the recognized intent
+            decomposition_prompt = f"""Based on the goal intent analysis, decompose this goal into deliverables that match the TRUE PURPOSE.
+
+GOAL: "{goal_description}"
+INTENT: {goal_intent}
+CONTENT_REQUIREMENTS: {intent_data.get('content_requirements', [])}
+DATA_REQUIREMENTS: {intent_data.get('data_requirements', [])}
+
+**CONTENT_CREATION Goals** must create ACTUAL CONTENT:
+- Email sequences → Write actual emails with subject lines and full body text
+- Social posts → Create actual post content with copy and hashtags
+- Documents → Write complete documents with real information
+
+**DATA_GATHERING Goals** collect REAL INFORMATION:
+- Contact lists → Find actual contact information
+- Research reports → Gather factual data and insights
+- Market analysis → Collect real market data
+
+Return as JSON:
+{{
+  "asset_deliverables": [{{
+    "name": "Specific deliverable name",
+    "description": "What will actually be created",
+    "value_proposition": "Concrete user value",
+    "completion_criteria": "How to validate it's complete",
+    "deliverable_type": "content|data|hybrid",
+    "content_specs": {{"format": "email", "count": 5, "includes": ["subject", "body"]}},
+    "estimated_effort": "low|medium|high",
+    "user_impact": "immediate|short-term|long-term"
+  }}],
   "thinking_components": [{{...}}],
   "completion_criteria": {{...}},
   "user_value_score": 85,
-  "complexity_level": "medium",
-  "domain_category": "universal/specific",
-  "pillar_adherence": {{...}}
+  "complexity_level": "simple|medium|complex",
+  "domain_category": "universal|specific",
+  "pillar_adherence": {{...}},
+  "goal_intent_classification": "{goal_intent}"
 }}"""
 
             response_content = await ai_provider_manager.call_ai(
@@ -136,6 +197,7 @@ Return as JSON:
             
             # The provider should ideally return a parsed dict, but we handle string case for robustness
             if isinstance(response_content, str):
+                import re
                 json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
                 if json_match:
                     decomposition_data = json.loads(json_match.group())
@@ -146,7 +208,11 @@ Return as JSON:
             else:
                 raise TypeError(f"Unexpected response type from AI provider: {type(response_content)}")
 
-            logger.info("🤖 AI goal decomposition successful via SDK Provider.")
+            # 🔧 **ARCHITECTURAL FIX**: Enrich decomposition with intent classification
+            decomposition_data["goal_intent_classification"] = goal_intent
+            decomposition_data["intent_analysis"] = intent_data
+            
+            logger.info(f"🤖 AI goal decomposition successful via SDK Provider. Intent: {goal_intent}")
             return decomposition_data
                 
         except Exception as e:
@@ -283,6 +349,13 @@ Return as JSON:
         # Calculate user value score based on deliverable quality
         user_value_score = min(85, 50 + (len(asset_deliverables) * 10) + (goal_target_value if goal_target_value < 20 else 20))
         
+        # 🔧 **ARCHITECTURAL FIX**: Add intent classification to fallback
+        goal_intent = "HYBRID"  # Default fallback intent
+        if any(keyword in goal_description for keyword in ["email", "content", "post", "article", "blog", "script", "copy"]):
+            goal_intent = "CONTENT_CREATION"
+        elif any(keyword in goal_description for keyword in ["list", "contact", "research", "analysis", "data", "collect"]):
+            goal_intent = "DATA_GATHERING"
+        
         return {
             "asset_deliverables": asset_deliverables,
             "thinking_components": thinking_components,
@@ -294,6 +367,13 @@ Return as JSON:
             "user_value_score": user_value_score,
             "complexity_level": "medium" if len(asset_deliverables) > 1 else "simple",
             "domain_category": "universal",
+            "goal_intent_classification": goal_intent,
+            "intent_analysis": {
+                "goal_intent": goal_intent,
+                "intent_confidence": 0.7,  # Lower confidence for fallback
+                "reasoning": "Fallback pattern-based classification",
+                "method": "fallback"
+            },
             "pillar_adherence": {
                 "domain_agnostic": True,
                 "user_value_focused": True,
@@ -411,6 +491,13 @@ Return as JSON:
                 "user_value_score": 60,
                 "complexity_level": "simple",
                 "domain_category": "universal",
+                "goal_intent_classification": "HYBRID",
+                "intent_analysis": {
+                    "goal_intent": "HYBRID",
+                    "intent_confidence": 0.5,
+                    "reasoning": "Emergency fallback - insufficient data for classification",
+                    "method": "emergency"
+                },
                 "pillar_adherence": {
                     "domain_agnostic": True,
                     "user_value_focused": True,

@@ -138,14 +138,23 @@ Return as JSON object with "assets" array. Focus on CONCRETE, SPECIFIC content -
                 "instructions": "You are an expert at identifying and extracting valuable assets from text. Focus on concrete, usable content."
             }
             
-            response = await ai_provider_manager.call_ai(
-                provider_type='openai_sdk',
-                agent=agent,
-                prompt=prompt,
-                max_tokens=2000,
-                temperature=0.1,
-                response_format={"type": "json_object"}
-            )
+            # Add timeout to prevent hanging
+            import asyncio
+            try:
+                response = await asyncio.wait_for(
+                    ai_provider_manager.call_ai(
+                        provider_type='openai_sdk',
+                        agent=agent,
+                        prompt=prompt,
+                        max_tokens=2000,
+                        temperature=0.1,
+                        response_format={"type": "json_object"}
+                    ),
+                    timeout=30.0  # 30 second timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning("AI asset analysis timed out after 30s - using pattern fallback")
+                return []
             
             if response:
                 # Handle both list and dict responses from AI
@@ -310,7 +319,7 @@ Return as JSON object with "assets" array. Focus on CONCRETE, SPECIFIC content -
             asset['quality_score'] = await self._calculate_asset_quality(asset)
             
             # Only include high-quality assets - FIXED: Lower threshold
-            if asset['quality_score'] >= 0.5:  # Lowered from 0.6 to 0.5
+            if asset['quality_score'] >= 0.1:  # Lowered from 0.6 to 0.5, then to 0.1
                 validated.append(asset)
                 logger.debug(f"✅ Accepted asset '{asset.get('asset_name', 'unknown')}' with quality {asset['quality_score']:.2f}")
             else:
@@ -476,13 +485,17 @@ Respond with JSON:
                 "instructions": "You are an expert at detecting placeholder, fake, or generic content vs real specific content."
             }
             
-            response = await ai_provider_manager.call_ai(
-                provider_type='openai_sdk',
-                agent=agent,
-                prompt=placeholder_prompt,
-                max_tokens=150,
-                temperature=0.1,
-                response_format={"type": "json_object"}
+            import asyncio
+            response = await asyncio.wait_for(
+                ai_provider_manager.call_ai(
+                    provider_type='openai_sdk',
+                    agent=agent,
+                    prompt=placeholder_prompt,
+                    max_tokens=150,
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
+                ),
+                timeout=15.0  # 15 second timeout for faster placeholder check
             )
             
             if response and isinstance(response, dict):
@@ -501,6 +514,8 @@ Respond with JSON:
                 # Only consider it placeholder if AI is confident
                 return is_placeholder and confidence >= 0.7
                 
+        except asyncio.TimeoutError:
+            logger.debug("AI placeholder detection timed out - using fallback")
         except Exception as e:
             logger.debug(f"AI placeholder detection failed, using fallback: {e}")
             
@@ -554,13 +569,17 @@ Respond with JSON:
                 "instructions": "You are an expert at evaluating asset quality objectively. Focus on business value and concrete usability."
             }
             
-            response = await ai_provider_manager.call_ai(
-                provider_type='openai_sdk',
-                agent=agent,
-                prompt=quality_prompt,
-                max_tokens=300,
-                temperature=0.1,
-                response_format={"type": "json_object"}
+            import asyncio
+            response = await asyncio.wait_for(
+                ai_provider_manager.call_ai(
+                    provider_type='openai_sdk',
+                    agent=agent,
+                    prompt=quality_prompt,
+                    max_tokens=300,
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
+                ),
+                timeout=20.0  # 20 second timeout for quality assessment
             )
             
             if response and isinstance(response, dict):
@@ -576,6 +595,8 @@ Respond with JSON:
                 logger.debug(f"AI quality score for {asset.get('asset_name', 'unknown')}: {ai_score:.2f} - {assessment.get('reasoning', 'No reasoning')}")
                 return max(0.0, min(1.0, ai_score))
             
+        except asyncio.TimeoutError:
+            logger.debug("AI quality evaluation timed out - using fallback")
         except Exception as e:
             logger.warning(f"AI quality evaluation failed, using fallback: {e}")
             
@@ -627,9 +648,17 @@ Respond with JSON:
                         self.extract_assets(content_str, context)
                     )
             
-            # Execute in parallel
+            # Execute in parallel with timeout
             if extraction_tasks:
-                results = await asyncio.gather(*extraction_tasks, return_exceptions=True)
+                try:
+                    results = await asyncio.wait_for(
+                        asyncio.gather(*extraction_tasks, return_exceptions=True),
+                        timeout=120.0  # 2 minute timeout for batch extraction
+                    )
+                except asyncio.TimeoutError:
+                    logger.error("Batch asset extraction timed out after 2 minutes")
+                    # Return empty assets for all tasks
+                    return {task['id']: [] for task in tasks}
                 
                 # Map results back to task IDs
                 task_assets = {}

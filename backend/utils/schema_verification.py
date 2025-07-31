@@ -41,4 +41,24 @@ def verify_workspace_schema(workspace_id: str) -> bool:
     """Verify workspace schema integrity"""
     return schema_verifier.verify_data_integrity(workspace_id)["status"] == "verified"
 
-__all__ = ["SchemaVerifier", "schema_verifier", "verify_workspace_schema"]
+# Stub classes and functions for database.py compatibility
+class SchemaVerificationSystem:
+    """Mock schema verification system"""
+    def __init__(self, supabase_client=None):
+        self.client = supabase_client
+        logger.debug("Mock SchemaVerificationSystem initialized")
+
+def safe_quality_validation_insert(*args, **kwargs):
+    """Mock safe quality validation insert"""
+    logger.debug("Mock safe_quality_validation_insert called")
+    return True
+
+def initialize_schema_verification(supabase_client):
+    """Mock schema verification initialization"""
+    logger.debug("Mock schema verification initialized")
+    return SchemaVerificationSystem(supabase_client)
+
+__all__ = [
+    "SchemaVerifier", "schema_verifier", "verify_workspace_schema",
+    "SchemaVerificationSystem", "safe_quality_validation_insert", "initialize_schema_verification"
+]

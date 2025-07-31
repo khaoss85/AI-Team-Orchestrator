@@ -26,6 +26,19 @@ export default function DeliverableMessage({
 
   // 🤖 AI-DRIVEN: Smart content preview generation
   const generatePreview = () => {
+    // Handle direct string content (new backend format)
+    if (typeof deliverable.content === 'string' && deliverable.content.trim()) {
+      // Remove markdown formatting for preview
+      const cleanContent = deliverable.content
+        .replace(/^#+ /gm, '') // Remove headers
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+        .replace(/\*(.*?)\*/g, '$1') // Remove italic
+        .replace(/\n\n+/g, ' ') // Replace multiple newlines
+        .trim()
+      return cleanContent.substring(0, 200) + (cleanContent.length > 200 ? '...' : '')
+    }
+    
+    // Handle legacy structured content
     if (deliverable.content?.summary) {
       return deliverable.content.summary.substring(0, 150) + '...'
     }
@@ -34,10 +47,6 @@ export default function DeliverableMessage({
       const firstSection = deliverable.content.sections[0]
       const preview = firstSection.content || firstSection.title || ''
       return preview.substring(0, 150) + '...'
-    }
-    
-    if (typeof deliverable.content === 'string') {
-      return deliverable.content.substring(0, 150) + '...'
     }
     
     return `${deliverable.title} has been completed and is ready for use.`
@@ -122,7 +131,7 @@ export default function DeliverableMessage({
           {preview}
         </div>
         
-        {!isExpanded && deliverable.content?.sections && (
+        {!isExpanded && (deliverable.content?.sections || (typeof deliverable.content === 'string' && deliverable.content.trim())) && (
           <button
             onClick={() => setIsExpanded(true)}
             className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
@@ -136,10 +145,20 @@ export default function DeliverableMessage({
       </div>
 
       {/* 📄 Expanded Content */}
-      {isExpanded && deliverable.content?.sections && (
+      {isExpanded && (deliverable.content?.sections || (typeof deliverable.content === 'string' && deliverable.content.trim())) && (
         <div className="border-t border-gray-200 bg-gray-50 p-4">
           <div className="bg-white rounded border p-4 max-h-64 overflow-y-auto">
-            {deliverable.content.sections.map((section: any, index: number) => (
+            {/* Handle direct string content (new backend format) */}
+            {typeof deliverable.content === 'string' && deliverable.content.trim() && (
+              <div className="prose prose-sm max-w-none">
+                <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {deliverable.content}
+                </div>
+              </div>
+            )}
+            
+            {/* Handle legacy structured content */}
+            {deliverable.content?.sections && deliverable.content.sections.map((section: any, index: number) => (
               <div key={index} className="mb-4 last:mb-0">
                 {section.title && (
                   <h5 className="font-medium text-gray-900 mb-2">{section.title}</h5>

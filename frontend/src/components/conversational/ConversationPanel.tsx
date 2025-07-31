@@ -239,7 +239,7 @@ export default function ConversationPanel({
                        '🎯 Goal Analysis'}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {currentGoalDecomposition.goal_name || currentGoalDecomposition.objective || 'Processing objective'}
+                      {currentGoalDecomposition.goal_name || currentGoalDecomposition.description || currentGoalDecomposition.objective || 'Processing objective'}
                     </p>
                   </div>
                   {/* Real-time connection status */}

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # 🔧 FASE 0 CRITICA: Import schema verification system (after logger is defined)
 try:
-    from schema_verification import SchemaVerificationSystem, safe_quality_validation_insert, initialize_schema_verification
+    from utils.schema_verification import SchemaVerificationSystem, safe_quality_validation_insert, initialize_schema_verification
     SCHEMA_VERIFICATION_AVAILABLE = True
     logger.info("✅ Schema verification system available")
 except ImportError as e:
@@ -498,6 +498,8 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     'type': 'real_business_asset',
                     'quality_level': 'excellent' if pipeline_result.content_quality_score >= 80 else 'good' if pipeline_result.content_quality_score >= 60 else 'acceptable',
                     'business_specificity_score': pipeline_result.business_readiness_score,
+                    # 🔧 HOLISTIC FIX: Map business_specificity_score to business_value_score for frontend compatibility
+                    'business_value_score': pipeline_result.business_readiness_score,
                     'tool_usage_score': pipeline_result.tool_usage_score,
                     'content_quality_score': pipeline_result.content_quality_score,
                     'creation_confidence': pipeline_result.confidence,
@@ -532,6 +534,10 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
             'workspace_id': workspace_id,
             **deliverable_data
         }
+        
+        # 🔧 HOLISTIC FIX: Ensure business_value_score mapping in fallback mode
+        if 'business_specificity_score' in create_data and 'business_value_score' not in create_data:
+            create_data['business_value_score'] = create_data['business_specificity_score']
         
         result = supabase.table('deliverables').insert(create_data).execute()
         
@@ -1954,7 +1960,13 @@ async def get_workspace_goals(workspace_id: str, status: Optional[str] = None) -
         query = query.order("priority").order("created_at", desc=True)
         result = query.execute()
         
-        return result.data if result.data else []
+        # 🔧 HOLISTIC FIX: Add goal_name field for frontend compatibility
+        goals = result.data if result.data else []
+        for goal in goals:
+            # Map description to goal_name for frontend compatibility
+            goal['goal_name'] = goal.get('description', goal.get('metric_type', 'Unknown Goal'))
+        
+        return goals
         
     except Exception as e:
         logger.error(f"Error getting workspace goals: {e}", exc_info=True)

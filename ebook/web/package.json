@@ -1,0 +1,33 @@
+{
+  "name": "ai-team-orchestrator-book",
+  "version": "1.0.0",
+  "description": "AI Team Orchestrator - Premium Book Web & PDF Edition",
+  "main": "convert_to_pdf.js",
+  "scripts": {
+    "pdf": "node convert_to_pdf.js",
+    "serve": "python3 -m http.server 8000",
+    "build-pdf": "npm install && npm run pdf",
+    "dev": "python3 -m http.server 8000"
+  },
+  "dependencies": {
+    "puppeteer": "^21.6.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "ai",
+    "orchestrator", 
+    "book",
+    "pdf",
+    "web",
+    "premium"
+  ],
+  "author": "Daniele Pelleri",
+  "license": "Proprietary",
+  "repository": {
+    "type": "git",
+    "url": "private"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

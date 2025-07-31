@@ -1,0 +1,31 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PDF outputs (se non vuoi versioning)
+*.pdf
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*~
+
+# Package lock files (opzionale)
+package-lock.json
+yarn.lock
+
+# Vercel
+.vercel

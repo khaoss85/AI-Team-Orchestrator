@@ -1,0 +1,156 @@
+{
+  "test_summary": {
+    "test_name": "Holistic Integration Validation",
+    "timestamp": "2025-07-29T16:06:30.578561",
+    "total_tests": 10,
+    "successful_tests": 6,
+    "overall_success_rate": 60.0
+  },
+  "category_results": {
+    "ai_classification_integration": {
+      "total": 2,
+      "successful": 2,
+      "success_rate": 100.0
+    },
+    "orchestrator_unification": {
+      "total": 3,
+      "successful": 3,
+      "success_rate": 100.0
+    },
+    "memory_consolidation": {
+      "total": 3,
+      "successful": 0,
+      "success_rate": 0.0
+    },
+    "lifecycle_integration": {
+      "total": 1,
+      "successful": 0,
+      "success_rate": 0.0
+    },
+    "end_to_end_flow": {
+      "total": 1,
+      "successful": 1,
+      "success_rate": 100.0
+    }
+  },
+  "detailed_results": {
+    "ai_classification_integration": [
+      {
+        "task_name": "Write Email 1: Welcome sequence with subject and body",
+        "classification_confidence": 0.8,
+        "integration_working": true,
+        "agent_requirements_passed": false,
+        "success": true
+      },
+      {
+        "task_name": "Research SaaS prospects in fintech sector",
+        "classification_confidence": 0.8,
+        "integration_working": true,
+        "agent_requirements_passed": false,
+        "success": true
+      }
+    ],
+    "orchestrator_unification": [
+      {
+        "mode": "simple",
+        "orchestrator_available": true,
+        "mode_supported": true,
+        "expected_behavior": "simple_orchestration",
+        "success": true
+      },
+      {
+        "mode": "unified",
+        "orchestrator_available": true,
+        "mode_supported": true,
+        "expected_behavior": "unified_orchestration",
+        "success": true
+      },
+      {
+        "mode": "auto",
+        "orchestrator_available": true,
+        "mode_supported": true,
+        "expected_behavior": "intelligent_mode_selection",
+        "success": true
+      }
+    ],
+    "memory_consolidation": [
+      {
+        "memory_type": "experience",
+        "scope": "workspace",
+        "error": "'UnifiedMemoryEngine' object has no attribute 'store_memory'",
+        "success": false
+      },
+      {
+        "memory_type": "pattern",
+        "scope": "task",
+        "error": "'UnifiedMemoryEngine' object has no attribute 'store_memory'",
+        "success": false
+      },
+      {
+        "memory_type": "context",
+        "scope": "agent",
+        "error": "'UnifiedMemoryEngine' object has no attribute 'store_memory'",
+        "success": false
+      }
+    ],
+    "lifecycle_integration": [
+      {
+        "error": "'UnifiedMemoryEngine' object has no attribute 'store_memory'",
+        "success": false
+      }
+    ],
+    "end_to_end_flow": [
+      {
+        "total_stages": 8,
+        "successful_stages": 7,
+        "flow_success_rate": 87.5,
+        "stage_results": {
+          "goal_decomposition": {
+            "success": true,
+            "goal_intent": "CONTENT_CREATION"
+          },
+          "task_generation": {
+            "success": true,
+            "tasks_count": 2
+          },
+          "ai_classification": {
+            "success": true,
+            "classifications_count": 2
+          },
+          "agent_assignment": {
+            "success": true,
+            "enhanced_matching": true
+          },
+          "orchestrated_execution": {
+            "success": true,
+            "holistic_orchestrator": true
+          },
+          "quality_assessment": {
+            "success": true,
+            "quality_score": 85
+          },
+          "memory_storage": {
+            "success": false,
+            "error": "'UnifiedMemoryEngine' object has no attribute 'store_memory'"
+          },
+          "lifecycle_completion": {
+            "success": true,
+            "lifecycle_manager": true
+          }
+        },
+        "success": true
+      }
+    ]
+  },
+  "integration_assessment": {
+    "quality_level": "critical",
+    "assessment": "Significant integration problems detected",
+    "silos_eliminated": false,
+    "orchestration_quality": "low",
+    "recommendations": [
+      "Critical: Fix major integration failures",
+      "Review holistic architecture implementation",
+      "Investigate system coordination issues"
+    ]
+  }
+}

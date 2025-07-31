@@ -288,58 +288,40 @@ class GoalDrivenTaskPlanner:
             return await self._fallback_generic_tasks(goal, gap)
 
         try:
-            # STAGE 1: ANALYSIS - Use the Analyst Agent to determine data requirements
+            # 🤖 **STAGE 1: AI-DRIVEN GOAL INTENT ANALYSIS** 
             analysis_result = await self._analyze_goal_requirements_ai(goal, workspace_context)
-            requires_data_gathering = analysis_result.get("requires_data_gathering", False)
-            data_points_needed = analysis_result.get("data_points_needed", [])
-
-            tasks = []
-
-            if requires_data_gathering and data_points_needed:
-                logger.info(f"Analyst Agent identified {len(data_points_needed)} data gathering tasks for goal '{goal.description}'")
-                # STAGE 2a: DATA GATHERING TASKS (Programmatically created)
-                for i, data_point in enumerate(data_points_needed):
-                    task = {
-                        "name": f"Create Asset: {data_point}",
-                        "description": f"Task {i+1} of {len(data_points_needed)+1}: Gather the following data required for the final asset: {data_point}.",
-                        "asset_type": "list",
-                        "deliverable_format": "json",
-                        "success_criteria": ["A JSON list containing the requested data is produced."],
-                        "contribution_expected": 10, # Small contribution for data gathering
-                        "priority": "high"
-                    }
-                    tasks.append(task)
-
-                # STAGE 2b: FINAL ASSEMBLY TASK (Programmatically created)
-                final_task_name = f"Create Asset: Final Deliverable for '{goal.description}'"
-                final_task_description = f"Final assembly task: Use the data gathered from the previous tasks ({', '.join(data_points_needed)}) to produce the complete, final asset for the goal: '{goal.description}'. Do not produce a plan or a template."
-                
-                assembly_task = {
-                    "name": final_task_name,
-                    "description": final_task_description,
-                    "asset_type": "document", # Generic, agent will determine final format
-                    "deliverable_format": "markdown",
-                    "success_criteria": ["The final asset is complete, contains all gathered data, and is ready for use."],
-                    "contribution_expected": 80, # Major contribution for final assembly
-                    "priority": "medium"
-                }
-                tasks.append(assembly_task)
+            goal_intent = analysis_result.get("goal_intent", "HYBRID")
+            intent_confidence = analysis_result.get("intent_confidence", 0.8)
             
+            logger.info(f"🎯 Goal intent recognized: {goal_intent} (confidence: {intent_confidence:.2f})")
+            
+            # 🤖 **STAGE 2: AI-DRIVEN TASK GENERATION BASED ON INTENT**
+            tasks = []
+            
+            if goal_intent == "CONTENT_CREATION":
+                tasks = await self._generate_content_creation_tasks(goal, analysis_result, workspace_context)
+            elif goal_intent == "DATA_GATHERING":
+                tasks = await self._generate_data_gathering_tasks(goal, analysis_result, workspace_context)
+            elif goal_intent == "HYBRID":
+                # For hybrid goals, generate both data gathering and content creation tasks
+                data_tasks = await self._generate_data_gathering_tasks(goal, analysis_result, workspace_context)
+                content_tasks = await self._generate_content_creation_tasks(goal, analysis_result, workspace_context)
+                tasks = data_tasks + content_tasks
             else:
-                logger.info(f"Analyst Agent determined no data gathering is needed for goal '{goal.description}'. Creating a direct asset production task.")
-                # DIRECT ASSET PRODUCTION TASK
-                direct_task = {
-                    "name": f"Create Asset: {goal.description}",
-                    "description": f"Directly produce the final, complete, and ready-to-use asset for the goal: '{goal.description}'. No planning or templates.",
-                    "asset_type": "document",
-                    "deliverable_format": "markdown",
-                    "success_criteria": ["The final asset is complete and ready for use."],
-                    "contribution_expected": 100,
-                    "priority": "high"
-                }
-                tasks.append(direct_task)
-
-            logger.info(f"🤖 Created a task plan with {len(tasks)} steps for goal '{goal.description}'")
+                # Fallback for other intent types (STRATEGY_PLANNING, IMPLEMENTATION, etc.)
+                tasks = await self._generate_general_tasks(goal, analysis_result, workspace_context)
+            
+            # 🔧 **ARCHITECTURAL FIX**: Ensure tasks have proper classification
+            from services.ai_task_classifier import classify_task_ai
+            
+            # Classify each generated task for proper agent assignment
+            for task in tasks:
+                task_classification = await classify_task_ai(task, {"description": goal.description, "goal_intent_classification": goal_intent})
+                task["task_type"] = task_classification["task_type"].value
+                task["classification_confidence"] = task_classification["confidence"]
+                task["primary_deliverable"] = task_classification["primary_deliverable"]
+            
+            logger.info(f"🤖 Generated {len(tasks)} AI-driven tasks for goal '{goal.description}' (intent: {goal_intent})")
             return tasks
 
         except Exception as e:
@@ -382,16 +364,16 @@ class GoalDrivenTaskPlanner:
 
     async def _analyze_goal_requirements_ai(self, goal: WorkspaceGoal, workspace_context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        🤖 **NEW Analyst Agent**
-        Uses AI to determine if a goal requires real-world data gathering before the final asset can be assembled.
+        🤖 **AI-DRIVEN Goal Intent Recognition**
+        Uses semantic AI to understand the TRUE INTENT of the goal - whether it needs content creation or data gathering.
         """
         from services.ai_provider_abstraction import ai_provider_manager
 
         if not self.ai_available:
-            return {"requires_data_gathering": False, "data_points_needed": []}
+            return {"goal_intent": "unknown", "requires_data_gathering": False, "content_items_needed": [], "data_points_needed": []}
 
         try:
-            prompt = f"""You are a meticulous Analyst Agent. Your only job is to analyze a business goal and determine if creating the final asset requires gathering specific, real-world data points first.
+            prompt = f"""You are an AI Goal Intent Analyzer. Analyze this business goal and determine its TRUE INTENT.
 
 **Goal to Analyze:**
 - **Description:** {goal.description}
@@ -399,32 +381,50 @@ class GoalDrivenTaskPlanner:
 - **Business Context:** {workspace_context.get('description', 'General business operations')}
 
 **Your Task:**
-Analyze the goal. Does producing the final deliverable require concrete data that is not yet available?
-- **Example 1:** If the goal is "Create a competitor analysis report", it **requires data gathering** (competitor names, pricing, features).
-- **Example 2:** If the goal is "Write a generic welcome email template", it **does not require data gathering** as it uses placeholders.
-- **Example 3:** If the goal is "Write a welcome email for our new client, Acme Corp", it **requires data gathering** (details about Acme Corp).
+Understand the SEMANTIC INTENT of this goal. Determine:
 
-Respond ONLY with a JSON object in the following format:
+1. **GOAL_INTENT** - What is the primary purpose?
+   - `CONTENT_CREATION`: Goal requires writing/creating actual content (emails, documents, scripts, presentations)
+   - `DATA_GATHERING`: Goal requires collecting/researching information (lists, contacts, analysis)
+   - `HYBRID`: Goal requires both content creation AND data gathering
+
+2. **CONTENT_ITEMS** - If content creation is needed, what specific items should be created?
+3. **DATA_POINTS** - If data gathering is needed, what specific information should be collected?
+
+**Examples:**
+- "Email sequence 1 - Introduction" → CONTENT_CREATION → ["Email 1: Welcome subject and body", "Email 2: Value proposition", "Email 3: Next steps"]
+- "Lista contatti ICP" → DATA_GATHERING → ["Company names matching ICP", "Contact details for decision makers"]
+- "Email campaign with competitor analysis" → HYBRID → Content: ["Email series"], Data: ["Competitor pricing", "Market positioning"]
+
+Respond ONLY with a JSON object:
 ```json
 {{
-    "requires_data_gathering": boolean,
+    "goal_intent": "CONTENT_CREATION|DATA_GATHERING|HYBRID",
+    "content_items_needed": [
+        "Specific content item 1 to CREATE",
+        "Specific content item 2 to CREATE"
+    ],
     "data_points_needed": [
-        "A very specific, short description of the first data point to find (e.g., 'List of 3 competitor names').",
-        "A very specific, short description of the second data point to find (e.g., 'Pricing information for each competitor')."
-    ]
+        "Specific data point 1 to GATHER",
+        "Specific data point 2 to GATHER"
+    ],
+    "reasoning": "Brief explanation of the analysis"
 }}
 ```
 
-**Instructions:**
-- If `requires_data_gathering` is `false`, `data_points_needed` must be an empty array.
-- Be very specific in `data_points_needed`. Each item should be a clear instruction for a data collection task.
-- Do not list more than 3 essential data points.
+**AI Guidelines:**
+- Analyze the SEMANTIC meaning, not just keywords
+- Focus on the END DELIVERABLE the user expects
+- If goal mentions "sequence", "script", "email", "document" → likely CONTENT_CREATION
+- If goal mentions "list", "contact", "analysis", "research" → likely DATA_GATHERING
+- Be specific: "Email 1: Subject and body" not just "Email content"
+- Maximum 3 items per category
 """
 
             analyst_agent = {
-                "name": "AnalystAgent",
+                "name": "GoalIntentAnalyzer",
                 "model": "gpt-4o-mini",
-                "instructions": "You are an analyst that determines data requirements for business goals. Respond only with the requested JSON format.",
+                "instructions": "You are an AI Goal Intent Analyzer that determines whether goals need content creation or data gathering. Use semantic understanding, not keyword matching. Respond only with the requested JSON format.",
             }
 
             result = await ai_provider_manager.call_ai(
@@ -437,17 +437,234 @@ Respond ONLY with a JSON object in the following format:
             if isinstance(result, str):
                 result = json.loads(result)
             
-            # Validate the response structure
-            if "requires_data_gathering" in result and "data_points_needed" in result:
-                logger.info(f"✅ Analyst Agent determined data requirements for '{goal.description}': {result}")
+            # Validate the enhanced response structure
+            if "goal_intent" in result:
+                logger.info(f"✅ AI Goal Intent Analysis for '{goal.description}': {result.get('goal_intent')} - {result.get('reasoning', 'No reasoning provided')}")
+                
+                # Backward compatibility mapping
+                result["requires_data_gathering"] = result.get("goal_intent") in ["DATA_GATHERING", "HYBRID"]
+                
                 return result
             else:
-                logger.warning(f"⚠️ Analyst Agent returned invalid format. Defaulting to no data gathering. Response: {result}")
-                return {"requires_data_gathering": False, "data_points_needed": []}
+                logger.warning(f"⚠️ AI Goal Intent Analyzer returned invalid format. Using fallback. Response: {result}")
+                return {
+                    "goal_intent": "unknown",
+                    "requires_data_gathering": False, 
+                    "content_items_needed": [],
+                    "data_points_needed": [],
+                    "reasoning": "AI analysis failed, using fallback"
+                }
 
         except Exception as e:
-            logger.error(f"Error in Analyst Agent execution: {e}")
-            return {"requires_data_gathering": False, "data_points_needed": []}
+            logger.error(f"Error in AI Goal Intent Analysis: {e}")
+            return {
+                "goal_intent": "unknown",
+                "requires_data_gathering": False, 
+                "content_items_needed": [],
+                "data_points_needed": [],
+                "reasoning": f"Error in AI analysis: {str(e)}"
+            }
+    
+    async def _generate_content_creation_tasks(self, goal: WorkspaceGoal, analysis_result: Dict[str, Any], workspace_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """🤖 **AI-DRIVEN CONTENT CREATION TASK GENERATION**
+        
+        Generates tasks that create ACTUAL CONTENT (emails, documents, scripts, etc.)
+        instead of generic "Create Asset" tasks.
+        """
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        try:
+            content_requirements = analysis_result.get("content_items_needed", [])
+            reasoning = analysis_result.get("reasoning", "")
+            
+            if not content_requirements:
+                # Generate content requirements if not provided
+                content_requirements = [f"Actual content for {goal.description}"]
+            
+            # 🤖 AI-driven content task generation
+            content_generation_prompt = f"""Generate specific CONTENT CREATION tasks for this goal.
+
+GOAL: "{goal.description}"
+GOAL TYPE: {goal.metric_type}
+TARGET: {goal.target_value}
+CONTENT REQUIREMENTS: {content_requirements}
+ANALYSIS: {reasoning}
+
+**CRITICAL**: Create tasks that produce ACTUAL CONTENT, not metadata or templates.
+
+Examples:
+- For "Email sequence 1": Create "Write Email 1: Welcome - Subject and Body", "Write Email 2: Value - Subject and Body"
+- For "Social media posts": Create "Write LinkedIn Post 1: Topic X", "Write Instagram Post 1: Topic Y"
+- For "Blog article": Create "Write Blog Article: [Title] - Full Content"
+
+Each task should specify:
+- EXACT content to be written (subject lines, body text, etc.)
+- Format and structure requirements
+- Word count or length specifications
+- Tone and style guidelines
+
+Return as JSON array:
+[{{
+  "name": "Write [Specific Content]: [Title/Subject]",
+  "description": "Write the actual [content type] including [specific elements]. No templates or placeholders.",
+  "content_type": "email|document|post|script|article",
+  "content_specifications": {{
+    "format": "specific format",
+    "length": "word count or length",
+    "includes": ["subject", "body", "cta", "etc"],
+    "tone": "professional|casual|persuasive",
+    "structure": "specific structure requirements"
+  }},
+  "asset_type": "content",
+  "deliverable_format": "markdown|text|html",
+  "success_criteria": ["Specific, measurable completion criteria"],
+  "contribution_expected": 50,
+  "priority": "high"
+}}]"""
+
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={"name": "Content Task Generator", "role": "Content creation task specialist"},
+                prompt=content_generation_prompt,
+            )
+            
+            # Parse response
+            if isinstance(response, str):
+                import re, json
+                json_match = re.search(r'\[.*\]', response, re.DOTALL)
+                if json_match:
+                    tasks = json.loads(json_match.group())
+                else:
+                    raise ValueError("No valid JSON array found in AI response")
+            elif isinstance(response, list):
+                tasks = response
+            else:
+                raise TypeError(f"Unexpected response type: {type(response)}")
+            
+            logger.info(f"🤖 Generated {len(tasks)} content creation tasks")
+            return tasks
+            
+        except Exception as e:
+            logger.error(f"❌ Content task generation failed: {e}")
+            # Fallback content task
+            return [{
+                "name": f"Write Content for {goal.description}",
+                "description": f"Create the actual content for {goal.description}. Write real content, not templates or placeholders.",
+                "content_type": "document",
+                "asset_type": "content",
+                "deliverable_format": "markdown",
+                "success_criteria": ["Content is complete and ready to use"],
+                "contribution_expected": 100,
+                "priority": "high"
+            }]
+    
+    async def _generate_data_gathering_tasks(self, goal: WorkspaceGoal, analysis_result: Dict[str, Any], workspace_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """🤖 **AI-DRIVEN DATA GATHERING TASK GENERATION**
+        
+        Generates tasks that collect REAL INFORMATION and DATA
+        using actual tools and research capabilities.
+        """
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        try:
+            data_requirements = analysis_result.get("data_points_needed", [])
+            reasoning = analysis_result.get("reasoning", "")
+            
+            if not data_requirements:
+                data_requirements = [f"Data for {goal.description}"]
+            
+            # 🤖 AI-driven data gathering task generation
+            data_generation_prompt = f"""Generate specific DATA GATHERING tasks for this goal.
+
+GOAL: "{goal.description}"
+DATA REQUIREMENTS: {data_requirements}
+ANALYSIS: {reasoning}
+
+**CRITICAL**: Create tasks that collect REAL DATA using available tools:
+- Web search for current information
+- File search in existing documents
+- Contact research using available databases
+- Market research using real sources
+
+Examples:
+- For "Lead generation": Create "Find 50 SaaS company contacts using web search", "Research contact emails from LinkedIn"
+- For "Market analysis": Create "Search current pricing data for competitors", "Gather recent industry reports"
+- For "Content research": Create "Find trending topics in industry", "Research target audience preferences"
+
+Return as JSON array:
+[{{
+  "name": "Find/Research [Specific Data]: [Source/Method]",
+  "description": "Use [specific tools] to gather [specific data]. Collect real, current information.",
+  "data_type": "contacts|research|analysis|list|market_data",
+  "collection_method": "web_search|file_search|database_query|api_call",
+  "data_specifications": {{
+    "format": "json|csv|markdown",
+    "quantity": "number of items expected",
+    "quality_criteria": "accuracy, recency, relevance requirements",
+    "sources": ["specific sources to use"]
+  }},
+  "asset_type": "data",
+  "deliverable_format": "json",
+  "success_criteria": ["Specific data collection criteria"],
+  "contribution_expected": 30,
+  "priority": "high"
+}}]"""
+
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={"name": "Data Task Generator", "role": "Data gathering task specialist"},
+                prompt=data_generation_prompt,
+            )
+            
+            # Parse response
+            if isinstance(response, str):
+                import re, json
+                json_match = re.search(r'\[.*\]', response, re.DOTALL)
+                if json_match:
+                    tasks = json.loads(json_match.group())
+                else:
+                    raise ValueError("No valid JSON array found in AI response")
+            elif isinstance(response, list):
+                tasks = response
+            else:
+                raise TypeError(f"Unexpected response type: {type(response)}")
+            
+            logger.info(f"🤖 Generated {len(tasks)} data gathering tasks")
+            return tasks
+        
+        except Exception as e:
+            logger.error(f"❌ Data task generation failed: {e}")
+            # Fallback data task
+            return [{
+                "name": f"Research Data for {goal.description}",
+                "description": f"Gather real data and information needed for {goal.description}. Use web search and available tools.",
+                "data_type": "research",
+                "collection_method": "web_search",
+                "asset_type": "data",
+                "deliverable_format": "json",
+                "success_criteria": ["Real data is collected and formatted"],
+                "contribution_expected": 50,
+                "priority": "high"
+            }]
+    
+    async def _generate_general_tasks(self, goal: WorkspaceGoal, analysis_result: Dict[str, Any], workspace_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """🤖 **AI-DRIVEN GENERAL TASK GENERATION**
+        
+        Generates tasks for other intent types (STRATEGY_PLANNING, IMPLEMENTATION, etc.)
+        """
+        goal_intent = analysis_result.get("goal_intent", "HYBRID")
+        
+        # For now, create a single comprehensive task
+        # This can be expanded later for specific intent types
+        return [{
+            "name": f"Complete {goal.description}",
+            "description": f"Execute the goal: {goal.description}. Intent type: {goal_intent}",
+            "asset_type": "mixed",
+            "deliverable_format": "markdown",
+            "success_criteria": [f"Goal '{goal.description}' is fully achieved"],
+            "contribution_expected": 100,
+            "priority": "high"
+        }]
     
     def _convert_numeric_priority(self, priority: Union[int, str]) -> str:
         """

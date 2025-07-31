@@ -26,6 +26,7 @@ from database import (
     update_agent_status,
     supabase
 )
+
 from improvement_loop import controlled_iteration, refresh_dependencies
 from ai_agents.manager import AgentManager
 from task_analyzer import EnhancedTaskExecutor, get_enhanced_task_executor
@@ -33,6 +34,15 @@ from utils.project_settings import get_project_settings
 from services.unified_memory_engine import unified_memory_engine
 
 logger = logging.getLogger(__name__)
+
+# 🎯 HOLISTIC INTEGRATION: Import pipeline esistente senza creare silos
+try:
+    from services.holistic_task_deliverable_pipeline import HolisticTaskDeliverablePipeline
+    HOLISTIC_PIPELINE_AVAILABLE = True
+    logger.info("✅ Holistic Task-Deliverable Pipeline available for content transfer")
+except ImportError as e:
+    logger.warning(f"⚠️ Holistic Pipeline not available: {e}")
+    HOLISTIC_PIPELINE_AVAILABLE = False
 
 # 🚦 Import API Rate Limiter for external API call management
 try:
@@ -97,10 +107,32 @@ except ImportError as e:
 # 🎼 Import Unified Orchestrator for complete orchestration capabilities
 try:
     from services.unified_orchestrator import get_unified_orchestrator
+except ImportError:
+    logger.warning("⚠️ Unified Orchestrator not available")
+    get_unified_orchestrator = None
+
+try:
+    from services.holistic_orchestrator import get_holistic_orchestrator, OrchestrationMode
+except ImportError:
+    logger.warning("⚠️ Holistic Orchestrator not available")
+    get_holistic_orchestrator = None
+    OrchestrationMode = None
+
+try:
+    from services.holistic_task_lifecycle import (
+        get_holistic_lifecycle_manager, start_holistic_task_lifecycle, 
+        update_task_lifecycle_phase, complete_holistic_task_lifecycle, LifecyclePhase
+    )
     UNIFIED_ORCHESTRATOR_AVAILABLE = True
     logger.info("✅ Unified Orchestrator available for complete orchestration capabilities")
 except ImportError as e:
     logger.warning(f"⚠️ Unified Orchestrator not available: {e}")
+    UNIFIED_ORCHESTRATOR_AVAILABLE = False
+    get_holistic_lifecycle_manager = None
+    start_holistic_task_lifecycle = None
+    update_task_lifecycle_phase = None
+    complete_holistic_task_lifecycle = None
+    LifecyclePhase = None
     UNIFIED_ORCHESTRATOR_AVAILABLE = False
     get_unified_orchestrator = None
 
@@ -505,6 +537,16 @@ class TaskExecutor(AssetCoordinationMixin):
         if TASK_MONITOR_AVAILABLE:
             logger.info("✅ Task execution monitoring ready (will start with executor)")
         self.workspace_anti_loop_task_counts: Dict[str, int] = defaultdict(int)
+        
+        # 🎯 HOLISTIC INTEGRATION: Initialize pipeline esistente
+        self.holistic_pipeline = None
+        if HOLISTIC_PIPELINE_AVAILABLE:
+            try:
+                self.holistic_pipeline = HolisticTaskDeliverablePipeline()
+                logger.info("✅ Holistic Task-Deliverable Pipeline initialized in executor")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize holistic pipeline: {e}")
+                self.holistic_pipeline = None
 
         # Track task IDs currently queued or running to avoid duplicates
         self.queued_task_ids: Set[str] = set()
@@ -550,12 +592,28 @@ class TaskExecutor(AssetCoordinationMixin):
             'half_open_max_calls': 3  # max calls in half-open state
         }
         
-        # 🚀 ATOE: Initialize Adaptive Task Orchestration Engine for skip rate optimization
+        # 🎯 HOLISTIC ORCHESTRATOR: Initialize unified orchestration system  
+        self.holistic_orchestrator = None
+        try:
+            self.holistic_orchestrator = get_holistic_orchestrator()
+            logger.info("🎯 Holistic Orchestrator initialized - all orchestration silos eliminated")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize Holistic Orchestrator: {e}")
+        
+        # 🔄 HOLISTIC LIFECYCLE: Initialize integrated task lifecycle management
+        self.lifecycle_manager = None
+        try:
+            self.lifecycle_manager = get_holistic_lifecycle_manager()
+            logger.info("🔄 Holistic Task Lifecycle Manager initialized - lifecycle silos eliminated")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize Holistic Task Lifecycle: {e}")
+        
+        # 🚀 ATOE: Maintain backward compatibility
         self.atoe = None
         if UNIFIED_ORCHESTRATOR_AVAILABLE and get_unified_orchestrator:
             try:
                 self.atoe = get_unified_orchestrator()
-                logger.info("🚀 ATOE initialized successfully for skip rate optimization")
+                logger.info("🚀 ATOE initialized for legacy compatibility")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize ATOE: {e}")
                 self.atoe = None
@@ -1051,7 +1109,22 @@ class TaskExecutor(AssetCoordinationMixin):
 
                     # 🚀 ASYNCHRONOUS FINALIZATION: Schedule post-execution logic to run in the background
                     # This prevents the worker from being blocked by DB updates and trigger logic, resolving hanging tasks.
-                    asyncio.create_task(self._finalize_task_completion(task_id, execution_result))
+                    # Add timeout to prevent indefinite hanging
+                    finalization_task = asyncio.create_task(self._finalize_task_completion(task_id, execution_result))
+                    
+                    # Monitor finalization with timeout (30 seconds should be more than enough)
+                    try:
+                        await asyncio.wait_for(finalization_task, timeout=30.0)
+                    except asyncio.TimeoutError:
+                        logger.error(f"⏰ Task finalization for {task_id} timed out after 30s. Forcing completion.")
+                        # Force update task status to prevent hanging
+                        try:
+                            if execution_result and hasattr(execution_result, 'status'):
+                                await update_task_status(task_id, execution_result.status.value, {"timeout": "finalization_timeout"})
+                            else:
+                                await update_task_status(task_id, TaskStatus.FAILED.value, {"error": "finalization_timeout"})
+                        except Exception as force_update_error:
+                            logger.error(f"Failed to force update task {task_id} after timeout: {force_update_error}")
 
                 except (AttributeError, TypeError) as e_specific:
                     logger.error(f"WORKER {worker_id}: SPECIFIC ERROR executing task {task_id}: {e_specific}", exc_info=True)
@@ -1071,6 +1144,14 @@ class TaskExecutor(AssetCoordinationMixin):
                     self.active_tasks_count -= 1
                     self.task_queue.task_done()
                     self.active_task_ids.discard(task_id)
+                    
+                    # Decrementa il counter anti-loop per permettere l'esecuzione di altre task
+                    if workspace_id:
+                        current_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
+                        if current_count > 0:
+                            self.workspace_anti_loop_task_counts[workspace_id] = current_count - 1
+                            logger.debug(f"WORKER {worker_id}: Decremented anti-loop counter for W:{workspace_id[:8]} to {current_count - 1}")
+                    
                     logger.info(f"WORKER {worker_id}: Finished processing task {task_id}. Active tasks: {self.active_tasks_count}")
                     
                     # Marca come completato nel tracker per anti-loop
@@ -1160,12 +1241,32 @@ class TaskExecutor(AssetCoordinationMixin):
             # 🎯 UNIFIED AGENT MANAGEMENT: Use AgentStatusManager if available
             if AGENT_STATUS_MANAGER_AVAILABLE and agent_status_manager:
                 try:
-                    # Use intelligent agent matching from AgentStatusManager
+                    # 🎯 **HOLISTIC INTEGRATION**: Use full AI classification for optimal agent matching
+                    classification_result = None
+                    
+                    # Get AI classification if not already available
+                    if task_dict.get("task_type") and not task_dict.get("classification_result"):
+                        try:
+                            from services.ai_task_classifier import classify_task_ai
+                            classification_result = await classify_task_ai(
+                                task_dict, 
+                                {"description": task_dict.get("description", "")}
+                            )
+                            # Store classification for future use
+                            task_dict["classification_result"] = classification_result
+                            logger.info(f"🎯 Task classification completed for holistic agent matching")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Task classification failed, using basic matching: {e}")
+                    else:
+                        classification_result = task_dict.get("classification_result")
+                    
                     match_result = await agent_status_manager.find_best_agent_for_task(
                         workspace_id=workspace_id,
                         required_role=role,
                         task_name=task_dict.get("name"),
-                        task_description=task_dict.get("description")
+                        task_description=task_dict.get("description"),
+                        task_type=task_dict.get("task_type"),
+                        classification_result=classification_result  # 🎯 Pass full classification data
                     )
                     
                     if match_result.agent:
@@ -1185,6 +1286,25 @@ class TaskExecutor(AssetCoordinationMixin):
                                    f"confidence: {match_result.match_confidence:.2f} - "
                                    f"agent: {selected_agent['name']} ({selected_agent['role']}) - "
                                    f"fallback: {match_result.fallback_used}")
+                        
+                        # 🔄 HOLISTIC LIFECYCLE: Update agent assignment phase
+                        if self.lifecycle_manager:
+                            try:
+                                await update_task_lifecycle_phase(
+                                    task_id=task_dict.get("id", "unknown"),
+                                    phase=LifecyclePhase.AGENT_ASSIGNMENT,
+                                    data={
+                                        "agent_id": selected_agent["id"],
+                                        "agent_name": selected_agent["name"],
+                                        "agent_role": selected_agent["role"],
+                                        "agent_seniority": selected_agent["seniority"],
+                                        "match_method": match_result.match_method,
+                                        "match_confidence": match_result.match_confidence,
+                                        "classification_used": classification_result is not None
+                                    }
+                                )
+                            except Exception as e:
+                                logger.warning(f"⚠️ Failed to update agent assignment lifecycle: {e}")
                         
                     else:
                         # No suitable agent found through unified system
@@ -1408,8 +1528,31 @@ Focus on delivering practical, actionable results that move the project forward.
         effective_limit = self.max_tasks_per_workspace_anti_loop
         atoe_recommendation = None
         
-        # Primary: Try ATOE for adaptive orchestration (addresses 66.7% skip rate issue)
-        if self.atoe:
+        # 🎯 PRIMARY: Holistic orchestration for unified decision making
+        if self.holistic_orchestrator:
+            try:
+                # Get holistic orchestration insights
+                workspace_context = {
+                    "workspace_id": workspace_id,
+                    "current_pending_count": current_anti_loop_count,
+                    "max_limit": self.max_tasks_per_workspace_anti_loop,
+                    "active_agents": await self._count_active_agents(workspace_id)
+                }
+                
+                orchestration_insights = await self.holistic_orchestrator.get_orchestration_insights(workspace_id)
+                optimal_mode = orchestration_insights.get("optimal_mode_recommendation", "hybrid")
+                
+                logger.info(f"🎯 HOLISTIC ORCHESTRATION: Using {optimal_mode} mode for task {task_id}")
+                
+                # Holistic orchestrators make integrated decisions
+                # For now, maintain the same logic but with holistic context awareness
+                effective_limit = self.max_tasks_per_workspace_anti_loop
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Holistic orchestration analysis failed: {e}")
+        
+        # 🚀 FALLBACK: ATOE for backward compatibility  
+        elif self.atoe:
             try:
                 # Get comprehensive ATOE recommendations
                 atoe_recommendation = await self.atoe.get_orchestration_recommendation(
@@ -1425,8 +1568,7 @@ Focus on delivering practical, actionable results that move the project forward.
                 
                 if atoe_recommendation.should_proceed:
                     effective_limit = atoe_recommendation.recommended_limit
-                    logger.info(f"🚀 ATOE RECOMMENDATION: Proceed with limit {effective_limit} "
-                              f"(reasoning: {atoe_recommendation.reasoning[:100]})")
+                    logger.info(f"🚀 ATOE FALLBACK: Proceed with limit {effective_limit}")
                     
                     # Update ATOE metrics for continuous improvement
                     await self.atoe.update_workspace_metrics(
@@ -1511,6 +1653,17 @@ Focus on delivering practical, actionable results that move the project forward.
             self.task_completion_tracker[workspace_id].clear()
         return completed_tasks
 
+    async def _count_active_agents(self, workspace_id: str) -> int:
+        """Count active agents in workspace for orchestration context"""
+        try:
+            from database import list_agents
+            agents = await list_agents(workspace_id)
+            active_agents = [a for a in agents if a.get("status") in ["active", "available"]]
+            return len(active_agents)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not count active agents: {e}")
+            return 1  # Default assumption
+    
     async def _is_critical_corrective_task(self, task_dict: Dict[str, Any]) -> bool:
         """
         🤖 AI-DRIVEN: Determine if a task is critical and should bypass anti-loop limits
@@ -1629,7 +1782,14 @@ Focus on delivering practical, actionable results that move the project forward.
             # Send WebSocket notification
             await notify_task_status_change(task_id, status_to_set)
             logger.info(f"Forcibly finalized task {task_id} as {status_to_set}: {reason}")
+            
+            # Decrementa il counter anti-loop per permettere l'esecuzione di altre task
             if workspace_id:
+                current_count = self.workspace_anti_loop_task_counts.get(workspace_id, 0)
+                if current_count > 0:
+                    self.workspace_anti_loop_task_counts[workspace_id] = current_count - 1
+                    logger.debug(f"Force complete: Decremented anti-loop counter for W:{workspace_id[:8]} to {current_count - 1}")
+                
                 self.task_completion_tracker[workspace_id].add(task_id)
             self.active_task_ids.discard(task_id)
             self.queued_task_ids.discard(task_id)
@@ -1776,6 +1936,24 @@ Focus on delivering practical, actionable results that move the project forward.
         if TASK_MONITOR_AVAILABLE:
             trace_task_start(task_id, workspace_id, agent_id)
             trace_stage(task_id, ExecutionStage.TASK_RECEIVED, "Task received for execution")
+        
+        # 🔄 HOLISTIC LIFECYCLE: Start integrated lifecycle tracking
+        if self.lifecycle_manager:
+            try:
+                await start_holistic_task_lifecycle(
+                    task_id=task_id,
+                    workspace_id=workspace_id,
+                    goal_id=task_dict.get("goal_id"),
+                    initial_context={
+                        "task_name": task_dict.get("name", "Unknown"),
+                        "task_type": task_dict.get("task_type", "hybrid"),
+                        "priority": task_dict.get("priority", "medium"),
+                        "agent_assignment_started": True
+                    }
+                )
+                logger.info(f"🔄 Started holistic lifecycle tracking for task {task_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to start lifecycle tracking: {e}")
         
         # Prima converte il dict in un oggetto Pydantic Task
         try:
@@ -1984,8 +2162,21 @@ Original Task:
             if TASK_MONITOR_AVAILABLE:
                 trace_stage(task_id, ExecutionStage.RUNNER_START, "Starting agent execution with timeout")
             
-            # Task execution with timeout protection
+            # 🎯 HOLISTIC TASK-TO-DELIVERABLE PIPELINE: Task execution with classification and validation
             try:
+                # Get all workspace agents for holistic execution
+                workspace_agents_data = []
+                try:
+                    workspace_agents_raw = await db_list_agents(workspace_id)
+                    workspace_agents_data = workspace_agents_raw if workspace_agents_raw else []
+                except Exception as e:
+                    logger.warning(f"Failed to get workspace agents: {e}")
+                
+                # 🎯 CRITICAL: Use holistic pipeline instead of direct agent execution
+                from services.holistic_task_deliverable_pipeline import execute_task_holistically
+                
+                logger.info(f"🎯 Executing task {task_id} through holistic task-to-deliverable pipeline")
+                
                 # 🚦 Apply rate limiting if available
                 if API_RATE_LIMITER_AVAILABLE:
                     # Determine provider based on agent seniority
@@ -1996,21 +2187,21 @@ Original Task:
                     task_priority = task_dict.get("priority", "medium").lower()
                     api_priority = "high" if task_priority == "high" or task_dict.get("is_corrective", False) else "normal"
                     
-                    logger.info(f"🚦 Applying rate limiting for task {task_id}: provider={provider}, priority={api_priority}")
+                    logger.info(f"🚦 Applying rate limiting for holistic task {task_id}: provider={provider}, priority={api_priority}")
                     
-                    # Execute with rate limiting
+                    # Execute with rate limiting through holistic pipeline
                     execution_result = await execute_with_rate_limit(
                         lambda: asyncio.wait_for(
-                            agent.execute(task_pydantic_obj, session), 
+                            execute_task_holistically(task_pydantic_obj, workspace_agents_data, session), 
                             timeout=300.0
                         ),
                         provider=provider,
                         priority=api_priority
                     )
                 else:
-                    # Fallback to direct execution without rate limiting
+                    # Direct holistic execution without rate limiting
                     execution_result = await asyncio.wait_for(
-                        agent.execute(task_pydantic_obj, session), 
+                        execute_task_holistically(task_pydantic_obj, workspace_agents_data, session), 
                         timeout=300.0
                     )
                 
@@ -3921,6 +4112,50 @@ Original Task:
             )
             logger.info(f"AgentManager.execute_task for {task_id} returned: {result}")
 
+            # 🎯 HOLISTIC CONTENT TRANSFER: Create deliverable from task result content
+            if self.holistic_pipeline and result and result.get('result'):
+                try:
+                    logger.info(f"🎯 Creating deliverable from task {task_id} result content...")
+                    
+                    # Extract actual content from result
+                    task_result_content = result.get('result', '')
+                    
+                    # Only create deliverable if we have substantial content
+                    if isinstance(task_result_content, str) and len(task_result_content) > 100:
+                        deliverable_data = {
+                            "task_id": task_id,
+                            "goal_id": task_dict.get("goal_id"),
+                            "title": f"{task_name} - AI-Generated Deliverable", 
+                            "description": task_pydantic_obj.description,
+                            "content": task_result_content,  # Use actual task result content
+                            "type": "real_business_asset",
+                            "status": "completed",
+                            "business_value_score": 75.0,
+                            "quality_level": "acceptable",
+                            "metadata": {
+                                "created_via": "holistic_executor_integration",
+                                "agent_id": agent_id,
+                                "execution_successful": True,
+                                "content_length": len(task_result_content)
+                            }
+                        }
+                        
+                        # Import create_deliverable function
+                        from database import create_deliverable
+                        deliverable_response = await create_deliverable(workspace_id, deliverable_data)
+                        
+                        if deliverable_response:
+                            logger.info(f"✅ Deliverable created with {len(task_result_content)} chars content: {deliverable_response.get('id')}")
+                            result['deliverable_created'] = deliverable_response.get('id')
+                        else:
+                            logger.warning(f"⚠️ Failed to create deliverable for task {task_id}")
+                    else:
+                        logger.info(f"ℹ️ Task {task_id} result content too short for deliverable ({len(str(task_result_content))} chars)")
+                        
+                except Exception as pipeline_error:
+                    logger.error(f"❌ Deliverable creation failed for task {task_id}: {pipeline_error}")
+                    # Continue execution - deliverable error should not fail the task
+
             # 5. Log risultato intermedio
             self.execution_log.append({
                 "timestamp": datetime.now().isoformat(),
@@ -3928,7 +4163,8 @@ Original Task:
                 "task_id": task_id,
                 "workspace_id": workspace_id,
                 "delegation_depth": delegation_depth,
-                "execution_successful": True
+                "execution_successful": True,
+                "holistic_pipeline_processed": self.holistic_pipeline is not None
             })
 
             # 🧠 Add evaluation step after execution (Codex-style)

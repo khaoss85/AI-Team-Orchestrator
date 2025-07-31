@@ -1,0 +1,26 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*~
+
+# Generated HTML (keep only final)
+!web/AI_Team_Orchestrator_Libro_FINALE.html
+!web/index.html
+!web/Indice_AI_Team_Orchestrator_Linked.html

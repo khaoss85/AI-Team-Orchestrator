@@ -12,3 +12,35 @@ __pycache__/
 !*.env.example
 .DS_Store
 
+# 🗑️ Logs and temporary files
+*.log
+logs/
+server*.log
+debug*.log
+backend/*.log
+backend/server*.log
+
+# 🧪 Test artifacts
+test_results/
+coverage/
+.pytest_cache/
+.coverage
+
+# 🔧 Temporary SQL files
+*_temp.sql
+temp_*.sql
+fix_*.sql
+*_schema_temp.sql
+
+# 📁 Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.vscode/
+.idea/
+
+# 📊 Development artifacts
+dump.rdb
+*.pid
+

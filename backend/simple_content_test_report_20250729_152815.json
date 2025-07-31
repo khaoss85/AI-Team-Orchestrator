@@ -1,0 +1,142 @@
+{
+  "test_summary": {
+    "test_name": "Simplified Content Generation Test",
+    "timestamp": "2025-07-29T15:28:15.836644",
+    "total_tests": 13,
+    "successful_tests": 5,
+    "success_rate": 38.46
+  },
+  "detailed_results": {
+    "goal_intent_recognition": [
+      {
+        "goal_description": "Email sequence 1 for lead nurturing campaign",
+        "expected_intent": "CONTENT_CREATION",
+        "detected_intent": "HYBRID",
+        "confidence": 0.5,
+        "success": false,
+        "decomposition_method": "emergency"
+      },
+      {
+        "goal_description": "Contact list of 100 SaaS prospects in fintech",
+        "expected_intent": "DATA_GATHERING",
+        "detected_intent": "HYBRID",
+        "confidence": 0.5,
+        "success": false,
+        "decomposition_method": "emergency"
+      },
+      {
+        "goal_description": "Social media content calendar with posts and research",
+        "expected_intent": "HYBRID",
+        "detected_intent": "HYBRID",
+        "confidence": 0.5,
+        "success": true,
+        "decomposition_method": "emergency"
+      }
+    ],
+    "task_classification": [
+      {
+        "task_name": "Write Email 1: Welcome sequence with subject and body",
+        "expected_type": "content_creation",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      },
+      {
+        "task_name": "Write Email 2: Value proposition - subject and full body",
+        "expected_type": "content_creation",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      },
+      {
+        "task_name": "Research SaaS companies in fintech sector",
+        "expected_type": "data_gathering",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      },
+      {
+        "task_name": "Find competitor pricing data for market analysis",
+        "expected_type": "data_gathering",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      },
+      {
+        "task_name": "Review and approve email content quality",
+        "expected_type": "quality_assurance",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      },
+      {
+        "task_name": "Create marketing strategy framework",
+        "expected_type": "strategy_planning",
+        "detected_type": "hybrid",
+        "confidence": 0.8,
+        "reasoning": "AI classification",
+        "classification_method": "ai",
+        "success": false
+      }
+    ],
+    "improvement_validation": [
+      {
+        "scenario": "Content Creation Task Generation",
+        "description": "Ensure email sequence goals generate specific content tasks, not generic 'Create Asset' tasks",
+        "success": true,
+        "details": "Content-specific task generation methods: 3/3 implemented",
+        "evidence": [
+          "_generate_content_creation_tasks method exists",
+          "_generate_data_gathering_tasks method exists",
+          "_generate_general_tasks method exists"
+        ]
+      },
+      {
+        "scenario": "Task Type Enum Integration",
+        "description": "Verify TaskType enum is properly integrated in models",
+        "success": true,
+        "details": "TaskType enum has 7 types, missing: []",
+        "evidence": [
+          "content_creation",
+          "data_gathering",
+          "strategy_planning",
+          "implementation",
+          "quality_assurance",
+          "coordination",
+          "hybrid"
+        ]
+      },
+      {
+        "scenario": "AI-Driven Classification",
+        "description": "Confirm AI-driven classification replaces hardcoded keyword matching",
+        "success": true,
+        "details": "AI-driven classifier features: 3/3 implemented",
+        "evidence": [
+          "AI-driven classification method exists",
+          "Fallback classification for robustness",
+          "Batch processing capability"
+        ]
+      },
+      {
+        "scenario": "Agent Assignment Enhancement",
+        "description": "Verify agent assignment considers task_type for better matching",
+        "success": true,
+        "details": "Agent assignment enhancements: 2/2 implemented",
+        "evidence": [
+          "AI-driven task type matching method exists",
+          "find_best_agent_for_task accepts task_type parameter"
+        ]
+      }
+    ]
+  }
+}

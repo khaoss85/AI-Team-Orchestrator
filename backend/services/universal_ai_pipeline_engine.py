@@ -39,6 +39,10 @@ class PipelineStepType(Enum):
     SIMILARITY_MATCHING = "similarity_matching"
     FAKE_DETECTION = "fake_detection"
     SEMANTIC_ANALYSIS = "semantic_analysis"
+    # Tool Integration Pipeline Steps
+    TOOL_REQUIREMENTS_ANALYSIS = "tool_requirements_analysis"
+    ASSET_TYPE_CLASSIFICATION = "asset_type_classification"
+    TOOL_AVAILABILITY_CHECK = "tool_availability_check"
     # Legacy compatibility
     ASSET_DECOMPOSITION = "asset_decomposition"
     SEMANTIC_SIMILARITY = "semantic_similarity"
@@ -190,7 +194,7 @@ class UniversalAIPipelineEngine:
             # Execute AI request
             prompt = custom_prompt or self._get_default_prompt(step_type, input_data, context)
             
-            ai_response = await self._execute_ai_request(prompt, model, context)
+            ai_response = await self._execute_ai_request(prompt, model, context, step_type)
             
             # Process and cache result
             processed_result = await self._process_ai_response(step_type, ai_response, context, start_time)
@@ -260,13 +264,13 @@ class UniversalAIPipelineEngine:
             
             self.request_times.append(current_time)
     
-    async def _execute_ai_request(self, prompt: str, model: str, context: PipelineContext) -> str:
+    async def _execute_ai_request(self, prompt: str, model: str, context: PipelineContext, step_type: PipelineStepType) -> str:
         """Execute actual AI request with timeout using the AI Provider Abstraction."""
         from services.ai_provider_abstraction import ai_provider_manager
-        from project_agents.universal_pipeline_agent import get_universal_pipeline_agent_config
 
         try:
-            pipeline_agent_config = get_universal_pipeline_agent_config(model)
+            # 🤖 **SELF-CONTAINED AGENT CONFIG**: Create agent config internally
+            pipeline_agent_config = self._create_pipeline_agent_config(step_type, model)
 
             response = await asyncio.wait_for(
                 ai_provider_manager.call_ai(
@@ -299,6 +303,73 @@ class UniversalAIPipelineEngine:
                  raise
             raise Exception(f"AI request failed: {str(e)}")
     
+    def _create_pipeline_agent_config(self, step_type: PipelineStepType, model: str = "gpt-4") -> Dict[str, Any]:
+        """
+        🤖 **SELF-CONTAINED AGENT CONFIG**: Create pipeline agent configuration internally
+        """
+        
+        # Base agent configuration
+        base_config = {
+            "name": f"UniversalPipelineAgent_{step_type.value}",
+            "instructions": self._get_step_instructions(step_type),
+            "model": model,
+        }
+        
+        return base_config
+    
+    def _get_step_instructions(self, step_type: PipelineStepType) -> str:
+        """
+        🤖 **AI-DRIVEN INSTRUCTIONS**: Get specialized instructions for each pipeline step
+        """
+        instructions_map = {
+            PipelineStepType.SEMANTIC_ANALYSIS: """
+                You are an expert semantic analysis agent specializing in understanding context and meaning.
+                Analyze the provided content for semantic patterns, relationships, and insights.
+                Provide structured, actionable analysis results.
+            """,
+            PipelineStepType.GOAL_DECOMPOSITION: """
+                You are a goal decomposition specialist.
+                Analyze user requests to break down high-level goals into actionable components.
+                Focus on creating clear, achievable sub-goals and deliverables.
+            """,
+            PipelineStepType.TASK_GENERATION: """
+                You are a task generation expert.
+                Create specific, actionable tasks based on goal requirements and context.
+                Ensure tasks are properly scoped and executable.
+            """,
+            PipelineStepType.TOOL_REQUIREMENTS_ANALYSIS: """
+                You are a tool requirements analyst.
+                Analyze tasks to determine what tools are needed for successful completion.
+                Focus on real tools that can gather authentic data and generate business-ready content.
+            """,
+            PipelineStepType.ASSET_TYPE_CLASSIFICATION: """
+                You are an asset classification specialist.
+                Analyze content to determine the most appropriate asset type and structure.
+                Ensure assets are business-ready and properly categorized.
+            """,
+            PipelineStepType.TOOL_AVAILABILITY_CHECK: """
+                You are a tool availability analyst.
+                Check which tools are available and functional for the given requirements.
+                Provide recommendations for optimal tool usage.
+            """,
+            PipelineStepType.QUALITY_VALIDATION: """
+                You are a quality validation specialist.
+                Evaluate content and outputs for quality, completeness, and business readiness.
+                Provide specific feedback and improvement recommendations.
+            """,
+            PipelineStepType.CONTENT_ENHANCEMENT: """
+                You are a content enhancement expert.
+                Improve content quality, clarity, and business value.
+                Ensure outputs meet professional standards and requirements.
+            """,
+        }
+        
+        return instructions_map.get(step_type, """
+            You are a universal AI pipeline agent.
+            Process the provided input according to the specified pipeline step requirements.
+            Provide structured, actionable results.
+        """).strip()
+    
     def _get_default_prompt(self, step_type: PipelineStepType, input_data: Any, context: PipelineContext) -> str:
         """Get default prompt for each pipeline step type"""
         
@@ -319,6 +390,10 @@ class UniversalAIPipelineEngine:
             PipelineStepType.SIMILARITY_MATCHING: self._get_similarity_matching_prompt(input_data, context),
             PipelineStepType.FAKE_DETECTION: self._get_fake_detection_prompt(input_data, context),
             PipelineStepType.SEMANTIC_ANALYSIS: self._get_semantic_analysis_prompt(input_data, context),
+            # Tool Integration Pipeline prompts
+            PipelineStepType.TOOL_REQUIREMENTS_ANALYSIS: self._get_tool_requirements_prompt(input_data, context),
+            PipelineStepType.ASSET_TYPE_CLASSIFICATION: self._get_asset_type_classification_prompt(input_data, context),
+            PipelineStepType.TOOL_AVAILABILITY_CHECK: self._get_tool_availability_prompt(input_data, context),
         }
         
         return prompts.get(step_type, f"Analyze the following data: {json.dumps(input_data, indent=2)}")
@@ -611,6 +686,128 @@ Provide a JSON response with this structure:
 }}
 """
 
+    def _get_tool_requirements_prompt(self, input_data: Any, context: PipelineContext) -> str:
+        """Generate prompt for AI-driven tool requirements analysis"""
+        return f"""
+As an expert tool orchestration analyst, analyze the following task requirements and determine the optimal tools needed for completion.
+
+TASK ANALYSIS:
+{json.dumps(input_data, indent=2) if hasattr(input_data, '__dict__') else str(input_data)}
+
+BUSINESS CONTEXT:
+{json.dumps(context.user_context, indent=2)}
+
+🤖 **DYNAMIC TOOL DISCOVERY**: Instead of hardcoded tools, analyze the task semantically to determine the most appropriate tool categories needed.
+
+Provide a JSON response with this structure:
+{{
+    "required_tool_categories": [
+        {{
+            "category": "web_research|content_generation|data_analysis|competitor_intelligence|communication|automation",
+            "priority": "critical|important|optional",
+            "purpose": "specific reason why this tool category is needed",
+            "expected_output": "what this tool should produce",
+            "integration_weight": 0.0-1.0
+        }}
+    ],
+    "tool_orchestration_strategy": {{
+        "execution_order": ["ordered list of tool categories"],
+        "parallel_execution": ["tool categories that can run in parallel"],
+        "data_flow": "how data flows between tools",
+        "quality_gates": ["quality checkpoints between tool executions"]
+    }},
+    "success_criteria": ["criteria for successful tool orchestration"],
+    "fallback_strategies": ["fallback approaches if primary tools fail"]
+}}
+
+Focus on AI-driven, semantic analysis rather than predefined tool lists. Consider the business context and task complexity to make intelligent tool selection decisions.
+"""
+
+    def _get_asset_type_classification_prompt(self, input_data: Any, context: PipelineContext) -> str:
+        """Generate prompt for AI-driven asset type classification"""
+        return f"""
+As an expert business asset classifier, analyze the following task and business context to determine the most appropriate asset type and generation approach.
+
+TASK ANALYSIS:
+{json.dumps(input_data, indent=2) if hasattr(input_data, '__dict__') else str(input_data)}
+
+BUSINESS CONTEXT:
+{json.dumps(context.user_context, indent=2)}
+
+🤖 **SEMANTIC ASSET CLASSIFICATION**: Use AI-driven semantic analysis to classify the asset type based on content, purpose, and business objectives rather than keyword matching.
+
+Provide a JSON response with this structure:
+{{
+    "primary_asset_type": "email_sequences|lead_lists|content_strategy|business_plans|marketing_materials|sales_collateral|research_reports|competitive_analysis|social_media_content|other",
+    "secondary_asset_types": ["related asset types that might be needed"],
+    "classification_confidence": 0.0-1.0,
+    "asset_characteristics": {{
+        "content_complexity": "simple|medium|complex",
+        "personalization_level": "generic|customized|highly_personalized",
+        "technical_requirements": ["specific technical needs"],
+        "business_impact": "low|medium|high",
+        "audience_type": "internal|external|mixed"
+    }},
+    "generation_approach": {{
+        "strategy": "template_based|ai_generated|hybrid|custom_development",
+        "quality_requirements": ["specific quality criteria"],
+        "review_process": ["recommended review steps"],
+        "iteration_cycles": "number of expected refinement cycles"
+    }},
+    "success_metrics": ["how to measure asset effectiveness"],
+    "classification_reasoning": "detailed explanation of classification decision"
+}}
+
+Use semantic understanding of business objectives and content requirements to make intelligent classification decisions.
+"""
+
+    def _get_tool_availability_prompt(self, input_data: Any, context: PipelineContext) -> str:
+        """Generate prompt for AI-driven tool availability and readiness check"""
+        return f"""
+As an expert system orchestration analyst, analyze the current system state and tool availability to determine the optimal execution plan.
+
+SYSTEM STATE ANALYSIS:
+{json.dumps(input_data, indent=2) if hasattr(input_data, '__dict__') else str(input_data)}
+
+CONTEXT REQUIREMENTS:
+{json.dumps(context.user_context, indent=2)}
+
+🤖 **INTELLIGENT READINESS ASSESSMENT**: Analyze system capabilities, resource availability, and execution constraints to provide an AI-driven assessment of tool readiness and optimal execution timing.
+
+Provide a JSON response with this structure:
+{{
+    "system_readiness": {{
+        "overall_score": 0.0-1.0,
+        "resource_availability": 0.0-1.0,
+        "tool_compatibility": 0.0-1.0,
+        "execution_capacity": 0.0-1.0
+    }},
+    "tool_status": [
+        {{
+            "tool_category": "identified tool category",
+            "availability": "available|busy|unavailable|unknown",
+            "estimated_wait_time": "seconds until available",
+            "alternative_options": ["backup tool options"],
+            "performance_prediction": 0.0-1.0
+        }}
+    ],
+    "execution_plan": {{
+        "recommended_start_time": "immediate|scheduled|conditional",
+        "execution_order": ["optimized order based on dependencies and availability"],
+        "resource_allocation": {{
+            "cpu_intensive_tasks": ["tasks requiring significant processing"],
+            "network_intensive_tasks": ["tasks requiring external API calls"],
+            "memory_intensive_tasks": ["tasks requiring significant memory"]
+        }},
+        "bottleneck_predictions": ["anticipated execution bottlenecks"]
+    }},
+    "optimization_recommendations": ["suggestions for improving execution efficiency"],
+    "risk_assessment": ["potential execution risks and mitigation strategies"]
+}}
+
+Focus on intelligent system orchestration and resource optimization based on current system state and requirements.
+"""
+
     async def _process_ai_response(self, step_type: PipelineStepType, response: str, context: PipelineContext, start_time: float) -> PipelineResult:
         """Process AI response based on step type"""
         try:
@@ -773,6 +970,71 @@ Provide a JSON response with this structure:
                 "similarity_score": 0.5,
                 "overall_assessment": "Moderate similarity detected - requires AI analysis when available",
                 "recommendation": "keep_separate"
+            },
+            # Tool Integration Pipeline fallbacks
+            PipelineStepType.TOOL_REQUIREMENTS_ANALYSIS: {
+                "required_tool_categories": [{
+                    "category": "web_research",
+                    "priority": "critical",
+                    "purpose": "Gather external data and information",
+                    "expected_output": "Research data and insights",
+                    "integration_weight": 0.8
+                }],
+                "tool_orchestration_strategy": {
+                    "execution_order": ["web_research"],
+                    "parallel_execution": [],
+                    "data_flow": "sequential",
+                    "quality_gates": ["data_validation"]
+                },
+                "success_criteria": ["Basic tool execution completed"],
+                "fallback_strategies": ["Use cached data if available"]
+            },
+            PipelineStepType.ASSET_TYPE_CLASSIFICATION: {
+                "primary_asset_type": "business_asset",
+                "secondary_asset_types": [],
+                "classification_confidence": 0.5,
+                "asset_characteristics": {
+                    "content_complexity": "medium",
+                    "personalization_level": "customized",
+                    "technical_requirements": [],
+                    "business_impact": "medium",
+                    "audience_type": "external"
+                },
+                "generation_approach": {
+                    "strategy": "ai_generated",
+                    "quality_requirements": ["basic_standards"],
+                    "review_process": ["automated_check"],
+                    "iteration_cycles": "1-2"
+                },
+                "success_metrics": ["Content generated successfully"],
+                "classification_reasoning": "Fallback classification - AI analysis recommended"
+            },
+            PipelineStepType.TOOL_AVAILABILITY_CHECK: {
+                "system_readiness": {
+                    "overall_score": 0.7,
+                    "resource_availability": 0.8,
+                    "tool_compatibility": 0.6,
+                    "execution_capacity": 0.7
+                },
+                "tool_status": [{
+                    "tool_category": "basic_tools",
+                    "availability": "available",
+                    "estimated_wait_time": "0",
+                    "alternative_options": ["fallback_processing"],
+                    "performance_prediction": 0.6
+                }],
+                "execution_plan": {
+                    "recommended_start_time": "immediate",
+                    "execution_order": ["basic_processing"],
+                    "resource_allocation": {
+                        "cpu_intensive_tasks": [],
+                        "network_intensive_tasks": ["web_requests"],
+                        "memory_intensive_tasks": []
+                    },
+                    "bottleneck_predictions": ["API rate limits"]
+                },
+                "optimization_recommendations": ["Enable AI analysis for better optimization"],
+                "risk_assessment": ["Limited analysis depth without AI"]
             }
         }
         

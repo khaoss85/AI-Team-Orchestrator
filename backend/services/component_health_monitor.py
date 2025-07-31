@@ -223,7 +223,7 @@ class ComponentHealthMonitor:
                 return True
             
             elif component_name == 'memory_system':
-                from backend.services.unified_memory_engine import memory_system
+                from services.unified_memory_engine import memory_system
                 return hasattr(memory_system, 'store_context')
             
             elif component_name == 'automatic_quality_trigger':

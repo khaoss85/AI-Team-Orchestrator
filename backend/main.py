@@ -62,6 +62,32 @@ from routes.debug import router as debug_router
 # Import task executor
 from executor import start_task_executor, stop_task_executor
 
+# Import health monitor
+async def start_health_monitor():
+    """Start the health monitoring system"""
+    try:
+        from health_monitor import HealthMonitor
+        monitor = HealthMonitor()
+        
+        # Run health check every 5 minutes
+        while True:
+            try:
+                results = await monitor.run_health_check()
+                if results['health_score'] < 80:
+                    logger.warning(f"🏥 Health score low: {results['health_score']}/100")
+                    
+                if results['fixes_applied']:
+                    logger.info(f"🔧 Applied {len(results['fixes_applied'])} automatic fixes")
+                    
+            except Exception as e:
+                logger.error(f"Health monitor error: {e}")
+            
+            # Wait 5 minutes before next check
+            await asyncio.sleep(300)
+            
+    except Exception as e:
+        logger.error(f"Failed to start health monitor: {e}")
+
 # Import asset system integration
 from asset_system_integration import register_asset_routes, initialize_asset_system
 from optimization.asset_system_optimizer import start_optimization_monitoring
@@ -117,6 +143,12 @@ async def lifespan(app: FastAPI):
         logger.info("STARTUP: Starting task executor...")
         asyncio.create_task(start_task_executor())
         logger.info("STARTUP: Task executor started in background.")
+        
+        # 🏥 START HEALTH MONITOR: Auto-monitor and fix common issues
+        if os.getenv("ENABLE_HEALTH_MONITOR", "true").lower() == "true":
+            logger.info("STARTUP: Starting health monitor...")
+            asyncio.create_task(start_health_monitor())
+            logger.info("STARTUP: Health monitor started in background.")
     else:
         logger.info("STARTUP: Task executor disabled.")
     
@@ -244,6 +276,10 @@ app.include_router(tools_router)
 # Goal and task management
 app.include_router(goal_validation_router)
 app.include_router(workspace_goals_router, prefix="/api")
+
+# Business value analysis
+from routes.business_value_analyzer import router as business_value_router
+app.include_router(business_value_router, prefix="/api")
 
 # Asset and deliverable system
 app.include_router(unified_assets_router)
@@ -419,6 +455,223 @@ async def approve_team_proposal_api(data: Dict[str, Any]):
         "proposal_id": proposal_id,
         "status": "approved"
     }
+
+@app.post("/api/analyze-task-business-value")
+async def analyze_task_business_value_api(data: Dict[str, Any]):
+    """🤖 AI-DRIVEN: Semantic analysis of task business value - replaces hardcoded frontend logic"""
+    try:
+        from services.universal_ai_pipeline_engine import universal_ai_pipeline_engine, PipelineStepType, PipelineContext
+        import json
+        
+        task_data = data.get("task")
+        goal_context = data.get("goal_context", {})
+        
+        if not task_data:
+            raise HTTPException(status_code=400, detail="task data required")
+        
+        # Prepare context for AI analysis
+        context = PipelineContext(
+            workspace_id="frontend_analysis",
+            timeout_seconds=15,
+            max_retries=2
+        )
+        
+        # Extract task content for analysis
+        task_result = task_data.get('result', {})
+        task_name = task_data.get('name', 'Unknown Task')
+        
+        # Prepare content for AI semantic analysis
+        analysis_input = {
+            'task_name': task_name,
+            'task_result': task_result,
+            'goal_context': goal_context.get('description', ''),
+            'goal_type': goal_context.get('metric_type', '')
+        }
+        
+        # Use AI to perform semantic business value analysis
+        ai_result = await universal_ai_pipeline_engine.execute_pipeline_step(
+            step_type=PipelineStepType.QUALITY_VALIDATION,
+            input_data=analysis_input,
+            context=context,
+            custom_prompt=f"""
+Analyze the business value of this completed task using semantic understanding.
+
+TASK: {task_name}
+GOAL CONTEXT: {goal_context.get('description', 'Unknown')}
+TASK RESULT: {json.dumps(task_result, indent=2)[:2000]}
+
+Evaluate the business value based on:
+1. DELIVERABLE VALUE: Did this task produce a concrete, usable business asset?
+2. CONTENT QUALITY: Is the output substantial and well-structured?
+3. BUSINESS READINESS: Can this be immediately used for business purposes?
+4. STRATEGIC VALUE: Does this advance business objectives?
+
+Score from 0-100 where:
+- 80-100: High business value (concrete deliverables, ready-to-use content)
+- 60-79: Good business value (substantial content, needs minor refinement)
+- 40-59: Moderate value (useful but requires significant enhancement)
+- 20-39: Low value (mainly planning/thinking, limited concrete output)
+- 0-19: Minimal value (meta-tasks, delegation, or incomplete work)
+
+Return JSON: {{"business_value_score": 0-100, "reasoning": "detailed explanation", "content_type": "deliverable|content|strategy|planning|meta-task"}}
+"""
+        )
+        
+        if ai_result.success and ai_result.data:
+            return {
+                "success": True,
+                "business_value_score": ai_result.data.get('business_value_score', 0),
+                "reasoning": ai_result.data.get('reasoning', 'AI analysis completed'),
+                "content_type": ai_result.data.get('content_type', 'unknown'),
+                "analysis_method": "ai_semantic"
+            }
+        else:
+            # Fallback to basic content-based scoring
+            score = await _calculate_content_based_task_score(task_data)
+            return {
+                "success": True,
+                "business_value_score": score,
+                "reasoning": "Fallback content-based analysis used",
+                "content_type": "unknown",
+                "analysis_method": "fallback"
+            }
+            
+    except Exception as e:
+        logging.error(f"Task business value analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@app.post("/api/book-leads", response_model=Dict[str, Any])
+async def create_book_lead(lead_data: Dict[str, Any], request: Request):
+    """📚 Create a new book lead from the ebook popup form"""
+    try:
+        from models import BookLeadCreate, BookLeadResponse
+        from database import get_supabase_client
+        import uuid
+        
+        # Validate input data with Pydantic model
+        try:
+            lead_create = BookLeadCreate(**lead_data)
+        except Exception as validation_error:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid input data: {str(validation_error)}"
+            )
+        
+        # Get Supabase client
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get client IP address for analytics
+        client_ip = request.client.host
+        if request.headers.get("X-Forwarded-For"):
+            client_ip = request.headers.get("X-Forwarded-For").split(",")[0].strip()
+        elif request.headers.get("X-Real-IP"):
+            client_ip = request.headers.get("X-Real-IP")
+        
+        # Prepare data for database insertion
+        lead_db_data = {
+            "id": str(uuid.uuid4()),
+            "name": lead_create.name,
+            "email": lead_create.email,
+            "role": lead_create.role.value if lead_create.role else None,
+            "challenge": lead_create.challenge,
+            "gdpr_consent": lead_create.gdpr_consent,
+            "marketing_consent": lead_create.marketing_consent,
+            "book_chapter": lead_create.book_chapter,
+            "user_agent": lead_create.user_agent,
+            "ip_address": client_ip,
+            "referrer_url": lead_create.referrer_url or request.headers.get("Referer")
+        }
+        
+        # Insert into Supabase
+        result = supabase.table("book_leads").insert(lead_db_data).execute()
+        
+        if result.data:
+            logging.info(f"New book lead created: {lead_create.email} from {lead_create.book_chapter}")
+            return {
+                "success": True,
+                "message": "Lead salvato con successo! Grazie per il tuo interesse.",
+                "lead_id": lead_db_data["id"]
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save lead to database")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Book lead creation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/api/book-leads")
+async def get_book_leads(skip: int = 0, limit: int = 100):
+    """📊 Get book leads for analytics (admin only for now)"""
+    try:
+        from database import get_supabase_client
+        
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        
+        # Get leads with pagination
+        result = supabase.table("book_leads")\
+            .select("*")\
+            .order("created_at", desc=True)\
+            .range(skip, skip + limit - 1)\
+            .execute()
+        
+        if result.data:
+            return {
+                "success": True,
+                "leads": result.data,
+                "count": len(result.data)
+            }
+        else:
+            return {"success": True, "leads": [], "count": 0}
+            
+    except Exception as e:
+        logging.error(f"Failed to fetch book leads: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch leads: {str(e)}")
+
+async def _calculate_content_based_task_score(task_data: Dict[str, Any]) -> float:
+    """Fallback content-based scoring when AI fails"""
+    try:
+        result = task_data.get('result', {})
+        summary = result.get('summary', '')
+        
+        # Basic scoring based on content presence and length
+        score = 30  # Base score
+        
+        # Content length bonus
+        content_length = len(summary) + len(str(result.get('detailed_results_json', '')))
+        if content_length > 1000:
+            score += 25
+        elif content_length > 500:
+            score += 15
+        elif content_length > 200:
+            score += 10
+        
+        # Structured content bonus
+        if result.get('detailed_results_json'):
+            try:
+                detailed = json.loads(result['detailed_results_json']) if isinstance(result['detailed_results_json'], str) else result['detailed_results_json']
+                if detailed and len(detailed) > 2:
+                    score += 20
+            except:
+                pass
+        
+        # Simple keyword analysis (minimal)
+        summary_lower = summary.lower()
+        if any(word in summary_lower for word in ['created', 'generated', 'completed', 'delivered']):
+            score += 15
+        if any(word in summary_lower for word in ['sub-task', 'assigned', 'delegated']):
+            score = max(10, score - 20)
+            
+        return min(100, max(0, score))
+        
+    except Exception as e:
+        logging.error(f"Fallback scoring failed: {e}")
+        return 30.0
 
 # Event handlers are now managed by lifespan context manager
 if __name__ == "__main__":
