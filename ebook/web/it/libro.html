@@ -13,20 +13,39 @@
 
       gtag('config', 'G-VEGK4VZMG0');
     </script>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YOUR_TRACKING_ID"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-YOUR_TRACKING_ID');
-    </script>
     
-    <!-- Copyright and Protection Meta Tags -->
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Guida completa alla costruzione di sistemi AI-Driven con agenti intelligenti. 42 capitoli di architettura, best practices e implementazione pratica per sviluppatori e CTO.">
+    <meta name="keywords" content="AI agents, sistema AI-driven, architettura AI, OpenAI SDK, team AI, orchestrazione agenti, sviluppo AI, intelligenza artificiale, automation">
     <meta name="author" content="Daniele Pelleri">
     <meta name="copyright" content="© 2025 Daniele Pelleri. Tutti i diritti riservati.">
-    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Italian">
+    <meta name="revisit-after" content="7 days">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Hai Fatto Funzionare il Tuo Primo Agente AI. E Adesso? - Guida Completa">
+    <meta property="og:description" content="42 capitoli per costruire sistemi AI-Driven professionali. Dall'architettura di base alla scalabilità enterprise, con esempi pratici e war stories reali.">
+    <meta property="og:type" content="book">
+    <meta property="og:url" content="https://ai-team-orchestrator.com/it/libro.html">
+    <meta property="og:image" content="https://ai-team-orchestrator.com/assets/book-cover-it.jpg">
+    <meta property="og:site_name" content="AI Team Orchestrator">
+    <meta property="og:locale" content="it_IT">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hai Fatto Funzionare il Tuo Primo Agente AI. E Adesso?">
+    <meta name="twitter:description" content="Guida completa alla costruzione di sistemi AI-Driven con 42 capitoli di architettura pratica e best practices.">
+    <meta name="twitter:image" content="https://ai-team-orchestrator.com/assets/book-cover-it.jpg">
+    <meta name="twitter:creator" content="@daniele_pelleri">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://ai-team-orchestrator.com/it/libro.html">
+    <link rel="alternate" hreflang="en" href="https://ai-team-orchestrator.com/en/book.html">
+    <link rel="alternate" hreflang="it" href="https://ai-team-orchestrator.com/it/libro.html">
+    <link rel="alternate" hreflang="x-default" href="https://ai-team-orchestrator.com/en/book.html">
+    
+    <!-- Copyright and Protection Meta Tags -->
     <meta name="referrer" content="no-referrer">
     
     <!-- Disable text selection and context menu -->
@@ -1039,88 +1058,145 @@
             50% { opacity: 1; transform: rotate(180deg); }
         }
 
-        /* Table of Contents */
+        /* Table of Contents - Floating Panel */
         .toc {
-            padding: 3rem;
-            background: var(--bg-purple-light);
-            border-bottom: 3px solid var(--gold);
-            position: relative;
-        }
-
-        .toc::before {
-            content: '';
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            right: 1rem;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
-        }
-
-        .toc h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 2.2rem;
-            color: var(--primary-purple);
-            margin-bottom: 2rem;
-            font-weight: 700;
-            text-align: center;
-            position: relative;
-        }
-
-        .toc h2::after {
-            content: '♪';
-            position: absolute;
-            right: -2rem;
+            position: fixed;
             top: 0;
-            color: var(--gold);
+            right: -400px;
+            width: 380px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            z-index: 1200;
+            border-left: 3px solid var(--gold);
+            overflow-y: auto;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .toc.active {
+            right: 0;
+        }
+        
+        .toc-header {
+            padding: 2rem 1.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-purple), var(--royal-purple));
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .toc h2 {
+            text-align: center;
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .toc-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
             font-size: 1.5rem;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .toc-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .toc-content {
+            padding: 1rem 0;
+        }
+        
+        .toc-search {
+            margin: 0 1.5rem 1rem;
+            position: relative;
+        }
+        
+        .toc-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid rgba(76, 29, 149, 0.2);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .toc-search input:focus {
+            border-color: var(--gold);
         }
 
         .toc-list {
             list-style: none;
-            display: grid;
-            gap: 0.5rem;
+            padding: 0;
+            margin: 0;
         }
 
         .toc-item {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(76, 29, 149, 0.1);
+            padding: 0.8rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: relative;
+            cursor: pointer;
             transition: all 0.3s ease;
-            border-radius: 8px;
-        }
-
-        .toc-item::before {
-            content: '♫';
-            color: var(--gold);
-            font-size: 1.2rem;
-            margin-right: 1rem;
-            opacity: 0.7;
+            border-bottom: 1px solid rgba(76, 29, 149, 0.1);
         }
 
         .toc-item:hover {
             background: rgba(76, 29, 149, 0.05);
-            transform: translateX(8px);
         }
 
         .toc-title {
-            font-weight: 600;
-            color: var(--text-dark);
-            font-size: 1rem;
             flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            margin-right: 1rem;
+            line-height: 1.3;
         }
 
         .toc-chapter {
             background: linear-gradient(135deg, var(--primary-purple), var(--royal-purple));
             color: white;
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 8px rgba(76, 29, 149, 0.3);
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Dark mode TOC styles */
+        .dark-mode .toc {
+            background: rgba(26, 32, 44, 0.98);
+            border-left-color: var(--gold);
+        }
+
+        .dark-mode .toc-item:hover {
+            background: rgba(217, 119, 6, 0.1);
+        }
+
+        .dark-mode .toc-search input {
+            background: rgba(45, 55, 72, 0.8);
+            border-color: rgba(217, 119, 6, 0.3);
+            color: #e2e8f0;
+        }
+
+        .dark-mode .toc-search input::placeholder {
+            color: #94a3b8;
         }
 
         /* Main Content */
@@ -2133,6 +2209,170 @@
             display: block;
         }
 
+        /* Search Functionality */
+        .search-container {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1500;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            box-shadow: 0 8px 32px rgba(76, 29, 149, 0.15);
+            border: 1px solid rgba(76, 29, 149, 0.2);
+            display: none;
+            min-width: 400px;
+        }
+
+        .search-container.active {
+            display: block;
+        }
+
+        .search-input {
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            padding: 8px 12px;
+            outline: none;
+            width: calc(100% - 40px);
+            color: var(--text-dark);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .search-close {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-close:hover {
+            background: rgba(76, 29, 149, 0.1);
+            color: var(--primary-purple);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(76, 29, 149, 0.15);
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(76, 29, 149, 0.1);
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(76, 29, 149, 0.1);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: rgba(76, 29, 149, 0.05);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-title {
+            font-weight: 600;
+            color: var(--primary-purple);
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .search-result-excerpt {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .search-result-highlight {
+            background: rgba(217, 119, 6, 0.2);
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .search-no-results {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .dark-mode .search-container {
+            background: rgba(45, 55, 72, 0.95);
+            border-color: rgba(217, 119, 6, 0.3);
+        }
+
+        .dark-mode .search-input {
+            color: #e2e8f0;
+        }
+
+        .dark-mode .search-input::placeholder {
+            color: #94a3b8;
+        }
+
+        .dark-mode .search-results {
+            background: #2d3748;
+            border-color: rgba(217, 119, 6, 0.2);
+        }
+
+        .dark-mode .search-result-item:hover {
+            background: rgba(217, 119, 6, 0.1);
+        }
+
+        .dark-mode .search-result-excerpt {
+            color: #94a3b8;
+        }
+
+        .dark-mode .search-result-title {
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                min-width: 300px;
+                left: 10px;
+                right: 10px;
+                transform: none;
+                width: auto;
+            }
+            
+            .search-input {
+                width: calc(100% - 30px);
+                font-size: 0.9rem;
+            }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .lead-popup-content {
@@ -2501,11 +2741,25 @@
     
     <!-- Reading Controls -->
     <div class="reading-controls">
+        <button class="control-button" id="search-toggle" title="Cerca nel Libro">🔍</button>
         <button class="control-button" id="dark-mode-toggle" title="Toggle Dark Mode">🌙</button>
         <button class="control-button" id="font-size-toggle" title="Increase Font Size">A+</button>
         <button class="control-button" id="toc-toggle" title="Table of Contents">📚</button>
     </div>
     
+    <!-- Search Container -->
+    <div class="search-container" id="searchContainer">
+        <input 
+            type="text" 
+            class="search-input" 
+            id="searchInput" 
+            placeholder="Cerca argomenti, concetti o parole chiave..."
+            autocomplete="off"
+        >
+        <button class="search-close" id="searchClose">✕</button>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
     <!-- Jump to Top Button -->
     <button class="jump-to-top" id="jump-to-top" title="Jump to Top">↑</button>
     
@@ -2707,8 +2961,15 @@
 
         <!-- Table of Contents -->
         <div class="toc" id="toc">
-            <h2>Spartito del Viaggio</h2>
-            <ul class="toc-list">
+            <div class="toc-header">
+                <h2>Spartito del Viaggio</h2>
+                <button class="toc-close" id="toc-close">✕</button>
+            </div>
+            <div class="toc-content">
+                <div class="toc-search">
+                    <input type="text" id="toc-search" placeholder="Cerca capitoli..." autocomplete="off">
+                </div>
+                <ul class="toc-list">
                 
                 <li class="toc-item">
                     <span class="toc-title">La Visione – I 15 Pilastri di un Sistema AI-Driven</span>
@@ -2919,7 +3180,8 @@
                     <span class="toc-title">Epilogo Parte II: Da MVP a Global Platform – Il Viaggio Completo</span>
                     <span class="toc-chapter">Cap. 42</span>
                 </li>
-            </ul>
+                </ul>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -3103,7 +3365,20 @@
                     </div>
                 </div>
 
-                
+<p>Il framework è definito. Le fondamenta teoriche sono gettate. I 15 pilastri illuminano la via da seguire. Ma ora viene il momento della verità: <strong>come si trasforma una vision in codice funzionante?</strong></p>
+
+<p>Ogni architetto di sistema sa che il primo mattone è il più importante. Determina la stabilità di tutto ciò che verrà dopo. Nel nostro caso, questo primo mattone non era un database, né un'API, né un'interfaccia utente. Era qualcosa di molto più specifico e strategico: <strong>il nostro primo agente AI</strong>.</p>
+
+<h3># <strong>La Domanda Fondamentale: Che Tipo di Agente?</strong></h3>
+
+<p>Di fronte alla pagina bianca di VS Code, la prima domanda che ci siamo posti non è stata "quale tecnologia usare?" o "come strutturare il database?". È stata una domanda molto più strategica: <strong>che tipo di personalità AI dovevamo creare per primo?</strong></p>
+
+<p>Un agente generico, in grado di fare un po' di tutto? O un agente specializzato, esperto in un dominio specifico?</p>
+
+<p>La risposta è arrivata dal nostro <strong>Pilastro #4 (Scalabile & Auto-apprendente)</strong>. Invece di costruire un monolito intelligente, dovevamo pensare fin dall'inizio a un <strong>sistema di specialisti</strong>. Come un'azienda che assume esperti in diversi campi piuttosto che tuttofare, il nostro team AI doveva essere composto da professionisti digitali, ognuno eccellente nel proprio dominio.</p>
+
+<p>Questa decisione apparentemente semplice ha avuto implicazioni profonde su tutta l'architettura che sarebbe seguita:</p>
+
                 <table>
                     <thead>
                         <tr>
@@ -3175,17 +3450,17 @@ graph TD
     F --> G[Fine Esecuzione];
 
     subgraph "Fase 1: Preparazione"
-        B[Caricamento Contesto Task e Workspace]
-        C[Recupero Insight Rilevanti dalla Memoria]
+        B1[Caricamento Contesto Task e Workspace]
+        C1[Recupero Insight Rilevanti dalla Memoria]
     end
 
     subgraph "Fase 2: Intelligenza"
-        D[Costruzione Prompt Dinamico con Contesto e Memoria]
-        E[Chiamata all'Agente SDK di OpenAI]
+        D1[Costruzione Prompt Dinamico con Contesto e Memoria]
+        E1[Chiamata all'Agente SDK di OpenAI]
     end
 
     subgraph "Fase 3: Finalizzazione"
-        F[Controllo Qualità Preliminare e Parsing Strutturato]
+        F1[Controllo Qualità Preliminare e Parsing Strutturato]
     end
                     </div>
                 </div>
@@ -3399,19 +3674,19 @@ Spero che questo sia d'aiuto per il tuo progetto!"
 </code></pre></li>
 </ul>
 
-Questi non erano casi isolati; erano la norma. Abbiamo capito che non potevamo costruire un sistema affidabile se il nostro livello di comunicazione con l'AI era così fragile.
+<p>Questi non erano casi isolati; erano la norma. Abbiamo capito che non potevamo costruire un sistema affidabile se il nostro livello di comunicazione con l'AI era così fragile.</p>
 
-#### **La Soluzione Architetturale: Un "Sistema Immunitario" per l'Input AI**
+<h4># <strong>La Soluzione Architetturale: Un "Sistema Immunitario" per l'Input AI</strong></h4>
 
-Abbiamo smesso di considerare questi errori come bug da correggere uno per uno. Li abbiamo visti come un problema sistemico che richiedeva una soluzione architetturale: un **"Anti-Corruption Layer"** per proteggere il nostro sistema dall'imprevedibilità dell'AI.
+<p>Abbiamo smesso di considerare questi errori come bug da correggere uno per uno. Li abbiamo visti come un problema sistemico che richiedeva una soluzione architetturale: un <strong>"Anti-Corruption Layer"</strong> per proteggere il nostro sistema dall'imprevedibilità dell'AI.</p>
 
-Questa soluzione si basa su due componenti che lavorano in tandem:
+<p>Questa soluzione si basa su due componenti che lavorano in tandem:</p>
 
-**Fase 1: Il "Sanificatore" di Output (`IntelligentJsonParser`)**
+<p><strong>Fase 1: Il "Sanificatore" di Output (<code>IntelligentJsonParser</code>)</strong></p>
 
-Abbiamo creato un servizio dedicato non solo a parsare, ma a **isolare, pulire e correggere** l'output grezzo dell'LLM.
+<p>Abbiamo creato un servizio dedicato non solo a parsare, ma a <strong>isolare, pulire e correggere</strong> l'output grezzo dell'LLM.</p>
 
-*Codice di riferimento: `backend/utils/json_parser.py` (ipotetico)*
+<p><em>Codice di riferimento: <code>backend/utils/json_parser.py</code> (ipotetico)</em></p>
 
 <pre><code class="language-python">
 import re
@@ -4683,9 +4958,9 @@ graph TD
     end
     
     subgraph "Fase 3: Finalizzazione"
-        F[Il `Director` presenta il team proposto con una giustificazione strategica]
-        G[L'utente approva o il sistema auto-approva]
-        H[Gli agenti vengono salvati nel database e attivati]
+        F1[Il `Director` presenta il team proposto con una giustificazione strategica]
+        G1[L'utente approva o il sistema auto-approva]
+        H1[Gli agenti vengono salvati nel database e attivati]
     end
     </div>
 </div>
@@ -4722,9 +4997,9 @@ graph TD
     end
     
     subgraph "Fase 3: Finalizzazione"
-        F[Il `Director` presenta il team proposto con una giustificazione strategica]
-        G[L'utente approva o il sistema auto-approva]
-        H[Gli agenti vengono salvati nel database e attivati]
+        F1[Il `Director` presenta il team proposto con una giustificazione strategica]
+        G1[L'utente approva o il sistema auto-approva]
+        H1[Gli agenti vengono salvati nel database e attivati]
     end
     </div>
 </div>
@@ -4982,44 +5257,48 @@ graph TD
     </div>
 </div>
 
-<h3># <strong>"War Story": Il Test che ha Svelato la "Pigrizia" dell'AI</strong></h3>
+<h3># <strong>"War Story": Il Mistero del Tool Registry Silenzioso</strong></h3>
 
-<p>Abbiamo scritto un test per verificare che i tool funzionassero.</p>
+<p>Durante lo sviluppo del nostro <code>ToolRegistry</code>, abbiamo implementato un test critico per verificare che gli agenti usassero effettivamente i tool disponibili.</p>
 
-<p><em>Codice di riferimento: <code>tests/test_tools.py</code></em></p>
+<p><em>Codice di riferimento: <code>tests/integration/test_tools_native.py</code></em></p>
 
-<p>Il test era semplice: dare a un agente un task che <em>richiedeva</em> palesemente una ricerca web (es. "Qual è l'attuale CEO di OpenAI?") e verificare che il tool <code>websearch</code> venisse chiamato.</p>
+<p>Il test era specifico: assegnare a <code>ElenaRossi</code> (il nostro Marketing Strategist) un task che richiedeva esplicitamente tre ricerche web distinte: Microsoft earnings, Google AI announcements, e Tesla stock price. Il test monitorava sia il completamento del task che l'effettivo utilizzo dei tool.</p>
 
-<p>I primi risultati furono sconcertanti: <strong>il test falliva il 50% delle volte.</strong></p>
+<p>I primi test furono frustranti: <strong>l'agente completava il task, ma il nostro tool usage tracking mostrava 0 chiamate ai tool.</strong></p>
 
-<p><em>Logbook del Disastro (27 Luglio):</em></p>
+<p><em>Log di Debug dal Test Reale:</em></p>
 
-<pre><code class="language-text">ASSERTION FAILED: Web search tool was not called.
-AI Response: &quot;As of my last update in early 2023, the CEO of OpenAI was Sam Altman.&quot;</code></pre>
+<pre><code class="language-text">🔍 TOOL USAGE ANALYSIS:
+   'search' mentions: 8
+   Microsoft mentions: 3
+   Google mentions: 2
+   Tesla mentions: 1
+🛠️ TOOL EVIDENCE:
+   ❌ 'using'
+   ❌ 'searched'
+   ✅ 'found'
+   ✅ 'results'</code></pre>
 
-<p><strong>Il Problema:</strong> L'LLM era "pigro". Invece di ammettere di non avere informazioni aggiornate e usare il tool che gli avevamo fornito, preferiva dare una risposta basata sulla sua conoscenza interna, anche se obsoleta. Stava scegliendo la via più facile, a discapito della qualità e della veridicità.</p>
+<p><strong>Il Problema:</strong> L'agente stava producendo contenuti dettagliati su argomenti specifici, ma non c'era evidenza di tool usage nelle tracce OpenAI. L'agente utilizzava la sua conoscenza interna per "simulare" una ricerca, creando output convincenti ma potenzialmente obsoleti.</p>
 
-<p><strong>La Lezione Appresa: Bisogna <em>Forzare</em> l'Uso dei Tool</strong></p>
+<p><strong>La Lezione Appresa: Il Detective Work del Tool Debugging</strong></p>
 
-<p>Non basta <em>dare</em> un tool a un agente. Bisogna creare un ambiente e delle istruzioni che lo <strong>incentivino (o lo costringano) a usarlo</strong>.</p>
+<p>Il problema non era solo "pigrizia" dell'AI, ma una combinazione di fattori tecnici che scoprimmo attraverso debugging sistematico:</p>
 
-<p>La soluzione è stata un raffinamento del nostro prompt engineering:</p>
+<p><strong>1. Tool Registration vs Tool Invocation:</strong> I tool erano registrati correttamente nel <code>ToolRegistry</code>, ma l'SDK OpenAI non li stava invocando. Il debugging rivelò che il nostro sistema di tool registration personalizzato non era completamente compatibile con il tracing nativo di OpenAI.</p>
 
-<ol>
-<li><strong>Istruzioni Esplicite nel System Prompt:</strong> Abbiamo aggiunto una frase al prompt di sistema di ogni agente:</li>
-</ol>
+<p><strong>2. Prompt Engineering Specifico:</strong> Aggiungere istruzioni come <code>"You MUST use web search tools for each search"</code> e <code>"Do NOT make up or assume any information"</code> ha aumentato l'usage rate dal ~30% all'85%.</p>
 
-<ol>
-<li><strong>"Priming" nel Prompt del Task:</strong> Quando assegnavamo un task, abbiamo iniziato ad aggiungere un suggerimento:</li>
-</ol>
+<p><strong>3. Monitoring Granulare:</strong> Implementammo un sistema di monitoring che tracciava non solo il completion del task, ma anche specifici pattern nel testo di output per identificare quando i tool venivano realmente utilizzati vs simulati.</p>
 
-<p>Queste modifiche hanno aumentato l'utilizzo del tool dal 50% a oltre il 95%, risolvendo il problema della "pigrizia" e garantendo che i nostri agenti cercassero attivamente dati reali.</p>
+<p>Il nostro <code>test_tools_native.py</code> ora include controlli automatici per parole chiave come "using", "searched", "found", "results" per verificare l'evidenza empirica dell'uso dei tool, trasformando un test binario pass/fail in un'analisi qualitativa del comportamento degli agenti.</p>
 
 <div class="key-takeaways-section">
     <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
     <div class="key-takeaways-content"><p class="takeaway-item">✓ <strong>Gli Agenti Hanno Bisogno di Tool:</strong> Un sistema AI senza accesso a strumenti esterni è un sistema limitato e destinato a diventare obsoleto.</p>
 <p class="takeaway-item">✓ <strong>Centralizza i Tool in un Registry:</strong> Non legare i tool a agenti specifici. Un registry modulare è più scalabile e manutenibile.</p>
-<p class="takeaway-item">✓ <strong>L'AI può essere "Pigra":</strong> Non dare per scontato che un agente userà i tool che gli fornisci. Devi istruirlo e incentivarlo esplicitamente a farlo.</p>
+<p class="takeaway-item">✓ <strong>Tool Usage è Complesso:</strong> Non basta registrare i tool; devi verificare che vengano invocati, che producano risultati reali, e che l'agente li preferisca alla sua conoscenza interna.</p>
 <p class="takeaway-item">✓ <strong>Testa il <em>Comportamento</em>, non solo l'Output:</strong> I test sui tool non devono verificare solo che il tool funzioni, ma che l'agente <em>decida</em> di usarlo quando è strategicamente corretto.</p>
     </div>
 </div>
@@ -5054,6 +5333,15 @@ AI Response: &quot;As of my last update in early 2023, the CEO of OpenAI was Sam
 <h3># <strong>1. Function Tools: Trasformare il Codice in Capacità</strong></h3>
 
 <p>Questa è la forma più comune e potente di tool. Permette di trasformare <strong>qualsiasi funzione Python in una capacità che l'agente può invocare</strong>. L'SDK si occupa magicamente di analizzare la firma della funzione, i tipi degli argomenti e persino il docstring per generare uno schema che l'LLM può capire.</p>
+
+<div class="info-box">
+<p><strong>📝 Per i meno tecnici:</strong></p>
+<ul>
+<li><strong>Firma della funzione</strong>: È la "carta d'identità" di una funzione, che include il suo nome e i parametri che accetta (es. <code>def ricerca_web(query: str, num_risultati: int)</code>)</li>
+<li><strong>Docstring</strong>: È il commento descrittivo che spiega cosa fa la funzione, scritto tra triple virgolette subito dopo la dichiarazione della funzione</li>
+<li><strong>Argomenti</strong>: Sono i valori che passiamo alla funzione quando la chiamiamo (es. se chiamo <code>ricerca_web("AI news", 5)</code>, gli argomenti sono "AI news" e 5)</li>
+</ul>
+</div>
 
 <p><strong>La Decisione Architetturale: Un "Tool Registry" Centrale e Decoratori</strong></p>
 
@@ -5202,6 +5490,12 @@ strategy_agent = Agent(
 
 <p>Un agente poteva usare <code>websearch</code> per produrre un riassunto di 20 pagine su un argomento, tecnicamente corretto e privo di errori. Ma era utile? Era azionabile? O era solo un "data dump" che lasciava all'utente il vero lavoro di estrarre valore?</p>
 
+<div class="insight-box">
+<p><strong>💡 L'Analogia del Marketing: Dato vs Azione</strong></p>
+<p>Nel marketing digitale c'è una differenza abissale tra <strong>avere un dato</strong> e <strong>saper azionare quel dato</strong>. Sapere che "il 60% dei visitatori abbandona dopo 15 secondi" è un dato. Sapere che "dobbiamo ridisegnare il hero della homepage perché il messaggio non è chiaro nei primi 10 secondi" è un'azione.</p>
+<p>Il primo ti dà informazione, il secondo ti dà potere di cambiamento. La stessa logica vale per i nostri agenti AI: non basta produrre informazioni corrette, bisogna produrre <strong>insight azionabili</strong> che portano a decisioni concrete.</p>
+</div>
+
 <p>Abbiamo capito che, per rispettare il nostro <strong>Pilastro #11 (Deliverable Concreti e Azionabili)</strong>, dovevamo smettere di pensare alla qualità come a una semplice "assenza di errori". Dovevamo iniziare a misurarla in termini di <strong>valore di business</strong>.</p>
 
 <h3># <strong>La Decisione Architetturale: Un Motore di Qualità Unificato</strong></h3>
@@ -5238,9 +5532,9 @@ graph TD
     F -- Score < Soglia --> H[Rifiutato / Inviato per Revisione];
 
     subgraph "Validatori Specialistici"
-        C[Il `PlaceholderDetector` verifica l'assenza di testo generico]
-        D[L'`AIToolAwareValidator` verifica l'uso di dati reali]
-        E[L'`AssetQualityEvaluator` valuta il valore strategico]
+        C1[Il `PlaceholderDetector` verifica l'assenza di testo generico]
+        D1[L'`AIToolAwareValidator` verifica l'uso di dati reali]
+        E1[L'`AssetQualityEvaluator` valuta il valore strategico]
     end
     </div>
 </div>
@@ -5267,9 +5561,9 @@ graph TD
     F -- Score < Soglia --> H[Rifiutato / Inviato per Revisione];
 
     subgraph "Validatori Specialistici"
-        C[Il `PlaceholderDetector` verifica l'assenza di testo generico]
-        D[L'`AIToolAwareValidator` verifica l'uso di dati reali]
-        E[L'`AssetQualityEvaluator` valuta il valore strategico]
+        C1[Il `PlaceholderDetector` verifica l'assenza di testo generico]
+        D1[L'`AIToolAwareValidator` verifica l'uso di dati reali]
+        E1[L'`AssetQualityEvaluator` valuta il valore strategico]
     end
     </div>
 </div>
@@ -5337,7 +5631,25 @@ WARNING: 0 tasks have passed the quality gate in the last hour. Project stalled.
 
 <p><strong>Implementazione del "Human-in-the-Loop come Onore":</strong></p>
 
-<p>Abbiamo aggiunto una nuova dimensione all'analisi del nostro <code>HolisticQualityAssuranceAgent</code>: il <strong>"Confidence Score"</strong> e il <strong>"Risk Assessment"</strong>.</p>
+<h3># <strong>"War Story": Il Pannello dell'Interruzione Continua</strong></h3>
+
+<p>Inizialmente, avevamo implementato quello che sembrava un approccio user-friendly: un pannello integrato nel frontend che permetteva agli utenti di interagire direttamente con ogni task in corso. Il pannello mostrava un flusso costante di notifiche: <em>"Task completato - Richiede approvazione"</em>, <em>"Risultato pronto - Approvi o fornisci feedback?"</em>, <em>"Agente in attesa - Confermi l'azione?"</em>.</p>
+
+<p><em>Logbook del Disastro (30 Luglio):</em></p>
+
+<pre><code class="language-text">FRONTEND ACTIVITY LOG:
+14:23 - Notifica: "ElenaRossi ha completato analisi mercato"
+14:25 - Notifica: "LucaAnalytics richiede conferma per dataset"  
+14:26 - Notifica: "MarcoContent ha prodotto bozza email"
+14:28 - Notifica: "ElenaRossi in attesa feedback su strategia"
+
+USER FRUSTRATION SCORE: 📈 CRITICO</code></pre>
+
+<p><strong>Il Problema:</strong> Avevamo trasformato gli utenti in "approvatori a tempo pieno". Invece di lavorare sui loro compiti principali, passavano il giorno a cliccare "Approva", "Modifica", "Rifiuta" su decine di micro-decisioni. Stavamo violando clamorosamente il nostro <strong>Pilastro #7 (Autonomia e Scalabilità)</strong>.</p>
+
+<p><strong>La Rivelazione:</strong> Il problema non era tecnologico, era filosofico. Stavamo pensando al "Human-in-the-Loop" come a un processo di approvazione continua, invece che come a una <strong>supervisione strategica</strong>. Il feedback umano doveva essere un'eccezione preziosa, non la norma.</p>
+
+<p>Abbiamo quindi riprogettato completamente l'approccio, aggiungendo una nuova dimensione all'analisi del nostro <code>HolisticQualityAssuranceAgent</code>: il <strong>"Confidence Score"</strong> e il <strong>"Risk Assessment"</strong>.</p>
 
 <p><em>Codice di riferimento: Logica aggiunta al prompt del <code>HolisticQualityAssuranceAgent</code></em></p>
 
@@ -5558,6 +5870,44 @@ Sei un Editor Strategico di livello mondiale. Il tuo compito è prendere una ser
 <p>Fino a questo punto, il nostro sistema era diventato incredibilmente competente nell'eseguire task complessi. Ma soffriva ancora di una forma di amnesia digitale. Ogni nuovo progetto, ogni nuovo task, partiva da zero. Le lezioni apprese in un workspace non venivano trasferite a un altro. I successi non venivano replicati e, peggio ancora, gli errori venivano ripetuti.</p>
 
 <p>Un sistema che non impara dal proprio passato non è veramente intelligente; è solo un automa veloce. Per realizzare la nostra visione di un team AI <strong>auto-apprendente (Pilastro #4)</strong>, dovevamo costruire il componente più critico e complesso di tutti: un <strong>sistema di memoria persistente e contestuale</strong>.</p>
+
+<h3># <strong>Il Panorama dei Sistemi di Memoria AI: Una Scelta Strategica</strong></h3>
+
+<p>Prima di tuffarci nel nostro approccio specifico, è importante comprendere che il nostro sistema di memoria si inserisce in un ecosistema più ampio di soluzioni progettate per potenziare significativamente le capacità degli agenti AI. I sistemi di memoria moderni offrono tipicamente <strong>diversi approcci distinti</strong> che servono casi d'uso differenti:</p>
+
+<p><strong>1. Sistema di Memoria Basilare</strong> - Memoria integrata a breve termine, lungo termine ed entità</p>
+<p><strong>2. Memoria Esterna</strong> - Provider di memoria esterni standalone</p>
+
+<h4>**Componenti dei Sistemi di Memoria**</h4>
+
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Descrizione</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Memoria a Breve Termine</strong></td>
+<td>Memorizza temporaneamente interazioni e risultati recenti utilizzando RAG, consentendo agli agenti di ricordare e utilizzare informazioni rilevanti per il loro contesto attuale durante le esecuzioni correnti.</td>
+</tr>
+<tr>
+<td><strong>Memoria a Lungo Termine</strong></td>
+<td>Preserva insight e apprendimenti preziosi dalle esecuzioni passate, permettendo agli agenti di costruire e affinare la loro conoscenza nel tempo.</td>
+</tr>
+<tr>
+<td><strong>Memoria di Entità</strong></td>
+<td>Cattura e organizza informazioni sulle entità (persone, luoghi, concetti) incontrate durante i task, facilitando una comprensione più profonda e la mappatura delle relazioni. Utilizza RAG per memorizzare informazioni sulle entità.</td>
+</tr>
+<tr>
+<td><strong>Memoria Contestuale</strong></td>
+<td>Mantiene il contesto delle interazioni combinando Memoria a Breve Termine, Lungo Termine, Esterna e di Entità, supportando la coerenza e rilevanza delle risposte degli agenti su una sequenza di task o conversazioni.</td>
+</tr>
+</tbody>
+</table>
+
+<p>Nel nostro caso specifico, dovevamo andare oltre questi pattern standard per creare qualcosa di più strategico e orientato al business. La nostra sfida non era solo memorizzare interazioni, ma <strong>distillare saggezza azionabile</strong> dalle esperienze del team AI.</p>
 
 <h3># <strong>La Decisione Architetturale: Oltre il Semplice Database</strong></h3>
 
@@ -5928,10 +6278,10 @@ graph TD
     I -- Score >= 70% --> K[Workspace Sano];
     
     subgraph "Controlli Specifici"
-        E[Ci sono agenti in stato 'error' da troppo tempo?]
-        F[Ci sono task 'in_progress' da più di 24 ore?]
-        G[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
-        H[Ci sono anomalie o corruzioni nei dati della memoria?]
+        E1[Ci sono agenti in stato 'error' da troppo tempo?]
+        F1[Ci sono task 'in_progress' da più di 24 ore?]
+        G1[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
+        H1[Ci sono anomalie o corruzioni nei dati della memoria?]
     end
     </div>
 </div>
@@ -5961,10 +6311,10 @@ graph TD
     I -- Score >= 70% --> K[Workspace Sano];
     
     subgraph "Controlli Specifici"
-        E[Ci sono agenti in stato 'error' da troppo tempo?]
-        F[Ci sono task 'in_progress' da più di 24 ore?]
-        G[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
-        H[Ci sono anomalie o corruzioni nei dati della memoria?]
+        E1[Ci sono agenti in stato 'error' da troppo tempo?]
+        F1[Ci sono task 'in_progress' da più di 24 ore?]
+        G1[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
+        H1[Ci sono anomalie o corruzioni nei dati della memoria?]
     end
     </div>
 </div>
@@ -6096,51 +6446,34 @@ graph TD
     </div>
 </div>
 
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>subgraph "DOPO: Architettura a Motori"
-        E[Executor] --> F{UnifiedQualityEngine};
-        E --> G{UnifiedDeliverableEngine};
-        F --> H[Quality Components];
-        G --> I[Deliverable Components];
-    end
-```</h4>
-    </div>
-    
-    <div class="mermaid">
-graph TD
-    subgraph "PRIMA: Logica Frammentata"
-        A[Executor] --> B[database.py];
-        A --> C[quality_validator.py];
-        A --> D[asset_extractor.py];
-        B --> C;
-    end
-
-    subgraph "DOPO: Architettura a Motori"
-        E[Executor] --> F{UnifiedQualityEngine};
-        E --> G{UnifiedDeliverableEngine};
-        F --> H[Quality Components];
-        G --> I[Deliverable Components];
-    end
-    </div>
-</div>
-
 <h3># <strong>Il Processo di Refactoring: Un Esempio Pratico</strong></h3>
 
-<p>Prendiamo la creazione di un deliverable. Prima del refactoring, il nostro <code>Executor</code> doveva:
-1.  Chiamare <code>database.py</code> per ottenere i task completati.
-2.  Chiamare <code>concrete_asset_extractor.py</code> per estrarre gli asset.
-3.  Chiamare <code>deliverable_assembly.py</code> per assemblare il contenuto.
-4.  Chiamare <code>unified_quality_engine.py</code> per validare il risultato.
-5.  Infine, chiamare di nuovo <code>database.py</code> per salvare il deliverable.</p>
+<p>Prendiamo la creazione di un deliverable. Prima del refactoring, il nostro <code>Executor</code> doveva:</p>
 
-<p>L'Executor conosceva troppi dettagli implementativi. Era un'architettura fragile.</p>
+<ol>
+<li>Chiamare <code>database.py</code> per ottenere i task completati.</li>
+<li>Chiamare <code>concrete_asset_extractor.py</code> per estrarre gli asset.</li>
+<li>Chiamare <code>deliverable_assembly.py</code> per assemblare il contenuto.</li>
+<li>Chiamare <code>unified_quality_engine.py</code> per validare il risultato.</li>
+<li>Infine, chiamare di nuovo <code>database.py</code> per salvare il deliverable.</li>
+</ol>
+
+<p><strong>Il Problema Architetturale: Violazione della Separazione delle Responsabilità</strong></p>
+
+<p>L'Executor conosceva troppi dettagli implementativi. Era un'architettura fragile, ma soprattutto era un esempio perfetto di quello che nell'ingegneria del software chiamiamo <strong>"violazione del principio di astrazione"</strong>.</p>
+
+<p>Quando un layer del sistema conosce troppe logiche specifiche dei layer sottostanti, stiamo commettendo un errore fondamentale. È come se un CEO dovesse sapere esattamente come ogni dipendente svolge il proprio lavoro quotidiano: non solo è inefficiente, ma rende il sistema incredibilmente rigido e difficile da modificare.</p>
+
+<p><strong>Perché questo è un problema critico?</strong></p>
+
+<ul>
+<li><strong>Fragilità:</strong> Ogni modifica a un componente specifico richiede modifiche anche all'Executor</li>
+<li><strong>Testing Nightmare:</strong> Per testare l'Executor dobbiamo mockare 5+ componenti diversi</li>
+<li><strong>Cognitive Load:</strong> Chi mantiene l'Executor deve capire i dettagli di ogni singolo sottosistema</li>
+<li><strong>Impossibile Refactoring:</strong> Cambiare l'implementazione interna di un componente rompe tutto</li>
+</ul>
+
+<p>La regola d'oro dell'architettura software è: <strong>"Ogni layer dovrebbe sapere solo quello che è strettamente necessario per il suo compito"</strong>. Nel nostro caso, l'Executor dovrebbe sapere solo "crea un deliverable", non "come" crearlo passo per passo.</p>
 
 <p>Dopo il refactoring, il processo è diventato incredibilmente più semplice e robusto:</p>
 
@@ -16807,6 +17140,25 @@ Per complex systems:
             // TOC toggle
             const tocBtn = document.getElementById('toc-toggle');
             tocBtn.addEventListener('click', toggleTOC);
+            
+            // Search functionality
+            const searchBtn = document.getElementById('search-toggle');
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchInput');
+            const searchClose = document.getElementById('searchClose');
+            const searchResults = document.getElementById('searchResults');
+            
+            searchBtn.addEventListener('click', toggleSearch);
+            searchClose.addEventListener('click', closeSearch);
+            searchInput.addEventListener('input', handleSearch);
+            searchInput.addEventListener('keydown', handleSearchKeydown);
+            
+            // Close search when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchContainer.contains(e.target) && !searchBtn.contains(e.target)) {
+                    closeSearch();
+                }
+            });
         }
         
         function toggleDarkMode() {
@@ -16831,7 +17183,40 @@ Per complex systems:
         
         function toggleTOC() {
             const toc = document.getElementById('toc');
-            toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const tocClose = document.getElementById('toc-close');
+            
+            toc.classList.toggle('active');
+            
+            // Add close button functionality
+            if (!tocClose.onclick) {
+                tocClose.onclick = function() {
+                    toc.classList.remove('active');
+                };
+            }
+            
+            // Add TOC search functionality
+            const tocSearch = document.getElementById('toc-search');
+            if (!tocSearch.oninput) {
+                tocSearch.oninput = function() {
+                    filterTOC(this.value);
+                };
+            }
+        }
+        
+        function filterTOC(query) {
+            const tocItems = document.querySelectorAll('.toc-item');
+            const searchLower = query.toLowerCase();
+            
+            tocItems.forEach(item => {
+                const title = item.querySelector('.toc-title').textContent.toLowerCase();
+                const chapter = item.querySelector('.toc-chapter').textContent.toLowerCase();
+                
+                if (title.includes(searchLower) || chapter.includes(searchLower)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
         }
         
         // Bookmark System
@@ -17149,6 +17534,124 @@ Per complex systems:
                 timeout = setTimeout(later, wait);
             };
         }
+
+        // Search Functionality
+        function toggleSearch() {
+            const searchContainer = document.getElementById('searchContainer');
+            const searchInput = document.getElementById('searchInput');
+            const isActive = searchContainer.classList.contains('active');
+            
+            if (isActive) {
+                closeSearch();
+            } else {
+                searchContainer.classList.add('active');
+                searchInput.focus();
+            }
+        }
+        
+        function closeSearch() {
+            const searchContainer = document.getElementById('searchContainer');
+            const searchResults = document.getElementById('searchResults');
+            const searchInput = document.getElementById('searchInput');
+            
+            searchContainer.classList.remove('active');
+            searchResults.classList.remove('active');
+            searchInput.value = '';
+        }
+        
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const searchResults = document.getElementById('searchResults');
+            
+            if (query.length < 2) {
+                searchResults.classList.remove('active');
+                return;
+            }
+            
+            const results = performSearch(query);
+            displaySearchResults(results, query);
+        }
+        
+        function handleSearchKeydown(e) {
+            if (e.key === 'Escape') {
+                closeSearch();
+            } else if (e.key === 'Enter') {
+                const firstResult = document.querySelector('.search-result-item');
+                if (firstResult) {
+                    firstResult.click();
+                }
+            }
+        }
+        
+        function performSearch(query) {
+            const content = document.querySelector('.book-content');
+            if (!content) return [];
+            
+            const results = [];
+            const regex = new RegExp(query, 'gi');
+            const chapters = content.querySelectorAll('[id^="chapter-"]');
+            
+            chapters.forEach((chapter, index) => {
+                const text = chapter.textContent;
+                const matches = text.match(regex);
+                if (matches) {
+                    const chapterNumber = index + 1;
+                    const excerpt = extractExcerpt(text, query, 150);
+                    results.push({
+                        id: chapter.id,
+                        title: `Capitolo ${chapterNumber}`,
+                        excerpt: excerpt,
+                        matches: matches.length
+                    });
+                }
+            });
+            
+            return results.sort((a, b) => b.matches - a.matches).slice(0, 10);
+        }
+        
+        function extractExcerpt(text, query, maxLength) {
+            const regex = new RegExp(query, 'gi');
+            const match = regex.exec(text);
+            if (!match) return '';
+            
+            const start = Math.max(0, match.index - 50);
+            const end = Math.min(text.length, match.index + maxLength);
+            let excerpt = text.slice(start, end);
+            
+            if (start > 0) excerpt = '...' + excerpt;
+            if (end < text.length) excerpt = excerpt + '...';
+            
+            return excerpt.replace(regex, '<span class="search-result-highlight">$&</span>');
+        }
+        
+        function displaySearchResults(results, query) {
+            const searchResults = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-no-results">Nessun risultato trovato</div>';
+                searchResults.classList.add('active');
+                return;
+            }
+            
+            const resultsHTML = results.map(result => `
+                <div class="search-result-item" onclick="scrollToElement('${result.id}'); closeSearch();">
+                    <div class="search-result-title">${result.title}</div>
+                    <div class="search-result-excerpt">${result.excerpt}</div>
+                </div>
+            `).join('');
+            
+            searchResults.innerHTML = resultsHTML;
+            searchResults.classList.add('active');
+        }
+
+        // Global keyboard shortcut for search
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+F or Cmd+F to open search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                toggleSearch();
+            }
+        });
     </script>
 </body>
 </html>
