@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Team Orchestrator - From MVP to Global Platform | The Complete Journey</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-VEGK4VZMG0');
+    </script>
+    <meta name="description" content="From the chaos of isolated agents to an autonomous AI system that learns and self-corrects. The first strategic manual for intelligent system architects.">
+    
+    <!-- SEO and Social Media -->
+    <meta name="author" content="Daniele Pelleri">
+    <meta name="copyright" content="© 2025 Daniele Pelleri. All rights reserved.">
+    <meta name="keywords" content="AI, orchestrator, agents, MVP, platform, journey, Daniele Pelleri, AI systems">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="">
+    <meta property="og:title" content="AI Team Orchestrator - From MVP to Global Platform">
+    <meta property="og:description" content="From the chaos of isolated agents to an autonomous AI system that learns and self-corrects. The first strategic manual for intelligent system architects.">
+    <meta property="og:image" content="">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="">
+    <meta property="twitter:title" content="AI Team Orchestrator - From MVP to Global Platform">
+    <meta property="twitter:description" content="From the chaos of isolated agents to an autonomous AI system that learns and self-corrects.">
+    <meta property="twitter:image" content="">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-purple: #4c1d95;
+            --deep-purple: #312e81;
+            --royal-purple: #5b21b6;
+            --gold: #d97706;
+            --bright-gold: #f59e0b;
+            --text-dark: #1e1b4b;
+            --text-medium: #475569;
+            --text-light: #64748b;
+            --bg-light: #fefbff;
+            --bg-white: #ffffff;
+            --bg-purple-light: rgba(76, 29, 149, 0.05);
+            --border-light: #e2e8f0;
+            --success-green: #10b981;
+            --warning-orange: #f97316;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: var(--bg-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--deep-purple) 50%, var(--royal-purple) 100%);
+            color: white;
+            padding: 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400"><path d="M0 200 Q200 150 400 200 T800 200" stroke="%23f59e0b" stroke-width="2" fill="none" opacity="0.2"/><path d="M0 220 Q200 170 400 220 T800 220" stroke="%23f59e0b" stroke-width="1.5" fill="none" opacity="0.15"/></svg>');
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .professional-badge {
+            background: rgba(76, 29, 149, 0.1);
+            color: var(--primary-purple);
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            display: inline-block;
+            border: 1px solid var(--primary-purple);
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .hero .subtitle {
+            font-size: 1.4rem;
+            line-height: 1.5;
+            margin-bottom: 3rem;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, var(--gold), var(--bright-gold));
+            color: var(--text-dark);
+            padding: 1.25rem 3rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(217, 119, 6, 0.3);
+            margin-right: 1rem;
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(217, 119, 6, 0.4);
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: white;
+            padding: 1.25rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: 2px solid var(--gold);
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .cta-secondary:hover {
+            background: var(--gold);
+            color: var(--text-dark);
+        }
+
+        /* Social Proof */
+        .social-proof {
+            background: var(--bg-white);
+            padding: 3rem 0;
+            text-align: center;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .credibility-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--gold);
+            font-family: 'Playfair Display', serif;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--text-medium);
+            font-weight: 600;
+        }
+
+        /* Problem Section */
+        .problem-section {
+            background: linear-gradient(135deg, #fef2f2, #fefbff);
+            padding: 4rem 0;
+        }
+
+        .problem-hook {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .problem-hook h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            color: var(--primary-purple);
+            margin-bottom: 1.5rem;
+        }
+
+        .pain-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .pain-point {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 5px solid var(--warning-orange);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .pain-point h4 {
+            color: var(--warning-orange);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Solution Section */
+        .solution-section {
+            background: var(--bg-white);
+            padding: 4rem 0;
+        }
+
+        .solution-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-bottom: 4rem;
+        }
+
+        .solution-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            color: var(--primary-purple);
+            margin-bottom: 2rem;
+        }
+
+        .solution-benefits {
+            list-style: none;
+            margin: 2rem 0;
+        }
+
+        .solution-benefits li {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .solution-benefits li::before {
+            content: '✅';
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .book-preview {
+            background: var(--bg-purple-light);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 2px solid var(--gold);
+            position: relative;
+        }
+
+        .book-cover-placeholder {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, var(--primary-purple), var(--royal-purple));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+            flex-direction: column;
+        }
+
+        /* What You'll Learn */
+        .learn-section {
+            background: var(--bg-purple-light);
+            padding: 4rem 0;
+        }
+
+        .learn-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            color: var(--primary-purple);
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .learning-modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .module {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            background-image: linear-gradient(var(--bg-white), var(--bg-white)), 
+                             linear-gradient(135deg, var(--gold), var(--primary-purple));
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            box-shadow: 0 4px 12px rgba(76, 29, 149, 0.1);
+        }
+
+        .module h4 {
+            color: var(--primary-purple);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .module-chapters {
+            color: var(--text-medium);
+            font-size: 0.9rem;
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+
+        /* Target Audience */
+        .audience-section {
+            background: var(--bg-white);
+            padding: 4rem 0;
+        }
+
+        .audience-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .audience-card {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 12px;
+            background: var(--bg-purple-light);
+            border: 2px solid var(--border-light);
+            transition: all 0.3s ease;
+        }
+
+        .audience-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-5px);
+        }
+
+        .audience-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .audience-card h4 {
+            color: var(--primary-purple);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        /* Author Section */
+        .author-section {
+            background: linear-gradient(135deg, var(--primary-purple), var(--deep-purple));
+            color: white;
+            padding: 4rem 0;
+        }
+
+        .author-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .author-photo {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            margin: 0 auto;
+            overflow: hidden;
+            border: 4px solid var(--gold);
+            box-shadow: 0 8px 25px rgba(217, 119, 6, 0.3);
+        }
+
+        .author-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .author-bio h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .author-credentials {
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            background: var(--bg-white);
+            padding: 4rem 0;
+        }
+
+        .faq-item {
+            background: var(--bg-purple-light);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--gold);
+        }
+
+        .faq-question {
+            font-weight: 700;
+            color: var(--primary-purple);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Footer CTA */
+        .footer-cta {
+            background: linear-gradient(135deg, var(--primary-purple), var(--royal-purple));
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .footer-cta h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* New Sections CSS */
+        .methodology-section {
+            background: var(--bg-purple-light);
+            padding: 4rem 0;
+        }
+
+        .methodology-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .method-item {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--border-light);
+            transition: all 0.3s ease;
+        }
+
+        .method-item:hover {
+            border-color: var(--gold);
+            transform: translateY(-2px);
+        }
+
+        .method-item h4 {
+            color: var(--primary-purple);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .simple-pricing {
+            background: var(--bg-light);
+            padding: 3rem 0;
+            text-align: center;
+        }
+
+        .pricing-card {
+            background: var(--bg-white);
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 2.5rem;
+            border-radius: 16px;
+            border: 2px solid var(--gold);
+            box-shadow: 0 8px 25px rgba(217, 119, 6, 0.1);
+        }
+
+        .pricing-card h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary-purple);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .price {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--gold);
+            margin: 1rem 0;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .note {
+            font-size: 0.9rem;
+            color: var(--text-medium);
+            font-style: italic;
+            margin-top: 1.5rem;
+        }
+
+        .chapters-preview {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--gold);
+        }
+
+        .chapters-preview h4 {
+            color: var(--primary-purple);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+
+        .chapter-list {
+            margin-bottom: 1rem;
+        }
+
+        .preview-chapter {
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--bg-purple-light);
+            border-radius: 8px;
+            border-left: 3px solid var(--gold);
+            font-size: 0.95rem;
+        }
+
+        .primary-target {
+            border: 2px solid var(--gold);
+            position: relative;
+        }
+
+        .primary-target::before {
+            content: '🎯 Primary Target';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gold);
+            color: var(--text-dark);
+            padding: 0.25rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 20px;
+        }
+
+        .secondary-target {
+            border: 2px solid var(--border-light);
+        }
+
+        /* Language Switcher */
+        .language-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            padding: 10px 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .language-switcher select {
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .solution-grid,
+            .author-content {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .cta-primary,
+            .cta-secondary {
+                display: block;
+                margin-bottom: 1rem;
+                text-align: center;
+                margin-right: 0;
+            }
+            
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .credibility-stats {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .learning-modules {
+                grid-template-columns: 1fr;
+            }
+            
+            .audience-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .methodology-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card {
+                margin: 0 1rem;
+                padding: 2rem;
+            }
+
+            .primary-target::before {
+                font-size: 0.7rem;
+                padding: 0.2rem 0.8rem;
+            }
+
+            .author-photo {
+                width: 200px;
+                height: 200px;
+            }
+
+            .language-switcher {
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <select onchange="switchLanguage(this.value)">
+            <option value="en">🇬🇧 EN</option>
+            <option value="it">🇮🇹 IT</option>
+            <option value="es" disabled>🇪🇸 ES (Soon)</option>
+            <option value="fr" disabled>🇫🇷 FR (Soon)</option>
+        </select>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="professional-badge">
+                    📚 Documented Journey: From Idea to Production System
+                </div>
+                
+                <h1>AI Team Orchestrator</h1>
+                
+                <p class="subtitle">
+                    The complete, tested architecture for building AI systems that <strong>truly scale</strong>.<br>
+                    From lessons learned transforming an MVP into a platform serving thousands of users.
+                </p>
+                
+                <div class="cta-buttons">
+                    <a href="book.html" class="cta-primary">📖 Read the Book (Free)</a>
+                    <a href="#preview" class="cta-secondary">🔍 See the Content</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof -->
+    <section class="social-proof">
+        <div class="container">
+            <div class="credibility-stats">
+                <div class="stat-item">
+                    <div class="stat-number">15K+</div>
+                    <div class="stat-label">Tasks processed by the production system</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">60%</div>
+                    <div class="stat-label">Measured AI cost reduction</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Downtime in 8 months of production</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem-section">
+        <div class="container">
+            <div class="problem-hook">
+                <h2>The Real Challenges of AI in Production</h2>
+                <p style="font-size: 1.2rem; color: var(--text-medium); max-width: 800px; margin: 0 auto;">
+                    After working with dozens of development teams, these are the most common failure patterns when trying to bring multi-agent AI systems to production.
+                </p>
+            </div>
+            
+            <div class="pain-points">
+                <div class="pain-point">
+                    <h4>🔧 Orchestration Problems</h4>
+                    <p>Coordinating multiple agents becomes exponentially complex. Without a solid architecture, the system becomes unmanageable after the third agent and produces inconsistent results.</p>
+                </div>
+                
+                <div class="pain-point">
+                    <h4>⚡ Fragile Scalability</h4>
+                    <p>The system works perfectly with 1-2 agents, but adding the third or fourth creates infinite loops, duplications, and conflicts that make the output unreliable.</p>
+                </div>
+                
+                <div class="pain-point">
+                    <h4>🔄 Lack of Memory</h4>
+                    <p>The system doesn't learn from previous experiences. Every task starts from scratch, without benefiting from lessons learned, creating systematic inefficiencies.</p>
+                </div>
+                
+                <div class="pain-point">
+                    <h4>💸 Unpredictable Costs</h4>
+                    <p>Without architectural optimizations, API costs grow non-linearly with usage. Redundant calls and system inefficiency make scaling economically unsustainable.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="solution-section">
+        <div class="container">
+            <div class="solution-grid">
+                <div class="solution-content">
+                    <h2>From MVP to Global Platform: The Real Journey</h2>
+                    
+                    <p style="font-size: 1.2rem; color: var(--text-medium); margin-bottom: 2rem;">
+                        This isn't another prompt engineering tutorial. It's the <strong>logbook</strong> of how we built the first AI system that really works in production: from a simple idea to a platform serving thousands of users.
+                    </p>
+                    
+                    <ul class="solution-benefits">
+                        <li><strong>Intelligent Memory System</strong> that transforms every error into a permanent lesson</li>
+                        <li><strong>AI-First Quality Gates</strong> that eliminate generic content and placeholders</li>
+                        <li><strong>Autonomous Orchestrator</strong> that coordinates agent teams without manual intervention</li>
+                        <li><strong>Universal Architecture</strong> that works in any sector, from finance to fitness</li>
+                        <li><strong>Tested Scalability</strong> from prototype to millions of requests per month</li>
+                    </ul>
+                    
+                    <p style="font-style: italic; color: var(--primary-purple);">
+                        "We're not building AI tools. We're building a digital organization that thinks, collaborates, and improves."
+                    </p>
+                </div>
+                
+                <div class="book-preview" id="preview">
+                    <div class="chapters-preview">
+                        <h4>Content Preview</h4>
+                        <div class="chapter-list">
+                            <div class="preview-chapter">
+                                <strong>Ch 5:</strong> The Architectural Fork – SDK vs Direct APIs
+                            </div>
+                            <div class="preview-chapter">
+                                <strong>Ch 12:</strong> Quality Gates and Human-in-the-Loop
+                            </div>
+                            <div class="preview-chapter">
+                                <strong>Ch 14:</strong> The Intelligent Memory System
+                            </div>
+                            <div class="preview-chapter">
+                                <strong>Ch 28:</strong> Load Testing and Circuit Breakers
+                            </div>
+                            <div class="preview-chapter">
+                                <strong>Ch 35:</strong> Semantic Caching for Performance
+                            </div>
+                            <div class="preview-chapter">
+                                <strong>Ch 41:</strong> Global Scale Architecture
+                            </div>
+                        </div>
+                        <p style="font-style: italic; margin-top: 1rem; color: var(--text-medium);">
+                            + 36 other chapters with architectures, code, and war stories
+                        </p>
+                    </div>
+                    <p style="text-align: center; font-weight: 600; color: var(--primary-purple); margin-top: 1.5rem;">
+                        42 Chapters • 5 Appendices • 62,000 words<br>
+                        <span style="color: var(--gold); font-size: 0.9rem;">Tested architectures • Production-ready code</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What You'll Learn -->
+    <section class="learn-section">
+        <div class="container">
+            <h2>The Journey Nobody Else Tells</h2>
+            
+            <div class="learning-modules">
+                <div class="module">
+                    <h4>🏗️ The Architecture That Really Scales</h4>
+                    <div class="module-chapters">Chapters 1-8</div>
+                    <p>How we went from a single agent to a coordinated team handling thousands of parallel tasks, avoiding the trap of "everything breaks if one agent fails".</p>
+                </div>
+                
+                <div class="module">
+                    <h4>🎼 Intelligent Orchestration</h4>
+                    <div class="module-chapters">Chapters 9-16</div>
+                    <p>The secret to coordinating specialized agents: from the AI Recruiter that assembles dynamic teams to the Memory System that learns from every interaction.</p>
+                </div>
+                
+                <div class="module">
+                    <h4>✅ Quality Gates and Real Data Enforcement</h4>
+                    <div class="module-chapters">Chapters 17-24</div>
+                    <p>The strategies and <strong>exact prompts</strong> we use to ensure the system produces only concrete deliverables, eliminating placeholders and generic content.</p>
+                </div>
+                
+                <div class="module">
+                    <h4>🌐 From B2B to Fitness: The Universal Approach</h4>
+                    <div class="module-chapters">Chapters 25-32</div>
+                    <p>How we freed the system from the tyranny of specific domains, creating logic that works for <strong>any business sector</strong>.</p>
+                </div>
+                
+                <div class="module">
+                    <h4>🚀 Production Readiness & Scale</h4>
+                    <div class="module-chapters">Chapters 33-40</div>
+                    <p>Load testing, semantic caching, circuit breakers: everything needed to go from prototype to production without disasters.</p>
+                </div>
+                
+                <div class="module">
+                    <h4>🌍 Global Scale Architecture</h4>
+                    <div class="module-chapters">Chapters 41-42 + Appendices</div>
+                    <p>The epilogue: how the system grew to serve global users, lessons learned, and the roadmap for the future of autonomous AI.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Target Audience -->
+    <section class="audience-section">
+        <div class="container">
+            <h2 style="text-align: center; font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--primary-purple); margin-bottom: 3rem;">
+                Who Is This Journey For?
+            </h2>
+            
+            <div class="audience-grid">
+                <div class="audience-card primary-target">
+                    <div class="audience-icon">👨‍💻</div>
+                    <h4>Senior Developers & System Architects</h4>
+                    <p>You're building complex AI systems and want to avoid the most common failure patterns. You're looking for tested architectures that truly scale in production.</p>
+                </div>
+                
+                <div class="audience-card secondary-target">
+                    <div class="audience-icon">🎯</div>
+                    <h4>Technical Leaders & Engineering Managers</h4>
+                    <p>You need to guide teams in developing AI products. You want a clear roadmap and architectural decisions validated by real experiences.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Methodology Section -->
+    <section class="methodology-section">
+        <div class="container">
+            <h2 style="text-align: center; font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--primary-purple); margin-bottom: 3rem;">
+                How This Journey Was Born
+            </h2>
+            <div class="methodology-grid">
+                <div class="method-item">
+                    <h4>📝 Real-Time Documentation</h4>
+                    <p>Every architectural decision was documented during implementation, not after. Includes failures, pivots, and lessons learned in the field.</p>
+                </div>
+                <div class="method-item">
+                    <h4>🔬 Production Testing</h4>
+                    <p>All solutions were validated on a real system with real users, real traffic, and concrete business constraints.</p>
+                </div>
+                <div class="method-item">
+                    <h4>📈 Concrete Metrics</h4>
+                    <p>Every optimization includes measured results: response times, costs, downtime, user feedback. Data, not opinions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Simple Pricing Section -->
+    <section class="simple-pricing">
+        <div class="container">
+            <div class="pricing-card">
+                <h3>Complete Journey Access</h3>
+                <div class="price">Free</div>
+                <p>The complete book is available for immediate reading. Includes all architectures, code, and documented war stories.</p>
+                <a href="book.html" class="cta-primary">
+                    📖 Read the Book (Free)
+                </a>
+                <div class="note">
+                    If you find value in the content, consider supporting the work with feedback or sharing
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Author Section -->
+    <section class="author-section">
+        <div class="container">
+            <div class="author-content">
+                <div class="author-photo">
+                    <img src="https://cdn.prod.website-files.com/62da9275694c9587befcb763/62da950bfd3268562e232c3a_daniele_pelleri-p-1080.jpg" 
+                         alt="Daniele Pelleri - Digital Innovation Manager and Founder" 
+                         loading="lazy">
+                </div>
+                
+                <div class="author-bio">
+                    <h3>Daniele Pelleri</h3>
+                    <div class="author-credentials">Senior Manager • Digital Business Innovation • Entrepreneur</div>
+                    
+                    <p style="margin-bottom: 1.5rem;">
+                        "I've spent years building systems that didn't just need to work, but <strong>scale, learn, and survive the real world</strong>."
+                    </p>
+                    
+                    <p style="margin-bottom: 1.5rem;">
+                        After founding and managing SaaS companies, I realized that the real value of AI isn't in the technology, but in <strong>intelligent orchestration</strong>. This book comes from the real journey of transformation from MVP to global platform.
+                    </p>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+                        <div style="background: var(--gold); color: var(--text-dark); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;">
+                            🚀 Founder/CEO AppsBuilder
+                        </div>
+                        <div style="background: var(--gold); color: var(--text-dark); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;">
+                            💼 Digital Innovation Manager
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-section">
+        <div class="container">
+            <h2 style="text-align: center; font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--primary-purple); margin-bottom: 3rem;">
+                Frequently Asked Questions
+            </h2>
+            
+            <div class="faq-item">
+                <div class="faq-question">Is it just theory or are there practical examples?</div>
+                <div class="faq-answer">This book is the opposite of theory. It's a "documented journey" with real war stories, production-ready code, and architectures tested on systems serving thousands of real users.</div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">Does it work only with OpenAI or also with other providers?</div>
+                <div class="faq-answer">The architecture is provider-agnostic. We use OpenAI in examples, but the principles apply to any LLM (Claude, Gemini, open-source models, future technologies).</div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">How technical is it? Do you need specific experience?</div>
+                <div class="faq-answer">Written for experienced developers and managers. Assumes familiarity with Python and APIs, but explains all AI-specific concepts. If you can make a REST call, you're ready.</div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question">Is it updated with the latest AI technologies?</div>
+                <div class="faq-answer">The book is based on architectural principles that transcend specific technologies. What worked with GPT-3 still works with GPT-4 and will work with future models.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer CTA -->
+    <section class="footer-cta">
+        <div class="container">
+            <h2>Start Your Journey Towards Autonomous AI</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Every day you wait, your competitors get closer. Orchestrated AI isn't science fiction: it's engineering. And this book is your map.
+            </p>
+            <a href="book.html" class="cta-primary" style="font-size: 1.3rem; padding: 1.5rem 4rem;">
+                📖 Read the Book (FREE)
+            </a>
+            
+            <div style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
+                <p>📖 Available immediately • 📱 Mobile optimized • ⌨️ Advanced navigation</p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Language switcher
+        function switchLanguage(lang) {
+            localStorage.setItem('preferred_language', lang);
+            
+            // Analytics tracking
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'language_selected', {
+                    'selected_language': lang,
+                    'method': 'manual'
+                });
+            }
+            
+            if (lang === 'es' || lang === 'fr') {
+                alert('This language will be available soon! / Esta lingua estará disponible pronto! / Cette langue sera bientôt disponible!');
+                return;
+            }
+            
+            // Handle local file system vs production paths
+            const isLocalFile = window.location.protocol === 'file:';
+            
+            if (isLocalFile) {
+                // For local development - use relative paths
+                if (lang === 'it') {
+                    window.location.href = '../it/index.html';
+                } else if (lang === 'en') {
+                    window.location.href = './index.html';
+                }
+            } else {
+                // For production - use absolute paths  
+                window.location.href = `/${lang}/`;
+            }
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Add interactive hover effects
+        const ctaButtons = document.querySelectorAll('.cta-primary, .cta-secondary');
+        ctaButtons.forEach(button => {
+            button.addEventListener('mouseover', function() {
+                if (this.classList.contains('cta-primary')) {
+                    this.style.transform = 'scale(1.05) translateY(-2px)';
+                }
+            });
+            
+            button.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1) translateY(0)';
+            });
+        });
+
+        // Animate stats on scroll
+        const observerOptions = {
+            threshold: 0.5,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const statNumbers = entry.target.querySelectorAll('.stat-number');
+                    statNumbers.forEach(stat => {
+                        const finalNumber = stat.textContent;
+                        stat.style.animation = 'none';
+                        stat.offsetHeight; // Trigger reflow
+                        stat.style.animation = 'pulse 1s ease-in-out';
+                    });
+                }
+            });
+        }, observerOptions);
+
+        const socialProof = document.querySelector('.social-proof');
+        if (socialProof) {
+            observer.observe(socialProof);
+        }
+
+        // Add dynamic copyright year
+        const currentYear = new Date().getFullYear();
+        const copyrightElements = document.querySelectorAll('[data-copyright]');
+        copyrightElements.forEach(el => {
+            el.textContent = el.textContent.replace('2025', currentYear);
+        });
+    </script>
+</body>
+</html>

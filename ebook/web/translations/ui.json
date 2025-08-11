@@ -1,0 +1,211 @@
+{
+  "nav": {
+    "it": {
+      "previousChapter": "← Capitolo Precedente",
+      "nextChapter": "Capitolo Successivo →",
+      "tableOfContents": "Indice",
+      "darkMode": "Modalità Scura",
+      "fontSize": "Dimensione Testo",
+      "jumpToTop": "Torna su",
+      "bookmarks": "Segnalibri"
+    },
+    "en": {
+      "previousChapter": "← Previous Chapter",
+      "nextChapter": "Next Chapter →",
+      "tableOfContents": "Table of Contents", 
+      "darkMode": "Dark Mode",
+      "fontSize": "Font Size",
+      "jumpToTop": "Back to Top",
+      "bookmarks": "Bookmarks"
+    },
+    "es": {
+      "previousChapter": "← Capítulo Anterior",
+      "nextChapter": "Siguiente Capítulo →",
+      "tableOfContents": "Índice",
+      "darkMode": "Modo Oscuro", 
+      "fontSize": "Tamaño de Fuente",
+      "jumpToTop": "Volver Arriba",
+      "bookmarks": "Marcadores"
+    },
+    "fr": {
+      "previousChapter": "← Chapitre Précédent",
+      "nextChapter": "Chapitre Suivant →",
+      "tableOfContents": "Table des Matières",
+      "darkMode": "Mode Sombre",
+      "fontSize": "Taille de Police", 
+      "jumpToTop": "Retour en Haut",
+      "bookmarks": "Signets"
+    }
+  },
+  
+  "progress": {
+    "it": {
+      "chapter": "Capitolo",
+      "of": "di",
+      "completed": "completato",
+      "reading": "Lettura in corso...",
+      "finished": "Terminato!"
+    },
+    "en": {
+      "chapter": "Chapter",
+      "of": "of", 
+      "completed": "completed",
+      "reading": "Reading in progress...",
+      "finished": "Finished!"
+    },
+    "es": {
+      "chapter": "Capítulo",
+      "of": "de",
+      "completed": "completado", 
+      "reading": "Leyendo...",
+      "finished": "¡Terminado!"
+    },
+    "fr": {
+      "chapter": "Chapitre",
+      "of": "de",
+      "completed": "terminé",
+      "reading": "Lecture en cours...",
+      "finished": "Terminé!"
+    }
+  },
+
+  "leadForm": {
+    "it": {
+      "title": "📋 Il Classico Form di Raccolta Contatto",
+      "intro": "Ecco, questo è il classico form di raccolta contatto. Non lo userò per spam, tranquillo, ma io devo sapere e vorrei capire a chi lo dono per raffinare il libro successivo! 😊",
+      "name": "Nome",
+      "email": "Email",
+      "role": "Il tuo ruolo (opzionale)",
+      "challenge": "La tua sfida principale con l'AI? (opzionale)",
+      "gdprConsent": "Acconsento al trattamento dei miei dati personali secondo il GDPR",
+      "marketingConsent": "Voglio ricevere aggiornamenti sui prossimi libri (promesso: max 1 email al mese!)",
+      "submit": "📨 Invia (e continua a leggere!)",
+      "success": "🎉 Grazie mille!",
+      "successMessage": "I tuoi dati sono salvati. Continua pure la lettura - ci sentiamo presto per migliorare insieme il prossimo libro!",
+      "continue": "Continua a Leggere"
+    },
+    "en": {
+      "title": "📋 The Classic Contact Collection Form",
+      "intro": "Here it is, the classic contact collection form. I won't use it for spam, don't worry, but I need to know and would like to understand who I'm giving this to in order to refine the next book! 😊",
+      "name": "Name",
+      "email": "Email", 
+      "role": "Your role (optional)",
+      "challenge": "Your main AI challenge? (optional)",
+      "gdprConsent": "I consent to the processing of my personal data according to GDPR",
+      "marketingConsent": "I want to receive updates on upcoming books (promise: max 1 email per month!)",
+      "submit": "📨 Submit (and keep reading!)",
+      "success": "🎉 Thank you!",
+      "successMessage": "Your data is saved. Continue reading - we'll be in touch soon to improve the next book together!",
+      "continue": "Keep Reading"
+    },
+    "es": {
+      "title": "📋 El Clásico Formulario de Recolección de Contactos",
+      "intro": "Aquí está, el clásico formulario de recolección de contactos. No lo usaré para spam, tranquilo, ¡pero necesito saber y me gustaría entender a quién se lo doy para refinar el próximo libro! 😊",
+      "name": "Nombre",
+      "email": "Email",
+      "role": "Tu rol (opcional)",
+      "challenge": "¿Tu principal desafío con la IA? (opcional)",
+      "gdprConsent": "Consiento el procesamiento de mis datos personales según el GDPR",
+      "marketingConsent": "Quiero recibir actualizaciones sobre próximos libros (promesa: ¡máximo 1 email por mes!)",
+      "submit": "📨 Enviar (¡y seguir leyendo!)",
+      "success": "🎉 ¡Gracias!",
+      "successMessage": "Tus datos están guardados. Continúa leyendo - ¡nos pondremos en contacto pronto para mejorar el próximo libro juntos!",
+      "continue": "Seguir Leyendo"
+    },
+    "fr": {
+      "title": "📋 Le Classique Formulaire de Collecte de Contacts",
+      "intro": "Le voici, le classique formulaire de collecte de contacts. Je ne l'utiliserai pas pour du spam, ne t'inquiète pas, mais j'ai besoin de savoir et j'aimerais comprendre à qui je le donne pour affiner le prochain livre! 😊",
+      "name": "Nom",
+      "email": "Email",
+      "role": "Votre rôle (optionnel)",
+      "challenge": "Votre principal défi avec l'IA? (optionnel)",
+      "gdprConsent": "Je consens au traitement de mes données personnelles selon le RGPD",
+      "marketingConsent": "Je veux recevoir des mises à jour sur les prochains livres (promis: maximum 1 email par mois!)",
+      "submit": "📨 Envoyer (et continuer à lire!)",
+      "success": "🎉 Merci!",
+      "successMessage": "Vos données sont sauvegardées. Continuez la lecture - nous nous contacterons bientôt pour améliorer le prochain livre ensemble!",
+      "continue": "Continuer la Lecture"
+    }
+  },
+
+  "bookmark": {
+    "it": {
+      "continue": "📖 Vuoi continuare da dove avevi lasciato?",
+      "yes": "Continua",
+      "no": "Inizia dall'inizio"
+    },
+    "en": {
+      "continue": "📖 Continue where you left off?",
+      "yes": "Continue", 
+      "no": "Start from beginning"
+    },
+    "es": {
+      "continue": "📖 ¿Continuar donde lo dejaste?",
+      "yes": "Continuar",
+      "no": "Empezar desde el principio"
+    },
+    "fr": {
+      "continue": "📖 Continuer où vous vous êtes arrêté?",
+      "yes": "Continuer",
+      "no": "Commencer depuis le début"
+    }
+  },
+
+  "copyright": {
+    "it": {
+      "notice": "© 2025 Daniele Pelleri. Tutti i diritti riservati.",
+      "protection": "Contenuto protetto da copyright"
+    },
+    "en": {
+      "notice": "© 2025 Daniele Pelleri. All rights reserved.",
+      "protection": "Copyright protected content"
+    },
+    "es": {
+      "notice": "© 2025 Daniele Pelleri. Todos los derechos reservados.", 
+      "protection": "Contenido protegido por derechos de autor"
+    },
+    "fr": {
+      "notice": "© 2025 Daniele Pelleri. Tous droits réservés.",
+      "protection": "Contenu protégé par le droit d'auteur"
+    }
+  },
+
+  "roles": {
+    "it": {
+      "ceo": "CEO/Founder",
+      "cto": "CTO/Tech Lead", 
+      "developer": "Developer",
+      "manager": "Project Manager",
+      "consultant": "Consultant",
+      "student": "Student/Ricercatore",
+      "other": "Altro"
+    },
+    "en": {
+      "ceo": "CEO/Founder",
+      "cto": "CTO/Tech Lead",
+      "developer": "Developer", 
+      "manager": "Project Manager",
+      "consultant": "Consultant", 
+      "student": "Student/Researcher",
+      "other": "Other"
+    },
+    "es": {
+      "ceo": "CEO/Fundador",
+      "cto": "CTO/Tech Lead",
+      "developer": "Desarrollador",
+      "manager": "Project Manager", 
+      "consultant": "Consultor",
+      "student": "Estudiante/Investigador",
+      "other": "Otro"
+    },
+    "fr": {
+      "ceo": "CEO/Fondateur",
+      "cto": "CTO/Tech Lead", 
+      "developer": "Développeur",
+      "manager": "Chef de Projet",
+      "consultant": "Consultant",
+      "student": "Étudiant/Chercheur", 
+      "other": "Autre"
+    }
+  }
+}

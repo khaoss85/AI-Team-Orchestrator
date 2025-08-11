@@ -1,0 +1,42 @@
+{
+  "it": {
+    "title": "AI Team Orchestrator - Dal Caos degli Script all'Orchestra Autonoma",
+    "description": "Impara a costruire sistemi AI che scalano davvero. L'architettura completa e testata per trasformare un MVP in una piattaforma enterprise. 42 capitoli di esperienza pratica.",
+    "keywords": "AI orchestrazione, sistemi AI, architettura software, intelligenza artificiale, team AI, automazione, scalabilità",
+    "og_title": "AI Team Orchestrator - Manuale Completo per Sistemi AI Scalabili",
+    "og_description": "Dal caos degli script all'orchestra autonoma. 42 capitoli con architetture testate in produzione, war stories reali e codice funzionante.",
+    "og_locale": "it_IT",
+    "twitter_title": "AI Team Orchestrator - Libro Gratuito",
+    "twitter_description": "Costruisci sistemi AI che scalano davvero. Architetture testate + war stories + codice funzionante. 62.000 parole di esperienza pratica."
+  },
+  "en": {
+    "title": "AI Team Orchestrator - From Script Chaos to Autonomous Orchestra", 
+    "description": "Learn to build AI systems that truly scale. The complete, tested architecture for transforming an MVP into an enterprise platform. 42 chapters of practical experience.",
+    "keywords": "AI orchestration, AI systems, software architecture, artificial intelligence, AI teams, automation, scalability",
+    "og_title": "AI Team Orchestrator - Complete Guide to Scalable AI Systems",
+    "og_description": "From script chaos to autonomous orchestra. 42 chapters with production-tested architectures, real war stories, and working code.",
+    "og_locale": "en_US",
+    "twitter_title": "AI Team Orchestrator - Free Book",
+    "twitter_description": "Build AI systems that truly scale. Tested architectures + war stories + working code. 62,000 words of practical experience."
+  },
+  "es": {
+    "title": "AI Team Orchestrator - Del Caos de Scripts a la Orquesta Autónoma",
+    "description": "Aprende a construir sistemas de IA que realmente escalen. La arquitectura completa y probada para transformar un MVP en una plataforma empresarial. 42 capítulos de experiencia práctica.",
+    "keywords": "orquestación IA, sistemas IA, arquitectura software, inteligencia artificial, equipos IA, automatización, escalabilidad",
+    "og_title": "AI Team Orchestrator - Guía Completa para Sistemas de IA Escalables", 
+    "og_description": "Del caos de scripts a la orquesta autónoma. 42 capítulos con arquitecturas probadas en producción, historias reales y código funcional.",
+    "og_locale": "es_ES",
+    "twitter_title": "AI Team Orchestrator - Libro Gratuito",
+    "twitter_description": "Construye sistemas de IA que realmente escalen. Arquitecturas probadas + historias reales + código funcional. 62.000 palabras de experiencia práctica."
+  },
+  "fr": {
+    "title": "AI Team Orchestrator - Du Chaos des Scripts à l'Orchestre Autonome",
+    "description": "Apprenez à construire des systèmes IA qui passent vraiment à l'échelle. L'architecture complète et testée pour transformer un MVP en plateforme d'entreprise. 42 chapitres d'expérience pratique.",
+    "keywords": "orchestration IA, systèmes IA, architecture logicielle, intelligence artificielle, équipes IA, automatisation, évolutivité",
+    "og_title": "AI Team Orchestrator - Guide Complet pour Systèmes IA Évolutifs",
+    "og_description": "Du chaos des scripts à l'orchestre autonome. 42 chapitres avec architectures testées en production, vraies histoires et code fonctionnel.",
+    "og_locale": "fr_FR", 
+    "twitter_title": "AI Team Orchestrator - Livre Gratuit",
+    "twitter_description": "Construisez des systèmes IA qui passent vraiment à l'échelle. Architectures testées + vraies histoires + code fonctionnel. 62.000 mots d'expérience pratique."
+  }
+}

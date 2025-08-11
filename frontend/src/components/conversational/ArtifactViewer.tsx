@@ -386,12 +386,24 @@ function ContentView({
     )
   }
 
+  // Debug logging for deliverable content
+  if (artifact.type === 'deliverable') {
+    console.log('🔍 [DEBUG] Deliverable artifact:', artifact)
+    console.log('🔍 [DEBUG] Content type:', typeof artifact.content)
+    console.log('🔍 [DEBUG] Content length:', artifact.content ? (typeof artifact.content === 'string' ? artifact.content.length : JSON.stringify(artifact.content).length) : 0)
+  }
+
   // Fallback to generic content view
   if (!artifact.content) {
     return (
       <div className="p-8 text-center text-gray-500">
         <div className="text-3xl mb-2">📭</div>
         <div>No content available</div>
+        {artifact.type === 'deliverable' && (
+          <div className="mt-2 text-xs text-red-500">
+            Debug: Expected deliverable content but found none
+          </div>
+        )}
       </div>
     )
   }
@@ -399,8 +411,14 @@ function ContentView({
   // Handle different content types
   const renderContent = () => {
     if (typeof artifact.content === 'string') {
+      console.log('🔍 [DEBUG] Rendering string content for deliverable:', artifact.content.substring(0, 100) + '...')
       return (
         <div className="prose prose-sm max-w-none">
+          {artifact.type === 'deliverable' && (
+            <div className="mb-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+              ✅ Deliverable content found: {artifact.content.length} characters
+            </div>
+          )}
           <pre className="whitespace-pre-wrap text-sm text-gray-900">
             {artifact.content}
           </pre>

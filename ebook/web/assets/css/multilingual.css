@@ -1,0 +1,212 @@
+/**
+ * 🌍 AI Team Orchestrator - Multilingual Styles
+ * CSS for language switcher and multilingual features
+ */
+
+/* Language Switcher */
+.language-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.lang-switcher-label {
+    font-size: 1.2rem;
+    opacity: 0.7;
+    margin-right: 4px;
+}
+
+.lang-switcher-buttons {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+    backdrop-filter: blur(10px);
+}
+
+.lang-switch-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: inherit;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 50px;
+    justify-content: center;
+}
+
+.lang-switch-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.lang-switch-btn.active {
+    background: var(--gold, #d97706);
+    color: white;
+    opacity: 1;
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+.lang-switch-btn.active:hover {
+    background: var(--bright-gold, #f59e0b);
+    transform: translateY(-1px);
+}
+
+/* Floating Language Switcher (when not in header) */
+.language-switcher[style*="position: fixed"] {
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Language-specific typography adjustments */
+html[lang="en"] {
+    /* English typically needs slightly more letter spacing */
+    letter-spacing: 0.01em;
+}
+
+html[lang="es"] {
+    /* Spanish text is typically 15-20% longer */
+    --text-expansion-factor: 1.15;
+}
+
+html[lang="fr"] {
+    /* French text can be 15-25% longer */
+    --text-expansion-factor: 1.2;
+}
+
+/* Language loading state */
+.i18n-loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.i18n-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--gold, #d97706);
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Language switcher in different contexts */
+
+/* In book header */
+.book-header .language-switcher {
+    margin-left: auto;
+}
+
+/* In landing page header */
+.landing-header .language-switcher {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .language-switcher {
+        scale: 0.9;
+    }
+    
+    .lang-switch-btn {
+        padding: 4px 6px;
+        font-size: 0.8rem;
+        min-width: 40px;
+    }
+    
+    .lang-switcher-label {
+        display: none; /* Hide globe icon on mobile */
+    }
+    
+    /* Floating switcher adjustments for mobile */
+    .language-switcher[style*="position: fixed"] {
+        top: 10px;
+        right: 10px;
+        scale: 0.85;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .lang-switch-btn {
+        border: 1px solid currentColor;
+    }
+    
+    .lang-switch-btn.active {
+        background: var(--text-dark, #1a1a1a);
+        color: var(--bg-white, white);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .lang-switch-btn,
+    .language-switcher[style*="position: fixed"] {
+        transition: none;
+        animation: none;
+    }
+    
+    .lang-switch-btn:hover {
+        transform: none;
+    }
+}
+
+/* Print styles - hide language switcher when printing */
+@media print {
+    .language-switcher {
+        display: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .lang-switcher-buttons {
+        background: rgba(0, 0, 0, 0.2);
+    }
+    
+    .lang-switch-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .language-switcher[style*="position: fixed"] {
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Focus styles for accessibility */
+.lang-switch-btn:focus {
+    outline: 2px solid var(--gold, #d97706);
+    outline-offset: 2px;
+}
