@@ -196,3 +196,15 @@ When adding new tools to the system, ensure you update these locations:
 - Explainability: mostra reasoning steps e alternative quando richiesto.
 - Tool/Service-layer modulare; registry unico di tool.
 - Conversazione context-aware via endpoints conversazionali / Agents SDK.
+
+## 🎯 Claude Code Director Automation
+
+**Auto-invoke Director on Critical Changes**:
+- **Trigger**: When editing files in `backend/ai_agents/`, `backend/services/`, `backend/routes/`, `frontend/src/components/`, `migrations/`, `models.py`
+- **Action**: Automatically invoke Director agent using the Task tool
+- **Sequence**: director → system-architect → db-steward → api-contract-guardian → principles-guardian → placeholder-police → fallback-test-sentinel → docs-scribe
+- **Blocking**: If any quality gate fails, prevent commit/deployment until resolved
+
+**Usage**: "Please invoke the Director to review these changes" triggers the full quality gate sequence.
+
+**Pre-commit Hook**: Git hook configured in `.git/hooks/pre-commit` automatically detects critical file changes and invokes Director quality gates.

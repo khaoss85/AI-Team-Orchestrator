@@ -101,33 +101,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Add API prefix compatibility for frontend
-from routes.workspaces import get_workspace_tasks, delete_workspace_by_id, get_workspace_by_id, create_new_workspace
-from fastapi import APIRouter
-from uuid import UUID
-from models import WorkspaceCreate, Workspace
-
-api_router = APIRouter(prefix="/api/workspaces", tags=["api-compatibility"])
-
-@api_router.get("/{workspace_id}")
-async def api_get_workspace(request: Request, workspace_id: UUID):
-    """API-prefixed version of get_workspace for frontend compatibility"""
-    return await get_workspace_by_id(workspace_id, request)
-
-@api_router.get("/{workspace_id}/tasks")
-async def api_get_workspace_tasks(request: Request, workspace_id: UUID, task_type: Optional[str] = None):
-    """API-prefixed version of get_workspace_tasks for frontend compatibility"""
-    return await get_workspace_tasks(request, workspace_id, task_type)
-
-@api_router.delete("/{workspace_id}", status_code=status.HTTP_200_OK)
-async def api_delete_workspace(request: Request, workspace_id: UUID):
-    """API-prefixed version of delete_workspace for frontend compatibility"""
-    return await delete_workspace_by_id(workspace_id, request)
-
-@api_router.post("/", response_model=Workspace, status_code=status.HTTP_201_CREATED)
-async def api_create_workspace(workspace: WorkspaceCreate, request: Request):
-    """API-prefixed version of create_new_workspace for frontend compatibility"""
-    return await create_new_workspace(workspace, request)
+# API compatibility layer removed - all routes now use /api prefix consistently
 
 # Create lifespan context manager
 @asynccontextmanager
@@ -263,14 +237,14 @@ register_asset_routes(app)
 # Include all routers
 # ==========================================
 
-# Core workspace and project management
-app.include_router(workspace_router)
+# Core workspace and project management - ALL with /api prefix for consistency
+app.include_router(workspace_router, prefix="/api/workspaces", tags=["workspaces"])
 app.include_router(director_router, prefix="/api")
-app.include_router(agents_router)
-app.include_router(tools_router)
+app.include_router(agents_router, prefix="/api")
+app.include_router(tools_router, prefix="/api")
 
 # Goal and task management
-app.include_router(goal_validation_router)
+app.include_router(goal_validation_router, prefix="/api")
 app.include_router(workspace_goals_router, prefix="/api")
 
 # Business value analysis
@@ -278,32 +252,32 @@ from routes.business_value_analyzer import router as business_value_router
 app.include_router(business_value_router, prefix="/api")
 
 # Asset and deliverable system
-app.include_router(unified_assets_router)
+app.include_router(unified_assets_router, prefix="/api")
 app.include_router(assets_router, prefix="/api")
 app.include_router(deliverables_router, prefix="/api")
 
-# Communication and feedback
-app.include_router(websocket_router)
+# Communication and feedback - standardized to /api prefix
+app.include_router(websocket_router)  # WebSocket endpoints don't need /api prefix
 app.include_router(websocket_assets_router, prefix="/api")
-app.include_router(conversation_router)
-app.include_router(human_feedback_router)
+app.include_router(conversation_router, prefix="/api")
+app.include_router(human_feedback_router, prefix="/api")
 
 # AI and processing
-app.include_router(ai_content_router)
+app.include_router(ai_content_router, prefix="/api")
 app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
 app.include_router(thinking_router, prefix="/api")
 app.include_router(memory_router, prefix="/api")
 app.include_router(memory_sessions_router, prefix="/api")
 
 # Monitoring and system management
-app.include_router(monitoring_router)
-app.include_router(system_monitoring_router)
-app.include_router(project_insights_router)
-app.include_router(improvement_router)
+app.include_router(monitoring_router, prefix="/api")
+app.include_router(system_monitoring_router, prefix="/api")
+app.include_router(project_insights_router, prefix="/api")
+app.include_router(improvement_router, prefix="/api")
 
 # Task execution monitoring
 from routes.task_monitoring import router as task_monitoring_router
-app.include_router(task_monitoring_router)
+app.include_router(task_monitoring_router, prefix="/api")
 
 # Service management
 app.include_router(service_registry_router, prefix="/api")
@@ -312,16 +286,14 @@ app.include_router(component_health_router, prefix="/api")
 app.include_router(component_health_compat_router)  # Legacy compatibility
 
 # Workflow and delegation
-app.include_router(proposals_router)
-app.include_router(delegation_router)
-
+app.include_router(proposals_router, prefix="/api")
+app.include_router(delegation_router, prefix="/api")
 
 # Documentation and utilities
-app.include_router(documents_router)
-app.include_router(utils_router)
+app.include_router(documents_router, prefix="/api")
+app.include_router(utils_router, prefix="/api")
 
-# API compatibility layer
-app.include_router(api_router)
+# All routers now use consistent /api prefix - compatibility layer removed
 app.include_router(debug_router)
 
 # Health check endpoint
