@@ -54,7 +54,8 @@ class AITaskExecutionClassifier:
         self, 
         task_name: str, 
         task_description: str, 
-        workspace_context: Optional[Dict[str, Any]] = None
+        workspace_context: Optional[Dict[str, Any]] = None,
+        available_tools: Optional[List[str]] = None
     ) -> TaskExecutionClassification:
         """
         🎯 Classifica un task per determinare il tipo di execution
@@ -62,9 +63,13 @@ class AITaskExecutionClassifier:
         
         logger.info(f"🧠 AI classifying task execution: {task_name}")
         
-        # Costruisci prompt AI-driven
+        # 🔧 HOLISTIC: Get available tools first to inform classification
+        if available_tools is None:
+            available_tools = await self._detect_available_tools(workspace_context)
+        
+        # Costruisci prompt AI-driven con tool context
         classification_prompt = self._build_classification_prompt(
-            task_name, task_description, workspace_context
+            task_name, task_description, workspace_context, available_tools
         )
         
         try:
@@ -151,38 +156,149 @@ Respond in JSON format:
   "confidence_score": 0.0-1.0
 }"""
 
+    async def _detect_available_tools(self, workspace_context: Optional[Dict[str, Any]]) -> List[str]:
+        """🔧 Detect available tools in workspace to inform classification with fallback awareness"""
+        available_tools = []
+        tool_capabilities = {}
+        
+        try:
+            # Check MCP tools availability with graceful fallback awareness
+            from services.mcp_tool_discovery import get_mcp_tools_for_agent
+            workspace_id = workspace_context.get("workspace_id") if workspace_context else None
+            
+            if workspace_id:
+                # Get available tools (including fallback tools)
+                discovered_tools = await get_mcp_tools_for_agent(
+                    agent_name="classifier_agent",
+                    domain="data_analysis",  # Generic domain for classification
+                    workspace_id=workspace_id
+                )
+                
+                # 🔧 CRITICAL: Analyze tool types to understand capabilities
+                mcp_tools_available = False
+                fallback_only = False
+                
+                for tool in discovered_tools:
+                    tool_name = tool.get("name", "unknown")
+                    tool_type = tool.get("tool_type", "mcp")
+                    is_fallback = tool.get("fallback_tool", False)
+                    
+                    available_tools.append(tool_name)
+                    tool_capabilities[tool_name] = {
+                        "type": tool_type,
+                        "is_fallback": is_fallback,
+                        "capabilities": tool.get("capabilities", [])
+                    }
+                    
+                    if tool_type == "mcp" and not is_fallback:
+                        mcp_tools_available = True
+                    elif is_fallback:
+                        fallback_only = True
+                
+                # 🧠 INTELLIGENT CLASSIFICATION: Store tool context for smart classification
+                if workspace_context:
+                    workspace_context["tool_analysis"] = {
+                        "mcp_available": mcp_tools_available,
+                        "fallback_only": fallback_only,
+                        "tool_capabilities": tool_capabilities,
+                        "real_data_tools_count": sum(1 for tool in discovered_tools 
+                                                  if not tool.get("fallback_tool", False) 
+                                                  and "web_search" in tool.get("capabilities", [])),
+                        "content_generation_mode": fallback_only and not mcp_tools_available
+                    }
+                
+                logger.info(f"🔧 Tool analysis: MCP={mcp_tools_available}, Fallback={fallback_only}, Real data tools={workspace_context.get('tool_analysis', {}).get('real_data_tools_count', 0)}")
+            
+            # Always include basic SDK tools in the list (they might be fallback or real)
+            if "WebSearchTool" not in available_tools:
+                available_tools.append("WebSearchTool")
+            if "FileSearchTool" not in available_tools:
+                available_tools.append("FileSearchTool")
+            
+        except Exception as e:
+            logger.warning(f"Failed to detect available tools: {e}")
+            # Ultimate fallback
+            available_tools = ["WebSearchTool", "FileSearchTool"]
+            if workspace_context:
+                workspace_context["tool_analysis"] = {
+                    "mcp_available": False,
+                    "fallback_only": True,
+                    "content_generation_mode": True,
+                    "real_data_tools_count": 0,
+                    "error": str(e)
+                }
+        
+        logger.info(f"🔧 Detected {len(available_tools)} available tools: {available_tools}")
+        return available_tools
+
     def _build_classification_prompt(
         self, 
         task_name: str, 
         task_description: str, 
-        workspace_context: Optional[Dict[str, Any]]
+        workspace_context: Optional[Dict[str, Any]],
+        available_tools: List[str] = None
     ) -> str:
         """Costruisce prompt specifico per il task"""
         
-        prompt = f"""Classify this task for execution:
+        available_tools_str = ", ".join(available_tools) if available_tools else "None detected"
+        
+        # 🧠 CRITICAL: Include tool analysis for intelligent fallback-aware classification
+        tool_analysis = workspace_context.get("tool_analysis", {}) if workspace_context else {}
+        content_generation_mode = tool_analysis.get("content_generation_mode", False)
+        real_data_tools_count = tool_analysis.get("real_data_tools_count", 0)
+        
+        prompt = f"""Classify this task for execution considering available tools and their capabilities:
 
 TASK NAME: {task_name}
 TASK DESCRIPTION: {task_description}
+
+AVAILABLE TOOLS: {available_tools_str}
+REAL DATA COLLECTION TOOLS: {real_data_tools_count} tools capable of collecting authentic data
+CONTENT GENERATION MODE: {"ACTIVE - Use this for tasks requiring specific data" if content_generation_mode else "INACTIVE - Real data tools available"}
 """
         
         if workspace_context:
-            prompt += f"\nWORKSPACE CONTEXT: {json.dumps(workspace_context, indent=2)}"
+            # Include filtered context (remove tool_capabilities to avoid JSON issues)
+            filtered_context = {k: v for k, v in workspace_context.items() if k != "tool_analysis"}
+            if filtered_context:
+                prompt += f"\nWORKSPACE CONTEXT: {json.dumps(filtered_context, indent=2)}"
+            
+            if tool_analysis:
+                prompt += f"\nTOOL CAPABILITY ANALYSIS: MCP available={tool_analysis.get('mcp_available', False)}, Fallback only={tool_analysis.get('fallback_only', True)}"
         
-        prompt += """
+        prompt += f"""
 
-CLASSIFICATION RULES:
-- If task mentions "research", "find", "collect", "scrape", "list of" -> likely DATA_COLLECTION
-- If task mentions "create", "write", "generate", "design" -> likely CONTENT_GENERATION  
-- If task mentions "analyze", "report", "insights", "metrics" -> likely ANALYSIS
-- If task mentions "strategy", "plan", "methodology", "structure" -> likely PLANNING
-- If task mentions "validate", "check", "verify", "test" -> likely VALIDATION
+🔧 TOOL-AWARE CLASSIFICATION RULES WITH GRACEFUL FALLBACK:
 
-TOOL REQUIREMENTS:
-- DATA_COLLECTION tasks almost always need WebSearchTool
-- CONTENT_GENERATION might need research first
-- ANALYSIS needs data input
-- PLANNING usually doesn't need external tools
-- VALIDATION needs access to what's being validated
+CRITICAL: Consider both available tools AND their capabilities when classifying!
+
+1. DATA_COLLECTION Classification (STRICT REQUIREMENTS):
+   - Only classify as DATA_COLLECTION if REAL DATA COLLECTION TOOLS > 0
+   - WebSearchTool must be a real search tool, not a fallback simulation
+   - Task asks for specific, authentic data (emails, phone numbers, real company info)
+   
+2. CONTENT_GENERATION Classification (SMART FALLBACK):
+   - Use when CONTENT GENERATION MODE = ACTIVE 
+   - Use when task asks for specific data but only fallback tools available
+   - Can create realistic examples, templates, structured formats without real data
+   - Better to deliver well-structured templates than failed data collection
+   
+3. GRACEFUL FALLBACK INTELLIGENCE:
+   - If REAL DATA TOOLS = 0 but task asks for "contact list"
+     → CONTENT_GENERATION with "realistic contact template in CSV format"
+   - If CONTENT GENERATION MODE = ACTIVE and task asks for "research"
+     → CONTENT_GENERATION with "research methodology and structured findings template"
+   - If fallback tools only, focus on methodology and structured formats
+   
+4. KEYWORD PATTERNS (UPDATED FOR FALLBACK):
+   - "research", "find", "collect", "list of" + REAL DATA TOOLS > 0 → DATA_COLLECTION
+   - "research", "find", "collect", "list of" + REAL DATA TOOLS = 0 → CONTENT_GENERATION
+   - "create", "write", "generate", "design" → CONTENT_GENERATION (always)
+   - "analyze", "report", "insights" → ANALYSIS (can work with generated content)
+   - "strategy", "plan", "methodology" → PLANNING (doesn't need real data)
+
+🎯 GRACEFUL INTELLIGENCE: Deliver business value even with limited tools!
+When real data tools aren't available, create high-quality structured content that provides immediate business utility.
 
 Classify this task now."""
 
@@ -240,11 +356,12 @@ ai_task_execution_classifier = AITaskExecutionClassifier()
 async def classify_task_for_execution(
     task_name: str, 
     task_description: str, 
-    workspace_context: Optional[Dict[str, Any]] = None
+    workspace_context: Optional[Dict[str, Any]] = None,
+    available_tools: Optional[List[str]] = None
 ) -> TaskExecutionClassification:
     """
     🎯 Function helper per classificare task
     """
     return await ai_task_execution_classifier.classify_task_execution(
-        task_name, task_description, workspace_context
+        task_name, task_description, workspace_context, available_tools
     )

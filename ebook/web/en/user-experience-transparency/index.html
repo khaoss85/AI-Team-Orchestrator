@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movement 3: User Experience and Transparency | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Interface design, system transparency and user experience. 12 chapters to make AI comprehensible and usable for everyone.">
+    <meta name="keywords" content="AI user experience, explainable AI, AI interface design, conversational AI, AI transparency, UX design">
+    <meta name="author" content="Daniele Pelleri">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Movement 3: User Experience and Transparency - AI Team Orchestrator">
+    <meta property="og:description" content="12 chapters on UX design, transparency and conversational interfaces for AI systems">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/en/user-experience-transparency/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/en/user-experience-transparency/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/user-experience-transparency/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/user-experience-trasparenza/">
+    
+    <!-- Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Chapter",
+      "name": "Movement 3: User Experience and Transparency",
+      "description": "Interface design, system transparency and user experience for AI systems",
+      "numberOfPages": "12",
+      "isPartOf": {
+        "@type": "Book",
+        "name": "AI Team Orchestrator: From MVP to Global Platform",
+        "author": "Daniele Pelleri",
+        "url": "https://books.danielepelleri.com/en/ai-team-orchestrator.html"
+      },
+      "url": "https://books.danielepelleri.com/en/user-experience-transparency/",
+      "author": {
+        "@type": "Person",
+        "name": "Daniele Pelleri"
+      }
+    }
+    </script>
+    
+    <style>
+        /* Base Styles with Green theme for Movement 3 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Movement Header - Green theme */
+        .movement-header {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 4rem 3rem;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .movement-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .movement-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .movement-subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        
+        .movement-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .movement-stat {
+            text-align: center;
+        }
+        
+        .movement-stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+        
+        .movement-stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* Navigation - Green theme */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #27ae60;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        .overview {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin: 3rem 0;
+        }
+        
+        .overview h2 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .overview-point {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .overview-point h3 {
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+        
+        .learning-objectives {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 3rem;
+            border-radius: 20px;
+            margin: 3rem 0;
+        }
+        
+        .learning-objectives h3 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .objectives-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            list-style: none;
+        }
+        
+        .objectives-list li {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .objectives-list li:before {
+            content: "🎯";
+            margin-right: 0.5rem;
+        }
+        
+        .chapters {
+            margin: 4rem 0;
+        }
+        
+        .chapters h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #2c3e50;
+        }
+        
+        .chapter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+        
+        .chapter-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .chapter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .chapter-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        .chapter-number {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .chapter-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        
+        .chapter-body {
+            padding: 2rem;
+        }
+        
+        .chapter-description {
+            color: #7f8c8d;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .chapter-highlights {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chapter-highlights li {
+            padding: 0.3rem 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .chapter-highlights li:before {
+            content: "•";
+            color: #27ae60;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        .chapter-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #6c757d;
+            border-top: 1px solid #ecf0f1;
+            padding-top: 1rem;
+        }
+        
+        .chapter-difficulty {
+            padding: 0.3rem 0.8rem;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        
+        .chapter-difficulty.fundamental { background: #d4edda; color: #155724; }
+        .chapter-difficulty.intermediate { background: #fff3cd; color: #856404; }
+        .chapter-difficulty.advanced { background: #f8d7da; color: #721c24; }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4rem 0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(39, 174, 96, 0.6);
+        }
+        
+        .nav-button.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #27ae60;
+            border: 2px solid #27ae60;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button.secondary:hover {
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .movement-header {
+                padding: 3rem 2rem;
+            }
+            
+            .movement-title {
+                font-size: 2.2rem;
+            }
+            
+            .movement-stats {
+                gap: 2rem;
+            }
+            
+            .navigation {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <span>🎹 Movement 3: User Experience and Transparency</span>
+        </nav>
+
+        <!-- Movement Header -->
+        <section class="movement-header">
+            <div class="movement-icon">🎹</div>
+            <h1 class="movement-title">Movement 3: User Experience and Transparency</h1>
+            <p class="movement-subtitle">Interface design and AI system transparency</p>
+            
+            <div class="movement-stats">
+                <div class="movement-stat">
+                    <span class="movement-stat-number">12</span>
+                    <span class="movement-stat-label">Chapters</span>
+                </div>
+                <div class="movement-stat">
+                    <span class="movement-stat-number">~3h</span>
+                    <span class="movement-stat-label">Reading Time</span>
+                </div>
+                <div class="movement-stat">
+                    <span class="movement-stat-number">Intermediate</span>
+                    <span class="movement-stat-label">Level</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Overview -->
+        <section class="overview">
+            <h2>📋 Movement Overview</h2>
+            <p style="font-size: 1.2rem; color: #555; text-align: center; max-width: 800px; margin: 0 auto;">
+                The third movement focuses on user experience and system transparency. 
+                How to make AI comprehensible, usable and trustworthy for all stakeholders.
+            </p>
+            
+            <div class="overview-grid">
+                <div class="overview-point">
+                    <h3>💬 Conversational Interface</h3>
+                    <p>Context-aware chat that understands the current project. 
+                    Conversational interfaces that integrate seamlessly into workflows.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🔍 Deep Reasoning</h3>
+                    <p>Open the AI black box. Show thinking, confidence levels, 
+                    and decision process transparency to build trust.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🎨 Minimal UX Design</h3>
+                    <p>Essential interface Claude/ChatGPT style. Focus on content, 
+                    eliminating distractions to maximize productivity.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🧪 Testing & Validation</h3>
+                    <p>B2B and Fitness testing to demonstrate versatility. 
+                    Cross-domain validation and realistic stress testing.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Learning Objectives -->
+        <section class="learning-objectives">
+            <h3>🎯 What You'll Learn</h3>
+            <ul class="objectives-list">
+                <li>Design conversational interfaces that integrate seamlessly into workflows without interruptions</li>
+                <li>Implement AI transparency with show_thinking and confidence levels for building trust</li>
+                <li>Minimal UX design patterns that maximize productivity by eliminating distractions</li>
+                <li>Cross-domain testing strategies to demonstrate versatility and robustness</li>
+                <li>Chain-of-thought reasoning for quality assurance and decision transparency</li>
+                <li>Onboarding patterns that guide users toward successful adoption</li>
+            </ul>
+        </section>
+
+        <!-- Chapters -->
+        <section class="chapters">
+            <h2>📚 Movement Chapters</h2>
+            <div class="chapter-grid">
+                <!-- Chapter 20 -->
+                <a href="contextual-chat-ai-team/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 20 of 42</div>
+                        <h3 class="chapter-title">Contextual Chat - Dialoguing with AI Team</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Conversational interface that understands current project context. 
+                            AI-first chat that integrates perfectly into workflow.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Context-aware conversation design</li>
+                            <li>Project state integration</li>
+                            <li>Workflow-integrated chat patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 16 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 21 -->
+                <a href="deep-reasoning-black-box/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 21 of 42</div>
+                        <h3 class="chapter-title">Deep Reasoning - Opening the Black Box</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Show thinking, confidence levels and decision process transparency. 
+                            Making AI comprehensible and trustworthy through explainability.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Show thinking implementation</li>
+                            <li>Confidence levels display</li>
+                            <li>Decision transparency patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 19 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 22 -->
+                <a href="b2b-saas-thesis/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 22 of 42</div>
+                        <h3 class="chapter-title">The B2B SaaS Thesis - Proving Versatility</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Cross-domain testing with realistic B2B SaaS scenario. 
+                            Validating system versatility in diverse business contexts.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>B2B SaaS scenario testing</li>
+                            <li>Cross-domain validation</li>
+                            <li>Business context adaptation</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 22 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 23 -->
+                <a href="fitness-antithesis/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 23 of 42</div>
+                        <h3 class="chapter-title">The Fitness Antithesis - Challenging Limits</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Stress testing with completely different fitness scenario. 
+                            Pushing the system beyond comfort zone to test robustness.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Stress testing methodology</li>
+                            <li>Domain switching challenges</li>
+                            <li>Robustness validation</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 18 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 24 -->
+                <a href="synthesis-functional-abstraction/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 24 of 42</div>
+                        <h3 class="chapter-title">The Synthesis - Functional Abstraction</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Consolidating learned patterns through cross-domain testing. 
+                            Extracting universal principles for AI orchestration.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Pattern consolidation</li>
+                            <li>Universal principles extraction</li>
+                            <li>Functional abstraction layers</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 20 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 25 -->
+                <a href="qa-crossroads-chain-of-thought/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 25 of 42</div>
+                        <h3 class="chapter-title">QA Crossroads - Chain-of-Thought</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Chain-of-thought reasoning for advanced quality assurance. 
+                            Explicit decision trees and transparent reasoning for QA.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Chain-of-thought QA patterns</li>
+                            <li>Decision trees visualization</li>
+                            <li>Transparent reasoning chains</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 17 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 26 -->
+                <a href="ai-team-org-chart/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 26 of 42</div>
+                        <h3 class="chapter-title">AI Team Org Chart - Who Does What</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Clear visualization of roles and responsibilities in AI team. 
+                            Dynamic org chart that adapts to current project.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Dynamic team visualization</li>
+                            <li>Role responsibility mapping</li>
+                            <li>Project-specific org charts</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 14 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 27 -->
+                <a href="technology-stack/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 27 of 42</div>
+                        <h3 class="chapter-title">Technology Stack - The Foundations</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Complete overview of technology stack used. 
+                            Architecture, dependencies, and strategic technology choices.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Technology stack overview</li>
+                            <li>Architecture decisions rationale</li>
+                            <li>Strategic technology choices</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 15 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 28 -->
+                <a href="next-frontier-strategist-agent/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 28 of 42</div>
+                        <h3 class="chapter-title">Next Frontier - The Strategist Agent</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Evolution toward strategic agents that plan long-term. 
+                            The future of AI orchestration beyond tactical execution.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Strategic planning agents</li>
+                            <li>Long-term goal orchestration</li>
+                            <li>Future evolution roadmap</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 21 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 29 -->
+                <a href="control-room-monitoring/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 29 of 42</div>
+                        <h3 class="chapter-title">Control Room - Monitoring and Telemetry</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Enterprise-grade monitoring dashboard for AI orchestration. 
+                            Telemetry, metrics and observability for complex systems.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Enterprise monitoring dashboards</li>
+                            <li>AI-specific telemetry patterns</li>
+                            <li>Observability best practices</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 19 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 30 -->
+                <a href="onboarding-ux/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 30 of 42</div>
+                        <h3 class="chapter-title">Onboarding and UX - User Experience</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Onboarding experience design for new users. 
+                            UX patterns that guide toward successful adoption and productivity.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Onboarding experience design</li>
+                            <li>User adoption patterns</li>
+                            <li>Productivity optimization UX</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 16 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 31 -->
+                <a href="conclusion-team-not-tool/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 31 of 42</div>
+                        <h3 class="chapter-title">Conclusion - A Team, Not a Tool</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Final reflections on transformation from isolated tool to orchestrated team. 
+                            The mindset shift toward AI as collaborator, not instrument.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Mindset shift toward AI collaboration</li>
+                            <li>Team vs tool philosophy</li>
+                            <li>Future collaboration patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 12 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <section class="navigation">
+            <a href="../execution-quality/" class="nav-button secondary">
+                ← Movement 2: Execution
+            </a>
+            <a href="contextual-chat-ai-team/" class="nav-button">
+                Start: Contextual Chat →
+            </a>
+        </section>
+    </div>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VEGK4VZMG0');
+        
+        // Track chapter clicks
+        document.querySelectorAll('.chapter-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const chapterTitle = e.currentTarget.querySelector('.chapter-title').textContent;
+                gtag('event', 'chapter_click', {
+                    'chapter_title': chapterTitle,
+                    'movement': 'user-experience-transparency'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

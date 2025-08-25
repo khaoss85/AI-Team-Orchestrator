@@ -100,10 +100,25 @@ class SpecialistAgent:
             
             # 🧠 CRITICAL: AI-driven task classification to determine execution type
             logger.info(f"🧠 Classifying task execution type: {task.name}")
+            
+            # 🔧 HOLISTIC: Get available tools first for intelligent classification
+            from services.mcp_tool_discovery import get_mcp_tools_for_agent
+            try:
+                mcp_tools = await get_mcp_tools_for_agent(
+                    agent_name=self.agent_data.name,
+                    domain="data_analysis",  # Default domain
+                    workspace_id=str(task.workspace_id)
+                )
+                available_tools = [tool.get("name", "unknown") for tool in mcp_tools] + ["WebSearchTool", "FileSearchTool"]
+            except Exception as e:
+                logger.warning(f"Failed to get MCP tools: {e}")
+                available_tools = ["WebSearchTool", "FileSearchTool"]
+            
             task_classification = await classify_task_for_execution(
                 task_name=task.name,
                 task_description=task.description,
-                workspace_context={"workspace_id": str(task.workspace_id)}
+                workspace_context={"workspace_id": str(task.workspace_id)},
+                available_tools=available_tools
             )
             
             logger.info(f"✅ Task classified as: {task_classification.execution_type.value}")
@@ -113,7 +128,7 @@ class SpecialistAgent:
                 session = create_workspace_session(str(task.workspace_id), str(self.agent_data.id))
                 logger.info(f"📚 Created new SDK session for workspace {task.workspace_id}")
 
-            orchestration_context = await self._create_ai_driven_context(task)
+            orchestration_context = await self._create_ai_driven_context(task, task_classification)
             
             # 🔧 CRITICAL: Configure tools based on AI classification
             execution_tools = self._configure_execution_tools(task_classification)
@@ -135,10 +150,22 @@ class SpecialistAgent:
             # 🎯 CRITICAL: For DATA_COLLECTION tasks, enforce web tool usage
             execution_input = self._prepare_execution_input(task, task_classification)
             
+            # 🔧 CRITICAL: Create context bridge for SDK RunContextWrapper
+            # The SDK will wrap our context, but we need to ensure task classification
+            # data is accessible to guardrails via the RunContextWrapper
+            context_data = {
+                "orchestration_context": orchestration_context,
+                "task_classification": task_classification,
+                "execution_type": task_classification.execution_type.value,
+                "available_tools": task_classification.tools_needed,
+                "requires_tools": task_classification.requires_tools,
+                "workspace_id": str(task.workspace_id)
+            }
+            
             run_params = {
                 "starting_agent": agent,
                 "input": execution_input,
-                "context": orchestration_context,
+                "context": context_data,
                 "session": session,
                 "max_turns": 8 if task_classification.requires_tools else 5
             }
@@ -533,8 +560,9 @@ Produce the final deliverable for this task following the execution type require
 """
         return base_prompt
 
-    async def _create_ai_driven_context(self, task: Task) -> Any:
-        return OrchestrationContext(
+    async def _create_ai_driven_context(self, task: Task, task_classification=None) -> Any:
+        """🔧 Create context with task classification for guardrails"""
+        context = OrchestrationContext(
             workspace_id=str(task.workspace_id),
             task_id=str(task.id),
             agent_id=str(self.agent_data.id),
@@ -543,4 +571,19 @@ Produce the final deliverable for this task following the execution type require
             task_name=task.name,
             task_description=task.description,
         )
+        
+        # 🧠 HOLISTIC: Add task classification context for guardrails
+        if task_classification:
+            context.execution_metadata.update({
+                "task_classification": task_classification,
+                "execution_type": task_classification.execution_type.value,
+                "available_tools": task_classification.tools_needed,
+                "requires_tools": task_classification.requires_tools
+            })
+            
+            # Set attributes directly on context for guardrail access
+            setattr(context, 'task_classification', task_classification)
+            setattr(context, 'available_tools', task_classification.tools_needed)
+            
+        return context
 

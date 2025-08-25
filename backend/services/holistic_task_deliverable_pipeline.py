@@ -55,12 +55,17 @@ class HolisticTaskDeliverablePipeline:
         logger.info(f"🎯 Starting holistic task-to-deliverable pipeline for task: {task.name}")
         
         try:
-            # Step 1: AI-driven task classification
-            logger.info(f"🧠 Step 1: AI classifying task execution type...")
+            # Step 1: 🔧 HOLISTIC - Get available tools first
+            logger.info(f"🔧 Step 1A: Detecting available tools for intelligent classification...")
+            available_tools = await self._detect_available_tools_for_task(task, workspace_agents)
+            
+            # Step 1B: AI-driven task classification with tool awareness
+            logger.info(f"🧠 Step 1B: AI classifying task execution type with tool context...")
             classification = await classify_task_for_execution(
                 task_name=task.name,
                 task_description=task.description,
-                workspace_context={"workspace_id": str(task.workspace_id)}
+                workspace_context={"workspace_id": str(task.workspace_id)},
+                available_tools=available_tools
             )
             
             logger.info(f"✅ Task classified as: {classification.execution_type.value}")
@@ -302,6 +307,57 @@ class HolisticTaskDeliverablePipeline:
         except Exception as e:
             logger.error(f"❌ Failed to create deliverable: {e}")
             return False
+
+    async def _detect_available_tools_for_task(
+        self, 
+        task: Task, 
+        workspace_agents: List[Dict[str, Any]]
+    ) -> List[str]:
+        """🔧 Detect available tools for this specific task context"""
+        available_tools = []
+        
+        try:
+            # 1. Check MCP tools for the assigned agent
+            from services.mcp_tool_discovery import get_mcp_tools_for_agent
+            
+            # Get agent data to determine domain
+            agent_data = next((wa for wa in workspace_agents if wa.get('id') == str(task.agent_id)), None)
+            agent_role = agent_data.get('role', 'unknown') if agent_data else 'unknown'
+            
+            # Map agent role to domain for tool discovery
+            domain_mapping = {
+                'marketing': 'content_creation',
+                'researcher': 'data_analysis', 
+                'analyst': 'data_analysis',
+                'content': 'content_creation',
+                'sales': 'data_analysis'
+            }
+            
+            domain = domain_mapping.get(agent_role.lower(), 'data_analysis')
+            
+            # Get MCP tools for this agent
+            mcp_tools = await get_mcp_tools_for_agent(
+                agent_name=agent_data.get('name', 'unknown') if agent_data else 'unknown',
+                domain=domain,
+                workspace_id=str(task.workspace_id)
+            )
+            
+            available_tools.extend([tool.get("name", "unknown") for tool in mcp_tools])
+            
+            # 2. Always add basic SDK tools (should be available by default)
+            basic_tools = ["WebSearchTool", "FileSearchTool"]
+            available_tools.extend(basic_tools)
+            
+            # 3. Remove duplicates
+            available_tools = list(set(available_tools))
+            
+        except Exception as e:
+            logger.warning(f"Failed to detect available tools for task {task.id}: {e}")
+            # Fallback to basic tools only
+            available_tools = ["WebSearchTool", "FileSearchTool"]
+        
+        logger.info(f"🔧 Detected {len(available_tools)} tools for task {task.name}: {available_tools}")
+        return available_tools
 
 # Singleton instance
 holistic_pipeline = HolisticTaskDeliverablePipeline()

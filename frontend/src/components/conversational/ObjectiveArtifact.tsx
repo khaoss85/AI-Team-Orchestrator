@@ -651,6 +651,36 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
     }
 
     if (typeof content === 'object') {
+      // Handle metadata-only deliverables (common case when task didn't produce actual content)
+      if (content.prospect_list_csv && typeof content.prospect_list_csv === 'object') {
+        const metadata = content.prospect_list_csv
+        return (
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <div className="text-yellow-500 text-xl">⚠️</div>
+                <div>
+                  <h4 className="font-medium text-yellow-800 mb-2">Task Completed Without Content</h4>
+                  <p className="text-sm text-yellow-700 mb-3">
+                    This deliverable was created from a completed task, but the task didn't produce the expected CSV content.
+                    This usually happens when a task times out or encounters an error during execution.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div><span className="font-medium">Task ID:</span> {metadata.id}</div>
+                    <div><span className="font-medium">Format:</span> {metadata.format}</div>
+                    <div><span className="font-medium">Status:</span> {metadata.status}</div>
+                    <div><span className="font-medium">Priority:</span> {metadata.priority}</div>
+                  </div>
+                  <div className="mt-3 text-xs text-yellow-600">
+                    To get the actual CSV content, you may need to retry this goal or request manual assistance.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      
       // If it's structured content, try to render it nicely
       if (content.summary || content.sections || content.deliverables) {
         return (
@@ -770,7 +800,7 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
       
       {deliverables.map((deliverable, index) => {
         const hasWarning = deliverable.content?.businessValueWarning || deliverable.content?.type === 'no_business_content'
-        const hasMetrics = deliverable.content?.businessMetrics
+        const hasMetrics = deliverable.content?.businessMetrics?.averageBusinessScore !== undefined
         
         return (
         <div key={index} className={`border rounded-lg overflow-hidden ${
@@ -799,7 +829,7 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
                 </h4>
                 <p className="text-sm text-gray-600 mt-1">
                   {hasWarning ? 'Warning: Low business value detected' :
-                   hasMetrics ? `Business Score: ${deliverable.content.businessMetrics.averageBusinessScore.toFixed(1)} | ${deliverable.content.businessMetrics.highValueTasksFound} high-value tasks` :
+                   hasMetrics ? `Business Score: ${deliverable.content.businessMetrics.averageBusinessScore.toFixed(1)} | ${deliverable.content.businessMetrics.highValueTasksFound || 0} high-value tasks` :
                    (deliverable.description || 'Click to view content')}
                 </p>
                 <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">

@@ -610,6 +610,10 @@ class BookLead(BaseModel):
     user_agent: Optional[str] = None
     ip_address: Optional[str] = None
     referrer_url: Optional[str] = None
+    confirmation_status: str = "pending"
+    confirmation_token_hash: Optional[str] = None
+    confirmation_expires_at: Optional[datetime] = None
+    confirmed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

@@ -181,3 +181,18 @@ When adding new tools to the system, ensure you update these locations:
 - `frontend/src/app/layout.tsx`: Main app layout
 - `frontend/src/components/orchestration/`: Core orchestration UI
 - `frontend/src/components/conversational/ConversationInput.tsx`: Slash command implementation
+- # Guiding Principles (Project Memory)
+- Rileva lingua utente e rispondi coerentemente (IT/EN/…).
+- Evita hard-coding; usa config/env e SDK ufficiali dove esistono (Agents SDK/OpenAI).
+- Agnostico di dominio, multi-tenant/multi-lingua.
+- Goal-first: collega task → goal; aggiorna progresso.
+- Workspace Memory: salva success_pattern, failure_lesson e riusali.
+- Pipeline autonoma: Task → Goal → Enhancement → Memory → Correction.
+- QA AI-first con HiTL solo su deliverable critici.
+- UI/UX minimale (Claude/ChatGPT style).
+- Codice production-ready & testato; niente placeholder/mock.
+- Deliverable concreti; niente lorem ipsum: sostituisci con dati reali.
+- Course-correction automatico da gap detection.
+- Explainability: mostra reasoning steps e alternative quando richiesto.
+- Tool/Service-layer modulare; registry unico di tool.
+- Conversazione context-aware via endpoints conversazionali / Agents SDK.

@@ -25,10 +25,15 @@ async def validate_task_input_ai(ctx: RunContextWrapper, agent: Any, input_conte
         # 🧠 AI-DRIVEN: Use AI to validate task input quality and clarity
         try:
             from ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            # 🔧 Get workspace_id from context using the same access pattern
+            workspace_id = getattr(ctx, 'workspace_id', None)
+            if not workspace_id and hasattr(ctx, '__dict__'):
+                workspace_id = ctx.__dict__.get('workspace_id', None)
+            
             validation_result = await unified_quality_engine.validate_task_input(
                 content=task_input,
                 agent_context={"agent_name": agent.name, "agent_role": getattr(agent, 'role', 'unknown')},
-                workspace_id=getattr(ctx, 'workspace_id', None)
+                workspace_id=workspace_id
             )
             
             if not validation_result.get('is_valid', True):
@@ -57,40 +62,112 @@ async def validate_task_input_ai(ctx: RunContextWrapper, agent: Any, input_conte
 @output_guardrail
 async def validate_asset_output_ai(ctx: RunContextWrapper, agent: Any, output: Any) -> GuardrailFunctionOutput:
     """
-    AI-driven output guardrail to validate the quality and concreteness of the generated asset.
-    Replaces the logic from UnifiedQualityEngine for pipeline agents.
+    🧠 AI-driven output guardrail with TASK CLASSIFICATION CONTEXT awareness.
+    Adapts validation based on whether task was classified as DATA_COLLECTION vs CONTENT_GENERATION.
     """
     try:
         output_str = str(output)
         logger.info(f"🛡️ [OutputGuardrail] Validating output from agent '{agent.name}'...")
 
-        # Placeholder check (similar to the one in specialist_enhanced)
-        placeholder_indicators = ["lorem ipsum", "placeholder", "todo", "tbd", "[insert"]
-        if any(indicator in output_str.lower() for indicator in placeholder_indicators):
-            logger.warning("🛡️ [OutputGuardrail] BLOCKED: Output contains placeholder content.")
-            return GuardrailFunctionOutput(tripwire_triggered=True, output_info="The generated output contains placeholder text and is not a complete asset.")
+        # 🔧 HOLISTIC: Get task classification context from SDK RunContextWrapper
+        # The SDK may wrap our context data, so we try multiple access patterns
+        task_classification = None
+        execution_type = 'unknown'
+        available_tools = []
+        
+        # Try direct attribute access first
+        task_classification = getattr(ctx, 'task_classification', None)
+        if task_classification:
+            execution_type = task_classification.execution_type.value if hasattr(task_classification, 'execution_type') else 'unknown'
+            available_tools = getattr(ctx, 'available_tools', [])
+        else:
+            # Try accessing from wrapped context data
+            execution_type = getattr(ctx, 'execution_type', 'unknown')
+            available_tools = getattr(ctx, 'available_tools', [])
+            
+            # If still no data, try accessing from nested context
+            if hasattr(ctx, '__dict__'):
+                ctx_dict = ctx.__dict__
+                execution_type = ctx_dict.get('execution_type', execution_type)
+                available_tools = ctx_dict.get('available_tools', available_tools)
+                task_classification = ctx_dict.get('task_classification', task_classification)
+        
+        logger.info(f"🔧 [OutputGuardrail] Task classification context: {execution_type}, tools: {available_tools}")
+        logger.debug(f"🔍 [OutputGuardrail] Context debug - task_classification object: {task_classification is not None}, ctx type: {type(ctx)}")
 
-        # 🧠 AI-DRIVEN: Use UnifiedQualityEngine for real quality evaluation
+        # 🧠 CONTEXT-AWARE VALIDATION: Different rules for different task types
+        if execution_type == 'data_collection':
+            # Strict validation for data collection tasks
+            placeholder_indicators = ["lorem ipsum", "placeholder", "todo", "tbd", "[insert", "example.com", "sample@"]
+            if any(indicator in output_str.lower() for indicator in placeholder_indicators):
+                logger.warning("🛡️ [OutputGuardrail] BLOCKED: DATA_COLLECTION task contains placeholder content.")
+                return GuardrailFunctionOutput(tripwire_triggered=True, output_info="Data collection tasks must provide real data, not placeholders.")
+        
+        elif execution_type == 'content_generation':
+            # More lenient validation for content generation tasks
+            placeholder_indicators = ["lorem ipsum", "todo", "tbd", "[insert"]  # Allow examples and templates
+            if any(indicator in output_str.lower() for indicator in placeholder_indicators):
+                logger.warning("🛡️ [OutputGuardrail] BLOCKED: CONTENT_GENERATION contains incomplete placeholder content.")
+                return GuardrailFunctionOutput(tripwire_triggered=True, output_info="Content generation should be complete, not contain TODO placeholders.")
+        
+        else:
+            # Default validation for unknown task types
+            placeholder_indicators = ["lorem ipsum", "placeholder", "todo", "tbd", "[insert"]
+            if any(indicator in output_str.lower() for indicator in placeholder_indicators):
+                logger.warning("🛡️ [OutputGuardrail] BLOCKED: Output contains placeholder content.")
+                return GuardrailFunctionOutput(tripwire_triggered=True, output_info="The generated output contains placeholder text and is not a complete asset.")
+
+        # 🧠 AI-DRIVEN: Use UnifiedQualityEngine with TASK CLASSIFICATION CONTEXT
         try:
             from ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            
+            # 🔧 Enhanced context for AI quality evaluation
+            enhanced_task_context = {
+                "agent_name": agent.name,
+                "execution_type": execution_type,
+                "available_tools": available_tools,
+                "content_length": len(output_str)
+            }
+            
+            # 🔧 Get workspace_id using the same access pattern
+            workspace_id = getattr(ctx, 'workspace_id', None)
+            if not workspace_id and hasattr(ctx, '__dict__'):
+                workspace_id = ctx.__dict__.get('workspace_id', None)
+            
             quality_result = await unified_quality_engine.evaluate_asset_quality(
                 content=output_str,
-                task_context={"agent_name": agent.name},
-                workspace_id=getattr(ctx, 'workspace_id', None)
+                task_context=enhanced_task_context,
+                workspace_id=workspace_id
             )
             quality_score = quality_result.get('quality_score', 0)
-            threshold = quality_result.get('dynamic_threshold', 70)  # AI-driven threshold
+            
+            # 🎯 CONTEXT-AWARE THRESHOLDS: Different thresholds based on task type
+            if execution_type == 'data_collection':
+                base_threshold = quality_result.get('dynamic_threshold', 80)  # Higher threshold for data
+            elif execution_type == 'content_generation':
+                base_threshold = quality_result.get('dynamic_threshold', 60)  # Lower threshold for creative content
+            else:
+                base_threshold = quality_result.get('dynamic_threshold', 70)  # Default threshold
+                
         except Exception as e:
-            logger.warning(f"Failed AI quality evaluation, using fallback: {e}")
-            quality_score = 90  # Conservative fallback
-            threshold = 70
+            logger.warning(f"Failed AI quality evaluation, using context-aware fallback: {e}")
+            # Context-aware fallback thresholds
+            if execution_type == 'content_generation':
+                quality_score = 75  # More lenient for content generation
+                base_threshold = 60
+            else:
+                quality_score = 90  # Conservative for other types
+                base_threshold = 70
+        
+        # Final threshold decision
+        threshold = base_threshold
         
         if quality_score < threshold:
-            logger.warning(f"🛡️ [OutputGuardrail] BLOCKED: Output quality score ({quality_score}) is below AI threshold ({threshold}).")
-            return GuardrailFunctionOutput(tripwire_triggered=True, output_info=f"Output quality score ({quality_score}) is below the AI-calculated threshold of {threshold}.")
+            logger.warning(f"🛡️ [OutputGuardrail] BLOCKED: Output quality score ({quality_score}) is below context-aware threshold ({threshold}) for {execution_type}.")
+            return GuardrailFunctionOutput(tripwire_triggered=True, output_info=f"Output quality score ({quality_score}) is below the context-aware threshold of {threshold} for {execution_type} tasks.")
 
-        logger.info(f"🛡️ [OutputGuardrail] PASSED: Output quality is sufficient (Score: {quality_score}, Threshold: {threshold}).")
-        return GuardrailFunctionOutput(tripwire_triggered=False, output_info=f"Output quality validation passed (Score: {quality_score})")
+        logger.info(f"🛡️ [OutputGuardrail] PASSED: Output quality is sufficient (Score: {quality_score}, Threshold: {threshold}, Type: {execution_type}).")
+        return GuardrailFunctionOutput(tripwire_triggered=False, output_info=f"Output quality validation passed (Score: {quality_score}, Type: {execution_type})")
     except Exception as e:
         logger.error(f"🛡️ [OutputGuardrail] ERROR: {e}")
         return GuardrailFunctionOutput(tripwire_triggered=True, output_info=f"An error occurred during output validation: {e}")

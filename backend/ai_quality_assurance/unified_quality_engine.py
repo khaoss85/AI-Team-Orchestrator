@@ -152,18 +152,61 @@ class UnifiedQualityEngine:
 
     async def validate_asset_quality(self, asset_content: str, asset_type: str, workspace_id: str, domain_context: str = None) -> Dict[str, Any]:
         """
-        Validate asset quality using the comprehensive Quality Gate Engine (Pillar 8)
+        🤖 AI-First asset quality validation with adaptive intelligence
         
         This method serves as the main entry point for quality validation called by specialist agents.
-        It delegates to the comprehensive AIQualityGateEngine when available, or provides fallback validation.
+        It now uses the AI-First adaptive quality engine when available, falling back to other methods.
         """
         try:
-            # Use comprehensive Quality Gate Engine if available
+            # 🚀 Primary: Use AI-First Adaptive Quality Engine
+            try:
+                from ai_quality_assurance.ai_adaptive_quality_engine import ai_adaptive_quality_engine
+                
+                logger.info(f"🤖 Using AI-First Adaptive Quality Engine for {asset_type} validation")
+                
+                # Build enhanced context for AI evaluation
+                context = {
+                    "domain": domain_context or "business",
+                    "content_type": asset_type,
+                    "workspace_id": workspace_id,
+                    "complexity": "medium",  # Could be derived from content analysis
+                    "user_expectations": "professional",
+                    "project_phase": "content_creation"
+                }
+                
+                # Use the revolutionary AI-First quality evaluation
+                ai_result = await ai_adaptive_quality_engine.evaluate_content_quality(asset_content, context)
+                
+                # Convert AI-First result to expected format
+                overall_score = ai_result.get("overall_score", 0.0)
+                decision = ai_result.get("autonomous_decision", {})
+                
+                return {
+                    'needs_enhancement': decision.get("status") not in ["approved", "approved_with_notes"],
+                    'quality_score': overall_score,
+                    'reason': decision.get("rationale", "AI-First quality evaluation completed"),
+                    'improvement_suggestions': decision.get("improvements", []),
+                    'requires_human_review': decision.get("requires_human", False),
+                    'comprehensive_validation': True,
+                    'validation_method': 'ai_first_adaptive',
+                    'ai_confidence': decision.get("confidence", 0.85),
+                    'semantic_quality': ai_result.get("semantic_quality", 0.0),
+                    'business_value': ai_result.get("business_value", 0.0),
+                    'technical_completeness': ai_result.get("technical_completeness", 0.0)
+                }
+                
+            except ImportError:
+                logger.warning("AI-First Adaptive Quality Engine not available, trying Quality Gate Engine")
+                # Fall through to Quality Gate Engine
+            except Exception as e:
+                logger.warning(f"AI-First evaluation failed: {e}, trying Quality Gate Engine")
+                # Fall through to Quality Gate Engine
+            
+            # 🛡️ Secondary: Use comprehensive Quality Gate Engine if available
             if self.quality_gate and HAS_QUALITY_GATE:
                 logger.info(f"🛡️ Using comprehensive Quality Gate Engine for {asset_type} validation")
                 
                 # Create a mock artifact object for the quality gate engine
-                # In a full implementation, this would be a proper AssetArtifact from the database
                 mock_artifact = type('MockArtifact', (), {
                     'id': f"mock_{hash(asset_content)}",
                     'artifact_name': f"{asset_type}_{domain_context or 'asset'}",
@@ -189,9 +232,9 @@ class UnifiedQualityEngine:
                     'validation_method': 'quality_gate_engine'
                 }
             
-            # Fallback validation when comprehensive engine not available
+            # 🔄 Tertiary: Fallback validation when advanced engines not available
             else:
-                logger.warning("🔄 Using fallback quality validation - Quality Gate Engine not available")
+                logger.warning("🔄 Using fallback quality validation - Advanced engines not available")
                 return await self._fallback_asset_validation(asset_content, asset_type, domain_context)
                 
         except Exception as e:

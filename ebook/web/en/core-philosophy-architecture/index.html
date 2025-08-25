@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movement 1: Core Philosophy and Architecture | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Architectural foundations for production-ready AI systems. 11 chapters from 15 strategic pillars to intelligent orchestration and SDK optimization.">
+    <meta name="keywords" content="AI architecture, scalable AI systems, OpenAI SDK, production ready AI, AI orchestration, enterprise AI architecture">
+    <meta name="author" content="Daniele Pelleri">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Movement 1: Core Philosophy and Architecture - AI Team Orchestrator">
+    <meta property="og:description" content="11 chapters on architectural foundations and principles for production-ready AI systems">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/en/core-philosophy-architecture/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/en/core-philosophy-architecture/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/core-philosophy-architecture/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/filosofia-core-architettura/">
+    
+    <!-- Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Chapter",
+      "name": "Movement 1: Core Philosophy and Architecture",
+      "description": "Architectural foundations for production-ready AI systems with 11 comprehensive chapters",
+      "numberOfPages": "11",
+      "isPartOf": {
+        "@type": "Book",
+        "name": "AI Team Orchestrator: From MVP to Global Platform",
+        "author": "Daniele Pelleri",
+        "url": "https://books.danielepelleri.com/en/ai-team-orchestrator.html"
+      },
+      "url": "https://books.danielepelleri.com/en/core-philosophy-architecture/",
+      "author": {
+        "@type": "Person",
+        "name": "Daniele Pelleri"
+      }
+    }
+    </script>
+    
+    <style>
+        /* Base Styles with Blue theme for Movement 1 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Movement Header - Blue theme */
+        .movement-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 3rem;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .movement-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .movement-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .movement-subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        
+        .movement-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .movement-stat {
+            text-align: center;
+        }
+        
+        .movement-stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+        
+        .movement-stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        /* Navigation - Blue theme */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        .overview {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin: 3rem 0;
+        }
+        
+        .overview h2 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .overview-point {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .overview-point h3 {
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+        
+        .learning-objectives {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 3rem;
+            border-radius: 20px;
+            margin: 3rem 0;
+        }
+        
+        .learning-objectives h3 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .objectives-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            list-style: none;
+        }
+        
+        .objectives-list li {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .objectives-list li:before {
+            content: "🎯";
+            margin-right: 0.5rem;
+        }
+        
+        .chapters {
+            margin: 4rem 0;
+        }
+        
+        .chapters h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #2c3e50;
+        }
+        
+        .chapter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+        
+        .chapter-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .chapter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .chapter-header {
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .chapter-number {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .chapter-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        
+        .chapter-body {
+            padding: 2rem;
+        }
+        
+        .chapter-description {
+            color: #7f8c8d;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .chapter-highlights {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chapter-highlights li {
+            padding: 0.3rem 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .chapter-highlights li:before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        .chapter-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #6c757d;
+            border-top: 1px solid #ecf0f1;
+            padding-top: 1rem;
+        }
+        
+        .chapter-difficulty {
+            padding: 0.3rem 0.8rem;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+        
+        .chapter-difficulty.fundamental { background: #d4edda; color: #155724; }
+        .chapter-difficulty.intermediate { background: #fff3cd; color: #856404; }
+        .chapter-difficulty.advanced { background: #f8d7da; color: #721c24; }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4rem 0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+        
+        .nav-button.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button.secondary:hover {
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .movement-header {
+                padding: 3rem 2rem;
+            }
+            
+            .movement-title {
+                font-size: 2.2rem;
+            }
+            
+            .movement-stats {
+                gap: 2rem;
+            }
+            
+            .navigation {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <span>🎻 Movement 1: Core Philosophy and Architecture</span>
+        </nav>
+
+        <!-- Movement Header -->
+        <section class="movement-header">
+            <div class="movement-icon">🎻</div>
+            <h1 class="movement-title">Movement 1: Core Philosophy and Architecture</h1>
+            <p class="movement-subtitle">Architectural foundations and principles for production-ready systems</p>
+            
+            <div class="movement-stats">
+                <div class="movement-stat">
+                    <span class="movement-stat-number">11</span>
+                    <span class="movement-stat-label">Chapters</span>
+                </div>
+                <div class="movement-stat">
+                    <span class="movement-stat-number">~3.5h</span>
+                    <span class="movement-stat-label">Reading Time</span>
+                </div>
+                <div class="movement-stat">
+                    <span class="movement-stat-number">Fundamental</span>
+                    <span class="movement-stat-label">Level</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Overview -->
+        <section class="overview">
+            <h2>📋 Movement Overview</h2>
+            <p style="font-size: 1.2rem; color: #555; text-align: center; max-width: 800px; margin: 0 auto;">
+                The first movement establishes the philosophical and architectural foundations needed to transform 
+                an AI prototype into a production-ready system. Focus on strategic principles and scalable architecture.
+            </p>
+            
+            <div class="overview-grid">
+                <div class="overview-point">
+                    <h3>🏗️ Strategic Foundations</h3>
+                    <p>15 architectural pillars that separate MVP prototypes from enterprise-ready systems. 
+                    The strategic roadmap for scalable AI architecture.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🤖 Specialist Agents</h3>
+                    <p>Move beyond single-purpose agents to specialist architecture with seniority levels, 
+                    skills, and intelligent task delegation patterns.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🧪 Testing & SDK Integration</h3>
+                    <p>Production testing strategies for non-deterministic AI systems. 
+                    OpenAI SDK optimization and direct API comparison.</p>
+                </div>
+                
+                <div class="overview-point">
+                    <h3>🔧 Tool Ecosystem</h3>
+                    <p>Unified tool registry and web search integration. 
+                    Modular architecture that scales with business complexity.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Learning Objectives -->
+        <section class="learning-objectives">
+            <h3>🎯 What You'll Learn</h3>
+            <ul class="objectives-list">
+                <li>Master the 15 strategic pillars for production-ready AI systems that scale globally</li>
+                <li>Design specialist agent architecture with proper seniority levels and skill delegation</li>
+                <li>Implement comprehensive testing strategies for non-deterministic AI behavior</li>
+                <li>Optimize OpenAI SDK integration vs direct API approaches for maximum efficiency</li>
+                <li>Build unified tool registry and web search capabilities for real-world applications</li>
+                <li>Create modular architecture patterns that support enterprise scalability</li>
+            </ul>
+        </section>
+
+        <!-- Chapters -->
+        <section class="chapters">
+            <h2>📚 Movement Chapters</h2>
+            <div class="chapter-grid">
+                <!-- Chapter 1 -->
+                <a href="15-pillars-ai-system/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 1 of 42</div>
+                        <h3 class="chapter-title">The 15 Pillars of an AI-Driven System</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Fundamental architectural principles that separate MVP from enterprise-scalable system. 
+                            The strategic roadmap for building AI systems that don't collapse under pressure.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Core = OpenAI SDK native usage</li>
+                            <li>AI-driven architecture principles</li>
+                            <li>Universal & language-agnostic design</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 20 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 2 -->
+                <a href="first-specialist-agent-architecture/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 2 of 42</div>
+                        <h3 class="chapter-title">First Specialist Agent - Architecture Deep Dive</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Move beyond generic agents to specialist architecture with skills, seniority, 
+                            and intelligent task delegation patterns.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Specialist agent design patterns</li>
+                            <li>Skills and seniority levels</li>
+                            <li>Task delegation architecture</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 25 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 3 -->
+                <a href="ai-mocking-testing-strategy/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 3 of 42</div>
+                        <h3 class="chapter-title">AI Mocking - The Testing Challenge</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            How to test non-deterministic AI systems effectively. 
+                            Mocking strategies that actually work in production.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Non-deterministic testing approaches</li>
+                            <li>AI system mocking strategies</li>
+                            <li>Production testing patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 18 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 4 -->
+                <a href="sdk-vs-direct-api-battle/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 4 of 42</div>
+                        <h3 class="chapter-title">SDK vs Direct API - The Battle</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Comprehensive comparison between OpenAI SDK and direct API approaches. 
+                            When to use each and optimization strategies.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>SDK vs API performance comparison</li>
+                            <li>Optimization strategies</li>
+                            <li>Production deployment considerations</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 22 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 5 -->
+                <a href="tools-registry-first-foundations/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 5 of 42</div>
+                        <h3 class="chapter-title">Tools Registry - First Foundations</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Building unified tool registry for scalable agent ecosystem. 
+                            Foundation for modular and extensible architecture.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Unified tool registry design</li>
+                            <li>Modular architecture patterns</li>
+                            <li>Extensibility considerations</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 19 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 6 -->
+                <a href="web-search-integration-real-data/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 6 of 42</div>
+                        <h3 class="chapter-title">Web Search Integration - Beyond Placeholders</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Integrate real web search capabilities for authentic content generation. 
+                            Move beyond generic responses to real-world data.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Web search tool integration</li>
+                            <li>Real-world data sourcing</li>
+                            <li>Content authenticity strategies</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 16 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 7 -->
+                <a href="first-orchestration-magic/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 7 of 42</div>
+                        <h3 class="chapter-title">First Orchestration - When Magic Happens</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            The moment when isolated agents become an orchestrated team. 
+                            First glimpse of true AI collaboration.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Agent orchestration patterns</li>
+                            <li>Team collaboration design</li>
+                            <li>Intelligent task coordination</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 24 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 8 -->
+                <a href="first-deliverable-asset-system/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 8 of 42</div>
+                        <h3 class="chapter-title">First Deliverable - The Asset System</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Transform agent outputs into concrete business deliverables. 
+                            Asset-oriented architecture for tangible results.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Asset-oriented output design</li>
+                            <li>Deliverable generation patterns</li>
+                            <li>Business value translation</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 21 min read</span>
+                            <span class="chapter-difficulty fundamental">Fundamental</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 9 -->
+                <a href="handoff-patterns-team-communication/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 9 of 42</div>
+                        <h3 class="chapter-title">Handoff Patterns - Team Communication</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Intelligent handoff mechanisms between specialist agents. 
+                            Communication patterns that scale with team complexity.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Intelligent handoff mechanisms</li>
+                            <li>Agent communication protocols</li>
+                            <li>Scalable coordination patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 17 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 10 -->
+                <a href="first-goals-validation-system/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 10 of 42</div>
+                        <h3 class="chapter-title">First Goals - The Validation System</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Goal-driven architecture with automatic validation and progress tracking. 
+                            Transform vague objectives into measurable outcomes.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Goal-driven system design</li>
+                            <li>Automatic validation mechanisms</li>
+                            <li>Progress tracking patterns</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 23 min read</span>
+                            <span class="chapter-difficulty intermediate">Intermediate</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chapter 11 -->
+                <a href="manager-agent-orchestration-patterns/" class="chapter-card">
+                    <div class="chapter-header">
+                        <div class="chapter-number">Chapter 11 of 42</div>
+                        <h3 class="chapter-title">Manager Agent - Orchestration Patterns</h3>
+                    </div>
+                    <div class="chapter-body">
+                        <p class="chapter-description">
+                            Central orchestration agent that coordinates the entire team. 
+                            Management patterns for complex multi-agent workflows.
+                        </p>
+                        <ul class="chapter-highlights">
+                            <li>Central orchestration design</li>
+                            <li>Team management patterns</li>
+                            <li>Complex workflow coordination</li>
+                        </ul>
+                        <div class="chapter-meta">
+                            <span>⏱️ 26 min read</span>
+                            <span class="chapter-difficulty advanced">Advanced</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <section class="navigation">
+            <a href="../ai-team-orchestrator.html" class="nav-button secondary">
+                ← Back to Hub
+            </a>
+            <a href="15-pillars-ai-system/" class="nav-button">
+                Start: 15 Pillars →
+            </a>
+        </section>
+    </div>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VEGK4VZMG0');
+        
+        // Track chapter clicks
+        document.querySelectorAll('.chapter-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const chapterTitle = e.currentTarget.querySelector('.chapter-title').textContent;
+                gtag('event', 'chapter_click', {
+                    'chapter_title': chapterTitle,
+                    'movement': 'core-philosophy-architecture'
+                });
+            });
+        });
+    </script>
+</body>
+</html>

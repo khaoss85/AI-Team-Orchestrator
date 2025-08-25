@@ -10,12 +10,12 @@
     "dev": "python3 -m http.server 8000"
   },
   "dependencies": {
-    "puppeteer": "^21.6.1"
+    "puppeteer": "^21.6.1",
+    "vercel": "^44.7.3"
   },
-  "devDependencies": {},
   "keywords": [
     "ai",
-    "orchestrator", 
+    "orchestrator",
     "book",
     "pdf",
     "web",

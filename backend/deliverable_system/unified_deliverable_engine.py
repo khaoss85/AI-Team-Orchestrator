@@ -78,11 +78,61 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
         
         logger.info(f"✅ Creating goal-specific deliverable from {len(completed_tasks)} completed tasks for goal: {goal_description}")
         
-        # Aggregate task results for this goal
-        aggregated_content, aggregation_quality_score = await _aggregate_task_results(completed_tasks)
+        # 🤖 HOLISTIC VALIDATION: Use Unified Quality Engine for content assessment
+        from ai_quality_assurance.unified_quality_engine import smart_evaluator
         
-        # If aggregation quality is low, create a specific warning deliverable
-        if aggregation_quality_score < 50:
+        valid_tasks = []
+        quality_scores = []
+        
+        for task in completed_tasks:
+            result = task.get('result', {})
+            task_content = str(result) if result else ""
+            
+            # Use AI-driven quality assessment instead of primitive validation
+            try:
+                quality_assessment = await smart_evaluator.evaluate_asset_quality(
+                    content=task_content,
+                    task_context={
+                        'task_id': task.get('id'),
+                        'goal_id': goal_id,
+                        'agent_name': task.get('agent_id', 'unknown'),
+                        'domain': 'business_deliverable'
+                    },
+                    workspace_id=workspace_id
+                )
+                
+                quality_score = quality_assessment.get('overall_score', 0)
+                has_business_value = quality_assessment.get('has_business_value', False)
+                
+                if has_business_value and quality_score > 30:  # AI-driven threshold
+                    valid_tasks.append(task)
+                    quality_scores.append(quality_score)
+                    logger.info(f"✅ Task {task.get('id')} passed AI quality assessment: {quality_score}%")
+                else:
+                    logger.warning(f"⚠️ Task {task.get('id')} failed AI quality assessment: score={quality_score}%, business_value={has_business_value}")
+                    
+            except Exception as e:
+                logger.error(f"Error in AI quality assessment for task {task.get('id')}: {e}")
+                # Fallback to basic validation only if AI fails
+                if _has_meaningful_content(result):
+                    valid_tasks.append(task)
+                    quality_scores.append(50)  # Default score for fallback
+        
+        if not valid_tasks:
+            logger.error(f"❌ No tasks passed AI quality assessment for goal {goal_id}. Not creating deliverable.")
+            return None
+            
+        avg_quality_score = sum(quality_scores) / len(quality_scores) if quality_scores else 0
+        logger.info(f"✅ Found {len(valid_tasks)}/{len(completed_tasks)} tasks passing AI quality assessment (avg score: {avg_quality_score:.1f}%)")
+        
+        # Aggregate task results for this goal
+        aggregated_content, aggregation_quality_score = await _aggregate_task_results(valid_tasks)
+        
+        # Combine AI quality scores with aggregation score for final assessment
+        final_quality_score = (avg_quality_score + aggregation_quality_score) / 2
+        
+        # If overall quality is low, create a specific warning deliverable
+        if final_quality_score < 50:
             logger.warning(f"⚠️ Low quality aggregation for goal {goal_id}. Score: {aggregation_quality_score}. Creating a warning deliverable.")
             deliverable_data = {
                 "title": f"Review Required: {goal_description}",
@@ -98,8 +148,13 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
 **Recommendation:** This is an architectural issue being resolved. The AI planner is being updated to generate more specific, data-driven tasks to prevent this in the future. No manual action is required at this time.""",
                 "status": "needs_review",
                 "goal_id": goal_id,
-                "business_value_score": aggregation_quality_score,
-                "metadata": { "source": "low_quality_aggregation_warning" }
+                "business_value_score": final_quality_score,
+                "metadata": { 
+                    "source": "ai_quality_assessment_warning",
+                    "ai_quality_score": avg_quality_score,
+                    "aggregation_quality_score": aggregation_quality_score,
+                    "final_quality_score": final_quality_score
+                }
             }
         else:
             # Create goal-specific deliverable
@@ -111,12 +166,16 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                 "goal_id": goal_id,  # CRITICAL: Link to specific goal
                 "readiness_score": 90,
                 "completion_percentage": 100,
-                "business_value_score": aggregation_quality_score,
+                "business_value_score": final_quality_score,
                 "quality_metrics": {
-                    "task_count": len(completed_tasks),
+                    "task_count": len(valid_tasks),
+                    "total_tasks_analyzed": len(completed_tasks),
                     "content_length": len(str(aggregated_content)),
-                    "created_from": "goal_task_aggregation",
-                    "goal_id": goal_id
+                    "created_from": "ai_quality_assessed_aggregation",
+                    "goal_id": goal_id,
+                    "ai_quality_score": avg_quality_score,
+                    "aggregation_quality_score": aggregation_quality_score,
+                    "final_quality_score": final_quality_score
                 },
                 "metadata": {
                     "source": "goal_specific_aggregation",
@@ -139,6 +198,36 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
     except Exception as e:
         logger.error(f"Error creating goal-specific deliverable: {e}", exc_info=True)
         return None
+
+def _has_meaningful_content(task_result: dict) -> bool:
+    """
+    Validates if a task result contains meaningful business content
+    Returns False for timeouts, errors, empty results, or placeholder content
+    """
+    if not isinstance(task_result, dict):
+        return False
+    
+    # Check for explicit failure indicators
+    failure_indicators = ['timeout', 'error', 'failed', 'exception']
+    for indicator in failure_indicators:
+        if indicator in task_result:
+            return False
+    
+    # Check for meaningful content fields
+    content_fields = ['content', 'result', 'output', 'data', 'csv', 'contacts', 'list']
+    has_content = False
+    
+    for field in content_fields:
+        if field in task_result:
+            value = task_result[field]
+            if isinstance(value, str) and len(value.strip()) > 20:  # At least 20 chars of content
+                has_content = True
+                break
+            elif isinstance(value, (list, dict)) and value:  # Non-empty list or dict
+                has_content = True
+                break
+    
+    return has_content
 
 async def _create_goal_specific_deliverables_for_workspace(workspace_id: str, force: bool = False) -> Optional[Dict[str, Any]]:
     """Creates goal-specific deliverables for all eligible goals in a workspace"""

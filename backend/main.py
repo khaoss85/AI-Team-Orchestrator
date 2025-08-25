@@ -236,14 +236,10 @@ app = FastAPI(
 
 # Configure CORS
 # Allow specific origins for frontend development and production
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8000",
-    "http://localhost:8080",
-    # Add your production frontend URL here
-]
+origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
+
+# Clean up origins list (remove whitespace and empty strings)
+origins = [origin.strip() for origin in origins if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,

@@ -208,15 +208,18 @@ class MCPToolDiscoveryEngine:
             # 3. Query service discovery mechanisms
             
             # For now, register some common tool servers
+            web_search_endpoint = os.getenv("MCP_WEB_SEARCH_ENDPOINT", "http://localhost:8001/mcp")
+            file_tools_endpoint = os.getenv("MCP_FILE_TOOLS_ENDPOINT", "http://localhost:8002/mcp")
+            
             common_servers = [
                 {
                     "server_id": "web_search_mcp",
-                    "endpoint": "http://localhost:8001/mcp",
+                    "endpoint": web_search_endpoint,
                     "capabilities": ["web_search", "information_retrieval"]
                 },
                 {
                     "server_id": "file_tools_mcp", 
-                    "endpoint": "http://localhost:8002/mcp",
+                    "endpoint": file_tools_endpoint,
                     "capabilities": ["file_management", "document_processing"]
                 }
             ]
@@ -364,42 +367,152 @@ class MCPToolDiscoveryEngine:
 mcp_tool_discovery = MCPToolDiscoveryEngine()
 
 # Integration with specialist agents
-async def get_mcp_tools_for_agent(agent_data, domain: str = None) -> List[Dict[str, Any]]:
+async def get_mcp_tools_for_agent(agent_name: str, domain: str = None, workspace_id: str = None) -> List[Dict[str, Any]]:
     """
-    Helper function to get MCP tools for a specific agent
-    Integrates with specialist_enhanced.py
+    🔧 HOLISTIC MCP tool discovery with graceful fallback
+    
+    Phase 3: Provides intelligent tool discovery that gracefully falls back
+    when MCP servers are not available, ensuring the system remains functional.
     """
     try:
-        # Determine domain from agent role if not specified
-        if not domain:
-            role = agent_data.role.lower()
-            if 'developer' in role or 'engineer' in role:
-                domain = 'development'
-            elif 'analyst' in role or 'data' in role:
-                domain = 'data_analysis'
-            elif 'designer' in role or 'ui' in role:
-                domain = 'design'
-            elif 'manager' in role or 'project' in role:
-                domain = 'business'
-            else:
-                domain = 'web_search'  # Default
+        # 🔧 GRACEFUL FALLBACK: Check if MCP discovery is available and healthy
+        mcp_available = False
+        sdk_tools = []
         
-        # Get agent context
-        agent_context = {
-            'role': agent_data.role,
-            'seniority': agent_data.seniority,
-            'skills': getattr(agent_data, 'hard_skills', [])
+        try:
+            # Attempt to discover MCP tools
+            if not mcp_tool_discovery.is_running:
+                logger.info("🚀 Starting MCP discovery for tool request...")
+                await mcp_tool_discovery.start_discovery()
+            
+            # Determine domain from agent name if not specified
+            if not domain:
+                agent_name_lower = agent_name.lower()
+                if 'developer' in agent_name_lower or 'engineer' in agent_name_lower:
+                    domain = 'development'
+                elif 'analyst' in agent_name_lower or 'data' in agent_name_lower:
+                    domain = 'data_analysis'
+                elif 'designer' in agent_name_lower or 'ui' in agent_name_lower:
+                    domain = 'design'
+                elif 'manager' in agent_name_lower or 'project' in agent_name_lower:
+                    domain = 'business'
+                else:
+                    domain = 'web_search'  # Default
+            
+            # Create agent context for tool prioritization
+            agent_context = {
+                'name': agent_name,
+                'role': domain,
+                'workspace_id': workspace_id
+            }
+            
+            # Discover relevant MCP tools
+            mcp_tools = await mcp_tool_discovery.get_tools_for_domain(domain, agent_context)
+            
+            if mcp_tools:
+                # Convert to SDK format
+                sdk_tools = await mcp_tool_discovery.get_sdk_compatible_tools(mcp_tools)
+                mcp_available = True
+                logger.info(f"✅ MCP tools available: {len(sdk_tools)} tools for '{agent_name}' in domain '{domain}'")
+            else:
+                logger.warning(f"⚠️ No MCP tools found for domain '{domain}' - falling back to basic tools")
+                
+        except Exception as mcp_error:
+            logger.warning(f"⚠️ MCP tool discovery failed: {mcp_error} - using graceful fallback")
+        
+        # 🛡️ GRACEFUL FALLBACK: When MCP tools are not available
+        if not mcp_available or not sdk_tools:
+            logger.info(f"🔄 Using graceful fallback for agent '{agent_name}' - creating basic tool definitions")
+            
+            # Create basic tool definitions that match what's available in SDK
+            fallback_tools = [
+                {
+                    "name": "WebSearchTool",
+                    "description": "Search the web for information using built-in web search capabilities",
+                    "parameters": {
+                        "query": {"type": "string", "description": "Search query"},
+                        "max_results": {"type": "integer", "description": "Maximum number of results", "default": 10}
+                    },
+                    "capabilities": ["web_search", "information_retrieval"],
+                    "domain": domain,
+                    "priority": 9,
+                    "fallback_tool": True,
+                    "tool_type": "sdk_native"
+                },
+                {
+                    "name": "FileSearchTool", 
+                    "description": "Search through files and documents using built-in file search capabilities",
+                    "parameters": {
+                        "query": {"type": "string", "description": "Search query"},
+                        "file_types": {"type": "array", "description": "File types to search", "default": ["txt", "md", "pdf"]}
+                    },
+                    "capabilities": ["file_search", "document_retrieval"],
+                    "domain": domain,
+                    "priority": 8,
+                    "fallback_tool": True,
+                    "tool_type": "sdk_native"
+                }
+            ]
+            
+            # Add domain-specific fallback tools
+            if domain == 'data_analysis':
+                fallback_tools.append({
+                    "name": "DataAnalysisHelper",
+                    "description": "Basic data analysis and processing capabilities",
+                    "parameters": {
+                        "data_source": {"type": "string", "description": "Data source to analyze"},
+                        "analysis_type": {"type": "string", "description": "Type of analysis"}
+                    },
+                    "capabilities": ["data_processing", "basic_analysis"],
+                    "domain": domain,
+                    "priority": 7,
+                    "fallback_tool": True,
+                    "tool_type": "content_generation"
+                })
+            elif domain == 'development':
+                fallback_tools.append({
+                    "name": "CodeGenerationHelper",
+                    "description": "Basic code generation and development assistance",
+                    "parameters": {
+                        "language": {"type": "string", "description": "Programming language"},
+                        "task": {"type": "string", "description": "Development task"}
+                    },
+                    "capabilities": ["code_generation", "development_guidance"],
+                    "domain": domain,
+                    "priority": 7,
+                    "fallback_tool": True,
+                    "tool_type": "content_generation"
+                })
+            
+            sdk_tools = fallback_tools
+            logger.info(f"🔄 Graceful fallback active: {len(sdk_tools)} basic tools available for '{agent_name}'")
+        
+        # 📊 LOG TOOL AVAILABILITY STATUS for monitoring
+        tool_status = {
+            "agent_name": agent_name,
+            "domain": domain,
+            "workspace_id": workspace_id,
+            "mcp_available": mcp_available,
+            "tools_count": len(sdk_tools),
+            "tool_types": [tool.get("tool_type", "mcp") for tool in sdk_tools],
+            "timestamp": datetime.now().isoformat()
         }
         
-        # Discover relevant tools
-        mcp_tools = await mcp_tool_discovery.get_tools_for_domain(domain, agent_context)
-        
-        # Convert to SDK format
-        sdk_tools = await mcp_tool_discovery.get_sdk_compatible_tools(mcp_tools)
-        
-        logger.info(f"🔧 Retrieved {len(sdk_tools)} MCP tools for agent '{agent_data.name}' in domain '{domain}'")
+        logger.info(f"🔧 Tool discovery complete for '{agent_name}': {tool_status}")
         return sdk_tools
         
     except Exception as e:
-        logger.error(f"Failed to get MCP tools for agent: {e}")
-        return []
+        logger.error(f"❌ Complete tool discovery failure for agent '{agent_name}': {e}")
+        # Ultimate fallback - just return basic web search capability
+        return [
+            {
+                "name": "WebSearchTool",
+                "description": "Basic web search functionality",
+                "parameters": {"query": {"type": "string", "description": "Search query"}},
+                "capabilities": ["web_search"],
+                "domain": "web_search",
+                "priority": 5,
+                "fallback_tool": True,
+                "tool_type": "emergency_fallback"
+            }
+        ]

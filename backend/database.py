@@ -492,7 +492,7 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                 # Create deliverable with pipeline-generated content
                 ai_deliverable_data = {
                     'title': deliverable_data.get('title', 'Real Business Asset'),
-                    'content': pipeline_result.final_content,
+                    'content': pipeline_result.final_content if pipeline_result.final_content else deliverable_data.get('content', {}),
                     'status': 'completed' if pipeline_result.execution_successful else 'draft',
                     'goal_id': mapped_goal_id,
                     'type': 'real_business_asset',
@@ -1410,6 +1410,16 @@ async def list_tasks(
             f"Error listing tasks for workspace {workspace_id}: {e}", exc_info=True
         )
         raise
+
+async def get_pending_tasks_count() -> int:
+    """Get total count of pending tasks across all workspaces for load assessment."""
+    try:
+        query = supabase.table("tasks").select("*", count="exact").eq("status", "pending")
+        result = query.execute()
+        return result.count if result.count else 0
+    except Exception as e:
+        logger.error(f"Error counting pending tasks: {e}")
+        return 0
         
 async def get_agent(agent_id: str):
     try:
