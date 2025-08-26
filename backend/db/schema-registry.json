@@ -1,0 +1,337 @@
+{
+  "schema_registry": {
+    "version": "2.0.0",
+    "last_updated": "2025-08-26T10:00:00Z",
+    "description": "Comprehensive schema registry for AI Team Orchestrator with auto-recovery system support",
+    "migrations_applied": [
+      "001_add_trace_id_columns",
+      "008_add_document_tables", 
+      "009_add_recovery_system_tables"
+    ],
+    "tables": {
+      "workspaces": {
+        "description": "Main workspace entities for organizing projects",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "uuid_generate_v4()"},
+          "name": {"type": "TEXT", "nullable": false, "description": "Workspace name"},
+          "description": {"type": "TEXT", "nullable": true, "description": "Workspace description"},
+          "user_id": {"type": "UUID", "nullable": false, "description": "Owner user ID"},
+          "status": {"type": "TEXT", "nullable": false, "default": "created", "check": "status IN ('created', 'active', 'paused', 'completed', 'error', 'processing_tasks', 'needs_intervention')"},
+          "goal": {"type": "TEXT", "nullable": true, "description": "Workspace objective"},
+          "budget": {"type": "JSONB", "nullable": true, "description": "Budget information"},
+          "total_recovery_attempts": {"type": "INTEGER", "nullable": false, "default": 0, "description": "Total recovery attempts for this workspace"},
+          "successful_recoveries": {"type": "INTEGER", "nullable": false, "default": 0, "description": "Successful recovery attempts"},
+          "last_recovery_check_at": {"type": "TIMESTAMPTZ", "nullable": true, "description": "Last time recovery was checked"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_workspaces_user_id", "columns": ["user_id"]},
+          {"name": "idx_workspaces_status", "columns": ["status"]},
+          {"name": "idx_workspaces_created_at", "columns": ["created_at"]}
+        ],
+        "triggers": ["update_workspaces_updated_at"],
+        "pydantic_model": "WorkspaceWithRecovery"
+      },
+      "agents": {
+        "description": "AI agents that perform tasks within workspaces",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "uuid_generate_v4()"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "name": {"type": "TEXT", "nullable": false, "description": "Agent name"},
+          "role": {"type": "TEXT", "nullable": false, "description": "Agent role/specialization"},
+          "seniority": {"type": "TEXT", "nullable": false, "description": "Agent experience level"},
+          "description": {"type": "TEXT", "nullable": true, "description": "Agent description"},
+          "system_prompt": {"type": "TEXT", "nullable": true, "description": "Agent system prompt"},
+          "status": {"type": "TEXT", "nullable": false, "default": "created", "check": "status IN ('active', 'idle', 'busy', 'error', 'offline')"},
+          "health": {"type": "JSONB", "nullable": false, "default": "'{\"status\": \"unknown\", \"last_update\": null}'", "description": "Agent health status"},
+          "consecutive_failures": {"type": "INTEGER", "nullable": false, "default": 0, "description": "Consecutive failure count for circuit breaker"},
+          "llm_config": {"type": "JSONB", "nullable": true, "description": "LLM configuration"},
+          "tools": {"type": "JSONB", "nullable": true, "description": "Available tools"},
+          "can_create_tools": {"type": "BOOLEAN", "nullable": false, "default": false},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_agents_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_agents_status", "columns": ["status"]},
+          {"name": "idx_agents_role", "columns": ["role"]}
+        ],
+        "triggers": ["update_agents_updated_at"],
+        "pydantic_model": "Agent"
+      },
+      "tasks": {
+        "description": "Tasks to be executed by agents",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "uuid_generate_v4()"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "goal_id": {"type": "UUID", "nullable": true, "foreign_key": "workspace_goals(id)", "on_delete": "SET NULL"},
+          "agent_id": {"type": "UUID", "nullable": true, "foreign_key": "agents(id)", "on_delete": "SET NULL"},
+          "name": {"type": "TEXT", "nullable": false, "description": "Task name"},
+          "description": {"type": "TEXT", "nullable": true, "description": "Task description"},
+          "status": {"type": "TEXT", "nullable": false, "default": "pending", "check": "status IN ('pending', 'in_progress', 'completed', 'failed')"},
+          "task_type": {"type": "TEXT", "nullable": true, "default": "hybrid", "description": "AI-driven task classification"},
+          "priority": {"type": "TEXT", "nullable": true, "default": "medium", "description": "Task priority"},
+          "context_data": {"type": "JSONB", "nullable": true, "description": "Task context and metadata"},
+          "recovery_count": {"type": "INTEGER", "nullable": false, "default": 0, "description": "Number of recovery attempts"},
+          "last_failure_type": {"type": "TEXT", "nullable": true, "description": "Type of last failure"},
+          "last_recovery_attempt_at": {"type": "TIMESTAMPTZ", "nullable": true, "description": "Timestamp of last recovery attempt"},
+          "auto_recovery_enabled": {"type": "BOOLEAN", "nullable": false, "default": true, "description": "Whether auto-recovery is enabled"},
+          "semantic_hash": {"type": "TEXT", "nullable": true, "description": "AI-generated semantic hash for deduplication"},
+          "trace_id": {"type": "TEXT", "nullable": true, "description": "Distributed tracing ID"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_tasks_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_tasks_agent_id", "columns": ["agent_id"]},
+          {"name": "idx_tasks_goal_id", "columns": ["goal_id"]},
+          {"name": "idx_tasks_status", "columns": ["status"]},
+          {"name": "idx_tasks_priority", "columns": ["priority"]},
+          {"name": "idx_tasks_recovery_count", "columns": ["recovery_count"]},
+          {"name": "idx_tasks_last_failure_type", "columns": ["last_failure_type"]},
+          {"name": "idx_tasks_auto_recovery_enabled", "columns": ["auto_recovery_enabled"]},
+          {"name": "idx_tasks_semantic_hash", "columns": ["semantic_hash"]}
+        ],
+        "triggers": ["update_tasks_updated_at"],
+        "pydantic_model": "TaskWithRecovery"
+      },
+      "task_executions": {
+        "description": "Tracks all task execution attempts for observability",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "gen_random_uuid()"},
+          "task_id": {"type": "UUID", "nullable": false, "foreign_key": "tasks(id)", "on_delete": "CASCADE"},
+          "agent_id": {"type": "UUID", "nullable": true, "foreign_key": "agents(id)", "on_delete": "SET NULL"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "status": {"type": "TEXT", "nullable": false, "check": "status IN ('started', 'completed', 'failed_retriable', 'failed_terminal')"},
+          "started_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "completed_at": {"type": "TIMESTAMPTZ", "nullable": true},
+          "execution_time_seconds": {"type": "FLOAT", "nullable": true, "description": "Execution duration"},
+          "result": {"type": "JSONB", "nullable": true, "description": "Execution result"},
+          "logs": {"type": "TEXT", "nullable": true, "description": "Execution logs"},
+          "token_usage": {"type": "JSONB", "nullable": true, "description": "AI model token usage"},
+          "error_message": {"type": "TEXT", "nullable": true, "description": "Error message if failed"},
+          "error_type": {"type": "TEXT", "nullable": true, "description": "Error type classification"},
+          "retry_count": {"type": "INTEGER", "nullable": false, "default": 0, "description": "Number of retries"},
+          "openai_trace_id": {"type": "TEXT", "nullable": true, "description": "OpenAI tracing ID"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_task_executions_task_id", "columns": ["task_id"]},
+          {"name": "idx_task_executions_agent_id", "columns": ["agent_id"]},
+          {"name": "idx_task_executions_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_task_executions_status", "columns": ["status"]},
+          {"name": "idx_task_executions_started_at", "columns": ["started_at"]}
+        ],
+        "triggers": ["update_task_executions_updated_at"],
+        "pydantic_model": "TaskExecutionOutput"
+      },
+      "failure_patterns": {
+        "description": "Detected failure patterns for machine learning and trend analysis",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "gen_random_uuid()"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "task_id": {"type": "UUID", "nullable": true, "foreign_key": "tasks(id)", "on_delete": "CASCADE"},
+          "pattern_signature": {"type": "TEXT", "nullable": false, "description": "Computed signature for deduplication"},
+          "failure_type": {"type": "TEXT", "nullable": false, "description": "FailureType enum value"},
+          "error_message_hash": {"type": "TEXT", "nullable": false, "description": "Hash of error message for matching"},
+          "error_message": {"type": "TEXT", "nullable": false, "description": "Original error message"},
+          "error_type": {"type": "TEXT", "nullable": true, "description": "Error type classification"},
+          "root_cause_category": {"type": "TEXT", "nullable": true, "description": "Root cause category"},
+          "occurrence_count": {"type": "INTEGER", "nullable": false, "default": 1, "check": "occurrence_count > 0"},
+          "first_detected_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "last_detected_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "is_transient": {"type": "BOOLEAN", "nullable": false, "default": true},
+          "confidence_score": {"type": "FLOAT", "nullable": false, "default": 0.0, "check": "confidence_score >= 0.0 AND confidence_score <= 1.0"},
+          "pattern_source": {"type": "TEXT", "nullable": false, "default": "failure_detection_engine"},
+          "execution_stage": {"type": "TEXT", "nullable": true, "description": "Execution stage when failure occurred"},
+          "agent_id": {"type": "UUID", "nullable": true, "foreign_key": "agents(id)", "on_delete": "SET NULL"},
+          "context_metadata": {"type": "JSONB", "nullable": false, "default": "'{}'", "description": "Additional context"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_failure_patterns_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_failure_patterns_task_id", "columns": ["task_id"]},
+          {"name": "idx_failure_patterns_pattern_signature", "columns": ["pattern_signature"]},
+          {"name": "idx_failure_patterns_failure_type", "columns": ["failure_type"]},
+          {"name": "idx_failure_patterns_error_hash", "columns": ["error_message_hash"]},
+          {"name": "idx_failure_patterns_last_detected", "columns": ["last_detected_at"]}
+        ],
+        "triggers": ["update_failure_patterns_updated_at"],
+        "pydantic_model": "FailurePatternModel"
+      },
+      "recovery_attempts": {
+        "description": "Tracks all recovery attempts and their outcomes",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "gen_random_uuid()"},
+          "task_id": {"type": "UUID", "nullable": false, "foreign_key": "tasks(id)", "on_delete": "CASCADE"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "recovery_strategy": {"type": "TEXT", "nullable": false, "description": "RecoveryStrategy enum value"},
+          "failure_pattern_id": {"type": "UUID", "nullable": true, "foreign_key": "failure_patterns(id)", "on_delete": "SET NULL"},
+          "attempt_number": {"type": "INTEGER", "nullable": false, "default": 1, "check": "attempt_number > 0"},
+          "triggered_by": {"type": "TEXT", "nullable": false, "description": "What triggered this recovery"},
+          "recovery_reason": {"type": "TEXT", "nullable": true, "description": "Why this recovery was chosen"},
+          "started_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "completed_at": {"type": "TIMESTAMPTZ", "nullable": true},
+          "status": {"type": "TEXT", "nullable": false, "default": "in_progress", "check": "status IN ('in_progress', 'completed', 'failed', 'cancelled')"},
+          "success": {"type": "BOOLEAN", "nullable": true, "description": "Whether recovery was successful"},
+          "recovery_outcome": {"type": "TEXT", "nullable": true, "description": "Description of outcome"},
+          "error_message": {"type": "TEXT", "nullable": true, "description": "Error if recovery failed"},
+          "recovery_context": {"type": "JSONB", "nullable": false, "default": "'{}'", "description": "Context data used for recovery"},
+          "agent_id": {"type": "UUID", "nullable": true, "foreign_key": "agents(id)", "on_delete": "SET NULL"},
+          "estimated_resolution_time": {"type": "INTERVAL", "nullable": true},
+          "actual_resolution_time": {"type": "INTERVAL", "nullable": true},
+          "confidence_score": {"type": "FLOAT", "nullable": true, "check": "confidence_score IS NULL OR (confidence_score >= 0.0 AND confidence_score <= 1.0)"},
+          "ai_reasoning": {"type": "TEXT", "nullable": true, "description": "AI explanation for recovery choice"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_recovery_attempts_task_id", "columns": ["task_id"]},
+          {"name": "idx_recovery_attempts_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_recovery_attempts_failure_pattern_id", "columns": ["failure_pattern_id"]},
+          {"name": "idx_recovery_attempts_status", "columns": ["status"]},
+          {"name": "idx_recovery_attempts_started_at", "columns": ["started_at"]},
+          {"name": "idx_recovery_attempts_strategy", "columns": ["recovery_strategy"]}
+        ],
+        "triggers": ["update_recovery_attempts_updated_at", "trigger_update_workspace_recovery_metrics"],
+        "pydantic_model": "RecoveryAttemptModel"
+      },
+      "recovery_explanations": {
+        "description": "Human-readable explanations of recovery decisions for transparency",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "gen_random_uuid()"},
+          "task_id": {"type": "UUID", "nullable": false, "foreign_key": "tasks(id)", "on_delete": "CASCADE"},
+          "workspace_id": {"type": "UUID", "nullable": false, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "recovery_attempt_id": {"type": "UUID", "nullable": true, "foreign_key": "recovery_attempts(id)", "on_delete": "CASCADE"},
+          "failure_summary": {"type": "TEXT", "nullable": false, "description": "Brief summary of what went wrong"},
+          "root_cause": {"type": "TEXT", "nullable": false, "description": "Detailed root cause analysis"},
+          "retry_decision": {"type": "TEXT", "nullable": false, "description": "Explanation of retry/recovery decision"},
+          "confidence_explanation": {"type": "TEXT", "nullable": false, "description": "Confidence level explanation"},
+          "user_action_required": {"type": "TEXT", "nullable": true, "description": "What action user needs to take"},
+          "estimated_resolution_time": {"type": "TEXT", "nullable": true, "description": "Estimated time to resolution"},
+          "severity_level": {"type": "TEXT", "nullable": false, "default": "medium", "check": "severity_level IN ('low', 'medium', 'high', 'critical')"},
+          "display_category": {"type": "TEXT", "nullable": false, "default": "System Issue", "description": "User-friendly category"},
+          "technical_details": {"type": "JSONB", "nullable": false, "default": "'{}'", "description": "Technical details for developers"},
+          "error_pattern_matched": {"type": "TEXT", "nullable": true, "description": "Pattern that was matched"},
+          "failure_category": {"type": "TEXT", "nullable": true, "description": "Failure category"},
+          "recovery_strategy": {"type": "TEXT", "nullable": true, "description": "Recovery strategy used"},
+          "ai_analysis_used": {"type": "BOOLEAN", "nullable": false, "default": false, "description": "Whether AI analysis was used"},
+          "explanation_source": {"type": "TEXT", "nullable": false, "default": "recovery_explanation_engine", "description": "Source of explanation"},
+          "generation_model": {"type": "TEXT", "nullable": true, "description": "AI model used for generation"},
+          "generation_confidence": {"type": "FLOAT", "nullable": true, "check": "generation_confidence IS NULL OR (generation_confidence >= 0.0 AND generation_confidence <= 1.0)"},
+          "failure_time": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "explanation_generated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"},
+          "updated_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_recovery_explanations_task_id", "columns": ["task_id"]},
+          {"name": "idx_recovery_explanations_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_recovery_explanations_recovery_attempt_id", "columns": ["recovery_attempt_id"]},
+          {"name": "idx_recovery_explanations_severity", "columns": ["severity_level"]},
+          {"name": "idx_recovery_explanations_failure_time", "columns": ["failure_time"]}
+        ],
+        "triggers": ["update_recovery_explanations_updated_at"],
+        "pydantic_model": "RecoveryExplanationModel"
+      },
+      "execution_logs": {
+        "description": "System execution logs for monitoring and debugging",
+        "columns": {
+          "id": {"type": "UUID", "nullable": false, "primary_key": true, "default": "uuid_generate_v4()"},
+          "workspace_id": {"type": "UUID", "nullable": true, "foreign_key": "workspaces(id)", "on_delete": "CASCADE"},
+          "agent_id": {"type": "UUID", "nullable": true, "foreign_key": "agents(id)", "on_delete": "CASCADE"},
+          "task_id": {"type": "UUID", "nullable": true, "foreign_key": "tasks(id)", "on_delete": "CASCADE"},
+          "level": {"type": "TEXT", "nullable": false, "description": "Log level (INFO, ERROR, etc.)"},
+          "message": {"type": "TEXT", "nullable": true, "description": "Log message"},
+          "type": {"type": "TEXT", "nullable": false, "description": "Log type/category"},
+          "content": {"type": "JSONB", "nullable": true, "description": "Structured log content"},
+          "metadata": {"type": "JSONB", "nullable": true, "description": "Additional metadata"},
+          "trace_id": {"type": "TEXT", "nullable": true, "description": "Distributed tracing ID"},
+          "created_at": {"type": "TIMESTAMPTZ", "nullable": false, "default": "NOW()"}
+        },
+        "indexes": [
+          {"name": "idx_execution_logs_workspace_id", "columns": ["workspace_id"]},
+          {"name": "idx_execution_logs_agent_id", "columns": ["agent_id"]},
+          {"name": "idx_execution_logs_task_id", "columns": ["task_id"]},
+          {"name": "idx_execution_logs_level", "columns": ["level"]},
+          {"name": "idx_execution_logs_type", "columns": ["type"]},
+          {"name": "idx_execution_logs_created_at", "columns": ["created_at"]}
+        ],
+        "pydantic_model": "ExecutionLog"
+      }
+    },
+    "functions": {
+      "get_ready_tasks": {
+        "description": "Get tasks ready for execution (no pending dependencies)",
+        "parameters": ["p_workspace_id UUID"],
+        "returns": "TABLE",
+        "purpose": "Performance optimization for task execution pipeline"
+      },
+      "get_task_execution_stats": {
+        "description": "Get execution statistics for a specific task",
+        "parameters": ["p_task_id UUID"],
+        "returns": "TABLE",
+        "purpose": "Monitoring and observability"
+      },
+      "get_workspace_recovery_stats": {
+        "description": "Get comprehensive recovery statistics for a workspace",
+        "parameters": ["p_workspace_id UUID"],
+        "returns": "TABLE",
+        "purpose": "Recovery system monitoring and reporting"
+      },
+      "cleanup_old_recovery_data": {
+        "description": "Cleanup old recovery data based on retention policy",
+        "parameters": ["retention_days INTEGER DEFAULT 90"],
+        "returns": "INTEGER",
+        "purpose": "Data retention management"
+      },
+      "update_updated_at_column": {
+        "description": "Generic function to update updated_at timestamps",
+        "parameters": [],
+        "returns": "TRIGGER",
+        "purpose": "Automatic timestamp management"
+      },
+      "update_workspace_recovery_metrics": {
+        "description": "Update workspace recovery metrics when recovery attempts change",
+        "parameters": [],
+        "returns": "TRIGGER",
+        "purpose": "Automatic metric calculation"
+      }
+    },
+    "views": {
+      "tasks_with_dependencies": {
+        "description": "View showing tasks with their dependency relationships",
+        "purpose": "Simplified dependency queries"
+      }
+    },
+    "enums": {
+      "workspace_status": ["created", "active", "paused", "completed", "error", "processing_tasks", "needs_intervention"],
+      "task_status": ["pending", "in_progress", "completed", "failed"],
+      "agent_status": ["active", "idle", "busy", "error", "offline"],
+      "failure_type": ["pydantic_validation_error", "json_parsing_error", "openai_api_timeout", "openai_sdk_error", "database_connection_error", "memory_exhaustion", "cascading_failures"],
+      "recovery_strategy": ["immediate_retry", "delayed_retry", "retry_with_different_agent", "retry_with_fallback_model", "escalate_to_workspace_recovery", "mark_failed_no_retry"],
+      "severity_level": ["low", "medium", "high", "critical"]
+    },
+    "performance_considerations": {
+      "indexing_strategy": "Comprehensive indexes for all frequently queried columns, especially foreign keys and status fields",
+      "partitioning": "Consider partitioning large tables (execution_logs, failure_patterns) by time if they grow large",
+      "archival": "Implement automatic archival for old recovery data using cleanup_old_recovery_data function",
+      "monitoring": "Monitor query performance on recovery-related tables as they may grow quickly"
+    },
+    "data_retention": {
+      "failure_patterns": "Keep frequently occurring patterns indefinitely, single-occurrence patterns for 90 days",
+      "recovery_attempts": "Keep failed attempts longer for analysis, successful attempts for 90 days", 
+      "recovery_explanations": "90 days retention for compliance and user reference",
+      "execution_logs": "30-90 days depending on log level and importance"
+    },
+    "compliance_notes": {
+      "gdpr": "Personal data should not be stored in error messages or logs",
+      "explainability": "recovery_explanations table provides human-readable explanations for AI decisions",
+      "auditability": "All recovery actions are logged with full context and reasoning",
+      "transparency": "Users can see why recovery decisions were made through the explanation system"
+    }
+  }
+}

@@ -64,6 +64,8 @@ class OrchestrationContext(BaseModel):
     execution_metadata: Dict[str, Any] = {}
     available_agents: List[Dict[str, Any]] = []
     orchestration_state: Dict[str, Any] = {}
+    task_classification: Optional[Any] = None
+    available_tools: List[str] = []
 
 class EnhancedTaskExecutionOutput(TaskExecutionOutput):
     summary: Optional[str] = None
@@ -151,15 +153,14 @@ class SpecialistAgent:
             execution_input = self._prepare_execution_input(task, task_classification)
             
             # 🔧 CRITICAL: Create context bridge for SDK RunContextWrapper
-            # The SDK will wrap our context, but we need to ensure task classification
-            # data is accessible to guardrails via the RunContextWrapper
+            # Pass the data directly to the context, not nested inside orchestration_context
             context_data = {
-                "orchestration_context": orchestration_context,
                 "task_classification": task_classification,
                 "execution_type": task_classification.execution_type.value,
                 "available_tools": task_classification.tools_needed,
                 "requires_tools": task_classification.requires_tools,
-                "workspace_id": str(task.workspace_id)
+                "workspace_id": str(task.workspace_id),
+                "orchestration_context": orchestration_context
             }
             
             run_params = {

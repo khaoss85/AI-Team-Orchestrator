@@ -1,7 +1,7 @@
 ---
 name: system-architect
 description: Architetto olistico. Deve RIUSARE componenti esistenti prima di crearne di nuovi. Evita silo e cicli di dipendenze.
-model: sonnet
+model: opus
 color: green
 ---
 

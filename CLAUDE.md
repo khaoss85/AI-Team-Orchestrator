@@ -118,7 +118,88 @@ Il sistema è stato completamente trasformato da hard-coded a AI-driven, mantene
 5. QA gate approval before completion
 6. Reset iteration counter on approval
 
-API endpoints: `/improvement/start/{task_id}`, `/improvement/status/{task_id}`, `/improvement/close/{task_id}`
+API endpoints: `/api/improvement/start/{task_id}`, `/api/improvement/status/{task_id}`, `/api/improvement/close/{task_id}`
+
+## API Endpoints Reference
+
+All API endpoints are mounted with the `/api` prefix. Key endpoints include:
+
+### Core Resources
+- **Workspaces**: `/api/workspaces/` - Workspace CRUD operations
+- **Goals**: `/api/goals/` - Goal management and tracking  
+- **Tasks**: `/api/tasks/` - Task execution and status
+- **Agents**: `/api/agents/{workspace_id}` - Agent listing and management per workspace
+- **Assets**: `/api/unified-assets/` - Asset generation and retrieval
+- **Deliverables**: `/api/deliverables/workspace/{workspace_id}` - Project deliverables and outputs
+
+### Specialized Services  
+- **Director**: `/api/director/` - Team composition and proposals
+- **Monitoring**: `/api/monitoring/` - System health and metrics
+- **Improvement**: `/api/improvement/` - Quality feedback loops
+- **Conversational**: `/api/conversational/` - Chat and tool interactions
+
+## Team Approval Workflow
+
+### Director Team Proposal Flow
+1. **Create Proposal**: `POST /api/director/proposal`
+   ```json
+   {
+     "workspace_id": "uuid",
+     "workspace_goal": "string", 
+     "user_feedback": "string (optional)"
+   }
+   ```
+   Returns: `{"proposal_id": "uuid", "team_members": [...], "estimated_cost": number}`
+
+2. **Approve Proposal**: `POST /api/director/approve/{workspace_id}?proposal_id={uuid}`
+   ```json
+   {
+     "user_feedback": "string (optional)"
+   }
+   ```
+   Returns: `{"status": "success", "background_processing": true, "estimated_completion_seconds": 30}`
+
+### Approval Endpoint
+✅ **Consolidated**: Single approval endpoint for team proposals:
+- `/api/director/approve/{workspace_id}` (path+query based)
+
+## Claude Code Sub-Agents Integration
+
+### Available Sub-Agents (8 configured)
+Located in `.claude/agents/`:
+- **director** (opus): Orchestrator, triggers other agents as quality gates
+- **system-architect** (opus): Architectural decisions and component reuse
+- **db-steward** (sonnet): Database schema and migration guardian  
+- **api-contract-guardian** (sonnet): API contract validation and breaking changes
+- **principles-guardian** (opus): 15 Pillars compliance enforcement
+- **placeholder-police** (sonnet): Detects hard-coded values and placeholders
+- **fallback-test-sentinel** (sonnet): Test validation and failure prevention
+- **docs-scribe** (sonnet): Documentation synchronization and consistency
+
+### Auto-Activation Triggers
+Sub-agents should trigger on:
+- **director**: Modifications to `backend/ai_agents/`, `backend/services/`, `backend/routes/`, `src/components/`, `src/hooks/`
+- **docs-scribe**: Changes to `CLAUDE.md`, `README.md`, `backend/main.py`, documentation files
+
+### Current Issue: Sub-Agents Not Activating
+❌ **Problem**: During recent API fixes (deliverables.py, api.ts, CLAUDE.md updates), no sub-agents were triggered despite matching their activation criteria.
+
+**Investigation Required**: 
+- Verify Claude Code auto-detection system is working
+- Check if file path patterns match agent triggers  
+- Test manual agent invocation with Task tool
+
+### Common Issues & Fixes
+- **Foreign Key Error**: Ensure frontend sends `workspace_id` (not `user_id`) in proposal creation
+- **404 on Approval**: Both `workspace_id` and `proposal_id` parameters required
+- **Missing Tasks**: Team approval triggers background agent creation (~30s) + task generation
+- **Polling Delays**: Executor may take 2-10s to detect new pending tasks due to query joins
+
+### Important Notes
+- All endpoints require the `/api` prefix for proper routing
+- POST requests to collection endpoints (e.g., workspaces) require trailing slash: `/api/workspaces/`
+- Director endpoints are specifically mounted at `/api/director/` (not `/api/`)
+- Frontend API client automatically handles the `/api` prefix via `utils/api.ts`
 
 ### Frontend Structure
 - **App Router**: Next.js 15 with TypeScript

@@ -1,7 +1,7 @@
 ---
 name: principles-guardian
 description: Sentinella dei 15 pilastri (SDK nativi, no hard-coding, agnostico lingua/dominio, goal-tracking, memory, explainability, ecc.). BLOCCA violazioni critiche.
-model: sonnet
+model: opus
 color: purple
 ---
 

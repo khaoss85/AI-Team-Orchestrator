@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import List, Dict, Any, Optional, Union, Literal
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from enum import Enum
 import json
@@ -622,6 +622,155 @@ class BookLeadResponse(BaseModel):
     success: bool
     message: str
     lead_id: Optional[UUID] = None
+
+# --- Recovery System Models ---
+
+class FailurePatternModel(BaseModel):
+    """Model for failure pattern detection and tracking"""
+    id: UUID = Field(default_factory=uuid4)
+    workspace_id: UUID
+    task_id: Optional[UUID] = None
+    
+    # Pattern identification
+    pattern_signature: str
+    failure_type: str
+    error_message_hash: str
+    
+    # Pattern details  
+    error_message: str
+    error_type: Optional[str] = None
+    root_cause_category: Optional[str] = None
+    
+    # Frequency tracking
+    occurrence_count: int = 1
+    first_detected_at: datetime = Field(default_factory=datetime.now)
+    last_detected_at: datetime = Field(default_factory=datetime.now)
+    
+    # Pattern metadata
+    is_transient: bool = True
+    confidence_score: float = 0.0
+    pattern_source: str = "failure_detection_engine"
+    
+    # Context
+    execution_stage: Optional[str] = None
+    agent_id: Optional[UUID] = None
+    context_metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class RecoveryAttemptModel(BaseModel):
+    """Model for tracking recovery attempts"""
+    id: UUID = Field(default_factory=uuid4)
+    task_id: UUID
+    workspace_id: UUID
+    
+    # Recovery details
+    recovery_strategy: str
+    failure_pattern_id: Optional[UUID] = None
+    
+    # Attempt information
+    attempt_number: int = 1
+    triggered_by: str
+    recovery_reason: Optional[str] = None
+    
+    # Execution tracking
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = None
+    status: str = "in_progress"
+    
+    # Results
+    success: Optional[bool] = None
+    recovery_outcome: Optional[str] = None
+    error_message: Optional[str] = None
+    
+    # Metadata
+    recovery_context: Dict[str, Any] = Field(default_factory=dict)
+    agent_id: Optional[UUID] = None
+    estimated_resolution_time: Optional[timedelta] = None
+    actual_resolution_time: Optional[timedelta] = None
+    
+    # AI analysis
+    confidence_score: Optional[float] = None
+    ai_reasoning: Optional[str] = None
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class RecoveryExplanationModel(BaseModel):
+    """Model for recovery explanations"""
+    id: UUID = Field(default_factory=uuid4)
+    task_id: UUID
+    workspace_id: UUID
+    recovery_attempt_id: Optional[UUID] = None
+    
+    # Core explanation
+    failure_summary: str
+    root_cause: str
+    retry_decision: str
+    confidence_explanation: str
+    
+    # User-facing information
+    user_action_required: Optional[str] = None
+    estimated_resolution_time: Optional[str] = None
+    severity_level: str = "medium"
+    display_category: str = "System Issue"
+    
+    # Technical details
+    technical_details: Dict[str, Any] = Field(default_factory=dict)
+    error_pattern_matched: Optional[str] = None
+    failure_category: Optional[str] = None
+    recovery_strategy: Optional[str] = None
+    
+    # Generation metadata
+    ai_analysis_used: bool = False
+    explanation_source: str = "recovery_explanation_engine"
+    generation_model: Optional[str] = None
+    generation_confidence: Optional[float] = None
+    
+    # Timestamps
+    failure_time: datetime = Field(default_factory=datetime.now)
+    explanation_generated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class RecoveryStats(BaseModel):
+    """Model for recovery statistics"""
+    total_recovery_attempts: int = 0
+    successful_recoveries: int = 0
+    failure_patterns_count: int = 0
+    most_common_failure_type: Optional[str] = None
+    recovery_success_rate: float = 0.0
+    avg_resolution_time: Optional[timedelta] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# Enhanced Task model with recovery fields
+class TaskWithRecovery(Task):
+    """Enhanced Task model with recovery tracking"""
+    recovery_count: int = 0
+    last_failure_type: Optional[str] = None
+    last_recovery_attempt_at: Optional[datetime] = None
+    auto_recovery_enabled: bool = True
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# Enhanced Workspace model with recovery metrics
+class WorkspaceWithRecovery(Workspace):
+    """Enhanced Workspace model with recovery metrics"""
+    total_recovery_attempts: int = 0
+    successful_recoveries: int = 0
+    last_recovery_check_at: Optional[datetime] = None
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):

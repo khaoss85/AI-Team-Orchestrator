@@ -1,7 +1,7 @@
 ---
 name: director
 description: Orchestratore. Usa PROATTIVAMENTE gli altri sub-agent in sequenza come quality gates. Deve fermare il merge se un gate fallisce.\ntools: Read, Grep, Glob, Bash, Task
-model: sonnet
+model: opus
 color: red
 ---
 

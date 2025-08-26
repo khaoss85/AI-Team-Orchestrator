@@ -59,6 +59,10 @@ from routes.service_registry import router as service_registry_router, registry_
 from routes.component_health import router as component_health_router, health_router as component_health_compat_router
 from routes.debug import router as debug_router
 
+# Recovery system routes
+from routes.recovery_explanations import router as recovery_explanations_router
+from routes.recovery_analysis import router as recovery_analysis_router
+
 # Import task executor
 from executor import start_task_executor, stop_task_executor
 
@@ -210,7 +214,7 @@ app = FastAPI(
 
 # Configure CORS
 # Allow specific origins for frontend development and production
-origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:3003,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
 
 # Clean up origins list (remove whitespace and empty strings)
 origins = [origin.strip() for origin in origins if origin.strip()]
@@ -239,7 +243,7 @@ register_asset_routes(app)
 
 # Core workspace and project management - ALL with /api prefix for consistency
 app.include_router(workspace_router, prefix="/api/workspaces", tags=["workspaces"])
-app.include_router(director_router, prefix="/api")
+app.include_router(director_router, prefix="/api/director")
 app.include_router(agents_router, prefix="/api")
 app.include_router(tools_router, prefix="/api")
 
@@ -293,17 +297,14 @@ app.include_router(delegation_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(utils_router, prefix="/api")
 
+# Recovery system routes
+app.include_router(recovery_explanations_router)  # Already includes /api/recovery-explanations prefix
+app.include_router(recovery_analysis_router)  # Already includes /api/recovery-analysis prefix
+
 # All routers now use consistent /api prefix - compatibility layer removed
 app.include_router(debug_router)
 
 # Health check endpoint
-@app.get("/health")
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "version": "0.1.0"}
-
 # Root endpoint
 @app.get("/")
 async def root():
@@ -409,20 +410,6 @@ async def generate_team_proposal_api(data: Dict[str, Any]):
             "success": False,
             "error": str(e)
         }
-
-@app.post("/api/approve-team-proposal")
-async def approve_team_proposal_api(data: Dict[str, Any]):
-    """Approve team proposal - E2E compatibility endpoint"""
-    proposal_id = data.get("proposal_id")
-    if not proposal_id:
-        raise HTTPException(status_code=400, detail="proposal_id required")
-    
-    # For E2E testing, we'll return a mock approval
-    return {
-        "success": True,
-        "proposal_id": proposal_id,
-        "status": "approved"
-    }
 
 @app.post("/api/analyze-task-business-value")
 async def analyze_task_business_value_api(data: Dict[str, Any]):
