@@ -635,7 +635,7 @@
             border-top: 2px solid #f1f3f4;
         }
         
-        .connect-links {
+        .connect-links, .social-links {
             display: flex;
             gap: 1.5rem;
             justify-content: center;
@@ -679,9 +679,16 @@
                 font-size: 2rem;
             }
             
-            .connect-links {
+            .connect-links, .social-links {
                 flex-direction: column;
                 align-items: center;
+                gap: 1rem;
+            }
+            
+            .social-link {
+                width: 100%;
+                max-width: 200px;
+                justify-content: center;
             }
         }
         
@@ -936,14 +943,14 @@
             transform: translateY(-5px);
         }
         
-        .stat-number {
+        .github-stats .stat-number {
             font-size: 1.2rem;
             font-weight: 700;
             color: #ffffff;
             margin-bottom: 5px;
         }
         
-        .stat-label {
+        .github-stats .stat-label {
             font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.8);
             text-transform: uppercase;
@@ -962,11 +969,11 @@
                 padding: 10px;
             }
             
-            .stat-number {
+            .github-stats .stat-number {
                 font-size: 1rem;
             }
             
-            .stat-label {
+            .github-stats .stat-label {
                 font-size: 0.8rem;
             }
         }
