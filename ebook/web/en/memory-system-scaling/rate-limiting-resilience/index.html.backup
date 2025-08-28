@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiting & Circuit Breakers - Resilience | Memory System Scaling | AI Team Orchestrator</title>
+    <meta name="description" content="Chapter 36 of AI Team Orchestrator: Rate Limiting & Circuit Breakers - Resilience">
+    <meta name="robots" content="index, follow">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .chapter-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-instrument {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .chapter-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            flex-wrap: wrap;
+        }
+        
+        .chapter-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        
+        .coming-soon {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4rem 2rem;
+            border-radius: 15px;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        .nav-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 1rem 0.5rem;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #495057;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .reader-tool:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .reader-tool.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .reader-tool-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        .reader-tools-toggle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Language Switcher */
+        .language-switcher {
+            display: flex;
+            background: rgba(0,0,0,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .language-option {
+            padding: 0.3rem 0.6rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+        
+        .language-option.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Reading Progress */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 1001;
+        }
+        
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .container {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(0, 0, 0, 0.8);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Fixed Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(350px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            pointer-events: none;
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+            /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        .reader-tools.collapsed { width: 60px; padding: 0.8rem; }
+        .reader-tool { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem; border: none; background: transparent; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; color: #495057; font-size: 0.85rem; white-space: nowrap; }
+        .reader-tool:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .reader-tool.active { background: #667eea; color: white; }
+        .reader-tool-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .reader-tool-label { font-size: 0.8rem; font-weight: 500; }
+        .collapsed .reader-tool-label { display: none; }
+        .reader-tools-toggle { position: absolute; top: -10px; left: -10px; width: 30px; height: 30px; background: #667eea; color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+        .reading-progress { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(102, 126, 234, 0.2); z-index: 1001; }
+        .reading-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
+        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #e9ecef; }
+        .dark-mode .container { color: #e9ecef; }
+        .dark-mode .chapter-header, .dark-mode .chapter-content { background: rgba(255, 255, 255, 0.05); color: #e9ecef; }
+        .dark-mode .breadcrumb { background: rgba(255, 255, 255, 0.1); color: #e9ecef; }
+        .dark-mode .reader-tools { background: rgba(0, 0, 0, 0.8); color: #e9ecef; }
+        .dark-mode .reader-tool { color: #e9ecef; }
+        .dark-mode .reader-tool:hover { background: rgba(255, 255, 255, 0.1); }
+        @media (max-width: 768px) { .reader-tools { right: 10px; padding: 0.8rem; min-width: 50px; } .reader-tools.collapsed { width: 50px; padding: 0.6rem; } .reader-tool { padding: 0.5rem; } .reader-tool-label { font-size: 0.75rem; } }
+        .bookmark-toast { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 0.8rem 1.2rem; border-radius: 8px; z-index: 1002; transform: translateX(300px); transition: transform 0.3s ease; font-size: 0.9rem; box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3); }
+        .bookmark-toast.show { transform: translateX(0); }
+        .bookmark-toast.error { background: #dc3545; box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3); }
+        .bookmarks-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(5px); }
+        .bookmarks-modal.show { display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .bookmarks-content { background: white; border-radius: 20px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .dark-mode .bookmarks-content { background: #1a1a2e; color: #e9ecef; }
+        .bookmarks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #667eea; }
+        .bookmarks-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 0.5rem; }
+        .dark-mode .bookmarks-title { color: #e9ecef; }
+        .close-bookmarks { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s ease; }
+        .close-bookmarks:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+        .bookmarks-list { max-height: 400px; overflow-y: auto; }
+        .bookmark-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem; background: rgba(102, 126, 234, 0.05); transition: all 0.2s ease; }
+        .bookmark-item:hover { background: rgba(102, 126, 234, 0.1); transform: translateX(5px); }
+        .dark-mode .bookmark-item { background: rgba(255, 255, 255, 0.05); }
+        .dark-mode .bookmark-item:hover { background: rgba(255, 255, 255, 0.1); }
+        .bookmark-info { flex-grow: 1; }
+        .bookmark-title { font-weight: 600; color: #2c3e50; text-decoration: none; font-size: 1rem; line-height: 1.4; }
+        .dark-mode .bookmark-title { color: #e9ecef; }
+        .bookmark-title:hover { color: #667eea; }
+        .bookmark-date { font-size: 0.8rem; color: #7f8c8d; margin-top: 0.3rem; }
+        .bookmark-actions { display: flex; gap: 0.5rem; }
+        .bookmark-action { background: none; border: none; cursor: pointer; padding: 0.3rem; border-radius: 5px; transition: all 0.2s ease; color: #7f8c8d; }
+        .bookmark-action:hover { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+        .empty-bookmarks { text-align: center; padding: 2rem; color: #7f8c8d; }
+        .empty-bookmarks-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+        .language-select { background: transparent; border: none; color: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; outline: none; min-width: 60px; }
+        .language-select option { background: white; color: #2c3e50; }
+        .dark-mode .language-select option { background: #1a1a2e; color: #e9ecef; }
+
+        /* Dark Mode - Content Areas */
+        .dark-mode .content-area {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area h2,
+        .dark-mode .content-area h3,
+        .dark-mode .content-area h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area p,
+        .dark-mode .content-area li {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area strong {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Dark Mode - Takeaways and Boxes */
+        .dark-mode .key-takeaways,
+        .dark-mode .insight-box,
+        .dark-mode .war-story {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways h3,
+        .dark-mode .insight-box h3,
+        .dark-mode .war-story h3 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways p,
+        .dark-mode .insight-box p,
+        .dark-mode .war-story p {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways li,
+        .dark-mode .insight-box li,
+        .dark-mode .war-story li {
+            color: #e9ecef;
+        }
+    
+        .architecture-section,
+        .mermaid,
+        .war-story,
+        .key-takeaways-section {
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+
+    <style>
+    .contextual-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dotted #667eea;
+        transition: all 0.2s ease;
+    }
+    
+    .contextual-link:hover {
+        color: #5a6fd8;
+        border-bottom-style: solid;
+    }
+    
+    .dark-mode .contextual-link {
+        color: #9bb5ff;
+        border-bottom-color: #9bb5ff;
+    }
+    </style>
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="canonical" href="https://ai-team-orchestrator.com/en/memory-system-scaling/rate-limiting-resilience/" />
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <a href="../">🎼 Memory System & Scaling</a>
+            <span>›</span>
+            <span>Rate Limiting <span>Current Chapter</span> Circuit Breakers - Resilience</span>
+        </nav>
+        <header class="chapter-header">
+            <div class="chapter-instrument">🎭</div>
+            <div class="chapter-meta">
+                <span>Movement 4 of 4</span>
+                <span>Chapter 36 of 42</span>
+                <span>Ready to Read</span>
+            </div>
+            <h1 class="chapter-title">Rate Limiting & Circuit Breakers - Resilience</h1>
+        </header>
+
+        <div class="chapter-content">
+<div class="chapter-progress">
+                        <div class="progress-label">Movimento 36 di 42</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 85%"></div>
+</div>
+                    <h2 class="chapter-title">Capitolo 36: Rate Limiting e Circuit Breakers – La Resilienza Enterprise</h2>
+                </div>
+
+<p>Il semantic cache aveva risolto il problema dei costi e della velocità, ma aveva anche mascherato un problema molto più serio: <strong>il nostro sistema non aveva difese contro i sovraccarichi</strong>. Con le risposte ora molto più veloci, gli utenti iniziavano a fare molte più richieste. E quando le richieste aumentavano oltre una certa soglia, il sistema collassava completamente.</p>
+
+<p>Il problema è emerso durante quello che abbiamo chiamato "The Monday Morning Surge" – il primo lunedì dopo il deployment del semantic cache.</p>
+
+<h3>"War Story": The Monday Morning Cascade Failure</h3>
+
+<p>Con il semantic cache attivo, gli utenti avevano iniziato a usare il sistema molto più intensivamente. Invece di fare 2-3 richieste per progetto, ne facevano 10-15, perché ora "era veloce".</p>
+
+<p><em>Timeline del Cascade Failure:</em></p>
+
+<pre><code class="language-text">09:15 Normal Monday morning traffic starts (50 concurrent users)
+09:17 Traffic spike: 150 concurrent users (semantic cache working great)
+09:22 Traffic continues growing: 300 concurrent users
+09:25 First warning signs: Database connections at 95% capacity
+09:27 CRITICAL: OpenAI rate limit reached (1000 req/min exceeded);
+09:28 Cache miss avalanche: New requests can&#x27t be cached due to API limits
+09:30 Database connection pool exhausted (all 200 connections used)
+09:32 System unresponsive: All requests timing out
+09:35 Manual emergency shutdown required</code></pre>
+
+<p><strong>LInsight Brutale:</strong> Il semantic cache aveva migliorato così tanto lesperienza utente che gli utenti avevano inconsciamente aumentato il loro usage di 5x. Ma il sistema sottostante non era progettato per gestire questo volume.</p>
+
+<h3>La Lezione: Success Can Be Your Biggest Failure</h3>
+
+<p>Questo crash ci ha insegnato una lezione fondamentale sui sistemi distribuiti: <strong>ogni ottimizzazione che migliora luser experience può causare un aumento esponenziale del carico</strong>. Se non hai difese appropriate, il successo ti uccide più velocemente del fallimento.</p>
+
+<p><em>Post-Mortem Analysis (22 Luglio):</em></p>
+
+<pre><code class="language-text">ROOT CAUSES:
+1. No rate limiting on user requests
+2. No circuit breaker on OpenAI API calls  
+3. No backpressure mechanism when system overloaded
+4. No graceful degradation when resources exhausted
+
+CASCADING EFFECTS:
+- OpenAI rate limit → Cache miss avalanche → Database overload → System death
+- No single point of failure, but no protection against demand spikes
+
+LESSON: Optimization without protection = vulnerability multiplication</code></pre>
+
+<h3>LArchitettura della Resilienza: Rate Limiting Intelligente</h3>
+
+<p>La soluzione non era semplicemente "aggiungere più server". Era progettare un sistema di <strong>protezione intelligente</strong> che potesse gestire demand spikes senza degradare lesperienza utente.</p>
+
+<p><em>Codice di riferimento: <code>backend/services/intelligent_rate_limiter.py</code></em></p>
+
+<pre><code class="language-python">class IntelligentRateLimiter:;
+    &quot;&quot;&quot;
+    Rate limiter adattivo che comprende contesto utente e system load
+    invece di applicare limiti fissi indiscriminati
+    &quot;&quot;&quot;
+    
+    def __init__(self):
+        self.user_tiers = UserTierManager()
+        self.system_health = SystemHealthMonitor()
+        self.adaptive_limits = AdaptiveLimitCalculator()
+        self.grace_period_manager = GracePeriodManager()
+        
+    async def should_allow_request(
+        self,
+        user_id: str,
+        request_type: RequestType,
+        current_load: SystemLoad;
+    ) -&gt; RateLimitDecision:
+        &quot;&quot;&quot;
+        Intelligent decision on whether to allow request based on
+        user tier, system load, request type, and historical patterns
+        &quot;&quot;&quot;
+        # 1. Get user tier and baseline limits
+        user_tier = await self.user_tiers.get_user_tier(user_id)
+        baseline_limits = self._get_baseline_limits(user_tier, request_type)
+        
+        # 2. Adjust limits based on current system health
+        adjusted_limits = await self.adaptive_limits.calculate_adjusted_limits(
+            baseline_limits,
+            current_load,
+            self.system_health.get_current_health()
+        )
+        
+        # 3. Check current usage against adjusted limits
+        current_usage = await self._get_current_usage(user_id, request_type)
+        ;
+        if current_usage &lt; adjusted_limits.allowed_requests:
+            # Allow request, increment usage
+            await self._increment_usage(user_id, request_type)
+            return RateLimitDecision.ALLOW
+            
+        # 4. Grace period check for burst traffic
+        if await self.grace_period_manager.can_use_grace_period(user_id):
+            await self.grace_period_manager.consume_grace_period(user_id)
+            return RateLimitDecision.ALLOW_WITH_GRACE
+            
+        # 5. Determine appropriate throttling strategy
+        throttling_strategy = await self._determine_throttling_strategy(
+            user_tier, current_load, request_type
+        )
+        
+        return RateLimitDecision.THROTTLE(strategy=throttling_strategy)
+    
+    async def _determine_throttling_strategy(
+        self,
+        user_tier: UserTier,
+        system_load: SystemLoad,
+        request_type: RequestType;
+    ) -&gt; ThrottlingStrategy:
+        &quot;&quot;&quot;
+        Choose appropriate throttling based on context
+        &quot;&quot;&quot;
+        if system_load.severity == LoadSeverity.CRITICAL:
+            # System under extreme stress - aggressive throttling
+            if user_tier == UserTier.ENTERPRISE:
+                return ThrottlingStrategy.DELAY(seconds=5)  # VIP gets short delay
+            else:
+                return ThrottlingStrategy.REJECT_WITH_BACKOFF(backoff_seconds=30)
+                
+        elif system_load.severity == LoadSeverity.HIGH:
+            # System stressed but not critical - smart throttling
+            if request_type == RequestType.CRITICAL_BUSINESS:
+                return ThrottlingStrategy.DELAY(seconds=2)  # Critical requests get priority
+            else:
+                return ThrottlingStrategy.QUEUE_WITH_TIMEOUT(timeout_seconds=10)
+                
+        else:
+            # System healthy but user exceeded limits - gentle throttling
+            return ThrottlingStrategy.DELAY(seconds=1)  # Short delay to pace requests</code></pre>
+
+<h3>Adaptive Limit Calculation: Limiti che Ragionano</h3>
+
+<p>Il cuore del sistema era l<strong>Adaptive Limit Calculator</strong> – un componente che calcolava dinamicamente i rate limits basandosi sullo stato del sistema:</p>
+
+<pre><code class="language-python">class AdaptiveLimitCalculator:;
+    &quot;&quot;&quot;
+    Calculates dynamic rate limits based on real-time system conditions
+    &quot;&quot;&quot;
+    
+    async def calculate_adjusted_limits(
+        self,
+        baseline_limits: BaselineLimits,
+        current_load: SystemLoad,
+        system_health: SystemHealth
+    ) -&gt; AdjustedLimits:
+        &quot;&quot;&quot;
+        Dynamically adjust rate limits based on system conditions
+        &quot;&quot;&quot;
+        # Start with baseline limits
+        adjusted = AdjustedLimits.from_baseline(baseline_limits)
+        
+        # Factor 1: System CPU/Memory utilization
+        resource_multiplier = self._calculate_resource_multiplier(system_health)
+        adjusted.requests_per_minute *= resource_multiplier
+        
+        # Factor 2: Database connection availability
+        db_multiplier = self._calculate_db_multiplier(system_health.db_connections)
+        adjusted.requests_per_minute *= db_multiplier
+        
+        # Factor 3: External API availability (OpenAI, etc.)
+        api_multiplier = self._calculate_api_multiplier(system_health.external_apis)
+        adjusted.requests_per_minute *= api_multiplier
+        
+        # Factor 4: Current queue depths
+        queue_multiplier = self._calculate_queue_multiplier(current_load.queue_depths)
+        adjusted.requests_per_minute *= queue_multiplier
+        
+        # Factor 5: Historical demand patterns (predictive)
+        predicted_multiplier = await self._calculate_predicted_demand_multiplier(
+            current_load.timestamp
+        )
+        adjusted.requests_per_minute *= predicted_multiplier
+        
+        # Ensure limits stay within reasonable bounds
+        adjusted.requests_per_minute = max(
+            baseline_limits.minimum_guaranteed,
+            min(baseline_limits.maximum_burst, adjusted.requests_per_minute)
+        )
+        
+        return adjusted
+    ;
+    def _calculate_resource_multiplier(self, system_health: SystemHealth) -&gt; float:
+        &quot;&quot;&quot;
+        Adjust limits based on system resource availability
+        &quot;&quot;&quot;
+        cpu_usage = system_health.cpu_utilization
+        memory_usage = system_health.memory_utilization
+        
+        # Conservative scaling based on highest resource usage
+        max_usage = max(cpu_usage, memory_usage)
+        ;
+        if max_usage &gt; 0.9:        # &gt;90% usage - severe throttling
+            return 0.3
+        elif max_usage &gt; 0.8:      # &gt;80% usage - moderate throttling  
+            return 0.6
+        elif max_usage &gt; 0.7:      # &gt;70% usage - light throttling
+            return 0.8
+        else:                      # &lt;70% usage - no throttling
+            return 1.0</code></pre>
+
+<h3>Circuit Breaker: La Protezione Ultima</h3>
+
+<p>Rate limiting protegge contro gradual overload, ma non protegge contro <strong>cascade failures</strong> quando dependencies esterne (come OpenAI) hanno problemi. Per questo avevamo bisogno di <strong>circuit breakers</strong>.</p>
+
+<pre><code class="language-python">class CircuitBreakerManager:;
+    &quot;&quot;&quot;
+    Circuit breaker implementation for protecting against cascading failures
+    from external dependencies
+    &quot;&quot;&quot;
+    
+    def __init__(self):
+        self.circuit_states = {}  # dependency_name -&gt; CircuitState
+        self.failure_counters = {}
+        self.recovery_managers = {}
+        
+    async def call_with_circuit_breaker(
+        self,
+        dependency_name: str,
+        operation: Callable,
+        fallback_operation: Optional[Callable] = None,
+        circuit_config: Optional[CircuitConfig] = None;
+    ) -&gt; OperationResult:
+        &quot;&quot;&quot;
+        Execute operation with circuit breaker protection
+        &quot;&quot;&quot;
+        circuit = self._get_or_create_circuit(dependency_name, circuit_config)
+        
+        # Check circuit state
+        if circuit.state == CircuitState.OPEN:
+            if await self._should_attempt_recovery(circuit):
+                circuit.state = CircuitState.HALF_OPEN;
+                logger.info(f&quot;Circuit {dependency_name} moving to HALF_OPEN for recovery attempt&quot;)
+            else:
+                # Circuit still open - use fallback or fail fast
+                if fallback_operation:
+                    logger.warning(f&quot;Circuit {dependency_name} OPEN - using fallback&quot;)
+                    return await fallback_operation()
+                else:
+                    raise CircuitOpenException(f&quot;Circuit {dependency_name} is OPEN&quot;)
+        
+        # Attempt operation
+        try:
+            result = await asyncio.wait_for(
+                operation(),
+                timeout=circuit.config.timeout_seconds
+            )
+            
+            # Success - reset failure counter if in HALF_OPEN
+            if circuit.state == CircuitState.HALF_OPEN:
+                await self._handle_recovery_success(circuit)
+            
+            return OperationResult.success(result)
+            
+        except Exception as e:
+            # Failure - handle based on circuit state and error type
+            await self._handle_operation_failure(circuit, e)
+            
+            # Try fallback if available
+            if fallback_operation:;
+                logger.warning(f&quot;Primary operation failed, trying fallback: {e}&quot;)
+                try:
+                    fallback_result = await fallback_operation()
+                    return OperationResult.fallback_success(fallback_result)
+                except Exception as fallback_error:;
+                    logger.error(f&quot;Fallback also failed: {fallback_error}&quot;)
+            
+            # No fallback or fallback failed - propagate error
+            raise
+    
+    async def _handle_operation_failure(
+        self,
+        circuit: CircuitBreaker,
+        error: Exception
+    ) -&gt; None:
+        &quot;&quot;&quot;
+        Handle failure and potentially trip circuit breaker
+        &quot;&quot;&quot;
+        # Increment failure counter
+        circuit.failure_count += 1
+        circuit.last_failure_time = datetime.utcnow()
+        
+        # Classify error type for circuit breaker logic
+        error_classification = self._classify_error(error)
+        
+        if error_classification == ErrorType.NETWORK_TIMEOUT:
+            # Network timeouts count heavily towards tripping circuit
+            circuit.failure_weight += 2.0
+        elif error_classification == ErrorType.RATE_LIMIT:
+            # Rate limits suggest system overload - moderate weight
+            circuit.failure_weight += 1.5
+        elif error_classification == ErrorType.SERVER_ERROR:
+            # 5xx errors suggest service issues - high weight
+            circuit.failure_weight += 2.5
+        else:
+            # Other errors (client errors, etc.) - low weight
+            circuit.failure_weight += 0.5
+        
+        # Check if circuit should trip;
+        if circuit.failure_weight &gt;= circuit.config.failure_threshold:
+            circuit.state = CircuitState.OPEN
+            circuit.opened_at = datetime.utcnow()
+            
+            logger.error(f&quot;Circuit breaker {circuit.name} TRIPPED - &quot;
+                f&quot;failure_weight: {circuit.failure_weight}, &quot;
+                f&quot;failure_count: {circuit.failure_count}&quot;
+            )
+            
+            # Send alert
+            await self._send_circuit_breaker_alert(circuit, error)</code></pre>
+
+<h3>Intelligent Fallback Strategies</h3>
+
+<p>Il vero valore dei circuit breakers non è solo "fail fast" – è <strong>"fail gracefully with intelligent fallbacks"</strong>:</p>
+
+<pre><code class="language-python">class FallbackStrategyManager:;
+    &quot;&quot;&quot;
+    Manages intelligent fallback strategies when primary systems fail
+    &quot;&quot;&quot;
+    
+    def __init__(self):
+        self.fallback_registry = {}
+        self.quality_assessor = FallbackQualityAssessor()
+        
+    async def get_ai_response_fallback(
+        self,
+        original_request: AIRequest,
+        failure_context: FailureContext;
+    ) -&gt; FallbackResponse:
+        &quot;&quot;&quot;
+        Intelligent fallback for AI API failures
+        &quot;&quot;&quot;
+        # Strategy 1: Try alternative AI provider
+        if failure_context.failure_type == FailureType.RATE_LIMIT:
+            alternative_providers = self._get_alternative_providers(original_request)
+            for provider in alternative_providers:
+                try:
+                    response = await provider.call_ai(original_request)
+                    return FallbackResponse.alternative_provider(response, provider.name)
+                except Exception as e:;
+                    logger.warning(f&quot;Alternative provider {provider.name} also failed: {e}&quot;)
+                    continue
+        
+        # Strategy 2: Use cached similar response with lower threshold
+        if self.semantic_cache:
+            similar_response = await self.semantic_cache.find_similar(
+                original_request,
+                threshold=0.7  # Lower threshold for fallback
+            )
+            if similar_response:
+                quality_score = await self.quality_assessor.assess_fallback_quality(
+                    similar_response, original_request
+                );
+                if quality_score &gt; 0.6:  # Acceptable quality
+                    return FallbackResponse.cached_similar(
+                        similar_response, 
+                        confidence=quality_score
+                    )
+        
+        # Strategy 3: Rule-based approximation
+        rule_based_response = await self._generate_rule_based_response(original_request)
+        if rule_based_response:
+            return FallbackResponse.rule_based(
+                rule_based_response,
+                confidence=0.4  # Low confidence but still useful
+            )
+        
+        # Strategy 4: Template-based response
+        template_response = await self._generate_template_response(original_request)
+        return FallbackResponse.template_based(
+            template_response,
+            confidence=0.2  # Very low confidence, but better than nothing
+        )
+    
+    async def _generate_rule_based_response(
+        self,
+        request: AIRequest;
+    ) -&gt; Optional[RuleBasedResponse]:
+        &quot;&quot;&quot;
+        Generate response using business rules when AI is unavailable
+        &quot;&quot;&quot;
+        if request.step_type == PipelineStepType.TASK_PRIORITIZATION:
+            # Use simple rule-based prioritization
+            priority_score = self._calculate_rule_based_priority(request.task_data)
+            return RuleBasedResponse(type=&quot;task_prioritization&quot;,
+                data={&quot;priority_score&quot;: priority_score},
+                explanation=&quot;Calculated using rule-based fallback (AI unavailable)&quot;
+            )
+            
+        elif request.step_type == PipelineStepType.CONTENT_CLASSIFICATION:
+            # Use keyword-based classification
+            classification = self._classify_with_keywords(request.content)
+            return RuleBasedResponse(type=&quot;content_classification&quot;,
+                data={&quot;category&quot;: classification},
+                explanation=&quot;Classified using keyword fallback (AI unavailable)&quot;
+            )
+        
+        # Add more rule-based strategies for different request types...
+        return None</code></pre>
+
+<h3>Monitoring and Alerting: Observability per la Resilienza</h3>
+
+<p>Rate limiting e circuit breakers sono inutili senza proper monitoring:</p>
+
+<pre><code class="language-python">class ResilienceMonitoringSystem:;
+    &quot;&quot;&quot;
+    Comprehensive monitoring for rate limiting and circuit breaker systems
+    &quot;&quot;&quot;
+    
+    def __init__(self):
+        self.metrics_collector = MetricsCollector()
+        self.alert_manager = AlertManager()
+        self.dashboard_updater = DashboardUpdater()
+        ;
+    async def monitor_rate_limiting_health(self) -&gt; None:
+        &quot;&quot;&quot;
+        Continuous monitoring of rate limiting effectiveness
+        &quot;&quot;&quot;
+        while True:
+            # Collect current metrics
+            rate_limit_metrics = await self._collect_rate_limit_metrics()
+            
+            # Key metrics to track
+            metrics =  {
+                &quot;requests_throttled_per_minute&quot;: rate_limit_metrics.throttled_requests,
+                &quot;average_throttling_delay&quot;: rate_limit_metrics.avg_delay,
+                &quot;user_tier_distribution&quot;: rate_limit_metrics.tier_usage,
+                &quot;system_load_correlation&quot;: rate_limit_metrics.load_correlation,
+                &quot;grace_period_usage&quot;: rate_limit_metrics.grace_period_consumption
+            }
+            
+            # Send to monitoring systems
+            await self.metrics_collector.record_batch(metrics)
+            
+            # Check for alert conditions
+            await self._check_rate_limiting_alerts(metrics)
+            
+            # Wait before next collection
+            await asyncio.sleep(60)  # Monitor every minute
+    
+    async def _check_rate_limiting_alerts(self, metrics: Dict[str, Any]) -&gt; None:
+        &quot;&quot;&quot;
+        Alert on rate limiting anomalies
+        &quot;&quot;&quot;
+        # Alert 1: Too much throttling (user experience degradation)
+        if metrics[&quot;requests_throttled_per_minute&quot;] &gt; 100:
+            await self.alert_manager.send_alert(
+                severity=AlertSeverity.WARNING,;
+                title=&quot;High Rate Limiting Activity&quot;,
+                message=f&quot;Throttling {metrics[&#x27;requests_throttled_per_minute&#x27;]} requests/min&quot;,
+                suggested_action=&quot;Consider increasing system capacity or adjusting limits&quot;
+            )
+        
+        # Alert 2: Grace period exhaustion (users hitting hard limits)
+        if metrics[&quot;grace_period_usage&quot;] &gt; 0.8:
+            await self.alert_manager.send_alert(
+                severity=AlertSeverity.HIGH,;
+                title=&quot;Grace Period Exhaustion&quot;,
+                message=&quot;Users frequently exhausting grace periods&quot;,
+                suggested_action=&quot;Review user tier limits or upgrade user plans&quot;
+            )
+        
+        # Alert 3: System load correlation issues
+        if metrics[&quot;system_load_correlation&quot;] &lt; 0.3:
+            await self.alert_manager.send_alert(
+                severity=AlertSeverity.MEDIUM,;
+                title=&quot;Rate Limiting Effectiveness Low&quot;,
+                message=&quot;Rate limiting not correlating well with system load&quot;,
+                suggested_action=&quot;Review adaptive limit calculation algorithms&quot;
+            )</code></pre>
+
+<h3>Real-World Results: From Fragility to Antifragility</h3>
+
+<p>Dopo 3 settimane con il sistema completo di rate limiting e circuit breakers:</p>
+
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Prima</th>
+<th>Dopo</th>
+<th>Miglioramento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Monday Morning Surge (300 users)</strong></td>
+<td>Complete failure</td>
+<td>Graceful degradation</td>
+<td><strong>100% availability</strong></td>
+</tr>
+<tr>
+<td><strong>OpenAI API outage</strong></td>
+<td>8 hours downtime</td>
+<td>45 minutes degraded service</td>
+<td><strong>-90% downtime</strong></td>
+</tr>
+<tr>
+<td><strong>Database connection spike</strong></td>
+<td>System crash</td>
+<td>Automatic throttling</td>
+<td><strong>0 crashes</strong></td>
+</tr>
+<tr>
+<td><strong>User experience during load</strong></td>
+<td>Timeouts and errors</td>
+<td>Slight delays, no failures</td>
+<td><strong>99.9% success rate</strong></td>
+</tr>
+<tr>
+<td><strong>System recovery time</strong></td>
+<td>45 minutes manual</td>
+<td>3 minutes automatic</td>
+<td><strong>-93% recovery time</strong></td>
+</tr>
+<tr>
+<td><strong>Operational alerts</strong></td>
+<td>47/week</td>
+<td>3/week</td>
+<td><strong>-94% alert fatigue</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>The Antifragile Pattern: Getting Stronger from Stress</h3>
+
+<p>Quello che abbiamo scoperto è che un sistema ben progettato di rate limiting e circuit breakers non si limita a <strong>sopravvivere</strong> al stress – <strong>diventa più forte</strong>.</p>
+
+<p><strong>Antifragile Behaviors We Observed:</strong></p>
+
+<ol>
+<li><strong>Adaptive Learning:</strong> Il sistema imparava dai pattern di carico e regolava automaticamente i limits preventivamente</li>
+<li><strong>User Education:</strong> Gli utenti imparavano a distribuire meglio le loro richieste per evitare throttling</li>
+<li><strong>Capacity Planning:</strong> I dati di throttling ci aiutavano a identificare esattamente dove aggiungere capacità</li>
+<li><strong>Quality Improvement:</strong> I fallback ci costringevano a creare alternative che spesso erano migliori delloriginale</li>
+</ol>
+
+<h3>Advanced Patterns: Predictive Rate Limiting</h3>
+
+<p>Con i dati storici, abbiamo sperimentato con <strong>predictive rate limiting</strong>:</p>
+
+<pre><code class="language-python">class PredictiveRateLimiter:;
+    &quot;&quot;&quot;
+    Rate limiter che predice demand spikes e si prepara preventivamente
+    &quot;&quot;&quot;
+    
+    async def predict_and_adjust_limits(self) -&gt; None:
+        &quot;&quot;&quot;
+        Use historical data to predict demand and preemptively adjust limits
+        &quot;&quot;&quot;
+        # Analyze historical patterns
+        historical_patterns = await self._analyze_demand_patterns()
+        
+        # Predict next hour demand
+        predicted_demand = await self._predict_demand(
+            current_time=datetime.utcnow(),
+            historical_patterns=historical_patterns,
+            external_factors=await self._get_external_factors()  # Holidays, events, etc.
+        )
+        
+        # Preemptively adjust limits if spike predicted;
+        if predicted_demand.confidence &gt; 0.8 and predicted_demand.spike_factor &gt; 2.0:
+            logger.info(f&quot;Predicted demand spike: {predicted_demand.spike_factor}x normal&quot;)
+            
+            # Preemptively reduce limits to prepare for spike
+            await self._preemptively_adjust_limits(
+                reduction_factor=1.0 / predicted_demand.spike_factor,
+                duration_minutes=predicted_demand.duration_minutes
+            )
+            
+            # Send proactive alert
+            await self._send_predictive_alert(predicted_demand)</code></pre>
+
+<div class="key-takeaways-section">
+    <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
+    <p class="takeaway-item">✓ <strong>Success Can Kill You:</strong> Optimizations that improve UX can cause exponential load increases. Plan for success.</p>;
+<p class="takeaway-item">✓ <strong>Intelligent Rate Limiting &gt; Dumb Throttling:</strong> Context-aware limits based on user tier, system health, and request type work better than fixed limits.</p>
+<p class="takeaway-item">✓ <strong>Circuit Breakers Need Smart Fallbacks:</strong> Failing fast is good, failing gracefully with alternatives is better.</p>
+<p class="takeaway-item">✓ <strong>Monitor the Protections:</strong> Rate limiters and circuit breakers are useless without proper monitoring and alerting.</p>;
+<p class="takeaway-item">✓ <strong>Predictive &gt; Reactive:</strong> Use historical data to predict and prevent problems rather than just responding to them.</p>
+<p class="takeaway-item">✓ <strong>Antifragility is the Goal:</strong> Well-designed resilience systems make you stronger from stress, not just survive it.</p>
+
+</div>
+
+<p><strong>Conclusione del Capitolo</strong></p>
+
+<p>Rate limiting e circuit breakers ci hanno trasformato da un sistema fragile che moriva sotto carico a un sistema antifragile che diventava più smart sotto stress. Ma più importante, ci hanno insegnato che <strong>la resilienza enterprise non è solo sopravvivere ai problemi – è imparare dai problemi e diventare migliori</strong>.</p>
+
+<p>Con il semantic cache che ottimizzava le performance e i sistemi di resilienza che proteggevano dalla sovraccarico, avevamo le fondamenta per un sistema veramente scalabile. Il prossimo passo sarebbe stato modularizzare l'architettura per gestire la complessità crescente: <strong>Service Registry Architecture</strong> – il sistema che avrebbe permesso al nostro monolite di evolversi in un ecosistema di microservizi senza perdere coerenza.</p>
+
+<p>La strada verso lenterprise readiness continuava, un pattern architetturale alla volta.</p>
+            </div>
+</div>
+
+<p><strong>Conclusione del Capitolo</strong></p>
+
+<p>Il sistema di caching semantico è stato una delle ottimizzazioni più impattanti che avessimo mai implementato – non solo per le metriche di performance, ma per lesperienza utente complessiva. Ha trasformato il nostro sistema da "potente ma lento" a "potente e responsivo".</p>
+
+<p>Ma più importante, ci ha insegnato un principio fondamentale: <strong>i sistemi AI più sofisticati beneficiano delle ottimizzazioni più intelligenti</strong>. Non bastava applicare tecniche di caching tradizionali – dovevamo inventare tecniche di caching che capissero lAI tanto quanto lAI capiva i problemi degli utenti.</p>
+
+<p>La prossima frontiera sarebbe stata gestire non solo la <strong>velocità</strong> delle risposte, ma anche la loro <strong>affidabilità</strong> sotto carico. Questo ci ha portato al mondo dei <strong>Rate Limiting e Circuit Breakers</strong> – sistemi di protezione che avrebbero permesso al nostro cache semantico di funzionare anche quando tutto intorno a noi stava andando in fiamme.</p>
+            </div>
+    </div>
+
+        <!-- Reader Tools -->
+        <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            
+            <div class="language-switcher">
+                <button class="language-option active">EN</button>
+                <button class="language-option" onclick="switchLanguage(en')">EN</button>
+            </div>
+            
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+        
+        <!-- Reading Progress -->
+                <div class="reader-tools" id="readerTools">
+            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+            <div class="reader-tool" onclick="toggleTheme()">
+                <span class="reader-tool-icon" id="themeIcon">🌙</span>
+                <span class="reader-tool-label">Theme</span>
+            </div>
+            <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            <div class="reader-tool" onclick="showBookmarks()">
+                <span class="reader-tool-icon">📚</span>
+                <span class="reader-tool-label">My Bookmarks</span>
+            </div>
+            <div class="reader-tool">
+                <span class="reader-tool-icon">🌐</span>
+                <select class="language-select" onchange="switchLanguage(this.value)">
+                    <option value="en" selected>English</option>
+                    <option value="it">Italiano</option>
+                </select>
+            </div>
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+
+        <div class="reading-progress">
+            <div class="reading-progress-fill" id="progressFill"></div>
+        </div>
+        
+        <!-- Bookmark Toast -->
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>        </div>
+
+        <!-- Bookmarks Modal -->
+        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
+            <div class="bookmarks-content">
+                <div class="bookmarks-header">
+                    <h3 class="bookmarks-title">📚 My Bookmarks</h3>
+                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
+                </div>
+                <div class="bookmarks-list" id="bookmarksList">
+                </div>
+            </div>
+        </div>
+        </div>
+        
+        <!-- Bookmark Toast -->
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>            <!-- Reader Tools -->
+        <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            <div class="reader-tool" onclick="showBookmarks()">
+                <span class="reader-tool-icon">📚</span>
+                <span class="reader-tool-label">My Bookmarks</span>
+            </div>
+            <div class="reader-tool">
+                <span class="reader-tool-icon">🌐</span>
+                <select class="language-select" onchange="switchLanguage(this.value)">
+                    <option value="en" selected>English</option>
+                    <option value="it">Italiano</option>
+                </select>
+            </div>
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+        <div class="reading-progress">
+            <div class="reading-progress-fill" id="progressFill"></div>
+        </div>
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>        </div>
+        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
+            <div class="bookmarks-content">
+                <div class="bookmarks-header">
+                    <h3 class="bookmarks-title">📚 I Miei Bookmark</h3>
+                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
+                </div>
+                <div class="bookmarks-list" id="bookmarksList">
+                </div>
+</div>
+
+    
+    <!-- Related Chapters Section -->
+    <div class="related-chapters-section" id="related-chapters-section">
+        <div class="related-chapters-header">
+            <h3>🔗 Related Chapters</h3>
+            <p>Explore these chapters to deepen your understanding of related concepts</p>
+        </div>
+        <div class="related-chapters-grid">
+            
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/agent-toolbox/" class="related-link">Agent Toolbox & Tools Registry</a></h4>
+                <p>Master AI systems with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/agent-toolbox/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-link">15 Pillars of AI Systems</a></h4>
+                <p>Master enterprise architecture with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-link">Orchestrator as Conductor</a></h4>
+                <p>Master production deployment with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-cta">Learn More →</a>
+            </div>
+</div>
+    
+    <style>
+    .related-chapters-section {
+        margin: 3rem 0;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        border-left: 5px solid #667eea;
+    }
+    
+    .related-chapters-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .related-chapters-header h3 {
+        color: #2c3e50;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .related-chapters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .related-chapter-item {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .related-chapter-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    
+    .related-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .related-link:hover {
+        color: #5a6fd8;
+        text-decoration: underline;
+    }
+    
+    .related-cta {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 1rem;
+    }
+    
+    .related-cta:hover {
+        color: #5a6fd8;
+    }
+    
+    /* Dark mode support */
+    .dark-mode .related-chapters-section {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapters-header h3 {
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapter-item {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    </style>
+    
+    <!-- Continue Reading Section -->
+    <div class="continue-reading-section">
+        <div class="continue-reading-header">
+            <h3>📚 Continue Reading</h3>
+        </div>
+        <div class="continue-reading-actions">
+            <a href="../ai-team-orchestrator.html" class="continue-btn primary">
+                <span class="btn-icon">🏠</span>
+                <span class="btn-text">Back to Guide</span>
+            </a>
+            <a href="../core-philosophy-architecture/" class="continue-btn secondary">
+                <span class="btn-icon">🎭</span>
+                <span class="btn-text">Explore Movement</span>
+            </a>
+        </div>
+    </div>
+    
+    <style>
+    .continue-reading-section {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        text-align: center;
+        background: linear-gradient(135deg, #667eea10, #764ba210);
+        border-radius: 15px;
+    }
+    
+    .continue-reading-header h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .continue-reading-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .continue-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 1.5rem;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .continue-btn.primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .continue-btn.secondary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+    
+    .continue-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .dark-mode .continue-reading-header h3 {
+        color: #e9ecef;
+    }
+    </style>
+    </div>
+
+    <script>
+
+        // Reader Tools JavaScript
+        let readerToolsCollapsed = false;
+        
+        // Initialize reader tools
+        document.addEventListener(DOMContentLoaded, function() {
+            initializeReaderTools();
+            updateReadingProgress();
+            loadUserPreferences();
+        });
+        
+        // Toggle reader tools visibility
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools')
+            readerToolsCollapsed = !readerToolsCollapsed;
+            
+            if (readerToolsCollapsed) {
+                tools.classList.add('collapsed');
+            } else {
+                tools.classList.remove('collapsed');
+            }
+            
+            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed);
+        }
+        
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon')
+            const isDarkMode = body.classList.contains('dark-mode);
+            
+            if (isDarkMode) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode);
+                themeIcon.textContent = '☀️';
+                localStorage.setItem(theme', ), dark');
+            }
+        }
+        
+        // Bookmark functionality
+        function toggleBookmark() {
+            const currentPage = window.location.pathname;
+            const pageTitle = document.querySelector('.chapter-title').textContent;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
+            
+            if (existingIndex > -1) {
+                bookmarks.splice(existingIndex, 1);
+                showToast('Bookmark removed!', 'error');
+            } else {
+                bookmarks.push({
+                    url: currentPage,
+                    title: pageTitle,
+                    timestamp: new Date().toISOString()
+                });
+                showToast('Bookmark saved!', 'success');
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        // Language switching
+        function switchLanguage(lang) {
+            const currentPath = window.location.pathname;
+            let newPath;
+            
+            if (lang === 'en')  {
+                newPath = currentPath.replace(/it/', /en/);
+                    .replace(filosofia-core-architettura, core-philosophy-architecture)
+                    .replace(user-experience-trasparenza, 'user-experience-transparency)
+                    .replace(esecuzione-qualita', execution-quality)
+                    .replace(memory-system-scaling, memory-system-scaling)
+                    .replace(i-15-pilastri-sistema-ai, '15-pillars-ai-system)
+                    .replace(primo-agente-specialist-architecture, first-specialist-agent-architecture)
+                    .replace('isolare-intelligenza-mock-llm, ai-mocking-testing-strategy)
+                    .replace(dramma-parsing-contratto-ai, drama-parsing-ai-contracts)
+                    .replace(sdk-vs-api-battle', sdk-vs-direct-api-battle)
+                    .replace('agente-ambiente-interazioni-fondamentali, agent-environment-interactions)
+                    .replace(orchestratore-direttore-orchestra, orchestrator-conductor)
+                    .replace(staffetta-mancata-handoff', failed-handoff-delegation)
+                    .replace(recruiter-ai-team-dinamico, ai-recruiter-dynamic-team')
+                    .replace(test-tool-ancorare-realta, tool-testing-reality-anchor)
+                    .replace(cassetta-attrezzi-agente, agent-toolbox);
+            } else if (lang === 'it) {;
+                newPath = currentPath.replace(/en/', /it/);
+                    .replace(core-philosophy-architecture, filosofia-core-architettura)
+                    .replace(user-experience-transparency, 'user-experience-trasparenza)
+                    .replace(execution-quality, esecuzione-qualita)
+                    .replace('memory-system-scaling, memory-system-scaling)
+                    .replace(15-pillars-ai-system, i-15-pilastri-sistema-ai)
+                    .replace(first-specialist-agent-architecture', primo-agente-specialist-architecture)
+                    .replace('ai-mocking-testing-strategy, isolare-intelligenza-mock-llm)
+                    .replace(drama-parsing-ai-contracts, dramma-parsing-contratto-ai)
+                    .replace(sdk-vs-direct-api-battle', sdk-vs-api-battle)
+                    .replace(agent-environment-interactions, agente-ambiente-interazioni-fondamentali')
+                    .replace(orchestrator-conductor, orchestratore-direttore-orchestra)
+                    .replace(failed-handoff-delegation, staffetta-mancata-handoff)
+                    .replace('ai-recruiter-dynamic-team, recruiter-ai-team-dinamico')
+                    .replace(tool-testing-reality-anchor, test-tool-ancorare-realta)
+                    .replace(agent-toolbox, cassetta-attrezzi-agente);
+            }
+            
+            if (newPath && newPath !== currentPath) {
+                window.location.href = newPath;
+            }
+        }
+        
+        // Font size menu (simplified)
+        function showFontSizeMenu() {
+            const currentSize = localStorage.getItem('fontSize') || 'medium';
+            let newSize;
+            
+            switch (currentSize) {
+                case 'small':
+                    newSize = ''medium';
+                    break;
+                case 'medium':
+                    newSize = large;
+                    break;
+                case 'large':
+                    newSize = 'small';
+                    break;
+                default:
+                    newSize = 'medium';
+            }
+            
+            setFontSize(newSize);
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Dimensione font: ${newSize}`, 'success');
+        }
+        
+        // Set font size
+        function setFontSize(size) {
+            const root = document.documentElement;
+            const sizes = {
+                'small': 0.9,
+                'medium': 1.0,
+                'large': 1.1';
+            };
+            root.style.fontSize = sizes[size] + em;
+        }
+        
+        // Show toast notification (improved)
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('bookmarkToast')
+            const messageEl = document.getElementById('bookmarkMessage')
+            
+            if (!toast || !messageEl) return;
+            
+            // Clear any existing timeouts
+            if (window.toastTimeout) {
+                clearTimeout(window.toastTimeout);
+            }
+            
+            // Reset classes and set message
+            toast.classList.remove('show, error);
+            messageEl.textContent = message;
+            
+            // Add appropriate classes
+            if (type === 'error')  {
+                toast.classList.add('error');
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after delay
+            window.toastTimeout = setTimeout(() =>  {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Reading progress
+        function updateReadingProgress() {
+            const progressFill = document.getElementById('progressFill')
+            
+            window.addEventListener('scroll', () => {
+                const article = document.querySelector('.chapter-content');
+                if (!article) return;
+                
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTop = window.pageYOffset;
+                
+                const progress = Math.min(100, Math.max(0, 
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100;
+                ));
+                
+                progressFill.style.width = progress + '%';
+            });
+        }
+        
+        // Load user preferences
+        function loadUserPreferences() {
+            // Load theme
+            const savedTheme = localStorage.getItem('theme'');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+            
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                setFontSize(savedFontSize);
+            }
+            
+            // Load reader tools state
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === true;
+            if (toolsCollapsed) {
+                document.getElementById('readerTools').classList.add('collapsed');
+                readerToolsCollapsed = true;
+            }
+        }
+        
+        // Initialize reader tools
+        function initializeReaderTools() {
+            // Check if current page is bookmarked
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]);
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            if (isBookmarked) {
+                document.querySelector('.reader-tool:nth-child(3')).classList.add('active');
+            }
+        
+    
+        // Show bookmarks modal
+        function showBookmarks() {
+            const modal = document.getElementById('bookmarksModal')
+            const bookmarksList = document.getElementById('bookmarksList')
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []')
+            
+            if (bookmarks.length === 0) {
+                bookmarksList.innerHTML = `
+                    <div class="no-bookmarks">
+                        <div class="no-bookmarks-icon">📚</div>
+                        <h3>No bookmarks saved</h3>
+                        <p>Start saving your favorite chapters clicking the icon 🔖</p>`;
+                    </div>`;
+            } else {
+                bookmarksList.innerHTML = bookmarks.map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">
+                            <div class="bookmark-title">${bookmark.title}</div>
+                            <div class="bookmark-date">${new Date(bookmark.date).toLocaleDateString(it-IT)}</div>
+                        </a>
+                        <button class="delete-bookmark" onclick="deleteBookmark(${bookmark.url})">🗑️</button>
+                    </div>
+                `).join();
+            }
+            
+            modal.style.display = flex';
+            document.body.style.overflow = hidden;
+        }
+        
+        function closeBookmarksModal(event) {
+            const modal = document.getElementById('bookmarksModal')
+            if (modal && (!event || event.target === modal))  {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+        
+        function deleteBookmark(url) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]);
+            bookmarks = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            showToast('Bookmark removed!', 'error');
+            showBookmarks();
+        }
+        
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('bookmarkToast')
+            if (!toast') return;
+            
+            const messageEl = document.getElementById('bookmarkMessage')
+            if (messageEl) messageEl.textContent = message;
+            
+            toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            toast.style.opacity = 1;
+            toast.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+            }, 3000);
+        }
+        
+        document.addEventListener(DOMContentLoaded, function() {
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
+            if (bookmarkTool) {
+                bookmarkTool.classList.toggle('active', isBookmarked);
+            }
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const themeIcon = document.getElementById('themeIcon')
+                if (themeIcon) themeIcon.textContent = '☀️';
+            }
+        });
+    
+        }
+    </script>
+
+<!-- universal-progress-bar-added -->
+</body>
+</html>

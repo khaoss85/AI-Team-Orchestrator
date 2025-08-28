@@ -57,8 +57,10 @@
       "about": {
         "@type": "Thing",
         "name": "Specialist AI Agent Architecture"
-      }
     }
+   
+    
+        }
     </script>
     
     <style>
@@ -293,7 +295,7 @@
             color: #d73a49;
             padding: 0.2rem 0.4rem;
             border-radius: 3px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-family: Monaco, Menlo, Ubuntu Mono, monospace;
         }
         
         pre code {
@@ -335,9 +337,662 @@
             .chapter-nav-bottom {
                 flex-direction: column;
                 text-align: center;
+                padding: 0 1rem;
             }
         }
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #495057;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .reader-tool:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .reader-tool.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .reader-tool-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        .reader-tools-toggle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Language Switcher */
+        .language-switcher {
+            display: flex;
+            background: rgba(0,0,0,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .language-option {
+            padding: 0.3rem 0.6rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+        
+        .language-option.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Reading Progress */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 1001;
+        }
+        
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .container {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(0, 0, 0, 0.8);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Dark Mode - Headings and Titles */
+        .dark-mode .chapter-title,
+        .dark-mode .chapter-content h3,
+        .dark-mode .chapter-content h4,
+        .dark-mode .chapter-content h5 {
+            color: #e9ecef !important;
+        }
+        
+        .dark-mode .chapter-content p,
+        .dark-mode .chapter-content li,
+        .dark-mode .chapter-content strong {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .takeaway-item {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Navigation Container Fix */
+        .chapter-nav-bottom {
+            max-width: 900px;
+            box-sizing: border-box;
+            margin: 3rem auto 2rem auto;
+            padding: 0 2rem;
+            position: relative;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Fixed Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(350px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            pointer-events: none;
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        /* Architecture Section Icons and Headers */
+        .architecture-title {
+            background: #495057;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .architecture-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .architecture-title h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .war-story-header {
+            background: #856404;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .war-story-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .war-story-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .insight-header {
+            background: #28a745;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .insight-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .insight-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Dark Mode - Content Areas */
+        .dark-mode .content-area {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area h2,
+        .dark-mode .content-area h3,
+        .dark-mode .content-area h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area p,
+        .dark-mode .content-area li {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area strong {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Dark Mode - Takeaways and Boxes */
+        .dark-mode .key-takeaways,
+        .dark-mode .insight-box,
+        .dark-mode .war-story {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways h3,
+        .dark-mode .insight-box h3,
+        .dark-mode .war-story h3 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways p,
+        .dark-mode .insight-box p,
+        .dark-mode .war-story p {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways li,
+        .dark-mode .insight-box li,
+        .dark-mode .war-story li {
+            color: #e9ecef;
+        }
+    
+        .architecture-section,
+        .mermaid,
+        .war-story,
+        .key-takeaways-section,
+        .industry-insight {
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
+
+    <style>
+    .contextual-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dotted #667eea;
+        transition: all 0.2s ease;
+    }
+    
+    .contextual-link:hover {
+        color: #5a6fd8;
+        border-bottom-style: solid;
+    }
+    
+    .dark-mode .contextual-link {
+        color: #9bb5ff;
+        border-bottom-color: #9bb5ff;
+    }
+    </style>
+        <style>
+
+/* ========================================
+   NARRATIVE LINKING SYSTEM STYLES
+   ======================================== */
+
+/* Contextual Links */
+.contextual-link  {
+    color: #3b82f6;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+    padding-bottom: 1px;
+}
+
+.contextual-link:hover {
+    color: #1d4ed8;
+    border-bottom-color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.05);
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 3px;
+}
+
+/* Narrative Callouts */
+.narrative-callout {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.narrative-callout.next-step {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+}
+
+.narrative-callout.evolution {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
+}
+
+.callout-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.callout-icon {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.callout-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.narrative-link {
+    color: #059669;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid rgba(5, 150, 105, 0.2);
+    transition: all 0.2s ease;
+}
+
+.narrative-link:hover {
+    color: #047857;
+    border-bottom-color: #047857;
+    background: rgba(5, 150, 105, 0.1);
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 4px;
+}
+
+.callout-meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* Journey Progress */
+.journey-progress {
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(249, 115, 22, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* Related Chapters */
+.related-chapters {
+    margin: 2.5rem 0;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.related-chapters h4 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.2rem;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+}
+
+.related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.related-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.related-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+    border-color: #3b82f6;
+}
+
+.related-icon {
+    font-size: 1.5rem;
+    min-width: 2rem;
+}
+
+.related-content {
+    flex: 1;
+}
+
+.related-link {
+    color: #1f2937;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.related-link:hover {
+    color: #3b82f6;
+}
+
+.related-desc {
+    margin: 0.5rem 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.related-connection {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Dark Mode Support */
+.dark-mode .narrative-callout {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+.dark-mode .related-chapters {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+}
+
+.dark-mode .related-item {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+.dark-mode .related-link {
+    color: #f9fafb;
+}
+
+.dark-mode .related-link:hover {
+    color: #60a5fa;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .narrative-callout {
+        margin: 1.5rem 0;
+        padding: 1.25rem;
+    }
+    
+    .related-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .related-item {
+        padding: 1rem;
+    }
+    
+    .callout-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+    </style>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
 </head>
 <body>
     <div class="container">
@@ -347,6 +1002,16 @@
             <a href="../">🎻 Core Philosophy and Architecture</a>
             <span>›</span>
             <span>First Specialist Agent</span>
+        </nav>
+
+        <!-- Top Navigation -->
+        <nav class="chapter-nav-top">
+            <a href="../" class="nav-link">
+                ← Back to Movement
+            </a>
+            <a href="../../ai-team-orchestrator.html" class="nav-link">
+                📚 Complete Guide
+            </a>
         </nav>
 
         <header class="chapter-header">
@@ -362,6 +1027,20 @@
                 Move beyond generic agents to specialist architecture with skills, seniority 
                 and intelligent task delegation patterns for scalable AI teams.
             </p>
+
+                <div class="narrative-callout next-step">
+                    <div class="callout-header">
+                        <span class="callout-icon">🎯</span>
+                        <h4>Next Step in Your Journey</h4>
+                    </div>
+                    <p>Now that you understand specialist agent architecture, its time to build the <a href="../agent-toolbox/" class="narrative-link">perfect toolkit</a> to orchestrate them effectively.</p>
+                    <div class="callout-meta">
+                        <span class="reading-time">⏱️ 8 min read</span>
+                        <span class="difficulty">📊 Intermediate</span>
+                    </div>
+                </div>
+                
+
         </header>
 
         <!-- Chapter Content -->
@@ -372,7 +1051,7 @@
             
             <h3>The Fundamental Question: What Kind of Agent?</h3>
             
-            <p>Facing the blank page in VS Code, the first question we asked ourselves wasn't "what technology to use?" or "how to structure the database?". It was a much more strategic question: <strong>what kind of AI personality should we create first?</strong></p>
+            <p>Facing the blank page in VS Code, the first question we asked ourselves wasnt "what technology to use?" or "how to structure the database?". It was a much more strategic question: <strong>what kind of AI personality should we create first?</strong></p>
             
             <p>A generic agent, capable of doing a bit of everything? Or a specialized agent, expert in a specific domain?</p>
             
@@ -395,7 +1074,7 @@
                         </tr>
                         <tr>
                             <td><strong>Maintainability</strong></td>
-                            <td>It's much simpler to debug and improve the prompt of an "Email Copywriter" than to modify a monolithic 2000-line prompt.</td>
+                            <td>Its much simpler to debug and improve the prompt of an "Email Copywriter" than to modify a monolithic 2000-line prompt.</td>
                             <td>#10 (Production-Ready Code)</td>
                         </tr>
                         <tr>
@@ -416,12 +1095,12 @@
                 <div class="insight-header">
                     <h4>💡 Insight: The "AI Micromanaging" Problem</h4>
                 </div>
-                <div class="insight-content">
+                
                     <p>As <strong>Tomasz Tunguz</strong> points out in his article <em>"Micromanaging AI"</em> (2024), today we treat LLMs like "high school interns": extremely high motivation, but still low competence requiring step-by-step micromanagement.</p>
                     
-                    <p>This approach works for the first agent, but becomes a scalability nightmare. Imagine managing 10 agents, each requiring constant clarifications, authorizations, and manual corrections. It's the perfect "human switchboard" scenario copying and pasting outputs between Slack channels.</p>
+                    <p>This approach works for the first agent, but becomes a scalability nightmare. Imagine managing 10 agents, each requiring constant clarifications, authorizations, and manual corrections. Its the perfect "human switchboard" scenario copying and pasting outputs between Slack channels.</p>
                     
-                    <p><strong>Our solution:</strong> Instead of treating each agent as an intern, we design them as <em>specialized senior consultants</em>. With clear roles, defined processes, and above all - <strong>controlled autonomy</strong>. It's the transition from the era of "artisanal prompting" to systems that scale without continuous human supervision.</p>
+                    <p><strong>Our solution:</strong> Instead of treating each agent as an intern, we design them as <em>specialized senior consultants</em>. With clear roles, defined processes, and above all - <strong>controlled autonomy</strong>. Its the transition from the era of "artisanal prompting" to systems that scale without continuous human supervision.</p>
                 </div>
             </div>
             
@@ -443,47 +1122,57 @@
     soft_skills: Optional[List[Dict]] = []
     background_story: Optional[str] = None</code></pre>
             
-            <p>The execution logic, instead, resides in the <code>specialist_enhanced.py</code> module. The <code>execute</code> function is the beating heart of the agent. It doesn't contain business logic, but orchestrates the phases of an agent's "reasoning".</p>
+            <p>The execution logic, instead, resides in the <code>specialist_enhanced.py</code> module. The <code>execute</code> function is the beating heart of the agent. It doesnt contain business logic, but orchestrates the phases of an agent's "reasoning".</p>
             
             <div class="mermaid-container">
                 <div class="mermaid">
 graph TD
-    A[Start Task Execution] --> B{Load Context}
-    B --> C{Consult Memory}
-    C --> D{Prepare AI Prompt}
-    D --> E{Execute via SDK}
-    E --> F{Validate Output}
-    F --> G[End Execution]
+    A[Start Task Execution] -->
+    B{Load Context}
+    B -->
+    C{Consult Memory}
+    C -->
+    D{Prepare AI Prompt}
+    D -->
+    E{Execute via SDK}
+    E -->
+    F{Validate Output}
+    F -->
+    G[End Execution]
     
     subgraph "Phase 1: Preparation"
-        B --> B1[Load Task and Workspace Context]
-        C --> C1[Retrieve Relevant Insights from Memory]
+        B -->
+    B1[Load Task and Workspace Context]
+        C -->
+    C1[Retrieve Relevant Insights from Memory]
     end
     
     subgraph "Phase 2: Intelligence"
-        D --> D1[Build Dynamic Prompt with Context and Memory]
-        E --> E1[Call OpenAI SDK Agent]
+        D -->
+    D1[Build Dynamic Prompt with Context and Memory]
+        E -->
+    E1[Call OpenAI SDK Agent]
     end
     
     subgraph "Phase 3: Finalization"
-        F --> F1[Preliminary Quality Check and Structured Parsing]
+        F -->
+    F1[Preliminary Quality Check and Structured Parsing]
     end
-                </div>
+</div>
             </div>
             
             <div class="war-story">
                 <div class="war-story-header">
                     <h4>"War Story": The First Crash – Object vs. Dictionary</h4>
                 </div>
-                <div class="war-story-content">
-                    <p>Our first <code>SpecialistAgent</code> was ready. We launched the first integration test and, almost immediately, the system crashed.</p>
+                <p>Our first <code>SpecialistAgent</code> was ready. We launched the first integration test and, almost immediately, the system crashed.</p>
                     
-                    <pre><code>ERROR: 'Task' object has no attribute 'get'
+                    <pre><code>ERROR: Task object has no attribute get
 File "/app/backend/ai_agents/tools.py", line 123, in get_memory_context_for_task
   task_name = current_task.get("name", "N/A")
-AttributeError: 'Task' object has no attribute 'get'</code></pre>
+AttributeError: Task object has no attribute get</code></pre>
                     
-                    <p>This seemingly trivial error hid one of the most important lessons of our entire journey. The problem wasn't missing data, but a <strong>"type" misalignment between system components</strong>.</p>
+                    <p>This seemingly trivial error hid one of the most important lessons of our entire journey. The problem wasnt missing data, but a <strong>"type" misalignment between system components</strong>.</p>
                     
                     <div class="table-container">
                         <table>
@@ -507,7 +1196,7 @@ AttributeError: 'Task' object has no attribute 'get'</code></pre>
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+
                     
                     <p>The immediate solution was simple, but the lesson was profound.</p>
                     
@@ -515,11 +1204,11 @@ AttributeError: 'Task' object has no attribute 'get'</code></pre>
                     
                     <pre><code class="language-python"># The current task could be a Pydantic object or a dictionary
 if isinstance(current_task, Task):
-    # If it's a Pydantic object, we convert it to a dictionary
+    # If its a Pydantic object, we convert it to a dictionary
     # to ensure compatibility with downstream functions.
     current_task_dict = current_task.dict() 
 else:
-    # If it's already a dictionary, we use it directly.
+    # If its already a dictionary, we use it directly.
     current_task_dict = current_task
 # From here on, we always use current_task_dict
 task_name = current_task_dict.get("name", "N/A")</code></pre>
@@ -572,7 +1261,489 @@ task_name = current_task_dict.get("name", "N/A")</code></pre>
             'movement': 'core-philosophy-architecture',
             'chapter_number': 2
         });
-        });
     </script>
+
+        <!-- Reader Tools -->
+        <div class="reader-tools" id="readerTools">
+            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+            
+            <div class="reader-tool" onclick="toggleTheme()">
+                <span class="reader-tool-icon" id="themeIcon">🌙</span>
+                <span class="reader-tool-label">Theme</span>
+            </div>
+            
+            <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            
+            <div class="reader-tool" onclick="showBookmarks()">
+                <span class="reader-tool-icon">📚</span>
+                <span class="reader-tool-label">My Bookmarks</span>
+            </div>
+            
+            <div class="language-switcher">
+                <select class="language-select" onchange="switchLanguage(this.value)">
+                <option value="en">🇬🇧 EN</option><option value="it">🇮🇹 IT</option></select>
+            </div>
+            
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+        
+        <!-- Reading Progress -->
+        <div class="reading-progress">
+            <div class="reading-progress-fill" id="progressFill"></div>
+        </div>
+        
+        <!-- Bookmark Toast -->
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>
+    
+        <!-- Strategic Learn More Callout -->
+        <div class="learn-more-callout">
+            <div class="callout-icon">💡</div>
+            <div class="callout-content">
+                <h4>Next Step</h4>
+                <p>See these agents in action within our <a href="../orchestrator-conductor/" class="contextual-link">orchestration framework</a> as we scale the team.</p>
+            </div>
+        </div>
+        
+        <style>
+        .learn-more-callout  {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea08, #764ba208);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .learn-more-callout:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.1);
+        }
+        
+        .callout-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+        
+        .callout-content h4 {
+            color: #667eea;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .callout-content p {
+            margin: 0;
+            color: #5a6c7d;
+            line-height: 1.6;
+        }
+        
+        .dark-mode .learn-more-callout {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .callout-content h4 {
+            color: #9bb5ff;
+        }
+        
+        .dark-mode .callout-content p {
+            color: #adb5bd;
+        }
+        </style>
+        
+    <!-- Related Chapters Section -->
+    <div class="related-chapters-section" id="related-chapters-section">
+        <div class="related-chapters-header">
+            <h3>🔗 Related Chapters</h3>
+            <p>Explore these chapters to deepen your understanding of related concepts</p>
+        </div>
+        <div class="related-chapters-grid">
+            
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/agent-toolbox/" class="related-link">Agent Toolbox & Tools Registry</a></h4>
+                <p>Master AI system pillars with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/agent-toolbox/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/first-specialist-agent-architecture/" class="related-link">First Specialist Agent Architecture</a></h4>
+                <p>Master enterprise architecture with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/first-specialist-agent-architecture/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/ai-mocking-testing-strategy/" class="related-link">Ai Mocking Testing Strategy</a></h4>
+                <p>Master production AI with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/ai-mocking-testing-strategy/" class="related-cta">Learn More →</a>
+            </div>
+</div>
+    
+    <style>
+    .related-chapters-section {
+        margin: 3rem 0;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        border-left: 5px solid #667eea;
+    }
+    
+    .related-chapters-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .related-chapters-header h3 {
+        color: #2c3e50;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .related-chapters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .related-chapter-item {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .related-chapter-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    
+    .related-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .related-link:hover {
+        color: #5a6fd8;
+        text-decoration: underline;
+    }
+    
+    .related-cta {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 1rem;
+    }
+    
+    .related-cta:hover {
+        color: #5a6fd8;
+    }
+    
+    /* Dark mode support */
+    .dark-mode .related-chapters-section {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapters-header h3 {
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapter-item {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    </style>
+    
+    <!-- Continue Reading Section -->
+    <div class="continue-reading-section">
+        <div class="continue-reading-header">
+            <h3>📚 Continue Reading</h3>
+        </div>
+        <div class="continue-reading-actions">
+            <a href="../ai-team-orchestrator.html" class="continue-btn primary">
+                <span class="btn-icon">🏠</span>
+                <span class="btn-text">Back to Guide</span>
+            </a>
+            <a href="../core-philosophy-architecture/" class="continue-btn secondary">
+                <span class="btn-icon">🎭</span>
+                <span class="btn-text">Explore Movement</span>
+            </a>
+        </div>
+    </div>
+    
+    <style>
+    .continue-reading-section {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        text-align: center;
+        background: linear-gradient(135deg, #667eea10, #764ba210);
+        border-radius: 15px;
+    }
+    
+    .continue-reading-header h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .continue-reading-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .continue-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 1.5rem;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .continue-btn.primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .continue-btn.secondary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+    
+    .continue-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .dark-mode .continue-reading-header h3 {
+        color: #e9ecef;
+    }
+    
+        /* Bookmarks Modal Styles */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .bookmarks-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .bookmarks-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .dark-mode .bookmarks-content {
+            background: #1a1a2e;
+            color: #e9ecef;
+        }
+        
+        .bookmarks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .bookmarks-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .dark-mode .bookmarks-title {
+            color: #e9ecef;
+        }
+        
+        .close-bookmarks {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        
+        .close-bookmarks:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .bookmarks-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .bookmark-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .dark-mode .bookmark-item {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode .bookmark-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .bookmark-info {
+            flex-grow: 1;
+        }
+        
+        .bookmark-title {
+            font-weight: 600;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        
+        .dark-mode .bookmark-title {
+            color: #e9ecef;
+        }
+        
+        .bookmark-title:hover {
+            color: #667eea;
+        }
+        
+        .bookmark-date {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 0.3rem;
+        }
+        
+        .bookmark-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+            color: #7f8c8d;
+        }
+        
+        .bookmark-action:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .empty-bookmarks {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+        
+        .empty-bookmarks-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .language-select {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            min-width: 60px;
+        }
+        
+        .language-select option {
+            background: white;
+            color: #2c3e50;
+        }
+        
+        .dark-mode .language-select option {
+            background: #1a1a2e;
+            color: #e9ecef;
+        }
+    </style>
+
+    <script src="../../shared-reader-tools.js"></script>
+
+<!-- universal-progress-bar-added -->
 </body>
 </html>

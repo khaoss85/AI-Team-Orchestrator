@@ -136,6 +136,17 @@ except ImportError as e:
     UNIFIED_ORCHESTRATOR_AVAILABLE = False
     get_unified_orchestrator = None
 
+# 🧠 Import Recovery Analysis Engine for intelligent failure recovery
+try:
+    from services.recovery_analysis_engine import recovery_analysis_engine, should_attempt_recovery
+    RECOVERY_ANALYSIS_AVAILABLE = True
+    logger.info("✅ RecoveryAnalysisEngine available for intelligent failure recovery")
+except ImportError as e:
+    logger.warning(f"⚠️ RecoveryAnalysisEngine not available: {e}")
+    RECOVERY_ANALYSIS_AVAILABLE = False
+    recovery_analysis_engine = None
+    should_attempt_recovery = None
+
 # 📊 Import System Telemetry Monitor for comprehensive monitoring
 try:
     from services.system_telemetry_monitor import system_telemetry_monitor
@@ -2250,15 +2261,106 @@ Original Task:
             
             return execution_result
         except Exception as e:
-            # Gestione errori che non sono stati catturati dal coordination layer
+            # 🧠 RECOVERY ANALYSIS: Intelligent failure recovery decision
+            error_message = str(e)
+            error_type = type(e).__name__
+            
             logger.error(f"Unhandled error in coordination layer for task {task_dict.get('id')}: {e}", exc_info=True)
+            
             # 🔍 Trace unhandled error
             if TASK_MONITOR_AVAILABLE:
                 trace_error(task_id, f"Unhandled coordination layer error: {str(e)[:100]}")
                 trace_task_complete(task_id, success=False)
+            
+            # 🧠 RECOVERY ANALYSIS: Determine if recovery should be attempted
+            should_recover = False
+            recovery_analysis = None
+            
+            if RECOVERY_ANALYSIS_AVAILABLE and should_attempt_recovery:
+                try:
+                    logger.info(f"🧠 Analyzing recovery options for failed task {task_id}")
+                    
+                    should_recover, recovery_analysis = await should_attempt_recovery(
+                        task_id=task_id,
+                        workspace_id=workspace_id,
+                        error_message=error_message,
+                        error_type=error_type,
+                        agent_id=agent_id,
+                        task_name=task_name,
+                        task_description=task_dict.get('description', ''),
+                        execution_stage='coordination_layer',
+                        metadata={
+                            'execution_time_ms': (time.time() - start_time_tracking) * 1000,
+                            'workspace_health_score': getattr(self, '_last_workspace_health_score', 100.0),
+                            'system_load': getattr(self, '_current_system_load', 0.5)
+                        }
+                    )
+                    
+                    if recovery_analysis:
+                        logger.info(f"🎯 Recovery analysis complete for task {task_id}: "
+                                   f"{recovery_analysis.recovery_strategy.value} "
+                                   f"(confidence: {recovery_analysis.confidence_score:.2f})")
+                    
+                except Exception as recovery_error:
+                    logger.warning(f"Recovery analysis failed for task {task_id}: {recovery_error}")
+                    should_recover = False
+            
+            # Apply recovery decision or fail the task
+            if should_recover and recovery_analysis:
+                # RECOVERY: Reset task for retry based on analysis
+                if recovery_analysis.recovery_strategy.value in ['immediate_retry', 'exponential_backoff', 'linear_backoff']:
+                    # Update task with recovery information
+                    recovery_metadata = {
+                        'recovery_attempt': True,
+                        'recovery_strategy': recovery_analysis.recovery_strategy.value,
+                        'recovery_confidence': recovery_analysis.confidence_score,
+                        'recovery_delay_seconds': recovery_analysis.recommended_delay_seconds,
+                        'original_error': error_message,
+                        'recovery_reasoning': recovery_analysis.analysis_reasoning
+                    }
+                    
+                    # Schedule retry with appropriate delay
+                    if recovery_analysis.recommended_delay_seconds > 0:
+                        # For delayed recovery, mark as pending with delay metadata
+                        await update_task_status(
+                            task_id, 
+                            TaskStatus.PENDING.value, 
+                            recovery_metadata
+                        )
+                        logger.info(f"🔄 Task {task_id} scheduled for recovery retry in "
+                                   f"{recovery_analysis.recommended_delay_seconds:.1f}s")
+                    else:
+                        # For immediate retry, mark as pending
+                        await update_task_status(task_id, TaskStatus.PENDING.value, recovery_metadata)
+                        logger.info(f"🔄 Task {task_id} scheduled for immediate recovery retry")
+                    
+                    return None
+                    
+                elif recovery_analysis.recovery_strategy.value in ['escalate_to_human', 'escalate_to_different_agent']:
+                    # ESCALATION: Mark for human intervention or agent reassignment
+                    escalation_metadata = {
+                        'escalation_required': True,
+                        'escalation_type': recovery_analysis.recovery_strategy.value,
+                        'escalation_reason': recovery_analysis.analysis_reasoning,
+                        'original_error': error_message,
+                        'requires_different_agent': recovery_analysis.requires_different_agent,
+                        'requires_enhanced_context': recovery_analysis.requires_enhanced_context
+                    }
+                    
+                    await update_task_status(
+                        task_id,
+                        TaskStatus.NEEDS_REVIEW.value if 'human' in recovery_analysis.recovery_strategy.value else TaskStatus.PENDING.value,
+                        escalation_metadata
+                    )
+                    
+                    logger.warning(f"🚨 Task {task_id} escalated: {recovery_analysis.recovery_strategy.value}")
+                    return None
+            
+            # FALLBACK: Traditional failure handling if no recovery or recovery not recommended
             await self._force_complete_task(
                 task_dict,
-                f"Coordination layer error: {str(e)[:200]}",
+                f"Coordination layer error: {str(e)[:200]}" + 
+                (f" | Recovery not viable (confidence: {recovery_analysis.confidence_score:.2f})" if recovery_analysis else ""),
                 status_to_set=TaskStatus.FAILED.value
             )
             return None

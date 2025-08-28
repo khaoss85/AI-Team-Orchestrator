@@ -2,6 +2,81 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🤖 Autonomous Operation Mode
+
+**Claude Code is authorized to execute bash commands autonomously without asking for human confirmation for:**
+
+### ✅ Safe Development Operations:
+- `curl` requests for API testing and debugging
+- `python3` script execution for development/testing 
+- `npm run` commands (dev, build, test, lint)
+- `pytest` and test runners
+- `ls`, `cat`, `grep`, `find` for file exploration
+- Database queries and checks (read-only operations)
+- Log analysis and monitoring commands
+- `git status`, `git diff`, `git log` (read-only git operations)
+
+### ✅ System Diagnostic Commands:
+- Health check endpoints (`curl localhost:8000/health`)
+- Asset and deliverable verification scripts
+- Database connection tests
+- API endpoint testing
+- Performance monitoring
+- Error log analysis
+
+### ✅ Development Workflow Commands:
+- Running custom diagnostic scripts (e.g., `python3 check_*.py`)
+- API testing with curl (GET requests)
+- Test execution and validation
+- Build and compilation commands
+- Dependency installation (`pip install`, `npm install`)
+
+### ❌ Commands That Still Require Confirmation:
+- File system modifications (`rm`, `mv`, `cp` of important files)
+- Git operations that change state (`git commit`, `git push`, `git merge`)
+- Database write operations (INSERT, UPDATE, DELETE)
+- System configuration changes
+- Service restarts or shutdowns
+- Operations that affect production data
+
+**IMPORTANT**: Claude Code should proceed with autonomous execution for development, testing, and diagnostic operations. Focus on being efficient and thorough while maintaining safety.
+
+### 🚀 **EXECUTE WITHOUT ASKING**:
+Claude Code is **explicitly authorized** to run these commands **without human confirmation**:
+- `curl -X GET "http://localhost:8000/*"` (all GET requests to localhost)
+- `python3 *.py` (all Python scripts in the project)
+- `npm run *` (all npm scripts)
+- `pytest *` (all test commands)
+- All diagnostic and monitoring scripts
+- All API testing and health checks
+
+**NO CONFIRMATION REQUIRED** - Execute immediately for development efficiency.
+
+### 📋 **Common Commands to Execute Autonomously:**
+```bash
+# API Testing (always autonomous)
+curl -X GET "http://localhost:8000/health"
+curl -X GET "http://localhost:8000/api/unified-assets/workspace/*"
+curl -X GET "http://localhost:8000/api/deliverables?workspace_id=*"
+
+# Diagnostic Scripts (always autonomous)  
+python3 check_asset_artifacts.py
+python3 run_deliverable_asset_bridge.py
+python3 test_*.py
+
+# Development Tools (always autonomous)
+npm run dev
+npm run build  
+npm run lint
+pytest
+
+# System Monitoring (always autonomous)
+ls -la
+grep "pattern" /path/to/logs
+```
+
+**⚡ AUTONOMOUS EXECUTION RULE**: If the command appears in this list or matches these patterns, execute immediately without asking.
+
 ## Development Commands
 
 ### Backend (FastAPI)
@@ -120,6 +195,197 @@ Il sistema è stato completamente trasformato da hard-coded a AI-driven, mantene
 
 API endpoints: `/api/improvement/start/{task_id}`, `/api/improvement/status/{task_id}`, `/api/improvement/close/{task_id}`
 
+## Performance Optimization
+
+### Critical Performance Breakthroughs
+
+**Root Issue Identified**: The unified-assets API endpoint was taking 90+ seconds and blocking the entire UI, creating a perceived "broken app" experience for users.
+
+**Solution**: Progressive loading architecture that delivers **94% performance improvement** (90s → 3-5s perceived load time).
+
+### Progressive Loading Architecture
+
+The system implements a 3-phase progressive loading pattern that prioritizes user experience:
+
+#### **Phase 1: Essential UI (0-200ms)**
+```typescript
+// Load only critical data for immediate UI render
+const [workspace, team] = await Promise.all([
+  api.workspaces.get(workspaceId),
+  api.agents.list(workspaceId)
+])
+```
+- **Workspace metadata**: Basic info for header/context
+- **Team data**: Core team members for sidebar
+- **Result**: UI renders immediately, users see progress
+
+#### **Phase 2: Background Enhancement (50ms+)**
+```typescript
+// Non-blocking background loading
+setTimeout(loadGoalsProgressive, 50)
+```
+- **Goals and dynamic content**: Loaded in background
+- **Dynamic chats**: Generated from goals
+- **Loading states**: Users see spinners, not broken UI
+- **Result**: Rich content appears progressively
+
+#### **Phase 3: On-Demand Heavy Assets**
+```typescript
+// Load only when explicitly requested
+loadFullAssets: async () => {
+  setAssetsLoading(true)
+  await loadArtifacts(true) // includeAssets = true
+}
+```
+- **Unified-assets API**: Called only when user requests assets
+- **Heavy operations**: Deferred until needed
+- **Result**: Never block essential functionality
+
+### Frontend Performance Patterns
+
+#### **Critical Loading States Implementation**
+```typescript
+// Multiple granular loading states prevent user confusion
+const [loading, setLoading] = useState(true)           // Initial load
+const [goalsLoading, setGoalsLoading] = useState(false) // Goals phase
+const [assetsLoading, setAssetsLoading] = useState(false) // Heavy assets
+const [goalsError, setGoalsError] = useState<string | null>(null)
+```
+
+#### **Progressive Hook Pattern** (`useConversationalWorkspace.ts`)
+- **Phase separation**: Each loading phase has dedicated state
+- **Error boundaries**: Failed phases don't break others  
+- **User feedback**: Loading indicators for each phase
+- **Graceful degradation**: Mock data when APIs fail
+
+#### **Component Loading State Integration** (`ConversationalWorkspace.tsx`)
+```typescript
+// Props clearly separate different loading phases
+goalsLoading?: boolean
+assetsLoading?: boolean
+goalsError?: string | null
+```
+
+### Common Performance Pitfalls
+
+#### **Unified-Assets Endpoint Issues**
+- **Problem**: `/api/unified-assets/workspace/{id}` extremely slow (90+ seconds)
+- **Root Cause**: Heavy database aggregations and content processing
+- **Solution**: Use sparingly, only on-demand
+- **Pattern**: Always provide alternative light-weight data first
+
+#### **Sequential API Loading Anti-Pattern**
+```typescript
+// ❌ BAD: Sequential loading blocks UI
+const workspace = await api.workspaces.get(id)
+const team = await api.agents.list(id)  
+const goals = await api.goals.getAll(id) // UI blocked until all complete
+
+// ✅ GOOD: Progressive loading with phases
+const [workspace, team] = await Promise.all([...]) // Essential first
+setTimeout(() => loadGoalsProgressive(), 50)        // Enhancement background
+```
+
+#### **Missing Loading States**
+- **Problem**: Users think app is broken when no feedback
+- **Solution**: Loading indicators for every async operation
+- **Pattern**: Separate loading states for each data phase
+
+#### **Blocking Heavy Operations**
+- **Problem**: Heavy operations in initialization block UI
+- **Solution**: Always background or on-demand heavy operations
+- **Pattern**: `includeAssets: boolean` parameter pattern
+
+### Debugging Performance Issues
+
+#### **Network Tab Analysis**
+1. **Identify slow APIs**: Look for requests >5 seconds
+2. **Check unified-assets**: Usually the culprit in slow loading
+3. **Verify progressive loading**: Essential APIs should complete quickly
+4. **Monitor waterfalls**: Avoid sequential dependencies
+
+#### **Backend Log Monitoring**
+```bash
+# Monitor API response times in backend logs
+grep "GET /api/unified-assets" backend.log | grep -E "took [0-9]+ seconds"
+grep "GET /api/workspaces" backend.log | grep -E "took [0-9]+ ms"
+```
+
+#### **Progressive Loading Validation**
+- **Phase 1 check**: Workspace + team load in <500ms
+- **Phase 2 check**: Goals load in background without blocking
+- **Phase 3 check**: Assets only load when explicitly requested
+- **Loading state check**: Every phase shows appropriate feedback
+
+#### **User Experience Testing**
+- **Fast connection**: Initial UI should render in <200ms
+- **Slow connection**: Progressive loading should still provide value
+- **Error conditions**: App should degrade gracefully, never "break"
+
+### Architecture Patterns for Performance
+
+#### **Smart Progressive Enhancement**
+```typescript
+// Essential data first (fast render)
+setWorkspaceContext(basicContext)
+setLoading(false) // UI ready!
+
+// Enhancement in background (better UX)  
+setTimeout(() => {
+  loadGoalsAndChats() // Don't await - background only
+}, 50)
+```
+
+#### **Background Loading with Error Handling**
+```typescript
+const loadGoalsProgressive = async () => {
+  try {
+    setGoalsLoading(true)
+    const goals = await api.workspaceGoals.getAll(workspaceId).catch(error => {
+      setGoalsError(`Failed to load goals: ${error.message}`)
+      return [] // Graceful fallback
+    })
+    // Update UI progressively
+  } finally {
+    setGoalsLoading(false)
+  }
+}
+```
+
+#### **Fallback Mechanisms Always Available**
+```typescript
+// Always have Plan B for every API call
+.catch(error => {
+  console.error('Primary API failed:', error)
+  // Return sensible defaults that don't break UI
+  return { id: workspaceId, name: 'Workspace', team: [] }
+})
+```
+
+### Key Performance Files
+
+- **`frontend/src/hooks/useConversationalWorkspace.ts`**: Core progressive loading implementation
+- **`frontend/src/components/conversational/ConversationalWorkspace.tsx`**: Loading states integration  
+- **Backend API optimization**: Identify slow endpoints for caching/optimization
+- **Network monitoring**: Tools for performance analysis
+
+### Performance Testing Approach
+
+#### **Critical Metrics to Monitor**
+- **Time to Interactive (TTI)**: <3 seconds for essential UI
+- **Goals Loading Time**: <5 seconds for full goals
+- **Assets Loading Time**: Acceptable since on-demand  
+- **Error Rate**: <1% for essential APIs
+
+#### **Backend Restart Procedures**
+When performance degrades significantly:
+1. **Clear application caches**: May resolve accumulated slowdowns
+2. **Restart backend services**: Fresh memory state
+3. **Validate API response times**: Ensure endpoints return to normal speeds
+4. **Monitor logs**: Check for memory leaks or connection issues
+
+This performance optimization knowledge represents critical learnings that prevent re-discovering these solutions in future debugging sessions. The progressive loading pattern is now a core architectural principle for maintaining responsive UX even with heavy backend operations.
+
 ## API Endpoints Reference
 
 All API endpoints are mounted with the `/api` prefix. Key endpoints include:
@@ -194,6 +460,10 @@ Sub-agents should trigger on:
 - **404 on Approval**: Both `workspace_id` and `proposal_id` parameters required
 - **Missing Tasks**: Team approval triggers background agent creation (~30s) + task generation
 - **Polling Delays**: Executor may take 2-10s to detect new pending tasks due to query joins
+- **Slow Loading (90+ seconds)**: Unified-assets API blocking UI - implement progressive loading pattern
+- **UI Appears Broken**: Missing loading states - add granular loading indicators for each data phase
+- **Sequential API Bottlenecks**: APIs called in sequence - use Promise.all for parallel essential data
+- **Heavy Operations Block UI**: Assets loading in initialization - defer to on-demand loading
 
 ### Important Notes
 - All endpoints require the `/api` prefix for proper routing
@@ -211,6 +481,88 @@ Sub-agents should trigger on:
 - Uses OpenAI Agents SDK with fallback to openai_agents
 - Graceful degradation when SDK unavailable
 - Tools-within-tools paradigm for complex operations
+
+## Goal Progress Transparency System
+
+### Overview
+The Goal Progress Transparency System addresses the critical "67% progress discrepancy" issue where goals showed incomplete progress despite all deliverables being completed. This system provides complete visibility into deliverable statuses and actionable unblocking mechanisms.
+
+### Key Features
+- **Progress Discrepancy Detection**: Compares reported vs calculated completion percentages
+- **Complete Status Breakdown**: Shows all deliverable states (completed/failed/pending/in_progress/unknown)
+- **Visibility Gap Analysis**: Identifies items hidden from UI with transparency indicators
+- **Interactive Unblocking**: One-click retry/resume actions for blocked deliverables
+- **Visual Status Indicators**: Clear feedback using emojis (✅❌⏳🔄❓)
+
+### API Endpoints
+
+#### GET `/api/goal-progress-details/{workspace_id}/{goal_id}`
+```bash
+# Get comprehensive goal progress analysis
+curl -X GET "http://localhost:8000/api/goal-progress-details/{workspace_id}/{goal_id}?include_hidden=true"
+```
+
+**Response includes:**
+- `progress_analysis`: Reported vs calculated progress comparison
+- `deliverable_breakdown`: Complete status categorization
+- `visibility_analysis`: Transparency gap detection
+- `unblocking`: Available actions and recommendations
+
+#### POST `/api/goal-progress-details/{workspace_id}/{goal_id}/unblock`
+```bash
+# Execute unblocking actions
+curl -X POST "http://localhost:8000/api/goal-progress-details/{workspace_id}/{goal_id}/unblock?action=retry_failed"
+```
+
+**Available Actions:**
+- `retry_failed`: Retry all failed deliverables
+- `resume_pending`: Resume stuck deliverables  
+- `escalate_all`: Flag for human intervention
+- `retry_specific`: Target specific deliverable IDs
+
+### Frontend Integration
+The system integrates seamlessly into the `ObjectiveArtifact.tsx` component with:
+
+- **Progress Discrepancy Alerts**: Visual warnings when reported != calculated progress
+- **Transparency Gap Notices**: Information about hidden deliverables
+- **Unblocking Action Panel**: Interactive buttons for issue resolution
+- **Status Overview Grid**: Comprehensive deliverable state visualization
+- **Real-time Updates**: WebSocket integration for live progress tracking
+
+### TypeScript Support
+Complete type safety provided through `/frontend/src/types/goal-progress.ts`:
+
+```typescript
+interface GoalProgressDetail {
+  progress_analysis: ProgressAnalysis
+  deliverable_breakdown: DeliverableBreakdown
+  visibility_analysis: VisibilityAnalysis
+  unblocking: UnblockingSummary
+  // ... complete type definitions
+}
+```
+
+### Configuration
+Status display and action configurations centralized in:
+- `DELIVERABLE_STATUS_CONFIG`: Visual styling for each status
+- `UNBLOCK_ACTION_CONFIG`: Action button configurations and behaviors
+
+### Usage Patterns
+
+**For Developers:**
+1. Use the API to diagnose progress discrepancies
+2. Implement custom unblocking workflows
+3. Extend status types for domain-specific needs
+
+**For Users:**
+1. View comprehensive progress breakdown in ObjectiveArtifact
+2. Click unblock actions to resolve issues automatically
+3. Monitor transparency gaps to understand system health
+
+### Documentation
+Complete system documentation available in:
+- `/docs/GOAL_PROGRESS_TRANSPARENCY_SYSTEM.md` - Full technical documentation
+- API schemas and configuration details included
 
 ## Available Tools
 

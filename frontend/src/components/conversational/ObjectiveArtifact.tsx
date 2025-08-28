@@ -1,8 +1,17 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import DeliverableActionBar from './DeliverableActionBar'
 import MarkdownRenderer from './MarkdownRenderer'
+import { api } from '@/utils/api'
+import {
+  GoalProgressDetail,
+  DeliverableItem,
+  UnblockRequest,
+  DELIVERABLE_STATUS_CONFIG,
+  UNBLOCK_ACTION_CONFIG,
+  DeliverableStatus
+} from '@/types/goal-progress'
 
 interface ObjectiveData {
   objective: {
@@ -36,6 +45,12 @@ export default function ObjectiveArtifact({
   title 
 }: ObjectiveArtifactProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'metadata' | 'progress' | 'deliverables'>('overview')
+  const [goalProgressDetail, setGoalProgressDetail] = useState<GoalProgressDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [unblockingInProgress, setUnblockingInProgress] = useState<string | null>(null)
+  
+  const goalId = objectiveData.objective.id
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set'
@@ -67,6 +82,90 @@ export default function ObjectiveArtifact({
     }
   }
 
+  // Load goal progress details when component mounts or goalId changes
+  useEffect(() => {
+    if (goalId && workspaceId) {
+      loadGoalProgressDetails()
+    } else {
+      setLoading(false)
+    }
+  }, [goalId, workspaceId])
+
+  const loadGoalProgressDetails = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const details = await api.goalProgress.getDetails(workspaceId, goalId!, true)
+      setGoalProgressDetail(details)
+    } catch (err) {
+      console.error('Failed to load goal progress details:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load progress details')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUnblockAction = async (action: string, deliverableIds?: string[]) => {
+    if (!goalId) return
+    
+    try {
+      setUnblockingInProgress(action)
+      const unblockRequest: UnblockRequest = {
+        action: action as any,
+        deliverable_ids: deliverableIds
+      }
+      
+      await api.goalProgress.unblock(workspaceId, goalId, unblockRequest)
+      
+      // Reload progress details to show updated status
+      await loadGoalProgressDetails()
+    } catch (err) {
+      console.error('Failed to execute unblock action:', err)
+      setError(err instanceof Error ? err.message : 'Failed to execute unblock action')
+    } finally {
+      setUnblockingInProgress(null)
+    }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-600">Loading progress details...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="border-b border-gray-100 pb-4 mb-6">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">{title}</h1>
+          <p className="text-gray-600 text-sm leading-relaxed">{objectiveData.objective.description}</p>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <span className="text-red-500 text-xl mr-3">❌</span>
+            <div>
+              <h3 className="font-medium text-red-800">Failed to Load Progress Details</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={() => loadGoalProgressDetails()}
+                className="mt-2 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-sm rounded"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6">
       {/* Minimal Header - Claude/ChatGPT style */}
@@ -90,6 +189,77 @@ export default function ObjectiveArtifact({
           </div>
         </div>
       </div>
+
+      {/* Progress Discrepancy Alert */}
+      {goalProgressDetail && goalProgressDetail.progress_analysis.progress_discrepancy > 10 && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <span className="text-yellow-500 text-xl">⚠️</span>
+            <div className="flex-1">
+              <h3 className="font-medium text-yellow-800 mb-1">Progress Discrepancy Detected</h3>
+              <p className="text-sm text-yellow-700 mb-2">
+                Reported progress ({goalProgressDetail.progress_analysis.reported_progress}%) differs from calculated progress
+                ({goalProgressDetail.progress_analysis.calculated_progress.toFixed(1)}%) by{' '}
+                {goalProgressDetail.progress_analysis.progress_discrepancy.toFixed(1)} percentage points.
+              </p>
+              <p className="text-xs text-yellow-600">
+                Calculated using {goalProgressDetail.progress_analysis.calculation_method.replace(/_/g, ' ')} method
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transparency Gap Alert */}
+      {goalProgressDetail && goalProgressDetail.visibility_analysis.hidden_from_ui > 0 && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <span className="text-blue-500 text-xl">👁️</span>
+            <div className="flex-1">
+              <h3 className="font-medium text-blue-800 mb-1">Transparency Gap</h3>
+              <p className="text-sm text-blue-700 mb-2">
+                {goalProgressDetail.visibility_analysis.transparency_gap}
+              </p>
+              <p className="text-xs text-blue-600">
+                This view shows all {goalProgressDetail.deliverable_stats.total} deliverables including those typically hidden from the UI
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unblocking Actions */}
+      {goalProgressDetail && goalProgressDetail.unblocking.actionable_items > 0 && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3">
+              <span className="text-green-500 text-xl">🔧</span>
+              <div className="flex-1">
+                <h3 className="font-medium text-green-800 mb-1">Unblocking Actions Available</h3>
+                <p className="text-sm text-green-700 mb-2">
+                  {goalProgressDetail.unblocking.actionable_items} items can be unblocked to improve progress
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleUnblockAction('retry_failed')}
+                    disabled={unblockingInProgress !== null}
+                    className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 text-sm rounded disabled:opacity-50"
+                  >
+                    {unblockingInProgress === 'retry_failed' ? 'Retrying...' : 'Retry Failed'}
+                  </button>
+                  <button
+                    onClick={() => handleUnblockAction('resume_pending')}
+                    disabled={unblockingInProgress !== null}
+                    className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 text-sm rounded disabled:opacity-50"
+                  >
+                    {unblockingInProgress === 'resume_pending' ? 'Resuming...' : 'Resume Pending'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Compact Progress Bar */}
       <div className="mb-6">
@@ -148,13 +318,16 @@ export default function ObjectiveArtifact({
         )}
         
         {activeTab === 'progress' && (
-          <ProgressTab objectiveData={objectiveData} />
+          <ProgressTab objectiveData={objectiveData} goalProgressDetail={goalProgressDetail} />
         )}
         
         {activeTab === 'deliverables' && (
           <DeliverablesTab 
             deliverables={objectiveData.deliverables || []} 
             metadata={objectiveData.metadata}
+            goalProgressDetail={goalProgressDetail}
+            onUnblockAction={handleUnblockAction}
+            unblockingInProgress={unblockingInProgress}
           />
         )}
       </div>
@@ -377,15 +550,16 @@ function MetadataTab({ metadata }: MetadataTabProps) {
 // Progress Tab Component
 interface ProgressTabProps {
   objectiveData: ObjectiveData
+  goalProgressDetail: GoalProgressDetail | null
 }
 
-function ProgressTab({ objectiveData }: ProgressTabProps) {
+function ProgressTab({ objectiveData, goalProgressDetail }: ProgressTabProps) {
   const progressPercentage = Math.round(objectiveData.progress)
   const isCompleted = progressPercentage >= 100
 
   return (
     <div className="space-y-6">
-      {/* Progress Overview */}
+      {/* Enhanced Progress Overview with Analysis */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
         <div className="text-center">
           <div className="text-4xl font-bold text-blue-600 mb-2">
@@ -394,7 +568,7 @@ function ProgressTab({ objectiveData }: ProgressTabProps) {
           <div className="text-gray-700 mb-4">
             {isCompleted ? 'Objective Completed!' : 'Progress towards goal'}
           </div>
-          <div className="w-full bg-white rounded-full h-4 shadow-inner">
+          <div className="w-full bg-white rounded-full h-4 shadow-inner mb-4">
             <div 
               className={`h-4 rounded-full transition-all duration-500 ${
                 isCompleted ? 'bg-green-500' : 'bg-blue-500'
@@ -402,6 +576,27 @@ function ProgressTab({ objectiveData }: ProgressTabProps) {
               style={{ width: `${Math.min(progressPercentage, 100)}%` }}
             ></div>
           </div>
+          
+          {/* Progress Analysis */}
+          {goalProgressDetail && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+              <div className="bg-white rounded-lg p-3 border">
+                <div className="font-medium text-gray-700">Reported Progress</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {goalProgressDetail.progress_analysis.reported_progress}%
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-3 border">
+                <div className="font-medium text-gray-700">Calculated Progress</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {goalProgressDetail.progress_analysis.calculated_progress.toFixed(1)}%
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {goalProgressDetail.progress_analysis.completed_deliverables}/{goalProgressDetail.progress_analysis.total_deliverables} deliverables
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -439,9 +634,18 @@ function ProgressTab({ objectiveData }: ProgressTabProps) {
 interface DeliverablesTabProps {
   deliverables: any[]
   metadata?: Record<string, any>
+  goalProgressDetail: GoalProgressDetail | null
+  onUnblockAction: (action: string, deliverableIds?: string[]) => void
+  unblockingInProgress: string | null
 }
 
-function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
+function DeliverablesTab({ 
+  deliverables, 
+  metadata, 
+  goalProgressDetail, 
+  onUnblockAction, 
+  unblockingInProgress 
+}: DeliverablesTabProps) {
   const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null)
 
   if (!deliverables || deliverables.length === 0) {
@@ -844,6 +1048,58 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
 
   return (
     <div className="space-y-3">
+      {/* Enhanced Deliverable Status Overview */}
+      {goalProgressDetail && (
+        <div className="mb-6">
+          <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+            <span className="text-blue-500 mr-2">📊</span>
+            Deliverable Status Overview
+          </h4>
+          
+          {/* Status Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+            {Object.entries(goalProgressDetail.deliverable_stats).filter(([key]) => key !== 'total').map(([status, count]) => {
+              const statusConfig = DELIVERABLE_STATUS_CONFIG[status as DeliverableStatus]
+              return (
+                <div key={status} className={`${statusConfig.bgColor} rounded-lg p-3 text-center`}>
+                  <div className="text-2xl mb-1">{statusConfig.icon}</div>
+                  <div className={`font-bold text-lg ${statusConfig.color}`}>{count}</div>
+                  <div className={`text-xs ${statusConfig.color} font-medium`}>{statusConfig.label}</div>
+                </div>
+              )
+            })}
+          </div>
+          
+          {/* Status by Category */}
+          {goalProgressDetail.deliverable_stats.total > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="text-center">
+                  <div className="font-semibold text-gray-900">Total</div>
+                  <div className="text-2xl font-bold text-gray-700">{goalProgressDetail.deliverable_stats.total}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-green-700">Success Rate</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {((goalProgressDetail.deliverable_stats.completed / goalProgressDetail.deliverable_stats.total) * 100).toFixed(0)}%
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-red-700">Failed</div>
+                  <div className="text-2xl font-bold text-red-600">{goalProgressDetail.deliverable_stats.failed}</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-yellow-700">Pending</div>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {goalProgressDetail.deliverable_stats.pending + goalProgressDetail.deliverable_stats.in_progress}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 🚨 ENHANCED: Show overall business value warning if any deliverable has issues */}
       {hasBusinessValueWarning && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
@@ -870,56 +1126,120 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
         </div>
       )}
       
-      {deliverables.map((deliverable, index) => {
-        const hasWarning = deliverable.content?.businessValueWarning || deliverable.content?.type === 'no_business_content'
-        const hasMetrics = deliverable.content?.businessMetrics?.averageBusinessScore !== undefined
-        
-        return (
-        <div key={index} className={`border rounded-lg overflow-hidden ${
-          hasWarning ? 'border-amber-300' : 'border-gray-200'
-        }`}>
-          <div 
-            className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => setExpandedDeliverable(expandedDeliverable === index ? null : index)}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900 flex items-center">
-                  {hasWarning && <span className="text-amber-500 mr-2">⚠️</span>}
-                  {hasMetrics && <span className="text-blue-500 mr-2">📊</span>}
-                  {deliverable.title || `Deliverable ${index + 1}`}
-                  <svg 
-                    className={`ml-2 h-4 w-4 text-gray-400 transition-transform ${
-                      expandedDeliverable === index ? 'rotate-180' : ''
-                    }`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {hasWarning ? 'Warning: Low business value detected' :
-                   hasMetrics ? `Business Score: ${deliverable.content.businessMetrics.averageBusinessScore.toFixed(1)} | ${deliverable.content.businessMetrics.highValueTasksFound || 0} high-value tasks` :
-                   (deliverable.description || 'Click to view content')}
-                </p>
-                <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                  <span>Created: {new Date(deliverable.created_at || '').toLocaleDateString()}</span>
-                  <span>Type: {deliverable.type || 'Unknown'}</span>
+      {/* Render all deliverables from both legacy and new API */}
+      {(() => {
+        // Combine legacy deliverables with new API data
+        const allDeliverables = [...deliverables]
+        if (goalProgressDetail) {
+          // Add deliverables from new API that might not be in legacy data
+          Object.entries(goalProgressDetail.deliverable_breakdown).forEach(([status, items]) => {
+            items.forEach((item, itemIndex) => {
+              // Check if this deliverable is already in legacy data
+              const exists = allDeliverables.some(d => d.id === item.id)
+              if (!exists) {
+                allDeliverables.push({
+                  id: item.id,
+                  title: item.title,
+                  status: item.status,
+                  type: item.type,
+                  created_at: item.created_at,
+                  updated_at: item.updated_at,
+                  business_value_score: item.business_value_score,
+                  quality_level: item.quality_level,
+                  content: { status_info: item }
+                })
+              }
+            })
+          })
+        }
+
+        return allDeliverables.map((deliverable, index) => {
+          const hasWarning = deliverable.content?.businessValueWarning || deliverable.content?.type === 'no_business_content'
+          const hasMetrics = deliverable.content?.businessMetrics?.averageBusinessScore !== undefined
+          
+          // Get status info from new API if available
+          const statusInfo = goalProgressDetail && Object.values(goalProgressDetail.deliverable_breakdown)
+            .flat()
+            .find(item => item.id === deliverable.id)
+          
+          const currentStatus = statusInfo?.status || deliverable.status || 'unknown'
+          const statusConfig = DELIVERABLE_STATUS_CONFIG[currentStatus as DeliverableStatus]
+          
+          return (
+            <div key={deliverable.id || index} className={`border rounded-lg overflow-hidden ${
+              currentStatus === 'failed' ? 'border-red-300' :
+              currentStatus === 'pending' ? 'border-yellow-300' :
+              currentStatus === 'in_progress' ? 'border-blue-300' :
+              hasWarning ? 'border-amber-300' : 'border-gray-200'
+            }`}>
+              <div 
+                className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setExpandedDeliverable(expandedDeliverable === index ? null : index)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      <span className="mr-2">{statusConfig.icon}</span>
+                      {hasWarning && <span className="text-amber-500 mr-2">⚠️</span>}
+                      {hasMetrics && <span className="text-blue-500 mr-2">📊</span>}
+                      {deliverable.title || `Deliverable ${index + 1}`}
+                      <svg 
+                        className={`ml-2 h-4 w-4 text-gray-400 transition-transform ${
+                          expandedDeliverable === index ? 'rotate-180' : ''
+                        }`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </h4>
+                    
+                    <p className="text-sm text-gray-600 mt-1">
+                      {statusInfo?.retry_reason || 
+                       (hasWarning ? 'Warning: Low business value detected' :
+                        hasMetrics ? `Business Score: ${deliverable.content.businessMetrics.averageBusinessScore.toFixed(1)} | ${deliverable.content.businessMetrics.highValueTasksFound || 0} high-value tasks` :
+                        statusConfig.description || deliverable.description || 'Click to view content')}
+                    </p>
+                    
+                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                      <span>Created: {new Date(deliverable.created_at || '').toLocaleDateString()}</span>
+                      <span>Type: {deliverable.type || 'Unknown'}</span>
+                      {statusInfo?.business_value_score && (
+                        <span>Score: {statusInfo.business_value_score}</span>
+                      )}
+                    </div>
+                    
+                    {/* Unblock Actions */}
+                    {statusInfo?.can_retry && statusInfo.unblock_actions.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {statusInfo.unblock_actions.slice(0, 2).map((action) => {
+                          const actionConfig = UNBLOCK_ACTION_CONFIG[action as keyof typeof UNBLOCK_ACTION_CONFIG]
+                          if (!actionConfig) return null
+                          
+                          return (
+                            <button
+                              key={action}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onUnblockAction(action, [statusInfo.id])
+                              }}
+                              disabled={unblockingInProgress !== null}
+                              className={`px-2 py-1 text-xs rounded ${actionConfig.color} text-white disabled:opacity-50`}
+                              title={actionConfig.description}
+                            >
+                              {actionConfig.icon} {actionConfig.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${statusConfig.bgColor} ${statusConfig.color} font-medium`}>
+                    {statusConfig.label}
+                  </span>
                 </div>
               </div>
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                hasWarning ? 'bg-amber-100 text-amber-800' :
-                hasMetrics ? 'bg-blue-100 text-blue-800' :
-                'bg-green-100 text-green-800'
-              }`}>
-                {hasWarning ? 'Low Value' :
-                 hasMetrics ? 'High Value' :
-                 'Completed'}
-              </span>
-            </div>
-          </div>
           
           {/* Expanded Content */}
           {expandedDeliverable === index && (
@@ -942,8 +1262,9 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
             </div>
           )}
         </div>
-        )
-      })}
+          )
+        })
+      })()}
     </div>
   )
 }

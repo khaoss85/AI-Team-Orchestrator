@@ -24,6 +24,9 @@ export default function ConversationPage() {
     loading,
     sendingMessage,
     error,
+    goalsLoading,
+    goalsError,
+    assetsLoading,
     workspaceHealthStatus,
     healthLoading,
     setActiveChat,
@@ -33,6 +36,7 @@ export default function ConversationPage() {
     reactivateChat,
     renameChat,
     refreshData,
+    loadFullAssets,
     refreshMessages,
     checkWorkspaceHealth,
     unblockWorkspace,
@@ -84,6 +88,9 @@ export default function ConversationPage() {
         suggestedActions={suggestedActions}
         artifactsPanelCollapsed={artifactsPanelCollapsed}
         sendingMessage={sendingMessage}
+        goalsLoading={goalsLoading}
+        goalsError={goalsError}
+        assetsLoading={assetsLoading}
         workspaceHealthStatus={workspaceHealthStatus}
         healthLoading={healthLoading}
         onSetActiveChat={setActiveChat}
@@ -94,6 +101,7 @@ export default function ConversationPage() {
         onRenameChat={renameChat}
         onToggleArtifactsPanel={() => setArtifactsPanelCollapsed(!artifactsPanelCollapsed)}
         onRefreshData={refreshData}
+        onLoadFullAssets={loadFullAssets}
         onRefreshMessages={refreshMessages}
         onCheckWorkspaceHealth={checkWorkspaceHealth}
         onUnblockWorkspace={unblockWorkspace}

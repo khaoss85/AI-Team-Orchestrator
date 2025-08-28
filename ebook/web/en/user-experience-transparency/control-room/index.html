@@ -6,29 +6,65 @@
     <title>The Control Room - Monitoring & Telemetry | User Experience Transparency | AI Team Orchestrator</title>
     <meta name="description" content="Chapter 29 of AI Team Orchestrator: The Control Room - Monitoring & Telemetry">
     <meta name="robots" content="index, follow">
+
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
     <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
-            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Chapter Header */
+        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .chapter-header {
-            text-align: center;
             margin-bottom: 3rem;
+            text-align: center;
         }
         
         .chapter-instrument {
@@ -90,23 +126,719 @@
             <div class="chapter-meta">
                 <span>Movement 3 of 4</span>
                 <span>Chapter 29 of 42</span>
-                <span>Coming Soon</span>
+                <span>User Experience & Transparency</span>
             </div>
             <h1 class="chapter-title">The Control Room - Monitoring & Telemetry</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <!-- Breadcrumb Navigation -->
+        <nav class="breadcrumb">
+            <a href="../../index.html">🏠 Home</a>
+            <span>></span>
+            <a href="../index.html">User Experience & Transparency</a>
+            <span>></span>
+            <span>The Control Room - Monitoring & Telemetry</span>
+        </nav>
+        
+        <!-- Main Content -->
+        <article class="chapter-content">
+            <h3>The Problem: Diagnosing Failure in a Distributed System</h3>
+            <p>Imagine this scenario, which we experienced firsthand: a final deliverable for a client has a low quality score. What was the cause?</p>
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
-            </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
-            </a>
+            <p>Was it the <strong>AI Recruiter</strong> who proposed an inadequate team? The <strong>Content Specialist</strong> who didn't understand the task? The <strong>Quality Assurance Agent</strong> who was too permissive? Or perhaps the <strong>Manager</strong> who didn't coordinate the team properly?</p>
+            
+            <p>In a traditional software system, you would check the logs. But in a distributed AI agent system, where each component can make autonomous decisions and interact with external APIs, <strong>observability</strong> becomes a critical architectural requirement, not an optional add-on.</p>
+            
+            <h3>The Architectural Solution: Distributed Tracing (<code>X-Trace-ID</code>)</h3>
+            <p>The solution to this problem is a well-known pattern in microservices architecture: <strong>Distributed Tracing</strong>.</p>
+            
+            <p>Every user request generates a unique identifier (<code>trace_id</code>) that follows the entire execution across all agents, APIs, and services. Each component adds its own context to the trace, creating a complete narrative of what happened.</p>
+            
+            <p><em>Reference code: <code>backend/services/telemetry.py</code> (distributed tracing implementation), <code>backend/middleware/trace_middleware.py</code> (automatic trace_id injection)</em></p>
+            
+            <div class="diagram-container">
+                <div class="architecture-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h4>System Architecture</h4>
+            </div>
+            
+            <div class="mermaid">
+                graph TD
+                    A[User Request] --> B[API Gateway]
+                    B --> C[Generate trace_id]
+                    C --> D[AI Recruiter Agent]
+                    C --> E[Content Specialist Agent]
+                    C --> F[QA Agent]
+                    C --> G[Manager Agent]
+                    D --> H[Telemetry Service]
+                    E --> H
+                    F --> H
+                    G --> H
+                    H --> I[Distributed Logs]
+                    I --> J[Control Room Dashboard]
+            </div>
+            
+            <h3>Advanced SDK Tracing: Monitoring AI Interactions</h3>
+            <p>Beyond distributed request tracing, we implemented an additional observability layer specifically designed for <strong>AI model interactions</strong>. Using the advanced capabilities of the OpenAI SDK, we can trace every single AI call with detailed metadata.</p>
+            
+            <div class="insight-box">
+                <h4>🎯 What We Track in Every AI Call</h4>
+                <ul>
+                    <li><strong>Model Parameters:</strong> temperature, max_tokens, model version</li>
+                    <li><strong>Token Usage:</strong> input tokens, output tokens, total cost</li>
+                    <li><strong>Latency Metrics:</strong> time to first token, total response time</li>
+                    <li><strong>Context Quality:</strong> prompt effectiveness, response coherence</li>
+                    <li><strong>Error Recovery:</strong> retry attempts, fallback mechanisms</li>
+                </ul>
+            </div>
+            
+            <h3>The Economic Reality of AI Operations</h3>
+            <p>Our telemetry system revealed an uncomfortable truth: AI operations are expensive and highly variable. A single complex task could cost anywhere from $0.10 to $5.00 depending on the complexity and the models involved.</p>
+            
+            <div class="insight-box">
+                <h4>💰 The Evolution of SaaS Pricing in the AI Era</h4>
+                <p>Our telemetry metrics anticipate a fundamental trend discussed by <strong>Martin Casado</strong> (a16z) and <strong>Scott Woody</strong> (Metronome): AI is revolutionizing SaaS pricing, shifting value from "number of users" to <em>"work done by AI on your behalf"</em>.</p>
+                
+                <p><strong>The shift in pricing models:</strong></p>
+                <ul>
+                    <li>From <strong>seat-based</strong> to <strong>usage-based</strong></li>
+                    <li>From <strong>monthly subscriptions</strong> to <strong>value-based pricing</strong></li>
+                    <li>From <strong>fixed costs</strong> to <strong>dynamic cost optimization</strong></li>
+                </ul>
+                
+                <p>Our fine-grained telemetry architecture positions us ideally for this future: we can track not just <em>how much</em> AI is used, but <em>how much value</em> is generated.</p>
+            </div>
+            
+            <h3>The Control Room Dashboard: Making the Invisible Visible</h3>
+            <p>All this telemetry data converges in what we call the "Control Room" - a real-time dashboard that gives operators complete visibility into the AI system's health and performance.</p>
+            
+            <div class="war-story">
+                <h4>🎯 War Story: The Mystery of the Expensive Tuesday</h4>
+                <div class="war-story-content">
+                    <p>One Tuesday, our costs suddenly spiked 300%. Without distributed tracing, it would have taken days to find the cause. With our Control Room, we identified it in minutes: a single client request with unusually complex requirements had triggered cascading AI calls that created an expensive recursive loop.</p>
+                </div>
+            </div>
+            
+            <p>The Control Room displays:</p>
+            <ul>
+                <li><strong>Real-time Performance Metrics:</strong> latency, throughput, error rates</li>
+                <li><strong>Cost Analytics:</strong> per-user, per-task, per-agent cost breakdowns</li>
+                <li><strong>Quality Indicators:</strong> deliverable quality scores, user satisfaction</li>
+                <li><strong>Resource Utilization:</strong> token consumption, API rate limits, agent load</li>
+                <li><strong>Alert Systems:</strong> anomaly detection, budget thresholds, performance degradation</li>
+            </ul>
+            
+            <h3>The Enterprise Budget Reality: Where Does the Money Come From?</h3>
+            <p>Our telemetry revealed an interesting organizational dynamic: AI costs don't fit neatly into traditional IT budgets. They're simultaneously a technology cost, a consulting cost, and a productivity investment.</p>
+            
+            <div class="insight-box">
+                <h4>💰 The Reality of Enterprise AI Budgets: Where Does the Money Come From?</h4>
+                <p>In our experience with enterprise clients, AI budgets come from three distinct sources:</p>
+                <ul>
+                    <li><strong>IT Budget:</strong> for the infrastructure and platform</li>
+                    <li><strong>Consulting Budget:</strong> for the knowledge work and analysis</li>
+                    <li><strong>Productivity Budget:</strong> for the time savings and efficiency gains</li>
+                </ul>
+                <p>The most successful deployments treat AI as a <em>hybrid investment</em> that spans multiple budget categories and measures ROI across multiple dimensions.</p>
+            </div>
+            
+            <h3>Lessons Learned: Observability as a Competitive Advantage</h3>
+            <p>What started as a debugging necessity became a strategic advantage. Clients who could see exactly how their AI teams were working, what they were costing, and what value they were generating became our most satisfied and long-term customers.</p>
+            
+            <p>With a robust "control room," we finally had the confidence to operate our system in production safely and diagnostically. We had built a powerful engine and now we also had the dashboard to pilot it.</p>
+            
+            <p>The final piece of the puzzle was the user. How could we design an experience that would allow a human to collaborate intuitively and productively with such a complex and powerful team of digital colleagues?</p>
+        </article>
+        
+        <!-- Key Takeaways -->
+        <div class="key-takeaways-section">
+            <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+            <div class="key-takeaways-content">
+                <p class="takeaway-item">✓ <strong>Observability is Not a Luxury, It's a Necessity:</strong> In a distributed and non-deterministic agent system, it's impossible to survive without a robust logging and tracing system.</p>
+                <p class="takeaway-item">✓ <strong>Implement Distributed Tracing from Day Zero:</strong> Adding a <code>trace_id</code> after the fact is an immense and painful job. Design your architecture so that every action has a unique ID from the beginning.</p>
+                <p class="takeaway-item">✓ <strong>AI Operations Are Expensive and Variable:</strong> Track costs in real-time and set up alerts for budget thresholds. A single complex request can cost 50x more than a simple one.</p>
+            </div>
         </div>
     </div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools" id="readerTools">
+        <div class="reader-tool" onclick="toggleBookmarks()">
+            <span class="reader-tool-icon">📑</span>
+            <span class="reader-tool-label">My Bookmarks</span>
+        </div>
+        <div class="reader-tool" onclick="toggleTheme()">
+            <span class="reader-tool-icon">🌓</span>
+            <span class="reader-tool-label">Theme</span>
+        </div>
+        <div class="reader-tool" onclick="changeFontSize(1)">
+            <span class="reader-tool-icon">🔍</span>
+            <span class="reader-tool-label">Font +</span>
+        </div>
+        <div class="reader-tool" onclick="changeFontSize(-1)">
+            <span class="reader-tool-icon">🔍</span>
+            <span class="reader-tool-label">Font -</span>
+        </div>
+        <div class="reader-tool" onclick="toggleReaderTools()">
+            <span class="reader-tool-icon">⚙️</span>
+            <span class="reader-tool-label">Minimize</span>
+        </div>
+    </div>
+    
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+        <div class="nav-container">
+            <a href="../ai-team-org-chart/" class="nav-button">
+                <span>← Previous</span>
+                <span>AI Team Org Chart</span>
+            </a>
+            
+            <a href="../index.html" class="nav-button">
+                <span>↑ Up</span>
+                <span>User Experience</span>
+            </a>
+            
+            <a href="../b2b-saas-thesis/" class="nav-button">
+                <span>Next →</span>
+                <span>B2B SaaS Thesis</span>
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Bookmarks Modal -->
+    <div id="bookmarksModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📑 My Bookmarks</h3>
+                <button class="close-button" onclick="closeBookmarksModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="bookmarksList"></div>
+                <button onclick="addCurrentPageBookmark()" class="bookmark-action-btn">
+                    🔖 Bookmark This Page
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#667eea',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+        
+        // Reader Tools Functionality
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools');
+            tools.classList.toggle('collapsed');
+        }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            showToast(isDark ? 'Dark theme enabled' : 'Light theme enabled');
+        }
+        
+        function changeFontSize(delta) {
+            const content = document.querySelector('.chapter-content');
+            const currentSize = parseInt(getComputedStyle(content).fontSize);
+            const newSize = Math.max(12, Math.min(24, currentSize + delta));
+            content.style.fontSize = newSize + 'px';
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}px`);
+        }
+        
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = 'block';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = 'none';
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const list = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                list.innerHTML = '<p>No bookmarks yet. Click "Bookmark This Page" to add your first bookmark!</p>';
+                return;
+            }
+            
+            list.innerHTML = bookmarks.map(bookmark => `
+                <div class="bookmark-item">
+                    <a href="${bookmark.url}">${bookmark.title}</a>
+                    <button onclick="removeBookmark('${bookmark.url}')" class="remove-bookmark">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function addCurrentPageBookmark() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const currentBookmark = {
+                title: document.title,
+                url: window.location.pathname
+            };
+            
+            if (!bookmarks.find(b => b.url === currentBookmark.url)) {
+                bookmarks.push(currentBookmark);
+                localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                showToast('Bookmark saved!');
+                loadBookmarks();
+            } else {
+                showToast('Page already bookmarked!');
+            }
+        }
+        
+        function removeBookmark(url) {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const updated = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(updated));
+            showToast('Bookmark removed!');
+            loadBookmarks();
+        }
+        
+        function showToast(message) {
+            // Create toast element if it doesn't exist
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #333;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    z-index: 10000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load dark mode preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Load font size preference
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                document.querySelector('.chapter-content').style.fontSize = savedFontSize + 'px';
+            }
+        });
+    </script>
+    
+    <!-- Add CSS for missing styles -->
+    <style>
+        /* Content Styles */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 2rem 0 1rem;
+            font-weight: 600;
+        }
+        
+        .chapter-content h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 1.5rem 0 1rem;
+            font-weight: 600;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .chapter-content strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .chapter-content code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+        
+        /* Special Content Boxes */
+        .war-story {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .war-story-content {
+            margin-top: 1rem;
+        }
+        
+        .war-story h4 {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .insight-box h4 {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-box ul li {
+            color: white;
+        }
+        
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .key-takeaways-title {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .takeaway-item {
+            margin-bottom: 0.8rem;
+            font-size: 1.05rem;
+        }
+        
+        /* Mermaid Diagrams */
+        .diagram-container {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        .mermaid {
+            margin: 1rem 0;
+        }
+        
+        /* Architecture Icons */
+        .architecture-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+        }
+        
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .reader-tool:hover {
+            background: #f0f0f0;
+        }
+        
+        .reader-tool:last-child {
+            margin-bottom: 0;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .reader-tool-label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .reader-tools.collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        /* Chapter Navigation */
+        .chapter-nav {
+            margin-top: 3rem;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .bookmark-action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        .remove-bookmark {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+        }
+        
+        /* Dark mode styles */
+        .dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: #34495e;
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.9);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(52, 73, 94, 0.95);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .nav-container {
+            background: #34495e;
+        }
+        
+        .dark-mode .modal-content {
+            background: #34495e;
+            color: #ecf0f1;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
+            
+            .chapter-header,
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-content h3 {
+                font-size: 1.5rem;
+            }
+            
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+            
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-button {
+                justify-content: center;
+            }
+        }
+    </style>
 </body>
 </html>

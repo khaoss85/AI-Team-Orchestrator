@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-08-25T18:05:43.864111",
+  "phases": {
+    "phase_1": {
+      "status": "failed",
+      "error": "Failed to create workspace: {\"detail\":\"Not Found\"}",
+      "duration": 0.007095813751220703
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Failed to create workspace: {\"detail\":\"Not Found\"}",
+  "end_time": "2025-08-25T18:05:43.871383"
+}

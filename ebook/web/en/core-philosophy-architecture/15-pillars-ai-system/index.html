@@ -3,150 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The 15 Pillars of an AI-Driven System | Core Philosophy and Architecture | AI Team Orchestrator</title>
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="The 15 fundamental architectural principles to build production-ready AI systems that scale from MVP to enterprise without complete refactoring.">
-    <meta name="keywords" content="AI architecture, scalable AI systems, 15 AI pillars, OpenAI SDK, AI-driven systems, production ready AI">
-    <meta name="author" content="Daniele Pelleri">
+    <title>The 15 Pillars of an AI-Driven System | Core Philosophy Architecture | AI Team Orchestrator</title>
+    <meta name="description" content="Chapter 3 of AI Team Orchestrator: The 15 foundational pillars for building production-ready AI systems">
     <meta name="robots" content="index, follow">
     
-    <!-- Open Graph -->
-    <meta property="og:title" content="The 15 Pillars of an AI-Driven System - Chapter 1">
-    <meta property="og:description" content="Discover the 15 fundamental principles that separate an MVP from a scalable enterprise AI system">
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="https://books.danielepelleri.com/en/core-philosophy-architecture/15-pillars-ai-system/">
-    <meta property="article:author" content="Daniele Pelleri">
-    <meta property="article:section" content="AI Architecture">
-    <meta property="article:tag" content="AI Architecture, OpenAI SDK, Scalable Systems">
-    
-    <!-- Canonical -->
-    <link rel="canonical" href="https://books.danielepelleri.com/en/core-philosophy-architecture/15-pillars-ai-system/">
-    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/core-philosophy-architecture/15-pillars-ai-system/">
-    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/filosofia-core-architettura/i-15-pilastri-sistema-ai/">
-    
-    <!-- Schema Markup -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "The 15 Pillars of an AI-Driven System",
-      "description": "Fundamental architectural principles to build production-ready AI systems",
-      "author": {
-        "@type": "Person",
-        "name": "Daniele Pelleri",
-        "url": "https://danielepelleri.com"
-      },
-      "publisher": {
-        "@type": "Person", 
-        "name": "Daniele Pelleri"
-      },
-      "datePublished": "2025",
-      "dateModified": "2025",
-      "url": "https://books.danielepelleri.com/en/core-philosophy-architecture/15-pillars-ai-system/",
-      "isPartOf": {
-        "@type": "Book",
-        "name": "AI Team Orchestrator: From MVP to Global Platform",
-        "author": "Daniele Pelleri",
-        "url": "https://books.danielepelleri.com/en/ai-team-orchestrator.html"
-      },
-      "articleSection": "Core Philosophy and Architecture",
-      "wordCount": "1200",
-      "timeRequired": "PT8M",
-      "keywords": ["AI architecture", "scalable systems", "OpenAI SDK", "production ready"],
-      "about": {
-        "@type": "Thing",
-        "name": "AI Architecture Principles"
-      }
-    }
-    </script>
-    
     <style>
-        /* Base Styles - Same as Italian version but with English content */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
+            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        /* Breadcrumb Navigation */
-        .breadcrumb {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .breadcrumb a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .breadcrumb a:hover {
-            text-decoration: underline;
-        }
-        
-        .breadcrumb span {
-            color: #7f8c8d;
-            margin: 0 0.5rem;
-        }
-        
-        /* Chapter Navigation Top */
-        .chapter-nav-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.8rem 1.5rem;
-            background: rgba(255, 255, 255, 0.9);
-            color: #667eea;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(102, 126, 234, 0.2);
-        }
-        
-        .nav-link:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        /* Chapter Header */
-        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            margin-bottom: 3rem;
+        }
+        
+        .chapter-header {
             text-align: center;
+            margin-bottom: 3rem;
         }
         
         .chapter-instrument {
@@ -167,53 +49,30 @@
         .chapter-title {
             font-size: 2.5rem;
             color: #2c3e50;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
             font-weight: 700;
             line-height: 1.2;
         }
         
-        .chapter-summary {
-            font-size: 1.2rem;
-            color: #555;
-            max-width: 700px;
-            margin: 2rem auto;
-            font-style: italic;
-        }
-        
-        /* Content Styles */
-        .chapter-content {
-            background: white;
-            padding: 3rem;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            margin-bottom: 3rem;
-        }
-        
-        .chapter-content h3 {
-            font-size: 2rem;
-            color: #2c3e50;
-            margin: 2rem 0 1rem;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 0.5rem;
-        }
-        
-        .chapter-content h4 {
-            font-size: 1.5rem;
-            color: #495057;
-            margin: 1.5rem 0 1rem;
+        .breadcrumb {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
         }
         
-        .chapter-content p {
-            margin-bottom: 1.5rem;
-            font-size: 1.1rem;
-            line-height: 1.8;
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
         }
         
-        .chapter-content strong {
-            color: #2c3e50;
+        .breadcrumb a:hover {
+            text-decoration: underline;
         }
         
         /* Quote Styles */
@@ -239,53 +98,48 @@
             font-weight: 600;
         }
         
-        /* Insight Box */
-        .insight-box {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 15px;
+        /* Pillar Styles */
+        .pillar-section {
             margin: 2rem 0;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
         }
         
-        .insight-box h4 {
-            margin: 0 0 1rem 0;
-            font-size: 1.3rem;
+        .pillar-section h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 2rem 0 1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
         
-        .insight-box p {
-            margin: 0;
-            font-size: 1.05rem;
-            line-height: 1.6;
-        }
-        
-        /* Pillar Items */
         .pillar-item {
             display: flex;
             align-items: flex-start;
-            gap: 1.5rem;
-            margin: 2rem 0;
+            gap: 1rem;
             padding: 1.5rem;
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
+            margin: 1rem 0;
+            background: rgba(102, 126, 234, 0.05);
             border-left: 4px solid #667eea;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .pillar-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
         }
         
         .pillar-icon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: #667eea;
             color: white;
-            width: 40px;
-            height: 40px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            width: 2.5rem;
+            height: 2.5rem;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 1.1rem;
             flex-shrink: 0;
         }
         
@@ -294,69 +148,41 @@
         }
         
         .pillar-content strong {
-            display: block;
             color: #2c3e50;
-            margin-bottom: 0.5rem;
             font-size: 1.1rem;
+            display: block;
+            margin-bottom: 0.5rem;
         }
         
         .pillar-fundamental {
+            background: rgba(231, 76, 60, 0.1);
             border-left-color: #e74c3c;
-            background: linear-gradient(135deg, #fff5f5, #fee);
         }
         
         .pillar-fundamental .pillar-icon {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: #e74c3c;
         }
         
         /* Key Takeaways */
-        .key-takeaways {
+        .key-takeaways-section {
             background: linear-gradient(135deg, #27ae60, #2ecc71);
             color: white;
+            border-radius: 10px;
             padding: 2rem;
-            border-radius: 15px;
-            margin: 3rem 0;
+            margin: 2rem 0;
         }
         
-        .key-takeaways h3 {
-            font-size: 1.8rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
+        .key-takeaways-title {
+            margin-bottom: 1rem;
+            font-weight: 600;
         }
         
-        .key-takeaways ul {
-            list-style: none;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-        
-        .key-takeaways li {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .key-takeaways li:before {
-            content: "✓";
-            color: #FFD700;
-            font-weight: bold;
-            margin-right: 0.5rem;
-        }
-        
-        /* Chapter Navigation Bottom */
-        .chapter-nav-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 3rem 0;
-            gap: 1rem;
-            flex-wrap: wrap;
+        .takeaway-item {
+            margin-bottom: 0.5rem;
         }
         
         .nav-button {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
             padding: 1rem 2rem;
@@ -366,7 +192,7 @@
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            margin: 1rem 0.5rem;
         }
         
         .nav-button:hover {
@@ -374,70 +200,218 @@
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
         
-        .nav-button.secondary {
-            background: rgba(255, 255, 255, 0.9);
-            color: #667eea;
-            border: 2px solid #667eea;
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
         }
         
-        .nav-button.secondary:hover {
-            background: white;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
         }
         
-        /* Social Share */
-        .social-share {
-            text-align: center;
-            margin: 2rem 0;
-        }
-        
-        .share-button {
-            display: inline-flex;
+        .reader-tool {
+            display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.8rem 1.5rem;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #495057;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .reader-tool:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .reader-tool.active {
             background: #667eea;
             color: white;
-            text-decoration: none;
-            border-radius: 25px;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .reader-tool-label {
+            font-size: 0.8rem;
             font-weight: 500;
-            transition: all 0.3s ease;
-            margin: 0 0.5rem;
         }
         
-        .share-button:hover {
-            background: #5a6fd8;
-            transform: translateY(-2px);
+        .collapsed .reader-tool-label {
+            display: none;
         }
         
-        /* Section Divider */
-        .section-divider {
+        .reader-tools-toggle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
             border: none;
-            height: 2px;
-            background: linear-gradient(135deg, transparent, #667eea, transparent);
-            margin: 3rem 0;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .language-switcher {
+            display: flex;
+            background: rgba(0,0,0,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .language-select {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            min-width: 60px;
+        }
+        
+        .language-select option {
+            background: white;
+            color: #2c3e50;
+        }
+        
+        /* Reading Progress */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 1001;
+        }
+        
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Fixed Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(350px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            pointer-events: none;
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .container {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-title {
+            color: #e9ecef !important;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(0, 0, 0, 0.8);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .pillar-item {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .pillar-content strong {
+            color: #e9ecef;
         }
         
         /* Responsive */
         @media (max-width: 768px) {
-            .container {
+            body {
                 padding: 1rem;
             }
             
-            .chapter-header,
-            .chapter-content {
+            .container {
                 padding: 2rem;
             }
             
-            .chapter-title {
-                font-size: 2rem;
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
             }
             
-            .chapter-nav-top,
-            .chapter-nav-bottom {
-                flex-direction: column;
-                text-align: center;
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
             }
             
             .pillar-item {
@@ -445,12 +419,11 @@
                 text-align: center;
                 gap: 1rem;
             }
-            
-            .key-takeaways ul {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjE1IiBmaWxsPSJ1cmwoI2dyYWQxKSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgo=">
+    <link rel="canonical" href="https://ai-team-orchestrator.com/en/core-philosophy-architecture/15-pillars-ai-system/" />
 </head>
 <body>
     <div class="container">
@@ -458,275 +431,529 @@
         <nav class="breadcrumb">
             <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
             <span>›</span>
-            <a href="../">🎻 Core Philosophy and Architecture</a>
+            <a href="../">🎻 Core Philosophy & Architecture</a>
             <span>›</span>
             <span>The 15 Pillars AI System</span>
         </nav>
-
-        <!-- Top Navigation -->
-        <nav class="chapter-nav-top">
-            <a href="../" class="nav-link">
-                ← Movement Index
-            </a>
-            <a href="../../ai-team-orchestrator.html" class="nav-link">
-                📚 Complete Guide
-            </a>
-            <a href="../first-specialist-agent-architecture/" class="nav-link">
-                Next Chapter →
-            </a>
-        </nav>
-
-        <!-- Chapter Header -->
+        
         <header class="chapter-header">
-            <div class="chapter-instrument">🎼</div>
+            <div class="chapter-instrument">🎻</div>
             <div class="chapter-meta">
-                <span>🎻 Movement 1 of 4</span>
-                <span>📖 Chapter 1 of 42</span>
-                <span>⏱️ ~8 min read</span>
-                <span>📊 Level: Fundamental</span>
+                <span>Movement 1 of 4</span>
+                <span>Chapter 3 of 42</span>
+                <span>Ready to Read</span>
             </div>
-            <h1 class="chapter-title">The 15 Pillars of an AI-Driven System</h1>
-            <p class="chapter-summary">
-                The fundamental architectural principles that separate an MVP from a scalable enterprise system. 
-                The strategic roadmap for building AI systems that don't collapse under pressure.
-            </p>
+            <h1 class="chapter-title">The Vision – 15 Pillars of an AI-Driven System</h1>
         </header>
 
-        <!-- Main Content -->
-        <article class="chapter-content">
+        <div class="chapter-content">
             <div class="intro-quote">
                 <div class="quote-content">
                     <blockquote>
-                        "As AI becomes more capable and agentic, models themselves become commodities; all value will be created by how you direct, contextualize and fine-tune them with your data and processes"
+                        "As AI becomes more capable and agentic, the models themselves become commoditized; all the value will be created by how you steer, ground and fine-tune them with your data and processes"
                     </blockquote>
                     <div class="quote-author">— Satya Nadella, CEO Microsoft (2025)</div>
                 </div>
             </div>
+            
+            <p><strong>You got your first AI agent working.</strong> Feels amazing, doesn't it? It answers questions, executes tasks, seems almost... intelligent.</p>
 
-            <div class="insight-box">
-                <h4>💰 AI's Economic Impact</h4>
-                <p>
-                    <strong>Sundar Pichai</strong> (CEO Google) predicts AI will add <strong>$15.7 trillion to global GDP by 2030</strong> (PwC data). But as <strong>Mark Cuban</strong> observes: <em>"Learn AI or be a dinosaur in 3 years"</em>. The value doesn't come from models, but from those who know how to orchestrate them effectively in business processes.
-                </p>
-            </div>
+            <p>But after a few days of usage, the harsh reality starts to emerge. The agent works fine when you ask it one thing at a time, but when you try to have it manage more complex processes, or when you add a second agent to divide the workload... chaos.</p>
 
-            <p><strong>You got your first AI agent working.</strong> It feels amazing, right? It answers questions, executes tasks, seems almost... intelligent.</p>
+            <p>You're not alone in this experience. <strong>Tomasz Tunguz</strong>, investor and AI industry analyst, recently confessed an uncomfortable truth: <em>"Without proper tools, I struggle to coordinate more than 4 agents. They require constant approvals, clarifications... half the work gets thrown away because they misunderstand instructions."</em></p>
 
-            <p>But after a few days of use, the harsh reality starts to emerge. The agent works well when you ask it to do one thing at a time, but when you try to have it manage more complex processes, or when you add a second agent to divide the load... chaos.</p>
+            <p>The problem isn't skill—it's <strong>tooling</strong>. As Tunguz puts it: <em>"In 2025, a single human manager can barely handle 4 AI agents... it's not a competency problem, it's an orchestration problem."</em></p>
 
-            <p>You're not alone in experiencing this. <strong>Tomasz Tunguz</strong>, investor and analyst in the AI sector, recently confessed an uncomfortable truth: <em>"Without proper tools, I struggle to coordinate more than 4 agents. They require constant approvals, clarifications... half the work gets thrown away because they misunderstand instructions."</em></p>
+            <p>This is where the need for an <strong>AI Team Orchestrator</strong> emerges: a system that transforms the chaos of manual orchestration into a structured digital organization, where every agent knows what to do, when to do it, and who to pass the result to.</p>
 
-            <p>The problem isn't ability – it's <strong>tools</strong>. As Tunguz says: <em>"In 2025, a single human manager barely manages 4 AI agents... it's not a competence problem, but orchestration."</em></p>
-
-            <p>This is where the need for an <strong>AI Team Orchestrator</strong> arises: a system that transforms the chaos of manual orchestration into a structured digital organization, where every agent knows what to do, when to do it, and who to pass the result to.</p>
-
-            <p>As Nadella perfectly summarizes in the quote above: it's not enough to have GPT-4 or Claude. The real value comes from how you "direct, contextualize and fine-tune" these models in your business processes. And that's exactly what we'll build together in this book.</p>
+            <p>As Nadella perfectly captures in the quote above: it's not enough to have GPT-4 or Claude. The real value comes from how you "steer, ground, and fine-tune" these models within your business processes. And that's exactly what we'll build together in this book.</p>
 
             <h3>Our 15 Pillars</h3>
-            <p>To transform this vision into reality, we've identified 15 fundamental principles, grouped into four thematic areas:</p>
+            <p>To turn this vision into reality, we've identified 15 fundamental principles, grouped into four thematic areas:</p>
 
-            <h4>🎻 Core Philosophy and Architecture</h4>
-
-            <div class="pillar-item">
-                <div class="pillar-icon">1</div>
-                <div class="pillar-content">
-                    <strong>Core = OpenAI Agents SDK (Native Usage)</strong>
-                    Every component (agent, planner, tool) must go through SDK primitives. Custom code is allowed only to cover functional gaps, not to reinvent the wheel.
+            <div class="pillar-section">
+                <h4>🎻 Core Philosophy and Architecture</h4>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">1</div>
+                    <div class="pillar-content">
+                        <strong>Core = OpenAI Agents SDK (Native Usage)</strong>
+                        Every component (agent, planner, tool) must pass through the SDK primitives. Custom code is allowed only to cover functional gaps, not to reinvent the wheel.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">2</div>
-                <div class="pillar-content">
-                    <strong>AI-Driven, Zero Hard-Coding</strong>
-                    Logic, patterns and decisions must be delegated to the LLM. No domain rules (eg. "if customer is in marketing, do X") should be fixed in code.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">2</div>
+                    <div class="pillar-content">
+                        <strong>AI-Driven, Zero Hard-Coding</strong>
+                        Logic, patterns, and decisions must be delegated to the LLM. No domain rules (e.g., "if the client is in marketing, do X") should be hardcoded.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">3</div>
-                <div class="pillar-content">
-                    <strong>Universal & Language-Agnostic</strong>
-                    The system must work in any sector and language, auto-detecting context and responding coherently.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">3</div>
+                    <div class="pillar-content">
+                        <strong>Universal & Language-Agnostic</strong>
+                        The system must work in any industry and language, auto-detecting context and responding coherently.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">4</div>
-                <div class="pillar-content">
-                    <strong>Scalable & Self-Learning</strong>
-                    Architecture must be based on reusable components and abstract service-layer. <strong>Workspace Memory</strong> is the engine of continuous learning.
-                </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">5</div>
-                <div class="pillar-content">
-                    <strong>Modular Tool/Service-Layer</strong>
-                    Single registry for all tools (both business and SDK). Architecture must be database-agnostic with no logic duplication.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">4</div>
+                    <div class="pillar-content">
+                        <strong>Scalable & Self-Learning</strong>
+                        The architecture must be based on reusable components and an abstract service layer. The <strong>Workspace Memory</strong> is the continuous learning engine.
+                    </div>
                 </div>
             </div>
 
-            <h4>🎺 Execution and Quality</h4>
-
-            <div class="pillar-item">
-                <div class="pillar-icon">6</div>
-                <div class="pillar-content">
-                    <strong>Goal-Driven with Automatic Tracking</strong>
-                    AI extracts measurable objectives from natural language, SDK connects every task to a goal, and progress is tracked in real-time.
+            <div class="pillar-section">
+                <h4>🎭 Execution and Quality</h4>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">5</div>
+                    <div class="pillar-content">
+                        <strong>Goal-First Tracking</strong>
+                        Every task must be connected to a higher goal and continuously update its progress. No orphaned tasks.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">7</div>
-                <div class="pillar-content">
-                    <strong>Autonomous Pipeline "Task → Goal → Enhancement → Memory → Correction"</strong>
-                    Workflow must be end-to-end and self-triggering, without requiring manual interventions.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">6</div>
+                    <div class="pillar-content">
+                        <strong>Memory as a Strategic Asset</strong>
+                        Each workspace maintains memory of successes, failures, and lessons learned for continuous improvement.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">8</div>
-                <div class="pillar-content">
-                    <strong>Quality Gates + Human-in-the-Loop as "Honor"</strong>
-                    Quality Assurance is AI-first. Human verification is an exception reserved for most critical deliverables, added value, not bottleneck.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">7</div>
+                    <div class="pillar-content">
+                        <strong>Autonomous Pipelines</strong>
+                        The flow Task → Goal → Enhancement → Memory → Correction must occur without human intervention.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">9</div>
-                <div class="pillar-content">
-                    <strong>Always Production-Ready & Tested Code</strong>
-                    No placeholders, mockups or "temporary" code. Every commit must be accompanied by unit and integration tests.
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">8</div>
+                    <div class="pillar-content">
+                        <strong>Quality Gates & Human-in-the-Loop</strong>
+                        AI-first for everything, but human validation required only for critical deliverables.
+                    </div>
                 </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">10</div>
-                <div class="pillar-content">
-                    <strong>Concrete and Actionable Deliverables</strong>
-                    The system must produce usable final results. An <strong>AI Content Enhancer</strong> replaces every generic data with real and contextual information before delivery.
-                </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">11</div>
-                <div class="pillar-content">
-                    <strong>Automatic Course-Correction</strong>
-                    The system must be able to detect when it's going off track (a "gap" from the objective) and use the SDK planner to automatically generate corrective tasks based on memory insights.
-                </div>
-            </div>
-
-            <h4>🎹 User Experience and Transparency</h4>
-
-            <div class="pillar-item">
-                <div class="pillar-icon">12</div>
-                <div class="pillar-content">
-                    <strong>Minimal UI/UX (Claude / ChatGPT Style)</strong>
-                    Interface must be essential, clean and focused on content, without distractions.
-                </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">13</div>
-                <div class="pillar-content">
-                    <strong>Transparency & Explainability</strong>
-                    Users must be able to see AI's reasoning process (<code>show_thinking</code>), understand confidence level and alternatives considered.
-                </div>
-            </div>
-            <div class="pillar-item">
-                <div class="pillar-icon">14</div>
-                <div class="pillar-content">
-                    <strong>Context-Aware Conversation</strong>
-                    Chat is not a static interface. Must use SDK conversational endpoints and respond based on current project context (team, goals, memory).
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">9</div>
+                    <div class="pillar-content">
+                        <strong>Always Production-Ready & Tested Code</strong>
+                        No placeholders, mockups or "temporary" code. Every commit must be accompanied by unit and integration tests.
+                    </div>
                 </div>
             </div>
 
-            <h4>🎭 The Fundamental Pillar</h4>
-
-            <div class="pillar-item pillar-fundamental">
-                <div class="pillar-icon">15</div>
-                <div class="pillar-content">
-                    <strong>Memory System as Foundation</strong>
-                    Memory is not a database. It's the heart of the learning system. Every insight (success pattern, lesson from failure, discovery) must be typed, saved and actively reused by agents.
+            <div class="pillar-section">
+                <h4>🎪 User Experience and Transparency</h4>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">10</div>
+                    <div class="pillar-content">
+                        <strong>Minimalist UI/UX (Claude/ChatGPT Style)</strong>
+                        The interface must be intuitive and focused on conversation, not complexity.
+                    </div>
+                </div>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">11</div>
+                    <div class="pillar-content">
+                        <strong>Concrete Deliverables</strong>
+                        Every output must be real and actionable. No lorem ipsum: replace it with real data.
+                    </div>
+                </div>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">12</div>
+                    <div class="pillar-content">
+                        <strong>Automatic Course-Correction</strong>
+                        The system must be able to self-correct based on gap detection.
+                    </div>
+                </div>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">13</div>
+                    <div class="pillar-content">
+                        <strong>Explainability</strong>
+                        Show reasoning steps and alternatives when requested.
+                    </div>
                 </div>
             </div>
 
-            <hr class="section-divider">
-        </article>
+            <div class="pillar-section">
+                <h4>🎺 Memory System and Scaling</h4>
+                
+                <div class="pillar-item">
+                    <div class="pillar-icon">14</div>
+                    <div class="pillar-content">
+                        <strong>Modular Tool/Service-Layer</strong>
+                        Single registry of tools; context-aware conversational endpoints.
+                    </div>
+                </div>
+            </div>
 
-        <!-- Key Takeaways -->
-        <section class="key-takeaways">
-            <h3>📝 Key Takeaways</h3>
-            <ul>
-                <li>AI orchestration is the real competitive differentiator, not the models themselves</li>
-                <li>15 strategic pillars guide evolution from MVP to enterprise system</li>
-                <li>Native OpenAI SDK as foundation, don't reinvent the wheel</li>
-                <li>Memory System is the heart of learning and self-improvement</li>
-                <li>AI-first Quality Gates with human-in-the-loop as added value</li>
-                <li>Modular architecture and centralized tool registry for scalability</li>
-            </ul>
-        </section>
+            <div class="pillar-section">
+                <h4>🎭 The Fundamental Pillar</h4>
+                
+                <div class="pillar-item pillar-fundamental">
+                    <div class="pillar-icon">15</div>
+                    <div class="pillar-content">
+                        <strong>Robustness & Fallback</strong>
+                        The system must continue to function even when individual components fail. Graceful degradation is key.
+                    </div>
+                </div>
+            </div>
 
-        <!-- Social Share -->
-        <section class="social-share">
-            <a href="#" onclick="shareLinkedIn()" class="share-button">
-                📤 Share on LinkedIn
-            </a>
-            <a href="#" onclick="shareTwitter()" class="share-button">
-                🐦 Share on Twitter
-            </a>
-        </section>
+            <div class="key-takeaways-section">
+                <h4 class="key-takeaways-title">📝 Chapter Key Takeaways:</h4>
+                <p class="takeaway-item">✓ <strong>Architecture Over Implementation:</strong> The 15 Pillars define the "what" and "why", not the "how". They guide decisions but allow flexibility in implementation.</p>
+                <p class="takeaway-item">✓ <strong>Production-First Mindset:</strong> Every pillar is designed to scale from MVP to enterprise. No shortcuts that create technical debt.</p>
+                <p class="takeaway-item">✓ <strong>AI-Native Design:</strong> These aren't traditional software principles adapted for AI. They're purpose-built for intelligent, agentic systems.</p>
+            </div>
 
-        <!-- Bottom Navigation -->
-        <nav class="chapter-nav-bottom">
-            <a href="../" class="nav-button secondary">
-                ← Movement Index
-            </a>
+            <p><strong>Chapter Conclusion</strong></p>
+
+            <p>These 15 Pillars aren't theoretical concepts—they're battle-tested principles that emerged from building real AI systems for real businesses. In the following chapters, we'll see how each pillar manifests in the architecture and implementation of our AI Team Orchestrator.</p>
+
+            <p>The next chapter dives into our first practical implementation: building a single, specialized agent that embodies these principles.</p>
+        </div>
+
+        <!-- Reader Tools -->
+        <div class="reader-tools" id="readerTools">
+            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+            
+            <div class="reader-tool" onclick="toggleTheme()">
+                <span class="reader-tool-icon" id="themeIcon">🌙</span>
+                <span class="reader-tool-label">Theme</span>
+            </div>
+            
+            <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            
+            <div class="reader-tool" onclick="showBookmarks()">
+                <span class="reader-tool-icon">📚</span>
+                <span class="reader-tool-label">My Bookmarks</span>
+            </div>
+            
+            <div class="language-switcher">
+                <select class="language-select" onchange="switchLanguage(this.value)">
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="it">🇮🇹 IT</option>
+                </select>
+            </div>
+            
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+        
+        <!-- Reading Progress -->
+        <div class="reading-progress">
+            <div class="reading-progress-fill" id="progressFill"></div>
+        </div>
+        
+        <!-- Bookmark Toast -->
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>
+
+        <!-- Navigation -->
+        <div class="chapter-nav-bottom">
             <a href="../first-specialist-agent-architecture/" class="nav-button">
-                Next: First Agent →
+                ← Previous: First Agent Architecture
             </a>
-        </nav>
+            <a href="../ai-mocking-testing-strategy/" class="nav-button">
+                Next: AI Mocking Strategy →
+            </a>
+        </div>
+        
+        <!-- Bookmarks Modal -->
+        <div class="bookmarks-modal" id="bookmarksModal" onclick="closeBookmarksModal(event)">
+            <div class="bookmarks-content">
+                <div class="bookmarks-header">
+                    <h3 class="bookmarks-title">📚 My Bookmarks</h3>
+                    <button class="close-bookmarks" onclick="closeBookmarksModal()">&times;</button>
+                </div>
+                <div class="bookmarks-list" id="bookmarksList">
+                    <!-- Bookmarks will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- JavaScript -->
     <script>
-        function shareLinkedIn() {
-            const url = encodeURIComponent(window.location.href);
-            const title = encodeURIComponent("The 15 Pillars of an AI-Driven System");
-            const summary = encodeURIComponent("Discover the fundamental architectural principles to build production-ready AI systems that scale from MVP to enterprise");
-            window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}&summary=${summary}`, '_blank');
-        }
+        // Reader Tools JavaScript
+        let readerToolsCollapsed = false;
         
-        function shareTwitter() {
-            const url = encodeURIComponent(window.location.href);
-            const text = encodeURIComponent("🤖 The 15 Pillars of an AI-Driven System - Architectural principles for building production-ready AI systems");
-            window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
-        }
+        // Initialize reader tools
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeReaderTools();
+            updateReadingProgress();
+            loadUserPreferences();
+        });
         
-        // Track reading progress
-        let readingProgress = 0;
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.pageYOffset;
-            const docHeight = document.body.scrollHeight - window.innerHeight;
-            const scrollPercent = Math.round((scrollTop / docHeight) * 100);
+        // Toggle reader tools visibility
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools');
+            readerToolsCollapsed = !readerToolsCollapsed;
             
-            if (scrollPercent > readingProgress) {
-                readingProgress = scrollPercent;
-                if (readingProgress % 25 === 0) {
-                    gtag('event', 'reading_progress', {
-                        'progress_percentage': readingProgress,
-                        'chapter_title': 'The 15 Pillars of an AI-Driven System'
-                    });
-                }
+            if (readerToolsCollapsed) {
+                tools.classList.add('collapsed');
+            } else {
+                tools.classList.remove('collapsed');
             }
-        });
-    </script>
-
-    <!-- Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-VEGK4VZMG0');
+            
+            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed);
+        }
         
-        // Track chapter start
-        gtag('event', 'chapter_start', {
-            'chapter_title': 'The 15 Pillars of an AI-Driven System',
-            'movement': 'core-philosophy-architecture',
-            'chapter_number': 1
-        });
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const isDarkMode = body.classList.contains('dark-mode');
+            
+            if (isDarkMode) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // Bookmark functionality
+        function toggleBookmark() {
+            const currentPage = window.location.pathname;
+            const pageTitle = document.querySelector('.chapter-title').textContent;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
+            
+            if (existingIndex > -1) {
+                bookmarks.splice(existingIndex, 1);
+                showToast('Bookmark removed!', 'error');
+            } else {
+                bookmarks.push({
+                    url: currentPage,
+                    title: pageTitle,
+                    timestamp: new Date().toISOString()
+                });
+                showToast('Bookmark saved!', 'success');
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            updateBookmarkButton();
+        }
+        
+        // Language switching
+        function switchLanguage(lang) {
+            const currentPath = window.location.pathname;
+            let newPath;
+            
+            if (lang === 'it') {
+                newPath = currentPath
+                    .replace('/en/', '/it/')
+                    .replace('core-philosophy-architecture', 'filosofia-core-architettura')
+                    .replace('15-pillars-ai-system', 'i-15-pilastri-sistema-ai');
+            } else if (lang === 'en') {
+                newPath = currentPath
+                    .replace('/it/', '/en/')
+                    .replace('filosofia-core-architettura', 'core-philosophy-architecture')
+                    .replace('i-15-pilastri-sistema-ai', '15-pillars-ai-system');
+            }
+            
+            if (newPath && newPath !== currentPath) {
+                window.location.href = newPath;
+            }
+        }
+        
+        // Font size menu
+        function showFontSizeMenu() {
+            const currentSize = localStorage.getItem('fontSize') || 'medium';
+            let newSize;
+            
+            switch (currentSize) {
+                case 'small':
+                    newSize = 'medium';
+                    break;
+                case 'medium':
+                    newSize = 'large';
+                    break;
+                case 'large':
+                    newSize = 'small';
+                    break;
+                default:
+                    newSize = 'medium';
+            }
+            
+            setFontSize(newSize);
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}`, 'success');
+        }
+        
+        // Set font size
+        function setFontSize(size) {
+            const root = document.documentElement;
+            const sizes = {
+                'small': '0.9em',
+                'medium': '1.0em',
+                'large': '1.1em'
+            };
+            root.style.fontSize = sizes[size];
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('bookmarkToast');
+            const messageEl = document.getElementById('bookmarkMessage');
+            
+            if (!toast || !messageEl) return;
+            
+            // Clear any existing timeouts
+            if (window.toastTimeout) {
+                clearTimeout(window.toastTimeout);
+            }
+            
+            // Reset classes and set message
+            toast.classList.remove('show', 'error');
+            messageEl.textContent = message;
+            
+            // Add appropriate classes
+            if (type === 'error') {
+                toast.classList.add('error');
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after delay
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Reading progress
+        function updateReadingProgress() {
+            const progressFill = document.getElementById('progressFill');
+            
+            window.addEventListener('scroll', () => {
+                const article = document.querySelector('.chapter-content');
+                if (!article) return;
+                
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTop = window.pageYOffset;
+                
+                const progress = Math.min(100, Math.max(0, 
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
+                ));
+                
+                progressFill.style.width = progress + '%';
+            });
+        }
+        
+        // Load user preferences
+        function loadUserPreferences() {
+            // Load theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+            
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                setFontSize(savedFontSize);
+            }
+            
+            // Load reader tools state
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true';
+            if (toolsCollapsed) {
+                document.getElementById('readerTools').classList.add('collapsed');
+                readerToolsCollapsed = true;
+            }
+        }
+        
+        // Initialize reader tools
+        function initializeReaderTools() {
+            updateBookmarkButton();
+        }
+        
+        // Update bookmark button state
+        function updateBookmarkButton() {
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
+            if (bookmarkTool) {
+                bookmarkTool.classList.toggle('active', isBookmarked);
+            }
+        }
+        
+        // Show bookmarks modal
+        function showBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            const bookmarksList = document.getElementById('bookmarksList');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            if (bookmarks.length === 0) {
+                bookmarksList.innerHTML = `
+                    <div class="empty-bookmarks">
+                        <div class="empty-bookmarks-icon">📚</div>
+                        <h3>No bookmarks saved</h3>
+                        <p>Start saving your favorite chapters by clicking the bookmark icon 🔖</p>
+                    </div>`;
+            } else {
+                bookmarksList.innerHTML = bookmarks.map(bookmark => `
+                    <div class="bookmark-item">
+                        <div class="bookmark-info">
+                            <a href="${bookmark.url}" class="bookmark-title">${bookmark.title}</a>
+                            <div class="bookmark-date">${new Date(bookmark.timestamp).toLocaleDateString()}</div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <button class="bookmark-action" onclick="deleteBookmark('${bookmark.url}')" title="Remove bookmark">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Close bookmarks modal
+        function closeBookmarksModal(event) {
+            const modal = document.getElementById('bookmarksModal');
+            if (modal && (!event || event.target === modal)) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Delete bookmark
+        function deleteBookmark(url) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            bookmarks = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            showToast('Bookmark removed!', 'error');
+            showBookmarks(); // Refresh the modal
+            updateBookmarkButton();
+        }
     </script>
 </body>
 </html>

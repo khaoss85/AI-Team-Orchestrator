@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Team Orchestrator: Topic Clusters & Learning Paths</title>
+    <meta name="description" content="Explore comprehensive topic clusters and learning paths for mastering AI team orchestration. Navigate chapters organized by expertise level and topic focus.">
+    <meta name="keywords" content="AI learning paths, topic clusters, AI orchestration guide, enterprise AI, production AI systems, learning roadmap">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    
+    <!-- Schema Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "AI Team Orchestrator Topic Clusters",
+      "description": "Complete topic clusters and learning paths for AI team orchestration mastery",
+      "url": "https://books.danielepelleri.com/topic-clusters.html",
+      "author": {
+        "@type": "Person",
+        "name": "Daniele Pelleri"
+      }
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid #f1f3f4;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            color: #7f8c8d;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+        
+        .learning-paths-intro {
+            background: linear-gradient(135deg, #667eea10, #764ba210);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            border: 1px solid #667eea20;
+        }
+        
+        .learning-paths-intro h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .clusters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .cluster {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cluster::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 15px;
+            padding: 2px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: xor;
+            -webkit-mask-composite: xor;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .cluster:hover::before {
+            opacity: 1;
+        }
+        
+        .cluster:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+        }
+        
+        .cluster-header {
+            margin-bottom: 1.5rem;
+        }
+        
+        .cluster h2 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .cluster-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+        
+        .cluster-description {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .cluster-meta {
+            display: flex;
+            justify-content: space-between;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+        }
+        
+        .meta-item {
+            text-align: center;
+        }
+        
+        .meta-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-bottom: 0.3rem;
+        }
+        
+        .meta-value {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+        
+        .cluster-links {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .cluster-links li {
+            margin-bottom: 0.8rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+        
+        .cluster-links li::before {
+            content: '▶';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-size: 0.8rem;
+        }
+        
+        .cluster-links a {
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            line-height: 1.4;
+        }
+        
+        .cluster-links a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+        
+        .learning-tips {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 3rem 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        .learning-tips h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .tip {
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .tip-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .back-nav {
+            text-align: center;
+            margin: 3rem 0;
+            padding-top: 2rem;
+            border-top: 2px solid #f1f3f4;
+        }
+        
+        .back-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .back-nav a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 2rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .clusters-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .cluster-meta {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Topic Clusters & Learning Paths</h1>
+            <p>Master AI team orchestration through carefully curated learning paths. Each cluster groups related chapters by theme and complexity, helping you build expertise systematically.</p>
+            
+            <div class="learning-paths-intro">
+                <h3>🚀 How to Use Learning Paths</h3>
+                <p>Each topic cluster contains 3-6 related chapters organized by difficulty. Start with foundational concepts, then progress through implementation patterns to advanced enterprise topics. Mix and match clusters based on your current needs and experience level.</p>
+            </div>
+        </div>
+        
+        <div class="clusters-grid">
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">🏗️</div>
+                        Architecture Fundamentals
+                    </h2>
+                    <p class="cluster-description">Core concepts and patterns for building scalable AI systems</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Beginner to Intermediate</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~2 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/core-philosophy-architecture/first-specialist-agent-architecture/">First Specialist Agent Architecture</a></li>
+                    <li><a href="en/core-philosophy-architecture/15-pillars-ai-system/">15 Pillars of AI System</a></li>
+                    <li><a href="en/core-philosophy-architecture/agent-environment-interactions/">Agent Environment Interactions</a></li>
+                </ul>
+            </div>
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">🔧</div>
+                        Tools & Implementation
+                    </h2>
+                    <p class="cluster-description">Practical tools and patterns for AI agent development</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Intermediate to Advanced</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~2.5 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/core-philosophy-architecture/agent-toolbox/">Agent Toolkit Arsenal</a></li>
+                    <li><a href="en/core-philosophy-architecture/sdk-vs-api-battle/">SDK vs Direct API Battle</a></li>
+                    <li><a href="en/core-philosophy-architecture/ai-mocking-testing-strategy/">AI Mocking & Testing Strategy</a></li>
+                </ul>
+            </div>
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">🎭</div>
+                        Orchestration & Coordination
+                    </h2>
+                    <p class="cluster-description">Managing teams of AI agents for complex workflows</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Advanced to Expert</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~3 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/core-philosophy-architecture/orchestrator-conductor/">Orchestrator: The Conductor</a></li>
+                    <li><a href="en/core-philosophy-architecture/ai-recruiter-dynamic-team/">AI Recruiter: Dynamic Team</a></li>
+                    <li><a href="en/core-philosophy-architecture/failed-handoff-delegation/">Failed Handoff: Delegation Patterns</a></li>
+                </ul>
+            </div>
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">⚡</div>
+                        Quality & Feedback Systems
+                    </h2>
+                    <p class="cluster-description">Continuous improvement and quality assurance patterns</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Intermediate to Advanced</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~2.5 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/execution-quality/improvement-cycle-correction/">Feedback Loops & Continuous Improvement</a></li>
+                    <li><a href="en/execution-quality/quality-gates-human-loop/">Human Feedback Integration Loop</a></li>
+                    <li><a href="en/execution-quality/memory-system-learning/">Memory System & Asset Management</a></li>
+                </ul>
+            </div>
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">🎨</div>
+                        User Experience Design
+                    </h2>
+                    <p class="cluster-description">Creating intuitive interfaces for AI-powered applications</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Advanced to Expert</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~3 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/user-experience-transparency/contextual-chat/">Conversational AI Interface Design</a></li>
+                    <li><a href="en/user-experience-transparency/control-room/">Real-Time Collaboration Features</a></li>
+                    <li><a href="en/user-experience-transparency/onboarding-ux/">Advanced UI/UX Patterns</a></li>
+                </ul>
+            </div>
+            <div class="cluster">
+                <div class="cluster-header">
+                    <h2>
+                        <div class="cluster-icon">🌍</div>
+                        Enterprise & Scaling
+                    </h2>
+                    <p class="cluster-description">Production-ready patterns for global AI deployments</p>
+                </div>
+                
+                <div class="cluster-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Difficulty</div>
+                        <div class="meta-value">Expert</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Time</div>
+                        <div class="meta-value">~4 hours</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Chapters</div>
+                        <div class="meta-value">3</div>
+                    </div>
+                </div>
+                
+                <ul class="cluster-links">
+                    <li><a href="en/memory-system-scaling/rate-limiting-resilience/">Rate Limiting & Circuit Breakers</a></li>
+                    <li><a href="en/memory-system-scaling/global-scale/">Global Scale Architecture & Timezone</a></li>
+                    <li><a href="en/memory-system-scaling/security-hardening/">Enterprise Security: Hardening Paranoia</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="learning-tips">
+            <h3>💡 Learning Tips & Best Practices</h3>
+            
+            <div class="tips-grid">
+                <div class="tip">
+                    <div class="tip-title">🎯 Start with Foundations</div>
+                    <p>Begin with "Architecture Fundamentals" before diving into specialized topics. This builds the conceptual framework for everything else.</p>
+                </div>
+                
+                <div class="tip">
+                    <div class="tip-title">🔧 Practice Implementation</div>
+                    <p>The "Tools & Implementation" cluster provides hands-on patterns. Try building simple examples as you read each chapter.</p>
+                </div>
+                
+                <div class="tip">
+                    <div class="tip-title">📈 Progress Gradually</div>
+                    <p>Don't skip difficulty levels. Each builds on previous concepts. Intermediate chapters assume foundational knowledge.</p>
+                </div>
+                
+                <div class="tip">
+                    <div class="tip-title">🎨 Focus on User Experience</div>
+                    <p>Technical excellence means nothing without great UX. The "User Experience Design" cluster is crucial for production systems.</p>
+                </div>
+                
+                <div class="tip">
+                    <div class="tip-title">🌍 Think Enterprise-Scale</div>
+                    <p>Even if building prototypes, understanding enterprise patterns from the start prevents costly rewrites later.</p>
+                </div>
+                
+                <div class="tip">
+                    <div class="tip-title">🔄 Cross-Reference Concepts</div>
+                    <p>Many concepts appear across clusters. Use the contextual links within chapters to reinforce learning and see connections.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="back-nav">
+            <a href="index.html">
+                <span>←</span>
+                <span>Back to Main Hub</span>
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        // Remove any auto-opening bookmark modals
+        document.addEventListener('DOMContentLoaded', function() {{
+            // Hide any auto-opening modals
+            const modals = document.querySelectorAll('.modal, .popup, [id*="modal"], [class*="modal"]');
+            modals.forEach(modal => {{
+                modal.style.display = 'none';
+                modal.classList.remove('show', 'active', 'visible');
+            }});
+            
+            // Ensure no bookmark popups auto-open
+            if (window.closeBookmarksModal) {{
+                window.closeBookmarksModal();
+            }}
+        }});
+    </script>
+</body>
+</html>

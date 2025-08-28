@@ -81,32 +81,1260 @@
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
+        
+        /* Chapter Navigation */
+        .chapter-nav {
+            margin: 3rem 0;
+            padding: 2rem 0;
+            border-top: 2px solid #f1f3f4;
+            border-bottom: 2px solid #f1f3f4;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .nav-link {
+            display: flex;
+            flex-direction: column;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            text-decoration: none;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            flex: 1;
+            max-width: 280px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .nav-link:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .nav-direction {
+            font-size: 0.8rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .nav-title {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .nav-link.up {
+            max-width: 200px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+            }
+            
+            .nav-link {
+                max-width: 100%;
+                text-align: center;
+            }
+        }
+        
+        /* Dark mode navigation */
+        .dark-mode .chapter-nav {
+            border-color: #374151;
+        }
+        
+        .dark-mode .nav-link {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #374151;
+            color: #e9ecef;
+        }
+        
+        .dark-mode .nav-link:hover {
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .nav-title {
+            color: #e9ecef;
+        }
+        
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #495057;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .reader-tool:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .reader-tool.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .reader-tool-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        .reader-tools-toggle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Language Switcher */
+        .language-switcher {
+            display: flex;
+            background: rgba(0,0,0,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .language-option {
+            padding: 0.3rem 0.6rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s ease;
+        }
+        
+        .language-option.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Reading Progress */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 1001;
+        }
+        
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .container {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(0, 0, 0, 0.8);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Fixed Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(350px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            pointer-events: none;
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+
+        /* Dark Mode - Content Areas */
+        .dark-mode .content-area {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area h2,
+        .dark-mode .content-area h3,
+        .dark-mode .content-area h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area p,
+        .dark-mode .content-area li {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area strong {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Dark Mode - Takeaways and Boxes */
+        .dark-mode .key-takeaways,
+        .dark-mode .insight-box,
+        .dark-mode .war-story {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways h3,
+        .dark-mode .insight-box h3,
+        .dark-mode .war-story h3 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways p,
+        .dark-mode .insight-box p,
+        .dark-mode .war-story p {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways li,
+        .dark-mode .insight-box li,
+        .dark-mode .war-story li {
+            color: #e9ecef;
+        }
+    
+        /* Architecture Icon Styling */
+        .architecture-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        
+        /* War Story Icon Styling */
+        .war-story-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        /* Insight Icon Styling */
+        .insight-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Architecture Section Styling */
+        .architecture-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .architecture-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .architecture-title h4 {
+            margin: 0;
+            color: #495057;
+        }
+        
+        /* War Story Styling */
+        .war-story {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-left: 4px solid #856404;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .war-story h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+        
+        /* Key Takeaways Styling */
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .key-takeaways-title {
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .key-takeaways-content {
+            line-height: 1.6;
+        }
+        
+        .takeaway-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Industry Insight Styling */
+        .industry-insight {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 4px solid #28a745;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .industry-insight h4 {
+            color: #28a745;
+            margin-top: 0;
+        }
+        
+        /* Mermaid Container */
+        .mermaid {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+    
+        .architecture-section,
+        .mermaid,
+        .war-story,
+        .key-takeaways-section {
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
+
+    <style>
+    .contextual-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dotted #667eea;
+        transition: all 0.2s ease;
+    }
+    
+    .contextual-link:hover {
+        color: #5a6fd8;
+        border-bottom-style: solid;
+    }
+    
+    .dark-mode .contextual-link {
+        color: #9bb5ff;
+        border-bottom-color: #9bb5ff;
+    }
+    </style>
+        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="canonical" href="https://ai-team-orchestrator.com/en/execution-quality/comprehensive-test/" />
 </head>
 <body>
     <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <a href="../">🎺 Execution & Quality</a>
+            <span>›</span>
+            <span>The Comprehensive Test - Maturity Exam</span>
+        </nav>
         <header class="chapter-header">
             <div class="chapter-instrument">🎺</div>
             <div class="chapter-meta">
                 <span>Movement 2 of 4</span>
                 <span>Chapter 18 of 42</span>
-                <span>Coming Soon</span>
+                <span>Ready to Read</span>
             </div>
             <h1 class="chapter-title">The Comprehensive Test - Maturity Exam</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <div class="chapter-content">
+<div class="chapter-progress">
+                        <div class="progress-label">Movimento 18 di 42</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 42%"></div>
+</div>
+                    <h2 class="chapter-title">Chapter 18: The "Comprehensive" Test – The System's Maturity Exam</h2>
+                </div>
+
+<p>We had tested every single component in isolation. We had tested the interactions between two or three components. But a fundamental question remained unanswered: <strong>does the system work as a single, coherent organism?</strong></p>
+
+<p>An orchestra can have the best violinists and the best percussionists, but if they have never tried to play the same symphony together, the result will be chaos. It was time to make our entire orchestra play.</p>
+
+<p>This led us to create the <strong>Comprehensive End-to-End Test</strong>. Not a simple test, but a true simulation of an entire project, from start to finish.</p>
+
+<h3># <strong>The Architectural Decision: Test the Scenario, Not the Function</strong></h3>
+
+<p>The goal of this test was not to verify a single function or a single agent. The goal was to verify a <strong>complete business scenario</strong>.</p>
+
+<p><em>Reference code: <code>tests/test_comprehensive_e2e.py</code></em><br>
+<em>Log evidence: <code>comprehensive_e2e_test_...log</code></em></p>
+
+<p>We chose a complex and realistic scenario, based on the requests of a potential client:</p>
+
+<p>&gt; <em>"I want a system capable of collecting 50 qualified contacts (CMOs/CTOs of European SaaS companies) and suggesting at least 3 email sequences to set up on HubSpot, with a target open rate of 30%."</em></p>
+
+<p>This was not a task, it was a <strong>project</strong>. Testing it meant verifying that dozens of components and agents worked in perfect harmony.</p>
+
+<h3># <strong>Test Infrastructure: A "Digital Twin" of the Production Environment</strong></h3>
+
+<p>A test of this scope cannot be executed in a local development environment. To ensure that the results were meaningful, we had to build a <strong>dedicated staging environment</strong>, a "digital twin" of our production environment.</p>
+
+<p><strong>Key Components of the Comprehensive Test Environment:</strong></p>
+
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Implementation</th>
+<th>Strategic Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dedicated Database</strong></td>
+<td>A separate Supabase instance, identical in schema to the production one.</td>
+<td>Isolate test data from real data and allow a clean "reset" before each execution.</td>
+</tr>
+<tr>
+<td><strong>Containerization</strong></td>
+<td>The entire backend application (Executor, API, Monitor) runs in a Docker container.</td>
+<td>Ensure that the test runs in the same software environment as production, eliminating "works on my machine" problems.</td>
+</tr>
+<tr>
+<td><strong>Mock vs. Real Services</strong></td>
+<td>Critical external services (like OpenAI SDK) run in "mock" mode for speed and cost, but network infrastructure and API calls are real.</td>
+<td>Find the right balance between the reliability of a realistic test and the practicality of a controlled environment.</td>
+</tr>
+<tr>
+<td><strong>Orchestration Script</strong></td>
+<td>A <code>pytest</code> script that doesn't just launch functions, but orchestrates the entire scenario: starts the container, populates the DB with initial state, starts the test and does teardown.</td>
+<td>Automate the entire process to make it repeatable and integrable into a CI/CD flow.</td>
+</tr>
+</tbody>
+</table>
+
+<p>This infrastructure required a time investment, but was fundamental to the stability of our development process.</p>
+
+<p><strong>Comprehensive Test Flow:</strong></p>
+
+<div class="architecture-section">
+    <div class="architecture-title">
+        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="9" x2="15" y2="9"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <h4>System Architecture</h4>
+    </div>
+    
+    <div class="mermaid">
+        graph TD
+            A[Phase 1: Setup] --> B[Create an empty Workspace with the project objective]
+            B --> C[Phase 2: Team Composition]
+            C --> D[Verify that the Director creates an appropriate team]
+            D --> E[Phase 3: Planning]
+            E --> F[Verify that the AnalystAgent breaks down the objective into concrete tasks]
+            F --> G[Phase 4: Autonomous Execution]
+            G --> H[Start the Executor and let it run without interruption]
+            H --> I[Phase 5: Monitoring]
+            I --> J[Monitor the HealthMonitor to ensure there are no stalls]
+            J --> K[Phase 6: Final Validation]
+            K --> L[After a defined time, stop the test and check the final DB state]
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
+            subgraph "Success Criteria"
+                L --> M[At least 1 final Deliverable has been created?]
+                M --> N[Is the deliverable content high quality and without placeholders?]
+                N --> O[Is progress towards the "50 contacts" objective > 0?]
+                O --> P[Has the system saved at least one "insight" in Memory?]
+            end
+    </div>
+</div>
+
+<h3># <strong>"War Story": The Discovery of the "Fatal Disconnection"</strong></h3>
+
+<p>The first execution of the comprehensive test was a catastrophic failure, but incredibly instructive. The system worked for hours, completed dozens of tasks, but in the end... no deliverables. Progress towards the objective remained at zero.</p>
+
+<p><em>Disaster Logbook (Post-test analysis):</em></p>
+
+<pre><code class="language-text">FINAL ANALYSIS:
+- Completed Tasks: 27
+- Created Deliverables: 0
+- Objective Progress "Contacts": 0/50
+- Insights in Memory: 8 (generic)</code></pre>
+
+<p>Analyzing the database, we discovered the <strong>"Fatal Disconnection"</strong>. The problem was surreal: the system <strong>correctly extracted the objectives</strong> and <strong>correctly created the tasks</strong>, but, due to a bug, <strong>never linked the tasks to the objectives (<code>goal_id</code> was <code>null</code>)</strong>.</p>
+
+<p>Every task was executed in a strategic void. The agent completed its work, but the system had no way of knowing which business objective that work contributed to. Consequently, the <code>GoalProgressUpdate</code> never activated, and the deliverable creation pipeline never started.</p>
+
+<p><strong>The Lesson Learned: Without Alignment, Execution is Useless.</strong></p>
+
+<p>This was perhaps the most important lesson of the entire project. A team of super-efficient agents executing tasks not aligned to a strategic objective is just a very sophisticated way of wasting resources.</p>
+
+<ul>
+<li><strong>Pillar #5 (Goal-Driven):</strong> This failure showed us how vital this pillar was. It wasn't a "nice-to-have" feature, but the backbone of the entire system.</li>
+<li><strong>Comprehensive Tests are Indispensable:</strong> No unit or partial integration test could have ever uncovered a strategic misalignment problem like this. Only by testing the entire project lifecycle did the disconnection emerge.</li>
+</ul>
+
+<p>The correction was technically simple, but the impact was enormous. The second execution of the comprehensive test was a success, producing the first, true end-to-end deliverable of our system.</p>
+
+<div class="key-takeaways-section">
+    <h4 class="key-takeaways-title">📝 Chapter Key Takeaways:</h4>
+    <div class="key-takeaways-content">
+        <p class="takeaway-item">✓ <strong>Test the Scenario, Not the Feature:</strong> For complex systems, the most important tests are not those that verify a single function, but those that simulate a real business scenario from start to finish.</p>
+        <p class="takeaway-item">✓ <strong>Build a "Digital Twin":</strong> Reliable end-to-end tests require a dedicated staging environment that mirrors production as closely as possible.</p>
+        <p class="takeaway-item">✓ <strong>Alignment is Everything:</strong> Ensure that every single action in your system is traceable back to a high-level business objective.</p>
+        <p class="takeaway-item">✓ <strong>Comprehensive Test Failures are Gold Mines:</strong> A unit test failure is a bug. A comprehensive test failure is often an indication of a fundamental architectural or strategic problem.</p>
+    </div>
+</div>
+
+<p><strong>Chapter Conclusion</strong></p>
+
+<p>With the success of the comprehensive test, we finally had proof that our "AI organism" was vital and functioning. It could take an abstract objective and transform it into a concrete result.</p>
+
+<p>But a test environment is a protected laboratory. The real world is much more chaotic. We were ready for the final test before we could consider our system "production-ready": the <strong>Production Test</strong>.</p>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+        <div class="nav-container">
+            <a href="../consolidation-test/" class="nav-link prev">
+                <span class="nav-direction">← Previous</span>
+                <span class="nav-title">Chapter 17: Consolidation Testing - Simplify to Scale</span>
             </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
+            <a href="../" class="nav-link up">
+                <span class="nav-direction">↑ Up</span>
+                <span class="nav-title">Execution & Quality</span>
+            </a>
+            <a href="../production-test/" class="nav-link next">
+                <span class="nav-direction">Next →</span>
+                <span class="nav-title">Chapter 19: Production Testing - Real World Survival</span>
+            </a>
+        </div>
+    </nav>            </div>
+    </div>
+
+    <!-- Reader Tools -->
+    <div class="reader-tools" id="readerTools">
+        <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+        
+        <div class="reader-tool" onclick="toggleTheme()">
+            <span class="reader-tool-icon" id="themeIcon">🌙</span>
+            <span class="reader-tool-label">Theme</span>
+        </div>
+        
+        <div class="reader-tool" onclick="toggleBookmark()">
+            <span class="reader-tool-icon">🔖</span>
+            <span class="reader-tool-label">Bookmark</span>
+        </div>
+        
+        <div class="reader-tool" onclick="showBookmarks()">
+            <span class="reader-tool-icon">📚</span>
+            <span class="reader-tool-label">My Bookmarks</span>
+        </div>
+        
+        <div class="language-switcher">
+            <select class="language-select" onchange="switchLanguage(this.value)">
+                <option value="en" selected>🇬🇧 EN</option>
+                <option value="it">🇮🇹 IT</option>
+            </select>
+        </div>
+        
+        <div class="reader-tool" onclick="showFontSizeMenu()">
+            <span class="reader-tool-icon">🔤</span>
+            <span class="reader-tool-label">Font Size</span>
+        </div>
+    </div>
+
+    <!-- Reading Progress -->
+    <div class="reading-progress">
+        <div class="reading-progress-fill" id="progressFill"></div>
+    </div>
+    
+    <!-- Bookmark Toast -->
+    <div class="bookmark-toast" id="bookmarkToast">
+        <span id="bookmarkMessage">Bookmark saved!</span>
+    </div>
+
+    <!-- Bookmarks Modal -->
+    <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
+        <div class="bookmarks-content">
+            <div class="bookmarks-header">
+                <h3 class="bookmarks-title">📚 My Bookmarks</h3>
+                <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
+            </div>
+            <div class="bookmarks-list" id="bookmarksList">
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Related Chapters Section -->
+    <div class="related-chapters-section" id="related-chapters-section">
+        <div class="related-chapters-header">
+            <h3>🔗 Related Chapters</h3>
+            <p>Explore these chapters to deepen your understanding of related concepts</p>
+        </div>
+        <div class="related-chapters-grid">
+            
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/agent-toolbox/" class="related-link">Agent Toolbox & Tools Registry</a></h4>
+                <p>Master AI systems with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/agent-toolbox/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-link">15 Pillars of AI Systems</a></h4>
+                <p>Master enterprise architecture with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-cta">Learn More →</a>
+            </div>
+        
+            <div class="related-chapter-item">
+                <h4><a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-link">Orchestrator as Conductor</a></h4>
+                <p>Master production deployment with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
+                <a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-cta">Learn More →</a>
+            </div>
+</div>
+    
+    <style>
+    .related-chapters-section {
+        margin: 3rem 0;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        border-left: 5px solid #667eea;
+    }
+    
+    .related-chapters-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .related-chapters-header h3 {
+        color: #2c3e50;
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .related-chapters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .related-chapter-item {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .related-chapter-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    
+    .related-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .related-link:hover {
+        color: #5a6fd8;
+        text-decoration: underline;
+    }
+    
+    .related-cta {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-top: 1rem;
+    }
+    
+    .related-cta:hover {
+        color: #5a6fd8;
+    }
+    
+    /* Dark mode support */
+    .dark-mode .related-chapters-section {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapters-header h3 {
+        color: #e9ecef;
+    }
+    
+    .dark-mode .related-chapter-item {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e9ecef;
+    }
+    </style>
+    
+    <!-- Continue Reading Section -->
+    <div class="continue-reading-section">
+        <div class="continue-reading-header">
+            <h3>📚 Continue Reading</h3>
+        </div>
+        <div class="continue-reading-actions">
+            <a href="../ai-team-orchestrator.html" class="continue-btn primary">
+                <span class="btn-icon">🏠</span>
+                <span class="btn-text">Back to Guide</span>
+            </a>
+            <a href="../core-philosophy-architecture/" class="continue-btn secondary">
+                <span class="btn-icon">🎭</span>
+                <span class="btn-text">Explore Movement</span>
             </a>
         </div>
     </div>
+    
+    <style>
+    .continue-reading-section {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        text-align: center;
+        background: linear-gradient(135deg, #667eea10, #764ba210);
+        border-radius: 15px;
+    }
+    
+    .continue-reading-header h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .continue-reading-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .continue-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 1.5rem;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .continue-btn.primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .continue-btn.secondary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+    
+    .continue-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .dark-mode .continue-reading-header h3 {
+        color: #e9ecef;
+    }
+    </style>
+    </div>
+
+    <script>
+        // Reader Tools JavaScript
+        let readerToolsCollapsed = false;
+        
+        // Initialize reader tools
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeReaderTools();
+            updateReadingProgress();
+            loadUserPreferences();
+        });
+        
+        // Toggle reader tools visibility
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools');
+            readerToolsCollapsed = !readerToolsCollapsed;
+            
+            if (readerToolsCollapsed) {
+                tools.classList.add('collapsed');
+            } else {
+                tools.classList.remove('collapsed');
+            }
+            
+            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed);
+        }
+        
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const isDarkMode = body.classList.contains('dark-mode');
+            
+            if (isDarkMode) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // Bookmark functionality
+        function toggleBookmark() {
+            const currentPage = window.location.pathname;
+            const pageTitle = document.querySelector('.chapter-title').textContent;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
+            
+            if (existingIndex > -1) {
+                bookmarks.splice(existingIndex, 1);
+                showToast('Bookmark removed!', 'error');
+            } else {
+                bookmarks.push({
+                    url: currentPage,
+                    title: pageTitle,
+                    timestamp: new Date().toISOString()
+                });
+                showToast('Bookmark saved!', 'success');
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        // Language switching
+        function switchLanguage(lang) {
+            const currentPath = window.location.pathname;
+            let newPath;
+            
+            if (lang === 'en') {
+                newPath = currentPath.replace(/\/it\//g, '/en/')
+                    .replace('filosofia-core-architettura', 'core-philosophy-architecture')
+                    .replace('user-experience-trasparenza', 'user-experience-transparency')
+                    .replace('esecuzione-qualita', 'execution-quality')
+                    .replace('memory-system-scaling', 'memory-system-scaling')
+                    .replace('i-15-pilastri-sistema-ai', '15-pillars-ai-system')
+                    .replace('primo-agente-specialist-architecture', 'first-specialist-agent-architecture')
+                    .replace('isolare-intelligenza-mock-llm', 'ai-mocking-testing-strategy')
+                    .replace('dramma-parsing-contratto-ai', 'drama-parsing-ai-contracts')
+                    .replace('sdk-vs-api-battle', 'sdk-vs-direct-api-battle')
+                    .replace('agente-ambiente-interazioni-fondamentali', 'agent-environment-interactions')
+                    .replace('orchestratore-direttore-orchestra', 'orchestrator-conductor')
+                    .replace('staffetta-mancata-handoff', 'failed-handoff-delegation')
+                    .replace('recruiter-ai-team-dinamico', 'ai-recruiter-dynamic-team')
+                    .replace('test-tool-ancorare-realta', 'tool-testing-reality-anchor')
+                    .replace('cassetta-attrezzi-agente', 'agent-toolbox');
+            } else if (lang === 'it') {
+                newPath = currentPath.replace(/\/en\//g, '/it/')
+                    .replace('core-philosophy-architecture', 'filosofia-core-architettura')
+                    .replace('user-experience-transparency', 'user-experience-trasparenza')
+                    .replace('execution-quality', 'esecuzione-qualita')
+                    .replace('memory-system-scaling', 'memory-system-scaling')
+                    .replace('15-pillars-ai-system', 'i-15-pilastri-sistema-ai')
+                    .replace('first-specialist-agent-architecture', 'primo-agente-specialist-architecture')
+                    .replace('ai-mocking-testing-strategy', 'isolare-intelligenza-mock-llm')
+                    .replace('drama-parsing-ai-contracts', 'dramma-parsing-contratto-ai')
+                    .replace('sdk-vs-direct-api-battle', 'sdk-vs-api-battle')
+                    .replace('agent-environment-interactions', 'agente-ambiente-interazioni-fondamentali')
+                    .replace('orchestrator-conductor', 'orchestratore-direttore-orchestra')
+                    .replace('failed-handoff-delegation', 'staffetta-mancata-handoff')
+                    .replace('ai-recruiter-dynamic-team', 'recruiter-ai-team-dinamico')
+                    .replace('tool-testing-reality-anchor', 'test-tool-ancorare-realta')
+                    .replace('agent-toolbox', 'cassetta-attrezzi-agente');
+            }
+            
+            if (newPath && newPath !== currentPath) {
+                window.location.href = newPath;
+            }
+        }
+        
+        // Font size menu (simplified)
+        function showFontSizeMenu() {
+            const currentSize = localStorage.getItem('fontSize') || 'medium';
+            let newSize;
+            
+            switch (currentSize) {
+                case 'small':
+                    newSize = 'medium';
+                    break;
+                case 'medium':
+                    newSize = 'large';
+                    break;
+                case 'large':
+                    newSize = 'small';
+                    break;
+                default:
+                    newSize = 'medium';
+            }
+            
+            setFontSize(newSize);
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}`, 'success');
+        }
+        
+        // Set font size
+        function setFontSize(size) {
+            const root = document.documentElement;
+            const sizes = {
+                'small': 0.9,
+                'medium': 1.0,
+                'large': 1.1
+            };
+            root.style.fontSize = sizes[size] + 'em';
+        }
+        
+        // Show toast notification (improved)
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('bookmarkToast');
+            const messageEl = document.getElementById('bookmarkMessage');
+            
+            if (!toast || !messageEl) return;
+            
+            // Clear any existing timeouts
+            if (window.toastTimeout) {
+                clearTimeout(window.toastTimeout);
+            }
+            
+            // Reset classes and set message
+            toast.classList.remove('show', 'error');
+            messageEl.textContent = message;
+            
+            // Add appropriate classes
+            if (type === 'error') {
+                toast.classList.add('error');
+            }
+            
+            // Show toast
+            toast.classList.add('show');
+            
+            // Hide after delay
+            window.toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Reading progress
+        function updateReadingProgress() {
+            const progressFill = document.getElementById('progressFill');
+            
+            window.addEventListener('scroll', () => {
+                const article = document.querySelector('.chapter-content');
+                if (!article) return;
+                
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTop = window.pageYOffset;
+                
+                const progress = Math.min(100, Math.max(0, 
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
+                ));
+                
+                progressFill.style.width = progress + '%';
+            });
+        }
+        
+        // Load user preferences
+        function loadUserPreferences() {
+            // Load theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            }
+            
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                setFontSize(savedFontSize);
+            }
+            
+            // Load reader tools state
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true';
+            if (toolsCollapsed) {
+                document.getElementById('readerTools').classList.add('collapsed');
+                readerToolsCollapsed = true;
+            }
+        }
+        
+        // Initialize reader tools
+        function initializeReaderTools() {
+            // Check if current page is bookmarked
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            if (isBookmarked) {
+                document.querySelector('.reader-tool:nth-child(3)').classList.add('active');
+            }
+        }
+    
+        // Show bookmarks modal
+        function showBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            const bookmarksList = document.getElementById('bookmarksList');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            if (bookmarks.length === 0) {
+                bookmarksList.innerHTML = `
+                    <div class="no-bookmarks">
+                        <div class="no-bookmarks-icon">📚</div>
+                        <h3>No bookmarks saved</h3>
+                        <p>Start saving your favorite chapters clicking the icon 🔖</p>
+                    </div>`;
+            } else {
+                bookmarksList.innerHTML = bookmarks.map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">
+                            <div class="bookmark-title">${bookmark.title}</div>
+                            <div class="bookmark-date">${new Date(bookmark.timestamp).toLocaleDateString('en-US')}</div>
+                        </a>
+                        <button class="delete-bookmark" onclick="deleteBookmark('${bookmark.url}')">🗑️</button>
+                    </div>
+                `).join('');
+            }
+            
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeBookmarksModal(event) {
+            const modal = document.getElementById('bookmarksModal');
+            if (modal && (!event || event.target === modal)) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+        
+        function deleteBookmark(url) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            bookmarks = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            showToast('Bookmark removed!', 'error');
+            showBookmarks();
+        }
+        
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('bookmarkToast');
+            if (!toast) return;
+            
+            const messageEl = document.getElementById('bookmarkMessage');
+            if (messageEl) messageEl.textContent = message;
+            
+            toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            toast.style.opacity = 1;
+            toast.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+            }, 3000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
+            if (bookmarkTool) {
+                bookmarkTool.classList.toggle('active', isBookmarked);
+            }
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const themeIcon = document.getElementById('themeIcon');
+                if (themeIcon) themeIcon.textContent = '☀️';
+            }
+        });';
+    
+        }
+    </script>
+
+<!-- universal-progress-bar-added -->
+
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+    </script>
 </body>
 </html>

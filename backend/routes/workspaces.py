@@ -23,7 +23,7 @@ from database import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/workspaces", tags=["workspaces"])
+router = APIRouter(tags=["workspaces"])
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def health_check(request: Request):
@@ -624,4 +624,30 @@ async def get_workspace_tasks(request: Request, workspace_id: UUID, task_type: O
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f"Failed to get workspace tasks: {str(e)}"
+        )
+
+@router.get("/user/{user_id}", response_model=List[Workspace])
+async def get_workspaces_by_user(user_id: str, request: Request, limit: Optional[int] = 50):
+    """Get all workspaces for a specific user - endpoint for frontend compatibility"""
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Route get_workspaces_by_user called", endpoint="get_workspaces_by_user", trace_id=trace_id)
+
+    try:
+        from database import supabase
+        
+        result = supabase.table("workspaces").select("*").eq("user_id", user_id).limit(limit).execute()
+        workspaces = result.data or []
+        
+        # Transform budget format for each workspace
+        if workspaces:
+            workspaces = [transform_workspace_budget(ws) for ws in workspaces]
+        
+        return workspaces
+    except Exception as e:
+        logger.error(f"Error fetching workspaces for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch workspaces: {str(e)}"
         )

@@ -2215,6 +2215,47 @@ export const api = {
     },
   },
 
+  // Goal Progress Transparency API
+  goalProgress: {
+    // Get detailed goal progress with transparency data
+    getDetails: async (workspaceId: string, goalId: string, includeHidden: boolean = true): Promise<import('../types/goal-progress').GoalProgressDetail> => {
+      try {
+        const params = new URLSearchParams();
+        params.append('include_hidden', includeHidden.toString());
+        
+        const response = await fetch(`${API_BASE_URL}/api/goal-progress-details/${workspaceId}/${goalId}?${params.toString()}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Execute unblocking actions on goal deliverables
+    unblock: async (
+      workspaceId: string, 
+      goalId: string, 
+      unblockRequest: import('../types/goal-progress').UnblockRequest
+    ): Promise<import('../types/goal-progress').UnblockResponse> => {
+      try {
+        const params = new URLSearchParams();
+        params.append('action', unblockRequest.action);
+        if (unblockRequest.deliverable_ids) {
+          unblockRequest.deliverable_ids.forEach(id => params.append('deliverable_ids', id));
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/goal-progress-details/${workspaceId}/${goalId}/unblock?${params.toString()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
   // Document Management API
   documents: {
     // Upload a document

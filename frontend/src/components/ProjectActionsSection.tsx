@@ -178,9 +178,9 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
             <AssetActionCard
               icon="👁️"
               title="Visualizza Asset"
-              description="Esplora gli asset prodotti e il loro stato"
-              action="Visualizza Asset"
-              onClick={() => window.open(`/projects/${workspaceId}/assets`, '_blank')}
+              description="Esplora gli asset tramite chat AI"
+              action="Apri Chat AI"
+              onClick={() => window.open(`/projects/${workspaceId}/conversation`, '_blank')}
               variant="primary"
             />
 
@@ -235,7 +235,7 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
                 title="Visualizza Deliverable"
                 description="Vedi il deliverable finale con asset azionabili"
                 action="Apri Deliverable"
-                onClick={() => window.open(`/projects/${workspaceId}/deliverables`, '_blank')}
+                onClick={() => window.open(`/projects/${workspaceId}/conversation`, '_blank')}
                 variant="primary"
               />
             )}
@@ -438,7 +438,7 @@ export default function ProjectActionsSection({
                     👥 Team
                   </Link>
                   <Link 
-                    href={`/projects/${workspace.id}/assets`}
+                    href={`/projects/${workspace.id}/conversation`}
                     className="px-3 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition"
                   >
                     📦 Asset
@@ -468,16 +468,16 @@ export default function ProjectActionsSection({
             </p>
             <div className="flex flex-wrap gap-2">
               <Link 
-                href={`/projects/${workspace.id}/deliverables`}
+                href={`/projects/${workspace.id}/conversation`}
                 className="px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition"
               >
                 📋 Deliverable
               </Link>
               <Link 
-                href={`/projects/${workspace.id}/assets`}
+                href={`/projects/${workspace.id}/conversation`}
                 className="px-3 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition"
               >
-                📦 Asset
+                💬 Chat AI
               </Link>
             </div>
           </div>

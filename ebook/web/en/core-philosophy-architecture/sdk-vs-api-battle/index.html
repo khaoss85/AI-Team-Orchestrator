@@ -57,8 +57,10 @@
       "about": {
         "@type": "Thing",
         "name": "AI Architecture Design Patterns"
-      }
     }
+   
+    
+        }
     </script>
     
     <style>
@@ -70,7 +72,7 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -252,7 +254,7 @@
             background: #f8f9fa;
             padding: 0.2rem 0.4rem;
             border-radius: 4px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-family: Monaco, Menlo, Ubuntu Mono, monospace;
             font-size: 0.9rem;
             color: #e74c3c;
         }
@@ -445,25 +447,870 @@
                 padding: 0.5rem;
             }
         }
+        /* Architecture Section Icons and Headers */
+        .architecture-title {
+            background: #495057;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .architecture-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .architecture-title h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* War Story Icons and Headers */
+        .war-story-header {
+            background: #856404;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .war-story-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .war-story-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Industry Insight Icons and Headers */
+        .insight-header {
+            background: #28a745;
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .insight-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .insight-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #495057;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .reader-tool:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .reader-tool.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .reader-tool-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        .reader-tools-toggle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Language Switcher */
+        /* Language Switcher */
+        .language-switcher {
+            position: relative;
+        }
+        
+        .language-select {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2' stroke-linecap=round stroke-linejoin=round%3e%3cpolyline points=6,9 12,15 18,9%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.4rem center;
+            background-size: 1rem;
+            padding-right: 1.8rem;
+            min-width: 60px;
+        }
+        
+        .language-select:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #667eea;
+        }
+        
+        .language-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* Reading Progress */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 1001;
+        }
+        
+        .reading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .container {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(0, 0, 0, 0.8);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .reader-tool:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .language-select {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark-mode .language-select:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #667eea;
+        }
+        
+        /* Dark Mode - Content Areas */
+        .dark-mode .content-area {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area h2,
+        .dark-mode .content-area h3,
+        .dark-mode .content-area h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area p,
+        .dark-mode .content-area li {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .content-area strong {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Dark Mode - Takeaways and Boxes */
+        .dark-mode .key-takeaways,
+        .dark-mode .insight-box,
+        .dark-mode .war-story {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways h3,
+        .dark-mode .insight-box h3,
+        .dark-mode .war-story h3 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways p,
+        .dark-mode .insight-box p,
+        .dark-mode .war-story p {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .key-takeaways li,
+        .dark-mode .insight-box li,
+        .dark-mode .war-story li {
+            color: #e9ecef;
+        }
+        
+        
+        /* Dark Mode - Headings and Titles */
+        .dark-mode .chapter-title,
+        .dark-mode .chapter-content h3,
+        .dark-mode .chapter-content h4,
+        .dark-mode .chapter-content h5 {
+            color: #e9ecef !important;
+        }
+        
+        .dark-mode .chapter-content p,
+        .dark-mode .chapter-content li,
+        .dark-mode .chapter-content strong {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .takeaway-item {
+            color: #e9ecef;
+        }
+        
+        /* Dark Mode - Tables */
+        .dark-mode table {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode th,
+        .dark-mode td {
+            color: #e9ecef;
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Navigation Container Fix */
+        .chapter-nav-bottom {
+            max-width: 900px;
+            box-sizing: border-box;
+            margin: 3rem auto 2rem auto;
+            padding: 0 2rem;
+            position: relative;
+        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Fixed Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(350px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            pointer-events: none;
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        /* Bookmarks Modal */
+        .bookmarks-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .bookmarks-modal.show {
+            display: flex;
+        }
+        
+        .bookmarks-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .bookmarks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .bookmarks-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin: 0;
+        }
+        
+        .bookmarks-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        
+        .bookmarks-close:hover {
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        
+        .bookmark-item:hover {
+            background: #e9ecef;
+        }
+        
+        .bookmark-info {
+            flex: 1;
+        }
+        
+        .bookmark-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+        }
+        
+        .bookmark-url {
+            font-size: 0.8rem;
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .bookmark-url:hover {
+            text-decoration: underline;
+        }
+        
+        .bookmark-date {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            margin-top: 0.25rem;
+        }
+        
+        .bookmark-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-action {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+        
+        .bookmark-action:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .bookmark-action.delete:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .no-bookmarks {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #7f8c8d;
+        }
+        
+        .no-bookmarks-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* Dark Mode for Bookmarks Modal */
+        .dark-mode .bookmarks-content {
+            background: rgba(26, 26, 46, 0.95);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .bookmarks-title {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .bookmarks-close {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .bookmarks-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .bookmark-item {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode .bookmark-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .bookmark-title {
+            color: #e9ecef;
+        }
+
+    
+        .architecture-section,
+        .mermaid,
+        .war-story,
+        .key-takeaways-section,
+        .industry-insight {
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
+
+    <style>
+    .contextual-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        border-bottom: 1px dotted #667eea;
+        transition: all 0.2s ease;
+    }
+    
+    .contextual-link:hover {
+        color: #5a6fd8;
+        border-bottom-style: solid;
+    }
+    
+    .dark-mode .contextual-link {
+        color: #9bb5ff;
+        border-bottom-color: #9bb5ff;
+    }
+    </style>
+        <style>
+
+/* ========================================
+   NARRATIVE LINKING SYSTEM STYLES
+   ======================================== */
+
+/* Contextual Links */
+.contextual-link  {
+    color: #3b82f6;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+    padding-bottom: 1px;
+}
+
+.contextual-link:hover {
+    color: #1d4ed8;
+    border-bottom-color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.05);
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 3px;
+}
+
+/* Narrative Callouts */
+.narrative-callout {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.narrative-callout.next-step {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+}
+
+.narrative-callout.evolution {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, #fffbeb 0%, #fefce8 100%);
+}
+
+.callout-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.callout-icon {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.callout-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.narrative-link {
+    color: #059669;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid rgba(5, 150, 105, 0.2);
+    transition: all 0.2s ease;
+}
+
+.narrative-link:hover {
+    color: #047857;
+    border-bottom-color: #047857;
+    background: rgba(5, 150, 105, 0.1);
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 4px;
+}
+
+.callout-meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* Journey Progress */
+.journey-progress {
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(249, 115, 22, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* Related Chapters */
+.related-chapters {
+    margin: 2.5rem 0;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.related-chapters h4 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.2rem;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+}
+
+.related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.related-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.related-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+    border-color: #3b82f6;
+}
+
+.related-icon {
+    font-size: 1.5rem;
+    min-width: 2rem;
+}
+
+.related-content {
+    flex: 1;
+}
+
+.related-link {
+    color: #1f2937;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.related-link:hover {
+    color: #3b82f6;
+}
+
+.related-desc {
+    margin: 0.5rem 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.related-connection {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Dark Mode Support */
+.dark-mode .narrative-callout {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+.dark-mode .related-chapters {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    border-color: #374151;
+}
+
+.dark-mode .related-item {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+.dark-mode .related-link {
+    color: #f9fafb;
+}
+
+.dark-mode .related-link:hover {
+    color: #60a5fa;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .narrative-callout {
+        margin: 1.5rem 0;
+        padding: 1.25rem;
+    }
+    
+    .related-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .related-item {
+        padding: 1rem;
+    }
+    
+    .callout-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+    </style>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
 </head>
 <body>
     <div class="container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/en/">🏠 AI Team Orchestrator</a>
+            <a href="../../">🏠 AI Team Orchestrator</a>
             <span>›</span>
-            <a href="/en/core-philosophy-architecture/">🎻 Core Philosophy and Architecture</a>
+            <a href="../core-philosophy-architecture/">🎻 Core Philosophy and Architecture</a>
             <span>›</span>
             <span>The Architectural Fork</span>
         </nav>
         
         <!-- Chapter Navigation Top -->
         <div class="chapter-nav-top">
-            <a href="/en/core-philosophy-architecture/drama-parsing-ai-contracts/" class="nav-link">
+            <a href="../core-philosophy-architecture/drama-parsing-ai-contracts/" class="nav-link">
                 ← Previous: The Parsing Drama
             </a>
-            <a href="/en/core-philosophy-architecture/agent-environment-interactions/" class="nav-link">
+            <a href="../core-philosophy-architecture/agent-environment-interactions/" class="nav-link">
                 Next: Agent Environment →
             </a>
         </div>
@@ -482,14 +1329,29 @@
                 <div class="progress-label">Movement 5 of 42</div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: 11%"></div>
-                </div>
-            </div>
+</div>
             <h1 class="chapter-title">Chapter 5: The Architectural Fork – Direct API vs SDK Battle</h1>
         </header>
         
         <!-- Content Area -->
         <main class="content-area">
             <p>With a reliable single agent and a robust parsing system, we had overcome the "micro" challenges. Now we faced the first major "macro" decision that would define the entire architecture of our system: <strong>how should our agents communicate with each other and with the external world?</strong></p>
+
+                <div class="narrative-callout evolution">
+                    <div class="callout-header">
+                        <span class="callout-icon">⚡</span>
+                        <h4>The Next Evolution</h4>
+                    </div>
+                    <p>Orchestration is powerful, but becomes magical when you implement intelligent feedback loops for continuous improvement.</p>
+                    <div class="journey-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%"></div>
+                        </div>
+                        <span class="progress-text">Movement 2 of 4 completed</span>
+                    </div>
+                </div>
+                
+
             
             <p>We found ourselves at a fundamental fork:</p>
             
@@ -526,7 +1388,7 @@
                     <tr>
                         <td><strong>Scalability</strong></td>
                         <td><strong>Low.</strong> Adding new capabilities (like conversational memory management or complex tool usage) would require reinventing the wheel every time.</td>
-                        <td><strong>High.</strong> Modern SDKs are designed to be extensible. They already provide primitives for memory, planning, and tool orchestration.</td>
+                        <td><strong>High.</strong> Modern SDKs are designed to be extensible. They already provide primitives for memory, planning, and tool <a href="../orchestrator-conductor/" class="contextual-link" title="Master the art of AI agent orchestration">orchestration</a>.</td>
                     </tr>
                     <tr>
                         <td><strong>Pillar Adherence</strong></td>
@@ -548,20 +1410,20 @@
                     </svg>
                     <h4>🏛️ Industry Validation: Emerging Design Patterns</h4>
                 </div>
-                <div class="insight-content">
+                
                     <p>Our architectural choice finds confirmation in the <strong>AI Design Patterns</strong> identified by <strong>Tomasz Tunguz</strong> (2024). Among the emerging patterns in the industry, two resonate perfectly with our approach:</p>
                     
                     <p><strong>1. AI Query Router Pattern:</strong> A router that directs easy requests to small, fast models, and only complex queries to expensive LLMs. This is analogous to our <code>Director</code> that selects "the right agent for the right task," balancing costs, performance, and UX.</p>
                     
-                    <p><strong>2. Security/Compliance Pattern:</strong> A user proxy (for PII stripping, logging, cost optimization) and a firewall around the model (against injection and unauthorized access). In our system, this translates to Quality Gates and prompt/output filters we'll implement in subsequent chapters.</p>
+                    <p><strong>2. Security/Compliance Pattern:</strong> A user proxy (for PII stripping, logging, cost optimization) and a firewall around the model (against injection and unauthorized access). In our system, this translates to <a href="../execution-quality/quality-gates-human-loop/" class="contextual-link" title="Quality Gates implementation">Quality Gates</a> and prompt/output filters well implement in subsequent chapters.</p>
                     
                     <p>Tunguz emphasizes that encapsulating the LLM between pre- and post-processing layers is now recognized as <strong>industry best practice</strong>. Our SDK is not just a technical choice, but the implementation of established architectural patterns.</p>
                 </div>
             </div>
             
             <h2># <strong>SDK Primitives: Our New Superpowers</strong></h2>
-            
-            <p>Adopting the OpenAI Agents SDK didn't just mean adding a new library; it meant changing our way of thinking. Instead of reasoning in terms of "HTTP calls," we started reasoning in terms of "agent capabilities." The SDK provided us with a set of powerful primitives that became the building blocks of our architecture.</p>
+            ;
+            <p>Adopting the OpenAI Agents SDK didnt just mean adding a new library; it meant changing our way of thinking. Instead of reasoning in terms of "HTTP calls," we started reasoning in terms of "agent capabilities." The SDK provided us with a set of powerful primitives that became the building blocks of our architecture.</p>
             
             <table>
                 <thead>
@@ -574,7 +1436,7 @@
                 <tbody>
                     <tr>
                         <td><strong>Agents</strong></td>
-                        <td>It's an LLM "with superpowers": it has clear instructions and a set of tools it can use.</td>
+                        <td>It''s an LLM "with superpowers": it has clear instructions and a set of tools it can use.</td>
                         <td>Allows us to create our <strong>SpecialistAgent</strong> cleanly, defining their role and capabilities without hard-coded logic.</td>
                     </tr>
                     <tr>
@@ -604,15 +1466,27 @@
             
             <h2># <strong>Beyond the SDK: The Model Context Protocol (MCP) Vision</strong></h2>
             
-            <p>Our decision to adopt an SDK wasn't just a tactical choice to simplify code, but a strategic bet on a more open and interoperable future. At the heart of this vision lies a fundamental concept: the <strong>Model Context Protocol (MCP)</strong>.</p>
+            <p>Our decision to adopt an SDK wasnt just a tactical choice to simplify code, but a strategic bet on a more open and interoperable future. At the heart of this vision lies a fundamental concept: the <strong>Model Context Protocol (MCP)</strong>.</p>
             
             <p><strong>What is MCP? The "USB-C" for Artificial Intelligence.</strong></p>
             
-            <p>Imagine a world where every AI tool (an analysis tool, a vector database, another agent) speaks a different language. To make them collaborate, you must build a custom adapter for each pair. It's an integration nightmare.</p>
+            <p>Imagine a world where every AI tool (an analysis tool, a vector database, another agent) speaks a different language. To make them collaborate, you must build a custom adapter for each pair. Its an integration nightmare.</p>
             
-            <p>MCP proposes to solve this problem. It's an open protocol that standardizes how applications provide context and tools to LLMs. It works like a USB-C port: a single standard that allows any AI model to connect to any data source or tool that "speaks" the same language.</p>
+            <p>MCP proposes to solve this problem. Its an open protocol that standardizes how applications provide context and tools to LLMs. It works like a USB-C port: a single standard that allows any AI model to connect to any data source or tool that "speaks" the same language.</p>
             
-            <p><strong>Architecture Before and After MCP:</strong></p>
+            <div class="architecture-section">
+    <div class="architecture-title">
+        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="9" x2="15" y2="9"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <h4>Architecture Before and After MCP:</h4>
+    </div>
+    
+</div>
+
             
             <div class="architecture-section">
                 <div class="architecture-title">
@@ -628,22 +1502,33 @@
                 <div class="mermaid">
 graph TD
     subgraph "BEFORE: The Chaos of Custom Adapters"
-        A1[AI Model A] --> B1[Adapter for Tool 1]
-        A1 --> B2[Adapter for Tool 2]
-        A2[AI Model B] --> B3[Adapter for Tool 1]
-        B1 --> C1[Tool 1]
-        B2 --> C2[Tool 2]
-        B3 --> C1
+        A1[AI Model A] -->
+    B1[Adapter for Tool 1]
+        A1 -->
+    B2[Adapter for Tool 2]
+        A2[AI Model B] -->
+    B3[Adapter for Tool 1]
+        B1 -->
+    C1[Tool 1]
+        B2 -->
+    C2[Tool 2]
+        B3 -->
+    C1
     end
     
     subgraph "AFTER: The Elegance of MCP Standard"
-        D1[AI Model A] --> E{MCP Port}
-        D2[AI Model B] --> E
-        E --> F1[MCP-Compatible Tool 1]
-        E --> F2[MCP-Compatible Tool 2]
-        E --> F3[MCP-Compatible Agent C]
+        D1[AI Model A] -->
+    E{MCP Port}
+        D2[AI Model B] -->
+    E
+        E -->
+    F1[MCP-Compatible Tool 1]
+        E -->
+    F2[MCP-Compatible Tool 2]
+        E -->
+    F3[MCP-Compatible Agent C]
     end
-                </div>
+</div>
                 
                 <p><strong>Why MCP is the Future (and why it matters to us):</strong></p>
                 
@@ -675,16 +1560,16 @@ graph TD
                     </tbody>
                 </table>
                 
-                <p>Our choice to use the OpenAI Agents SDK was therefore a bet that, even if the SDK itself is specific, the principles it's based on (tool abstraction, handoffs, context management) are the same ones driving the MCP standard. We're building our cathedral not on sand foundations, but on solid ground that is being standardized.</p>
+                <p>Our choice to use the OpenAI Agents SDK was therefore a bet that, even if the SDK itself is specific, the principles its based on (tool abstraction, handoffs, context management) are the same ones driving the MCP standard. Were building our cathedral not on sand foundations, but on solid ground that is being standardized.</p>
             </div>
             
             <h2># <strong>MCP in Practice: Concrete Ecosystem Examples</strong></h2>
             
-            <p>To make the power of MCP tangible, here's an overview of available servers and implementations today. These examples demonstrate how the MCP ecosystem is already creating real value for developers.</p>
+            <p>To make the power of MCP tangible, heres an overview of available servers and implementations today. These examples demonstrate how the MCP ecosystem is already creating real value for developers.</p>
             
             <h3><strong>Reference Servers (Official)</strong></h3>
             
-            <p>These official servers demonstrate MCP's core capabilities:</p>
+            <p>These official servers demonstrate MCPs core capabilities:</p>
             
             <table>
                 <thead>
@@ -720,7 +1605,7 @@ graph TD
             
             <h3><strong>Community Servers: The Real Potential</strong></h3>
             
-            <p>The community ecosystem demonstrates MCP's "plug-and-play" potential:</p>
+            <p>The community ecosystem demonstrates MCPs "plug-and-play" potential:</p>
             
             <table>
                 <thead>
@@ -766,39 +1651,38 @@ graph TD
             
             <p>Instead of building 50+ custom integrations, we can leverage the MCP ecosystem to instantly access hundreds of specialized tools, all with the same standardized API.</p>
             
-            <h2># <strong>The Lesson Learned: Don't Confuse "Simple" with "Easy"</strong></h2>
+            <h2># <strong>The Lesson Learned: Dont Confuse "Simple" with "Easy"</strong></h2>
             
             <ul>
                 <li><strong>Easy:</strong> Making a direct API call. Takes 5 minutes and gives immediate gratification.</li>
                 <li><strong>Simple:</strong> Having a clean architecture with a single, well-defined point of interaction with external services, managed by an SDK.</li>
             </ul>
             
-            <p>The "easy" path would have led us to a complex, tangled, and fragile system. The "simple" path, while requiring more initial work to configure the SDK, led us to a system that's much easier to understand, maintain, and extend.</p>
+            <p>The "easy" path would have led us to a complex, tangled, and fragile system. The "simple" path, while requiring more initial work to configure the SDK, led us to a system thats much easier to understand, maintain, and extend.</p>
             
-            <p>This decision paid enormous dividends almost immediately. When we had to implement memory, tools, and quality gates, we didn't have to build the infrastructure from scratch. We could use the primitives the SDK already offered.</p>
+            <p>This decision paid enormous dividends almost immediately. When we had to implement memory, tools, and <a href="../execution-quality/quality-gates-human-loop/" class="contextual-link" title="Quality Gates implementation">quality gates</a>, we didnt have to build the infrastructure from scratch. We could use the primitives the SDK already offered.</p>
             
             <div class="key-takeaways-section">
                 <h4 class="key-takeaways-title">📝 Key Takeaways from This Chapter:</h4>
-                <div class="key-takeaways-content">
-                    <p class="takeaway-item">✓ <strong>Abstract External Dependencies:</strong> Never couple your business logic directly to an external API. Always use an abstraction layer.</p>
-                    <p class="takeaway-item">✓ <strong>Think in Terms of "Capabilities," not "API Calls":</strong> The SDK allowed us to stop thinking about "how to format the request for endpoint X" and start thinking about "how can I use this agent's 'planning' capability?"</p>
-                    <p class="takeaway-item">✓ <strong>Leverage Existing Primitives:</strong> Before building a complex system (e.g., memory management), check if the SDK you're using already offers a solution. Reinventing the wheel is a classic mistake that leads to technical debt.</p>
-                </div>
+                <p class="takeaway-item">✓ <strong>Abstract External Dependencies:</strong> Never couple your business logic directly to an external API. Always use an abstraction layer.</p>
+                    <p class="takeaway-item">✓ <strong>Think in Terms of "Capabilities," not "API Calls":</strong> The SDK allowed us to stop thinking about "how to format the request for endpoint X" and start thinking about "how can I use this agents planning capability?"</p>
+                    <p class="takeaway-item">✓ <strong>Leverage Existing Primitives:</strong> Before building a complex system (e.g., memory management), check if the SDK youre using already offers a solution. Reinventing the wheel is a classic mistake that leads to technical debt.</p>
+
             </div>
             
             <p><strong>Chapter Conclusion</strong></p>
             
             <p>With the SDK as the backbone of our architecture, we finally had all the pieces to build not just agents, but a real <strong>team</strong>. We had a common language and robust infrastructure.</p>
             
-            <p>We were ready for the next challenge: orchestration. How do we make these specialized agents collaborate to achieve a common goal? This led us to create the <strong>Executor</strong>, our orchestra conductor.</p>
+            <p>We were ready for the next challenge: <a href="../core-philosophy-architecture/orchestrator-conductor/" class="contextual-link" title="orchestration patterns">orchestration</a>. How do we make these specialized agents collaborate to achieve a common goal? This led us to create the <strong>Executor</strong>, our orchestra conductor.</p>
         </main>
         
         <!-- Chapter Navigation Bottom -->
         <div class="chapter-nav-bottom">
-            <a href="/en/core-philosophy-architecture/drama-parsing-ai-contracts/" class="nav-link">
+            <a href="../core-philosophy-architecture/drama-parsing-ai-contracts/" class="nav-link">
                 ← Previous: The Parsing Drama
             </a>
-            <a href="/en/core-philosophy-architecture/agent-environment-interactions/" class="nav-link">
+            <a href="../core-philosophy-architecture/agent-environment-interactions/" class="nav-link">
                 Next: Agent Environment →
             </a>
         </div>
@@ -809,19 +1693,357 @@ graph TD
     <script>
         mermaid.initialize({ 
             startOnLoad: true,
-            theme: 'default',
+            theme: default',
             themeVariables: {
-                primaryColor: '#667eea',
-                primaryTextColor: '#2c3e50',
+                primaryColor: #667eea,
+                primaryTextColor: '#2c3e50',',
                 primaryBorderColor: '#667eea',
-                lineColor: '#7f8c8d',
-                sectionBkgColor: '#f8f9fa',
-                altSectionBkgColor: '#ffffff',
-                gridColor: '#e9ecef',
-                secondaryColor: '#95a5a6',
-                tertiaryColor: '#bdc3c7'
+                lineColor: '#7f8c8d',',
+                sectionBkgColor: #f8f9fa,
+                altSectionBkgColor: #ffffff',
+                gridColor: #e9ecef,
+                secondaryColor: #95a5a6,
+                tertiaryColor: #bdc3c7
             }
         });
     </script>
+
+        <!-- Reader Tools -->
+        <div class="reader-tools" id="readerTools">
+            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+            
+            <div class="reader-tool" onclick="toggleTheme()">
+                <span class="reader-tool-icon" id="themeIcon">🌙</span>
+                <span class="reader-tool-label">Theme</span>
+            </div>
+            
+            <div class="reader-tool" onclick="toggleBookmark()">
+                <span class="reader-tool-icon">🔖</span>
+                <span class="reader-tool-label">Bookmark</span>
+            </div>
+            
+            <div class="reader-tool" onclick="showBookmarks()">
+                <span class="reader-tool-icon">📚</span>
+                <span class="reader-tool-label">My Bookmarks</span>
+            </div>
+            
+            <div class="language-switcher">
+                <select class="language-select" onchange="switchLanguage(this.value)">
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="it">🇮🇹 IT</option>
+                </select>
+            </div>
+            
+            <div class="reader-tool" onclick="showFontSizeMenu()">
+                <span class="reader-tool-icon">🔤</span>
+                <span class="reader-tool-label">Font Size</span>
+            </div>
+        </div>
+        
+        <!-- Reading Progress -->
+        <div class="reading-progress">
+            <div class="reading-progress-fill" id="progressFill"></div>
+        </div>
+        
+        <!-- Bookmark Toast -->
+        <div class="bookmark-toast" id="bookmarkToast">
+            <span id="bookmarkMessage">Bookmark saved!</span>
+        </div>        </div>
+        
+        <!-- Bookmarks Modal -->
+        <div class="bookmarks-modal" id="bookmarksModal" onclick="closeBookmarksModal(event)">
+            <div class="bookmarks-content" onclick="event.stopPropagation()">
+                <div class="bookmarks-header">
+                    <h2 class="bookmarks-title">📚 My Bookmarks</h2>
+                    <button class="bookmarks-close" onclick="closeBookmarksModal()">✕</button>
+                </div>
+                <div class="bookmarks-list" id="bookmarksList">
+                    <!-- Bookmarks will be populated by JavaScript -->
+                </div>
+</div>
+
+    
+    <script>
+        // Complete Reader Tools JavaScript Functions
+        
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon')
+            const isDarkMode = body.classList.contains('dark-mode');
+            
+            if (isDarkMode) {
+                body.classList.remove('dark-mode');
+                if (themeIcon) themeIcon.textContent = '🌙'';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                if (themeIcon) themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        function toggleBookmark() {
+            const currentPage = window.location.pathname;
+            const pageTitle = document.querySelector('.chapter-title')?.textContent || 'Chapter';
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]'');
+            const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
+            
+            if (existingIndex > -1) {
+                bookmarks.splice(existingIndex, 1);
+                showToast('Bookmark removed!', 'error');
+            } else {
+                bookmarks.push({
+                    url: currentPage,
+                    title: pageTitle,
+                    timestamp: new Date().toISOString()
+                });
+                showToast('Bookmark saved!', 'success');
+            }
+            
+            localStorage.setItem('bookmarks',', JSON.stringify(bookmarks));
+            updateBookmarkButton();
+        }
+        
+        function showBookmarks() {
+            createBookmarksModal();
+            const modal = document.getElementById('bookmarksModal')
+            const bookmarksList = document.getElementById('bookmarksList')
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]'');
+            
+            if (bookmarks.length === 0) {
+                bookmarksList.innerHTML = `
+                    <div class="no-bookmarks">
+                        <div class="no-bookmarks-icon">📚</div>
+                        <h3>No bookmarks saved</h3>
+                        <p>Start saving your favorite chapters by clicking the 🔖 icon</p>
+                    </div>`;
+                `;
+            } else {
+                bookmarksList.innerHTML = bookmarks
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map(bookmark => `
+                        <div class="bookmark-item">
+                            <div class="bookmark-info">
+                                <div class="bookmark-title">${bookmark.title}</div>
+                                <a href="${bookmark.url}" class="bookmark-url">${bookmark.url}</a>
+                                <div class="bookmark-date">Saved ${new Date(bookmark.timestamp).toLocaleDateString()}</div>
+                            </div>
+                            <div class="bookmark-actions">
+                                <button class="bookmark-action delete" onclick="deleteBookmark(${bookmark.url})">🗑️</button>
+                            </div>
+                        </div>
+                    `).join();
+            }
+            
+            modal.style.display = 'flex;
+            document.body.style.overflow = hidden;
+        }
+        
+        function closeBookmarksModal(event) {
+            const modal = document.getElementById('bookmarksModal')
+            if (modal && (!event || event.target === modal))  {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+        
+        function deleteBookmark(url) {
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            bookmarks = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+            showToast('Bookmark removed!', 'error');
+            showBookmarks();
+        }
+        
+        function showFontSizeMenu() {
+            const currentSize = localStorage.getItem('fontSize') || 'medium';
+            const sizes = [small, medium', large];
+            const currentIndex = sizes.indexOf(currentSize);
+            const newSize = sizes[(currentIndex + 1) % sizes.length];
+            
+            setFontSize(newSize);
+            localStorage.setItem('fontSize', newSize');
+            showToast('`Font size: ${newSize}`, 'success');
+        }
+        
+        function setFontSize(size) {
+            const root = document.documentElement;
+            const sizes = {
+                'small': 0.9,
+                'medium': 1.0,
+                'large': '1.1;
+            };
+            if (sizes[size]) {
+                root.style.fontSize = sizes[size] + em;
+            }
+        }
+        
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('bookmarkToast')
+            
+            if (!toast) {
+                toast = document.createElement(div'');
+                toast.id = bookmarkToast;
+                toast.className = bookmark-toast;
+                toast.innerHTML = <span id="bookmarkMessage"></span>;
+        </div>                toast.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 10001;
+                    transform: translateX(100%);
+                    transition: transform 0.3s ease;
+                    background: #28a745;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            const messageEl = document.getElementById('bookmarkMessage')
+            if (messageEl') messageEl.textContent = message;
+            
+            toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            toast.style.transform = 'translateX(0)'';
+            
+            setTimeout(() => {
+                toast.style.transform = translateX(100%);
+            }, 3000);
+        }
+        
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools')
+            if (tools) {
+                tools.classList.toggle('collapsed');
+                localStorage.setItem(''readerToolsCollapsed, tools.classList.contains('collapsed'));
+            }
+        }
+        
+        function updateBookmarkButton(') {
+            const currentPage = window.location.pathname;
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            const isBookmarked = bookmarks.some(b => b.url === currentPage);
+            
+            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
+            if (bookmarkTool) {
+                bookmarkTool.classList.toggle('active', isBookmarked);
+            }
+        }
+        
+        function switchLanguage(lang) {
+            const currentPath = window.location.pathname;
+            let newPath = currentPath;
+            
+            if (lang === 'en' && currentPath.includes(/it/))  {
+                newPath = currentPath.replace(/it/, /en/'');
+                    .replace(filosofia-core-architettura, core-philosophy-architecture)
+                    .replace(user-experience-trasparenza, user-experience-transparency)
+                    .replace('esecuzione-qualita, execution-quality);
+            } else if (lang === it && currentPath.includes(/en/))  {
+                newPath = currentPath.replace(/en/', /it/);
+                    .replace(core-philosophy-architecture, filosofia-core-architettura)
+                    .replace(user-experience-transparency, ''user-experience-trasparenza)
+                    .replace(execution-quality, esecuzione-qualita);
+            }
+            
+            if (newPath !== currentPath) {
+                window.location.href = newPath;
+            }
+        }
+        
+        function updateReadingProgress() {
+            const progressFill = document.getElementById('progressFill')
+            if (!progressFill) return;
+            
+            window.addEventListener(scroll', () => {
+                const article = document.querySelector('.chapter-content');
+                if (!article) return;
+                
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrollTop = window.pageYOffset;
+                
+                const progress = Math.min(100, Math.max(0, 
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100;
+                ));
+                
+                progressFill.style.width = progress + '%';
+            });
+        }
+        
+        function loadUserPreferences() {
+            const savedTheme = localStorage.getItem('theme'');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                const themeIcon = document.getElementById('themeIcon')
+                if (themeIcon) themeIcon.textContent = ''☀️;
+            }
+            
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                setFontSize(savedFontSize);
+            }
+            
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true;
+            if (toolsCollapsed) {
+                const tools = document.getElementById('readerTools')
+                if (tools) tools.classList.add('collapsed');
+            }
+        }
+        
+        function initializeReaderTools() {
+            updateBookmarkButton();
+            updateReadingProgress();
+            loadUserPreferences();
+        }
+        
+        function stopPropagation(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+        }
+        
+        function createBookmarksModal() {
+            if (document.getElementById('bookmarksModal')') return;
+            
+            const modal = document.createElement(div);
+            modal.id = bookmarksModal;
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                z-index: 10000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem;
+            `;
+            
+            modal.innerHTML = `;
+                <div style="background: white; border-radius: 15px; padding: 2rem; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #f1f3f4;">
+                        <h2 style="margin: 0; color: #2c3e50;">📚 My Bookmarks</h2>
+                        <button onclick="closeBookmarksModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #adb5bd;">✕</button>
+                    </div>
+                    <div id="bookmarksList"></div>
+                </div>`;
+            `;
+            
+            modal.onclick = closeBookmarksModal;
+            document.body.appendChild(modal);
+        }
+        
+        // Initialize on DOM load
+        document.addEventListener(DOMContentLoaded, initializeReaderTools);
+    </script>
+
+<!-- universal-progress-bar-added -->
 </body>
-</html>
+</html>'

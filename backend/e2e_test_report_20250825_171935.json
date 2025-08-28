@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-08-25T17:19:29.524707",
+  "phases": {
+    "phase_1": {
+      "status": "failed",
+      "error": "Failed to fetch goals: {\"detail\":\"Not Found\"}",
+      "duration": 5.482784032821655
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Failed to fetch goals: {\"detail\":\"Not Found\"}",
+  "end_time": "2025-08-25T17:19:35.007766"
+}

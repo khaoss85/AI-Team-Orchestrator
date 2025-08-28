@@ -591,7 +591,7 @@ async def main():
     workspace_id = results.get("test_session", {}).get("workspace_id")
     if workspace_id:
         try:
-            cleanup_response = requests.delete(f"http://localhost:8000/workspaces/{workspace_id}", timeout=30)
+            cleanup_response = requests.delete(f"http://localhost:8000/api/workspaces/{workspace_id}", timeout=30)
             if cleanup_response.status_code in [200, 204]:
                 logger.info("🧹 Test workspace cleaned up")
             else:

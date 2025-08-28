@@ -19,6 +19,9 @@ interface ConversationalWorkspaceProps {
   suggestedActions: any[]
   artifactsPanelCollapsed: boolean
   sendingMessage: boolean
+  goalsLoading?: boolean
+  goalsError?: string | null
+  assetsLoading?: boolean
   workspaceHealthStatus?: any
   healthLoading?: boolean
   onSetActiveChat: (chat: Chat) => void
@@ -47,6 +50,9 @@ export default function ConversationalWorkspace({
   suggestedActions,
   artifactsPanelCollapsed,
   sendingMessage,
+  goalsLoading = false,
+  goalsError = null,
+  assetsLoading = false,
   workspaceHealthStatus,
   healthLoading,
   onSetActiveChat,
@@ -150,6 +156,8 @@ export default function ConversationalWorkspace({
           activeChat={activeChat}
           workspaceContext={workspaceContext}
           collapsed={sidebarCollapsed}
+          goalsLoading={goalsLoading}
+          goalsError={goalsError}
           onChatSelect={onSetActiveChat}
           onCreateChat={onCreateDynamicChat}
           onArchiveChat={onArchiveChat}

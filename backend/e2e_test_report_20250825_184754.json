@@ -1,0 +1,28 @@
+{
+  "start_time": "2025-08-25T18:41:15.793691",
+  "phases": {
+    "phase_1": {
+      "status": "completed",
+      "duration": 5.5825958251953125,
+      "workspace_id": "b871dc94-9192-4d5b-85d1-e12eb6371036",
+      "goals_created": 1
+    },
+    "phase_2": {
+      "status": "completed",
+      "duration": 50.91083574295044,
+      "team_proposal_id": "10b2551f-795e-483c-a0c0-6a6f0892f1a9",
+      "agents_count": 0
+    },
+    "phase_3": {
+      "status": "failed",
+      "error": "Failed to fetch final task status",
+      "duration": 341.8705720901489
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Failed to fetch final task status",
+  "end_time": "2025-08-25T18:47:54.158173"
+}

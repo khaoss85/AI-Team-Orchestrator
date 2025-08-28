@@ -199,9 +199,9 @@ class PostMigrationE2ETest:
                     logger.info(f"✅ Team Proposal Generated: {proposal_id}")
                     
                     # Approve proposal
-                    approval_data = {"proposal_id": proposal_id}
+                    approval_data = {"user_feedback": "E2E test approval"}
                     approval_response = requests.post(
-                        f"{self.api_base}/api/approve-team-proposal",
+                        f"{self.api_base}/api/director/approve/{workspace_id}?proposal_id={proposal_id}",
                         json=approval_data,
                         timeout=30
                     )

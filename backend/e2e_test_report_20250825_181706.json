@@ -1,0 +1,22 @@
+{
+  "start_time": "2025-08-25T18:16:33.077396",
+  "phases": {
+    "phase_1": {
+      "status": "completed",
+      "duration": 5.5900609493255615,
+      "workspace_id": "6431bfcd-bee2-4917-99ea-b10933ea7759",
+      "goals_created": 1
+    },
+    "phase_2": {
+      "status": "failed",
+      "error": "Team proposal generation failed: None",
+      "duration": 27.77849006652832
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Team proposal generation failed: None",
+  "end_time": "2025-08-25T18:17:06.446403"
+}

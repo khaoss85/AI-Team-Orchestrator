@@ -426,11 +426,11 @@ async def confirm_goals(
             detail=f"Error saving goals: {str(e)}"
         )
 
-@router.post("/workspaces/{workspace_id}/goals")
+@router.post("/workspaces/{workspace_id}/goals", response_model=WorkspaceGoal, status_code=201)
 async def create_workspace_goal_main(
     workspace_id: str,
     goal_data: WorkspaceGoalCreate
-) -> Dict[str, Any]:
+) -> WorkspaceGoal:
     """Create a new workspace goal - main endpoint"""
     return await create_workspace_goal_v2(workspace_id, goal_data)
 
@@ -501,33 +501,28 @@ async def create_workspace_goal_v2(
         else:
             logger.warning("⚠️ Asset Requirements Generator not available - skipping automatic generation")
         
-        return {
-            "success": True,
-            "goal": created_goal,
-            "asset_requirements_count": asset_requirements_count,
-            "message": f"Goal created: {created_goal['metric_type']} target {created_goal['target_value']} with {asset_requirements_count} asset requirements"
-        }
+        return created_goal
         
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating goal: {str(e)}")
 
-@router.post("/v2/workspaces/{workspace_id}/goals")
+@router.post("/v2/workspaces/{workspace_id}/goals", response_model=WorkspaceGoal, status_code=201)
 async def create_workspace_goal_v2_endpoint(
     workspace_id: str,
     goal_data: WorkspaceGoalCreate
-) -> Dict[str, Any]:
+) -> WorkspaceGoal:
     """Create a new workspace goal - v2 endpoint"""
     return await create_workspace_goal_v2(workspace_id, goal_data)
 
-@router.get("/workspaces/{workspace_id}/goals")
+@router.get("/workspaces/{workspace_id}/goals", response_model=List[WorkspaceGoal])
 async def get_workspace_goals(
     workspace_id: str,
     status: Optional[str] = Query(None, description="Filter by status"),
     metric_type: Optional[str] = Query(None, description="Filter by metric type"),
     deliverables_only: Optional[bool] = Query(False, description="Return only deliverable goals")
-) -> Dict[str, Any]:
+) -> List[WorkspaceGoal]:
     """Get all goals for a workspace with optional filtering"""
     try:
         query = supabase.table("workspace_goals").select("*").eq("workspace_id", workspace_id)
@@ -556,11 +551,7 @@ async def get_workspace_goals(
         if deliverables_only:
             goals = [g for g in goals if isinstance(g, dict) and (g.get("metric_type", "").startswith("deliverable_") or g.get("metric_type") == "deliverables")]
         
-        return {
-            "success": True,
-            "goals": goals,
-            "total": len(goals)
-        }
+        return goals
         
     except Exception as e:
         import traceback
@@ -1194,8 +1185,8 @@ async def _create_project_description_artifact(
         raise e
 
 # 🔧 FIX: Add direct endpoints for frontend/test compatibility
-@direct_router.post("/workspace-goals")
-async def create_workspace_goal_direct(goal_data: WorkspaceGoalCreate) -> Dict[str, Any]:
+@direct_router.post("/workspace-goals", response_model=WorkspaceGoal, status_code=201)
+async def create_workspace_goal_direct(goal_data: WorkspaceGoalCreate) -> WorkspaceGoal:
     """Create a new workspace goal (direct access for frontend/tests)"""
     try:
         # Insert the goal
@@ -1215,8 +1206,8 @@ async def create_workspace_goal_direct(goal_data: WorkspaceGoalCreate) -> Dict[s
         logger.error(f"Error creating goal via direct endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating goal: {str(e)}")
 
-@direct_router.get("/workspace-goals/{goal_id}")
-async def get_workspace_goal_by_id(goal_id: str) -> Dict[str, Any]:
+@direct_router.get("/workspace-goals/{goal_id}", response_model=WorkspaceGoal)
+async def get_workspace_goal_by_id(goal_id: str) -> WorkspaceGoal:
     """Get a single workspace goal by ID (direct access for frontend)"""
     try:
         response = supabase.table("workspace_goals").select("*").eq("id", goal_id).execute()
@@ -1227,13 +1218,10 @@ async def get_workspace_goal_by_id(goal_id: str) -> Dict[str, Any]:
         goal = response.data[0]
         completion_pct = (goal["current_value"] / goal["target_value"] * 100) if goal["target_value"] > 0 else 0
         
-        return {
-            "success": True,
-            "goal": {
-                **goal,
-                "completion_pct": round(completion_pct, 1)
-            }
-        }
+        # Add computed field to the goal object
+        goal["completion_pct"] = round(completion_pct, 1)
+        
+        return goal
         
     except HTTPException:
         raise

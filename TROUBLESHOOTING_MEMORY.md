@@ -362,6 +362,139 @@ Markdown/Table Issues → docs-scribe (for content formatting)
 Cross-Component Reuse → system-architect (for pattern establishment)
 ```
 
+### 7. Goal Progress Transparency System - 67% Discrepancy Pattern
+
+**Sintomo Critico**: Goal mostra progresso incompleto (es. 67%) nonostante tutti i deliverable siano completati, causando confusione utente e blocco operativo
+
+**Root Causes Identificate**:
+
+1. **Progress Discrepancy Pattern**:
+   - Reported progress ≠ Calculated progress (67% vs 100%)
+   - Backend calculation inconsistency tra goals e deliverables
+   - Hidden failed/pending deliverable che bloccano completion
+   - User non sa perché goal non è 100% complete
+
+2. **Transparency Gap**:
+   - Failed/pending/in_progress deliverable nascosti dalla UI  
+   - No visibility su cosa sta bloccando goal completion
+   - Status breakdown limitato (solo "completed" mostrati)
+   - No actionable path per unblock deliverable bloccati
+
+3. **User Experience Breakdown**:
+   - User vede "67% complete" senza explanation
+   - No way per retry failed deliverable
+   - No way per resume pending tasks
+   - Appears as "system broken" invece di "system transparent"
+
+**Soluzioni - Goal Progress Transparency System**:
+
+**API Endpoint Pattern**:
+```bash
+# 1. Comprehensive Progress Analysis  
+GET /api/goal-progress-details/{workspace_id}/{goal_id}?include_hidden=true
+# Returns: progress_analysis, deliverable_breakdown, visibility_analysis, unblocking
+
+# 2. Interactive Unblocking Actions
+POST /api/goal-progress-details/{workspace_id}/{goal_id}/unblock?action=retry_failed
+# Actions: retry_failed, resume_pending, escalate_all, retry_specific
+```
+
+**Frontend Enhancement Pattern**:
+```typescript
+// 1. Progress Discrepancy Detection
+interface ProgressAnalysis {
+  reported_progress: number        // 67%
+  calculated_progress: number      // 100%
+  progress_discrepancy: number     // 33%
+  calculation_method: string
+}
+
+// 2. Complete Status Breakdown with Visual Indicators
+const statusConfig = {
+  completed: { icon: '✅', color: 'text-green-800', description: 'Successfully delivered' },
+  failed: { icon: '❌', color: 'text-red-800', description: 'Execution failed - can retry' },
+  pending: { icon: '⏳', color: 'text-yellow-800', description: 'Waiting to be processed' },
+  in_progress: { icon: '🔄', color: 'text-blue-800', description: 'Currently being processed' },
+  unknown: { icon: '❓', color: 'text-gray-800', description: 'Status undetermined' }
+}
+
+// 3. Interactive Unblocking Interface
+const handleUnblockAction = async (action: string, deliverableIds?: string[]) => {
+  setUnblockingInProgress(action)
+  try {
+    await api.goalProgress.unblock(workspaceId, goalId, action, deliverableIds)
+    await loadGoalProgressDetails() // Refresh after action
+  } finally {
+    setUnblockingInProgress(null)
+  }
+}
+```
+
+**Diagnostic Pattern**:
+```bash
+# 1. Identify Progress Discrepancy
+curl -X GET "http://localhost:8000/api/goal-progress-details/{workspace_id}/{goal_id}"
+# Check: progress_analysis.progress_discrepancy > 10
+
+# 2. Analyze Transparency Gap  
+# Check: visibility_analysis.hidden_from_ui > 0
+# Check: deliverable_breakdown.failed.length + deliverable_breakdown.pending.length
+
+# 3. Verify Unblocking Actions Available
+# Check: unblocking.actionable_items > 0
+# Check: unblocking.available_actions contains "retry_failed" or "resume_pending"
+```
+
+**Implementation Pattern**:
+```bash
+# Backend Implementation
+backend/routes/goal_progress_details.py
+
+# Frontend Integration
+frontend/src/components/conversational/ObjectiveArtifact.tsx
+frontend/src/types/goal-progress.ts  
+frontend/src/utils/api.ts (goalProgress methods)
+
+# TypeScript Type Safety
+Complete interfaces for ProgressAnalysis, DeliverableBreakdown, UnblockingSummary
+```
+
+**File Coinvolti**:
+- `backend/routes/goal_progress_details.py` (new transparency API)
+- `frontend/src/components/conversational/ObjectiveArtifact.tsx` (enhanced UI with transparency)
+- `frontend/src/types/goal-progress.ts` (complete type definitions) 
+- `frontend/src/utils/api.ts` (goalProgress API methods)
+- Database: `workspace_goals`, `deliverables` tables integration
+
+**Prevention Pattern**:
+- ✅ Always check progress_discrepancy > 10 before showing goal as "complete"
+- ✅ Display transparency gap alerts when hidden_from_ui > 0
+- ✅ Provide unblocking actions for actionable_items > 0
+- ✅ Use visual status indicators (✅❌⏳🔄❓) for all deliverable states  
+- ✅ Include `include_hidden=true` parameter to expose all deliverable states
+- ✅ Implement retry/resume pattern for failed/pending deliverable
+
+**Debugging Workflow Pattern**:
+1. **User reports "Goal stuck at X%"** → Check progress discrepancy via API
+2. **Found discrepancy > 10%** → Analyze deliverable breakdown for hidden items  
+3. **Found hidden failed/pending** → Show transparency alert + unblocking actions
+4. **User clicks unblock action** → Execute API unblock, refresh progress  
+5. **Verify completion** → Progress should now reflect actual deliverable completion
+
+**Sub-Agent Usage Pattern**:
+```
+Progress Discrepancy Issues → system-architect (for calculation logic)
+API Progress Endpoints → api-contract-guardian (for contract design)
+Database Goal-Deliverable Links → db-steward (for relationship integrity)
+UX Transparency Gaps → ui-designer (for user-friendly transparency display)
+```
+
+**Success Metrics**:
+- Progress discrepancy frequency: Target <5% of goals
+- Unblock action success rate: Target >90% success
+- User confusion reduction: "Goal stuck" support tickets <90% reduced
+- Transparency adoption: >80% users engage with transparency features when available
+
 ### 7. Sub-Agent Usage Patterns
 
 **Quando Usare Sub-Agents**:
@@ -535,6 +668,12 @@ async def debug_assets(workspace_id: str):
 - [ ] **Content Detection**: Implementare detectContentType() per content appropriato
 - [ ] **UX Enhancement**: Considerare professional styling per business users
 - [ ] **Component Reusability**: Creare componenti reusable invece di duplicate logic
+- [ ] **Goal Progress Transparency**: Verificare progress_discrepancy > 10 per goal "stuck"
+- [ ] **Goal Progress Transparency**: Check transparency gaps (hidden_from_ui > 0)
+- [ ] **Goal Progress Transparency**: Provide unblocking actions per actionable_items
+- [ ] **Goal Progress Transparency**: Use visual status indicators per tutti deliverable states
+- [ ] **Goal Progress Transparency**: Include include_hidden=true parameter per API calls
+- [ ] **Goal Progress Transparency**: Implement retry/resume pattern per failed/pending items
 - [ ] Verificare tipo di variabile prima di `.extend()`
 - [ ] Testare endpoint con e senza `/api` prefix
 - [ ] Monitorare quota OpenAI regolarmente
@@ -552,6 +691,6 @@ Quando trovi nuovi pattern critici:
 
 ---
 *Ultimo aggiornamento: 2025-08-28*
-*Sessione: Proactive Documentation System + Markdown Rendering Enhancement*
-*Risultati: Professional MarkdownRenderer component implementato + docs-scribe system design + memory templates creati*
-*Precedenti: Goal-Deliverable Relationship Fix + Performance Optimization (94% riduzione tempo caricamento)*
+*Sessione: Goal Progress Transparency System Enhancement + Documentation Synchronization*
+*Risultati: Section 7 aggiunta per Goal Progress Transparency System (67% discrepancy pattern) + API endpoints + debugging workflow + prevention checklist updated*
+*Precedenti: Professional MarkdownRenderer component + Performance Optimization (94% riduzione tempo caricamento) + Goal-Deliverable Relationship Fix*

@@ -44,6 +44,7 @@ from routes.utils import router as utils_router
 from routes.unified_assets import router as unified_assets_router
 from routes.goal_validation import router as goal_validation_router
 from routes.workspace_goals import router as workspace_goals_router, direct_router as workspace_goals_direct_router
+from routes.goal_progress_details import router as goal_progress_details_router
 from routes.deliverables import router as deliverables_router
 from routes.websocket import router as websocket_router
 from routes.conversation import router as conversation_router
@@ -250,6 +251,7 @@ app.include_router(tools_router, prefix="/api")
 # Goal and task management
 app.include_router(goal_validation_router, prefix="/api")
 app.include_router(workspace_goals_router, prefix="/api")
+app.include_router(goal_progress_details_router, prefix="/api")
 
 # Business value analysis
 from routes.business_value_analyzer import router as business_value_router
@@ -627,6 +629,35 @@ async def _calculate_content_based_task_score(task_data: Dict[str, Any]) -> floa
     except Exception as e:
         logging.error(f"Fallback scoring failed: {e}")
         return 30.0
+
+# ==== BACKWARD COMPATIBILITY ENDPOINTS ====
+# These endpoints provide backward compatibility for frontend requests that don't use /api prefix
+
+@app.get("/health")
+async def health_check_legacy():
+    """Legacy health check endpoint (without /api prefix) for backward compatibility"""
+    return await health_check()
+
+@app.get("/human-feedback/pending")
+async def get_pending_feedback_requests_legacy(request: Request, workspace_id: Optional[str] = None):
+    """Legacy human feedback endpoint (without /api prefix) for backward compatibility"""
+    # Import the human feedback manager here to avoid circular imports
+    from human_feedback_manager import human_feedback_manager
+    from middleware.trace_middleware import get_trace_id, create_traced_logger
+    
+    # Get trace ID and create traced logger
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    logger.info(f"Legacy route get_pending_feedback_requests_legacy called", endpoint="get_pending_feedback_requests_legacy", trace_id=trace_id)
+
+    try:
+        requests = await human_feedback_manager.get_pending_requests(workspace_id)
+        return requests
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get pending requests: {str(e)}"
+        )
 
 # Event handlers are now managed by lifespan context manager
 if __name__ == "__main__":

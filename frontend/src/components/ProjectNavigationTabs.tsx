@@ -28,13 +28,6 @@ const ProjectNavigationTabs: React.FC<Props> = ({ projectId, className = '' }) =
       description: 'Interfaccia conversazionale'
     },
     {
-      id: 'assets',
-      label: 'Asset Management',
-      href: `/projects/${projectId}/assets`,
-      icon: '📦',
-      description: 'Gestione asset avanzata'
-    },
-    {
       id: 'progress',
       label: 'Progresso',
       href: `/projects/${projectId}/progress`,

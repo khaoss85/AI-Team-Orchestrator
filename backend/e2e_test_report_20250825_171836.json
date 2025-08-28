@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-08-25T17:18:35.624504",
+  "phases": {
+    "phase_1": {
+      "status": "failed",
+      "error": "Failed to create goal: {\"success\":true,\"goal\":{\"id\":\"acc934fc-d5a8-4352-98b6-3bc03262fa82\",\"workspace_id\":\"959579fc-51da-4bd3-9c1e-f17ba033ba25\",\"metric_type\":\"business_outcome\",\"target_value\":100.0,\"current_value\":0.0,\"unit\":\"units\",\"priority\":1,\"status\":\"active\",\"success_criteria\":{},\"metadata\":{},\"description\":\"Create a comprehensive go-to-market strategy for a new fintech startup offering AI-powered personal finance management. Include market analysis, competitor research, positioning strategy, content marketing plan, and launch timeline.\",\"source_goal_text\":null,\"created_at\":\"2025-08-25T17:18:35.798043+00:00\",\"updated_at\":\"2025-08-25T17:18:35.798047+00:00\",\"completed_at\":null,\"last_validation_at\":null,\"validation_frequency_minutes\":20,\"confidence\":0.8,\"semantic_context\":{},\"goal_type\":\"deliverable\",\"is_percentage\":false,\"is_minimum\":true,\"asset_completion_rate\":0.0,\"quality_score\":0.0,\"asset_requirements_count\":0,\"assets_completed_count\":0,\"ai_validation_enabled\":true,\"memory_insights\":{},\"progress_history\":[],\"last_progress_update\":\"2025-08-25T15:18:35.909298+00:00\"},\"asset_requirements_count\":1,\"message\":\"Goal created: business_outcome target 100.0 with 1 asset requirements\"}",
+      "duration": 0.5105969905853271
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Failed to create goal: {\"success\":true,\"goal\":{\"id\":\"acc934fc-d5a8-4352-98b6-3bc03262fa82\",\"workspace_id\":\"959579fc-51da-4bd3-9c1e-f17ba033ba25\",\"metric_type\":\"business_outcome\",\"target_value\":100.0,\"current_value\":0.0,\"unit\":\"units\",\"priority\":1,\"status\":\"active\",\"success_criteria\":{},\"metadata\":{},\"description\":\"Create a comprehensive go-to-market strategy for a new fintech startup offering AI-powered personal finance management. Include market analysis, competitor research, positioning strategy, content marketing plan, and launch timeline.\",\"source_goal_text\":null,\"created_at\":\"2025-08-25T17:18:35.798043+00:00\",\"updated_at\":\"2025-08-25T17:18:35.798047+00:00\",\"completed_at\":null,\"last_validation_at\":null,\"validation_frequency_minutes\":20,\"confidence\":0.8,\"semantic_context\":{},\"goal_type\":\"deliverable\",\"is_percentage\":false,\"is_minimum\":true,\"asset_completion_rate\":0.0,\"quality_score\":0.0,\"asset_requirements_count\":0,\"assets_completed_count\":0,\"ai_validation_enabled\":true,\"memory_insights\":{},\"progress_history\":[],\"last_progress_update\":\"2025-08-25T15:18:35.909298+00:00\"},\"asset_requirements_count\":1,\"message\":\"Goal created: business_outcome target 100.0 with 1 asset requirements\"}",
+  "end_time": "2025-08-25T17:18:36.135320"
+}

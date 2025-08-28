@@ -191,20 +191,22 @@ class ComprehensiveE2ETest:
                 raise Exception(f"Failed to generate team proposal: {response.text}")
             
             proposal_result = response.json()
-            if not proposal_result.get('success'):
-                raise Exception(f"Team proposal generation failed: {proposal_result.get('error')}")
             
-            self.team_proposal_id = proposal_result.get('proposal_id')
-            logger.info(f"✅ Generated team proposal: {self.team_proposal_id}")
+            # Handle response format - API returns proposal directly, not wrapped in success
+            if isinstance(proposal_result, dict) and 'proposal_id' in proposal_result:
+                self.team_proposal_id = proposal_result.get('proposal_id')
+                team_members = proposal_result.get('team_members', [])
+                logger.info(f"✅ Generated team proposal: {self.team_proposal_id}")
+                logger.info(f"✅ Team composition: {len(team_members)} members")
+            else:
+                raise Exception(f"Team proposal generation failed: {proposal_result}")
             
             # Simulate manual approval (the one manual trigger)
             approval_data = {
-                "proposal_id": self.team_proposal_id,
-                "approved": True,
                 "user_feedback": "Approved for E2E test execution"
             }
             
-            response = requests.post(f"{self.base_url}/api/approve-team-proposal", json=approval_data)
+            response = requests.post(f"{self.base_url}/api/director/approve/{self.workspace_id}?proposal_id={self.team_proposal_id}", json=approval_data)
             if response.status_code != 200:
                 raise Exception(f"Failed to approve team proposal: {response.text}")
             
@@ -218,7 +220,7 @@ class ComprehensiveE2ETest:
             await asyncio.sleep(3)
             
             # Validate agents were created/assigned
-            response = requests.get(f"{self.base_url}/workspaces/{self.workspace_id}/agents")
+            response = requests.get(f"{self.base_url}/api/agents/{self.workspace_id}")
             if response.status_code == 200:
                 agents = response.json()
                 logger.info(f"✅ {len(agents)} agents assigned to workspace")
@@ -262,7 +264,7 @@ class ComprehensiveE2ETest:
             
             while elapsed_time < max_wait_time:
                 # Check task status
-                response = requests.get(f"{self.base_url}/workspaces/{self.workspace_id}/tasks")
+                response = requests.get(f"{self.base_url}/api/workspaces/{self.workspace_id}/tasks")
                 if response.status_code == 200:
                     tasks = response.json()
                     total_tasks = len(tasks)

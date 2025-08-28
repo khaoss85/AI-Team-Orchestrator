@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://books.danielepelleri.com/sitemap.xml
+
+# Optimize crawling
+Crawl-delay: 1
+
+# Block unnecessary paths
+Disallow: /assets/temp/
+Disallow: /node_modules/

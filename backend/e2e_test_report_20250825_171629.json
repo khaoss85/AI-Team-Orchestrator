@@ -1,0 +1,16 @@
+{
+  "start_time": "2025-08-25T17:16:29.881384",
+  "phases": {
+    "phase_1": {
+      "status": "failed",
+      "error": "Failed to create goal: {\"detail\":\"Not Found\"}",
+      "duration": 0.10976004600524902
+    }
+  },
+  "metrics": {},
+  "validation_results": {},
+  "deliverables": [],
+  "success": false,
+  "error": "Failed to create goal: {\"detail\":\"Not Found\"}",
+  "end_time": "2025-08-25T17:16:29.991400"
+}

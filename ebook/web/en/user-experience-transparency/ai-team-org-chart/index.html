@@ -6,29 +6,65 @@
     <title>AI Team Org Chart - Who Does What | User Experience Transparency | AI Team Orchestrator</title>
     <meta name="description" content="Chapter 26 of AI Team Orchestrator: AI Team Org Chart - Who Does What">
     <meta name="robots" content="index, follow">
+
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
     <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
-            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Chapter Header */
+        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .chapter-header {
-            text-align: center;
             margin-bottom: 3rem;
+            text-align: center;
         }
         
         .chapter-instrument {
@@ -90,23 +126,832 @@
             <div class="chapter-meta">
                 <span>Movement 3 of 4</span>
                 <span>Chapter 26 of 42</span>
-                <span>Coming Soon</span>
+                <span>User Experience & Transparency</span>
             </div>
             <h1 class="chapter-title">AI Team Org Chart - Who Does What</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <!-- Breadcrumb Navigation -->
+        <nav class="breadcrumb">
+            <a href="../../index.html">🏠 Home</a>
+            <span>></span>
+            <a href="../index.html">User Experience & Transparency</a>
+            <span>></span>
+            <span>AI Team Org Chart - Who Does What</span>
+        </nav>
+        
+        <!-- Main Content -->
+        <article class="chapter-content">
+            <p>To make everything simpler, we can think of our system as a real <strong>digital organization</strong>, with two types of "employees": a fixed operational team (our "AI Operating System") and dynamic project teams created custom for each client.</p>
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
-            </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
-            </a>
+            <h3>1. Fixed Agents: The AI Operating System (6 Agents Total)</h3>
+            <p>These are the "infrastructural" agents who work behind the scenes on all projects. They are the management and support departments of our digital organization. They are always the same and ensure the platform functions properly.</p>
+            
+            <p><strong>A. Management and Strategic Planning (2 Agents)</strong></p>
+            
+            <div class="agent-card">
+                <div class="agent-role">🎯 Director Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> Strategic analysis and team composition<br>
+                    <strong>Responsibilities:</strong> Analyzes projects, proposes specialized teams, estimates costs and timelines<br>
+                    <strong>Skills:</strong> System architecture, resource planning, team formation
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-role">👔 Manager Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> Operational coordination and workflow management<br>
+                    <strong>Responsibilities:</strong> Coordinates task execution, manages handoffs between agents, ensures deliverable quality<br>
+                    <strong>Skills:</strong> Project management, quality assurance, cross-functional communication
+                </div>
+            </div>
+            
+            <p><strong>B. Infrastructure and Quality Assurance (4 Agents)</strong></p>
+            
+            <div class="agent-card">
+                <div class="agent-role">🛠️ Tool Registry Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> Tool and capability management<br>
+                    <strong>Responsibilities:</strong> Maintains inventory of available tools, suggests appropriate tools for tasks<br>
+                    <strong>Skills:</strong> Technical catalog management, capability matching
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-role">🔄 Improvement Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> Continuous improvement and feedback integration<br>
+                    <strong>Responsibilities:</strong> Analyzes deliverable quality, suggests improvements, implements feedback<br>
+                    <strong>Skills:</strong> Quality analysis, iterative refinement, performance optimization
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-role">📊 Telemetry Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> System monitoring and observability<br>
+                    <strong>Responsibilities:</strong> Tracks performance metrics, monitors costs, generates operational insights<br>
+                    <strong>Skills:</strong> Data analysis, performance monitoring, cost optimization
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-role">💬 Conversational Agent</div>
+                <div class="agent-description">
+                    <strong>Role:</strong> Human-AI interface and communication<br>
+                    <strong>Responsibilities:</strong> Manages user interactions, translates requirements, provides status updates<br>
+                    <strong>Skills:</strong> Natural language processing, user experience design, communication facilitation
+                </div>
+            </div>
+            
+            <h3>2. Dynamic Agents: Project Teams (N Agents per Workspace)</h3>
+            <p>These are the "field experts," the executors who are "hired" by the <code>Director</code> custom for each specific project. Their number and roles change each time.</p>
+            
+            <div class="dynamic-agents-section">
+                <h4>🔧 Technical Specialists</h4>
+                <ul>
+                    <li><strong>Content Specialist:</strong> Content creation, writing, documentation</li>
+                    <li><strong>Code Specialist:</strong> Software development, technical implementation</li>
+                    <li><strong>Data Analyst:</strong> Data analysis, insights generation, reporting</li>
+                    <li><strong>Research Specialist:</strong> Market research, competitive analysis, information gathering</li>
+                    <li><strong>Design Specialist:</strong> UI/UX design, visual communication, prototyping</li>
+                </ul>
+                
+                <h4>🎯 Domain Experts</h4>
+                <ul>
+                    <li><strong>Marketing Specialist:</strong> Campaign development, brand strategy, market positioning</li>
+                    <li><strong>Financial Analyst:</strong> Financial modeling, budget analysis, ROI calculation</li>
+                    <li><strong>Legal Consultant:</strong> Compliance review, risk assessment, regulatory guidance</li>
+                    <li><strong>Operations Expert:</strong> Process optimization, workflow design, efficiency improvement</li>
+                </ul>
+            </div>
+            
+            <h3>The Workflow Summary: A Day at the AI Company</h3>
+            
+            <div class="architecture-section">
+                <div class="architecture-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h4>System Architecture</h4>
+            </div>
+            
+            <div class="mermaid">
+                graph TD
+                    A[User Request] --> B[Director Agent]
+                    B --> C[Team Composition]
+                    C --> D[Project Team Creation]
+                    D --> E[Manager Agent]
+                    E --> F[Task Distribution]
+                    F --> G[Specialist Agents]
+                    G --> H[Deliverable Creation]
+                    H --> I[Quality Assurance]
+                    I --> J[Improvement Loop]
+                    J --> K[Final Delivery]
+                    
+                    L[Tool Registry] --> G
+                    M[Telemetry Agent] --> E
+                    N[Conversational Agent] --> A
+                    N --> K
+            </div>
+            
+            <h3>A Concrete Example: "Maria wants to launch her startup"</h3>
+            
+            <div class="war-story">
+                <h4>📱 Practical Example: A Day in the AI System</h4>
+                <div class="war-story-content">
+                    <p><strong>Input:</strong> "I want to create a business plan for a sustainable fashion startup targeting millennials."</p>
+                    
+                    <p><strong>1. Director Analysis (Fixed Agent):</strong></p>
+                    <ul>
+                        <li>Analyzes project complexity and requirements</li>
+                        <li>Identifies needed expertise: market research, financial modeling, sustainability consulting</li>
+                        <li>Proposes team: Research Specialist + Financial Analyst + Marketing Specialist</li>
+                        <li>Estimates: 8 hours, $45 cost, 3-day timeline</li>
+                    </ul>
+                    
+                    <p><strong>2. Team Assembly (Dynamic Agents Created):</strong></p>
+                    <ul>
+                        <li><strong>Research Specialist:</strong> Analyzes millennial fashion trends and sustainability market</li>
+                        <li><strong>Financial Analyst:</strong> Creates revenue projections and funding requirements</li>
+                        <li><strong>Marketing Specialist:</strong> Develops brand positioning and go-to-market strategy</li>
+                    </ul>
+                    
+                    <p><strong>3. Execution & Quality (Fixed Agents):</strong></p>
+                    <ul>
+                        <li><strong>Manager Agent:</strong> Coordinates specialist work and ensures consistency</li>
+                        <li><strong>Improvement Agent:</strong> Reviews deliverable quality and suggests enhancements</li>
+                        <li><strong>Telemetry Agent:</strong> Tracks performance and costs</li>
+                    </ul>
+                    
+                    <p><strong>Result:</strong> Complete business plan with market analysis, financial projections, and marketing strategy - delivered in 6 hours for $38 actual cost.</p>
+                </div>
+            </div>
+            
+            <h3>The Evolution: From Specialization to Strategic Consolidation</h3>
+            <p>As our system matured, we learned an important lesson: <strong>specialization beats generalization, but strategic consolidation beats excessive fragmentation</strong>.</p>
+            
+            <div class="insight-box">
+                <h4>🎯 The Consolidation Strategy</h4>
+                <p>We started with 12+ highly specialized agents, but discovered that:</p>
+                <ul>
+                    <li><strong>Communication overhead</strong> increased exponentially with agent count</li>
+                    <li><strong>Context switching</strong> between agents caused information loss</li>
+                    <li><strong>Strategic thinking</strong> required broader perspective than narrow specialization provided</li>
+                </ul>
+                <p>The solution: consolidate related specialists into strategic multi-skilled agents while maintaining clear role boundaries.</p>
+            </div>
+            
+            <h3>The Org Chart Philosophy: Digital Team, Human Principles</h3>
+            <p>What makes this organizational structure effective is that it mirrors proven human organizational patterns:</p>
+            
+            <ul>
+                <li><strong>Clear Reporting Lines:</strong> Every agent knows who they report to and who reports to them</li>
+                <li><strong>Defined Responsibilities:</strong> No overlap in core functions, clear ownership of outcomes</li>
+                <li><strong>Escalation Paths:</strong> When agents can't resolve issues, they know exactly who to escalate to</li>
+                <li><strong>Quality Gates:</strong> Multiple checkpoints ensure deliverable quality before client delivery</li>
+                <li><strong>Continuous Improvement:</strong> Regular feedback loops and performance optimization</li>
+            </ul>
+            
+            <p>This org chart, now aligned with our final architecture, clarifies the structure of our "team." We've built not just a collection of scripts, but a true lean and efficient digital organization.</p>
+            
+            <p>With this big picture in mind, we're ready for the final reflection: what are the fundamental lessons we've learned on this journey and what does the future hold?</p>
+        </article>
+        
+        <!-- Key Takeaways -->
+        <div class="key-takeaways-section">
+            <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+            <div class="key-takeaways-content">
+                <p class="takeaway-item">✓ <strong>Think of Your Architecture as an Organization:</strong> Distinguishing between "infrastructural" (fixed) and "project" (dynamic) agents helps clarify responsibilities and scale more effectively.</p>
+                <p class="takeaway-item">✓ <strong>Specialization is Key (but Consolidation is Wisdom):</strong> Start with specialized agents, but be ready to consolidate them into more strategic roles as the system matures to gain efficiency.</p>
+                <p class="takeaway-item">✓ <strong>Mirror Human Organizational Patterns:</strong> Clear reporting lines, defined responsibilities, and escalation paths make AI teams as effective as human teams.</p>
+            </div>
         </div>
     </div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools" id="readerTools">
+        <div class="reader-tool" onclick="toggleBookmarks()">
+            <span class="reader-tool-icon">📑</span>
+            <span class="reader-tool-label">My Bookmarks</span>
+        </div>
+        <div class="reader-tool" onclick="toggleTheme()">
+            <span class="reader-tool-icon">🌓</span>
+            <span class="reader-tool-label">Theme</span>
+        </div>
+        <div class="reader-tool" onclick="changeFontSize(1)">
+            <span class="reader-tool-icon">🔍</span>
+            <span class="reader-tool-label">Font +</span>
+        </div>
+        <div class="reader-tool" onclick="changeFontSize(-1)">
+            <span class="reader-tool-icon">🔍</span>
+            <span class="reader-tool-label">Font -</span>
+        </div>
+        <div class="reader-tool" onclick="toggleReaderTools()">
+            <span class="reader-tool-icon">⚙️</span>
+            <span class="reader-tool-label">Minimize</span>
+        </div>
+    </div>
+    
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+        <div class="nav-container">
+            <a href="../deep-reasoning/" class="nav-button">
+                <span>← Previous</span>
+                <span>Deep Reasoning</span>
+            </a>
+            
+            <a href="../index.html" class="nav-button">
+                <span>↑ Up</span>
+                <span>User Experience</span>
+            </a>
+            
+            <a href="../control-room/" class="nav-button">
+                <span>Next →</span>
+                <span>Control Room</span>
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Bookmarks Modal -->
+    <div id="bookmarksModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📑 My Bookmarks</h3>
+                <button class="close-button" onclick="closeBookmarksModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="bookmarksList"></div>
+                <button onclick="addCurrentPageBookmark()" class="bookmark-action-btn">
+                    🔖 Bookmark This Page
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#667eea',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+        
+        // Reader Tools Functionality
+        function toggleReaderTools() {
+            const tools = document.getElementById('readerTools');
+            tools.classList.toggle('collapsed');
+        }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            showToast(isDark ? 'Dark theme enabled' : 'Light theme enabled');
+        }
+        
+        function changeFontSize(delta) {
+            const content = document.querySelector('.chapter-content');
+            const currentSize = parseInt(getComputedStyle(content).fontSize);
+            const newSize = Math.max(12, Math.min(24, currentSize + delta));
+            content.style.fontSize = newSize + 'px';
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}px`);
+        }
+        
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = 'block';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = 'none';
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const list = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                list.innerHTML = '<p>No bookmarks yet. Click "Bookmark This Page" to add your first bookmark!</p>';
+                return;
+            }
+            
+            list.innerHTML = bookmarks.map(bookmark => `
+                <div class="bookmark-item">
+                    <a href="${bookmark.url}">${bookmark.title}</a>
+                    <button onclick="removeBookmark('${bookmark.url}')" class="remove-bookmark">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function addCurrentPageBookmark() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const currentBookmark = {
+                title: document.title,
+                url: window.location.pathname
+            };
+            
+            if (!bookmarks.find(b => b.url === currentBookmark.url)) {
+                bookmarks.push(currentBookmark);
+                localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                showToast('Bookmark saved!');
+                loadBookmarks();
+            } else {
+                showToast('Page already bookmarked!');
+            }
+        }
+        
+        function removeBookmark(url) {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const updated = bookmarks.filter(b => b.url !== url);
+            localStorage.setItem('bookmarks', JSON.stringify(updated));
+            showToast('Bookmark removed!');
+            loadBookmarks();
+        }
+        
+        function showToast(message) {
+            // Create toast element if it doesn't exist
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #333;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    z-index: 10000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load dark mode preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Load font size preference
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                document.querySelector('.chapter-content').style.fontSize = savedFontSize + 'px';
+            }
+        });
+    </script>
+    
+    <!-- Add CSS for missing styles -->
+    <style>
+        /* Content Styles */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 2rem 0 1rem;
+            font-weight: 600;
+        }
+        
+        .chapter-content h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 1.5rem 0 1rem;
+            font-weight: 600;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .chapter-content strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .chapter-content code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+        
+        /* Agent Cards */
+        .agent-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+        
+        .agent-role {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .agent-description {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        .dynamic-agents-section {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+        
+        .dynamic-agents-section h4 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+        
+        /* Special Content Boxes */
+        .war-story {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .war-story-content {
+            margin-top: 1rem;
+        }
+        
+        .war-story h4 {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .insight-box h4 {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-box ul li {
+            color: white;
+        }
+        
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .key-takeaways-title {
+            color: white !important;
+            margin-bottom: 1rem;
+        }
+        
+        .takeaway-item {
+            margin-bottom: 0.8rem;
+            font-size: 1.05rem;
+        }
+        
+        /* Mermaid Diagrams */
+        .diagram-container {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        .mermaid {
+            margin: 1rem 0;
+        }
+        
+        /* Architecture Icons */
+        .architecture-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .architecture-section {
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+        
+        .reader-tools.collapsed {
+            width: 60px;
+            padding: 0.8rem;
+        }
+        
+        .reader-tool {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .reader-tool:hover {
+            background: #f0f0f0;
+        }
+        
+        .reader-tool:last-child {
+            margin-bottom: 0;
+        }
+        
+        .reader-tool-icon {
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .reader-tool-label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .reader-tools.collapsed .reader-tool-label {
+            display: none;
+        }
+        
+        /* Chapter Navigation */
+        .chapter-nav {
+            margin-top: 3rem;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .modal {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .bookmark-action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+        
+        .remove-bookmark {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+        }
+        
+        /* Dark mode styles */
+        .dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .chapter-header,
+        .dark-mode .chapter-content {
+            background: #34495e;
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.9);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .reader-tools {
+            background: rgba(52, 73, 94, 0.95);
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .nav-container {
+            background: #34495e;
+        }
+        
+        .dark-mode .modal-content {
+            background: #34495e;
+            color: #ecf0f1;
+        }
+        
+        .dark-mode .dynamic-agents-section {
+            background: rgba(52, 73, 94, 0.3);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1.5rem;
+            }
+            
+            .chapter-header,
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-content h3 {
+                font-size: 1.5rem;
+            }
+            
+            .reader-tools {
+                right: 10px;
+                padding: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .reader-tools.collapsed {
+                width: 50px;
+                padding: 0.6rem;
+            }
+            
+            .reader-tool {
+                padding: 0.5rem;
+            }
+            
+            .reader-tool-label {
+                font-size: 0.75rem;
+            }
+            
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-button {
+                justify-content: center;
+            }
+            
+            .agent-card {
+                margin: 1rem 0;
+                padding: 1.2rem;
+            }
+        }
+    </style>
 </body>
 </html>

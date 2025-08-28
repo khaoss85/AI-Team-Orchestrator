@@ -26,7 +26,7 @@ async def get_workspace_deliverables(request: Request, workspace_id: str):
         logger.error(f"❌ Error fetching deliverables for workspace {workspace_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch deliverables: {str(e)}")
 
-@router.post("/workspace/{workspace_id}/create")
+@router.post("/workspace/{workspace_id}/create", status_code=201)
 async def create_workspace_deliverable(workspace_id: str, deliverable_data: Dict[str, Any], request: Request):
     # Get trace ID and create traced logger
     trace_id = get_trace_id(request)
@@ -59,11 +59,7 @@ async def create_workspace_deliverable(workspace_id: str, deliverable_data: Dict
         # Use CRUD function
         deliverable = await create_deliverable(workspace_id, create_data)
         
-        return {
-            "success": True,
-            "deliverable": deliverable,
-            "message": "Deliverable created successfully"
-        }
+        return deliverable
             
     except HTTPException:
         raise
@@ -88,11 +84,7 @@ async def update_deliverable(deliverable_id: str, update_data: Dict[str, Any], r
         if result.data:
             deliverable = result.data[0]
             logger.info(f"✅ Updated deliverable {deliverable_id}")
-            return {
-                "success": True,
-                "deliverable": deliverable,
-                "message": "Deliverable updated successfully"
-            }
+            return deliverable
         else:
             raise HTTPException(status_code=404, detail="Deliverable not found")
             

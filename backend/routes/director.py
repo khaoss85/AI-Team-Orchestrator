@@ -26,24 +26,13 @@ from ai_agents.director_enhanced import EnhancedDirectorAgent
 from database import supabase
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/director", tags=["director"])
+router = APIRouter(tags=["director"])
 
 # Compatibility endpoints for E2E tests
 @router.post("/generate-team-proposal")
 async def generate_team_proposal(proposal_request: DirectorTeamProposal, request: Request):
     """Generate team proposal - compatibility endpoint"""
     return await create_team_proposal(proposal_request, request)
-
-@router.post("/approve-team-proposal")
-async def approve_team_proposal_compat(data: Dict[str, Any], request: Request):
-    """Approve team proposal - compatibility endpoint"""
-    proposal_id = data.get("proposal_id")
-    if not proposal_id:
-        raise HTTPException(status_code=400, detail="proposal_id required")
-    
-    # Import the approve function from proposals route
-    from routes.proposals import approve_proposal
-    return await approve_proposal(UUID(proposal_id), request)
 
 @router.post("/proposal", response_model=DirectorTeamProposalResponse) 
 async def create_team_proposal(proposal_request: DirectorTeamProposal, request: Request):
