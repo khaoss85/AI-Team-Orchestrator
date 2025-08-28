@@ -284,17 +284,45 @@ class AssetArtifact(BaseModel):
     task_id: Optional[UUID] = None
     workspace_id: Optional[UUID] = None
     
-    # Database-aligned fields (primary)
-    name: str = Field(..., description="Database 'name' field")
-    type: str = Field(..., description="Database 'type' field")
+    # Database-aligned fields (match actual column names)
+    artifact_name: str = Field(..., description="Database 'artifact_name' field")
+    artifact_type: str = Field(..., description="Database 'artifact_type' field")
     
-    # Backward compatibility fields
-    artifact_name: Optional[str] = Field(default="", description="Legacy field for compatibility")
-    artifact_type: Optional[str] = Field(default="", description="Legacy field for compatibility")
+    # Backward compatibility properties  
+    @property
+    def name(self) -> str:
+        """Legacy property mapping to artifact_name"""
+        return self.artifact_name
     
-    # Content and metadata
-    content: Optional[Dict[str, Any]] = Field(default_factory=dict, description="JSONB content")
+    @property 
+    def type(self) -> str:
+        """Legacy property mapping to artifact_type"""
+        return self.artifact_type
+    
+    # 🚀 AI-DRIVEN DUAL-FORMAT CONTENT FIELDS
+    # Execution format (structured JSON for processing)
+    content: Optional[Dict[str, Any]] = Field(default_factory=dict, description="JSONB execution content")
     content_format: str = "json"
+    
+    # Display format (user-friendly HTML/Markdown for presentation)
+    display_content: Optional[str] = Field(default=None, description="AI-transformed display content")
+    display_format: Optional[str] = Field(default="html", description="Display format: html, markdown, or text")
+    display_summary: Optional[str] = Field(default=None, description="Brief summary for UI cards")
+    display_metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Display-specific metadata")
+    
+    # Dual-format tracking
+    content_transformation_status: Optional[str] = Field(default="pending", description="Status: pending, success, failed")
+    content_transformation_error: Optional[str] = Field(default=None, description="Error message if transformation failed")
+    transformation_timestamp: Optional[datetime] = Field(default=None, description="When transformation was performed")
+    transformation_method: Optional[str] = Field(default="ai", description="Transformation method: ai, manual, fallback")
+    auto_display_generated: Optional[bool] = Field(default=False, description="Whether display content was auto-generated")
+    display_content_updated_at: Optional[datetime] = Field(default=None, description="When display content was last updated")
+    
+    # Content quality and validation
+    display_quality_score: Optional[float] = Field(default=0.0, description="Quality score for display content")
+    user_friendliness_score: Optional[float] = Field(default=0.0, description="How user-friendly the display is")
+    readability_score: Optional[float] = Field(default=0.0, description="Text readability score")
+    
     category: Optional[str] = "general"
     
     # Quality scores (database-aligned)
@@ -314,17 +342,11 @@ class AssetArtifact(BaseModel):
     ai_confidence: Optional[float] = 0.0
     source_tools: Optional[List[str]] = Field(default_factory=list)
     
+    # Timestamps (database-aligned)
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.now)
+    
     model_config = ConfigDict(from_attributes=True)
-    
-    @validator('artifact_name', pre=True, always=True)
-    def set_artifact_name(cls, v, values):
-        """Auto-populate artifact_name from name for backward compatibility"""
-        return v or values.get('name', '')
-    
-    @validator('artifact_type', pre=True, always=True)
-    def set_artifact_type(cls, v, values):
-        """Auto-populate artifact_type from type for backward compatibility"""
-        return v or values.get('type', '')
 
 class QualityRule(BaseModel):
     id: Optional[UUID] = None
@@ -771,6 +793,195 @@ class WorkspaceWithRecovery(Workspace):
     last_recovery_check_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+# --- AI-DRIVEN DUAL-FORMAT ARCHITECTURE CONTRACTS ---
+
+class ContentTransformationRequest(BaseModel):
+    """Request model for AI content transformation"""
+    asset_id: UUID
+    execution_content: Dict[str, Any]
+    content_type: str
+    target_format: str = "html"  # html, markdown, text
+    transformation_context: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    user_preferences: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    quality_requirements: Optional[Dict[str, str]] = Field(default_factory=dict)
+
+class ContentTransformationResponse(BaseModel):
+    """Response model for AI content transformation"""
+    success: bool
+    asset_id: UUID
+    display_content: Optional[str] = None
+    display_format: str
+    display_summary: Optional[str] = None
+    display_metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Quality metrics
+    display_quality_score: float = 0.0
+    user_friendliness_score: float = 0.0
+    readability_score: float = 0.0
+    
+    # Transformation details
+    transformation_method: str = "ai"
+    transformation_timestamp: datetime = Field(default_factory=datetime.now)
+    ai_confidence: float = 0.0
+    
+    # Error handling
+    error_message: Optional[str] = None
+    fallback_used: bool = False
+    retry_suggestions: List[str] = Field(default_factory=list)
+
+class AIContentDisplayTransformer(BaseModel):
+    """Service interface contract for AI content display transformation"""
+    
+    class Config:
+        """Configuration for the transformer service"""
+        transformation_timeout: int = 30  # seconds
+        max_content_length: int = 50000  # characters
+        fallback_enabled: bool = True
+        quality_threshold: float = 0.6
+        
+    # Service methods interface (for documentation)
+    supported_input_formats: List[str] = ["json", "dict", "text"]
+    supported_output_formats: List[str] = ["html", "markdown", "text"]
+    transformation_capabilities: List[str] = [
+        "structured_data_to_html",
+        "json_to_markdown", 
+        "content_summarization",
+        "user_friendly_formatting",
+        "quality_enhancement"
+    ]
+
+class EnhancedDeliverableResponse(BaseModel):
+    """Enhanced API response model for deliverables with dual-format support"""
+    id: str
+    title: str
+    type: str
+    status: str
+    created_at: str
+    updated_at: str
+    
+    # Execution content (for system processing)
+    execution_content: Dict[str, Any] = Field(default_factory=dict)
+    execution_format: str = "json"
+    
+    # Display content (for user presentation)
+    display_content: Optional[str] = None
+    display_format: str = "html"
+    display_summary: Optional[str] = None
+    display_preview: Optional[str] = None  # First 200 chars for cards
+    
+    # Quality and transformation metadata
+    display_quality_score: float = 0.0
+    user_friendliness_score: float = 0.0
+    content_transformation_status: str = "pending"
+    transformation_error: Optional[str] = None
+    
+    # Business metadata
+    business_value_score: float = 0.0
+    category: str = "general"
+    quality_score: float = 0.0
+    
+    # User actions
+    can_retry_transformation: bool = False
+    available_formats: List[str] = Field(default_factory=lambda: ["html"])
+    
+    # Backward compatibility
+    content: Optional[Union[str, Dict[str, Any]]] = None  # Deprecated, use display_content
+
+class DeliverableListResponse(BaseModel):
+    """Response model for deliverable list endpoints with enhanced format support"""
+    deliverables: List[EnhancedDeliverableResponse]
+    total_count: int
+    transformation_status: Dict[str, int] = Field(default_factory=dict)  # pending: 2, success: 5, failed: 1
+    quality_overview: Dict[str, float] = Field(default_factory=dict)  # avg_display_quality: 0.8, avg_user_friendliness: 0.7
+    
+    # Pagination and filtering
+    page: int = 1
+    page_size: int = 20
+    has_next: bool = False
+    has_previous: bool = False
+    
+    # System capabilities
+    supports_dual_format: bool = True
+    available_transformations: List[str] = Field(default_factory=lambda: ["html", "markdown", "text"])
+
+class ContentTransformationError(BaseModel):
+    """Error model for content transformation failures"""
+    error_code: str
+    error_message: str
+    asset_id: UUID
+    retry_count: int = 0
+    max_retries: int = 3
+    last_attempt: datetime = Field(default_factory=datetime.now)
+    suggested_actions: List[str] = Field(default_factory=list)
+    fallback_content: Optional[str] = None
+    technical_details: Dict[str, Any] = Field(default_factory=dict)
+
+class TransformationBatchRequest(BaseModel):
+    """Batch transformation request for multiple deliverables"""
+    asset_ids: List[UUID]
+    target_format: str = "html"
+    priority: str = "normal"  # low, normal, high
+    transformation_context: Dict[str, Any] = Field(default_factory=dict)
+    
+class TransformationBatchResponse(BaseModel):
+    """Batch transformation response"""
+    batch_id: str
+    total_assets: int
+    successful_transformations: int
+    failed_transformations: int
+    pending_transformations: int
+    
+    # Results per asset
+    results: List[ContentTransformationResponse]
+    
+    # Batch metadata
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = None
+    estimated_completion: Optional[datetime] = None
+
+# --- MIGRATION AND COMPATIBILITY MODELS ---
+
+class ContentMigrationPlan(BaseModel):
+    """Migration plan for existing content to dual-format"""
+    migration_id: str = Field(default_factory=lambda: str(uuid4()))
+    total_assets: int
+    assets_to_migrate: List[UUID]
+    
+    # Migration strategy
+    migration_strategy: str = "incremental"  # incremental, bulk, on_demand
+    batch_size: int = 100
+    priority_order: str = "newest_first"  # newest_first, oldest_first, high_quality_first
+    
+    # Quality requirements
+    min_quality_threshold: float = 0.5
+    skip_failed_assets: bool = True
+    create_backups: bool = True
+    
+    # Timeline
+    estimated_duration: timedelta = Field(default=timedelta(hours=1))
+    scheduled_start: Optional[datetime] = None
+
+class MigrationStatus(BaseModel):
+    """Status model for content migration process"""
+    migration_id: str
+    status: str  # pending, running, completed, failed, paused
+    progress_percentage: float = 0.0
+    
+    # Progress details
+    processed_count: int = 0
+    successful_count: int = 0
+    failed_count: int = 0
+    skipped_count: int = 0
+    
+    # Timing
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    estimated_remaining: Optional[timedelta] = None
+    
+    # Error tracking
+    recent_errors: List[str] = Field(default_factory=list)
+    retry_queue: List[UUID] = Field(default_factory=list)
 
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):

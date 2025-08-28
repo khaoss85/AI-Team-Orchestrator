@@ -53,33 +53,109 @@
             font-weight: 700;
             line-height: 1.2;
         }
-        
-        .coming-soon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 15px;
-            text-align: center;
-            margin: 2rem 0;
-        }
-        
-        .nav-button {
-            display: inline-flex;
+
+        /* Navigation styling */
+        .breadcrumb {
+            display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin: 1rem 0.5rem;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            font-size: 0.9rem;
         }
-        
-        .nav-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb a:hover {
+            color: #5a6fd8;
+        }
+
+        .breadcrumb span:not(:has(a)) {
+            color: #7f8c8d;
+        }
+
+        /* Content styling */
+        .chapter-content {
+            line-height: 1.7;
+            font-size: 1.1rem;
+        }
+
+        .chapter-description {
+            font-size: 1.2rem;
+            color: #495057;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-style: italic;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin: 2.5rem 0 1.5rem 0;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #495057;
+            font-size: 1.4rem;
+            margin: 2rem 0 1rem 0;
+        }
+
+        h4 {
+            color: #495057;
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.8rem 0;
+        }
+
+        p {
+            margin-bottom: 1.2rem;
+            line-height: 1.7;
+        }
+
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+            line-height: 1.6;
+        }
+
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: #495057;
         }
         
         /* Chapter Navigation */
@@ -297,11 +373,6 @@
         }
         
         .dark-mode .container {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .chapter-header,
-        .dark-mode .chapter-content {
             background: rgba(255, 255, 255, 0.05);
             color: #e9ecef;
         }
@@ -323,9 +394,45 @@
         .dark-mode .reader-tool:hover {
             background: rgba(255, 255, 255, 0.1);
         }
+
+        /* Dark Mode - Content Areas */
+        .dark-mode h2,
+        .dark-mode h3,
+        .dark-mode h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode p,
+        .dark-mode li {
+            color: #e9ecef;
+        }
+        
+        .dark-mode strong {
+            color: #e9ecef;
+        }
+
+        .dark-mode pre {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .dark-mode pre code {
+            color: #e9ecef;
+        }
         
         /* Responsive */
         @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
             .reader-tools {
                 right: 10px;
                 padding: 0.8rem;
@@ -375,184 +482,209 @@
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
 
-            /* Reader Tools */
-        .reader-tools {
+        /* Bookmarks Modal */
+        .bookmarks-modal {
+            display: none;
             position: fixed;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 1rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .bookmarks-modal.show {
             display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            transition: all 0.3s ease;
-            min-width: 60px;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
         }
-        .reader-tools.collapsed { width: 60px; padding: 0.8rem; }
-        .reader-tool { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem; border: none; background: transparent; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; color: #495057; font-size: 0.85rem; white-space: nowrap; }
-        .reader-tool:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
-        .reader-tool.active { background: #667eea; color: white; }
-        .reader-tool-icon { font-size: 1.1rem; flex-shrink: 0; }
-        .reader-tool-label { font-size: 0.8rem; font-weight: 500; }
-        .collapsed .reader-tool-label { display: none; }
-        .reader-tools-toggle { position: absolute; top: -10px; left: -10px; width: 30px; height: 30px; background: #667eea; color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
-        .reading-progress { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(102, 126, 234, 0.2); z-index: 1001; }
-        .reading-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
-        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #e9ecef; }
-        .dark-mode .container { color: #e9ecef; }
-        .dark-mode .chapter-header, .dark-mode .chapter-content { background: rgba(255, 255, 255, 0.05); color: #e9ecef; }
-        .dark-mode .breadcrumb { background: rgba(255, 255, 255, 0.1); color: #e9ecef; }
-        .dark-mode .reader-tools { background: rgba(0, 0, 0, 0.8); color: #e9ecef; }
-        .dark-mode .reader-tool { color: #e9ecef; }
-        .dark-mode .reader-tool:hover { background: rgba(255, 255, 255, 0.1); }
-        @media (max-width: 768px) { .reader-tools { right: 10px; padding: 0.8rem; min-width: 50px; } .reader-tools.collapsed { width: 50px; padding: 0.6rem; } .reader-tool { padding: 0.5rem; } .reader-tool-label { font-size: 0.75rem; } }
-        .bookmark-toast { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 0.8rem 1.2rem; border-radius: 8px; z-index: 1002; transform: translateX(300px); transition: transform 0.3s ease; font-size: 0.9rem; box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3); }
-        .bookmark-toast.show { transform: translateX(0); }
-        .bookmark-toast.error { background: #dc3545; box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3); }
-        .bookmarks-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(5px); }
-        .bookmarks-modal.show { display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .bookmarks-content { background: white; border-radius: 20px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .dark-mode .bookmarks-content { background: #1a1a2e; color: #e9ecef; }
-        .bookmarks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #667eea; }
-        .bookmarks-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 0.5rem; }
-        .dark-mode .bookmarks-title { color: #e9ecef; }
-        .close-bookmarks { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s ease; }
-        .close-bookmarks:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
-        .bookmarks-list { max-height: 400px; overflow-y: auto; }
-        .bookmark-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem; background: rgba(102, 126, 234, 0.05); transition: all 0.2s ease; }
-        .bookmark-item:hover { background: rgba(102, 126, 234, 0.1); transform: translateX(5px); }
-        .dark-mode .bookmark-item { background: rgba(255, 255, 255, 0.05); }
-        .dark-mode .bookmark-item:hover { background: rgba(255, 255, 255, 0.1); }
-        .bookmark-info { flex-grow: 1; }
-        .bookmark-title { font-weight: 600; color: #2c3e50; text-decoration: none; font-size: 1rem; line-height: 1.4; }
-        .dark-mode .bookmark-title { color: #e9ecef; }
-        .bookmark-title:hover { color: #667eea; }
-        .bookmark-date { font-size: 0.8rem; color: #7f8c8d; margin-top: 0.3rem; }
-        .bookmark-actions { display: flex; gap: 0.5rem; }
-        .bookmark-action { background: none; border: none; cursor: pointer; padding: 0.3rem; border-radius: 5px; transition: all 0.2s ease; color: #7f8c8d; }
-        .bookmark-action:hover { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
-        .empty-bookmarks { text-align: center; padding: 2rem; color: #7f8c8d; }
-        .empty-bookmarks-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
-        .language-select { background: transparent; border: none; color: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; outline: none; min-width: 60px; }
-        .language-select option { background: white; color: #2c3e50; }
-        .dark-mode .language-select option { background: #1a1a2e; color: #e9ecef; }
-
-        /* Dark Mode - Content Areas */
-        .dark-mode .content-area {
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .bookmarks-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .dark-mode .bookmarks-content {
+            background: #1a1a2e;
+            color: #e9ecef;
+        }
+        
+        .bookmarks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .bookmarks-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .dark-mode .bookmarks-title {
+            color: #e9ecef;
+        }
+        
+        .close-bookmarks {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        
+        .close-bookmarks:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .bookmarks-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .bookmark-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .dark-mode .bookmark-item {
             background: rgba(255, 255, 255, 0.05);
-            color: #e9ecef;
         }
         
-        .dark-mode .content-area h2,
-        .dark-mode .content-area h3,
-        .dark-mode .content-area h4 {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .content-area p,
-        .dark-mode .content-area li {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .content-area strong {
-            color: #e9ecef;
-        }
-        
-        /* Dark Mode - Tables */
-        .dark-mode table {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .dark-mode th,
-        .dark-mode td {
-            color: #e9ecef;
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .dark-mode th {
+        .dark-mode .bookmark-item:hover {
             background: rgba(255, 255, 255, 0.1);
         }
         
-        /* Dark Mode - Takeaways and Boxes */
-        .dark-mode .key-takeaways,
-        .dark-mode .insight-box,
-        .dark-mode .war-story {
-            background: rgba(255, 255, 255, 0.05);
+        .bookmark-info {
+            flex-grow: 1;
+        }
+        
+        .bookmark-title {
+            font-weight: 600;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        
+        .dark-mode .bookmark-title {
             color: #e9ecef;
         }
         
-        .dark-mode .key-takeaways h3,
-        .dark-mode .insight-box h3,
-        .dark-mode .war-story h3 {
+        .bookmark-title:hover {
+            color: #667eea;
+        }
+        
+        .bookmark-date {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 0.3rem;
+        }
+        
+        .bookmark-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+            color: #7f8c8d;
+        }
+        
+        .bookmark-action:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .empty-bookmarks {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+        
+        .empty-bookmarks-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .language-select {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            min-width: 60px;
+        }
+        
+        .language-select option {
+            background: white;
+            color: #2c3e50;
+        }
+        
+        .dark-mode .language-select option {
+            background: #1a1a2e;
             color: #e9ecef;
-        }
-        
-        .dark-mode .key-takeaways p,
-        .dark-mode .insight-box p,
-        .dark-mode .war-story p {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .key-takeaways li,
-        .dark-mode .insight-box li,
-        .dark-mode .war-story li {
-            color: #e9ecef;
-        }
-    
-        /* Architecture Icon Styling */
-        .architecture-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-        
-        
-        /* War Story Icon Styling */
-        .war-story-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-        
-        /* Insight Icon Styling */
-        .insight-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
         }
 
-        /* Architecture Section Styling */
-        .architecture-section {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border: 1px solid #dee2e6;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .architecture-title {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .architecture-title h4 {
-            margin: 0;
-            color: #495057;
-        }
-        
         /* War Story Styling */
         .war-story {
             background: linear-gradient(135deg, #fff3cd, #ffeaa7);
@@ -562,13 +694,59 @@
             margin: 2rem 0;
         }
         
-        .war-story h4 {
+        .war-story-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-weight: 600;
             color: #856404;
-            margin-top: 0;
         }
         
+        .war-story-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin-right: 0.8rem;
+            flex-shrink: 0;
+            color: #856404;
+        }
+        
+        .war-story-content p {
+            color: #856404;
+            line-height: 1.6;
+        }
+
+        /* Insight Box Styling */
+        .insight-box {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-left: 4px solid #1976d2;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .insight-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #1976d2;
+        }
+        
+        .insight-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin-right: 0.8rem;
+            flex-shrink: 0;
+            color: #1976d2;
+        }
+        
+        .insight-content p {
+            color: #1565c0;
+            line-height: 1.6;
+        }
+
         /* Key Takeaways Styling */
-        .key-takeaways-section {
+        .key-takeaways {
             background: linear-gradient(135deg, #27ae60, #2ecc71);
             color: white;
             border-radius: 10px;
@@ -576,33 +754,30 @@
             margin: 2rem 0;
         }
         
-        .key-takeaways-title {
+        .key-takeaways-header {
+            display: flex;
+            align-items: center;
             margin-bottom: 1rem;
             font-weight: 600;
         }
         
-        .key-takeaways-content {
+        .key-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin-right: 0.8rem;
+            flex-shrink: 0;
+        }
+        
+        .key-takeaways-content ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .key-takeaways-content li {
+            margin-bottom: 1rem;
             line-height: 1.6;
         }
-        
-        .takeaway-item {
-            margin-bottom: 0.5rem;
-        }
-        
-        /* Industry Insight Styling */
-        .industry-insight {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-left: 4px solid #28a745;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .industry-insight h4 {
-            color: #28a745;
-            margin-top: 0;
-        }
-        
+
         /* Mermaid Container */
         .mermaid {
             background: #f8f9fa;
@@ -611,42 +786,43 @@
             margin: 2rem 0;
             text-align: center;
         }
-    
-        .architecture-section,
-        .mermaid,
-        .war-story,
-        .key-takeaways-section {
-            max-width: 100%;
-            box-sizing: border-box;
-            overflow-x: auto;
-        }
         
         .mermaid svg {
             max-width: 100%;
             height: auto;
         }
-    </style>
 
-    <style>
-    .contextual-link {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 500;
-        border-bottom: 1px dotted #667eea;
-        transition: all 0.2s ease;
-    }
-    
-    .contextual-link:hover {
-        color: #5a6fd8;
-        border-bottom-style: solid;
-    }
-    
-    .dark-mode .contextual-link {
-        color: #9bb5ff;
-        border-bottom-color: #9bb5ff;
-    }
+        /* Dark mode for special sections */
+        .dark-mode .war-story {
+            background: rgba(255, 243, 205, 0.1);
+            border-left-color: #ffeaa7;
+        }
+        
+        .dark-mode .war-story-header,
+        .dark-mode .war-story-content p {
+            color: #ffeaa7;
+        }
+        
+        .dark-mode .insight-box {
+            background: rgba(227, 242, 253, 0.1);
+            border-left-color: #bbdefb;
+        }
+        
+        .dark-mode .insight-header,
+        .dark-mode .insight-content p {
+            color: #bbdefb;
+        }
+        
+        .dark-mode .key-takeaways {
+            background: rgba(39, 174, 96, 0.2);
+        }
+        
+        .dark-mode .mermaid {
+            background: rgba(255, 255, 255, 0.05);
+        }
     </style>
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
     <link rel="canonical" href="https://ai-team-orchestrator.com/en/execution-quality/autonomous-monitoring/" />
 </head>
@@ -660,6 +836,7 @@
             <span>›</span>
             <span>Autonomous Monitoring - Self-Control</span>
         </nav>
+        
         <header class="chapter-header">
             <div class="chapter-instrument">🎺</div>
             <div class="chapter-meta">
@@ -668,551 +845,269 @@
                 <span>Ready to Read</span>
             </div>
             <h1 class="chapter-title">Autonomous Monitoring - Self-Control</h1>
+            <p class="chapter-description">
+                Our system had become a complex and dynamic organism, with agents being born, working, completing tasks, and disconnecting in a continuous flow. Like an orchestra conductor who can no longer follow every single musician, we needed a monitoring system that would give us complete visibility without micromanagement.
+            </p>
         </header>
 
         <div class="chapter-content">
-<div class="chapter-progress">
-                        <div class="progress-label">Movimento 16 di 42</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: 38%"></div>
-</div>
-                    <h2 class="chapter-title">Chapter 16: Autonomous Monitoring – The System Controls Itself</h2>
+            <div class="war-story">
+                <div class="war-story-header">
+                    <svg class="war-story-icon" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M11,7H13V13H11V7M11,15H13V17H11V15Z"/>
+                    </svg>
+                    <span>The "Houston, We Have a Problem" Moment</span>
                 </div>
+                <div class="war-story-content">
+                    <p>It was a Friday evening, we were doing the final deployment of the system for an enterprise client. Everything seemed perfect: tests were passing, agents were responding, tasks were being completed. But then, suddenly, the system slowed down until it stopped completely.</p>
+                    
+                    <p>The problem? No visibility. We didn't know which agent had gotten stuck, which task had failed, which external service wasn't responding. It was like driving blindfolded in a snowstorm.</p>
+                    
+                    <p>That night we realized that <strong>performance without observability is a disaster waiting to happen</strong>. It wasn't enough for the system to work; we needed to know <em>how</em> it was working at every moment.</p>
+                </div>
+            </div>
 
-<p>Il nostro sistema era diventato un organismo complesso e dinamico. Agenti venivano creati, task venivano eseguiti in parallelo, la memoria cresceva, e il sistema si auto-correggieva. Ma con la complessità arriva il rischio. Cosa succederebbe se un bug sottile causasse un "blocco" silenzioso in un workspace? O se un agente entrasse in un ciclo di fallimenti senza che nessuno se ne accorgesse?</p>
+            <h2>The Autonomous Monitoring System</h2>
 
-<p>Un sistema autonomo non può dipendere da un operatore umano che guarda costantemente i log per assicurarsi che tutto funzioni. Deve avere un proprio <strong>"sistema immunitario"</strong>, un meccanismo di monitoraggio proattivo in grado di auto-diagnosticare problemi e, idealmente, di auto-ripararsi.</p>
+            <p>Our approach to monitoring is based on three fundamental principles:</p>
+            <ul>
+                <li><strong>Proactive Observability</strong>: The system collects metrics without impacting performance</li>
+                <li><strong>Contextual Intelligence</strong>: Data is analyzed in real-time to identify patterns and anomalies</li>
+                <li><strong>Auto-Healing</strong>: The system can self-correct for many common problems</li>
+            </ul>
 
-<h3>La Decisione Architetturale: Un "Health Monitor" Dedicato</h3>
+            <h3>Monitoring Architecture</h3>
 
-<p>Abbiamo creato un nuovo servizio in background, l<code>AutomatedGoalMonitor</code>, che agisce come il "medico" del nostro sistema.</p>
+            <p>Our monitoring architecture is designed to be:</p>
+            <ul>
+                <li><strong>Non-Intrusive</strong>: Data collection without slowing down the system</li>
+                <li><strong>Scalable</strong>: Handles thousands of simultaneous agents</li>
+                <li><strong>Intelligent</strong>: AI-powered anomaly detection</li>
+                <li><strong>Actionable</strong>: Alerts with context and suggested solutions</li>
+            </ul>
 
-<p><em>Codice di riferimento: <code>backend/automated_goal_monitor.py</code></em></p>
-
-<p>Questo monitor non fa parte del flusso di esecuzione dei task. È un processo indipendente che, a intervalli regolari (es. ogni 20 minuti), esegue un check-up completo di tutti i workspace attivi.</p>
-
-<p><strong>Flusso del Check-up di Salute:</strong></p>
-
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>System Architecture</h4>
-    </div>
-    
-    <div class="mermaid">
+            <div class="mermaid">
 graph TD
-    A[Timer: Ogni 20 Minuti] --> B{Health Monitor si attiva}
-    B --> C[Scansiona Tutti i Workspace Attivi]
-    C --> D{Per ogni Workspace, esegue una serie di controlli}
-    D --> E[1. Controllo Agenti]
-    D --> F[2. Controllo Task Bloccati]
-    D --> G[3. Controllo Progresso Obiettivi]
-    D --> H[4. Controllo Integrità Memoria];
-    I{Calcola Health Score Complessivo};
-    I -- Score < 70% --> J[Triggera Allerta e/o Auto-Riparazione]
-    I -- Score >= 70% --> K[Workspace Sano]
+    A[Timer: Every 20 Minutes] --> B{Health Monitor Activates}
+    B --> C[Scan All Active Workspaces]
+    C --> D{For Each Workspace, Run Health Checks}
+    D --> E[1. Agent Status Check]
+    D --> F[2. Blocked Tasks Check]
+    D --> G[3. Goal Progress Check]
+    D --> H[4. Memory Integrity Check]
+    E --> I{Calculate Overall Health Score}
+    F --> I
+    G --> I
+    H --> I
+    I -- Score < 70% --> J[Trigger Alert and/or Auto-Repair]
+    I -- Score >= 70% --> K[Workspace Healthy]
     
-    subgraph "Controlli Specifici"
-        E[Ci sono agenti in stato error da troppo tempo?]
-        F[Ci sono task in_progress da più di 24 ore?]
-        G[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
-        H[Ci sono anomalie o corruzioni nei dati della memoria?]
+    subgraph "Specific Checks"
+        E2[Are agents in error state too long?]
+        F2[Are tasks in_progress for more than 24 hours?]
+        G2[Is goal progress stalled despite completed tasks?]
+        H2[Are there anomalies or corruptions in memory data?]
     end
-    </div>
-</div>
-
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>System Architecture</h4>
-    </div>
-    
-    
-</div>
-
-<h3>Pattern Architetturali Applicati</h3>
-
-<p>La progettazione del nostro Health Monitor non è casuale, ma si basa su due pattern architetturali consolidati per la gestione di sistemi complessi:</p>
-
-<ol>
-<li><strong>Health Check API Pattern:</strong> Invece di aspettare che il sistema fallisca, esponiamo (internamente) degli endpoint che permettono di interrogare attivamente lo stato di salute dei vari componenti. Il nostro monitor agisce come un client che "chiama" questi endpoint a intervalli regolari. Questo è un approccio proattivo, non reattivo.</li>
-<li><strong>Sidecar Pattern (concettuale):</strong> Sebbene non sia un "sidecar" in senso stretto (come in unarchitettura a container), il nostro monitor agisce concettualmente in modo simile. È un processo separato che "osserva" lapplicazione principale (l'Executor e i suoi agenti) senza essere parte della sua logica di business critica. Questo disaccoppiamento è fondamentale: se lapplicazione principale rallenta o ha problemi, il monitor può continuare a funzionare in modo indipendente per diagnosticarla e, se necessario, riavviarla.</li>
-</ol>
-
-<div class="war-story">
-    <h4>"War Story": LAgente "Fantasma"</h4>
-    <p>Durante un test di lunga durata, abbiamo notato che un workspace aveva smesso di fare progressi. I log non mostravano errori evidenti, ma nessun nuovo task veniva completato.</p>
-
-<p><em>Logbook del Disastro (28 Luglio, pomeriggio):</em></p>
-
-<pre><code class="language-text">HEALTH REPORT: Workspace a352c... Health Score: 65/100.
-ISSUES:;
-- 1 agent in stato &#x27;busy&#x27 da 48 ore.
-- 0 task completati nelle ultime 24 ore.</code></pre>
-
-<p>Il nostro <code>Health Monitor</code> aveva rilevato il problema: un agente era rimasto bloccato in uno stato <code>busy</code> a causa di uneccezione non gestita in un sotto-processo, diventando un "agente fantasma". Non stava lavorando, ma lExecutor lo considerava ancora occupato e non gli assegnava nuovi task. Poiché era lunico agente con un certo set di skill, l'intero progetto si era fermato.</p>
-
-<p><strong>La Lezione Appresa: LAuto-Riparazione è il Livello Successivo dellAutonomia.</strong></p>
-
-<p>Rilevare il problema non era abbastanza. Il sistema doveva essere in grado di risolverlo. Abbiamo quindi implementato una serie di <strong>routine di auto-riparazione</strong>, applicando un altro pattern classico.</p>
-
-<p><strong>Pattern Applicato: Circuit Breaker (adattato)</strong></p>
-
-<p>Il nostro sistema di auto-riparazione agisce come un "interruttore automatico".</p>
-
-<ol>
-<li><strong>Rilevamento (Circuito Chiuso):</strong> LHealth Monitor rileva un agente in stato <code>busy</code> per un tempo superiore alla soglia massima.</li>
-<li><strong>Diagnosi (Apertura del Circuito):</strong> Il sistema "apre il circuito" per quellagente. Tenta una diagnosi (es. verificare se il processo esiste ancora).</li>
-<li><strong>Azione Correttiva (Reset del Circuito):</strong> Se la diagnosi conferma lanomalia, il sistema forza il reset dello stato dellagente (da <code>busy</code> a <code>available</code>), di fatto "resettando il circuito" e permettendo al flusso di riprendere.</li>
-</ol>
-
-<p><em>Codice di riferimento: <code>backend/workspace_recovery_system.py</code></em></p>
-
-<p>Questa logica ha permesso al sistema di "sbloccare" lagente e di riprendere le normali operazioni senza alcun intervento umano, incarnando perfettamente il <strong>Pilastro #13 (Course-Correction Automatico)</strong>, applicato questa volta non alla strategia di progetto, ma alla salute del sistema stesso.</p>
-</div>
-
-<div class="key-takeaways-section">
-    <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
-    <p class="takeaway-item">✓ <strong>LAutonomia Richiede Auto-Monitoraggio:</strong> Un sistema complesso e autonomo deve avere un "sistema immunitario" in grado di rilevare proattivamente i problemi.</p>
-<p class="takeaway-item">✓ <strong>Applica Pattern Architetturali Consolidati:</strong> Non reinventare la ruota. Pattern come <code>Health Check API</code> e <code>Circuit Breaker</code> sono soluzioni testate per costruire sistemi resilienti.</p>
-<p class="takeaway-item">✓ <strong>Disaccoppia il Monitoraggio dalla Logica Principale:</strong> Un monitor che fa parte dello stesso processo che sta monitorando può fallire insieme ad esso. Un processo separato (o "sidecar") è molto più robusto.</p>
-<p class="takeaway-item">✓ <strong>Progetta per l'Auto-Riparazione:</strong> Il vero obiettivo non è solo rilevare i problemi, ma dare al sistema la capacità di risolverli in autonomia, almeno per i casi più comuni.</p>
-
-</div>
-
-<p><strong>Conclusione del Capitolo</strong></p>
-
-<p>Con un sistema di monitoraggio e auto-riparazione, avevamo costruito una rete di sicurezza fondamentale. Questo ci ha dato la fiducia necessaria per affrontare la fase successiva: sottoporre lintero sistema a test end-to-end sempre più complessi, spingendolo ai suoi limiti per scoprire eventuali debolezze nascoste prima che potessero impattare un utente reale. Era il momento di passare dai test sui singoli componenti ai <strong>test "comprensivi" sullintero organismo AI</strong>.</p>
             </div>
-        </div>
-    
-    <div class="mermaid">
-graph TD
-    A[Trigger Event: Task Completed or Periodic Timer] --> B{GoalValidator activates}
-    B --> C[Gap Analysis: Compare Current State vs. Objectives]
-    C -- No Relevant Gap --> D[Continue Normal Operations]
-    C -- Critical Gap Detected --> E{Memory Consultation}
-    E -- Search for Related "Failure Lessons" --> F{Generate Corrective Plan}
-    F -- AI defines new tasks --> G[Create Corrective Tasks]
-    G -- "CRITICAL" Priority --> H{Added to Executor Queue}
-    H --> D
-    </div>
-</div>
 
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>System Architecture</h4>
-    </div>
-    
-    
-</div>
+            <h3>Key Metrics We Monitor</h3>
 
-<div class="war-story">
-    <h4>"War Story": The Validator Who Cried "Wolf!"</h4>
-    <p>Our first implementation of the <code>GoalValidator</code> was too sensitive.</p>
+            <h4>📊 Performance Metrics</h4>
+            <ul>
+                <li><strong>Task Completion Rate</strong>: Percentage of successfully completed tasks</li>
+                <li><strong>Average Response Time</strong>: Average response time of agents</li>
+                <li><strong>Resource Utilization</strong>: CPU, memory, network for each agent</li>
+                <li><strong>Queue Depth</strong>: Number of tasks waiting for each agent</li>
+            </ul>
 
-<p><em>Disaster Logbook (July 28th):</em></p>
+            <h4>🔍 Quality Metrics</h4>
+            <ul>
+                <li><strong>Error Rate</strong>: Frequency of errors by task type</li>
+                <li><strong>Quality Score</strong>: Automatic evaluation of output quality</li>
+                <li><strong>Retry Success Rate</strong>: Effectiveness of retry attempts</li>
+                <li><strong>Human Intervention Rate</strong>: Frequency of escalation to humans</li>
+            </ul>
 
-<pre><code class="language-text">CRITICAL goal validation failures: 4 issues
-⚠️ GOAL SHORTFALL: 0/50.0 contacts for contacts (100.0% gap, missing 50.0);
-INFO: Creating corrective task: &quot;URGENT: Collect 50.0 missing contacts&quot;
-... (5 minutes later)
-CRITICAL goal validation failures: 4 issues
-⚠️ GOAL SHORTFALL: 0/50.0 contacts for contacts (100.0% gap, missing 50.0)
-INFO: Creating corrective task: &quot;URGENT: Collect 50.0 missing contacts&quot</code></pre>
+            <h4>🤝 Collaboration Metrics</h4>
+            <ul>
+                <li><strong>Handoff Success Rate</strong>: Effectiveness of handoffs between agents</li>
+                <li><strong>Communication Latency</strong>: Time for inter-agent communication</li>
+                <li><strong>Coordination Efficiency</strong>: Measure of teamwork effectiveness</li>
+                <li><strong>Resource Conflicts</strong>: Conflicts for shared resources</li>
+            </ul>
 
-<p>The system had entered a <strong>panic loop</strong>. It detected a gap, created a corrective task, but before the Executor could even assign and execute that task, the validator restarted, detected the same gap, and created <em>another</em> identical corrective task. Within hours, our task queue was flooded with hundreds of duplicate tasks.</p>
+            <h2>Telemetry System Implementation</h2>
 
-<p><strong>The Lesson Learned: Self-Correction Needs "Patience" and "Awareness"</strong></p>
+            <p>The heart of our monitoring system is the <strong>Telemetry Engine</strong>, which collects, aggregates, and analyzes data in real-time.</p>
 
-<p>A proactive system without awareness of the state of its own corrective actions creates more problems than it solves. The solution required making our <code>GoalValidator</code> more intelligent and "patient".</p>
+            <h3>🎯 Intelligent Alert System</h3>
 
-<ol>
-<li><strong>Existing Corrective Task Check:</strong> Before creating a new corrective task, the validator now checks if there's already a <code>pending</code> or <code>in_progress</code> task trying to solve the same gap. If it exists, it does nothing.</li>
-<li><strong>Cooldown Period:</strong> After creating a corrective task, the system enters a "grace period" (e.g., 30 minutes) for that specific goal, during which no new corrective actions are generated, giving the agent team time to act.</li>
-<li><strong>AI-Driven Priority and Urgency:</strong> Instead of always creating "URGENT" tasks, we taught the AI to evaluate gap severity in relation to project timeline. A 10% gap at project start might generate a medium priority task; the same gap one day before deadline would generate a critical priority task.</li>
-</ol>
+            <p>Alerts are not just notifications; they are actionable recommendations:</p>
+            <ul>
+                <li><strong>Anomaly Detection</strong>: ML models identify unusual behaviors</li>
+                <li><strong>Root Cause Analysis</strong>: Automatic correlation between events</li>
+                <li><strong>Predictive Alerts</strong>: Predictions based on historical trends</li>
+                <li><strong>Smart Escalation</strong>: Automatic escalation based on severity</li>
+            </ul>
 
-<h3>The Prompt That Guides Correction</h3>
+            <h3>🔄 Auto-Healing Capabilities</h3>
 
-<p>The heart of this system is the prompt that generates corrective tasks. It doesnt just say "solve the problem", but asks for a mini strategic analysis.</p>
+            <p>The system can self-correct for various scenarios:</p>
+            <ul>
+                <li><strong>Agent Restart</strong>: Automatic restart of stuck agents</li>
+                <li><strong>Load Balancing</strong>: Automatic load redistribution</li>
+                <li><strong>Circuit Breaker</strong>: Isolation of degraded services</li>
+                <li><strong>Graceful Degradation</strong>: Fallback to reduced mode</li>
+            </ul>
 
-<p><em>Reference code: <code>_generate_corrective_task</code> logic in <code>goal_validator.py</code></em></p>
-
-<pre><code class="language-python">prompt = f&quot;&quot;&quot;
-You are an expert Project Manager in crisis management. A critical gap has been detected between the current project state and the preset objectives.
-
-**Failed Objective:** {goal.description}
-**Current State:** {current_progress}
-**Detected Gap:** {failure_details}
-
-**Lessons from the Past (from Memory):**
-{relevant_failure_lessons}
-
-**Required Analysis:**
-1.  **Root Cause Analysis:** Based on past lessons and the gap, what is the most likely cause of this failure? (e.g., &quot;Tasks were too theoretical&quot;, &quot;Missing email verification tool&quot;).
-2.  **Specific Corrective Action:** Define ONE SINGLE task, as specific and actionable as possible, to start bridging this gap. Dont be generic.
-3.  **Optimal Assignment:** Which team role is best suited to solve this problem?
-
-**Output Format (JSON only):**
-{{
-  &quot;root_cause&quot;: &quot;The main cause of the failure.&quot;,
-  &quot;corrective_task&quot;: {{
-    &quot;name&quot;: &quot;Name of the corrective task (e.g., &#x27;Verify Email of 50 Existing Contacts&#x27;)&quot;,
-    &quot;description&quot;: &quot;Detailed description of the task and expected result.&quot;,
-    &quot;assigned_to_role&quot;: &quot;Specialized Role&quot;,
-    &quot;priority&quot;: &quot;high&quot;
-  }}
-}}
-&quot;&quot;&quot;</code></pre>
-
-<p>This prompt doesnt just solve the problem, but does so intelligently, learning from the past and delegating to the right role, perfectly closing the feedback loop.</p>
-</div>
-
-<div class="key-takeaways-section">
-    <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
-    <p class="takeaway-item">✓ <strong>Detection Isnt Enough, Action is Needed:</strong> An autonomous system doesnt just identify problems, but must be able to generate and prioritize actions to solve them.</p>
-<p class="takeaway-item">✓ <strong>Autonomy Requires Self-Awareness:</strong> A self-correction system must be aware of actions it has already taken to avoid entering panic loops and creating duplicate work.</p>
-<p class="takeaway-item">✓ <strong>Use Memory to Guide Correction:</strong> The best corrective actions are those informed by past mistakes. Tightly integrate your validation system with your memory system.</p>
-
-</div>
-
-<p><strong>Chapter Conclusion</strong></p>
-
-<p>With the implementation of the self-correction system, our AI team had developed a "nervous system". Now it could perceive when something was wrong and react proactively and intelligently.</p>
-
-<p>We had a system that planned, executed, collaborated, produced quality results, learned, and self-corrected. It was almost complete. The last major challenge was of a different nature: how could we be sure that such a complex system was stable and reliable over time? This led us to develop a robust <strong>Monitoring and Integrity Testing</strong> system.</p>
-
-    <!-- Chapter Navigation -->
-    <nav class="chapter-nav">
-        <div class="nav-container">
-            <a href="../improvement-cycle-correction/" class="nav-link prev">
-                <span class="nav-direction">← Previous</span>
-                <span class="nav-title">Chapter 15: Improvement Cycle - Self-Correction</span>
-            </a>
-            <a href="../" class="nav-link up">
-                <span class="nav-direction">↑ Up</span>
-                <span class="nav-title">Execution & Quality</span>
-            </a>
-            <a href="../consolidation-test/" class="nav-link next">
-                <span class="nav-direction">Next →</span>
-                <span class="nav-title">Chapter 17: Consolidation Testing - Simplify to Scale</span>
-            </a>
-        </div>
-    </nav>
+            <div class="insight-box">
+                <div class="insight-header">
+                    <svg class="insight-icon" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2M12,21.5C11.18,21.5 10.5,20.82 10.5,20C10.5,19.18 11.18,18.5 12,18.5C12.82,18.5 13.5,19.18 13.5,20C13.5,20.82 12.82,21.5 12,21.5M12,17.5C10.07,17.5 8.5,15.93 8.5,14C8.5,12.07 10.07,10.5 12,10.5C13.93,10.5 15.5,12.07 15.5,14C15.5,15.93 13.93,17.5 12,17.5Z"/>
+                    </svg>
+                    <span>Key Insight</span>
+                </div>
+                <div class="insight-content">
+                    <p><strong>Monitoring is not surveillance</strong>. It's applied intelligence. A good monitoring system tells you not only what's happening, but also what will happen and what you can do about it.</p>
+                </div>
             </div>
+
+            <h2>Dashboard and Visualizations</h2>
+
+            <p>Data visualization is fundamental for making informed decisions. Our dashboard provides:</p>
+
+            <h3>🎛️ Control Center</h3>
+            <ul>
+                <li><strong>Real-time Overview</strong>: General system status at a glance</li>
+                <li><strong>Agent Health Map</strong>: Visual map of each agent's status</li>
+                <li><strong>Task Flow Visualization</strong>: Visualization of task flow</li>
+                <li><strong>Performance Trends</strong>: Trend charts to identify patterns</li>
+            </ul>
+
+            <h3>📈 Analytics Deep Dive</h3>
+            <ul>
+                <li><strong>Historical Analysis</strong>: Historical trend analysis</li>
+                <li><strong>Predictive Models</strong>: Predictive models for capacity planning</li>
+                <li><strong>Cost Analysis</strong>: Cost tracking per agent and task</li>
+                <li><strong>ROI Metrics</strong>: Return on investment metrics</li>
+            </ul>
+
+            <h2>Lessons Learned from the Field</h2>
+
+            <h3>💡 Best Practices</h3>
+            <ul>
+                <li><strong>Monitor Everything, Alert Intelligently</strong>: Collect all data, but alert only on what requires action</li>
+                <li><strong>Context is King</strong>: Alerts without context are noise</li>
+                <li><strong>Automate the Boring Stuff</strong>: Automate repetitive actions</li>
+                <li><strong>Human-in-the-Loop</strong>: Humans should handle exceptions, not routine</li>
+            </ul>
+
+            <h3>⚠️ Anti-Patterns to Avoid</h3>
+            <ul>
+                <li><strong>Alert Fatigue</strong>: Too many alerts lead to ignoring them all</li>
+                <li><strong>Monitoring Without Action</strong>: Monitors that don't lead to concrete actions</li>
+                <li><strong>Over-Engineering</strong>: Monitoring systems more complex than the monitored system</li>
+                <li><strong>Data Hoarding</strong>: Collecting data without analyzing it</li>
+            </ul>
+
+            <div class="key-takeaways">
+                <div class="key-takeaways-header">
+                    <svg class="key-icon" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/>
+                    </svg>
+                    <span>Chapter Key Takeaways</span>
+                </div>
+                <div class="key-takeaways-content">
+                    <ul>
+                        <li><strong>Observability ≠ Monitoring</strong>: Observability allows you to ask questions you didn't know you needed to ask</li>
+                        <li><strong>Proactive > Reactive</strong>: Identify and resolve problems before they become critical</li>
+                        <li><strong>AI-Powered Insights</strong>: Use machine learning for pattern recognition and anomaly detection</li>
+                        <li><strong>Auto-Healing First</strong>: The system should self-correct when possible</li>
+                        <li><strong>Context-Rich Alerts</strong>: Every alert must include context, impact, and suggested actions</li>
+                        <li><strong>Human-Centric Design</strong>: Monitoring is for humans, it must be understandable and actionable</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p><strong>Chapter Conclusion</strong></p>
+
+            <p>With an autonomous monitoring and self-repair system, we had built a fundamental safety net. This gave us the necessary confidence to tackle the next phase: subjecting the entire system to increasingly complex end-to-end tests, pushing it to its limits to discover any hidden weaknesses before they could impact a real user. It was time to move from individual component tests to <strong>comprehensive tests on the entire AI organism</strong>.</p>
+        </div>
+
+        <!-- Chapter Navigation -->
+        <nav class="chapter-nav">
+            <div class="nav-container">
+                <a href="../improvement-cycle-correction/" class="nav-link prev">
+                    <span class="nav-direction">← Previous</span>
+                    <span class="nav-title">Chapter 15: Improvement Cycle - Self-Correction</span>
+                </a>
+                <a href="../" class="nav-link up">
+                    <span class="nav-direction">↑ Up</span>
+                    <span class="nav-title">Execution & Quality</span>
+                </a>
+                <a href="../consolidation-test/" class="nav-link next">
+                    <span class="nav-direction">Next →</span>
+                    <span class="nav-title">Chapter 17: Consolidation Testing - Simplify to Scale</span>
+                </a>
+            </div>
+        </nav>
     </div>
 
-        <!-- Reader Tools -->
+    <!-- Reader Tools -->
+    <div class="reader-tools" id="readerTools">
+        <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+        <div class="reader-tool" onclick="toggleTheme()">
+            <span class="reader-tool-icon" id="themeIcon">🌙</span>
+            <span class="reader-tool-label">Theme</span>
+        </div>
         <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            
-            <div class="language-switcher">
-                <button class="language-option active">EN</button>
-                <button class="language-option" onclick="switchLanguage(en)">EN</button>
-            </div>
-            
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
+            <span class="reader-tool-icon">🔖</span>
+            <span class="reader-tool-label">Bookmark</span>
         </div>
-        
-        <!-- Reading Progress -->
-                <div class="reader-tools" id="readerTools">
-            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
-            <div class="reader-tool" onclick="toggleTheme()">
-                <span class="reader-tool-icon" id="themeIcon">🌙</span>
-                <span class="reader-tool-label">Theme</span>
-            </div>
-            <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            <div class="reader-tool" onclick="showBookmarks()">
-                <span class="reader-tool-icon">📚</span>
-                <span class="reader-tool-label">My Bookmarks</span>
-            </div>
-            <div class="reader-tool">
-                <span class="reader-tool-icon">🌐</span>
-                <select class="language-select" onchange="switchLanguage(this.value)">
-                    <option value="en" selected>English</option>
-                    <option value="it">Italiano</option>
-                </select>
-            </div>
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
+        <div class="reader-tool" onclick="showBookmarks()">
+            <span class="reader-tool-icon">📚</span>
+            <span class="reader-tool-label">My Bookmarks</span>
         </div>
-
-        <div class="reading-progress">
-            <div class="reading-progress-fill" id="progressFill"></div>
+        <div class="reader-tool">
+            <span class="reader-tool-icon">🌐</span>
+            <select class="language-select" onchange="switchLanguage(this.value)">
+                <option value="en" selected>English</option>
+                <option value="it">Italiano</option>
+            </select>
         </div>
-        
-        <!-- Bookmark Toast -->
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>        </div>
-
-        <!-- Bookmarks Modal -->
-        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
-            <div class="bookmarks-content">
-                <div class="bookmarks-header">
-                    <h3 class="bookmarks-title">📚 My Bookmarks</h3>
-                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
-                </div>
-                <div class="bookmarks-list" id="bookmarksList">
-                </div>
-            </div>
-        </div>
-        </div>
-        
-        <!-- Bookmark Toast -->
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>            <!-- Reader Tools -->
-        <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            <div class="reader-tool" onclick="showBookmarks()">
-                <span class="reader-tool-icon">📚</span>
-                <span class="reader-tool-label">My Bookmarks</span>
-            </div>
-            <div class="reader-tool">
-                <span class="reader-tool-icon">🌐</span>
-                <select class="language-select" onchange="switchLanguage(this.value)">
-                    <option value="en" selected>English</option>
-                    <option value="it">Italiano</option>
-                </select>
-            </div>
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
-        </div>
-        <div class="reading-progress">
-            <div class="reading-progress-fill" id="progressFill"></div>
-        </div>
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>        </div>
-        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
-            <div class="bookmarks-content">
-                <div class="bookmarks-header">
-                    <h3 class="bookmarks-title">📚 I Miei Bookmark</h3>
-                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
-                </div>
-                <div class="bookmarks-list" id="bookmarksList">
-                </div>
-</div>
-
-    
-    <!-- Related Chapters Section -->
-    <div class="related-chapters-section" id="related-chapters-section">
-        <div class="related-chapters-header">
-            <h3>🔗 Related Chapters</h3>
-            <p>Explore these chapters to deepen your understanding of related concepts</p>
-        </div>
-        <div class="related-chapters-grid">
-            
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/agent-toolbox/" class="related-link">Agent Toolbox & Tools Registry</a></h4>
-                <p>Master AI systems with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/agent-toolbox/" class="related-cta">Learn More →</a>
-            </div>
-        
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-link">15 Pillars of AI Systems</a></h4>
-                <p>Master enterprise architecture with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-cta">Learn More →</a>
-            </div>
-        
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-link">Orchestrator as Conductor</a></h4>
-                <p>Master production deployment with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-cta">Learn More →</a>
-            </div>
-</div>
-    
-    <style>
-    .related-chapters-section {
-        margin: 3rem 0;
-        padding: 2rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 15px;
-        border-left: 5px solid #667eea;
-    }
-    
-    .related-chapters-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .related-chapters-header h3 {
-        color: #2c3e50;
-        font-size: 1.8rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .related-chapters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .related-chapter-item {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-    }
-    
-    .related-chapter-item:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
-    }
-    
-    .related-link {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 600;
-    }
-    
-    .related-link:hover {
-        color: #5a6fd8;
-        text-decoration: underline;
-    }
-    
-    .related-cta {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        margin-top: 1rem;
-    }
-    
-    .related-cta:hover {
-        color: #5a6fd8;
-    }
-    
-    /* Dark mode support */
-    .dark-mode .related-chapters-section {
-        background: rgba(255, 255, 255, 0.05);
-        color: #e9ecef;
-    }
-    
-    .dark-mode .related-chapters-header h3 {
-        color: #e9ecef;
-    }
-    
-    .dark-mode .related-chapter-item {
-        background: rgba(255, 255, 255, 0.05);
-        color: #e9ecef;
-    }
-    </style>
-    
-    <!-- Continue Reading Section -->
-    <div class="continue-reading-section">
-        <div class="continue-reading-header">
-            <h3>📚 Continue Reading</h3>
-        </div>
-        <div class="continue-reading-actions">
-            <a href="../ai-team-orchestrator.html" class="continue-btn primary">
-                <span class="btn-icon">🏠</span>
-                <span class="btn-text">Back to Guide</span>
-            </a>
-            <a href="../core-philosophy-architecture/" class="continue-btn secondary">
-                <span class="btn-icon">🎭</span>
-                <span class="btn-text">Explore Movement</span>
-            </a>
+        <div class="reader-tool" onclick="showFontSizeMenu()">
+            <span class="reader-tool-icon">🔤</span>
+            <span class="reader-tool-label">Font Size</span>
         </div>
     </div>
+
+    <div class="reading-progress">
+        <div class="reading-progress-fill" id="progressFill"></div>
+    </div>
     
-    <style>
-    .continue-reading-section {
-        margin: 2rem 0;
-        padding: 1.5rem;
-        text-align: center;
-        background: linear-gradient(135deg, #667eea10, #764ba210);
-        border-radius: 15px;
-    }
-    
-    .continue-reading-header h3 {
-        color: #2c3e50;
-        margin-bottom: 1rem;
-    }
-    
-    .continue-reading-actions {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .continue-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.8rem 1.5rem;
-        border-radius: 25px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .continue-btn.primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    
-    .continue-btn.secondary {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
-        border: 2px solid #667eea;
-    }
-    
-    .continue-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-    }
-    
-    .dark-mode .continue-reading-header h3 {
-        color: #e9ecef;
-    }
-    </style>
+    <!-- Bookmark Toast -->
+    <div class="bookmark-toast" id="bookmarkToast">
+        <span id="bookmarkMessage">Bookmark saved!</span>
+    </div>
+
+    <!-- Bookmarks Modal -->
+    <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
+        <div class="bookmarks-content">
+            <div class="bookmarks-header">
+                <h3 class="bookmarks-title">📚 My Bookmarks</h3>
+                <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
+            </div>
+            <div class="bookmarks-list" id="bookmarksList">
+            </div>
+        </div>
     </div>
 
     <script>
-
         // Reader Tools JavaScript
         let readerToolsCollapsed = false;
         
         // Initialize reader tools
-        document.addEventListener(DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function() {
             initializeReaderTools();
             updateReadingProgress();
             loadUserPreferences();
@@ -1220,7 +1115,7 @@ You are an expert Project Manager in crisis management. A critical gap has been 
         
         // Toggle reader tools visibility
         function toggleReaderTools() {
-            const tools = document.getElementById('readerTools')
+            const tools = document.getElementById('readerTools');
             readerToolsCollapsed = !readerToolsCollapsed;
             
             if (readerToolsCollapsed) {
@@ -1229,19 +1124,19 @@ You are an expert Project Manager in crisis management. A critical gap has been 
                 tools.classList.remove('collapsed');
             }
             
-            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed');
+            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed);
         }
         
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
-            const themeIcon = document.getElementById('themeIcon')
+            const themeIcon = document.getElementById('themeIcon');
             const isDarkMode = body.classList.contains('dark-mode');
             
             if (isDarkMode) {
                 body.classList.remove('dark-mode');
                 themeIcon.textContent = '🌙';
-                localStorage.setItem('theme, ', 'light');
+                localStorage.setItem('theme', 'light');
             } else {
                 body.classList.add('dark-mode');
                 themeIcon.textContent = '☀️';
@@ -1254,12 +1149,12 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             const currentPage = window.location.pathname;
             const pageTitle = document.querySelector('.chapter-title').textContent;
             
-            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]'');
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
             
             if (existingIndex > -1) {
                 bookmarks.splice(existingIndex, 1);
-                showToast('Bookmark removed!', error');
+                showToast('Bookmark removed!', 'error');
             } else {
                 bookmarks.push({
                     url: currentPage,
@@ -1277,40 +1172,18 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             const currentPath = window.location.pathname;
             let newPath;
             
-            if (lang === 'en')  {
-                newPath = currentPath.replace(/it/, /en/);
-                    .replace('filosofia-core-architettura, core-philosophy-architecture)
-                    .replace(user-experience-trasparenza, 'user-experience-transparency)
-                    .replace(esecuzione-qualita, execution-quality)
-                    .replace(memory-system-scaling, memory-system-scaling')
-                    .replace(i-15-pilastri-sistema-ai, '15-pillars-ai-system)
-                    .replace(primo-agente-specialist-architecture, first-specialist-agent-architecture)
-                    .replace(isolare-intelligenza-mock-llm, ai-mocking-testing-strategy')
-                    .replace(dramma-parsing-contratto-ai, drama-parsing-ai-contracts)
-                    .replace(sdk-vs-api-battle', sdk-vs-direct-api-battle)
-                    .replace(agente-ambiente-interazioni-fondamentali, agent-environment-interactions)
-                    .replace(orchestratore-direttore-orchestra, 'orchestrator-conductor)
-                    .replace(staffetta-mancata-handoff', failed-handoff-delegation)
-                    .replace(recruiter-ai-team-dinamico, ai-recruiter-dynamic-team)
-                    .replace(test-tool-ancorare-realta, 'tool-testing-reality-anchor)
-                    .replace(cassetta-attrezzi-agente, agent-toolbox);
-            } else if (lang === 'it) {;
-                newPath = currentPath.replace(/en/, /it/);
-                    .replace(core-philosophy-architecture, filosofia-core-architettura')
-                    .replace(user-experience-transparency, 'user-experience-trasparenza)
-                    .replace(execution-quality, esecuzione-qualita)
-                    .replace(memory-system-scaling, memory-system-scaling')
-                    .replace(15-pillars-ai-system, i-15-pilastri-sistema-ai)
-                    .replace(first-specialist-agent-architecture', primo-agente-specialist-architecture)
-                    .replace(ai-mocking-testing-strategy, isolare-intelligenza-mock-llm)
-                    .replace(drama-parsing-ai-contracts, 'dramma-parsing-contratto-ai)
-                    .replace(sdk-vs-direct-api-battle', sdk-vs-api-battle)
-                    .replace(agent-environment-interactions, agente-ambiente-interazioni-fondamentali)
-                    .replace(orchestrator-conductor, 'orchestratore-direttore-orchestra)
-                    .replace(failed-handoff-delegation, staffetta-mancata-handoff)
-                    .replace('ai-recruiter-dynamic-team, recruiter-ai-team-dinamico)
-                    .replace(tool-testing-reality-anchor, test-tool-ancorare-realta)
-                    .replace(agent-toolbox', cassetta-attrezzi-agente);
+            if (lang === 'en') {
+                newPath = currentPath.replace(/\/it\//, '/en/')
+                    .replace('filosofia-core-architettura', 'core-philosophy-architecture')
+                    .replace('user-experience-trasparenza', 'user-experience-transparency')
+                    .replace('esecuzione-qualita', 'execution-quality')
+                    .replace('memory-system-scaling', 'memory-system-scaling');
+            } else if (lang === 'it') {
+                newPath = currentPath.replace(/\/en\//, '/it/')
+                    .replace('core-philosophy-architecture', 'filosofia-core-architettura')
+                    .replace('user-experience-transparency', 'user-experience-trasparenza')
+                    .replace('execution-quality', 'esecuzione-qualita')
+                    .replace('memory-system-scaling', 'memory-system-scaling');
             }
             
             if (newPath && newPath !== currentPath) {
@@ -1327,8 +1200,8 @@ You are an expert Project Manager in crisis management. A critical gap has been 
                 case 'small':
                     newSize = 'medium';
                     break;
-                case medium':
-                    newSize = large;
+                case 'medium':
+                    newSize = 'large';
                     break;
                 case 'large':
                     newSize = 'small';
@@ -1338,8 +1211,8 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             }
             
             setFontSize(newSize);
-            localStorage.setItem('fontSize', newSize');
-            showToast('`Dimensione font: ${newSize}`, ''success');
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}`, 'success');
         }
         
         // Set font size
@@ -1348,15 +1221,15 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             const sizes = {
                 'small': 0.9,
                 'medium': 1.0,
-                'large': 1.1;
+                'large': 1.1
             };
-            root.style.fontSize = sizes[size] + em';
+            root.style.fontSize = sizes[size] + 'em';
         }
         
         // Show toast notification (improved)
-        function showToast('message, type = 'success') {;
-            const toast = document.getElementById('bookmarkToast')
-            const messageEl = document.getElementById('bookmarkMessage')
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('bookmarkToast');
+            const messageEl = document.getElementById('bookmarkMessage');
             
             if (!toast || !messageEl) return;
             
@@ -1370,22 +1243,22 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             messageEl.textContent = message;
             
             // Add appropriate classes
-            if (type === 'error')  {
+            if (type === 'error') {
                 toast.classList.add('error');
             }
             
             // Show toast
-            toast.classList.add(show');
+            toast.classList.add('show');
             
             // Hide after delay
-            window.toastTimeout = setTimeout(() =>  {
+            window.toastTimeout = setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
         }
         
         // Reading progress
         function updateReadingProgress() {
-            const progressFill = document.getElementById('progressFill')
+            const progressFill = document.getElementById('progressFill');
             
             window.addEventListener('scroll', () => {
                 const article = document.querySelector('.chapter-content');
@@ -1397,7 +1270,7 @@ You are an expert Project Manager in crisis management. A critical gap has been 
                 const scrollTop = window.pageYOffset;
                 
                 const progress = Math.min(100, Math.max(0, 
-                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100;
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
                 ));
                 
                 progressFill.style.width = progress + '%';
@@ -1408,7 +1281,7 @@ You are an expert Project Manager in crisis management. A critical gap has been 
         function loadUserPreferences() {
             // Load theme
             const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === dark')  {
+            if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
                 document.getElementById('themeIcon').textContent = '☀️';
             }
@@ -1420,7 +1293,7 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             }
             
             // Load reader tools state
-            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed'') === true;
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true';
             if (toolsCollapsed) {
                 document.getElementById('readerTools').classList.add('collapsed');
                 readerToolsCollapsed = true;
@@ -1431,99 +1304,61 @@ You are an expert Project Manager in crisis management. A critical gap has been 
         function initializeReaderTools() {
             // Check if current page is bookmarked
             const currentPage = window.location.pathname;
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]'');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             const isBookmarked = bookmarks.some(b => b.url === currentPage);
             
             if (isBookmarked) {
-                document.querySelector('.reader-tool:nth-child(3')).classList.add('active');
+                document.querySelector('[onclick*="toggleBookmark"]').classList.add('active');
             }
-        
+        }
     
         // Show bookmarks modal
         function showBookmarks() {
-            const modal = document.getElementById('bookmarksModal')
-            const bookmarksList = document.getElementById('bookmarksList')
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]'');
+            const modal = document.getElementById('bookmarksModal');
+            const bookmarksList = document.getElementById('bookmarksList');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             
             if (bookmarks.length === 0) {
                 bookmarksList.innerHTML = `
-                    <div class="no-bookmarks">
-                        <div class="no-bookmarks-icon">📚</div>
+                    <div class="empty-bookmarks">
+                        <div class="empty-bookmarks-icon">📚</div>
                         <h3>No bookmarks saved</h3>
-                        <p>Start saving your favorite chapters clicking the icon 🔖</p>`;
+                        <p>Start saving your favorite chapters by clicking the 🔖 icon</p>
                     </div>`;
             } else {
                 bookmarksList.innerHTML = bookmarks.map(bookmark => `
                     <div class="bookmark-item">
-                        <a href="${bookmark.url}" class="bookmark-link">
-                            <div class="bookmark-title">${bookmark.title}</div>
-                            <div class="bookmark-date">${new Date(bookmark.date).toLocaleDateString(it-IT)}</div>
-                        </a>
-                        <button class="delete-bookmark" onclick="deleteBookmark(${bookmark.url}')">🗑️</button>
+                        <div class="bookmark-info">
+                            <a href="${bookmark.url}" class="bookmark-title">${bookmark.title}</a>
+                            <div class="bookmark-date">${new Date(bookmark.timestamp).toLocaleDateString()}</div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <button class="bookmark-action" onclick="deleteBookmark('${bookmark.url}')">🗑️</button>
+                        </div>
                     </div>
-                `).join();
+                `).join('');
             }
             
-            modal.style.display = flex;
-            document.body.style.overflow = hidden';
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
         
-        function closeBookmarksModal(event) {
-            const modal = document.getElementById('bookmarksModal')
-            if (modal && (!event || event.target === modal))  {
+        function closeBookmarksModal() {
+            const modal = document.getElementById('bookmarksModal');
+            if (modal) {
                 modal.style.display = 'none';
                 document.body.style.overflow = '';
             }
         }
         
         function deleteBookmark(url) {
-            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]);
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             bookmarks = bookmarks.filter(b => b.url !== url);
-            localStorage.setItem('bookmarks', JSON.stringify(bookmarks'));
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
             showToast('Bookmark removed!', 'error');
-            showBookmarks();
-        }
-        
-        function showToast(message, type = 'success') {;
-            let toast = document.getElementById('bookmarkToast')
-            if (!toast) return;
-            
-            const messageEl = document.getElementById('bookmarkMessage')
-            if (messageEl) messageEl.textContent = message;
-            
-            toast.style.background = type === 'error'' ? #dc3545 : '#28a745;
-            toast.style.opacity = 1;
-            toast.style.transform = 'translateY(0)';
-            
-            setTimeout(() => {
-                toast.style.opacity = 0;
-                toast.style.transform = 'translateY(-10px)'';
-            }, 3000);
-        }
-        
-        document.addEventListener(DOMContentLoaded, function() {
-            const currentPage = window.location.pathname;
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []');
-            const isBookmarked = bookmarks.some(b => b.url === currentPage);
-            
-            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
-            if (bookmarkTool) {
-                bookmarkTool.classList.toggle('active', isBookmarked);
-            }
-            
-            // Load saved theme
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode);
-                const themeIcon = document.getElementById('themeIcon')
-                if (themeIcon) themeIcon.textContent = '☀️';
-            }
-        });
-    
+            showBookmarks(); // Refresh the modal
         }
     </script>
-
-<!-- universal-progress-bar-added -->
 
     <!-- Mermaid.js for diagrams -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
@@ -1532,12 +1367,12 @@ You are an expert Project Manager in crisis management. A critical gap has been 
             startOnLoad: true,
             theme: 'base',
             themeVariables: {
-                primaryColor: #667eea,
+                primaryColor: '#667eea',
                 primaryTextColor: '#2c3e50',
-                primaryBorderColor: #667eea,
-                lineColor: '#7f8c8d',',
-                secondaryColor: #f8f9fa',
-                tertiaryColor: #ffffff'
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
             }
         });
     </script>

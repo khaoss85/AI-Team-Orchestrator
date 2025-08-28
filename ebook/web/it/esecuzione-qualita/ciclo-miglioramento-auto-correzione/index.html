@@ -321,9 +321,172 @@
             }
         }
     </style>
+        
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .tool-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Bookmark Modal */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
+        .bookmark-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bookmark-item:last-child {
+            border-bottom: none;
+        }
+        
+        .bookmark-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .bookmark-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Reading Progress Bar */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 999;
+        }
+        
+        .reading-progress::before {
+            content: '';
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        body.dark-mode .chapter-header,
+        body.dark-mode .chapter-content,
+        body.dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.8);
+            color: #ecf0f1;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
 </head>
 <body>
-    <div class="container">
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="readingProgress"></div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools">
+        <button class="tool-button" onclick="addBookmark()" title="I Miei Segnalibri">📚</button>
+        <button class="tool-button" onclick="toggleTheme()" title="Tema">🎨</button>
+        <button class="tool-button" onclick="increaseFontSize()" title="Dimensione Font +">A+</button>
+        <button class="tool-button" onclick="decreaseFontSize()" title="Dimensione Font -">A-</button>
+    </div>
+    
+    <!-- Bookmark Modal -->
+    <div id="bookmarksModal" class="bookmarks-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeBookmarksModal()">&times;</span>
+            <h3>📚 I Miei Segnalibri</h3>
+            <div id="bookmarksList">
+                <!-- Bookmarks will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>    <div class="container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
             <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
@@ -509,4 +672,149 @@ Sei un Project Manager esperto in crisis management. È stato rilevato un gap cr
         });
     </script>
 </body>
+    
+    <script>
+        // Reading Progress
+        function updateReadingProgress() {
+            const article = document.querySelector('.chapter-content');
+            const progress = document.getElementById('readingProgress');
+            
+            if (article && progress) {
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowTop = window.pageYOffset;
+                const windowHeight = window.innerHeight;
+                
+                const articleBottom = articleTop + articleHeight;
+                const windowBottom = windowTop + windowHeight;
+                
+                let progressPercentage = 0;
+                
+                if (windowTop >= articleTop && windowTop <= articleBottom) {
+                    progressPercentage = ((windowTop - articleTop) / articleHeight) * 100;
+                } else if (windowBottom >= articleBottom) {
+                    progressPercentage = 100;
+                }
+                
+                progress.style.transform = `scaleX(${Math.min(progressPercentage / 100, 1)})`;
+            }
+        }
+        
+        window.addEventListener('scroll', updateReadingProgress);
+        window.addEventListener('load', updateReadingProgress);
+        
+        // Font Size Controls
+        let currentFontSize = 1.1;
+        
+        function increaseFontSize() {
+            currentFontSize = Math.min(currentFontSize + 0.1, 2.0);
+            applyFontSize();
+        }
+        
+        function decreaseFontSize() {
+            currentFontSize = Math.max(currentFontSize - 0.1, 0.8);
+            applyFontSize();
+        }
+        
+        function applyFontSize() {
+            const content = document.querySelector('.chapter-content');
+            if (content) {
+                const paragraphs = content.querySelectorAll('p, li');
+                paragraphs.forEach(p => {
+                    p.style.fontSize = currentFontSize + 'rem';
+                });
+            }
+            localStorage.setItem('fontSize', currentFontSize.toString());
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark.toString());
+            showToast(isDark ? 'Modalità scura attivata' : 'Modalità chiara attivata');
+        }
+        
+        // Bookmarks
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+        }
+        
+        function addBookmark() {
+            const title = document.querySelector('.chapter-title').textContent;
+            const url = window.location.href;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            // Check if bookmark already exists
+            const exists = bookmarks.find(b => b.url === url);
+            if (exists) {
+                showToast('Segnalibro rimosso!');
+                bookmarks = bookmarks.filter(b => b.url !== url);
+            } else {
+                showToast('Segnalibro salvato!');
+                bookmarks.push({
+                    title: title,
+                    url: url,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const container = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                container.innerHTML = '<p>Nessun segnalibro salvato.</p>';
+                return;
+            }
+            
+            container.innerHTML = bookmarks
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">${bookmark.title}</a>
+                    </div>
+                `).join('');
+        }
+        
+        // Toast Notifications
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        window.addEventListener('load', function() {
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                currentFontSize = parseFloat(savedFontSize);
+                applyFontSize();
+            }
+            
+            // Load theme
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            }
+        });
+    </script>
 </html>

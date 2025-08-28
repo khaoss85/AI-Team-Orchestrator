@@ -474,7 +474,65 @@ function DeliverablesTab({
     )
   }
 
-  // Helper function to detect content type and format
+  // Enhanced content renderer with display_content priority
+  const renderEnhancedContent = (deliverable: any) => {
+    // 1. PRIORITY: Use display_content if available (AI-enhanced format)
+    if (deliverable.display_content) {
+      const displayFormat = deliverable.display_format || 'html'
+      
+      return (
+        <div className="enhanced-deliverable-content">
+          {/* Quality indicators */}
+          <div className="flex items-center gap-2 mb-4 p-2 bg-blue-50 rounded-lg">
+            <div className="text-sm text-blue-700">
+              <span className="font-medium">AI-Enhanced Content</span>
+              {deliverable.display_quality_score && (
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                  Quality: {Math.round(deliverable.display_quality_score)}%
+                </span>
+              )}
+              {deliverable.user_friendliness_score && (
+                <span className="ml-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                  UX: {Math.round(deliverable.user_friendliness_score)}%
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {/* Enhanced content rendering */}
+          <div className="deliverable-display-content">
+            {displayFormat === 'html' ? (
+              <div 
+                className="prose prose-sm max-w-none deliverable-html-content"
+                dangerouslySetInnerHTML={{ __html: deliverable.display_content }}
+              />
+            ) : displayFormat === 'markdown' ? (
+              <div className="prose prose-sm max-w-none">
+                <MarkdownRenderer content={deliverable.display_content} />
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap text-sm text-gray-700 p-4 bg-gray-50 rounded-lg">
+                {deliverable.display_content}
+              </div>
+            )}
+          </div>
+          
+          {/* Display summary if available */}
+          {deliverable.display_summary && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400">
+              <h5 className="font-medium text-gray-900 mb-1">Summary</h5>
+              <p className="text-sm text-gray-700">{deliverable.display_summary}</p>
+            </div>
+          )}
+        </div>
+      )
+    }
+    
+    // 2. FALLBACK: Process legacy content with enhanced detection
+    return renderLegacyContent(deliverable.content)
+  }
+
+  // Helper function to detect content type and format (legacy support)
   const detectContentType = (content: string): 'markdown' | 'html' | 'json' | 'text' => {
     if (!content || typeof content !== 'string') return 'text'
     
@@ -485,7 +543,7 @@ function DeliverablesTab({
     }
     
     // Check for HTML
-    if (content.trim().startsWith('<') && content.includes('</')  {
+    if (content.trim().startsWith('<') && content.includes('</')) {
       return 'html'
     }
     
@@ -503,7 +561,7 @@ function DeliverablesTab({
     return 'text'
   }
 
-  const renderContent = (content: any) => {
+  const renderLegacyContent = (content: any) => {
     if (!content) return <div className="text-gray-500 italic">No content available</div>
     
     if (typeof content === 'string') {
@@ -520,7 +578,7 @@ function DeliverablesTab({
         case 'html':
           return (
             <div 
-              className="prose prose-sm max-w-none"
+              className="prose prose-sm max-w-none deliverable-html-content"
               dangerouslySetInnerHTML={{ __html: content }}
             />
           )
@@ -529,7 +587,11 @@ function DeliverablesTab({
           try {
             const jsonContent = JSON.parse(content)
             return (
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center mb-2">
+                  <span className="text-yellow-600 text-sm font-medium">⚠️ Raw JSON Content</span>
+                  <span className="ml-2 text-xs text-yellow-600">(Consider updating to enhanced format)</span>
+                </div>
                 <pre className="whitespace-pre-wrap text-sm text-gray-700 overflow-x-auto">
                   {JSON.stringify(jsonContent, null, 2)}
                 </pre>
@@ -542,7 +604,7 @@ function DeliverablesTab({
         
         default:
           return (
-            <div className="whitespace-pre-wrap text-sm text-gray-700">
+            <div className="whitespace-pre-wrap text-sm text-gray-700 p-4 bg-gray-50 rounded-lg">
               {content}
             </div>
           )
@@ -590,9 +652,13 @@ function DeliverablesTab({
           </div>
         )
       } else {
-        // Fallback: show as formatted JSON
+        // Fallback: show as formatted JSON with warning
         return (
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center mb-2">
+              <span className="text-yellow-600 text-sm font-medium">⚠️ Raw JSON Content</span>
+              <span className="ml-2 text-xs text-yellow-600">(Consider updating to enhanced format)</span>
+            </div>
             <pre className="whitespace-pre-wrap text-sm text-gray-700 overflow-x-auto">
               {JSON.stringify(content, null, 2)}
             </pre>
@@ -682,24 +748,60 @@ function DeliverablesTab({
                 </div>
               </div>
           
-              {/* Content - Claude Code style */}
+              {/* Content - Enhanced with display_content priority */}
               {isExpanded && (
                 <div className="p-6 bg-gray-50">
                   <div className="bg-white rounded-lg border p-6">
-                    {renderContent(deliverable.content)}
+                    <ErrorBoundary deliverableId={deliverable.id || `deliverable-${index}`}>
+                      {renderEnhancedContent(deliverable)}
+                    </ErrorBoundary>
                   </div>
                   
-                  {/* Action buttons */}
-                  <div className="mt-4 flex items-center space-x-2">
-                    <DeliverableActionBar 
-                      deliverable={{
-                        id: deliverable.id || `deliverable-${index}`,
-                        title: deliverable.title || `Deliverable ${index + 1}`,
-                        content: deliverable.content,
-                        contentType: 'HTML',
-                        type: deliverable.type
-                      }}
-                    />
+                  {/* Enhanced Action buttons with transformation actions */}
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <DeliverableActionBar 
+                        deliverable={{
+                          id: deliverable.id || `deliverable-${index}`,
+                          title: deliverable.title || `Deliverable ${index + 1}`,
+                          content: deliverable.display_content || deliverable.content,
+                          contentType: deliverable.display_format || 'HTML',
+                          type: deliverable.type
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Transformation actions if available */}
+                    {deliverable.can_retry_transformation && (
+                      <div className="flex items-center space-x-2 text-sm">
+                        <button 
+                          className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-xs"
+                          onClick={() => handleTransformationRetry(deliverable.id)}
+                        >
+                          🔄 Retry Enhancement
+                        </button>
+                        {deliverable.available_formats && deliverable.available_formats.length > 1 && (
+                          <select 
+                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                            onChange={(e) => handleFormatChange(deliverable.id, e.target.value)}
+                            value={deliverable.display_format || 'html'}
+                          >
+                            {deliverable.available_formats.map((format: string) => (
+                              <option key={format} value={format}>
+                                {format.toUpperCase()}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Transformation error display */}
+                    {deliverable.transformation_error && (
+                      <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                        ⚠️ Enhancement failed: {deliverable.transformation_error}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

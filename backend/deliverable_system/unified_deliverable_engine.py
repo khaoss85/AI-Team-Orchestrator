@@ -157,11 +157,21 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                 }
             }
         else:
+            # 🎨 ENHANCED: Add AI-powered display transformation
+            display_content, display_metadata = await _create_user_friendly_display(
+                aggregated_content, 
+                goal_description,
+                {"workspace_id": workspace_id, "goal_id": goal_id}
+            )
+            
             # Create goal-specific deliverable
             deliverable_data = {
                 "title": f"{goal_description} - AI-Generated Deliverable",
                 "type": "goal_deliverable",
                 "content": aggregated_content,
+                "display_content": display_content,  # User-friendly HTML/Markdown
+                "display_format": display_metadata.get('format', 'html'),
+                "display_confidence": display_metadata.get('confidence', 85.0),
                 "status": "completed",
                 "goal_id": goal_id,  # CRITICAL: Link to specific goal
                 "readiness_score": 90,
@@ -175,13 +185,15 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                     "goal_id": goal_id,
                     "ai_quality_score": avg_quality_score,
                     "aggregation_quality_score": aggregation_quality_score,
-                    "final_quality_score": final_quality_score
+                    "final_quality_score": final_quality_score,
+                    "display_transformation": display_metadata
                 },
                 "metadata": {
                     "source": "goal_specific_aggregation",
                     "goal_description": goal_description,
                     "tasks_included": [task.get('id') for task in completed_tasks],
-                    "creation_method": "automated_goal_completion"
+                    "creation_method": "automated_goal_completion",
+                    "display_enhanced": True
                 }
             }
         
@@ -777,6 +789,71 @@ async def _calculate_fallback_business_score(completed_tasks: list) -> float:
     except Exception as e:
         logger.error(f"Error in fallback scoring: {e}")
         return 50.0  # Safe fallback
+
+async def _create_user_friendly_display(
+    content: str, 
+    goal_description: str,
+    context: dict
+) -> tuple[str, dict]:
+    """
+    🎨 Create user-friendly display version of content using AIContentDisplayTransformer
+    """
+    try:
+        # Import the AI content display transformer
+        from services.ai_content_display_transformer import transform_deliverable_to_html
+        
+        logger.info(f"🎨 Creating user-friendly display for goal: {goal_description}")
+        
+        # Prepare business context from goal and workspace info
+        business_context = {
+            "goal_description": goal_description,
+            "workspace_id": context.get("workspace_id"),
+            "goal_id": context.get("goal_id"),
+            "content_type": "business_deliverable"
+        }
+        
+        # Transform content to HTML format for frontend display
+        result = await transform_deliverable_to_html(
+            content=content,
+            business_context=business_context
+        )
+        
+        display_metadata = {
+            "format": result.display_format,
+            "confidence": result.transformation_confidence,
+            "processing_time": result.processing_time,
+            "fallback_used": result.fallback_used,
+            "ai_enhanced": not result.fallback_used,
+            "transformation_metadata": result.metadata
+        }
+        
+        logger.info(f"✅ Display transformation complete: confidence={result.transformation_confidence:.1f}%, fallback={result.fallback_used}")
+        
+        return result.transformed_content, display_metadata
+        
+    except Exception as e:
+        logger.error(f"❌ Display transformation failed: {e}")
+        # Fallback to basic HTML formatting
+        fallback_html = f"""
+        <div class="deliverable-content">
+            <h2>📋 {goal_description}</h2>
+            <div class="content-body">
+                <pre>{content}</pre>
+            </div>
+            <p><small><em>Display transformation unavailable - showing raw content</em></small></p>
+        </div>
+        """
+        
+        fallback_metadata = {
+            "format": "html",
+            "confidence": 30.0,
+            "processing_time": 0.001,
+            "fallback_used": True,
+            "ai_enhanced": False,
+            "error": str(e)
+        }
+        
+        return fallback_html.strip(), fallback_metadata
 
 class RequirementsAnalyzer:
     """Backward compatibility class"""

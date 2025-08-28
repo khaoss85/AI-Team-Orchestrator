@@ -16,7 +16,7 @@ from uuid import UUID
 
 from database import (
     get_workspace_goals, 
-    get_tasks_for_goal, 
+    list_tasks,
     create_task, 
     get_deliverables,
     get_workspace,
@@ -24,10 +24,10 @@ from database import (
     get_task,
     update_task_status
 )
-from models import Task, TaskStatus, TaskPriority
-from services.enhanced_goal_driven_planner import get_enhanced_goal_driven_planner
+from models import Task, TaskStatus
+from services.enhanced_goal_driven_planner import EnhancedGoalDrivenPlanner
 from services.api_rate_limiter import api_rate_limiter
-from executor import get_task_executor
+from executor import start_task_executor
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class MissingDeliverableDetection:
         """Check if goal can be auto-completed or if it's blocked"""
         try:
             # Get goal tasks to check for blocks
-            tasks = await get_tasks_for_goal(workspace_id, goal_id)
+            tasks = await list_tasks(workspace_id, goal_id=goal_id)
             
             # Check for blocking conditions
             failed_tasks = [t for t in tasks if t.get('status') == TaskStatus.FAILED.value]
@@ -235,7 +235,7 @@ class MissingDeliverableAutoCompleter:
                 }
             
             # Get goal-driven planner
-            goal_planner = get_enhanced_goal_driven_planner()
+            goal_planner = EnhancedGoalDrivenPlanner()
             
             # Create completion task
             task_data = {
@@ -243,7 +243,7 @@ class MissingDeliverableAutoCompleter:
                 'description': f'Auto-generated task to complete the missing deliverable "{deliverable_name}" for goal completion',
                 'workspace_id': workspace_id,
                 'goal_id': goal_id,
-                'priority': TaskPriority.HIGH,  # High priority for completion tasks
+                'priority': "high",  # High priority for completion tasks
                 'task_type': 'deliverable_completion',
                 'metadata': {
                     'auto_generated': True,
@@ -265,7 +265,7 @@ class MissingDeliverableAutoCompleter:
             )
             
             if completion_tasks:
-                task_executor = get_task_executor()
+                task_executor = start_task_executor()
                 # Execute the completion task immediately
                 execution_result = await task_executor.process_single_task(completion_tasks[0])
                 
@@ -307,7 +307,7 @@ class MissingDeliverableAutoCompleter:
             logger.info(f"🔓 Attempting to unblock goal {goal_id}")
             
             # Get tasks for the goal
-            tasks = await get_tasks_for_goal(workspace_id, goal_id)
+            tasks = await list_tasks(workspace_id, goal_id=goal_id)
             
             unblock_actions = []
             
@@ -338,7 +338,7 @@ class MissingDeliverableAutoCompleter:
                 try:
                     # SDK COMPLIANT: Use update_task_fields for security-critical updates
                     await update_task_fields(task_id, {
-                        'priority': TaskPriority.URGENT.value,
+                        'priority': "urgent",
                         'metadata': {
                             **task.get('metadata', {}),
                             'requires_manual_review': True,

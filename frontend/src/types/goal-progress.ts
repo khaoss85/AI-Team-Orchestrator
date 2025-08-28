@@ -67,6 +67,31 @@ export interface DeliverableItem {
   can_retry: boolean
   retry_reason?: string
   unblock_actions: string[]
+  
+  // 🚀 AI-DRIVEN DUAL-FORMAT SUPPORT
+  // Execution content (structured data for processing)
+  execution_content?: Record<string, any>
+  execution_format?: string
+  
+  // Display content (user-friendly format for presentation)
+  display_content?: string
+  display_format?: 'html' | 'markdown' | 'text'
+  display_summary?: string
+  display_preview?: string
+  
+  // Quality and transformation metadata
+  display_quality_score?: number
+  user_friendliness_score?: number
+  readability_score?: number
+  content_transformation_status?: 'pending' | 'success' | 'failed'
+  transformation_error?: string
+  
+  // User actions for dual-format
+  can_retry_transformation?: boolean
+  available_formats?: string[]
+  
+  // Legacy support (deprecated)
+  content?: string | Record<string, any>
 }
 
 export interface UnblockRequest {
@@ -179,5 +204,212 @@ export const UNBLOCK_ACTION_CONFIG = {
     icon: '⚠️',
     color: 'bg-orange-500 hover:bg-orange-600',
     description: 'Escalate if task appears stuck'
+  }
+}
+
+// --- AI-DRIVEN DUAL-FORMAT ARCHITECTURE TYPES ---
+
+export interface ContentTransformationRequest {
+  asset_id: string
+  execution_content: Record<string, any>
+  content_type: string
+  target_format?: 'html' | 'markdown' | 'text'
+  transformation_context?: Record<string, any>
+  user_preferences?: Record<string, any>
+  quality_requirements?: Record<string, string>
+}
+
+export interface ContentTransformationResponse {
+  success: boolean
+  asset_id: string
+  display_content?: string
+  display_format: string
+  display_summary?: string
+  display_metadata: Record<string, any>
+  
+  // Quality metrics
+  display_quality_score: number
+  user_friendliness_score: number
+  readability_score: number
+  
+  // Transformation details
+  transformation_method: string
+  transformation_timestamp: string
+  ai_confidence: number
+  
+  // Error handling
+  error_message?: string
+  fallback_used: boolean
+  retry_suggestions: string[]
+}
+
+export interface EnhancedDeliverableResponse {
+  id: string
+  title: string
+  type: string
+  status: string
+  created_at: string
+  updated_at: string
+  
+  // Execution content (for system processing)
+  execution_content: Record<string, any>
+  execution_format: string
+  
+  // Display content (for user presentation)
+  display_content?: string
+  display_format: string
+  display_summary?: string
+  display_preview?: string
+  
+  // Quality and transformation metadata
+  display_quality_score: number
+  user_friendliness_score: number
+  content_transformation_status: string
+  transformation_error?: string
+  
+  // Business metadata
+  business_value_score: number
+  category: string
+  quality_score: number
+  
+  // User actions
+  can_retry_transformation: boolean
+  available_formats: string[]
+  
+  // Backward compatibility
+  content?: string | Record<string, any>
+}
+
+export interface DeliverableListResponse {
+  deliverables: EnhancedDeliverableResponse[]
+  total_count: number
+  transformation_status: Record<string, number>
+  quality_overview: Record<string, number>
+  
+  // Pagination and filtering
+  page: number
+  page_size: number
+  has_next: boolean
+  has_previous: boolean
+  
+  // System capabilities
+  supports_dual_format: boolean
+  available_transformations: string[]
+}
+
+export interface ContentTransformationError {
+  error_code: string
+  error_message: string
+  asset_id: string
+  retry_count: number
+  max_retries: number
+  last_attempt: string
+  suggested_actions: string[]
+  fallback_content?: string
+  technical_details: Record<string, any>
+}
+
+export interface TransformationBatchRequest {
+  asset_ids: string[]
+  target_format?: string
+  priority?: 'low' | 'normal' | 'high'
+  transformation_context?: Record<string, any>
+}
+
+export interface TransformationBatchResponse {
+  batch_id: string
+  total_assets: number
+  successful_transformations: number
+  failed_transformations: number
+  pending_transformations: number
+  
+  results: ContentTransformationResponse[]
+  
+  started_at: string
+  completed_at?: string
+  estimated_completion?: string
+}
+
+// --- MIGRATION AND COMPATIBILITY TYPES ---
+
+export interface ContentMigrationPlan {
+  migration_id: string
+  total_assets: number
+  assets_to_migrate: string[]
+  
+  migration_strategy: 'incremental' | 'bulk' | 'on_demand'
+  batch_size: number
+  priority_order: 'newest_first' | 'oldest_first' | 'high_quality_first'
+  
+  min_quality_threshold: number
+  skip_failed_assets: boolean
+  create_backups: boolean
+  
+  estimated_duration_hours: number
+  scheduled_start?: string
+}
+
+export interface MigrationStatus {
+  migration_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused'
+  progress_percentage: number
+  
+  processed_count: number
+  successful_count: number
+  failed_count: number
+  skipped_count: number
+  
+  started_at?: string
+  completed_at?: string
+  estimated_remaining_minutes?: number
+  
+  recent_errors: string[]
+  retry_queue: string[]
+}
+
+// Display format configurations
+export const DISPLAY_FORMAT_CONFIG = {
+  html: {
+    label: 'HTML',
+    icon: '🌐',
+    color: 'text-blue-600',
+    description: 'Rich HTML format with styling'
+  },
+  markdown: {
+    label: 'Markdown',
+    icon: '📝',
+    color: 'text-green-600',
+    description: 'Markdown format for documentation'
+  },
+  text: {
+    label: 'Plain Text',
+    icon: '📄',
+    color: 'text-gray-600',
+    description: 'Simple text format'
+  }
+}
+
+// Transformation status configurations
+export const TRANSFORMATION_STATUS_CONFIG = {
+  pending: {
+    label: 'Pending',
+    icon: '⏳',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-100',
+    description: 'Transformation queued'
+  },
+  success: {
+    label: 'Success',
+    icon: '✅',
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
+    description: 'Successfully transformed'
+  },
+  failed: {
+    label: 'Failed',
+    icon: '❌',
+    color: 'text-red-600',
+    bgColor: 'bg-red-100',
+    description: 'Transformation failed'
   }
 }
