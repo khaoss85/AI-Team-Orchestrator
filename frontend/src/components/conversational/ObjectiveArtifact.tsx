@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import DeliverableActionBar from './DeliverableActionBar'
+import MarkdownRenderer from './MarkdownRenderer'
 
 interface ObjectiveData {
   objective: {
@@ -458,6 +459,39 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
     d.content?.businessValueWarning || d.content?.type === 'no_business_content'
   )
 
+  // Helper function to detect content type and format
+  const detectContentType = (content: string): 'markdown' | 'html' | 'json' | 'text' => {
+    if (!content || typeof content !== 'string') return 'text'
+    
+    // Check for markdown table syntax
+    if (content.includes('|') && content.includes('\n') && /\|.*\|.*\|/.test(content)) {
+      return 'markdown'
+    }
+    
+    // Check for other markdown patterns
+    if (content.includes('##') || content.includes('**') || content.includes('[](') || content.includes('- ')) {
+      return 'markdown'
+    }
+    
+    // Check for HTML
+    if (content.trim().startsWith('<') && content.includes('</')) {
+      return 'html'
+    }
+    
+    // Check for JSON
+    if ((content.trim().startsWith('{') && content.trim().endsWith('}')) || 
+        (content.trim().startsWith('[') && content.trim().endsWith(']'))) {
+      try {
+        JSON.parse(content)
+        return 'json'
+      } catch {
+        return 'text'
+      }
+    }
+    
+    return 'text'
+  }
+
   const renderDeliverableContent = (content: any) => {
     if (!content) return <div className="text-gray-500 italic">No content available</div>
     
@@ -624,29 +658,56 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
     }
 
     if (typeof content === 'string') {
-      // Check if content is HTML
-      if (content.trim().startsWith('<') && content.includes('</')) {
-        return (
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
-        )
-      } else {
-        // Regular text content with markdown-style formatting
-        const formattedContent = content
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
-          .replace(/\n\n/g, '</p><p>')
-          .replace(/^/, '<p>')
-          .replace(/$/, '</p>')
+      const contentType = detectContentType(content)
+      
+      switch (contentType) {
+        case 'markdown':
+          return (
+            <div className="prose prose-sm max-w-none">
+              <MarkdownRenderer content={content} />
+            </div>
+          )
         
-        return (
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: formattedContent }}
-          />
-        )
+        case 'html':
+          return (
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          )
+        
+        case 'json':
+          try {
+            const jsonContent = JSON.parse(content)
+            return (
+              <div className="bg-gray-50 rounded p-3">
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 overflow-x-auto">
+                  {JSON.stringify(jsonContent, null, 2)}
+                </pre>
+              </div>
+            )
+          } catch {
+            // Fall through to text handling
+          }
+          break
+        
+        case 'text':
+        default:
+          // Enhanced text formatting with basic markdown patterns
+          const formattedContent = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
+            .replace(/\n\n/g, '</p><p class="mb-3">')
+            .replace(/^/, '<p class="mb-3">')
+            .replace(/$/, '</p>')
+          
+          return (
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: formattedContent }}
+            />
+          )
       }
     }
 
@@ -741,29 +802,40 @@ function DeliverablesTab({ deliverables, metadata }: DeliverablesTabProps) {
   // 🎯 ENHANCED: Helper function to render business content with enhanced formatting
   const renderBusinessContent = (content: any) => {
     if (typeof content === 'string') {
-      // Check if content is HTML
-      if (content.trim().startsWith('<') && content.includes('</')) {
-        return (
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
-        )
-      } else {
-        // Regular text content with markdown-style formatting
-        const formattedContent = content
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
-          .replace(/\n\n/g, '</p><p>')
-          .replace(/^/, '<p>')
-          .replace(/$/, '</p>')
+      const contentType = detectContentType(content)
+      
+      switch (contentType) {
+        case 'markdown':
+          return (
+            <div className="prose prose-sm max-w-none">
+              <MarkdownRenderer content={content} />
+            </div>
+          )
         
-        return (
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: formattedContent }}
-          />
-        )
+        case 'html':
+          return (
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          )
+        
+        default:
+          // Enhanced text formatting
+          const formattedContent = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
+            .replace(/\n\n/g, '</p><p class="mb-2">')
+            .replace(/^/, '<p class="mb-2">')
+            .replace(/$/, '</p>')
+          
+          return (
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: formattedContent }}
+            />
+          )
       }
     }
     
