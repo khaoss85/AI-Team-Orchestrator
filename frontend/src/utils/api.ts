@@ -261,7 +261,7 @@ export const api = {
       data_source: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}`);
+        const response = await fetch(`${API_BASE_URL}/api/unified-assets/workspace/${workspaceId}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -280,7 +280,7 @@ export const api = {
       data_source: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}/refresh`, {
+        const response = await fetch(`${API_BASE_URL}/api/unified-assets/workspace/${workspaceId}/refresh`, {
           method: 'POST'
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -296,7 +296,7 @@ export const api = {
   monitoring: {
     getWorkspaceActivity: async (workspaceId: string, limit: number = 20): Promise<any[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/activity?limit=${limit}`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/activity?limit=${limit}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -306,7 +306,7 @@ export const api = {
     
     getWorkspaceBudget: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/budget`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/budget`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -316,7 +316,7 @@ export const api = {
 
     getAgentBudget: async (agentId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/agent/${agentId}/budget`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/agent/${agentId}/budget`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -326,7 +326,7 @@ export const api = {
     
     getWorkspaceStatus: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/status`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/status`);
          if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -353,7 +353,7 @@ export const api = {
         if (options?.limit) params.append('limit', options.limit.toString());
         if (options?.offset) params.append('offset', options.offset.toString());
 
-        const url = `${API_BASE_URL}/monitoring/workspace/${workspaceId}/tasks${params.toString() ? `?${params.toString()}` : ''}`;
+        const url = `${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/tasks${params.toString() ? `?${params.toString()}` : ''}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
@@ -364,7 +364,7 @@ export const api = {
     
     startTeam: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/start`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/start`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -389,7 +389,7 @@ export const api = {
     getProjectDeliverables: async (workspaceId: string, goalId?: string): Promise<ProjectDeliverablesExtended> => {
       try {
         const url = goalId 
-          ? `${API_BASE_URL}/api/deliverables/workspace/${workspaceId}?goal_id=${goalId}`
+          ? `${API_BASE_URL}/api/deliverables/workspace/${workspaceId}/goal/${goalId}`
           : `${API_BASE_URL}/api/deliverables/workspace/${workspaceId}`;
         const response = await fetch(url);
         if (!response.ok) {
@@ -568,7 +568,7 @@ export const api = {
     
     getGlobalActivity: async (limit: number = 50): Promise<any[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/global/activity?limit=${limit}`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/global/activity?limit=${limit}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -578,7 +578,7 @@ export const api = {
 
     getTaskAnalysis: async (workspaceId: string): Promise<TaskAnalysisResponse> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/task-analysis`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/task-analysis`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -588,7 +588,7 @@ export const api = {
 
     resetRunawayTasks: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/reset-runaway`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/reset-runaway`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -611,7 +611,7 @@ export const api = {
 
     pauseExecutor: async (): Promise<{ message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/executor/pause`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/executor/pause`, {
           method: 'POST',
         });
         if (!response.ok) {
@@ -626,7 +626,7 @@ export const api = {
 
     resumeExecutor: async (): Promise<{ message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/executor/resume`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/executor/resume`, {
           method: 'POST',
         });
          if (!response.ok) {
@@ -641,7 +641,7 @@ export const api = {
 
     getExecutorStatus: async (): Promise<ExecutorStatus> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/executor/status`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/executor/status`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -652,7 +652,7 @@ export const api = {
         
     getRunawayProtectionStatus: async (): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/status`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/runaway-protection/status`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -662,7 +662,7 @@ export const api = {
 
     triggerRunawayCheck: async (): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/runaway-protection/check`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/runaway-protection/check`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -674,7 +674,7 @@ export const api = {
 
     resumeWorkspaceAutoGeneration: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -686,7 +686,7 @@ export const api = {
 
     getWorkspaceHealth: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/health`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/health`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -719,7 +719,7 @@ export const api = {
       last_checked: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/health-status`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/health-status`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -737,7 +737,7 @@ export const api = {
       reason: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/unblock`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/unblock`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason: reason || 'Manual unblock from frontend' }),
@@ -757,7 +757,7 @@ export const api = {
       workspace_id: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/resume-auto-generation`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -770,7 +770,7 @@ export const api = {
     // 🆕 NEW: Asset Tracking
     getAssetTracking: async (workspaceId: string): Promise<AssetTrackingData> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/asset-tracking`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/asset-tracking`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -789,7 +789,7 @@ export const api = {
       data_source: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/unified-assets/workspace/${workspaceId}`);
+        const response = await fetch(`${API_BASE_URL}/api/unified-assets/workspace/${workspaceId}`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -815,7 +815,7 @@ export const api = {
       checked_at: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/deliverable-readiness`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/deliverable-readiness`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -837,7 +837,7 @@ export const api = {
       };
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/workspace/${workspaceId}/finalization-status`);
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/workspace/${workspaceId}/finalization-status`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -968,7 +968,7 @@ export const api = {
   workspaces: {
     list: async (userId: string): Promise<Workspace[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/user/${userId}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/user/${userId}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -980,7 +980,7 @@ export const api = {
     
     get: async (id: string): Promise<Workspace> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1014,7 +1014,7 @@ export const api = {
           budget: data.budget?.max_amount || undefined
         };
         
-        const response = await fetch(`${API_BASE_URL}/workspaces`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1033,7 +1033,7 @@ export const api = {
     // 🔥 NEW: Update workspace
     update: async (id: string, data: Partial<WorkspaceCreateData>): Promise<Workspace> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1055,7 +1055,7 @@ export const api = {
     // 🔥 NEW: Pause/Resume workspace
     pause: async (id: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/pause`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/pause`, {
           method: 'POST',
         });
         if (response.status === 404) {
@@ -1072,7 +1072,7 @@ export const api = {
 
     resume: async (id: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/resume`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/resume`, {
           method: 'POST',
         });
         if (response.status === 404) {
@@ -1116,7 +1116,7 @@ export const api = {
       };
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/settings`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/settings`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1131,7 +1131,7 @@ export const api = {
   handoffs: {
     list: async (workspaceId: string): Promise<Handoff[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}/handoffs`); 
+        const response = await fetch(`${API_BASE_URL}/api/agents/${workspaceId}/handoffs`); 
         if (!response.ok) {
           let errorDetail = `API error: ${response.status}`;
           try {
@@ -1189,7 +1189,7 @@ export const api = {
   agents: {
     list: async (workspaceId: string): Promise<Agent[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/agents/${workspaceId}`);
+        const response = await fetch(`${API_BASE_URL}/api/agents/${workspaceId}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1422,7 +1422,7 @@ export const api = {
     // 🔥 NEW: Reset failed task
     reset: async (workspaceId: string, taskId: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/monitoring/tasks/${taskId}/reset`, {
+        const response = await fetch(`${API_BASE_URL}/api/monitoring/tasks/${taskId}/reset`, {
           method: 'POST',
         });
         if (!response.ok) {
@@ -1726,7 +1726,7 @@ export const api = {
   interaction: {
     askQuestion: async (workspaceId: string, question: string, targetAgent?: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/ask-question`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/ask-question`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1745,7 +1745,7 @@ export const api = {
 
     provideFeedback: async (workspaceId: string, feedback: string, context?: any): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/provide-feedback`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/provide-feedback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1764,7 +1764,7 @@ export const api = {
 
     requestIteration: async (workspaceId: string, changes: string[]): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/request-iteration`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/request-iteration`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1782,7 +1782,7 @@ export const api = {
 
     approveCompletion: async (workspaceId: string): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/approve-completion`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/approve-completion`, {
           method: 'POST',
         });
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
@@ -1794,7 +1794,7 @@ export const api = {
 
     requestChanges: async (workspaceId: string, changes: string, priority: 'low' | 'medium' | 'high' = 'medium'): Promise<any> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/request-changes`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/request-changes`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1873,8 +1873,8 @@ export const api = {
     getDependencyGraph: async (workspaceId: string, centralAssetId?: string): Promise<any> => {
       try {
         const url = centralAssetId 
-          ? `${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph?central_asset=${centralAssetId}`
-          : `${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph`;
+          ? `${API_BASE_URL}/api/workspaces/${workspaceId}/dependency-graph?central_asset=${centralAssetId}`
+          : `${API_BASE_URL}/api/workspaces/${workspaceId}/dependency-graph`;
         
         const response = await fetch(url, {
           method: 'GET',
@@ -1892,7 +1892,7 @@ export const api = {
     // Basic CRUD operations
     list: async (userId: string): Promise<Workspace[]> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/user/${userId}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/user/${userId}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1904,7 +1904,7 @@ export const api = {
     
     get: async (id: string): Promise<Workspace> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
@@ -1916,7 +1916,7 @@ export const api = {
     
     create: async (data: WorkspaceCreateData): Promise<Workspace> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1934,7 +1934,7 @@ export const api = {
 
     update: async (id: string, data: Partial<WorkspaceCreateData>): Promise<Workspace> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1955,7 +1955,7 @@ export const api = {
 
     delete: async (id: string): Promise<boolean> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}`, {
           method: 'DELETE',
         });
         if (!response.ok) {
@@ -1970,15 +1970,15 @@ export const api = {
 
     // Asset management APIs
     getDependencyGraph: (workspaceId: string, options?: any) =>
-      fetch(`${API_BASE_URL}/workspaces/${workspaceId}/dependency-graph${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/dependency-graph${options ? `?${new URLSearchParams(options)}` : ''}`).then(res => res.json()),
     
     getAssets: (workspaceId: string, filters?: any) =>
-      fetch(`${API_BASE_URL}/workspaces/${workspaceId}/assets${filters ? `?${new URLSearchParams(filters)}` : ''}`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/workspaces/${workspaceId}/assets${filters ? `?${new URLSearchParams(filters)}` : ''}`).then(res => res.json()),
 
     // Control operations
     pause: async (id: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/pause`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/pause`, {
           method: 'POST',
         });
         if (response.status === 404) {
@@ -1995,7 +1995,7 @@ export const api = {
 
     resume: async (id: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/resume`, {
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/resume`, {
           method: 'POST',
         });
         if (response.status === 404) {
@@ -2026,7 +2026,7 @@ export const api = {
       };
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/workspaces/${id}/settings`);
+        const response = await fetch(`${API_BASE_URL}/api/workspaces/${id}/settings`);
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }

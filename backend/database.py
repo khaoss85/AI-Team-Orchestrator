@@ -518,6 +518,17 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     deliverable = result.data[0]
                     logger.info(f"✅ Created AI-driven deliverable with ID: {deliverable['id']}")
                     logger.info(f"🤖 Quality: {pipeline_result.content_quality_score:.1f}, Specificity: {pipeline_result.business_readiness_score:.1f}, Usability: {pipeline_result.tool_usage_score:.1f}")
+                    
+                    # 🔗 BRIDGE: Create corresponding asset_artifact for frontend consumption
+                    try:
+                        asset_artifact = await convert_deliverable_to_asset_artifact(deliverable)
+                        if asset_artifact:
+                            logger.info(f"✅ Created asset_artifact for deliverable {deliverable['id']}")
+                        else:
+                            logger.warning(f"⚠️ Failed to create asset_artifact for deliverable {deliverable['id']}")
+                    except Exception as e:
+                        logger.error(f"❌ Error creating asset_artifact for deliverable {deliverable['id']}: {e}")
+                    
                     return deliverable
                 else:
                     raise Exception(f"Failed to create AI-driven deliverable: {result}")
@@ -544,6 +555,17 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
         if result.data:
             deliverable = result.data[0]
             logger.info(f"✅ Created standard deliverable with ID: {deliverable['id']}")
+            
+            # 🔗 BRIDGE: Create corresponding asset_artifact for frontend consumption
+            try:
+                asset_artifact = await convert_deliverable_to_asset_artifact(deliverable)
+                if asset_artifact:
+                    logger.info(f"✅ Created asset_artifact for deliverable {deliverable['id']}")
+                else:
+                    logger.warning(f"⚠️ Failed to create asset_artifact for deliverable {deliverable['id']}")
+            except Exception as e:
+                logger.error(f"❌ Error creating asset_artifact for deliverable {deliverable['id']}: {e}")
+            
             return deliverable
         else:
             raise Exception(f"Failed to create deliverable: {result}")
@@ -632,6 +654,205 @@ async def delete_deliverable(deliverable_id: str) -> bool:
     except Exception as e:
         logger.error(f"❌ Error deleting deliverable {deliverable_id}: {e}")
         raise
+
+async def convert_deliverable_to_asset_artifact(deliverable: dict) -> Optional[dict]:
+    """
+    🔗 BRIDGE: Convert deliverable content into asset_artifact for frontend consumption
+    
+    This function bridges the gap between deliverables and asset_artifacts by:
+    1. Processing deliverable content into readable format
+    2. Creating corresponding asset_artifact entries
+    3. Maintaining compatibility with existing pipeline
+    """
+    try:
+        from models import AssetArtifact
+        from uuid import UUID, uuid4
+        import json
+        
+        deliverable_id = deliverable.get('id')
+        workspace_id = deliverable.get('workspace_id')
+        
+        logger.info(f"🔗 Converting deliverable {deliverable_id} to asset_artifact")
+        
+        # Extract content from deliverable
+        content = deliverable.get('content', {})
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except json.JSONDecodeError:
+                content = {"raw_content": content}
+        
+        # Generate artifact name and type based on deliverable
+        deliverable_title = deliverable.get('title', 'Business Asset')
+        deliverable_type = deliverable.get('type', 'business_asset')
+        
+        # 🚀 DIRECT DB INSERT: Bypass AssetArtifact model to avoid schema conflicts
+        # Insert directly with only the fields that exist in the database
+        
+        # 🔧 FIX: Use correct column names and values for asset_artifacts table
+        
+        # Fix quality_score: Convert to 0.0-1.0 range (based on constraint check)
+        raw_quality = float(deliverable.get('content_quality_score', 75.0))
+        if raw_quality > 100:
+            quality_score = 1.0  # Cap at maximum
+        elif raw_quality > 1.0:
+            quality_score = raw_quality / 100.0  # Scale down (e.g., 80.0 -> 0.80)
+        else:
+            quality_score = raw_quality
+        
+        # Ensure it's within bounds (0.0 to 1.0)
+        quality_score = max(0.0, min(1.0, quality_score))
+        
+        artifact_dict = {
+            # "requirement_id": removed due to foreign key constraint - try without it
+            "workspace_id": str(workspace_id) if workspace_id else None,
+            "artifact_name": deliverable_title,  # Fixed: was "name"
+            "artifact_type": "file" if deliverable_type == "file" else "text",  # Fixed: was "type", ensure valid enum
+            "content": content,
+            "quality_score": quality_score,  # Fixed: scale to 0-9.99 range
+            "status": "draft",  # Fixed: use valid enum value (draft/in_progress/completed)
+            "validation_passed": True,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "metadata": {
+                "source": "deliverable_conversion", 
+                "original_deliverable_id": deliverable_id,
+                "creation_reasoning": deliverable.get('creation_reasoning', ''),
+                "quality_level": deliverable.get('quality_level', 'good')
+            }
+        }
+        
+        # Insert directly into database avoiding model validation issues
+        try:
+            result = supabase.table('asset_artifacts').insert(artifact_dict).execute()
+            
+            if result.data:
+                created_artifact_data = result.data[0]
+                logger.info(f"✅ Successfully created asset_artifact {created_artifact_data.get('id')} for deliverable {deliverable_id}")
+                return created_artifact_data
+            else:
+                logger.error(f"❌ Failed to create asset_artifact for deliverable {deliverable_id}: No data returned")
+                return None
+        except Exception as e:
+            logger.error(f"❌ Direct database insert failed for deliverable {deliverable_id}: {e}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Error converting deliverable {deliverable.get('id')} to asset_artifact: {e}")
+        return None
+
+async def batch_convert_existing_deliverables_to_assets(workspace_id: str = None, limit: int = None) -> dict:
+    """
+    🔄 BATCH PROCESSOR: Convert existing deliverables to asset_artifacts
+    
+    This function processes existing deliverables that don't have corresponding asset_artifacts,
+    creating the missing bridge for frontend consumption.
+    
+    Args:
+        workspace_id: If provided, only process deliverables for this workspace
+        limit: Maximum number of deliverables to process (optional)
+    
+    Returns:
+        dict: Processing results with success/failure counts
+    """
+    try:
+        logger.info(f"🔄 Starting batch conversion of existing deliverables to asset_artifacts")
+        
+        # Get existing deliverables
+        if workspace_id:
+            deliverables = await get_deliverables(workspace_id, limit=limit)
+        else:
+            # Get deliverables from all workspaces
+            query = supabase.table('deliverables').select('*').order('created_at', desc=True)
+            if limit:
+                query = query.limit(limit)
+            result = query.execute()
+            deliverables = result.data or []
+        
+        logger.info(f"🔄 Found {len(deliverables)} deliverables to process")
+        
+        # Get existing asset_artifacts to avoid duplicates
+        existing_artifacts = []
+        try:
+            artifact_result = supabase.table('asset_artifacts').select('metadata').execute()
+            for artifact in (artifact_result.data or []):
+                metadata = artifact.get('metadata', {})
+                if isinstance(metadata, dict) and metadata.get('original_deliverable_id'):
+                    existing_artifacts.append(metadata['original_deliverable_id'])
+        except Exception as e:
+            logger.warning(f"⚠️ Could not fetch existing asset_artifacts: {e}")
+        
+        logger.info(f"🔍 Found {len(existing_artifacts)} existing asset_artifacts to skip")
+        
+        # Process each deliverable
+        processed_count = 0
+        successful_count = 0
+        skipped_count = 0
+        failed_count = 0
+        errors = []
+        
+        for deliverable in deliverables:
+            deliverable_id = deliverable.get('id')
+            
+            # Skip if already converted
+            if deliverable_id in existing_artifacts:
+                skipped_count += 1
+                logger.info(f"⏭️ Skipping deliverable {deliverable_id} (already has asset_artifact)")
+                continue
+                
+            processed_count += 1
+            
+            try:
+                # Convert deliverable to asset_artifact
+                asset_artifact = await convert_deliverable_to_asset_artifact(deliverable)
+                
+                if asset_artifact:
+                    successful_count += 1
+                    logger.info(f"✅ Successfully converted deliverable {deliverable_id} to asset_artifact")
+                else:
+                    failed_count += 1
+                    error_msg = f"Failed to convert deliverable {deliverable_id}"
+                    errors.append(error_msg)
+                    logger.error(f"❌ {error_msg}")
+                    
+            except Exception as e:
+                failed_count += 1
+                error_msg = f"Error converting deliverable {deliverable_id}: {e}"
+                errors.append(error_msg)
+                logger.error(f"❌ {error_msg}")
+        
+        # Summary
+        results = {
+            "total_deliverables_found": len(deliverables),
+            "processed_count": processed_count,
+            "successful_count": successful_count,
+            "skipped_count": skipped_count,
+            "failed_count": failed_count,
+            "success_rate": (successful_count / processed_count * 100) if processed_count > 0 else 0,
+            "errors": errors
+        }
+        
+        logger.info(f"🎯 Batch conversion complete:")
+        logger.info(f"   📊 Total found: {results['total_deliverables_found']}")
+        logger.info(f"   🔄 Processed: {results['processed_count']}")
+        logger.info(f"   ✅ Successful: {results['successful_count']}")
+        logger.info(f"   ⏭️ Skipped: {results['skipped_count']}")
+        logger.info(f"   ❌ Failed: {results['failed_count']}")
+        logger.info(f"   📈 Success rate: {results['success_rate']:.1f}%")
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"❌ Error in batch conversion process: {e}")
+        return {
+            "total_deliverables_found": 0,
+            "processed_count": 0,
+            "successful_count": 0,
+            "skipped_count": 0,
+            "failed_count": 0,
+            "success_rate": 0,
+            "errors": [str(e)]
+        }
 
 async def _auto_create_workspace_goals_fallback(workspace_id: str, goal_text: str):
     """
@@ -3034,6 +3255,12 @@ class AssetDrivenDatabaseManager:
         try:
             # Prepare data for database (convert Pydantic to dict)
             artifact_data = artifact.model_dump(exclude={'id'}) if hasattr(artifact, 'model_dump') else artifact.dict(exclude={'id'})
+            
+            # 🔧 UUID SERIALIZATION FIX: Convert all UUID fields to strings for JSON compatibility
+            uuid_fields = ['requirement_id', 'task_id', 'workspace_id', 'id']
+            for field in uuid_fields:
+                if field in artifact_data and artifact_data[field] is not None:
+                    artifact_data[field] = str(artifact_data[field])
             
             # Ensure timestamps are ISO format
             artifact_data['created_at'] = datetime.now().isoformat()

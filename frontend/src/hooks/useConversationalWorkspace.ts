@@ -25,6 +25,11 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [error, setError] = useState<string | null>(null)
   const [sendingMessage, setSendingMessage] = useState(false)
   
+  // Progressive loading states with better granularity
+  const [goalsLoading, setGoalsLoading] = useState(false)
+  const [assetsLoading, setAssetsLoading] = useState(false)
+  const [goalsError, setGoalsError] = useState<string | null>(null)
+  
   // Workspace health monitoring state
   const [workspaceHealthStatus, setWorkspaceHealthStatus] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
@@ -268,7 +273,7 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [])
 
-  // Initialize workspace and fixed chats
+  // Initialize workspace and fixed chats (OPTIMIZED: progressive loading)
   const initializeWorkspace = useCallback(async () => {
     try {
       setLoading(true)
@@ -286,7 +291,8 @@ export function useConversationalWorkspace(workspaceId: string) {
         console.error('🔴 [ConversationalWorkspace] Backend connection failed:', error)
       }
       
-      const [workspace, goals, team] = await Promise.all([
+      // CRITICAL FIX: Load only essential data first for fast initial render
+      const [workspace, team] = await Promise.all([
         api.workspaces.get(workspaceId).then(data => {
           console.log('✅ [ConversationalWorkspace] Workspace loaded:', data)
           return data
@@ -300,13 +306,6 @@ export function useConversationalWorkspace(workspaceId: string) {
             domain: 'test',
             status: 'active'
           }
-        }),
-        api.workspaceGoals.getAll(workspaceId).then(data => {
-          console.log('✅ [ConversationalWorkspace] Goals loaded:', data)
-          return data || []
-        }).catch(error => {
-          console.error('❌ [ConversationalWorkspace] Goals fetch failed:', error)
-          return []
         }),
         api.agents.list(workspaceId).then(data => {
           console.log('✅ [ConversationalWorkspace] Team loaded:', data)
@@ -340,17 +339,17 @@ export function useConversationalWorkspace(workspaceId: string) {
         throw new Error('Workspace not found')
       }
 
-      // Set workspace context
+      // Set initial workspace context (without goals for fast loading)
       const contextData = {
         id: workspaceId,
         name: workspace.name || 'Untitled Workspace',
         domain: workspace.domain,
-        goals: goals || [],
+        goals: [], // Will be loaded progressively
         team: team || [],
         configuration: workspace
       }
       
-      console.log('🔧 [ConversationalWorkspace] Setting context:', contextData)
+      console.log('🔧 [ConversationalWorkspace] Setting initial context:', contextData)
       setWorkspaceContext(contextData)
 
       // Initialize fixed chats
@@ -397,25 +396,65 @@ export function useConversationalWorkspace(workspaceId: string) {
         }
       ]
 
-      // Load dynamic chats (stored objectives)
-      const dynamicChats = await loadDynamicChats()
-
-      setChats([...fixedChats, ...dynamicChats])
+      // Set initial chats without dynamic chats (will be loaded progressively)
+      setChats(fixedChats)
       
       // Set default active chat to team management
       const defaultChat = fixedChats[0]
       setActiveChat(defaultChat)
       
-      // Load initial artifacts
-      await loadArtifacts()
+      // Load initial artifacts (without heavy assets)
+      await loadArtifacts(false)
       
-      // 🔧 FIX: Goal progress will be refreshed via useEffect after refreshGoalProgress is defined
+      console.log('⚡ [ConversationalWorkspace] Basic workspace loaded, starting progressive loading...')
+      console.log('📊 [ConversationalWorkspace] Workspace has', workspace.name, 'team size:', team?.length || 0)
+      
+      // ENHANCED: Progressive goals loading with better error handling and loading states
+      const loadGoalsProgressive = async () => {
+        try {
+          setGoalsLoading(true)
+          console.log('📊 [Progressive] Loading goals in background...')
+          
+          const goals = await api.workspaceGoals.getAll(workspaceId).catch(error => {
+            console.error('❌ [Progressive] Goals fetch failed:', error)
+            setError(`Failed to load goals: ${error.message}`)
+            return []
+          })
+          
+          console.log('✅ [Progressive] Goals loaded:', goals?.length || 0, 'goals')
+          
+          // Handle different API response formats more robustly
+          const goalsArray = Array.isArray(goals) ? goals : (goals?.goals || goals?.data || [])
+          
+          // Update context with goals
+          setWorkspaceContext(prev => prev ? {
+            ...prev,
+            goals: goalsArray
+          } : null)
+          
+          // Load dynamic chats with goals (only if we have workspace context)
+          if (workspaceContext || goalsArray.length > 0) {
+            const dynamicChats = await loadDynamicChats()
+            setChats(prev => [...prev.filter(c => c.type === 'fixed'), ...dynamicChats])
+            console.log('✅ [Progressive] Dynamic chats loaded:', dynamicChats.length, 'chats')
+          }
+          
+        } catch (error) {
+          console.error('❌ [Progressive] Failed to load goals/chats:', error)
+          setError(`Progressive loading failed: ${error.message}`)
+        } finally {
+          setGoalsLoading(false)
+        }
+      }
+      
+      // Start progressive loading with optimal timing
+      setTimeout(loadGoalsProgressive, 50) // Reduced from 100ms to 50ms for faster perceived loading
 
     } catch (err: any) {
       console.error('Failed to initialize workspace:', err)
       setError(err.message || 'Failed to load workspace')
     } finally {
-      setLoading(false)
+      setLoading(false) // UI ready after basic data, goals loading in background
     }
   }, [workspaceId])
 
@@ -546,35 +585,37 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [workspaceId])
 
-  // Load artifacts from various sources
-  const loadArtifacts = useCallback(async () => {
+  // Load artifacts from various sources (OPTIMIZED: defer heavy assets loading)
+  const loadArtifacts = useCallback(async (includeAssets: boolean = false) => {
     try {
-      console.log('📦 [loadArtifacts] Loading artifacts for workspace:', workspaceId)
+      console.log('📦 [loadArtifacts] Loading artifacts for workspace:', workspaceId, includeAssets ? 'with assets' : 'basic only')
       
-      // Load from multiple sources
-      const [assets, deliverables, progress] = await Promise.all([
-        api.assetManagement.getUnifiedAssets(workspaceId).then(data => {
-          console.log('📦 [loadArtifacts] Assets loaded:', data)
-          return data || { assets: [] }
-        }).catch(error => {
-          console.error('❌ [loadArtifacts] Assets fetch failed:', error)
-          return { assets: [] }
-        }),
+      // Load only essential data first, defer heavy assets
+      const promises = [
         api.monitoring.getProjectDeliverables(workspaceId).then(data => {
           console.log('📦 [loadArtifacts] Deliverables loaded:', data)
           return data?.key_outputs || []
         }).catch(error => {
           console.error('❌ [loadArtifacts] Deliverables fetch failed:', error)
           return []
-        }),
-        api.workspaceGoals.getAll(workspaceId).then(data => {
-          console.log('📦 [loadArtifacts] Progress/Goals loaded:', data)
-          return data || []
-        }).catch(error => {
-          console.error('❌ [loadArtifacts] Progress fetch failed:', error)
-          return []
         })
-      ])
+      ]
+      
+      // Only load heavy assets if explicitly requested
+      if (includeAssets) {
+        promises.push(
+          api.assetManagement.getUnifiedAssets(workspaceId).then(data => {
+            console.log('📦 [loadArtifacts] Assets loaded:', data)
+            return data || { assets: [] }
+          }).catch(error => {
+            console.error('❌ [loadArtifacts] Assets fetch failed:', error)
+            return { assets: [] }
+          })
+        )
+      }
+      
+      const results = await Promise.all(promises)
+      const [deliverables, assets] = includeAssets ? results : [results[0], { assets: [] }]
 
       const artifacts: DeliverableArtifact[] = []
 
@@ -1522,9 +1563,8 @@ export function useConversationalWorkspace(workspaceId: string) {
               // Load deliverables for this specific goal
               let goalDeliverables: any[] = []
               try {
-                // Get all workspace deliverables and filter for this goal
-                const deliverablesResponse = await api.monitoring.getProjectDeliverables(workspaceId, goalId)
-                const allDeliverables = deliverablesResponse?.key_outputs || []
+                // Get deliverables specific to this goal using the correct API
+                const allDeliverables = await api.monitoring.getGoalDeliverables(workspaceId, goalId)
                 
                 // 🎯 FIXED: Get completed tasks SPECIFIC to this goal (not all workspace tasks)
                 const tasksResponse = await fetch(`http://localhost:8000/monitoring/workspace/${workspaceId}/tasks?status=completed`)
@@ -1544,39 +1584,48 @@ export function useConversationalWorkspace(workspaceId: string) {
                 // 📝 GENERATE: Business content from goal-specific tasks only
                 const goalSpecificBusinessContent = await extractBusinessContentFromTasks(goalSpecificTasks, fullGoalData)
                 
-                // 🤖 AI-DRIVEN: Generate deliverable using extracted business content
-                if (fullGoalData?.status === 'completed' && goalSpecificBusinessContent) {
-                  goalDeliverables = [{
-                    id: `goal-${fullGoalData.id}-deliverable`,
-                    title: `${fullGoalData.description} - AI-Generated Deliverable`,
-                    description: `AI-processed deliverable for: ${fullGoalData.description}`,
-                    type: 'ai_generated_deliverable',
-                    created_at: new Date().toISOString(),
-                    status: 'completed',
-                    content: goalSpecificBusinessContent,
-                    metadata: {
-                      ai_processed: true,
-                      legacy_workspace: true,
-                      goal_id: fullGoalData.id,
-                      note: 'Generated from workspace tasks - new workspaces will have goal-specific tracking'
-                    }
-                  }]
-                } else if (fullGoalData?.status === 'completed') {
-                  goalDeliverables = [{
-                    id: `goal-${fullGoalData.id}-completion`,
-                    title: `${fullGoalData.description} - Completed`,
-                    description: `Goal marked as completed`,
-                    type: 'completion_notice', 
-                    created_at: new Date().toISOString(),
-                    status: 'completed',
-                    content: {
-                      type: 'completion_notice',
-                      summary: `Goal "${fullGoalData.description}" completed successfully.`,
-                      goalProgress: `${fullGoalData.current_value}/${fullGoalData.target_value}`,
-                      totalTasksInWorkspace: goalSpecificTasks.length,
-                      note: 'For goal-specific deliverables, create a new workspace with proper AI-driven tracking'
-                    }
-                  }]
+                // 🎯 PRIORITY FIX: Use actual deliverables from database first
+                if (allDeliverables && allDeliverables.length > 0) {
+                  // Use the real deliverables from the database
+                  goalDeliverables = allDeliverables
+                  console.log('📦 [Database] Using real deliverables from database:', goalDeliverables.length)
+                } else {
+                  // 🤖 FALLBACK: AI-DRIVEN deliverable generation if no real deliverables exist
+                  console.log('🤖 [Fallback] No deliverables in database, generating synthetic content')
+                  
+                  if (fullGoalData?.status === 'completed' && goalSpecificBusinessContent) {
+                    goalDeliverables = [{
+                      id: `goal-${fullGoalData.id}-deliverable`,
+                      title: `${fullGoalData.description} - AI-Generated Deliverable`,
+                      description: `AI-processed deliverable for: ${fullGoalData.description}`,
+                      type: 'ai_generated_deliverable',
+                      created_at: new Date().toISOString(),
+                      status: 'completed',
+                      content: goalSpecificBusinessContent,
+                      metadata: {
+                        ai_processed: true,
+                        legacy_workspace: true,
+                        goal_id: fullGoalData.id,
+                        note: 'Generated from workspace tasks - new workspaces will have goal-specific tracking'
+                      }
+                    }]
+                  } else if (fullGoalData?.status === 'completed') {
+                    goalDeliverables = [{
+                      id: `goal-${fullGoalData.id}-completion`,
+                      title: `${fullGoalData.description} - Completed`,
+                      description: `Goal marked as completed`,
+                      type: 'completion_notice', 
+                      created_at: new Date().toISOString(),
+                      status: 'completed',
+                      content: {
+                        type: 'completion_notice',
+                        summary: `Goal "${fullGoalData.description}" completed successfully.`,
+                        goalProgress: `${fullGoalData.current_value}/${fullGoalData.target_value}`,
+                        totalTasksInWorkspace: goalSpecificTasks.length,
+                        note: 'For goal-specific deliverables, create a new workspace with proper AI-driven tracking'
+                      }
+                    }]
+                  }
                 }
                 
                 console.log('📦 [loadChatSpecificArtifacts] Goal deliverables loaded:', goalDeliverables.length)
@@ -1903,11 +1952,11 @@ export function useConversationalWorkspace(workspaceId: string) {
     }
   }, [loading, workspaceContext, refreshGoalProgress])
 
-  // Auto-refresh artifacts, goal progress, and health status periodically
+  // Auto-refresh artifacts, goal progress, and health status periodically (OPTIMIZED: without heavy assets)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!loading && workspaceContext) {
-        loadArtifacts()
+        loadArtifacts(false) // Don't load heavy assets on periodic refresh
         refreshGoalProgress() // 🔧 FIX: Also refresh goal progress in sidebar
         checkWorkspaceHealth() // 🆕 NEW: Check workspace health status
       }
@@ -1940,6 +1989,11 @@ export function useConversationalWorkspace(workspaceId: string) {
     sendingMessage, // Separate message sending state
     error,
     
+    // Progressive loading states
+    goalsLoading,
+    assetsLoading,
+    goalsError,
+    
     // Health monitoring state
     workspaceHealthStatus,
     healthLoading,
@@ -1952,6 +2006,14 @@ export function useConversationalWorkspace(workspaceId: string) {
     reactivateChat,
     renameChat,
     refreshData,
+    loadFullAssets: async () => {
+      setAssetsLoading(true)
+      try {
+        await loadArtifacts(true)
+      } finally {
+        setAssetsLoading(false)
+      }
+    }, // Load heavy assets on demand
     refreshGoalProgress, // 🔧 FIX: Export goal progress refresh function
     refreshMessages: () => activeChat ? loadDynamicChatData(activeChat) : Promise.resolve(),
     

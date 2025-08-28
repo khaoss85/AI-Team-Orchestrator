@@ -121,11 +121,17 @@ export const GoalProgressTracker: React.FC<GoalProgressTrackerProps> = ({
       // Fetch ALL goals (not just active ones) to show completed goals in recap
       const response = await api.workspaceGoals.getAll(workspaceId);
       if (response.success) {
-        // Calculate completion percentages
+        // FIXED: Calculate completion percentages respecting backend goal status
+        // Issue: Frontend was ignoring 'status' field and showing >100% for goals that exceeded targets
+        // Solution: Use 100% for completed goals, cap active goals at 100% maximum
         const goalsWithProgress = response.goals.map((goal: any) => ({
           ...goal,
-          completion_pct: goal.target_value > 0 ? (goal.current_value / goal.target_value * 100) : 0,
-          gap_value: goal.target_value - goal.current_value
+          // Fix: Respect goal status and cap percentage at 100% max
+          completion_pct: goal.status === 'completed' ? 100 : 
+            (goal.target_value > 0 ? Math.min((goal.current_value / goal.target_value * 100), 100) : 0),
+          gap_value: goal.status === 'completed' ? 0 : Math.max(goal.target_value - goal.current_value, 0),
+          // Ensure status exists - default to 'active' if missing
+          status: goal.status || 'active'
         }));
         
         // Sort goals: active first, then completed, then others

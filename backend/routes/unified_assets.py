@@ -36,6 +36,11 @@ class UnifiedAssetManager:
         Main method: estrae, processa, e fornisce tutti gli asset del workspace
         con versioning automatico e content AI-enhanced
         """
+        workspace = None
+        completed_tasks = []
+        raw_assets = {}
+        grouped_assets = {}
+        
         try:
             # Get workspace and tasks - handle gracefully if workspace doesn't exist yet
             workspace = await get_workspace(workspace_id)
@@ -85,7 +90,20 @@ class UnifiedAssetManager:
                             deliverable_assets = self._extract_assets_from_deliverable_content(
                                 deliverable["content"], deliverable["type"], deliverable["title"]
                             )
-                            raw_assets.extend(deliverable_assets)
+                            # Convert list to dict entries (fix for the bug)
+                            for j, asset in enumerate(deliverable_assets):
+                                deliverable_asset_id = f"deliverable_{deliverable.get('id')}_{j}"
+                                # Add metadata for proper grouping
+                                asset_with_metadata = {
+                                    **asset,
+                                    "metadata": {
+                                        "source_task_name": deliverable.get('title', ''),
+                                        "source_deliverable_id": deliverable.get('id'),
+                                        "extraction_timestamp": deliverable.get('created_at', ''),
+                                        "ready_to_use": True
+                                    }
+                                }
+                                raw_assets[deliverable_asset_id] = asset_with_metadata
                             logger.info(f"📦 Extracted {len(deliverable_assets)} assets from deliverable: {deliverable['title']}")
                 
                 except Exception as e:
@@ -95,11 +113,21 @@ class UnifiedAssetManager:
             filtered_assets = {k: v for k, v in raw_assets.items() if not k.startswith('_')}
             grouped_assets = self._group_and_version_assets(filtered_assets, completed_tasks)
             
+        except Exception as e:
+            logger.error(f"Error in asset extraction phase: {e}", exc_info=True)
+            # If we have any extracted data, continue to AI processing with what we have
+            # Otherwise, return empty response
+            if not raw_assets and not grouped_assets:
+                return self._empty_response(workspace_id)
+        
+        # Even if extraction had issues, attempt AI processing with what we have
+        workspace_goal = workspace.get("goal", "No goal defined") if workspace else "No goal defined"
+        
+        try:
             # Process each asset group with AI content enhancement
-            workspace_goal = workspace.get("goal", "No goal defined")
             processed_assets = await self._process_assets_with_ai(grouped_assets, workspace_goal)
             
-            # Create final response
+            # Create final response with AI-enhanced content
             return {
                 "workspace_id": workspace_id,
                 "workspace_goal": workspace_goal,
@@ -110,12 +138,23 @@ class UnifiedAssetManager:
                 "data_source": "unified_concrete_extraction"
             }
             
-        except Exception as e:
-            logger.error(f"Error in unified asset extraction: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to extract unified assets: {str(e)}"
-            )
+        except Exception as ai_error:
+            logger.warning(f"AI processing failed, falling back to basic asset processing: {ai_error}")
+            
+            # 🎯 CRITICAL FIX: Return extracted assets even if AI processing fails
+            # Create basic processed assets without AI enhancement
+            fallback_assets = self._create_fallback_assets(grouped_assets)
+            
+            return {
+                "workspace_id": workspace_id,
+                "workspace_goal": workspace_goal,
+                "assets": fallback_assets,
+                "asset_count": len(fallback_assets),
+                "total_versions": sum(asset.get("versions", 1) for asset in fallback_assets.values()),
+                "processing_timestamp": datetime.now().isoformat(),
+                "data_source": "concrete_extraction_fallback",
+                "ai_processing_failed": True
+            }
     
     def _empty_response(self, workspace_id: str) -> Dict[str, Any]:
         """Return empty response structure"""
@@ -142,7 +181,11 @@ class UnifiedAssetManager:
             
             # Determine base asset name (for grouping)
             asset_type = asset.get("type", "unknown")
-            task_name = source_task.get("name", "") if source_task else ""
+            # Use source_task_name from metadata if source_task not found (e.g., for deliverable assets)
+            if source_task:
+                task_name = source_task.get("name", "")
+            else:
+                task_name = asset.get("metadata", {}).get("source_task_name", "")
             
             # Create semantic grouping key
             group_key = self._create_semantic_group_key(asset_type, task_name)
@@ -442,16 +485,20 @@ class UnifiedAssetManager:
             
             # Check if has structured content that can be enhanced
             if asset_data and isinstance(asset_data, dict):
-                # Use markup processor first
-                processed_markup = await self.markup_processor.process_deliverable_content(asset_data)
-                
-                if processed_markup.get("has_structured_content"):
-                    return {
-                        "structured_content": asset_data,
-                        "markup_elements": processed_markup.get("combined_elements", {}),
-                        "has_ai_enhancement": True,
-                        "enhancement_source": "markup_processor"
-                    }
+                # Use unified deliverable engine processing
+                try:
+                    processed_markup = self.markup_processor.process_deliverable(str(asset_data))
+                    
+                    if processed_markup and processed_markup.get("status") == "processed":
+                        return {
+                            "structured_content": asset_data,
+                            "markup_elements": {"processed": True},
+                            "has_ai_enhancement": True,
+                            "enhancement_source": "unified_deliverable_processor"
+                        }
+                except Exception as e:
+                    logger.debug(f"Unified deliverable processing failed: {e}")
+                    # Continue to fallback
             
             # Fallback: return raw data with basic structure
             return {
@@ -590,6 +637,66 @@ class UnifiedAssetManager:
             return f"Final version with comprehensive content and recommendations"
         else:
             return f"Version {version} with updated content and refinements"
+    
+    def _create_fallback_assets(self, grouped_assets: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create basic processed assets without AI enhancement
+        Used as fallback when AI processing fails (e.g., OpenAI quota limits)
+        """
+        fallback_processed = {}
+        
+        for group_key, group_data in grouped_assets.items():
+            try:
+                # Get the latest version asset
+                latest_asset = max(group_data["versions"], key=lambda v: v.get("version", 1))
+                
+                # Create basic unified asset without AI enhancement
+                unified_asset = {
+                    "id": group_key,
+                    "name": group_data["group_name"],
+                    "type": group_data["asset_type"],
+                    "versions": group_data["latest_version"],
+                    "lastModified": latest_asset.get("metadata", {}).get("extraction_timestamp", datetime.now().isoformat()),
+                    "sourceTaskId": latest_asset.get("metadata", {}).get("source_task_id"),
+                    "ready_to_use": latest_asset.get("metadata", {}).get("ready_to_use", True),
+                    "quality_scores": latest_asset.get("metadata", {}).get("quality_scores", {}),
+                    "extraction_method": latest_asset.get("extraction_method", "concrete_extraction"),
+                    "business_actionability": latest_asset.get("metadata", {}).get("business_actionability", 0.7),
+                    "ai_processing_failed": True
+                }
+                
+                # Add basic content without AI enhancement
+                asset_data = latest_asset.get("data", {})
+                unified_asset["content"] = {
+                    "structured_content": asset_data,
+                    "raw_content": str(asset_data) if asset_data else "Asset content available",
+                    "has_ai_enhancement": False,
+                    "enhancement_source": "fallback_processing"
+                }
+                
+                # Add version history
+                unified_asset["version_history"] = self._create_version_history(group_data["versions"])
+                
+                # Add related tasks info
+                unified_asset["related_tasks"] = [
+                    {
+                        "id": task.get("id"),
+                        "name": task.get("name"),
+                        "version": self._calculate_version_number(task, task.get("name", "")),
+                        "updated_at": task.get("updated_at"),
+                        "status": task.get("status")
+                    }
+                    for task in group_data["tasks"] if task
+                ]
+                
+                fallback_processed[group_key] = unified_asset
+                logger.info(f"📦 Created fallback asset: {group_key} ({group_data['latest_version']} versions)")
+                
+            except Exception as e:
+                logger.error(f"Error creating fallback asset {group_key}: {e}")
+                continue
+        
+        return fallback_processed
 
 # Create singleton instance
 unified_asset_manager = UnifiedAssetManager()
@@ -611,7 +718,9 @@ async def get_unified_workspace_assets(workspace_id: UUID, request: Request):
         return result
     except Exception as e:
         logger.error(f"🔍 [UnifiedAssets] Error for workspace {workspace_id}: {e}", exc_info=True)
-        # Return empty response instead of letting it bubble up as 500/404
+        # 🎯 CRITICAL FIX: The method should handle its own failures now with fallback processing
+        # If we get here, it means both extraction and AI processing completely failed
+        # Return empty response as last resort
         return unified_asset_manager._empty_response(str(workspace_id))
 
 @router.post("/workspace/{workspace_id}/refresh", response_model=Dict[str, Any])
