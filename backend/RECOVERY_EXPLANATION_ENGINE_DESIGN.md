@@ -192,7 +192,7 @@ class RecoveryStrategy(str, Enum):
     RESET_TASK_DEPENDENCIES = "reset_task_dependencies"
     ESCALATE_TO_WORKSPACE_RECOVERY = "escalate_to_workspace_recovery"
     MARK_FAILED_NO_RETRY = "mark_failed_no_retry"
-    PAUSE_TASK_FOR_MANUAL_REVIEW = "pause_task_for_manual_review"
+    ESCALATE_TO_AUTONOMOUS_RECOVERY = "escalate_to_autonomous_recovery"
 
 class RecoveryDecisionEngine:
     """Makes intelligent recovery decisions with full explanations"""
@@ -391,7 +391,7 @@ class TaskMonitorIntegration:
       "explanation": {
         "title": "Task Output Validation Failed",
         "description": "The AI assistant's response was missing required information",
-        "status": "Waiting for manual review", 
+        "status": "Autonomous recovery in progress", 
         "severity": "medium",
         "icon": "validation-error",
         "actions": [

@@ -46,6 +46,7 @@ from routes.goal_validation import router as goal_validation_router
 from routes.workspace_goals import router as workspace_goals_router, direct_router as workspace_goals_direct_router
 from routes.goal_progress_details import router as goal_progress_details_router
 from routes.deliverables import router as deliverables_router
+from routes.enhanced_deliverables import router as enhanced_deliverables_router
 from routes.websocket import router as websocket_router
 from routes.conversation import router as conversation_router
 from routes.documents import router as documents_router
@@ -261,6 +262,7 @@ app.include_router(business_value_router, prefix="/api")
 app.include_router(unified_assets_router, prefix="/api")
 app.include_router(assets_router, prefix="/api")
 app.include_router(deliverables_router, prefix="/api")
+app.include_router(enhanced_deliverables_router, prefix="/api")
 
 # Auto-completion system for missing deliverables
 from routes.auto_completion import router as auto_completion_router

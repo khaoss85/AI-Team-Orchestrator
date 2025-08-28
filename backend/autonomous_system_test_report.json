@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-08-28T17:46:58.569569",
+  "test_results": {
+    "tests_run": 7,
+    "tests_passed": 6,
+    "tests_failed": 1,
+    "autonomy_violations": [],
+    "human_intervention_points": [],
+    "autonomous_recovery_tests": [
+      {
+        "type": "missing_deliverable_detection",
+        "autonomous_count": 2,
+        "manual_count": 0,
+        "fully_autonomous": true
+      },
+      {
+        "type": "deliverable_auto_completion",
+        "autonomy_score": 33.33333333333333,
+        "auto_completable": 2,
+        "total_missing": 6,
+        "blocked_goals": 0
+      },
+      {
+        "type": "failure_condition_autonomy",
+        "autonomy_score": 100.0,
+        "indicators": {
+          "autonomous_recovery_available": true,
+          "fallback_strategies_implemented": true,
+          "no_manual_intervention_required": true,
+          "ai_driven_decision_making": true
+        }
+      }
+    ],
+    "system_status_changes": [
+      {
+        "timestamp": "2025-08-28T17:46:58.454402",
+        "workspace_status": "unknown",
+        "is_autonomous": false
+      }
+    ]
+  },
+  "workspace_used": "db18803c-3718-4612-a34b-79b1167ac62f",
+  "overall_success_rate": 85.71428571428571,
+  "autonomy_score": 100,
+  "system_status": "FULLY_AUTONOMOUS"
+}

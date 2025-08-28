@@ -20,7 +20,9 @@ class WorkspaceStatus(str, Enum):
     COMPLETED = "completed"
     ERROR = "error"
     PROCESSING_TASKS = "processing_tasks"  # Temporary state during task generation
-    NEEDS_INTERVENTION = "needs_intervention"  # State requiring human intervention
+    NEEDS_INTERVENTION = "needs_intervention"  # DEPRECATED: Use AUTO_RECOVERING instead
+    AUTO_RECOVERING = "auto_recovering"  # AI-driven autonomous recovery in progress
+    DEGRADED_MODE = "degraded_mode"      # Operating with reduced functionality but autonomous
 
 class TaskStatus(str, Enum):
     PENDING = "pending"

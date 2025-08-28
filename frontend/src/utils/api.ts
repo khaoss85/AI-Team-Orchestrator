@@ -697,7 +697,7 @@ export const api = {
     // 🆕 NEW: Workspace health status monitoring
     getWorkspaceHealthStatus: async (workspaceId: string): Promise<{
       workspace_id: string;
-      status: 'healthy' | 'needs_intervention' | 'critical';
+      status: 'healthy' | 'auto_recovering' | 'degraded_mode' | 'critical';
       is_blocked: boolean;
       last_activity: string;
       health_score: number;

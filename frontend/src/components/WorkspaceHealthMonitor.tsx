@@ -26,7 +26,9 @@ export function WorkspaceHealthMonitor({
     switch (status) {
       case 'healthy':
         return '🟢'
-      case 'needs_intervention':
+      case 'auto_recovering':
+        return '🔄'
+      case 'degraded_mode':
         return '🟡'
       case 'critical':
         return '🔴'
@@ -39,7 +41,9 @@ export function WorkspaceHealthMonitor({
     switch (status) {
       case 'healthy':
         return 'text-green-600'
-      case 'needs_intervention':
+      case 'auto_recovering':
+        return 'text-blue-600'
+      case 'degraded_mode':
         return 'text-yellow-600'
       case 'critical':
         return 'text-red-600'

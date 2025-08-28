@@ -3,36 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Load Testing Shock - Success as Enemy | Memory System Scaling | AI Team Orchestrator</title>
-    <meta name="description" content="Chapter 39 of AI Team Orchestrator: Load Testing Shock - Success as Enemy">
+    <title>The Load Testing Shock – When Success Becomes the Enemy | Memory System Scaling | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Chapter 39 of AI Team Orchestrator: The Load Testing Shock – When Success Becomes the Enemy">
+    <meta name="keywords" content="AI agents, AI-driven system, AI architecture, OpenAI SDK, AI team">
+    <meta name="author" content="Daniele Pelleri">
     <meta name="robots" content="index, follow">
 
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
+    <!-- Open Graph -->
+    <meta property="og:title" content="The Load Testing Shock – When Success Becomes the Enemy">
+    <meta property="og:description" content="Chapter 39 of AI Team Orchestrator: The Load Testing Shock – When Success Becomes the Enemy">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/en/memory-system-scaling/load-testing-shock/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/en/memory-system-scaling/load-testing-shock/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/memory-system-scaling/load-testing-shock/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/memory-system-scaling/load-testing-shock-successo-nemico/">
+    
     <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
-            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Chapter Header */
+        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .chapter-header {
-            text-align: center;
             margin-bottom: 3rem;
+            text-align: center;
         }
         
         .chapter-instrument {
@@ -53,22 +100,147 @@
         .chapter-title {
             font-size: 2.5rem;
             color: #2c3e50;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             font-weight: 700;
             line-height: 1.2;
         }
         
-        .coming-soon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 15px;
-            text-align: center;
+        /* Content Styles */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 2rem 0 1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .chapter-content h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 1.5rem 0 1rem;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin: 2rem 0;
         }
         
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Code Styles */
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        code {
+            background: #f1f3f4;
+            color: #d73a49;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        
+        /* Special Boxes */
+        .war-story, .industry-insight, .architecture-section, .key-takeaways-section {
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .war-story {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-left: 4px solid #856404;
+        }
+        
+        .industry-insight {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 4px solid #28a745;
+        }
+        
+        .architecture-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+        }
+        
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        /* Mermaid Container */
+        .mermaid {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        /* Navigation */
+        .chapter-nav-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 3rem 0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
         .nav-button {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 0.5rem;
             padding: 1rem 2rem;
@@ -78,39 +250,1130 @@
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s ease;
-            margin: 1rem 0.5rem;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
         .nav-button:hover {
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
+        
+        .nav-button.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button.secondary:hover {
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* War Story Icon Styling */
+        .war-story-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .war-story-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            flex-shrink: 0;
+            color: #856404;
+        }
+        
+        /* Architecture Section Styling */
+        .architecture-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .architecture-icon {
+            width: 2rem;
+            height: 2rem;
+            flex-shrink: 0;
+            color: #667eea;
+        }
+        
+        /* Insight Icon Styling */
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-icon {
+            width: 1.8rem;
+            height: 1.8rem;
+            flex-shrink: 0;
+            color: #28a745;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .chapter-header,
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-nav-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
     </style>
+    
+    <style>
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .tool-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Bookmark Modal */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
+        .bookmark-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bookmark-item:last-child {
+            border-bottom: none;
+        }
+        
+        .bookmark-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .bookmark-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Reading Progress Bar */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 999;
+        }
+        
+        .reading-progress::before {
+            content: '';
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        body.dark-mode .chapter-header,
+        body.dark-mode .chapter-content,
+        body.dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.8);
+            color: #ecf0f1;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
 </head>
 <body>
-    <div class="container">
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="readingProgress"></div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools">
+        <button class="tool-button" onclick="addBookmark()" title="My Bookmarks">📚</button>
+        <button class="tool-button" onclick="toggleTheme()" title="Theme">🎨</button>
+        <button class="tool-button" onclick="increaseFontSize()" title="Font Size +">A+</button>
+        <button class="tool-button" onclick="decreaseFontSize()" title="Font Size -">A-</button>
+    </div>
+    
+    <!-- Bookmark Modal -->
+    <div id="bookmarksModal" class="bookmarks-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeBookmarksModal()">&times;</span>
+            <h3>📚 My Bookmarks</h3>
+            <div id="bookmarksList">
+                <!-- Bookmarks will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <a href="../">🎭 Memory System Scaling</a>
+            <span>›</span>
+            <span>The Load Testing Shock – When Success Becomes the Enemy</span>
+        </nav>
+
+        <!-- Chapter Header -->
         <header class="chapter-header">
             <div class="chapter-instrument">🎭</div>
             <div class="chapter-meta">
-                <span>Movement 4 of 4</span>
-                <span>Chapter 39 of 42</span>
-                <span>Coming Soon</span>
+                <span>🎭 Movement 4 of 4</span>
+                <span>📖 Chapter 39 of 42</span>
+                <span>⏱️ ~12 min read</span>
+                <span>📊 Level: Expert</span>
             </div>
-            <h1 class="chapter-title">Load Testing Shock - Success as Enemy</h1>
+            <h1 class="chapter-title">The Load Testing Shock – When Success Becomes the Enemy</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <!-- Main Content -->
+        <article class="chapter-content">
+<p>With the holistic memory system converging intelligence from all services into superior collective intelligence, we were euphoric. The numbers were fantastic: +78% cross-service learning, -82% knowledge redundancy, +15% system-wide quality. It seemed we had built the <strong>perfect machine</strong>.</p>
+
+<p>Then came Wednesday, August 12th, and we discovered what happens when a "perfect machine" meets the imperfect reality of <strong>production load</strong>.</p>
+
+<h3>The Trigger: "Success Story" Becomes Nightmare</h3>
+
+<p>Our success story had been published on TechCrunch on Tuesday, August 11th: <em>"Italian startup creates AI system that learns like a human team"</em>. The article had generated <strong>2,847 new registrations</strong> in 18 hours.</p>
+
+<p><em>Load Testing Shock Timeline (August 12th):</em></p>
+
+<pre><code class="language-text">06:00 Normal overnight load: 12 concurrent workspaces
+08:30 Morning surge begins: 156 concurrent workspaces
+09:15 TechCrunch effect kicks in: 340 concurrent workspaces  
+09:45 First warning signs: Memory consolidation queue at 400% capacity
+10:20 CRITICAL: Holistic memory system starts timing out
+10:35 CASCADE: Service registry overloaded, discovery failures
+10:50 MELTDOWN: System completely unresponsive
+11:15 Emergency load shedding activated</code></pre>
+
+<p><strong>The Devastating Insight:</strong> All our beautiful architecture had a <strong>hidden single point of failure</strong> – the holistic memory system. Under normal load it was brilliant, but under extreme stress it became a catastrophic bottleneck.</p>
+
+<h3>Root Cause Analysis: Intelligence That Blocks Intelligence</h3>
+
+<p>The problem wasn't in the system logic, but in the <strong>computational complexity</strong> of collective intelligence:</p>
+
+<p><em>Post-Mortem Report (August 12th):</em></p>
+
+<pre><code class="language-text">HOLISTIC MEMORY CONSOLIDATION PERFORMANCE BREAKDOWN:
+
+Normal Load (50 workspaces):
+- Memory consolidation cycle: 45 seconds
+- Cross-service correlations found: 4,892
+- Meta-insights generated: 234
+- System impact: Negligible
+
+Stress Load (340 workspaces):
+- Memory consolidation cycle: 18 minutes (2400% increase!)
+- Cross-service correlations found: 45,671 (938% increase)
+- Meta-insights generated: 2,847 (1,217% increase)
+- System impact: Complete blockage
+
+MATHEMATICAL REALITY:
+- Correlations grow O(n²) with number of patterns
+- Meta-insight generation grows O(n³) with correlations
+- At scale: Exponential complexity kills linear hardware</code></pre>
+
+<p><strong>The Brutal Truth:</strong> We had created a system that became <strong>exponentially slower</strong> as its intelligence increased. It was like having a genius who becomes paralyzed by thinking too much.</p>
+
+<h3>Emergency Response: Intelligent Load Shedding</h3>
+
+<p>In the middle of the meltdown, we had to invent <strong>intelligent load shedding</strong> in real-time:</p>
+
+<p><em>Reference code: <code>backend/services/emergency_load_shedder.py</code></em></p>
+
+<pre><code class="language-python">class IntelligentLoadShedder:
+    """
+    Emergency load management that preserves business value
+    during overload while keeping system operational
+    """
+    
+    def __init__(self):
+        self.load_monitor = SystemLoadMonitor()
+        self.business_priority_engine = BusinessPriorityEngine()
+        self.graceful_degradation_manager = GracefulDegradationManager()
+        self.emergency_thresholds = EmergencyThresholds()
+        
+    async def monitor_and_shed_load(self) -> None:
+        """
+        Continuous monitoring with progressive load shedding
+        """
+        while True:
+            current_load = await self.load_monitor.get_current_load()
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
-            </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
-            </a>
-        </div>
+            if current_load.severity >= LoadSeverity.CRITICAL:
+                await self._execute_emergency_load_shedding(current_load)
+            elif current_load.severity >= LoadSeverity.HIGH:
+                await self._execute_selective_load_shedding(current_load)
+            elif current_load.severity >= LoadSeverity.MEDIUM:
+                await self._execute_graceful_degradation(current_load)
+            
+            await asyncio.sleep(10)  # Check every 10 seconds during crisis
+    
+    async def _execute_emergency_load_shedding(
+        self,
+        current_load: SystemLoad
+    ) -> LoadSheddingResult:
+        """
+        Emergency load shedding: preserve only highest business value operations
+        """
+        logger.critical(f"EMERGENCY LOAD SHEDDING activated - system at {current_load.severity}")
+        
+        # 1. Identify operations by business value
+        active_operations = await self._get_all_active_operations()
+        prioritized_operations = await self.business_priority_engine.prioritize_operations(
+            active_operations,
+            mode=PriorityMode.EMERGENCY_SURVIVAL
+        )
+        
+        # 2. Calculate survival capacity
+        survival_capacity = await self._calculate_emergency_capacity(current_load)
+        operations_to_keep = prioritized_operations[:survival_capacity]
+        operations_to_shed = prioritized_operations[survival_capacity:]
+        
+        # 3. Execute surgical load shedding
+        shedding_results = []
+        for operation in operations_to_shed:
+            result = await self._shed_operation_gracefully(operation)
+            shedding_results.append(result)
+        
+        # 4. Communicate with affected users
+        await self._notify_affected_users(operations_to_shed, "emergency_load_shedding")
+        
+        # 5. Monitor recovery
+        await self._monitor_load_recovery(operations_to_keep)
+        
+        return LoadSheddingResult(
+            operations_shed=len(operations_to_shed),
+            operations_preserved=len(operations_to_keep),
+            estimated_recovery_time=await self._estimate_recovery_time(current_load),
+            business_impact_score=await self._calculate_business_impact(operations_to_shed)
+        )
+    
+    async def _shed_operation_gracefully(
+        self,
+        operation: ActiveOperation
+    ) -> OperationSheddingResult:
+        """
+        Gracefully terminate operation preserving as much work as possible
+        """
+        operation_type = operation.type
+        
+        if operation_type == OperationType.MEMORY_CONSOLIDATION:
+            # Memory consolidation: save partial results, pause process
+            partial_results = await operation.extract_partial_results()
+            await self._save_partial_consolidation(partial_results)
+            await operation.pause_gracefully()
+            
+            return OperationSheddingResult(
+                operation_id=operation.id,
+                shedding_type="graceful_pause",
+                data_preserved=True,
+                user_impact="delayed_completion",
+                recovery_action="resume_when_capacity_available"
+            )
+            
+        elif operation_type == OperationType.WORKSPACE_EXECUTION:
+            # Workspace execution: checkpoint current state, queue for later
+            checkpoint = await operation.create_checkpoint()
+            await self._queue_for_later_execution(operation, checkpoint)
+            await operation.pause_with_checkpoint()
+            
+            return OperationSheddingResult(
+                operation_id=operation.id,
+                shedding_type="checkpoint_and_queue",
+                data_preserved=True,
+                user_impact="execution_delayed",
+                recovery_action="resume_from_checkpoint"
+            )
+            
+        elif operation_type == OperationType.SERVICE_DISCOVERY:
+            # Service discovery: use cached results, disable dynamic updates
+            await self._switch_to_cached_service_discovery()
+            await operation.terminate_cleanly()
+            
+            return OperationSheddingResult(
+                operation_id=operation.id,
+                shedding_type="fallback_to_cache",
+                data_preserved=False,
+                user_impact="reduced_service_optimization",
+                recovery_action="re_enable_dynamic_discovery"
+            )
+            
+        else:
+            # Default: clean termination with user notification
+            await operation.terminate_with_notification()
+            
+            return OperationSheddingResult(
+                operation_id=operation.id,
+                shedding_type="clean_termination",
+                data_preserved=False,
+                user_impact="operation_cancelled",
+                recovery_action="manual_restart_required"
+            )</code></pre>
+
+<h3>Business Priority Engine: Who to Save When You Can't Save Everyone</h3>
+
+<p>During a load crisis, the hardest question is: <strong>who to save?</strong> Not all workspaces are equal from a business perspective.</p>
+
+<pre><code class="language-python">class BusinessPriorityEngine:
+    """
+    Engine that determines business priorities during load shedding emergencies
+    """
+    
+    async def prioritize_operations(
+        self,
+        operations: List[ActiveOperation],
+        mode: PriorityMode
+    ) -> List[PrioritizedOperation]:
+        """
+        Prioritize operations based on business value, user tier, and operational impact
+        """
+        prioritized = []
+        
+        for operation in operations:
+            priority_score = await self._calculate_operation_priority(operation, mode)
+            prioritized.append(PrioritizedOperation(
+                operation=operation,
+                priority_score=priority_score,
+                priority_factors=priority_score.breakdown
+            ))
+        
+        # Sort by priority score (highest first)
+        return sorted(prioritized, key=lambda p: p.priority_score.total, reverse=True)
+    
+    async def _calculate_operation_priority(
+        self,
+        operation: ActiveOperation,
+        mode: PriorityMode
+    ) -> PriorityScore:
+        """
+        Multi-factor priority calculation
+        """
+        factors = {}
+        
+        # Factor 1: User tier (enterprise customers get priority)
+        user_tier = await self._get_user_tier(operation.user_id)
+        if user_tier == UserTier.ENTERPRISE:
+            factors["user_tier"] = 100
+        elif user_tier == UserTier.PROFESSIONAL:
+            factors["user_tier"] = 70
+        else:
+            factors["user_tier"] = 40
+        
+        # Factor 2: Operation business impact
+        business_impact = await self._assess_business_impact(operation)
+        factors["business_impact"] = business_impact.score
+        
+        # Factor 3: Operation completion percentage
+        completion_percentage = await operation.get_completion_percentage()
+        factors["completion"] = completion_percentage  # Don't waste work already done
+        
+        # Factor 4: Operation type criticality
+        operation_criticality = self._get_operation_type_criticality(operation.type)
+        factors["operation_type"] = operation_criticality
+        
+        # Factor 5: Resource efficiency (operations that use fewer resources get boost)
+        resource_efficiency = await self._calculate_resource_efficiency(operation)
+        factors["efficiency"] = resource_efficiency
+        
+        # Weighted combination based on priority mode
+        if mode == PriorityMode.EMERGENCY_SURVIVAL:
+            # In emergency: user tier and efficiency matter most
+            total_score = (
+                factors["user_tier"] * 0.4 +
+                factors["efficiency"] * 0.3 +
+                factors["completion"] * 0.2 +
+                factors["business_impact"] * 0.1
+            )
+        elif mode == PriorityMode.GRACEFUL_DEGRADATION:
+            # In degradation: business impact and completion matter most
+            total_score = (
+                factors["business_impact"] * 0.3 +
+                factors["completion"] * 0.3 +
+                factors["user_tier"] * 0.2 +
+                factors["efficiency"] * 0.2
+            )
+        
+        return PriorityScore(
+            total=total_score,
+            breakdown=factors,
+            reasoning=self._generate_priority_reasoning(factors, mode)
+        )
+    
+    def _get_operation_type_criticality(self, operation_type: OperationType) -> float:
+        """
+        Different operation types have different business criticality
+        """
+        criticality_map = {
+            OperationType.DELIVERABLE_GENERATION: 95,  # Customer-facing output
+            OperationType.WORKSPACE_EXECUTION: 85,     # Direct user value
+            OperationType.QUALITY_ASSURANCE: 75,       # Important but not immediate
+            OperationType.MEMORY_CONSOLIDATION: 60,    # Optimization, can be delayed
+            OperationType.SERVICE_DISCOVERY: 40,       # Infrastructure, has fallbacks
+            OperationType.TELEMETRY_COLLECTION: 20,    # Nice to have, not critical
+        }
+        
+        return criticality_map.get(operation_type, 50)  # Default medium priority</code></pre>
+
+<h3>"War Story": The Workspace Worth $50K</h3>
+
+<p>During the emergency load shedding, we had to make one of the hardest decisions in our company history.</p>
+
+<p>The system was collapsing and we could only keep 50 workspaces operational out of 340 active ones. The Business Priority Engine had identified one particular workspace with a very high score but massive resource consumption.</p>
+
+<pre><code class="language-text">CRITICAL PRIORITY DECISION REQUIRED:
+
+Workspace: enterprise_client_acme_corp
+User Tier: ENTERPRISE ($5K/month contract)
+Current Operation: Final presentation preparation for board meeting
+Business Impact: HIGH (client's $50K deal depends on this presentation)
+Resource Usage: 15% of total system capacity (for 1 workspace!)
+Completion: 89% complete, estimated 45 minutes remaining
+
+DILEMMA: Keep this 1 workspace and sacrifice 15 other smaller workspaces?
+Or sacrifice this workspace to keep 15 SMB clients running?</code></pre>
+
+<p><strong>The Decision:</strong> We chose to keep the enterprise workspace, but with a critical modification – we <strong>intelligently degraded</strong> its quality to reduce resource consumption.</p>
+
+<h3>Intelligent Quality Degradation: Less Perfect, But Working</h3>
+
+<pre><code class="language-python">class IntelligentQualityDegrader:
+    """
+    Reduce operation quality to save resources without destroying user value
+    """
+    
+    async def degrade_operation_intelligently(
+        self,
+        operation: ActiveOperation,
+        target_resource_reduction: float
+    ) -> DegradationResult:
+        """
+        Reduce resource usage while preserving maximum business value
+        """
+        current_config = operation.get_current_config()
+        
+        # Analyze what can be degraded with least impact
+        degradation_options = await self._analyze_degradation_options(operation)
+        
+        # Select optimal degradation strategy
+        selected_degradations = await self._select_optimal_degradations(
+            degradation_options,
+            target_resource_reduction
+        )
+        
+        # Apply degradations
+        degradation_results = []
+        for degradation in selected_degradations:
+            result = await self._apply_degradation(operation, degradation)
+            degradation_results.append(result)
+        
+        # Verify resource reduction achieved
+        new_resource_usage = await operation.get_resource_usage()
+        actual_reduction = (current_config.resource_usage - new_resource_usage) / current_config.resource_usage
+        
+        return DegradationResult(
+            resource_reduction_achieved=actual_reduction,
+            quality_impact_estimate=await self._estimate_quality_impact(degradation_results),
+            user_experience_impact=await self._estimate_user_impact(degradation_results),
+            reversibility_score=await self._calculate_reversibility(degradation_results)
+        )
+    
+    async def _analyze_degradation_options(
+        self,
+        operation: ActiveOperation
+    ) -> List[DegradationOption]:
+        """
+        Identify what aspects of operation can be degraded to save resources
+        """
+        options = []
+        
+        # Option 1: Reduce AI model quality (GPT-4 → GPT-3.5)
+        if operation.uses_premium_ai_model():
+            options.append(DegradationOption(
+                type="ai_model_downgrade",
+                resource_savings=0.60,  # 60% cost reduction
+                quality_impact=0.15,    # 15% quality reduction
+                user_impact="slightly_lower_content_sophistication",
+                reversible=True
+            ))
+        
+        # Option 2: Reduce memory consolidation depth
+        if operation.uses_holistic_memory():
+            options.append(DegradationOption(
+                type="memory_consolidation_depth",
+                resource_savings=0.40,  # 40% CPU reduction
+                quality_impact=0.08,    # 8% quality reduction
+                user_impact="less_personalized_insights",
+                reversible=True
+            ))
+        
+        # Option 3: Disable real-time quality assurance
+        if operation.has_real_time_qa():
+            options.append(DegradationOption(
+                type="disable_real_time_qa",
+                resource_savings=0.25,  # 25% resource reduction
+                quality_impact=0.20,    # 20% quality reduction
+                user_impact="manual_quality_review_required",
+                reversible=True
+            ))
+        
+        # Option 4: Reduce concurrent task execution
+        if operation.parallel_task_count > 1:
+            options.append(DegradationOption(
+                type="reduce_parallelism",
+                resource_savings=0.30,  # 30% CPU reduction
+                quality_impact=0.00,    # No quality impact
+                user_impact="slower_completion_time",
+                reversible=True
+            ))
+        
+        return options</code></pre>
+
+<h3>Load Testing Revolution: From Reactive to Predictive</h3>
+
+<p>The load testing shock taught us that it wasn't enough to <strong>react</strong> to load – we had to <strong>predict</strong> it and <strong>prepare</strong> for it.</p>
+
+<pre><code class="language-python">class PredictiveLoadManager:
+    """
+    Predict load spikes and proactively prepare system for them
+    """
+    
+    def __init__(self):
+        self.load_predictor = LoadPredictor()
+        self.capacity_planner = AdvancedCapacityPlanner()
+        self.preemptive_scaler = PreemptiveScaler()
+        
+    async def continuous_load_prediction(self) -> None:
+        """
+        Continuously predict load and prepare system proactively
+        """
+        while True:
+            # Predict load for next 4 hours
+            load_prediction = await self.load_predictor.predict_load(
+                prediction_horizon_hours=4,
+                confidence_threshold=0.75
+            )
+            
+            if load_prediction.peak_load > self._get_current_capacity() * 0.8:
+                # Predicted load spike > 80% capacity - prepare proactively
+                await self._prepare_for_load_spike(load_prediction)
+            
+            await asyncio.sleep(300)  # Check every 5 minutes
+    
+    async def _prepare_for_load_spike(
+        self,
+        prediction: LoadPrediction
+    ) -> PreparationResult:
+        """
+        Proactive preparation for predicted load spike
+        """
+        logger.info(f"Preparing for predicted load spike: {prediction.peak_load} at {prediction.peak_time}")
+        
+        preparation_actions = []
+        
+        # 1. Pre-scale infrastructure
+        if prediction.confidence > 0.8:
+            scaling_result = await self.preemptive_scaler.scale_for_predicted_load(
+                predicted_load=prediction.peak_load,
+                preparation_time=prediction.time_to_peak
+            )
+            preparation_actions.append(scaling_result)
+        
+        # 2. Pre-warm caches
+        cache_warming_result = await self._prewarm_critical_caches(prediction)
+        preparation_actions.append(cache_warming_result)
+        
+        # 3. Adjust quality thresholds preemptively
+        quality_adjustment_result = await self._adjust_quality_thresholds_for_load(prediction)
+        preparation_actions.append(quality_adjustment_result)
+        
+        # 4. Pre-position circuit breakers
+        circuit_breaker_result = await self._configure_circuit_breakers_for_load(prediction)
+        preparation_actions.append(circuit_breaker_result)
+        
+        # 5. Alert operations team
+        await self._alert_operations_team(prediction, preparation_actions)
+        
+        return PreparationResult(
+            prediction=prediction,
+            actions_taken=preparation_actions,
+            estimated_capacity_increase=sum(a.capacity_impact for a in preparation_actions),
+            preparation_cost=sum(a.cost for a in preparation_actions)
+        )</code></pre>
+
+<h3>The Chaos Engineering Evolution: Embrace the Chaos</h3>
+
+<p>The load testing shock made us realize we had to <strong>embrace chaos</strong> instead of fearing it:</p>
+
+<pre><code class="language-python">class ChaosEngineeringEngine:
+    """
+    Deliberately introduce controlled failures to build antifragile systems
+    """
+    
+    async def run_chaos_experiment(
+        self,
+        experiment: ChaosExperiment,
+        safety_limits: SafetyLimits
+    ) -> ChaosExperimentResult:
+        """
+        Run controlled chaos experiment to test system resilience
+        """
+        # 1. Pre-experiment health check
+        baseline_health = await self._capture_system_health_baseline()
+        
+        # 2. Setup monitoring and rollback triggers
+        experiment_monitor = await self._setup_experiment_monitoring(experiment, safety_limits)
+        
+        # 3. Execute chaos gradually
+        chaos_results = []
+        for chaos_step in experiment.steps:
+            # Apply chaos
+            chaos_application = await self._apply_chaos_step(chaos_step)
+            
+            # Monitor impact
+            impact_assessment = await self._assess_chaos_impact(chaos_application)
+            
+            # Check safety limits
+            if impact_assessment.exceeds_safety_limits(safety_limits):
+                logger.warning(f"Chaos experiment exceeding safety limits - rolling back")
+                await self._rollback_chaos_experiment(chaos_results)
+                break
+            
+            chaos_results.append(ChaosStepResult(
+                step=chaos_step,
+                application=chaos_application,
+                impact=impact_assessment
+            ))
+            
+            # Wait between steps
+            await asyncio.sleep(chaos_step.wait_duration)
+        
+        # 4. Cleanup and analysis
+        await self._cleanup_chaos_experiment(chaos_results)
+        final_health = await self._capture_system_health_final()
+        
+        return ChaosExperimentResult(
+            experiment=experiment,
+            baseline_health=baseline_health,
+            final_health=final_health,
+            step_results=chaos_results,
+            lessons_learned=await self._extract_lessons_learned(chaos_results),
+            system_improvements_identified=await self._identify_improvements(chaos_results)
+        )
+    
+    async def _apply_chaos_step(self, chaos_step: ChaosStep) -> ChaosApplication:
+        """
+        Apply specific chaos step (controlled failure introduction)
+        """
+        if chaos_step.type == ChaosType.MEMORY_SYSTEM_OVERLOAD:
+            # Artificially overload memory consolidation system
+            return await self._overload_memory_system(
+                overload_factor=chaos_step.intensity,
+                duration_seconds=chaos_step.duration
+            )
+            
+        elif chaos_step.type == ChaosType.SERVICE_DISCOVERY_FAILURE:
+            # Simulate service discovery failures
+            return await self._simulate_service_discovery_failures(
+                failure_rate=chaos_step.intensity,
+                affected_services=chaos_step.target_services
+            )
+            
+        elif chaos_step.type == ChaosType.AI_PROVIDER_LATENCY:
+            # Inject artificial latency into AI provider calls
+            return await self._inject_ai_provider_latency(
+                latency_increase_ms=chaos_step.intensity * 1000,
+                affected_percentage=chaos_step.coverage
+            )
+            
+        elif chaos_step.type == ChaosType.DATABASE_CONNECTION_LOSS:
+            # Simulate database connection pool exhaustion
+            return await self._simulate_db_connection_loss(
+                connections_to_kill=int(chaos_step.intensity * self.total_db_connections)
+            )</code></pre>
+
+<h3>Production Results: From Fragile to Antifragile</h3>
+
+<p>After 6 weeks of implementing the new load management system:</p>
+
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Pre-Load-Shock</th>
+<th>Post-Load-Shock</th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Load Spike Survival (340 concurrent)</strong></td>
+<td>Complete failure</td>
+<td>Graceful degradation</td>
+<td><strong>100% availability</strong></td>
+</tr>
+<tr>
+<td><strong>Recovery Time from Overload</strong></td>
+<td>4 hours manual</td>
+<td>12 minutes automatic</td>
+<td><strong>-95% recovery time</strong></td>
+</tr>
+<tr>
+<td><strong>Business Impact During Stress</strong></td>
+<td>$50K+ lost deals</td>
+<td>&lt;$2K revenue impact</td>
+<td><strong>-96% business loss</strong></td>
+</tr>
+<tr>
+<td><strong>User Experience Under Load</strong></td>
+<td>System unusable</td>
+<td>Slower but functional</td>
+<td><strong>Maintained usability</strong></td>
+</tr>
+<tr>
+<td><strong>Predictive Capacity Management</strong></td>
+<td>0% prediction</td>
+<td>78% spike prediction</td>
+<td><strong>78% proactive preparation</strong></td>
+</tr>
+<tr>
+<td><strong>Chaos Engineering Resilience</strong></td>
+<td>Unknown failure modes</td>
+<td>23 failure modes tested</td>
+<td><strong>Known resilience boundaries</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>The Antifragile Dividend: Stronger from Stress</h3>
+
+<p>The real result of the load testing shock wasn't just surviving the load – it was <strong>becoming stronger</strong>:</p>
+
+<p><strong>1. Capacity Discovery:</strong> We discovered our system had hidden capacities that only emerged under stress</p>
+
+<p><strong>2. Quality Flexibility:</strong> We learned that often "good enough" is better than "perfect but unavailable"</p>
+
+<p><strong>3. Priority Clarity:</strong> Stress forced us to clearly define what was truly important for the business</p>
+
+<p><strong>4. User Empathy:</strong> We understood that users prefer a degraded but working system to a perfect but offline system</p>
+
+<h3>The Philosophy of Load: Stress as Teacher</h3>
+
+<p>The load testing shock taught us a profound philosophical lesson about distributed systems:</p>
+
+<p><strong>"Load is not an enemy to defeat – it's a teacher to listen to."</strong></p>
+
+<p>Every load spike taught us something new about our bottlenecks, our trade-offs, and our real values. The system was never more intelligent than when it was under stress, because stress revealed hidden truths that normal tests couldn't show.</p>
+
+<div class="key-takeaways-section">
+    <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+    <div class="key-takeaways-content"><p class="takeaway-item">✓ <strong>Success Can Be Your Biggest Enemy:</strong> Rapid growth can expose hidden bottlenecks that were invisible at smaller scale.</p>
+<p class="takeaway-item">✓ <strong>Exponential Complexity Kills Linear Resources:</strong> Smart algorithms with O(n²) or O(n³) complexity become exponentially expensive under load.</p>
+<p class="takeaway-item">✓ <strong>Load Shedding Must Be Business-Aware:</strong> Not all operations are equal - shed load based on business value, not just resource usage.</p>
+<p class="takeaway-item">✓ <strong>Quality Degradation &gt; Complete Failure:</strong> Users prefer a working system with lower quality than a perfect system that doesn't work.</p>
+<p class="takeaway-item">✓ <strong>Predictive &gt; Reactive:</strong> Predict load spikes and prepare proactively rather than just reacting to overload.</p>
+<p class="takeaway-item">✓ <strong>Chaos Engineering Reveals Truth:</strong> Controlled failures teach you more about your system than months of normal operation.</p>
     </div>
+</div>
+
+<p><strong>Chapter Conclusion</strong></p>
+
+<p>The Load Testing Shock was our moment of truth – when we discovered the difference between "works in the lab" and "works in production under stress". But more importantly, it taught us that truly robust systems don't avoid stress – <strong>they use it to become more intelligent</strong>.</p>
+
+<p>With the system now antifragile and capable of learning from its own overloads, we were ready for the next challenge: <strong>Enterprise Security Hardening</strong>. Because it's not enough to have a system that scales – it must also be a system that protects, especially when enterprise customers start trusting you with their most critical data.</p>
+
+<p>Enterprise security would be our final test: transforming a powerful system into a <strong>secure</strong>, <strong>compliant</strong>, and <strong>enterprise-ready</strong> system without sacrificing the agility that had brought us this far.</p>
+            </div>
+
+            
+        </article>
+
+        <!-- Bottom Navigation -->
+        <nav class="chapter-nav-bottom">
+            <a href="../memory-consolidation/" class="nav-button secondary">← Previous Chapter</a>
+            <a href="../security-hardening/" class="nav-button">Next Chapter →</a>
+        </nav>
+    </div>
+
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+    </script>
+
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VEGK4VZMG0');
+        
+        gtag('event', 'chapter_start', {
+            'chapter_title': 'The Load Testing Shock – When Success Becomes the Enemy',
+            'movement': 'memory-system-scaling',
+            'chapter_number': 39
+        });
+    </script>
 </body>
+    
+    <script>
+        // Reading Progress
+        function updateReadingProgress() {
+            const article = document.querySelector('.chapter-content');
+            const progress = document.getElementById('readingProgress');
+            
+            if (article && progress) {
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowTop = window.pageYOffset;
+                const windowHeight = window.innerHeight;
+                
+                const articleBottom = articleTop + articleHeight;
+                const windowBottom = windowTop + windowHeight;
+                
+                let progressPercentage = 0;
+                
+                if (windowTop >= articleTop && windowTop <= articleBottom) {
+                    progressPercentage = ((windowTop - articleTop) / articleHeight) * 100;
+                } else if (windowBottom >= articleBottom) {
+                    progressPercentage = 100;
+                }
+                
+                progress.style.transform = `scaleX(${Math.min(progressPercentage / 100, 1)})`;
+            }
+        }
+        
+        window.addEventListener('scroll', updateReadingProgress);
+        window.addEventListener('load', updateReadingProgress);
+        
+        // Font Size Controls
+        let currentFontSize = 1.1;
+        
+        function increaseFontSize() {
+            currentFontSize = Math.min(currentFontSize + 0.1, 2.0);
+            applyFontSize();
+        }
+        
+        function decreaseFontSize() {
+            currentFontSize = Math.max(currentFontSize - 0.1, 0.8);
+            applyFontSize();
+        }
+        
+        function applyFontSize() {
+            const content = document.querySelector('.chapter-content');
+            if (content) {
+                const paragraphs = content.querySelectorAll('p, li');
+                paragraphs.forEach(p => {
+                    p.style.fontSize = currentFontSize + 'rem';
+                });
+            }
+            localStorage.setItem('fontSize', currentFontSize.toString());
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark.toString());
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+        
+        // Bookmarks
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+        }
+        
+        function addBookmark() {
+            const title = document.querySelector('.chapter-title').textContent;
+            const url = window.location.href;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            // Check if bookmark already exists
+            const exists = bookmarks.find(b => b.url === url);
+            if (exists) {
+                showToast('Bookmark removed!');
+                bookmarks = bookmarks.filter(b => b.url !== url);
+            } else {
+                showToast('Bookmark saved!');
+                bookmarks.push({
+                    title: title,
+                    url: url,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const container = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                container.innerHTML = '<p>No bookmarks saved.</p>';
+                return;
+            }
+            
+            container.innerHTML = bookmarks
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">${bookmark.title}</a>
+                    </div>
+                `).join('');
+        }
+        
+        // Toast Notifications
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        window.addEventListener('load', function() {
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                currentFontSize = parseFloat(savedFontSize);
+                applyFontSize();
+            }
+            
+            // Load theme
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            }
+        });
+    </script>
 </html>

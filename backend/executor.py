@@ -104,6 +104,17 @@ except ImportError as e:
     DYNAMIC_ANTI_LOOP_AVAILABLE = False
     dynamic_anti_loop_manager = None
 
+# 🔧 Import FailedTaskResolver for autonomous task recovery
+try:
+    from services.failed_task_resolver import failed_task_resolver, start_autonomous_recovery_scheduler
+    FAILED_TASK_RESOLVER_AVAILABLE = True
+    logger.info("✅ FailedTaskResolver available for autonomous task recovery")
+except ImportError as e:
+    logger.warning(f"⚠️ FailedTaskResolver not available: {e}")
+    FAILED_TASK_RESOLVER_AVAILABLE = False
+    failed_task_resolver = None
+    start_autonomous_recovery_scheduler = None
+
 # 🎼 Import Unified Orchestrator for complete orchestration capabilities
 try:
     from services.unified_orchestrator import get_unified_orchestrator
@@ -826,6 +837,14 @@ class TaskExecutor(AssetCoordinationMixin):
             asyncio.create_task(self._anti_loop_worker()) 
             for _ in range(self.max_concurrent_tasks)
         ]
+        
+        # 🔧 Start autonomous recovery scheduler
+        if FAILED_TASK_RESOLVER_AVAILABLE and start_autonomous_recovery_scheduler:
+            try:
+                asyncio.create_task(start_autonomous_recovery_scheduler())
+                logger.info("🔧 Autonomous task recovery scheduler started")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to start recovery scheduler: {e}")
         
         # Avvia il main execution loop
         asyncio.create_task(self.execution_loop())
@@ -1836,6 +1855,22 @@ Focus on delivering practical, actionable results that move the project forward.
                         },
                         importance_score=0.9 # Failures are important lessons
                     )
+                    
+                    # 🤖 AUTONOMOUS RECOVERY: Trigger immediate task recovery
+                    try:
+                        from services.failed_task_resolver import handle_executor_task_failure
+                        
+                        recovery_result = await handle_executor_task_failure(task_id, reason)
+                        
+                        if recovery_result.get('recovery_attempted'):
+                            if recovery_result.get('success'):
+                                logger.info(f"🤖 AUTONOMOUS RECOVERY: Task {task_id} recovery initiated successfully")
+                            else:
+                                logger.info(f"🤖 AUTONOMOUS RECOVERY: Task {task_id} scheduled for batch recovery")
+                        
+                    except Exception as recovery_error:
+                        logger.error(f"❌ Failed to trigger autonomous recovery for task {task_id}: {recovery_error}")
+                        # Don't fail the task completion due to recovery trigger errors
             # --- END LINKING ---
             
             # 🚀 CRITICAL FIX: Trigger deliverable creation check when task is completed
@@ -3482,8 +3517,8 @@ Original Task:
         try:
             ws_data = await get_workspace(workspace_id)
             if ws_data and ws_data.get("status") == WorkspaceStatus.ACTIVE.value:
-                await update_workspace_status(workspace_id, WorkspaceStatus.NEEDS_INTERVENTION.value)
-                logger.info(f"W:{workspace_id} status updated to 'needs_intervention'")
+                await update_workspace_status(workspace_id, WorkspaceStatus.AUTO_RECOVERING.value)
+                logger.info(f"W:{workspace_id} status updated to 'auto_recovering'")
         except Exception as e:
             logger.error(f"Failed to update W:{workspace_id} status after pause: {e}")
         
@@ -3507,7 +3542,7 @@ Original Task:
         # Aggiorna status workspace nel DB se possibile
         try:
             ws_data = await get_workspace(workspace_id)
-            if ws_data and ws_data.get("status") == WorkspaceStatus.NEEDS_INTERVENTION.value:
+            if ws_data and ws_data.get("status") == WorkspaceStatus.AUTO_RECOVERING.value:
                 await update_workspace_status(workspace_id, WorkspaceStatus.ACTIVE.value)
                 logger.info(f"W:{workspace_id} status restored to 'active'")
         except Exception as e:

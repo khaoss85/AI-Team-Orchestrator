@@ -3,36 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Scale Architecture - Conquering Timezones | Memory System Scaling | AI Team Orchestrator</title>
-    <meta name="description" content="Chapter 41 of AI Team Orchestrator: Global Scale Architecture - Conquering Timezones">
+    <title>Global Scale Architecture – Conquering the World, One Timezone at a Time | Memory System Scaling | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Chapter 41 of AI Team Orchestrator: Global Scale Architecture – Conquering the World, One Timezone at a Time">
+    <meta name="keywords" content="AI agents, AI-driven system, AI architecture, OpenAI SDK, AI team">
+    <meta name="author" content="Daniele Pelleri">
     <meta name="robots" content="index, follow">
 
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
+    <!-- Open Graph -->
+    <meta property="og:title" content="Global Scale Architecture – Conquering the World, One Timezone at a Time">
+    <meta property="og:description" content="Chapter 41 of AI Team Orchestrator: Global Scale Architecture – Conquering the World, One Timezone at a Time">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/en/memory-system-scaling/global-scale/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/en/memory-system-scaling/global-scale/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/memory-system-scaling/global-scale/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/memory-system-scaling/global-scale-architecture-timezone/">
+    
     <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
-            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Chapter Header */
+        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .chapter-header {
-            text-align: center;
             margin-bottom: 3rem;
+            text-align: center;
         }
         
         .chapter-instrument {
@@ -53,22 +100,147 @@
         .chapter-title {
             font-size: 2.5rem;
             color: #2c3e50;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             font-weight: 700;
             line-height: 1.2;
         }
         
-        .coming-soon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 15px;
-            text-align: center;
+        /* Content Styles */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 2rem 0 1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .chapter-content h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 1.5rem 0 1rem;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin: 2rem 0;
         }
         
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Code Styles */
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        code {
+            background: #f1f3f4;
+            color: #d73a49;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        
+        /* Special Boxes */
+        .war-story, .industry-insight, .architecture-section, .key-takeaways-section {
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .war-story {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-left: 4px solid #856404;
+        }
+        
+        .industry-insight {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 4px solid #28a745;
+        }
+        
+        .architecture-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+        }
+        
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        /* Mermaid Container */
+        .mermaid {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        /* Navigation */
+        .chapter-nav-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 3rem 0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
         .nav-button {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 0.5rem;
             padding: 1rem 2rem;
@@ -78,39 +250,1118 @@
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s ease;
-            margin: 1rem 0.5rem;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
         .nav-button:hover {
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
+        
+        .nav-button.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button.secondary:hover {
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* War Story Icon Styling */
+        .war-story-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .war-story-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            flex-shrink: 0;
+            color: #856404;
+        }
+        
+        /* Architecture Section Styling */
+        .architecture-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .architecture-icon {
+            width: 2rem;
+            height: 2rem;
+            flex-shrink: 0;
+            color: #667eea;
+        }
+        
+        /* Insight Icon Styling */
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-icon {
+            width: 1.8rem;
+            height: 1.8rem;
+            flex-shrink: 0;
+            color: #28a745;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .chapter-header,
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-nav-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+    
+    <style>
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .tool-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Bookmark Modal */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
+        .bookmark-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bookmark-item:last-child {
+            border-bottom: none;
+        }
+        
+        .bookmark-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .bookmark-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Reading Progress Bar */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 999;
+        }
+        
+        .reading-progress::before {
+            content: '';
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        body.dark-mode .chapter-header,
+        body.dark-mode .chapter-content,
+        body.dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.8);
+            color: #ecf0f1;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body>
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="readingProgress"></div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools">
+        <button class="tool-button" onclick="addBookmark()" title="My Bookmarks">📚</button>
+        <button class="tool-button" onclick="toggleTheme()" title="Theme">🎨</button>
+        <button class="tool-button" onclick="increaseFontSize()" title="Font size +">A+</button>
+        <button class="tool-button" onclick="decreaseFontSize()" title="Font size -">A-</button>
+    </div>
+    
+    <!-- Bookmark Modal -->
+    <div id="bookmarksModal" class="bookmarks-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeBookmarksModal()">&times;</span>
+            <h3>📚 My Bookmarks</h3>
+            <div id="bookmarksList">
+                <!-- Bookmarks will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <a href="../">🎭 Memory System Scaling</a>
+            <span>›</span>
+            <span>Global Scale Architecture – Conquering the World, One Timezone at a Time</span>
+        </nav>
+
+        <!-- Chapter Header -->
         <header class="chapter-header">
             <div class="chapter-instrument">🎭</div>
             <div class="chapter-meta">
-                <span>Movement 4 of 4</span>
-                <span>Chapter 41 of 42</span>
-                <span>Coming Soon</span>
+                <span>🎭 Movement 4 of 4</span>
+                <span>📖 Chapter 41 of 42</span>
+                <span>⏱️ ~12 min read</span>
+                <span>📊 Level: Expert</span>
             </div>
-            <h1 class="chapter-title">Global Scale Architecture - Conquering Timezones</h1>
+            <h1 class="chapter-title">Global Scale Architecture – Conquering the World, One Timezone at a Time</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <!-- Main Content -->
+        <article class="chapter-content">
+<p>The success of enterprise security hardening had opened doors to international markets. Growth had revealed a problem we'd never faced: <strong>how do you effectively serve users in Tokyo, New York, and London with the same architecture?</strong></p>
+
+<p>The wake-up call came via a support ticket:</p>
+
+<p><em>"Hi, our team in Singapore is experiencing 4-6 second delays for every AI request. This is making the system unusable for our morning workflows. Our Italy team says everything is fast. What's going on?"</em></p>
+
+<p><strong>Sender:</strong> Head of Operations, Global Consulting Firm (3,000+ employees)</p>
+
+<p>The insight was brutal but obvious: <strong>latency is geography</strong>. Our server in Italy worked perfectly for European users, but for users in Asia-Pacific it was a disaster.</p>
+
+<h3>The Geography of Latency: Physics Can't Be Optimized</h3>
+
+<p>The first step was to quantify the real problem. We did a <strong>global latency audit</strong> with users in different timezones.</p>
+
+<p><em>Global Latency Analysis (November 15th):</em></p>
+
+<pre><code class="language-text">NETWORK LATENCY ANALYSIS (From Italy-based server):
+
+🇮🇹 EUROPE (Milan server):
+- Rome: 15ms (excellent)
+- London: 45ms (good)  
+- Berlin: 60ms (acceptable)
+- Madrid: 85ms (acceptable)
+
+🇺🇸 AMERICAS:
+- New York: 180ms (poor)
+- Los Angeles: 240ms (very poor)
+- Toronto: 165ms (poor)
+
+🌏 ASIA-PACIFIC:
+- Singapore: 320ms (terrible)
+- Tokyo: 285ms (terrible)
+- Sydney: 380ms (unusable)
+
+🌍 MIDDLE EAST/AFRICA:
+- Dubai: 200ms (poor)
+- Cape Town: 350ms (terrible)
+
+REALITY CHECK: Physics limits speed of light to ~150,000km/s in fiber.
+Geographic distance creates unavoidable latency baseline.</code></pre>
+
+<p><strong>The Devastating Insight:</strong> No matter how much you optimize your code – if your users are 15,000km away, they'll always have 300ms+ network latency before your server even starts processing.</p>
+
+<h3>Global Architecture Strategy: Edge Computing Meets AI</h3>
+
+<p>The solution was a <strong>globally distributed architecture</strong> with <strong>edge computing</strong> for AI workloads. But distributing AI systems globally introduces complexity that traditional systems don't have.</p>
+
+<p><em>Reference code: <code>backend/services/global_edge_orchestrator.py</code></em></p>
+
+<pre><code class="language-python">class GlobalEdgeOrchestrator:
+    """
+    Orchestrates AI workloads across global edge locations
+    to minimize latency and maximize global performance
+    """
+    
+    def __init__(self):
+        self.edge_locations = EdgeLocationRegistry()
+        self.global_load_balancer = GeographicLoadBalancer()
+        self.edge_deployment_manager = EdgeDeploymentManager()
+        self.data_synchronizer = GlobalDataSynchronizer()
+        self.latency_optimizer = LatencyOptimizer()
+        
+    async def route_request_to_optimal_edge(
+        self,
+        request: AIRequest,
+        user_location: UserGeolocation
+    ) -> EdgeRoutingDecision:
+        """
+        Route AI request to optimal edge location based on multiple factors
+        """
+        # 1. Identify candidate edge locations
+        candidate_edges = await self.edge_locations.get_candidates_for_location(
+            user_location,
+            required_capabilities=request.required_capabilities
+        )
+        
+        # 2. Score each candidate edge
+        edge_scores = []
+        for edge in candidate_edges:
+            score = await self._score_edge_for_request(edge, request, user_location)
+            edge_scores.append((edge, score))
+        
+        # 3. Select optimal edge (highest score)
+        optimal_edge, best_score = max(edge_scores, key=lambda x: x[1])
+        
+        # 4. Check if edge can handle additional load
+        capacity_check = await self._check_edge_capacity(optimal_edge, request)
+        if not capacity_check.can_handle_request:
+            # Fallback to second-best edge
+            fallback_edge = await self._select_fallback_edge(edge_scores, request)
+            optimal_edge = fallback_edge
+        
+        # 5. Ensure required data is available at target edge
+        data_availability = await self._ensure_data_availability(optimal_edge, request)
+        
+        return EdgeRoutingDecision(
+            selected_edge=optimal_edge,
+            routing_score=best_score,
+            estimated_latency=await self._estimate_request_latency(optimal_edge, user_location),
+            data_sync_required=data_availability.sync_required,
+            fallback_edges=await self._identify_fallback_edges(edge_scores)
+        )
+    
+    async def _score_edge_for_request(
+        self,
+        edge: EdgeLocation,
+        request: AIRequest,
+        user_location: UserGeolocation
+    ) -> EdgeScore:
+        """
+        Multi-factor scoring for edge location selection
+        """
+        score_factors = {}
+        
+        # Factor 1: Network latency (40% weight)
+        network_latency = await self._calculate_network_latency(edge.location, user_location)
+        latency_score = max(0, 1.0 - (network_latency / 500))  # Normalize to 0-1, 500ms = 0 score
+        score_factors["network_latency"] = latency_score * 0.4
+        
+        # Factor 2: Edge capacity/load (25% weight)
+        current_load = await edge.get_current_load()
+        capacity_score = max(0, 1.0 - current_load.utilization_percentage)
+        score_factors["capacity"] = capacity_score * 0.25
+        
+        # Factor 3: Data locality (20% weight) 
+        data_locality = await self._assess_data_locality(edge, request)
+        score_factors["data_locality"] = data_locality.locality_score * 0.2
+        
+        # Factor 4: AI model availability (10% weight)
+        model_availability = await self._check_model_availability(edge, request.required_model)
+        score_factors["model_availability"] = (1.0 if model_availability.available else 0.0) * 0.1
+        
+        # Factor 5: Regional compliance (5% weight)
+        compliance_score = await self._assess_regional_compliance(edge, user_location)
+        score_factors["compliance"] = compliance_score * 0.05
+        
+        total_score = sum(score_factors.values())
+        
+        return EdgeScore(
+            total_score=total_score,
+            factor_breakdown=score_factors,
+            edge_location=edge,
+            decision_reasoning=self._generate_edge_selection_reasoning(score_factors)
+        )</code></pre>
+
+<h3>Data Synchronization Challenge: Consistent State Across Continents</h3>
+
+<p>The most complex problem of global architecture was maintaining <strong>data consistency</strong> across edge locations. User workspaces had to be synchronized globally, but real-time sync across continents was too slow.</p>
+
+<pre><code class="language-python">class GlobalDataConsistencyManager:
+    """
+    Manages data consistency across global edge locations
+    with eventual consistency and intelligent conflict resolution
+    """
+    
+    def __init__(self):
+        self.vector_clock_manager = VectorClockManager()
+        self.conflict_resolver = AIConflictResolver()
+        self.eventual_consistency_engine = EventualConsistencyEngine()
+        self.global_state_validator = GlobalStateValidator()
+        
+    async def synchronize_workspace_globally(
+        self,
+        workspace_id: str,
+        changes: List[WorkspaceChange],
+        origin_edge: EdgeLocation
+    ) -> GlobalSyncResult:
+        """
+        Synchronize workspace changes across all relevant edge locations
+        """
+        # 1. Determine which edges need this workspace data
+        target_edges = await self._identify_sync_targets(workspace_id, origin_edge)
+        
+        # 2. Prepare changes with vector clocks for ordering
+        timestamped_changes = []
+        for change in changes:
+            vector_clock = await self.vector_clock_manager.generate_timestamp(
+                workspace_id, change, origin_edge
+            )
+            timestamped_changes.append(TimestampedChange(
+                change=change,
+                vector_clock=vector_clock,
+                origin_edge=origin_edge.id
+            ))
+        
+        # 3. Propagate changes to target edges
+        propagation_results = []
+        for target_edge in target_edges:
+            result = await self._propagate_changes_to_edge(
+                target_edge,
+                timestamped_changes,
+                workspace_id
+            )
+            propagation_results.append(result)
+        
+        # 4. Handle any conflicts that arose during propagation
+        conflicts = [r.conflicts for r in propagation_results if r.conflicts]
+        if conflicts:
+            conflict_resolutions = await self._resolve_conflicts_intelligently(
+                conflicts, workspace_id
+            )
+            # Apply conflict resolutions
+            for resolution in conflict_resolutions:
+                await self._apply_conflict_resolution(resolution)
+        
+        # 5. Validate global consistency
+        consistency_check = await self.global_state_validator.validate_workspace_consistency(
+            workspace_id, target_edges + [origin_edge]
+        )
+        
+        return GlobalSyncResult(
+            workspace_id=workspace_id,
+            changes_propagated=len(timestamped_changes),
+            target_edges_synced=len(target_edges),
+            conflicts_resolved=len(conflicts),
+            global_consistency_achieved=consistency_check.consistent,
+            sync_latency_p95=await self._calculate_sync_latency(propagation_results)
+        )
+    
+    async def _resolve_conflicts_intelligently(
+        self,
+        conflicts: List[DataConflict],
+        workspace_id: str
+    ) -> List[ConflictResolution]:
+        """
+        AI-powered conflict resolution for concurrent edits across edges
+        """
+        resolutions = []
+        
+        for conflict in conflicts:
+            # Use AI to understand the semantic nature of the conflict
+            conflict_analysis_prompt = f"""
+            Analyze this concurrent editing conflict and propose intelligent resolution.
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
-            </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
-            </a>
-        </div>
+            CONFLICT DETAILS:
+            - Workspace: {workspace_id}
+            - Conflicted Field: {conflict.field_name}
+            - Version A (from {conflict.version_a.edge}): {conflict.version_a.value}
+            - Version B (from {conflict.version_b.edge}): {conflict.version_b.value}
+            - Timestamps: A={conflict.version_a.timestamp}, B={conflict.version_b.timestamp}
+            - User Context: {conflict.user_context}
+            
+            Consider:
+            1. Semantic meaning of both versions (which has more information?)
+            2. User intent (which version seems more intentional?)
+            3. Temporal proximity (which is more recent but consider network delays?)
+            4. Business impact (which version has greater business value?)
+            
+            Propose:
+            1. Winning version with reasoning
+            2. Confidence level (0.0-1.0)
+            3. Merge strategy if possible
+            4. User notification if manual review necessary
+            """
+            
+            resolution_response = await self.ai_pipeline.execute_pipeline(
+                PipelineStepType.CONFLICT_RESOLUTION_ANALYSIS,
+                {"prompt": conflict_analysis_prompt},
+                {"workspace_id": workspace_id, "conflict_id": conflict.id}
+            )
+            
+            resolution = ConflictResolution(
+                conflict=conflict,
+                winning_version=resolution_response.get("winning_version"),
+                confidence=resolution_response.get("confidence", 0.5),
+                resolution_strategy=resolution_response.get("resolution_strategy"),
+                requires_user_review=resolution_response.get("requires_user_review", False),
+                reasoning=resolution_response.get("reasoning")
+            )
+            
+            resolutions.append(resolution)
+        
+        return resolutions</code></pre>
+
+<h3>"War Story": The Thanksgiving Weekend Global Meltdown</h3>
+
+<p>Our first real global test came during American Thanksgiving weekend, when we had a <strong>cascade failure</strong> involving 4 continents.</p>
+
+<p><em>Global Meltdown Date: November 23rd (Thanksgiving), 6:30 PM EST</em></p>
+
+<p>The disaster timeline:</p>
+
+<pre><code class="language-text">6:30 PM EST: US East Coast edge location experiences hardware failure
+6:32 PM EST: Load balancer redirects US traffic to Europe edge (Italy)
+6:35 PM EST: European edge overloaded, 400% normal capacity
+6:38 PM EST: European edge triggers emergency load shedding
+6:40 PM EST: Asia-Pacific users automatically failover to US West Coast
+6:42 PM EST: US West Coast edge also overloaded (holiday + redirected traffic)
+6:45 PM EST: Global cascade: All edges operating at degraded capacity
+6:50 PM EST: 12,000+ users across 4 continents experiencing service degradation</code></pre>
+
+<p><strong>The Fundamental Problem:</strong> Our failover logic assumed each edge could handle the traffic of 1 other edge. But we'd never tested a scenario where multiple edges failed simultaneously during peak usage.</p>
+
+<h3>Emergency Global Coordination Protocol</h3>
+
+<p>During the meltdown, we had to invent a <strong>global coordination protocol</strong> in real-time:</p>
+
+<pre><code class="language-python">class EmergencyGlobalCoordinator:
+    """
+    Emergency coordination system for global cascade failures
+    """
+    
+    async def handle_global_cascade_failure(
+        self,
+        failing_edges: List[EdgeLocation],
+        cascade_severity: CascadeSeverity
+    ) -> GlobalEmergencyResponse:
+        """
+        Coordinate emergency response across global edge network
+        """
+        # 1. Assess global capacity and demand
+        global_assessment = await self._assess_global_capacity_vs_demand()
+        
+        # 2. Implement emergency load shedding strategy
+        if global_assessment.capacity_deficit > 0.3:  # >30% capacity deficit
+            load_shedding_strategy = await self._design_global_load_shedding_strategy(
+                global_assessment, failing_edges
+            )
+            await self._execute_global_load_shedding(load_shedding_strategy)
+        
+        # 3. Activate emergency edge capacity
+        emergency_capacity = await self._activate_emergency_edge_capacity(
+            required_capacity=global_assessment.capacity_deficit
+        )
+        
+        # 4. Implement intelligent traffic routing
+        emergency_routing = await self._implement_emergency_traffic_routing(
+            available_edges=global_assessment.healthy_edges,
+            emergency_capacity=emergency_capacity
+        )
+        
+        # 5. Notify users with transparent communication
+        user_notifications = await self._send_transparent_global_status_updates(
+            affected_regions=global_assessment.affected_regions,
+            estimated_recovery_time=emergency_capacity.activation_time
+        )
+        
+        return GlobalEmergencyResponse(
+            cascade_severity=cascade_severity,
+            response_actions_taken=len([load_shedding_strategy, emergency_capacity, emergency_routing]),
+            affected_users=global_assessment.affected_user_count,
+            estimated_recovery_time=emergency_capacity.activation_time,
+            business_impact_usd=await self._calculate_business_impact(global_assessment)
+        )
+    
+    async def _design_global_load_shedding_strategy(
+        self,
+        global_assessment: GlobalCapacityAssessment,
+        failing_edges: List[EdgeLocation]
+    ) -> GlobalLoadSheddingStrategy:
+        """
+        Design intelligent load shedding strategy across global edge network
+        """
+        # Prioritize by business value, user tier, and geographic impact
+        user_prioritization = await self._prioritize_users_globally(
+            total_users=global_assessment.active_users,
+            available_capacity=global_assessment.available_capacity
+        )
+        
+        # Design region-specific shedding strategies
+        regional_strategies = {}
+        for region in global_assessment.affected_regions:
+            regional_strategies[region] = await self._design_regional_shedding_strategy(
+                region,
+                user_prioritization.get_users_in_region(region),
+                global_assessment.regional_capacity[region]
+            )
+        
+        return GlobalLoadSheddingStrategy(
+            global_capacity_target=global_assessment.available_capacity,
+            regional_strategies=regional_strategies,
+            user_prioritization=user_prioritization,
+            estimated_users_affected=await self._estimate_affected_users(regional_strategies)
+        )</code></pre>
+
+<h3>The Physics of Global AI: Model Distribution Strategy</h3>
+
+<p>A unique challenge of global AI is that <strong>AI models are huge</strong>. GPT-4 models are 1TB+, and you can't simply copy them to every edge location. We had to invent <strong>intelligent model distribution</strong>.</p>
+
+<pre><code class="language-python">class GlobalAIModelDistributor:
+    """
+    Intelligent distribution of AI models across global edge locations
+    """
+    
+    def __init__(self):
+        self.model_usage_predictor = ModelUsagePredictor()
+        self.bandwidth_optimizer = BandwidthOptimizer()
+        self.model_versioning = GlobalModelVersioning()
+        
+    async def optimize_global_model_distribution(
+        self,
+        available_models: List[AIModel],
+        edge_locations: List[EdgeLocation]
+    ) -> ModelDistributionPlan:
+        """
+        Optimize placement of AI models across global edges based on usage patterns
+        """
+        # 1. Predict model usage by geographic region
+        usage_predictions = {}
+        for edge in edge_locations:
+            edge_predictions = await self.model_usage_predictor.predict_usage_for_edge(
+                edge, available_models, prediction_horizon_hours=24
+            )
+            usage_predictions[edge.id] = edge_predictions
+        
+        # 2. Calculate optimal model placement
+        placement_optimization = await self._solve_model_placement_optimization(
+            models=available_models,
+            edges=edge_locations,
+            usage_predictions=usage_predictions,
+            constraints=self._get_placement_constraints()
+        )
+        
+        # 3. Plan model synchronization strategy
+        sync_strategy = await self._plan_model_synchronization(
+            current_placements=await self._get_current_model_placements(),
+            target_placements=placement_optimization.optimal_placements
+        )
+        
+        return ModelDistributionPlan(
+            optimal_placements=placement_optimization.optimal_placements,
+            synchronization_plan=sync_strategy,
+            estimated_bandwidth_usage=sync_strategy.total_bandwidth_gb,
+            estimated_completion_time=sync_strategy.estimated_duration,
+            cost_optimization_achieved=placement_optimization.cost_reduction_percentage
+        )
+    
+    async def _solve_model_placement_optimization(
+        self,
+        models: List[AIModel],
+        edges: List[EdgeLocation],
+        usage_predictions: Dict[str, ModelUsagePrediction],
+        constraints: PlacementConstraints
+    ) -> ModelPlacementOptimization:
+        """
+        Solve complex optimization: which models should be at which edges?
+        """
+        # This is a variant of the Multi-Dimensional Knapsack Problem
+        # Each edge has storage constraints, each model has size and predicted value
+        
+        optimization_prompt = f"""
+        Solve this optimization problem for global model placement.
+        
+        AVAILABLE MODELS ({len(models)}):
+        {self._format_models_for_optimization(models)}
+        
+        EDGE LOCATIONS ({len(edges)}):
+        {self._format_edges_for_optimization(edges)}
+        
+        USAGE PREDICTIONS:
+        {self._format_usage_predictions_for_optimization(usage_predictions)}
+        
+        CONSTRAINTS:
+        - Storage capacity per edge: {constraints.max_storage_per_edge_gb}GB
+        - Bandwidth limitations: {constraints.max_sync_bandwidth_mbps}Mbps
+        - Minimum model availability: {constraints.min_availability_percentage}%
+        
+        Objective: Maximize user experience minimizing latency and bandwidth costs.
+        
+        Consider:
+        1. High-usage models should be closer to users
+        2. Large models should be in fewer locations (bandwidth cost)
+        3. Critical models should have geographic redundancy
+        4. Sync costs between edges for model updates
+        
+        Return optimal placement matrix and reasoning.
+        """
+        
+        optimization_response = await self.ai_pipeline.execute_pipeline(
+            PipelineStepType.MODEL_PLACEMENT_OPTIMIZATION,
+            {"prompt": optimization_prompt},
+            {"models_count": len(models), "edges_count": len(edges)}
+        )
+        
+        return ModelPlacementOptimization.from_ai_response(optimization_response)</code></pre>
+
+<h3>Regional Compliance: The Legal Geography of Data</h3>
+
+<p>Global scale doesn't just mean technical challenges – it means <strong>regulatory compliance</strong> in every jurisdiction. GDPR in Europe, CCPA in California, different data residency requirements in Asia.</p>
+
+<pre><code class="language-python">class GlobalComplianceManager:
+    """
+    Manages regulatory compliance across global jurisdictions
+    """
+    
+    def __init__(self):
+        self.jurisdiction_mapper = JurisdictionMapper()
+        self.compliance_rules_engine = ComplianceRulesEngine()
+        self.data_residency_enforcer = DataResidencyEnforcer()
+        
+    async def ensure_compliant_data_handling(
+        self,
+        data_operation: DataOperation,
+        user_location: UserGeolocation,
+        data_classification: DataClassification
+    ) -> ComplianceDecision:
+        """
+        Ensure data operation complies with all applicable regulations
+        """
+        # 1. Identify applicable jurisdictions
+        applicable_jurisdictions = await self.jurisdiction_mapper.get_applicable_jurisdictions(
+            user_location, data_classification, data_operation.type
+        )
+        
+        # 2. Get compliance requirements for each jurisdiction
+        compliance_requirements = []
+        for jurisdiction in applicable_jurisdictions:
+            requirements = await self.compliance_rules_engine.get_requirements(
+                jurisdiction, data_classification, data_operation.type
+            )
+            compliance_requirements.extend(requirements)
+        
+        # 3. Check for conflicting requirements
+        conflict_analysis = await self._analyze_requirement_conflicts(compliance_requirements)
+        if conflict_analysis.has_conflicts:
+            return ComplianceDecision.conflict(
+                conflicting_requirements=conflict_analysis.conflicts,
+                resolution_suggestions=conflict_analysis.resolution_suggestions
+            )
+        
+        # 4. Determine data residency requirements
+        residency_requirements = await self.data_residency_enforcer.get_residency_requirements(
+            applicable_jurisdictions, data_classification
+        )
+        
+        # 5. Validate proposed operation against all requirements
+        compliance_validation = await self._validate_operation_compliance(
+            data_operation, compliance_requirements, residency_requirements
+        )
+        
+        if compliance_validation.compliant:
+            return ComplianceDecision.approved(
+                applicable_jurisdictions=applicable_jurisdictions,
+                compliance_requirements=compliance_requirements,
+                data_residency_constraints=residency_requirements
+            )
+        else:
+            return ComplianceDecision.rejected(
+                violation_reasons=compliance_validation.violations,
+                remediation_suggestions=compliance_validation.remediation_suggestions
+            )</code></pre>
+
+<h3>Production Results: From Italian Startup to Global Platform</h3>
+
+<p>After 4 months of global architecture implementation:</p>
+
+<table>
+<thead>
+<tr>
+<th>Global Metric</th>
+<th>Pre-Global</th>
+<th>Post-Global</th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Average Global Latency</strong></td>
+<td>2.8s (geographic average)</td>
+<td>0.9s (all regions)</td>
+<td><strong>-68% latency reduction</strong></td>
+</tr>
+<tr>
+<td><strong>Asia-Pacific User Experience</strong></td>
+<td>Unusable (4-6s delays)</td>
+<td>Excellent (0.8s avg)</td>
+<td><strong>87% improvement</strong></td>
+</tr>
+<tr>
+<td><strong>Global Availability (99.9%+)</strong></td>
+<td>1 region only</td>
+<td>6 regions + failover</td>
+<td><strong>Multi-region resilience</strong></td>
+</tr>
+<tr>
+<td><strong>Data Compliance Coverage</strong></td>
+<td>GDPR only</td>
+<td>GDPR+CCPA+10 others</td>
+<td><strong>Global compliance ready</strong></td>
+</tr>
+<tr>
+<td><strong>Maximum Concurrent Users</strong></td>
+<td>1,200 (single region)</td>
+<td>25,000+ (global)</td>
+<td><strong>20x scale increase</strong></td>
+</tr>
+<tr>
+<td><strong>Global Revenue Coverage</strong></td>
+<td>Europe only (€2.1M/year)</td>
+<td>Global (€8.7M/year)</td>
+<td><strong>314% revenue growth</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>The Cultural Challenge: Time Zone Operations</h3>
+
+<p>Technical scaling was only half the problem. The other half was <strong>operational scaling across time zones</strong>. How do you provide support when your users are always online somewhere in the world?</p>
+
+<p><strong>24/7 Operations Model Implemented:</strong>
+- <strong>Follow-the-Sun Support</strong>: Support team in 3 time zones (Italy, Singapore, California)
+- <strong>Global Incident Response</strong>: On-call rotation across continents
+- <strong>Regional Expertise</strong>: Local compliance and cultural knowledge per region
+- <strong>Cross-Cultural Training</strong>: Team training on cultural differences in customer communication</p>
+
+<h3>The Economics of Global Scale: Cost vs. Value</h3>
+
+<p>Global architecture had significant cost, but the value unlock was exponential:</p>
+
+<p><strong>Global Architecture Costs (Monthly):</strong>
+- <strong>Infrastructure</strong>: €45K/month (6 edge locations + networking)
+- <strong>Data Transfer</strong>: €18K/month (inter-region synchronization) 
+- <strong>Compliance</strong>: €12K/month (legal, auditing, certifications)
+- <strong>Operations</strong>: €35K/month (24/7 staff, monitoring tools)
+- <strong>Total</strong>: €110K/month additional operational cost</p>
+
+<p><strong>Global Architecture Value (Monthly):</strong>
+- <strong>New Market Revenue</strong>: €650K/month (previously inaccessible markets)
+- <strong>Existing Customer Expansion</strong>: €180K/month (global enterprise deals)
+- <strong>Competitive Advantage</strong>: €200K/month (estimated from competitive wins)
+- <strong>Total Value</strong>: €1,030K/month additional revenue</p>
+
+<p><strong>ROI: 935% per month</strong> - every euro invested in global architecture generated €9.35 of additional revenue.</p>
+
+<div class="key-takeaways-section">
+    <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+    <div class="key-takeaways-content"><p class="takeaway-item">✓ <strong>Geography is Destiny for Latency:</strong> Physical distance creates unavoidable latency that code optimization cannot fix.</p>
+<p class="takeaway-item">✓ <strong>Global AI Requires Edge Intelligence:</strong> AI models must be distributed intelligently based on usage predictions and bandwidth constraints.</p>
+<p class="takeaway-item">✓ <strong>Data Consistency Across Continents is Hard:</strong> Eventual consistency with intelligent conflict resolution is essential for global operations.</p>
+<p class="takeaway-item">✓ <strong>Regulatory Compliance is Geographically Complex:</strong> Each jurisdiction has different rules that can conflict with each other.</p>
+<p class="takeaway-item">✓ <strong>Global Operations Require Cultural Intelligence:</strong> Technical scaling must be matched with operational and cultural scaling.</p>
+<p class="takeaway-item">✓ <strong>Global Architecture ROI is Exponential:</strong> High upfront costs unlock exponentially larger markets and revenue opportunities.</p>
     </div>
+</div>
+
+<p><strong>Chapter Conclusion</strong></p>
+
+<p>Global Scale Architecture transformed us from a successful Italian startup to a global enterprise-ready platform. But more importantly, it taught us that <strong>scaling globally isn't just a technical problem</strong> – it's a problem of <strong>physics, law, economics, and culture</strong> that requires holistic solutions.</p>
+
+<p>With the system now operating on 6 continents, resilient to cascading failures, and compliant with global regulations, we had achieved what many consider the holy grail of software architecture: <strong>true global scale</strong> without compromising performance, security, or user experience.</p>
+
+<p>The journey from local MVP to global platform was complete. But the real test wasn't our technical benchmarks – it was whether users in Tokyo, New York, and London felt the system was as "local" and "fast" as users in Milan.</p>
+
+<p>And for the first time in 18 months of development, the answer was a definitive: <strong>"Yes."</strong></p>
+        </article>
+
+        <!-- Bottom Navigation -->
+        <nav class="chapter-nav-bottom">
+            <a href="../security-hardening/" class="nav-button secondary">← Previous Chapter</a>
+            <a href="../epilogue-journey/" class="nav-button">Next Chapter →</a>
+        </nav>
+    </div>
+
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+    </script>
+
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VEGK4VZMG0');
+        
+        gtag('event', 'chapter_start', {
+            'chapter_title': 'Global Scale Architecture – Conquering the World, One Timezone at a Time',
+            'movement': 'memory-system-scaling',
+            'chapter_number': 41
+        });
+    </script>
+    
+    <script>
+        // Reading Progress
+        function updateReadingProgress() {
+            const article = document.querySelector('.chapter-content');
+            const progress = document.getElementById('readingProgress');
+            
+            if (article && progress) {
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowTop = window.pageYOffset;
+                const windowHeight = window.innerHeight;
+                
+                const articleBottom = articleTop + articleHeight;
+                const windowBottom = windowTop + windowHeight;
+                
+                let progressPercentage = 0;
+                
+                if (windowTop >= articleTop && windowTop <= articleBottom) {
+                    progressPercentage = ((windowTop - articleTop) / articleHeight) * 100;
+                } else if (windowBottom >= articleBottom) {
+                    progressPercentage = 100;
+                }
+                
+                progress.style.transform = `scaleX(${Math.min(progressPercentage / 100, 1)})`;
+            }
+        }
+        
+        window.addEventListener('scroll', updateReadingProgress);
+        window.addEventListener('load', updateReadingProgress);
+        
+        // Font Size Controls
+        let currentFontSize = 1.1;
+        
+        function increaseFontSize() {
+            currentFontSize = Math.min(currentFontSize + 0.1, 2.0);
+            applyFontSize();
+        }
+        
+        function decreaseFontSize() {
+            currentFontSize = Math.max(currentFontSize - 0.1, 0.8);
+            applyFontSize();
+        }
+        
+        function applyFontSize() {
+            const content = document.querySelector('.chapter-content');
+            if (content) {
+                const paragraphs = content.querySelectorAll('p, li');
+                paragraphs.forEach(p => {
+                    p.style.fontSize = currentFontSize + 'rem';
+                });
+            }
+            localStorage.setItem('fontSize', currentFontSize.toString());
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark.toString());
+            showToast(isDark ? 'Dark mode activated' : 'Light mode activated');
+        }
+        
+        // Bookmarks
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+        }
+        
+        function addBookmark() {
+            const title = document.querySelector('.chapter-title').textContent;
+            const url = window.location.href;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            // Check if bookmark already exists
+            const exists = bookmarks.find(b => b.url === url);
+            if (exists) {
+                showToast('Bookmark removed!');
+                bookmarks = bookmarks.filter(b => b.url !== url);
+            } else {
+                showToast('Bookmark saved!');
+                bookmarks.push({
+                    title: title,
+                    url: url,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const container = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                container.innerHTML = '<p>No bookmarks saved.</p>';
+                return;
+            }
+            
+            container.innerHTML = bookmarks
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">${bookmark.title}</a>
+                    </div>
+                `).join('');
+        }
+        
+        // Toast Notifications
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        window.addEventListener('load', function() {
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                currentFontSize = parseFloat(savedFontSize);
+                applyFontSize();
+            }
+            
+            // Load theme
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            }
+        });
+    </script>
 </body>
 </html>

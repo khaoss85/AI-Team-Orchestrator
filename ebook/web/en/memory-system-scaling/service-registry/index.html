@@ -3,36 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Registry Architecture - Ecosystem | Memory System Scaling | AI Team Orchestrator</title>
-    <meta name="description" content="Chapter 37 of AI Team Orchestrator: Service Registry Architecture - Ecosystem">
+    <title>Service Registry Architecture – From Monolith to Ecosystem | Memory System Scaling | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Chapter 37 of AI Team Orchestrator: Service Registry Architecture – From Monolith to Ecosystem">
+    <meta name="keywords" content="AI agents, AI-driven system, AI architecture, OpenAI SDK, AI team">
+    <meta name="author" content="Daniele Pelleri">
     <meta name="robots" content="index, follow">
 
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
+    <!-- Open Graph -->
+    <meta property="og:title" content="Service Registry Architecture – From Monolith to Ecosystem">
+    <meta property="og:description" content="Chapter 37 of AI Team Orchestrator: Service Registry Architecture – From Monolith to Ecosystem">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/en/memory-system-scaling/service-registry/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/en/memory-system-scaling/service-registry/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/memory-system-scaling/service-registry/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/memory-system-scaling/service-registry-architecture-ecosistema/">
+    
     <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
-            padding: 2rem;
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Breadcrumb Navigation */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Chapter Header */
+        .chapter-header {
             background: white;
             padding: 3rem;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .chapter-header {
-            text-align: center;
             margin-bottom: 3rem;
+            text-align: center;
         }
         
         .chapter-instrument {
@@ -53,22 +100,147 @@
         .chapter-title {
             font-size: 2.5rem;
             color: #2c3e50;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             font-weight: 700;
             line-height: 1.2;
         }
         
-        .coming-soon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 15px;
-            text-align: center;
+        /* Content Styles */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 2rem 0 1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        
+        .chapter-content h4 {
+            font-size: 1.5rem;
+            color: #495057;
+            margin: 1.5rem 0 1rem;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin: 2rem 0;
         }
         
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Code Styles */
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        code {
+            background: #f1f3f4;
+            color: #d73a49;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        
+        /* Special Boxes */
+        .war-story, .industry-insight, .architecture-section, .key-takeaways-section {
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .war-story {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-left: 4px solid #856404;
+        }
+        
+        .industry-insight {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-left: 4px solid #28a745;
+        }
+        
+        .architecture-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+        }
+        
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        /* Mermaid Container */
+        .mermaid {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        /* Navigation */
+        .chapter-nav-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 3rem 0;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
         .nav-button {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 0.5rem;
             padding: 1rem 2rem;
@@ -78,39 +250,1168 @@
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s ease;
-            margin: 1rem 0.5rem;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
         
         .nav-button:hover {
             transform: translateY(-3px);
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
+        
+        .nav-button.secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button.secondary:hover {
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        /* War Story Icon Styling */
+        .war-story-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .war-story-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            flex-shrink: 0;
+            color: #856404;
+        }
+        
+        /* Architecture Section Styling */
+        .architecture-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .architecture-icon {
+            width: 2rem;
+            height: 2rem;
+            flex-shrink: 0;
+            color: #667eea;
+        }
+        
+        /* Insight Icon Styling */
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .insight-icon {
+            width: 1.8rem;
+            height: 1.8rem;
+            flex-shrink: 0;
+            color: #28a745;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .chapter-header,
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-nav-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
     </style>
+    
+    <style>
+        /* Reader Tools */
+        .reader-tools {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .tool-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Bookmark Modal */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .close-modal:hover {
+            color: #333;
+        }
+        
+        .bookmark-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bookmark-item:last-child {
+            border-bottom: none;
+        }
+        
+        .bookmark-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .bookmark-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Reading Progress Bar */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.2);
+            z-index: 999;
+        }
+        
+        .reading-progress::before {
+            content: '';
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform-origin: left;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        /* Dark Mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: #ecf0f1;
+        }
+        
+        body.dark-mode .chapter-header,
+        body.dark-mode .chapter-content,
+        body.dark-mode .breadcrumb {
+            background: rgba(52, 73, 94, 0.8);
+            color: #ecf0f1;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10001;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
 </head>
 <body>
-    <div class="container">
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="readingProgress"></div>
+    
+    <!-- Reader Tools -->
+    <div class="reader-tools">
+        <button class="tool-button" onclick="addBookmark()" title="My Bookmarks">📚</button>
+        <button class="tool-button" onclick="toggleTheme()" title="Theme">🎨</button>
+        <button class="tool-button" onclick="increaseFontSize()" title="Font Size +">A+</button>
+        <button class="tool-button" onclick="decreaseFontSize()" title="Font Size -">A-</button>
+    </div>
+    
+    <!-- Bookmark Modal -->
+    <div id="bookmarksModal" class="bookmarks-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeBookmarksModal()">&times;</span>
+            <h3>📚 My Bookmarks</h3>
+            <div id="bookmarksList">
+                <!-- Bookmarks will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="../../ai-team-orchestrator.html">🏠 AI Team Orchestrator</a>
+            <span>›</span>
+            <a href="../">🎭 Memory System Scaling</a>
+            <span>›</span>
+            <span>Service Registry Architecture – From Monolith to Ecosystem</span>
+        </nav>
+
+        <!-- Chapter Header -->
         <header class="chapter-header">
             <div class="chapter-instrument">🎭</div>
             <div class="chapter-meta">
-                <span>Movement 4 of 4</span>
-                <span>Chapter 37 of 42</span>
-                <span>Coming Soon</span>
+                <span>🎭 Movement 4 of 4</span>
+                <span>📖 Chapter 37 of 42</span>
+                <span>⏱️ ~12 min read</span>
+                <span>📊 Level: Expert</span>
             </div>
-            <h1 class="chapter-title">Service Registry Architecture - Ecosystem</h1>
+            <h1 class="chapter-title">Service Registry Architecture – From Monolith to Ecosystem</h1>
         </header>
 
-        <div class="coming-soon">
-            <h2>🚧 English Translation in Progress</h2>
-            <p>This chapter is currently being translated from Italian to English.</p>
-            <p>The Italian version is available and complete. English version coming soon!</p>
+        <!-- Main Content -->
+        <article class="chapter-content">
+<p>We had a resilient and performant system, but we were reaching the architectural limits of the monolithic design. With 15+ main components, 200+ functions, and a development team growing from 3 to 8 people, every change required increasingly complex coordination. It was time to make the big leap: <strong>from monolith to service-oriented architecture</strong>.</p>
+
+<p>But we couldn't simply "break" the monolith without a strategy. We needed a <strong>Service Registry</strong> – a system that would allow services to find each other, communicate, and coordinate without tight coupling.</p>
+
+<h3>The Catalyst: "The Integration Hell Week"</h3>
+
+<p>The decision to implement a service registry came from a particularly frustrating week we nicknamed "Integration Hell Week".</p>
+
+<p>That week, we were trying to integrate three new functionalities simultaneously:
+- A new agent type (Data Analyst)
+- A new tool (Advanced Web Scraper)  
+- A new AI provider (Anthropic Claude)</p>
+
+<p><em>Integration Hell Logbook:</em></p>
+
+<pre><code class="language-text">Day 1: Data Analyst integration breaks existing ContentSpecialist workflow
+Day 2: Web Scraper tool conflicts with existing search tool configuration
+Day 3: Claude provider requires different prompt format, breaks all existing prompts
+Day 4: Fixing Claude breaks OpenAI integration 
+Day 5: Emergency meeting: "We can't keep developing like this"</code></pre>
+
+<p><strong>The Fundamental Problem:</strong> Every new component had to "know" all other existing components. Every integration required changes to 5-10 different files. It was no longer sustainable.</p>
+
+<h3>Service Registry Architecture: Intelligent Discovery</h3>
+
+<p>The solution was to create a <strong>service registry</strong> that would allow components to register themselves dynamically and discover each other without hard-coded dependencies.</p>
+
+<p><em>Reference code: <code>backend/services/service_registry.py</code></em></p>
+
+<pre><code class="language-python">class ServiceRegistry:
+    """
+    Central registry for service discovery and capability management
+    in a distributed architecture
+    """
+    
+    def __init__(self):
+        self.services = {}  # service_name -> ServiceDefinition
+        self.capabilities = {}  # capability -> List[service_name]
+        self.health_monitors = {}  # service_name -> HealthMonitor
+        self.load_balancers = {}  # service_name -> LoadBalancer
+        
+    async def register_service(
+        self,
+        service_definition: ServiceDefinition
+    ) -> ServiceRegistration:
+        """
+        Register a new service with its capabilities and endpoints
+        """
+        service_name = service_definition.name
+        
+        # Validate service definition
+        await self._validate_service_definition(service_definition)
+        
+        # Store service definition
+        self.services[service_name] = service_definition
+        
+        # Index capabilities for discovery
+        for capability in service_definition.capabilities:
+            if capability not in self.capabilities:
+                self.capabilities[capability] = []
+            self.capabilities[capability].append(service_name)
+        
+        # Setup health monitoring
+        health_monitor = HealthMonitor(service_definition)
+        self.health_monitors[service_name] = health_monitor
+        await health_monitor.start_monitoring()
+        
+        # Setup load balancing if multiple instances
+        if service_definition.instance_count > 1:
+            load_balancer = LoadBalancer(service_definition)
+            self.load_balancers[service_name] = load_balancer
+        
+        logger.info(f"Service {service_name} registered with capabilities: {service_definition.capabilities}")
+        
+        return ServiceRegistration(
+            service_name=service_name,
+            registration_id=str(uuid4()),
+            health_check_url=health_monitor.health_check_url,
+            capabilities_registered=service_definition.capabilities
+        )
+    
+    async def discover_services_by_capability(
+        self,
+        required_capability: str,
+        selection_criteria: ServiceSelectionCriteria = None
+    ) -> List[ServiceEndpoint]:
+        """
+        Find all services that provide a specific capability
+        """
+        candidate_services = self.capabilities.get(required_capability, [])
+        
+        if not candidate_services:
+            raise NoServiceFoundException(f"No services found for capability: {required_capability}")
+        
+        # Filter by health status
+        healthy_services = []
+        for service_name in candidate_services:
+            health_monitor = self.health_monitors.get(service_name)
+            if health_monitor and await health_monitor.is_healthy():
+                healthy_services.append(service_name)
+        
+        if not healthy_services:
+            raise NoHealthyServiceException(f"No healthy services for capability: {required_capability}")
+        
+        # Apply selection criteria
+        if selection_criteria:
+            selected_services = await self._apply_selection_criteria(
+                healthy_services, selection_criteria
+            )
+        else:
+            selected_services = healthy_services
+        
+        # Convert to service endpoints
+        service_endpoints = []
+        for service_name in selected_services:
+            service_def = self.services[service_name]
             
-            <a href="../../ai-team-orchestrator.html" class="nav-button">
-                📚 Back to Guide
-            </a>
-            <a href="../../it/ai-team-orchestrator.html" class="nav-button">
-                🇮🇹 Read in Italian
-            </a>
-        </div>
+            # Use load balancer if available
+            if service_name in self.load_balancers:
+                endpoint = await self.load_balancers[service_name].get_endpoint()
+            else:
+                endpoint = service_def.primary_endpoint
+            
+            service_endpoints.append(ServiceEndpoint(
+                service_name=service_name,
+                endpoint_url=endpoint,
+                capabilities=service_def.capabilities,
+                current_load=await self._get_current_load(service_name)
+            ))
+        
+        return service_endpoints</code></pre>
+
+<h3>Service Definition: The Service Contract</h3>
+
+<p>To make service discovery work, every service had to declare itself using a structured <strong>service definition</strong>:</p>
+
+<pre><code class="language-python">@dataclass
+class ServiceDefinition:
+    """
+    Complete definition of a service and its capabilities
+    """
+    name: str
+    version: str
+    description: str
+    
+    # Service endpoints
+    primary_endpoint: str
+    health_check_endpoint: str
+    metrics_endpoint: Optional[str] = None
+    
+    # Capabilities this service provides
+    capabilities: List[str] = field(default_factory=list)
+    
+    # Dependencies this service requires
+    required_capabilities: List[str] = field(default_factory=list)
+    
+    # Performance characteristics
+    expected_response_time_ms: int = 1000
+    max_concurrent_requests: int = 100
+    instance_count: int = 1
+    
+    # Resource requirements
+    memory_requirement_mb: int = 512
+    cpu_requirement_cores: float = 0.5
+    
+    # Service metadata
+    tags: List[str] = field(default_factory=list)
+    contact_team: str = "platform"
+    documentation_url: Optional[str] = None
+
+# Example service definitions
+DATA_ANALYST_AGENT_SERVICE = ServiceDefinition(
+    name="data_analyst_agent",
+    version="1.2.0",
+    description="Specialized agent for data analysis and statistical insights",
+    
+    primary_endpoint="http://localhost:8001/api/v1/data-analyst",
+    health_check_endpoint="http://localhost:8001/health",
+    metrics_endpoint="http://localhost:8001/metrics",
+    
+    capabilities=[
+        "data_analysis",
+        "statistical_modeling", 
+        "chart_generation",
+        "trend_analysis",
+        "report_generation"
+    ],
+    
+    required_capabilities=[
+        "ai_pipeline_access",
+        "database_read_access",
+        "file_storage_access"
+    ],
+    
+    expected_response_time_ms=3000,  # Data analysis can be slow
+    max_concurrent_requests=25,      # CPU intensive
+    
+    tags=["agent", "analytics", "data"],
+    contact_team="ai_agents_team"
+)
+
+WEB_SCRAPER_TOOL_SERVICE = ServiceDefinition(
+    name="advanced_web_scraper",
+    version="2.1.0", 
+    description="Advanced web scraping with JavaScript rendering and anti-bot evasion",
+    
+    primary_endpoint="http://localhost:8002/api/v1/scraper",
+    health_check_endpoint="http://localhost:8002/health",
+    
+    capabilities=[
+        "web_scraping",
+        "javascript_rendering",
+        "pdf_extraction", 
+        "structured_data_extraction",
+        "batch_scraping"
+    ],
+    
+    required_capabilities=[
+        "proxy_service",
+        "cache_service"  
+    ],
+    
+    expected_response_time_ms=5000,  # Network dependent
+    max_concurrent_requests=50,
+    instance_count=3,  # Scale for throughput
+    
+    tags=["tool", "web", "extraction"],
+    contact_team="tools_team"
+)</code></pre>
+
+<h3>"War Story": The Service Discovery Race Condition</h3>
+
+<p>During the implementation of the service registry, we discovered an insidious problem that almost caused the entire project to fail.</p>
+
+<pre><code class="language-text">ERROR: ServiceNotAvailableException in workspace_executor.py:142
+ERROR: Required capability 'content_generation' not found
+DEBUG: Available services: ['data_analyst_agent', 'web_scraper_tool']
+DEBUG: content_specialist_agent status: STARTING...</code></pre>
+
+<p>The problem? <strong>Service startup race conditions</strong>. When the system started up, some services registered before others, and services that started first tried to use services that weren't ready yet.</p>
+
+<p><strong>Root Cause Analysis:</strong>
+1. ContentSpecialist service requires 15 seconds for startup (loads ML models)
+2. Executor service starts in 3 seconds and immediately looks for ContentSpecialist
+3. ContentSpecialist isn't registered yet → Task fails</p>
+
+<h3>The Solution: Dependency-Aware Startup Orchestration</h3>
+
+<pre><code class="language-python">class ServiceStartupOrchestrator:
+    """
+    Orchestrates service startup based on dependency graph
+    """
+    
+    def __init__(self, service_registry: ServiceRegistry):
+        self.service_registry = service_registry
+        self.startup_graph = DependencyGraph()
+        
+    async def orchestrate_startup(
+        self,
+        service_definitions: List[ServiceDefinition]
+    ) -> StartupResult:
+        """
+        Start services in dependency order, waiting for readiness
+        """
+        # 1. Build dependency graph
+        self.startup_graph.build_from_definitions(service_definitions)
+        
+        # 2. Calculate startup order (topological sort)
+        startup_order = self.startup_graph.get_startup_order()
+        
+        logger.info(f"Calculated startup order: {[s.name for s in startup_order]}")
+        
+        # 3. Start services in batches (services with no deps start together)
+        startup_batches = self.startup_graph.get_startup_batches()
+        
+        started_services = []
+        for batch_index, service_batch in enumerate(startup_batches):
+            logger.info(f"Starting batch {batch_index}: {[s.name for s in service_batch]}")
+            
+            # Start all services in this batch concurrently
+            batch_tasks = []
+            for service_def in service_batch:
+                task = asyncio.create_task(
+                    self._start_service_with_health_wait(service_def)
+                )
+                batch_tasks.append(task)
+            
+            # Wait for all services in batch to be ready
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+            
+            # Check for failures
+            for i, result in enumerate(batch_results):
+                if isinstance(result, Exception):
+                    service_name = service_batch[i].name
+                    logger.error(f"Failed to start service {service_name}: {result}")
+                    
+                    # Rollback all started services
+                    await self._rollback_startup(started_services)
+                    raise ServiceStartupException(f"Service {service_name} failed to start")
+                else:
+                    started_services.append(result)
+        
+        return StartupResult(
+            services_started=len(started_services),
+            total_startup_time=time.time() - startup_start_time,
+            service_order=[s.service_name for s in started_services]
+        )
+    
+    async def _start_service_with_health_wait(
+        self,
+        service_def: ServiceDefinition,
+        max_wait_seconds: int = 60
+    ) -> ServiceStartupResult:
+        """
+        Start service and wait until it's healthy and ready
+        """
+        logger.info(f"Starting service: {service_def.name}")
+        
+        # 1. Start the service process
+        service_process = await self._start_service_process(service_def)
+        
+        # 2. Wait for health check to pass
+        health_check_url = service_def.health_check_endpoint
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_seconds:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(health_check_url, timeout=5) as response:
+                        if response.status == 200:
+                            health_data = await response.json()
+                            if health_data.get("status") == "healthy":
+                                # Service is healthy, register it
+                                registration = await self.service_registry.register_service(service_def)
+                                
+                                logger.info(f"Service {service_def.name} started and registered successfully")
+                                return ServiceStartupResult(
+                                    service_name=service_def.name,
+                                    registration=registration,
+                                    startup_time=time.time() - start_time
+                                )
+            except Exception as e:
+                logger.debug(f"Health check failed for {service_def.name}: {e}")
+            
+            # Wait before next health check
+            await asyncio.sleep(2)
+        
+        # Timeout - service failed to become healthy
+        await self._stop_service_process(service_process)
+        raise ServiceStartupTimeoutException(
+            f"Service {service_def.name} failed to become healthy within {max_wait_seconds}s"
+        )</code></pre>
+
+<h3>Smart Service Selection: More Than Load Balancing</h3>
+
+<p>With multiple services providing the same capabilities, we needed <strong>intelligence in service selection</strong>:</p>
+
+<pre><code class="language-python">class IntelligentServiceSelector:
+    """
+    AI-driven service selection based on performance, load, and context
+    """
+    
+    async def select_optimal_service(
+        self,
+        required_capability: str,
+        request_context: RequestContext,
+        performance_requirements: PerformanceRequirements
+    ) -> ServiceEndpoint:
+        """
+        Select best service based on current conditions and requirements
+        """
+        # Get all candidate services
+        candidates = await self.service_registry.discover_services_by_capability(
+            required_capability
+        )
+        
+        if not candidates:
+            raise NoServiceAvailableException(f"No services for capability: {required_capability}")
+        
+        # Score each candidate service
+        service_scores = []
+        for service in candidates:
+            score = await self._calculate_service_score(
+                service, request_context, performance_requirements
+            )
+            service_scores.append((service, score))
+        
+        # Sort by score (highest first)
+        service_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Select best service with some randomization to avoid thundering herd
+        if len(service_scores) > 1 and service_scores[0][1] - service_scores[1][1] < 0.1:
+            # Top services are very close - add randomization
+            top_services = [s for s, score in service_scores if score >= service_scores[0][1] - 0.1]
+            selected_service = random.choice(top_services)
+        else:
+            selected_service = service_scores[0][0]
+        
+        logger.info(f"Selected service {selected_service.service_name} for {required_capability}")
+        return selected_service
+    
+    async def _calculate_service_score(
+        self,
+        service: ServiceEndpoint,
+        context: RequestContext,  
+        requirements: PerformanceRequirements
+    ) -> float:
+        """
+        Calculate suitability score for service based on multiple factors
+        """
+        score_factors = {}
+        
+        # Factor 1: Current load (0.0 = overloaded, 1.0 = no load)
+        load_factor = 1.0 - min(service.current_load, 1.0)
+        score_factors["load"] = load_factor * 0.3
+        
+        # Factor 2: Historical performance for this context
+        historical_performance = await self._get_historical_performance(
+            service.service_name, context
+        )
+        score_factors["performance"] = historical_performance * 0.25
+        
+        # Factor 3: Geographic/network proximity
+        network_proximity = await self._calculate_network_proximity(service)
+        score_factors["proximity"] = network_proximity * 0.15
+        
+        # Factor 4: Specialization match (how well suited for this specific request)
+        specialization_match = await self._calculate_specialization_match(
+            service, context, requirements
+        )
+        score_factors["specialization"] = specialization_match * 0.2
+        
+        # Factor 5: Cost efficiency
+        cost_efficiency = await self._calculate_cost_efficiency(service, requirements)
+        score_factors["cost"] = cost_efficiency * 0.1
+        
+        # Combine all factors
+        total_score = sum(score_factors.values())
+        
+        logger.debug(f"Service {service.service_name} score: {total_score:.3f} {score_factors}")
+        return total_score</code></pre>
+
+<h3>Service Health Monitoring: Proactive vs Reactive</h3>
+
+<p>A service registry is useless if the registered services are down. We implemented <strong>proactive health monitoring</strong>:</p>
+
+<pre><code class="language-python">class ServiceHealthMonitor:
+    """
+    Continuous health monitoring with predictive failure detection
+    """
+    
+    def __init__(self, service_registry: ServiceRegistry):
+        self.service_registry = service_registry
+        self.health_history = ServiceHealthHistory()
+        self.failure_predictor = ServiceFailurePredictor()
+        
+    async def start_monitoring(self):
+        """
+        Start continuous health monitoring for all registered services
+        """
+        while True:
+            # Get all registered services
+            services = await self.service_registry.get_all_services()
+            
+            # Monitor each service concurrently
+            monitoring_tasks = []
+            for service in services:
+                task = asyncio.create_task(self._monitor_service_health(service))
+                monitoring_tasks.append(task)
+            
+            # Wait for all health checks (with timeout)
+            await asyncio.wait(monitoring_tasks, timeout=30)
+            
+            # Analyze health trends and predict failures
+            await self._analyze_health_trends()
+            
+            # Wait before next monitoring cycle
+            await asyncio.sleep(30)  # Monitor every 30 seconds
+    
+    async def _monitor_service_health(self, service: ServiceDefinition):
+        """
+        Comprehensive health check for a single service
+        """
+        service_name = service.name
+        health_metrics = {}
+        
+        try:
+            # 1. Basic connectivity check
+            connectivity_ok = await self._check_connectivity(service.health_check_endpoint)
+            health_metrics["connectivity"] = connectivity_ok
+            
+            # 2. Response time check
+            response_time = await self._measure_response_time(service.primary_endpoint)
+            health_metrics["response_time_ms"] = response_time
+            health_metrics["response_time_ok"] = response_time < service.expected_response_time_ms * 1.5
+            
+            # 3. Resource utilization check (if metrics endpoint available)
+            if service.metrics_endpoint:
+                resource_metrics = await self._get_resource_metrics(service.metrics_endpoint)
+                health_metrics.update(resource_metrics)
+            
+            # 4. Capability-specific health checks
+            for capability in service.capabilities:
+                capability_health = await self._test_capability_health(service, capability)
+                health_metrics[f"capability_{capability}"] = capability_health
+            
+            # 5. Calculate overall health score
+            overall_health = self._calculate_overall_health_score(health_metrics)
+            health_metrics["overall_health_score"] = overall_health
+            
+            # 6. Update service registry health status
+            await self.service_registry.update_service_health(service_name, health_metrics)
+            
+            # 7. Store health history for trend analysis
+            await self.health_history.record_health_check(service_name, health_metrics)
+            
+            # 8. Check for degradation patterns
+            if overall_health < 0.8:
+                await self._handle_service_degradation(service, health_metrics)
+            
+        except Exception as e:
+            logger.error(f"Health monitoring failed for {service_name}: {e}")
+            await self.service_registry.mark_service_unhealthy(
+                service_name, 
+                reason=str(e),
+                timestamp=datetime.utcnow()
+            )</code></pre>
+
+<h3>The Service Mesh Evolution: From Registry to Orchestration</h3>
+
+<p>With the service registry stabilized, the natural next step was to evolve toward a <strong>service mesh</strong> – an infrastructure layer that manages service-to-service communication:</p>
+
+<pre><code class="language-python">class ServiceMeshManager:
+    """
+    Advanced service mesh capabilities built on top of service registry
+    """
+    
+    def __init__(self, service_registry: ServiceRegistry):
+        self.service_registry = service_registry
+        self.traffic_manager = TrafficManager()
+        self.security_manager = ServiceSecurityManager()
+        self.observability_manager = ServiceObservabilityManager()
+        
+    async def route_request(
+        self,
+        source_service: str,
+        target_capability: str,
+        request_payload: Dict[str, Any],
+        routing_context: RoutingContext
+    ) -> ServiceResponse:
+        """
+        Advanced request routing with traffic management, security, and observability
+        """
+        # 1. Service discovery with intelligent selection
+        target_service = await self.service_registry.select_optimal_service(
+            target_capability, routing_context
+        )
+        
+        # 2. Apply traffic management policies
+        traffic_policy = await self.traffic_manager.get_policy(
+            source_service, target_service.service_name
+        )
+        
+        if traffic_policy.should_throttle(routing_context):
+            return ServiceResponse.throttled(traffic_policy.throttle_reason)
+        
+        # 3. Apply security policies
+        security_policy = await self.security_manager.get_policy(
+            source_service, target_service.service_name
+        )
+        
+        if not await security_policy.authorize_request(request_payload, routing_context):
+            return ServiceResponse.unauthorized("Security policy violation")
+        
+        # 4. Add observability headers
+        enriched_request = await self.observability_manager.enrich_request(
+            request_payload, source_service, target_service.service_name
+        )
+        
+        # 5. Execute request with circuit breaker and retries
+        try:
+            response = await self._execute_with_resilience(
+                target_service, enriched_request, traffic_policy
+            )
+            
+            # 6. Record successful interaction
+            await self.observability_manager.record_success(
+                source_service, target_service.service_name, response
+            )
+            
+            return response
+            
+        except Exception as e:
+            # 7. Handle failure with observability
+            await self.observability_manager.record_failure(
+                source_service, target_service.service_name, e
+            )
+            
+            # 8. Apply failure handling policy
+            return await self._handle_service_failure(
+                source_service, target_service, e, traffic_policy
+            )</code></pre>
+
+<h3>Production Results: The Modularization Dividend</h3>
+
+<p>After 3 weeks with service registry architecture in production:</p>
+
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Monolith</th>
+<th>Service Registry</th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Deploy Frequency</strong></td>
+<td>1x/week</td>
+<td>5x/week per service</td>
+<td><strong>+400%</strong></td>
+</tr>
+<tr>
+<td><strong>Mean Time to Recovery</strong></td>
+<td>45 minutes</td>
+<td>8 minutes</td>
+<td><strong>-82%</strong></td>
+</tr>
+<tr>
+<td><strong>Development Velocity</strong></td>
+<td>2 features/week</td>
+<td>7 features/week</td>
+<td><strong>+250%</strong></td>
+</tr>
+<tr>
+<td><strong>System Availability</strong></td>
+<td>99.2%</td>
+<td>99.8%</td>
+<td><strong>+0.6pp</strong></td>
+</tr>
+<tr>
+<td><strong>Resource Utilization</strong></td>
+<td>68% average</td>
+<td>78% average</td>
+<td><strong>+15%</strong></td>
+</tr>
+<tr>
+<td><strong>Onboarding Time (new devs)</strong></td>
+<td>2 weeks</td>
+<td>3 days</td>
+<td><strong>-79%</strong></td>
+</tr>
+</tbody>
+</table>
+
+<h3>The Microservices Paradox: Complexity vs Flexibility</h3>
+
+<p>The service registry gave us enormous flexibility, but also introduced new types of complexity:</p>
+
+<p><strong>Complexity Added:</strong>
+- Network latency between services
+- Service discovery overhead
+- Distributed debugging difficulty
+- Configuration management complexity
+- Monitoring across multiple services</p>
+
+<p><strong>Benefits Gained:</strong>
+- Independent deployment cycles
+- Technology diversity (different services, different languages)
+- Fault isolation (one service down ≠ system down)
+- Team autonomy (teams own their services)
+- Scalability granularity (scale only what needs scaling)</p>
+
+<p><strong>The Lesson:</strong> Microservices architecture isn't "free lunch". It's a conscious trade-off between operational complexity and development flexibility.</p>
+
+<div class="key-takeaways-section">
+    <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+    <div class="key-takeaways-content"><p class="takeaway-item">✓ <strong>Service Discovery &gt; Hard Dependencies:</strong> Dynamic service discovery eliminates tight coupling and enables independent evolution.</p>
+<p class="takeaway-item">✓ <strong>Dependency-Aware Startup is Critical:</strong> Services with dependencies must start in correct order to avoid race conditions.</p>
+<p class="takeaway-item">✓ <strong>Health Monitoring Must Be Proactive:</strong> Reactive health checks find problems too late. Predictive monitoring prevents failures.</p>
+<p class="takeaway-item">✓ <strong>Intelligent Service Selection &gt; Simple Load Balancing:</strong> Choose services based on performance, load, specialization, and cost.</p>
+<p class="takeaway-item">✓ <strong>Service Mesh Evolution is Natural:</strong> Service registry naturally evolves to service mesh with traffic management and security.</p>
+<p class="takeaway-item">✓ <strong>Microservices Have Hidden Costs:</strong> Network latency, distributed debugging, and operational complexity are real costs to consider.</p>
     </div>
+</div>
+
+<p><strong>Chapter Conclusion</strong></p>
+
+<p>Service Registry Architecture transformed us from a fragile and hard-to-modify monolith to an ecosystem of flexible and independently deployable services. But more importantly, it gave us the <strong>foundation to scale the team and organization</strong>, not just the technology.</p>
+
+<p>With services that could be developed, deployed, and scaled independently, we were ready for the next challenge: <strong>consolidating all fragmented memory systems</strong> into a single, intelligent knowledge base that could learn and continuously improve.</p>
+
+<p><strong>Holistic Memory Consolidation</strong> would be the final step to transform our system from a "collection of smart services" to a "unified intelligent organism".</p>
+            </div>
+
+            
+        </article>
+
+        <!-- Bottom Navigation -->
+        <nav class="chapter-nav-bottom">
+            <a href="../rate-limiting-resilience/" class="nav-button secondary">← Previous Chapter</a>
+            <a href="../memory-consolidation/" class="nav-button">Next Chapter →</a>
+        </nav>
+    </div>
+
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
+            }
+        });
+    </script>
+
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VEGK4VZMG0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VEGK4VZMG0');
+        
+        gtag('event', 'chapter_start', {
+            'chapter_title': 'Service Registry Architecture – From Monolith to Ecosystem',
+            'movement': 'memory-system-scaling',
+            'chapter_number': 37
+        });
+    </script>
 </body>
+    
+    <script>
+        // Reading Progress
+        function updateReadingProgress() {
+            const article = document.querySelector('.chapter-content');
+            const progress = document.getElementById('readingProgress');
+            
+            if (article && progress) {
+                const articleTop = article.offsetTop;
+                const articleHeight = article.offsetHeight;
+                const windowTop = window.pageYOffset;
+                const windowHeight = window.innerHeight;
+                
+                const articleBottom = articleTop + articleHeight;
+                const windowBottom = windowTop + windowHeight;
+                
+                let progressPercentage = 0;
+                
+                if (windowTop >= articleTop && windowTop <= articleBottom) {
+                    progressPercentage = ((windowTop - articleTop) / articleHeight) * 100;
+                } else if (windowBottom >= articleBottom) {
+                    progressPercentage = 100;
+                }
+                
+                progress.style.transform = `scaleX(${Math.min(progressPercentage / 100, 1)})`;
+            }
+        }
+        
+        window.addEventListener('scroll', updateReadingProgress);
+        window.addEventListener('load', updateReadingProgress);
+        
+        // Font Size Controls
+        let currentFontSize = 1.1;
+        
+        function increaseFontSize() {
+            currentFontSize = Math.min(currentFontSize + 0.1, 2.0);
+            applyFontSize();
+        }
+        
+        function decreaseFontSize() {
+            currentFontSize = Math.max(currentFontSize - 0.1, 0.8);
+            applyFontSize();
+        }
+        
+        function applyFontSize() {
+            const content = document.querySelector('.chapter-content');
+            if (content) {
+                const paragraphs = content.querySelectorAll('p, li');
+                paragraphs.forEach(p => {
+                    p.style.fontSize = currentFontSize + 'rem';
+                });
+            }
+            localStorage.setItem('fontSize', currentFontSize.toString());
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark.toString());
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+        
+        // Bookmarks
+        function toggleBookmarks() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+            loadBookmarks();
+        }
+        
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+        }
+        
+        function addBookmark() {
+            const title = document.querySelector('.chapter-title').textContent;
+            const url = window.location.href;
+            
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            
+            // Check if bookmark already exists
+            const exists = bookmarks.find(b => b.url === url);
+            if (exists) {
+                showToast('Bookmark removed!');
+                bookmarks = bookmarks.filter(b => b.url !== url);
+            } else {
+                showToast('Bookmark saved!');
+                bookmarks.push({
+                    title: title,
+                    url: url,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+        
+        function loadBookmarks() {
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            const container = document.getElementById('bookmarksList');
+            
+            if (bookmarks.length === 0) {
+                container.innerHTML = '<p>No bookmarks saved.</p>';
+                return;
+            }
+            
+            container.innerHTML = bookmarks
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(bookmark => `
+                    <div class="bookmark-item">
+                        <a href="${bookmark.url}" class="bookmark-link">${bookmark.title}</a>
+                    </div>
+                `).join('');
+        }
+        
+        // Toast Notifications
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+        
+        // Load saved preferences
+        window.addEventListener('load', function() {
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                currentFontSize = parseFloat(savedFontSize);
+                applyFontSize();
+            }
+            
+            // Load theme
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+            }
+        });
+    </script>
 </html>

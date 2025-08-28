@@ -3,8 +3,8 @@
 🚨 WORKSPACE AUTO-RECOVERY SYSTEM
 =====================================
 
-Automatically recovers workspaces stuck in 'needs_intervention' status
-by analyzing the root cause and applying appropriate fixes.
+Automatically recovers workspaces in 'auto_recovering' status
+by analyzing the root cause and applying autonomous fixes.
 """
 
 import logging
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class WorkspaceRecoverySystem:
     """
-    🔧 AUTO-RECOVERY: Diagnoses and fixes workspaces stuck in intervention status
+    🔧 AUTO-RECOVERY: Diagnoses and fixes workspaces in autonomous recovery status
     """
     
     def __init__(self):
@@ -39,7 +39,7 @@ class WorkspaceRecoverySystem:
             cutoff_time = (datetime.now() - timedelta(minutes=10)).isoformat()
             
             response = supabase.table("workspaces").select("*").eq(
-                "status", WorkspaceStatus.NEEDS_INTERVENTION.value
+                "status", WorkspaceStatus.AUTO_RECOVERING.value
             ).lt(
                 "updated_at", cutoff_time
             ).execute()

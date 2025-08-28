@@ -183,6 +183,88 @@ async def get_auto_completion_status(workspace_id: str, request: Request):
         logger.error(f"❌ Error getting auto-completion status for workspace {workspace_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get auto-completion status: {str(e)}")
 
+@router.post("/workspace/{workspace_id}/missing-deliverables")
+async def auto_complete_missing_deliverables_for_workspace(
+    workspace_id: str,
+    background_tasks: BackgroundTasks,
+    request: Request
+):
+    """Auto-complete missing deliverables for a specific workspace/goal"""
+    trace_id = get_trace_id(request)
+    logger = create_traced_logger(request, __name__)
+    
+    try:
+        logger.info(f"🚀 Auto-completing missing deliverables for workspace {workspace_id}")
+        
+        # Get all missing deliverables for this workspace
+        missing_deliverables = await detect_missing_deliverables(workspace_id)
+        
+        if not missing_deliverables:
+            logger.info(f"✅ No missing deliverables found for workspace {workspace_id}")
+            return {
+                'success': True,
+                'message': 'No missing deliverables to complete',
+                'workspace_id': workspace_id,
+                'completed_deliverables': 0
+            }
+        
+        completion_results = []
+        successful_completions = 0
+        
+        # Process each goal with missing deliverables
+        for goal_missing in missing_deliverables:
+            goal_id = goal_missing.get('goal_id')
+            can_auto_complete = goal_missing.get('can_auto_complete', False)
+            
+            if not can_auto_complete:
+                logger.info(f"⏭️ Skipping blocked goal {goal_id}: {goal_missing.get('blocked_reason')}")
+                continue
+            
+            # Auto-complete each missing deliverable for this goal
+            for deliverable_name in goal_missing.get('missing_deliverables', []):
+                try:
+                    result = await auto_complete_missing_deliverable(
+                        workspace_id=workspace_id,
+                        goal_id=goal_id,
+                        deliverable_name=deliverable_name
+                    )
+                    
+                    if result.get('success'):
+                        successful_completions += 1
+                        logger.info(f"✅ Completed deliverable: {deliverable_name} for goal {goal_id}")
+                    
+                    completion_results.append({
+                        'goal_id': goal_id,
+                        'deliverable_name': deliverable_name,
+                        'status': 'success' if result.get('success') else 'failed',
+                        'task_id': result.get('task_id'),
+                        'message': result.get('message', result.get('error'))
+                    })
+                    
+                except Exception as deliverable_error:
+                    logger.error(f"❌ Failed to complete {deliverable_name} for goal {goal_id}: {deliverable_error}")
+                    completion_results.append({
+                        'goal_id': goal_id,
+                        'deliverable_name': deliverable_name,
+                        'status': 'error',
+                        'error': str(deliverable_error)
+                    })
+        
+        logger.info(f"✅ Auto-completion finished: {successful_completions}/{len(completion_results)} successful")
+        
+        return {
+            'success': True,
+            'workspace_id': workspace_id,
+            'total_attempts': len(completion_results),
+            'successful_completions': successful_completions,
+            'completion_results': completion_results,
+            'message': f'Successfully completed {successful_completions} missing deliverables'
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in auto-completion for workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Auto-completion error: {str(e)}")
+
 @router.post("/workspace/{workspace_id}/auto-complete-all")
 async def auto_complete_all_missing(
     workspace_id: str,

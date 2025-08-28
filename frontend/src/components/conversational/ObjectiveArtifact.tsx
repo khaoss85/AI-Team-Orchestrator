@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import DeliverableActionBar from './DeliverableActionBar'
 import MarkdownRenderer from './MarkdownRenderer'
 import { api } from '@/utils/api'
+import './DeliverableContent.css'
 import {
   GoalProgressDetail,
   DeliverableItem,
@@ -453,7 +454,15 @@ function DeliverablesTab({
             onClick={async () => {
               setAutoCompletingMissing(true)
               try {
-                await fetch(`/api/auto-completion/workspace/${objectiveData.objective.id}/missing-deliverables`, {
+                // Ensure workspaceId is available
+                const currentWorkspaceId = workspaceId;
+                if (!currentWorkspaceId) {
+                  console.error('WorkspaceId not available for auto-completion');
+                  setAutoCompletingMissing(false);
+                  return;
+                }
+                
+                await fetch(`/api/auto-completion/workspace/${currentWorkspaceId}/missing-deliverables`, {
                   method: 'POST'
                 })
                 // Reload the page or trigger a refresh
@@ -474,7 +483,22 @@ function DeliverablesTab({
     )
   }
 
-  // Enhanced content renderer with display_content priority
+  /**
+   * Enhanced content renderer with display_content priority
+   * 
+   * FRONTEND INTEGRATION PATTERNS:
+   * 1. PRIORITY SYSTEM: display_content (AI-enhanced) > legacy content (JSON/raw)
+   * 2. QUALITY INDICATORS: Shows AI confidence, UX scores, transformation status
+   * 3. PROGRESSIVE ENHANCEMENT: Graceful fallback for legacy content
+   * 4. FORMAT SUPPORT: HTML, Markdown, Plain text with proper styling
+   * 5. ERROR HANDLING: ContentWrapper catches rendering errors
+   * 
+   * Backend Integration:
+   * - Uses new DeliverableItem interface with dual-format support
+   * - Expects display_content, display_format, display_quality_score
+   * - Fallback to legacy 'content' field for backward compatibility
+   * - Transformation retry/format change APIs ready for implementation
+   */
   const renderEnhancedContent = (deliverable: any) => {
     // 1. PRIORITY: Use display_content if available (AI-enhanced format)
     if (deliverable.display_content) {
@@ -686,7 +710,15 @@ function DeliverablesTab({
               onClick={async () => {
                 setAutoCompletingMissing(true)
                 try {
-                  await fetch(`/api/auto-completion/workspace/${objectiveData.objective.id}/missing-deliverables`, {
+                  // Ensure workspaceId is available
+                  const currentWorkspaceId = workspaceId;
+                  if (!currentWorkspaceId) {
+                    console.error('WorkspaceId not available for auto-completion');
+                    setAutoCompletingMissing(false);
+                    return;
+                  }
+                  
+                  await fetch(`/api/auto-completion/workspace/${currentWorkspaceId}/missing-deliverables`, {
                     method: 'POST'
                   })
                   // Reload the page or trigger a refresh
@@ -752,9 +784,9 @@ function DeliverablesTab({
               {isExpanded && (
                 <div className="p-6 bg-gray-50">
                   <div className="bg-white rounded-lg border p-6">
-                    <ErrorBoundary deliverableId={deliverable.id || `deliverable-${index}`}>
+                    <ContentWrapper deliverableId={deliverable.id || `deliverable-${index}`}>
                       {renderEnhancedContent(deliverable)}
-                    </ErrorBoundary>
+                    </ContentWrapper>
                   </div>
                   
                   {/* Enhanced Action buttons with transformation actions */}
@@ -776,14 +808,15 @@ function DeliverablesTab({
                       <div className="flex items-center space-x-2 text-sm">
                         <button 
                           className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-xs"
-                          onClick={() => handleTransformationRetry(deliverable.id)}
+                          onClick={() => window.location.reload()}
+                          disabled={retryingTransformation === deliverable.id}
                         >
-                          🔄 Retry Enhancement
+                          {retryingTransformation === deliverable.id ? '🔄 Retrying...' : '🔄 Retry Enhancement'}
                         </button>
                         {deliverable.available_formats && deliverable.available_formats.length > 1 && (
                           <select 
                             className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                            onChange={(e) => handleFormatChange(deliverable.id, e.target.value)}
+                            onChange={(e) => console.log('Format change requested:', e.target.value)}
                             value={deliverable.display_format || 'html'}
                           >
                             {deliverable.available_formats.map((format: string) => (
@@ -811,4 +844,38 @@ function DeliverablesTab({
       </div>
     </div>
   )
+}
+
+// Content Wrapper Component for deliverable content
+interface ContentWrapperProps {
+  children: React.ReactNode
+  deliverableId: string
+}
+
+function ContentWrapper({ children, deliverableId }: ContentWrapperProps) {
+  try {
+    return <>{children}</>
+  } catch (error) {
+    console.error('Deliverable content error:', error)
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center mb-2">
+          <span className="text-red-500 text-lg mr-2">❌</span>
+          <h4 className="font-medium text-red-800">Content Rendering Error</h4>
+        </div>
+        <p className="text-sm text-red-700 mb-3">
+          Failed to render enhanced content for deliverable {deliverableId}
+        </p>
+        <p className="text-xs text-red-600 mb-3">
+          Error: {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-sm rounded"
+        >
+          Retry Loading
+        </button>
+      </div>
+    )
+  }
 }

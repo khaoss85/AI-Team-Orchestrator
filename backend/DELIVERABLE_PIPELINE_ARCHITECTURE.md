@@ -15,7 +15,8 @@ class WorkspaceStatus(str, Enum):
     COMPLETED = "completed"         # All goals achieved
     ERROR = "error"                 # Critical error state
     PROCESSING_TASKS = "processing_tasks"  # Temporary state during task generation
-    NEEDS_INTERVENTION = "needs_intervention"  # Requires human intervention
+    AUTO_RECOVERING = "auto_recovering"  # System autonomously recovering from issues
+    DEGRADED_MODE = "degraded_mode"      # Operating with reduced functionality but autonomous
 ```
 
 ### Status Transitions
@@ -30,13 +31,21 @@ class WorkspaceStatus(str, Enum):
 3. **PROCESSING_TASKS → ACTIVE**
    - Automatically reverts after task generation completes
    
-4. **ACTIVE → NEEDS_INTERVENTION**
-   - Set by `executor.py` when workspace is paused
-   - Set by `automated_goal_monitor.py` for orphaned workspaces
+4. **ACTIVE → AUTO_RECOVERING**
+   - Set by `autonomous_task_recovery.py` when issues are detected
+   - Triggered by `failed_task_resolver.py` during recovery operations
    
-5. **NEEDS_INTERVENTION → ACTIVE**
-   - Recovery by `workspace_recovery_system.py`
-   - Manual recovery via `executor.py` resume function
+5. **AUTO_RECOVERING → ACTIVE**
+   - Automatic recovery by `autonomous_task_recovery.py`
+   - Recovery completed by `failed_task_resolver.py`
+   
+6. **ACTIVE → DEGRADED_MODE**
+   - System continues operating with reduced capabilities
+   - Autonomous fallback when some components fail
+   
+7. **DEGRADED_MODE → ACTIVE**
+   - Recovery when all systems are restored
+   - No human intervention required
 
 ### Key Functions
 - `update_workspace_status()` in `database.py`

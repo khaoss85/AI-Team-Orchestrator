@@ -1,16 +1,18 @@
-Files to review: AUTO_RECOVERY_ARCHITECTURE.md
-CLAUDE.md
-DOCS_SCRIBE_INTEGRATION_GUIDE.md
-MEMORY_DOCUMENTATION_TEMPLATES.md
-PROACTIVE_DOCUMENTATION_SYSTEM.md
-SYSTEM_KNOWLEDGE_DOCUMENTATION.md
-backend/main.py
-backend/routes/auto_completion.py
-backend/routes/goal_progress_details.py
-backend/services/api_rate_limiter.py
+Files to review: AI_DRIVEN_DUAL_FORMAT_API_CONTRACTS.md
+backend/DUAL_FORMAT_MIGRATION_SUMMARY.md
+backend/ai_driven_dual_format_migration_plan.py
+backend/config/sub_agent_configurations.py
+backend/deliverable_system/unified_deliverable_engine.py
+backend/migrations/012_add_dual_format_display_fields.sql
+backend/migrations/012_add_dual_format_display_fields_ROLLBACK.sql
+backend/models.py
+backend/run_dual_format_migration.py
+backend/services/AI_CONTENT_DISPLAY_TRANSFORMER.md
+backend/services/ai_content_display_transformer.py
+backend/services/enhanced_sub_agent_orchestrator.py
 backend/services/missing_deliverable_auto_completion.py
-backend/test_auto_completion_workflow.py
-frontend/src/components/CleanDeliverablesView.tsx
-frontend/src/components/ProjectDeliverableDashboard.tsx
+backend/services/sub_agent_integration.py
+backend/test_dual_format_compatibility.py
+docs/orchestration-patterns-guide.md
 frontend/src/components/conversational/ObjectiveArtifact.tsx
 frontend/src/types/goal-progress.ts

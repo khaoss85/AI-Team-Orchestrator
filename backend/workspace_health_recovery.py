@@ -31,7 +31,7 @@ class WorkspaceHealthRecovery:
         
         # Get all workspaces that need intervention
         try:
-            workspaces_response = supabase.table('workspaces').select('*').eq('status', WorkspaceStatus.NEEDS_INTERVENTION.value).execute()
+            workspaces_response = supabase.table('workspaces').select('*').eq('status', WorkspaceStatus.AUTO_RECOVERING.value).execute()
             
             if not workspaces_response.data:
                 logger.info("✅ No workspaces need intervention")
