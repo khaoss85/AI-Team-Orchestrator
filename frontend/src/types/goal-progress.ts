@@ -11,11 +11,18 @@ export interface GoalProgressDetail {
   }
   progress_analysis: {
     reported_progress: number
-    calculated_progress: number
+    goal_based_progress: number
+    api_calculated_progress: number
     progress_discrepancy: number
     calculation_method: string
-    total_deliverables: number
-    completed_deliverables: number
+    goal_metrics: {
+      current_value: number
+      target_value: number
+    }
+    api_metrics: {
+      total_deliverables: number
+      completed_deliverables: number
+    }
   }
   deliverable_breakdown: {
     completed: DeliverableItem[]
@@ -41,6 +48,7 @@ export interface GoalProgressDetail {
     actionable_items: number
     retry_available: number
     total_blocked_progress: number
+    missing_deliverables: number
     recommended_actions: string[]
   }
   recommendations: string[]

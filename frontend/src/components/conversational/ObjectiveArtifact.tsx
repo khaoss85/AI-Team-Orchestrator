@@ -44,7 +44,7 @@ export default function ObjectiveArtifact({
   workspaceId, 
   title 
 }: ObjectiveArtifactProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'metadata' | 'progress' | 'deliverables'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'deliverables'>('overview')
   const [goalProgressDetail, setGoalProgressDetail] = useState<GoalProgressDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -168,7 +168,7 @@ export default function ObjectiveArtifact({
 
   return (
     <div className="p-6">
-      {/* Minimal Header - Claude/ChatGPT style */}
+      {/* Clean Header - Claude Code style */}
       <div className="border-b border-gray-100 pb-4 mb-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -190,78 +190,7 @@ export default function ObjectiveArtifact({
         </div>
       </div>
 
-      {/* Progress Discrepancy Alert */}
-      {goalProgressDetail && goalProgressDetail.progress_analysis.progress_discrepancy > 10 && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <span className="text-yellow-500 text-xl">⚠️</span>
-            <div className="flex-1">
-              <h3 className="font-medium text-yellow-800 mb-1">Progress Discrepancy Detected</h3>
-              <p className="text-sm text-yellow-700 mb-2">
-                Reported progress ({goalProgressDetail.progress_analysis.reported_progress}%) differs from calculated progress
-                ({goalProgressDetail.progress_analysis.calculated_progress.toFixed(1)}%) by{' '}
-                {goalProgressDetail.progress_analysis.progress_discrepancy.toFixed(1)} percentage points.
-              </p>
-              <p className="text-xs text-yellow-600">
-                Calculated using {goalProgressDetail.progress_analysis.calculation_method.replace(/_/g, ' ')} method
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transparency Gap Alert */}
-      {goalProgressDetail && goalProgressDetail.visibility_analysis.hidden_from_ui > 0 && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <span className="text-blue-500 text-xl">👁️</span>
-            <div className="flex-1">
-              <h3 className="font-medium text-blue-800 mb-1">Transparency Gap</h3>
-              <p className="text-sm text-blue-700 mb-2">
-                {goalProgressDetail.visibility_analysis.transparency_gap}
-              </p>
-              <p className="text-xs text-blue-600">
-                This view shows all {goalProgressDetail.deliverable_stats.total} deliverables including those typically hidden from the UI
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unblocking Actions */}
-      {goalProgressDetail && goalProgressDetail.unblocking.actionable_items > 0 && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3">
-              <span className="text-green-500 text-xl">🔧</span>
-              <div className="flex-1">
-                <h3 className="font-medium text-green-800 mb-1">Unblocking Actions Available</h3>
-                <p className="text-sm text-green-700 mb-2">
-                  {goalProgressDetail.unblocking.actionable_items} items can be unblocked to improve progress
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleUnblockAction('retry_failed')}
-                    disabled={unblockingInProgress !== null}
-                    className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 text-sm rounded disabled:opacity-50"
-                  >
-                    {unblockingInProgress === 'retry_failed' ? 'Retrying...' : 'Retry Failed'}
-                  </button>
-                  <button
-                    onClick={() => handleUnblockAction('resume_pending')}
-                    disabled={unblockingInProgress !== null}
-                    className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 text-sm rounded disabled:opacity-50"
-                  >
-                    {unblockingInProgress === 'resume_pending' ? 'Resuming...' : 'Resume Pending'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Compact Progress Bar */}
+      {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-gray-700">Progress</span>
@@ -283,22 +212,12 @@ export default function ObjectiveArtifact({
         )}
       </div>
 
-      {/* Minimal Tabs */}
+      {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         <TabButton 
           active={activeTab === 'overview'} 
           onClick={() => setActiveTab('overview')}
           label="Overview"
-        />
-        <TabButton 
-          active={activeTab === 'metadata'} 
-          onClick={() => setActiveTab('metadata')}
-          label="Details"
-        />
-        <TabButton 
-          active={activeTab === 'progress'} 
-          onClick={() => setActiveTab('progress')}
-          label="Progress"
         />
         <TabButton 
           active={activeTab === 'deliverables'} 
@@ -310,15 +229,10 @@ export default function ObjectiveArtifact({
       {/* Content */}
       <div className="">
         {activeTab === 'overview' && (
-          <OverviewTab objectiveData={objectiveData} />
-        )}
-        
-        {activeTab === 'metadata' && (
-          <MetadataTab metadata={objectiveData.metadata || {}} />
-        )}
-        
-        {activeTab === 'progress' && (
-          <ProgressTab objectiveData={objectiveData} goalProgressDetail={goalProgressDetail} />
+          <OverviewTab 
+            objectiveData={objectiveData} 
+            goalProgressDetail={goalProgressDetail}
+          />
         )}
         
         {activeTab === 'deliverables' && (
@@ -328,6 +242,7 @@ export default function ObjectiveArtifact({
             goalProgressDetail={goalProgressDetail}
             onUnblockAction={handleUnblockAction}
             unblockingInProgress={unblockingInProgress}
+            objectiveData={objectiveData}
           />
         )}
       </div>
@@ -362,9 +277,10 @@ function TabButton({ active, onClick, label }: TabButtonProps) {
 // Overview Tab Component
 interface OverviewTabProps {
   objectiveData: ObjectiveData
+  goalProgressDetail: GoalProgressDetail | null
 }
 
-function OverviewTab({ objectiveData }: OverviewTabProps) {
+function OverviewTab({ objectiveData, goalProgressDetail }: OverviewTabProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set'
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -376,8 +292,56 @@ function OverviewTab({ objectiveData }: OverviewTabProps) {
     })
   }
 
+  const progressPercentage = Math.round(objectiveData.progress)
+  const isCompleted = progressPercentage >= 100
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Progress Overview */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
+        <div className="text-center">
+          <div className="text-4xl font-bold text-blue-600 mb-2">
+            {progressPercentage}%
+          </div>
+          <div className="text-gray-700 mb-4">
+            {isCompleted ? 'Objective Completed!' : 'Progress towards goal'}
+          </div>
+          <div className="w-full bg-white rounded-full h-4 shadow-inner mb-4">
+            <div 
+              className={`h-4 rounded-full transition-all duration-500 ${
+                isCompleted ? 'bg-green-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+            ></div>
+          </div>
+          
+          {/* Progress Analysis */}
+          {goalProgressDetail && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+              <div className="bg-white rounded-lg p-3 border">
+                <div className="font-medium text-gray-700">Goal Progress</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {objectiveData.current_value}/{objectiveData.target_value}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Based on goal completion tracking
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-3 border">
+                <div className="font-medium text-gray-700">API Deliverables</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {goalProgressDetail.deliverable_stats.completed}/{goalProgressDetail.deliverable_stats.total}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {goalProgressDetail.progress_analysis.api_calculated_progress.toFixed(1)}% API completion
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Basic Information and Timeline */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="font-semibold text-gray-900 mb-3">Basic Information</h3>
@@ -424,183 +388,8 @@ function OverviewTab({ objectiveData }: OverviewTabProps) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-// Metadata Tab Component
-interface MetadataTabProps {
-  metadata: Record<string, any>
-}
-
-function MetadataTab({ metadata }: MetadataTabProps) {
-  if (!metadata || Object.keys(metadata).length === 0) {
-    return (
-      <div className="text-center text-gray-500 py-8">
-        <div className="text-3xl mb-2">🏷️</div>
-        <div>No additional details available</div>
-      </div>
-    )
-  }
-
-  // Helper function to format field names in a user-friendly way
-  const formatFieldName = (key: string): string => {
-    const fieldMappings: Record<string, string> = {
-      'business_value': 'Business Value',
-      'autonomy_level': 'Autonomy Level',
-      'autonomy_reason': 'AI Assistance Details',
-      'user_confirmed': 'User Confirmed',
-      'confidence': 'Confidence Level',
-      'available_tools': 'Available Tools',
-      'execution_phase': 'Execution Phase',
-      'deliverable_type': 'Deliverable Type',
-      'human_input_required': 'Human Input Required',
-      'acceptance_criteria': 'Acceptance Criteria',
-      'estimated_effort': 'Estimated Effort',
-      'full_description': 'Full Description',
-      'contributes_to_metrics': 'Contributes to Metrics',
-      'is_strategic_deliverable': 'Strategic Deliverable',
-      'semantic_context': 'Technical Details',
-      'base_type': 'Base Type',
-      'deliverables': 'Related Deliverables',
-      'original_extraction': 'Original Extraction'
-    }
-    return fieldMappings[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }
-
-  // Helper function to format values in a user-friendly way
-  const formatValue = (value: any): JSX.Element => {
-    if (value === null || value === undefined) {
-      return <span className="text-gray-400 italic">Not specified</span>
-    }
-
-    if (typeof value === 'boolean') {
-      return (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {value ? '✓ Yes' : '✗ No'}
-        </span>
-      )
-    }
-
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return <span className="text-gray-400 italic">None specified</span>
-      }
-      return (
-        <div className="space-y-1">
-          {value.map((item, index) => (
-            <div key={index} className="flex items-start space-x-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span className="text-sm">{String(item)}</span>
-            </div>
-          ))}
-        </div>
-      )
-    }
-
-    if (typeof value === 'object') {
-      // Don't show complex technical objects to users
-      return <span className="text-gray-400 italic">Technical configuration available</span>
-    }
-
-    if (typeof value === 'number') {
-      if (value >= 0 && value <= 1) {
-        return <span className="font-medium">{Math.round(value * 100)}%</span>
-      }
-      return <span className="font-medium">{value}</span>
-    }
-
-    // String values - format nicely
-    const stringValue = String(value)
-    if (stringValue.length > 200) {
-      return (
-        <div className="space-y-2">
-          <p className="text-sm leading-relaxed">{stringValue}</p>
-        </div>
-      )
-    }
-
-    return <span className="text-sm">{stringValue}</span>
-  }
-
-  // Filter out technical fields that users don't need to see
-  const userFriendlyFields = Object.entries(metadata).filter(([key, value]) => {
-    const hiddenFields = ['semantic_context', 'base_type', 'original_extraction']
-    return !hiddenFields.includes(key)
-  })
-
-  return (
-    <div className="space-y-4">
-      {userFriendlyFields.map(([key, value]) => (
-        <div key={key} className="bg-gray-50 rounded-lg p-4">
-          <h4 className="font-medium text-gray-900 mb-2">
-            {formatFieldName(key)}
-          </h4>
-          <div className="text-gray-700">
-            {formatValue(value)}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Progress Tab Component
-interface ProgressTabProps {
-  objectiveData: ObjectiveData
-  goalProgressDetail: GoalProgressDetail | null
-}
-
-function ProgressTab({ objectiveData, goalProgressDetail }: ProgressTabProps) {
-  const progressPercentage = Math.round(objectiveData.progress)
-  const isCompleted = progressPercentage >= 100
-
-  return (
-    <div className="space-y-6">
-      {/* Enhanced Progress Overview with Analysis */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-        <div className="text-center">
-          <div className="text-4xl font-bold text-blue-600 mb-2">
-            {progressPercentage}%
-          </div>
-          <div className="text-gray-700 mb-4">
-            {isCompleted ? 'Objective Completed!' : 'Progress towards goal'}
-          </div>
-          <div className="w-full bg-white rounded-full h-4 shadow-inner mb-4">
-            <div 
-              className={`h-4 rounded-full transition-all duration-500 ${
-                isCompleted ? 'bg-green-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-            ></div>
-          </div>
-          
-          {/* Progress Analysis */}
-          {goalProgressDetail && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-              <div className="bg-white rounded-lg p-3 border">
-                <div className="font-medium text-gray-700">Reported Progress</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {goalProgressDetail.progress_analysis.reported_progress}%
-                </div>
-              </div>
-              <div className="bg-white rounded-lg p-3 border">
-                <div className="font-medium text-gray-700">Calculated Progress</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {goalProgressDetail.progress_analysis.calculated_progress.toFixed(1)}%
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {goalProgressDetail.progress_analysis.completed_deliverables}/{goalProgressDetail.progress_analysis.total_deliverables} deliverables
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Metrics */}
+      {/* Key Metrics Summary */}
       {(objectiveData.current_value !== undefined || objectiveData.target_value !== undefined) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -630,13 +419,14 @@ function ProgressTab({ objectiveData, goalProgressDetail }: ProgressTabProps) {
   )
 }
 
-// Deliverables Tab Component
+// Simplified Deliverables Tab - Claude Code Style
 interface DeliverablesTabProps {
   deliverables: any[]
   metadata?: Record<string, any>
   goalProgressDetail: GoalProgressDetail | null
   onUnblockAction: (action: string, deliverableIds?: string[]) => void
   unblockingInProgress: string | null
+  objectiveData: ObjectiveData
 }
 
 function DeliverablesTab({ 
@@ -644,41 +434,58 @@ function DeliverablesTab({
   metadata, 
   goalProgressDetail, 
   onUnblockAction, 
-  unblockingInProgress 
+  unblockingInProgress,
+  objectiveData
 }: DeliverablesTabProps) {
   const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null)
+  const [autoCompletingMissing, setAutoCompletingMissing] = useState(false)
 
   if (!deliverables || deliverables.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <div className="text-3xl mb-2">📦</div>
-        <div>No deliverables available yet</div>
-        <div className="text-sm mt-2">Deliverables will appear here as tasks are completed</div>
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4">📦</div>
+        <div className="text-gray-600 mb-2">No deliverables available yet</div>
+        <div className="text-sm text-gray-500 mb-6">Deliverables will appear here as tasks are completed</div>
+        
+        {/* Auto-completion button for missing deliverables */}
+        {objectiveData.objective.id && (
+          <button
+            onClick={async () => {
+              setAutoCompletingMissing(true)
+              try {
+                await fetch(`/api/auto-completion/workspace/${objectiveData.objective.id}/missing-deliverables`, {
+                  method: 'POST'
+                })
+                // Reload the page or trigger a refresh
+                window.location.reload()
+              } catch (error) {
+                console.error('Failed to auto-complete missing deliverables:', error)
+              } finally {
+                setAutoCompletingMissing(false)
+              }
+            }}
+            disabled={autoCompletingMissing}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+          >
+            {autoCompletingMissing ? 'Creating deliverables...' : 'Auto-complete missing deliverables'}
+          </button>
+        )}
       </div>
     )
   }
-
-  // 🎯 ENHANCED: Check for business value warnings in deliverables
-  const hasBusinessValueWarning = deliverables.some((d: any) => 
-    d.content?.businessValueWarning || d.content?.type === 'no_business_content'
-  )
 
   // Helper function to detect content type and format
   const detectContentType = (content: string): 'markdown' | 'html' | 'json' | 'text' => {
     if (!content || typeof content !== 'string') return 'text'
     
-    // Check for markdown table syntax
-    if (content.includes('|') && content.includes('\n') && /\|.*\|.*\|/.test(content)) {
-      return 'markdown'
-    }
-    
-    // Check for other markdown patterns
-    if (content.includes('##') || content.includes('**') || content.includes('[](') || content.includes('- ')) {
+    // Check for markdown patterns
+    if (content.includes('##') || content.includes('**') || content.includes('[](') || content.includes('- ') || 
+        (content.includes('|') && content.includes('\n') && /\|.*\|.*\|/.test(content))) {
       return 'markdown'
     }
     
     // Check for HTML
-    if (content.trim().startsWith('<') && content.includes('</')) {
+    if (content.trim().startsWith('<') && content.includes('</')  {
       return 'html'
     }
     
@@ -696,171 +503,9 @@ function DeliverablesTab({
     return 'text'
   }
 
-  const renderDeliverableContent = (content: any) => {
+  const renderContent = (content: any) => {
     if (!content) return <div className="text-gray-500 italic">No content available</div>
     
-    // 🧠 ENHANCED: Handle thinking-only deliverables
-    if (content.type === 'thinking_only' && content.hasThinking) {
-      return (
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-blue-500 text-xl">🧠</div>
-              <div>
-                <h4 className="font-medium text-blue-800 mb-2">Strategic Thinking Process</h4>
-                <p className="text-sm text-blue-700 mb-3">{content.summary}</p>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="font-medium">Thinking Tasks:</span> {content.businessMetrics.thinkingTasksFound}
-                  </div>
-                  <div>
-                    <span className="font-medium">Avg Score:</span> {content.businessMetrics.averageThinkingScore.toFixed(1)}
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-blue-600">
-                  This goal was completed through strategic planning and analysis. 
-                  View the thinking process below to understand the reasoning.
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Thinking Steps */}
-          <div className="space-y-3">
-            <h5 className="font-medium text-gray-800 flex items-center">
-              <span className="text-blue-500 mr-2">💭</span>
-              Strategic Reasoning Steps
-            </h5>
-            {content.thinkingTasks?.map((thinkingTask: any, idx: number) => (
-              <div key={idx} className="border border-blue-200 rounded-lg p-3 bg-blue-50">
-                <div className="flex items-center justify-between mb-2">
-                  <h6 className="font-medium text-blue-800 text-sm">{thinkingTask.name}</h6>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                    Thinking Score: {thinkingTask.businessValueScore}
-                  </span>
-                </div>
-                <div className="text-sm text-blue-700">
-                  {thinkingTask.result?.summary || 'Strategic analysis completed'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    
-    // 🚨 ENHANCED: Handle business value warnings
-    if (content.businessValueWarning || content.type === 'no_business_content') {
-      return (
-        <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="text-amber-500 text-xl">⚠️</div>
-              <div>
-                <h4 className="font-medium text-amber-800 mb-2">Business Value Warning</h4>
-                <p className="text-sm text-amber-700 mb-3">{content.summary}</p>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="font-medium">Total Tasks:</span> {content.totalTasks}
-                  </div>
-                  <div>
-                    <span className="font-medium">Meta-Tasks:</span> {content.metaTasksCount}
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-amber-600">
-                  This goal appears to be numerically complete but lacks substantial business deliverables. 
-                  Most tasks created sub-tasks rather than actual content.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    
-    // 🎯 ENHANCED: Show business metrics for real deliverables
-    if (content.businessMetrics) {
-      return (
-        <div className="space-y-4">
-          {/* Business Quality Metrics */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-800 mb-3 flex items-center">
-              <span className="text-blue-500 mr-2">📊</span>
-              Business Value Metrics
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-blue-600 font-medium">High-Value Tasks:</span> {content.businessMetrics.highValueTasksFound}
-              </div>
-              <div>
-                <span className="text-blue-600 font-medium">Average Score:</span> {content.businessMetrics.averageBusinessScore.toFixed(1)}
-              </div>
-              <div>
-                <span className="text-blue-600 font-medium">Content Types:</span> {content.businessMetrics.contentTypes.join(', ')}
-              </div>
-              <div>
-                <span className="text-blue-600 font-medium">Total Analyzed:</span> {content.businessMetrics.totalTasksAnalyzed}
-              </div>
-            </div>
-          </div>
-          
-          {/* Actual Business Content */}
-          <div className="space-y-3">
-            {content.sections?.map((section: any, idx: number) => (
-              <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h5 className="font-medium text-gray-800">{section.title}</h5>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      section.businessValueScore >= 70 ? 'bg-green-100 text-green-800' :
-                      section.businessValueScore >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      Score: {section.businessValueScore}
-                    </span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                      {section.contentType}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-700">
-                  {renderBusinessContent(section.content)}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* 🧠 ENHANCED: Show thinking process if available */}
-          {content.thinkingProcess && (
-            <div className="space-y-3 border-t border-gray-200 pt-4">
-              <h5 className="font-medium text-gray-800 flex items-center">
-                <span className="text-blue-500 mr-2">🧠</span>
-                Strategic Thinking Process
-                <span className="ml-2 text-xs text-gray-500">
-                  ({content.thinkingProcess.thinkingSteps.length} steps, avg score: {content.thinkingProcess.averageThinkingScore.toFixed(1)})
-                </span>
-              </h5>
-              <div className="grid gap-2">
-                {content.thinkingProcess.thinkingSteps.map((step: any, stepIdx: number) => (
-                  <div key={stepIdx} className="border border-blue-100 rounded-lg p-3 bg-blue-50">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-blue-800 text-sm">{step.title}</span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                        {step.businessValueScore}
-                      </span>
-                    </div>
-                    <div className="text-xs text-blue-700">
-                      {step.reasoning}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )
-    }
-
     if (typeof content === 'string') {
       const contentType = detectContentType(content)
       
@@ -884,7 +529,7 @@ function DeliverablesTab({
           try {
             const jsonContent = JSON.parse(content)
             return (
-              <div className="bg-gray-50 rounded p-3">
+              <div className="bg-gray-50 rounded-lg p-4">
                 <pre className="whitespace-pre-wrap text-sm text-gray-700 overflow-x-auto">
                   {JSON.stringify(jsonContent, null, 2)}
                 </pre>
@@ -895,91 +540,47 @@ function DeliverablesTab({
           }
           break
         
-        case 'text':
         default:
-          // Enhanced text formatting with basic markdown patterns
-          const formattedContent = content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
-            .replace(/\n\n/g, '</p><p class="mb-3">')
-            .replace(/^/, '<p class="mb-3">')
-            .replace(/$/, '</p>')
-          
           return (
-            <div 
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: formattedContent }}
-            />
+            <div className="whitespace-pre-wrap text-sm text-gray-700">
+              {content}
+            </div>
           )
       }
     }
 
     if (typeof content === 'object') {
-      // Handle metadata-only deliverables (common case when task didn't produce actual content)
-      if (content.prospect_list_csv && typeof content.prospect_list_csv === 'object') {
-        const metadata = content.prospect_list_csv
-        return (
-          <div className="space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <div className="text-yellow-500 text-xl">⚠️</div>
-                <div>
-                  <h4 className="font-medium text-yellow-800 mb-2">Task Completed Without Content</h4>
-                  <p className="text-sm text-yellow-700 mb-3">
-                    This deliverable was created from a completed task, but the task didn't produce the expected CSV content.
-                    This usually happens when a task times out or encounters an error during execution.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div><span className="font-medium">Task ID:</span> {metadata.id}</div>
-                    <div><span className="font-medium">Format:</span> {metadata.format}</div>
-                    <div><span className="font-medium">Status:</span> {metadata.status}</div>
-                    <div><span className="font-medium">Priority:</span> {metadata.priority}</div>
-                  </div>
-                  <div className="mt-3 text-xs text-yellow-600">
-                    To get the actual CSV content, you may need to retry this goal or request manual assistance.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      }
-      
-      // If it's structured content, try to render it nicely
+      // Handle structured content
       if (content.summary || content.sections || content.deliverables) {
         return (
           <div className="space-y-4">
             {content.summary && (
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">Executive Summary</h4>
+                <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
                 <div className="text-sm text-gray-700 whitespace-pre-wrap">{content.summary}</div>
               </div>
             )}
             
             {content.sections && Array.isArray(content.sections) && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Sections</h4>
-                <div className="space-y-3">
-                  {content.sections.map((section: any, idx: number) => (
-                    <div key={idx} className="border-l-2 border-blue-200 pl-4">
-                      <h5 className="font-medium text-gray-800">{section.title || `Section ${idx + 1}`}</h5>
-                      <div className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">
-                        {section.content || section.description}
-                      </div>
+              <div className="space-y-3">
+                {content.sections.map((section: any, idx: number) => (
+                  <div key={idx} className="border-l-4 border-blue-200 pl-4">
+                    <h5 className="font-medium text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h5>
+                    <div className="text-sm text-gray-600 whitespace-pre-wrap">
+                      {section.content || section.description}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             )}
             
             {content.deliverables && Array.isArray(content.deliverables) && (
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Key Deliverables</h4>
-                <ul className="space-y-1">
+                <ul className="space-y-1 text-sm text-gray-700">
                   {content.deliverables.map((item: any, idx: number) => (
-                    <li key={idx} className="text-sm text-gray-700 flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
+                    <li key={idx} className="flex items-start">
+                      <span className="text-blue-500 mr-2 mt-1">•</span>
                       <span>{typeof item === 'string' ? item : item.title || item.name}</span>
                     </li>
                   ))}
@@ -991,8 +592,8 @@ function DeliverablesTab({
       } else {
         // Fallback: show as formatted JSON
         return (
-          <div className="bg-gray-50 rounded p-3 text-xs">
-            <pre className="whitespace-pre-wrap text-gray-700">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 overflow-x-auto">
               {JSON.stringify(content, null, 2)}
             </pre>
           </div>
@@ -1002,269 +603,110 @@ function DeliverablesTab({
 
     return <div className="text-gray-500 italic">Content format not supported</div>
   }
-  
-  // 🎯 ENHANCED: Helper function to render business content with enhanced formatting
-  const renderBusinessContent = (content: any) => {
-    if (typeof content === 'string') {
-      const contentType = detectContentType(content)
-      
-      switch (contentType) {
-        case 'markdown':
-          return (
-            <div className="prose prose-sm max-w-none">
-              <MarkdownRenderer content={content} />
-            </div>
-          )
-        
-        case 'html':
-          return (
-            <div 
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
-          )
-        
-        default:
-          // Enhanced text formatting
-          const formattedContent = content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n---\n/g, '<hr class="my-4 border-gray-300">')
-            .replace(/\n\n/g, '</p><p class="mb-2">')
-            .replace(/^/, '<p class="mb-2">')
-            .replace(/$/, '</p>')
-          
-          return (
-            <div 
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: formattedContent }}
-            />
-          )
-      }
-    }
-    
-    return <div className="text-gray-500 italic">Content format not supported</div>
-  }
 
   return (
-    <div className="space-y-3">
-      {/* Enhanced Deliverable Status Overview */}
-      {goalProgressDetail && (
-        <div className="mb-6">
-          <h4 className="font-medium text-gray-900 mb-4 flex items-center">
-            <span className="text-blue-500 mr-2">📊</span>
-            Deliverable Status Overview
-          </h4>
-          
-          {/* Status Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            {Object.entries(goalProgressDetail.deliverable_stats).filter(([key]) => key !== 'total').map(([status, count]) => {
-              const statusConfig = DELIVERABLE_STATUS_CONFIG[status as DeliverableStatus]
-              return (
-                <div key={status} className={`${statusConfig.bgColor} rounded-lg p-3 text-center`}>
-                  <div className="text-2xl mb-1">{statusConfig.icon}</div>
-                  <div className={`font-bold text-lg ${statusConfig.color}`}>{count}</div>
-                  <div className={`text-xs ${statusConfig.color} font-medium`}>{statusConfig.label}</div>
-                </div>
-              )
-            })}
-          </div>
-          
-          {/* Status by Category */}
-          {goalProgressDetail.deliverable_stats.total > 0 && (
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">Total</div>
-                  <div className="text-2xl font-bold text-gray-700">{goalProgressDetail.deliverable_stats.total}</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-green-700">Success Rate</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {((goalProgressDetail.deliverable_stats.completed / goalProgressDetail.deliverable_stats.total) * 100).toFixed(0)}%
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-red-700">Failed</div>
-                  <div className="text-2xl font-bold text-red-600">{goalProgressDetail.deliverable_stats.failed}</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-yellow-700">Pending</div>
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {goalProgressDetail.deliverable_stats.pending + goalProgressDetail.deliverable_stats.in_progress}
-                  </div>
-                </div>
-              </div>
+    <div className="space-y-4">
+      {/* Auto-completion for missing deliverables */}
+      {objectiveData.current_value < objectiveData.target_value && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">Missing Deliverables</h4>
+              <p className="text-sm text-blue-700">
+                {objectiveData.current_value} of {objectiveData.target_value} deliverables completed
+              </p>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* 🚨 ENHANCED: Show overall business value warning if any deliverable has issues */}
-      {hasBusinessValueWarning && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-          <div className="flex items-center space-x-2 text-sm text-amber-700">
-            <span className="text-amber-500">⚠️</span>
-            <span className="font-medium">Business Value Alert:</span>
-            <span>Some deliverables may lack substantial business content</span>
+            <button
+              onClick={async () => {
+                setAutoCompletingMissing(true)
+                try {
+                  await fetch(`/api/auto-completion/workspace/${objectiveData.objective.id}/missing-deliverables`, {
+                    method: 'POST'
+                  })
+                  // Reload the page or trigger a refresh
+                  window.location.reload()
+                } catch (error) {
+                  console.error('Failed to auto-complete missing deliverables:', error)
+                } finally {
+                  setAutoCompletingMissing(false)
+                }
+              }}
+              disabled={autoCompletingMissing}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg disabled:opacity-50"
+            >
+              {autoCompletingMissing ? 'Creating...' : 'Auto-complete'}
+            </button>
           </div>
         </div>
       )}
       
-      {/* 🔒 COMPLETION GUARANTEE: Show completion guarantee notice */}
-      {metadata?.completion_guaranteed && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-          <div className="flex items-center space-x-2 text-sm text-blue-700">
-            <span className="text-blue-500">🔒</span>
-            <span className="font-medium">Completion Guarantee:</span>
-            <span>This goal was completed through progress guarantee (90%+ completion threshold)</span>
-          </div>
-          <div className="text-xs text-blue-600 mt-1">
-            Original business score: {metadata?.original_business_score?.toFixed(1) || 'N/A'} • 
-            Guaranteed on: {metadata?.completion_guarantee_timestamp ? new Date(metadata.completion_guarantee_timestamp).toLocaleDateString() : 'Unknown'}
-          </div>
-        </div>
-      )}
-      
-      {/* Render all deliverables from both legacy and new API */}
-      {(() => {
-        // Combine legacy deliverables with new API data
-        const allDeliverables = [...deliverables]
-        if (goalProgressDetail) {
-          // Add deliverables from new API that might not be in legacy data
-          Object.entries(goalProgressDetail.deliverable_breakdown).forEach(([status, items]) => {
-            items.forEach((item, itemIndex) => {
-              // Check if this deliverable is already in legacy data
-              const exists = allDeliverables.some(d => d.id === item.id)
-              if (!exists) {
-                allDeliverables.push({
-                  id: item.id,
-                  title: item.title,
-                  status: item.status,
-                  type: item.type,
-                  created_at: item.created_at,
-                  updated_at: item.updated_at,
-                  business_value_score: item.business_value_score,
-                  quality_level: item.quality_level,
-                  content: { status_info: item }
-                })
-              }
-            })
-          })
-        }
-
-        return allDeliverables.map((deliverable, index) => {
-          const hasWarning = deliverable.content?.businessValueWarning || deliverable.content?.type === 'no_business_content'
-          const hasMetrics = deliverable.content?.businessMetrics?.averageBusinessScore !== undefined
-          
-          // Get status info from new API if available
-          const statusInfo = goalProgressDetail && Object.values(goalProgressDetail.deliverable_breakdown)
-            .flat()
-            .find(item => item.id === deliverable.id)
-          
-          const currentStatus = statusInfo?.status || deliverable.status || 'unknown'
-          const statusConfig = DELIVERABLE_STATUS_CONFIG[currentStatus as DeliverableStatus]
+      {/* Clean deliverable list - Claude Code style */}
+      <div className="space-y-3">
+        {deliverables.map((deliverable, index) => {
+          const isExpanded = expandedDeliverable === index
           
           return (
-            <div key={deliverable.id || index} className={`border rounded-lg overflow-hidden ${
-              currentStatus === 'failed' ? 'border-red-300' :
-              currentStatus === 'pending' ? 'border-yellow-300' :
-              currentStatus === 'in_progress' ? 'border-blue-300' :
-              hasWarning ? 'border-amber-300' : 'border-gray-200'
-            }`}>
+            <div key={deliverable.id || index} className="border border-gray-200 rounded-lg overflow-hidden">
+              {/* Header */}
               <div 
-                className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setExpandedDeliverable(expandedDeliverable === index ? null : index)}
+                className="p-4 cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100"
+                onClick={() => setExpandedDeliverable(isExpanded ? null : index)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900 flex items-center">
-                      <span className="mr-2">{statusConfig.icon}</span>
-                      {hasWarning && <span className="text-amber-500 mr-2">⚠️</span>}
-                      {hasMetrics && <span className="text-blue-500 mr-2">📊</span>}
-                      {deliverable.title || `Deliverable ${index + 1}`}
-                      <svg 
-                        className={`ml-2 h-4 w-4 text-gray-400 transition-transform ${
-                          expandedDeliverable === index ? 'rotate-180' : ''
-                        }`} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </h4>
-                    
-                    <p className="text-sm text-gray-600 mt-1">
-                      {statusInfo?.retry_reason || 
-                       (hasWarning ? 'Warning: Low business value detected' :
-                        hasMetrics ? `Business Score: ${deliverable.content.businessMetrics.averageBusinessScore.toFixed(1)} | ${deliverable.content.businessMetrics.highValueTasksFound || 0} high-value tasks` :
-                        statusConfig.description || deliverable.description || 'Click to view content')}
-                    </p>
-                    
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>Created: {new Date(deliverable.created_at || '').toLocaleDateString()}</span>
-                      <span>Type: {deliverable.type || 'Unknown'}</span>
-                      {statusInfo?.business_value_score && (
-                        <span>Score: {statusInfo.business_value_score}</span>
-                      )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-lg">📄</div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {deliverable.title || `Deliverable ${index + 1}`}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        Created {new Date(deliverable.created_at || '').toLocaleDateString()}
+                      </p>
                     </div>
-                    
-                    {/* Unblock Actions */}
-                    {statusInfo?.can_retry && statusInfo.unblock_actions.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {statusInfo.unblock_actions.slice(0, 2).map((action) => {
-                          const actionConfig = UNBLOCK_ACTION_CONFIG[action as keyof typeof UNBLOCK_ACTION_CONFIG]
-                          if (!actionConfig) return null
-                          
-                          return (
-                            <button
-                              key={action}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onUnblockAction(action, [statusInfo.id])
-                              }}
-                              disabled={unblockingInProgress !== null}
-                              className={`px-2 py-1 text-xs rounded ${actionConfig.color} text-white disabled:opacity-50`}
-                              title={actionConfig.description}
-                            >
-                              {actionConfig.icon} {actionConfig.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${statusConfig.bgColor} ${statusConfig.color} font-medium`}>
-                    {statusConfig.label}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      Complete
+                    </span>
+                    <svg 
+                      className={`h-5 w-5 text-gray-400 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
           
-          {/* Expanded Content */}
-          {expandedDeliverable === index && (
-            <div className="border-t border-gray-200 p-4 bg-gray-50">
-              <h5 className="font-medium text-gray-900 mb-3">Document Content</h5>
-              <div className="bg-white rounded border p-4 max-h-96 overflow-y-auto">
-                {renderDeliverableContent(deliverable.content)}
-              </div>
-              
-              {/* 🎯 ACTIONABLE: Universal actions for any deliverable */}
-              <DeliverableActionBar 
-                deliverable={{
-                  id: deliverable.id || `deliverable-${index}`,
-                  title: deliverable.title || `Deliverable ${index + 1}`,
-                  content: deliverable.content,
-                  contentType: deliverable.content?.businessMetrics ? 'Structured' : 'HTML',
-                  type: deliverable.type
-                }}
-              />
+              {/* Content - Claude Code style */}
+              {isExpanded && (
+                <div className="p-6 bg-gray-50">
+                  <div className="bg-white rounded-lg border p-6">
+                    {renderContent(deliverable.content)}
+                  </div>
+                  
+                  {/* Action buttons */}
+                  <div className="mt-4 flex items-center space-x-2">
+                    <DeliverableActionBar 
+                      deliverable={{
+                        id: deliverable.id || `deliverable-${index}`,
+                        title: deliverable.title || `Deliverable ${index + 1}`,
+                        content: deliverable.content,
+                        contentType: 'HTML',
+                        type: deliverable.type
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
           )
-        })
-      })()}
+        })}
+      </div>
     </div>
   )
 }

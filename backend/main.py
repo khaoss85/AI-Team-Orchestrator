@@ -262,6 +262,10 @@ app.include_router(unified_assets_router, prefix="/api")
 app.include_router(assets_router, prefix="/api")
 app.include_router(deliverables_router, prefix="/api")
 
+# Auto-completion system for missing deliverables
+from routes.auto_completion import router as auto_completion_router
+app.include_router(auto_completion_router, prefix="/api")
+
 # Communication and feedback - standardized to /api prefix
 app.include_router(websocket_router)  # WebSocket endpoints don't need /api prefix
 app.include_router(websocket_assets_router, prefix="/api")

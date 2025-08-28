@@ -26,6 +26,32 @@
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         }
         
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+        }
+        
         .chapter-header {
             text-align: center;
             margin-bottom: 3rem;
@@ -54,32 +80,148 @@
             line-height: 1.2;
         }
         
-        .coming-soon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 15px;
-            text-align: center;
+        .chapter-content {
+            margin-bottom: 3rem;
+        }
+        
+        .chapter-content h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin: 2rem 0 1rem 0;
+            font-weight: 600;
+        }
+        
+        .chapter-content h3 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin: 1.5rem 0 1rem 0;
+            font-weight: 600;
+        }
+        
+        .chapter-content h4 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin: 1rem 0 0.5rem 0;
+            font-weight: 600;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .chapter-content ul, .chapter-content ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .chapter-content code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Fira Code', Monaco, monospace;
+            color: #e74c3c;
+        }
+        
+        .chapter-content pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .chapter-content pre code {
+            background: none;
+            padding: 0;
+            color: #2c3e50;
+        }
+        
+        .chapter-content strong {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .chapter-content em {
+            font-style: italic;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        /* Architecture Section */
+        .architecture-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 2rem;
             margin: 2rem 0;
         }
         
-        .nav-button {
-            display: inline-flex;
+        .architecture-title {
+            display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
+            margin-bottom: 1rem;
             font-weight: 600;
-            transition: all 0.3s ease;
-            margin: 1rem 0.5rem;
+            color: #495057;
         }
         
-        .nav-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        .architecture-title h4 {
+            margin: 0;
+            color: #495057;
+        }
+        
+        .architecture-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        /* War Story */
+        .war-story {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-left: 4px solid #856404;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .war-story h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+        
+        /* Key Takeaways */
+        .key-takeaways-section {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .key-takeaways-title {
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .takeaway-item {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Mermaid Container */
+        .mermaid {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
         }
         
         /* Chapter Navigation */
@@ -134,37 +276,6 @@
         .nav-link.up {
             max-width: 200px;
             text-align: center;
-        }
-        
-        @media (max-width: 768px) {
-            .nav-container {
-                flex-direction: column;
-            }
-            
-            .nav-link {
-                max-width: 100%;
-                text-align: center;
-            }
-        }
-        
-        /* Dark mode navigation */
-        .dark-mode .chapter-nav {
-            border-color: #374151;
-        }
-        
-        .dark-mode .nav-link {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: #374151;
-            color: #e9ecef;
-        }
-        
-        .dark-mode .nav-link:hover {
-            border-color: #667eea;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .dark-mode .nav-title {
-            color: #e9ecef;
         }
         
         /* Reader Tools */
@@ -248,28 +359,20 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
         
-        /* Language Switcher */
-        .language-switcher {
-            display: flex;
-            background: rgba(0,0,0,0.1);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        
-        .language-option {
-            padding: 0.3rem 0.6rem;
+        .language-select {
             background: transparent;
             border: none;
-            cursor: pointer;
-            font-size: 0.7rem;
+            color: inherit;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: #6c757d;
-            transition: all 0.2s ease;
+            cursor: pointer;
+            outline: none;
+            min-width: 60px;
         }
         
-        .language-option.active {
-            background: #667eea;
-            color: white;
+        .language-select option {
+            background: white;
+            color: #2c3e50;
         }
         
         /* Reading Progress */
@@ -290,6 +393,192 @@
             transition: width 0.3s ease;
         }
         
+        /* Bookmark Toast */
+        .bookmark-toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            z-index: 1002;
+            transform: translateX(300px);
+            transition: transform 0.3s ease;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .bookmark-toast.show {
+            transform: translateX(0);
+        }
+        
+        .bookmark-toast.error {
+            background: #dc3545;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        /* Bookmarks Modal */
+        .bookmarks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .bookmarks-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .bookmarks-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .bookmarks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .bookmarks-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .close-bookmarks {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #7f8c8d;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        
+        .close-bookmarks:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .bookmarks-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .bookmark-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .bookmark-info {
+            flex-grow: 1;
+        }
+        
+        .bookmark-title {
+            font-weight: 600;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        
+        .bookmark-title:hover {
+            color: #667eea;
+        }
+        
+        .bookmark-date {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 0.3rem;
+        }
+        
+        .bookmark-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .bookmark-action {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+            color: #7f8c8d;
+        }
+        
+        .bookmark-action:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        
+        .empty-bookmarks {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+        
+        .empty-bookmarks-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
         /* Dark Mode */
         body.dark-mode {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -297,17 +586,33 @@
         }
         
         .dark-mode .container {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .chapter-header,
-        .dark-mode .chapter-content {
             background: rgba(255, 255, 255, 0.05);
             color: #e9ecef;
         }
         
         .dark-mode .breadcrumb {
             background: rgba(255, 255, 255, 0.1);
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-title,
+        .dark-mode .chapter-content h2,
+        .dark-mode .chapter-content h3,
+        .dark-mode .chapter-content h4 {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .chapter-content p,
+        .dark-mode .chapter-content li,
+        .dark-mode .chapter-content strong {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .architecture-section {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode .architecture-title h4 {
             color: #e9ecef;
         }
         
@@ -324,8 +629,55 @@
             background: rgba(255, 255, 255, 0.1);
         }
         
+        .dark-mode .bookmarks-content {
+            background: #1a1a2e;
+            color: #e9ecef;
+        }
+        
+        .dark-mode .bookmarks-title {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .bookmark-item {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dark-mode .bookmark-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dark-mode .bookmark-title {
+            color: #e9ecef;
+        }
+        
+        .dark-mode .language-select option {
+            background: #1a1a2e;
+            color: #e9ecef;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 2rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .nav-container {
+                flex-direction: column;
+            }
+            
+            .nav-link {
+                max-width: 100%;
+                text-align: center;
+            }
+            
             .reader-tools {
                 right: 10px;
                 padding: 0.8rem;
@@ -345,308 +697,26 @@
                 font-size: 0.75rem;
             }
         }
-
-        /* Fixed Bookmark Toast */
-        .bookmark-toast {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: #28a745;
-            color: white;
-            padding: 0.8rem 1.2rem;
-            border-radius: 8px;
-            z-index: 1002;
-            transform: translateX(350px);
-            opacity: 0;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-            pointer-events: none;
+        
+        .contextual-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dotted #667eea;
+            transition: all 0.2s ease;
         }
         
-        .bookmark-toast.show {
-            transform: translateX(0);
-            opacity: 1;
-            pointer-events: auto;
+        .contextual-link:hover {
+            color: #5a6fd8;
+            border-bottom-style: solid;
         }
         
-        .bookmark-toast.error {
-            background: #dc3545;
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
-        }
-
-            /* Reader Tools */
-        .reader-tools {
-            position: fixed;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 1rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            transition: all 0.3s ease;
-            min-width: 60px;
-        }
-        .reader-tools.collapsed { width: 60px; padding: 0.8rem; }
-        .reader-tool { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem; border: none; background: transparent; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; color: #495057; font-size: 0.85rem; white-space: nowrap; }
-        .reader-tool:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
-        .reader-tool.active { background: #667eea; color: white; }
-        .reader-tool-icon { font-size: 1.1rem; flex-shrink: 0; }
-        .reader-tool-label { font-size: 0.8rem; font-weight: 500; }
-        .collapsed .reader-tool-label { display: none; }
-        .reader-tools-toggle { position: absolute; top: -10px; left: -10px; width: 30px; height: 30px; background: #667eea; color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
-        .reading-progress { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(102, 126, 234, 0.2); z-index: 1001; }
-        .reading-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
-        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #e9ecef; }
-        .dark-mode .container { color: #e9ecef; }
-        .dark-mode .chapter-header, .dark-mode .chapter-content { background: rgba(255, 255, 255, 0.05); color: #e9ecef; }
-        .dark-mode .breadcrumb { background: rgba(255, 255, 255, 0.1); color: #e9ecef; }
-        .dark-mode .reader-tools { background: rgba(0, 0, 0, 0.8); color: #e9ecef; }
-        .dark-mode .reader-tool { color: #e9ecef; }
-        .dark-mode .reader-tool:hover { background: rgba(255, 255, 255, 0.1); }
-        @media (max-width: 768px) { .reader-tools { right: 10px; padding: 0.8rem; min-width: 50px; } .reader-tools.collapsed { width: 50px; padding: 0.6rem; } .reader-tool { padding: 0.5rem; } .reader-tool-label { font-size: 0.75rem; } }
-        .bookmark-toast { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 0.8rem 1.2rem; border-radius: 8px; z-index: 1002; transform: translateX(300px); transition: transform 0.3s ease; font-size: 0.9rem; box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3); }
-        .bookmark-toast.show { transform: translateX(0); }
-        .bookmark-toast.error { background: #dc3545; box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3); }
-        .bookmarks-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(5px); }
-        .bookmarks-modal.show { display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .bookmarks-content { background: white; border-radius: 20px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .dark-mode .bookmarks-content { background: #1a1a2e; color: #e9ecef; }
-        .bookmarks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #667eea; }
-        .bookmarks-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 0.5rem; }
-        .dark-mode .bookmarks-title { color: #e9ecef; }
-        .close-bookmarks { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s ease; }
-        .close-bookmarks:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
-        .bookmarks-list { max-height: 400px; overflow-y: auto; }
-        .bookmark-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem; background: rgba(102, 126, 234, 0.05); transition: all 0.2s ease; }
-        .bookmark-item:hover { background: rgba(102, 126, 234, 0.1); transform: translateX(5px); }
-        .dark-mode .bookmark-item { background: rgba(255, 255, 255, 0.05); }
-        .dark-mode .bookmark-item:hover { background: rgba(255, 255, 255, 0.1); }
-        .bookmark-info { flex-grow: 1; }
-        .bookmark-title { font-weight: 600; color: #2c3e50; text-decoration: none; font-size: 1rem; line-height: 1.4; }
-        .dark-mode .bookmark-title { color: #e9ecef; }
-        .bookmark-title:hover { color: #667eea; }
-        .bookmark-date { font-size: 0.8rem; color: #7f8c8d; margin-top: 0.3rem; }
-        .bookmark-actions { display: flex; gap: 0.5rem; }
-        .bookmark-action { background: none; border: none; cursor: pointer; padding: 0.3rem; border-radius: 5px; transition: all 0.2s ease; color: #7f8c8d; }
-        .bookmark-action:hover { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
-        .empty-bookmarks { text-align: center; padding: 2rem; color: #7f8c8d; }
-        .empty-bookmarks-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
-        .language-select { background: transparent; border: none; color: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; outline: none; min-width: 60px; }
-        .language-select option { background: white; color: #2c3e50; }
-        .dark-mode .language-select option { background: #1a1a2e; color: #e9ecef; }
-
-        /* Dark Mode - Content Areas */
-        .dark-mode .content-area {
-            background: rgba(255, 255, 255, 0.05);
-            color: #e9ecef;
-        }
-        
-        .dark-mode .content-area h2,
-        .dark-mode .content-area h3,
-        .dark-mode .content-area h4 {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .content-area p,
-        .dark-mode .content-area li {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .content-area strong {
-            color: #e9ecef;
-        }
-        
-        /* Dark Mode - Tables */
-        .dark-mode table {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .dark-mode th,
-        .dark-mode td {
-            color: #e9ecef;
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .dark-mode th {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Dark Mode - Takeaways and Boxes */
-        .dark-mode .key-takeaways,
-        .dark-mode .insight-box,
-        .dark-mode .war-story {
-            background: rgba(255, 255, 255, 0.05);
-            color: #e9ecef;
-        }
-        
-        .dark-mode .key-takeaways h3,
-        .dark-mode .insight-box h3,
-        .dark-mode .war-story h3 {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .key-takeaways p,
-        .dark-mode .insight-box p,
-        .dark-mode .war-story p {
-            color: #e9ecef;
-        }
-        
-        .dark-mode .key-takeaways li,
-        .dark-mode .insight-box li,
-        .dark-mode .war-story li {
-            color: #e9ecef;
-        }
-    
-        /* Architecture Icon Styling */
-        .architecture-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-        
-        
-        /* War Story Icon Styling */
-        .war-story-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-        
-        /* Insight Icon Styling */
-        .insight-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-
-        /* Architecture Section Styling */
-        .architecture-section {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border: 1px solid #dee2e6;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .architecture-title {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .architecture-title h4 {
-            margin: 0;
-            color: #495057;
-        }
-        
-        /* War Story Styling */
-        .war-story {
-            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-            border-left: 4px solid #856404;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .war-story h4 {
-            color: #856404;
-            margin-top: 0;
-        }
-        
-        /* Key Takeaways Styling */
-        .key-takeaways-section {
-            background: linear-gradient(135deg, #27ae60, #2ecc71);
-            color: white;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .key-takeaways-title {
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-        
-        .key-takeaways-content {
-            line-height: 1.6;
-        }
-        
-        .takeaway-item {
-            margin-bottom: 0.5rem;
-        }
-        
-        /* Industry Insight Styling */
-        .industry-insight {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-left: 4px solid #28a745;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .industry-insight h4 {
-            color: #28a745;
-            margin-top: 0;
-        }
-        
-        /* Mermaid Container */
-        .mermaid {
-            background: #f8f9fa;
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-            text-align: center;
-        }
-    
-        .architecture-section,
-        .mermaid,
-        .war-story,
-        .key-takeaways-section {
-            max-width: 100%;
-            box-sizing: border-box;
-            overflow-x: auto;
-        }
-        
-        .mermaid svg {
-            max-width: 100%;
-            height: auto;
+        .dark-mode .contextual-link {
+            color: #9bb5ff;
+            border-bottom-color: #9bb5ff;
         }
     </style>
-
-    <style>
-    .contextual-link {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 500;
-        border-bottom: 1px dotted #667eea;
-        transition: all 0.2s ease;
-    }
-    
-    .contextual-link:hover {
-        color: #5a6fd8;
-        border-bottom-style: solid;
-    }
-    
-    .dark-mode .contextual-link {
-        color: #9bb5ff;
-        border-bottom-color: #9bb5ff;
-    }
-    </style>
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,CiAgICA8c3ZnIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgICAgIDxkZWZzPgogICAgICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdlZWE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3NjRiYTI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICAgICAgPC9kZWZzPgogICAgICAgIDwhLS0gQmFja2dyb3VuZCBjaXJjbGUgLS0+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9InVybCgjZ3JhZDEpIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDwhLS0gQUkgQnJhaW4gaWNvbiAtLT4KICAgICAgICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjEzIiByPSI4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjEzIiBjeT0iMTEiIHI9IjEiIGZpbGw9IiNmZmYiLz4KICAgICAgICA8Y2lyY2xlIGN4PSIxOSIgY3k9IjExIiByPSIxIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPHBhdGggZD0iTTEyIDE1YzEgMiAzIDIgNCAyczMgMCA0LTIiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgICAgIDwhLS0gVGVhbSBvcmNoZXN0cmF0aW9uIGxpbmVzIC0tPgogICAgICAgIDxwYXRoIGQ9Ik04IDI0TDE2IDIwTDI0IDI0IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iOCIgY3k9IjI0IiByPSIyIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgPGNpcmNsZSBjeD0iMTYiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZiIvPgogICAgICAgIDxjaXJjbGUgY3g9IjI0IiBjeT0iMjQiIHI9IjIiIGZpbGw9IiNmZmYiLz4KICAgIDwvc3ZnPgogICAg">
     <link rel="canonical" href="https://ai-team-orchestrator.com/en/execution-quality/consolidation-test/" />
 </head>
@@ -660,6 +730,7 @@
             <span>›</span>
             <span>The Consolidation Test - Simplify to Scale</span>
         </nav>
+
         <header class="chapter-header">
             <div class="chapter-instrument">🎺</div>
             <div class="chapter-meta">
@@ -671,569 +742,213 @@
         </header>
 
         <div class="chapter-content">
-<div class="chapter-progress">
-                        <div class="progress-label">Movimento 17 di 42</div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: 40%"></div>
-</div>
-                    <h2 class="chapter-title">Capitolo 17: Il Test di Consolidamento – Semplificare per Scalare</h2>
+            <p>Our system had become powerful. We had dynamic agents, an intelligent orchestrator, learning memory, adaptive quality gates and a health monitor. But with power came <strong>complexity</strong>.</p>
+
+            <p>Looking at our codebase, we noticed a concerning "code smell": the logic related to quality and deliverables was scattered across multiple modules. There were functions in <code>database.py</code>, <code>executor.py</code>, and various files within <code>ai_quality_assurance</code> and <code>deliverable_system</code>. While each piece worked, the overall picture was becoming difficult to understand and maintain.</p>
+
+            <p>We were violating fundamental software engineering principles: <strong>Don't Repeat Yourself (DRY)</strong> and the <strong>Single Responsibility Principle</strong>. It was time to stop, not to add new features, but to <strong>refactor and consolidate</strong>.</p>
+
+            <h3>The Architectural Decision: Creating Unified Service "Engines"</h3>
+
+            <p>Our strategy was to identify the key responsibilities that were scattered and consolidate them into dedicated service "engines". An "engine" is a high-level class that orchestrates a specific business capability from start to finish.</p>
+
+            <p>We identified two critical areas for consolidation:</p>
+
+            <ol>
+                <li><strong>Quality:</strong> The validation, assessment and quality gate logic was distributed.</li>
+                <li><strong>Deliverables:</strong> The logic for asset extraction, assembly and deliverable creation was fragmented.</li>
+            </ol>
+
+            <p>This led us to create two new central components:</p>
+
+            <ul>
+                <li><strong><code>UnifiedQualityEngine</code>:</strong> The single reference point for <em>all</em> quality-related operations.</li>
+                <li><strong><code>UnifiedDeliverableEngine</code>:</strong> The single reference point for <em>all</em> deliverable creation operations.</li>
+            </ul>
+
+            <p><em>Reference commit code: <code>a454b34 (feat: Complete consolidation of QA and Deliverable systems)</code></em></p>
+
+            <p><strong>Architecture Before and After Consolidation:</strong></p>
+
+            <div class="architecture-section">
+                <div class="architecture-title">
+                    <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="9" y1="9" x2="15" y2="9"/>
+                        <line x1="9" y1="12" x2="15" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                    <h4>Before and After Architecture</h4>
                 </div>
-
-<p>Il nostro sistema era diventato potente. Avevamo agenti dinamici, un orchestratore intelligente, una memoria che apprendeva, un quality gate adattivo e un monitor di salute. Ma con la potenza era arrivata la <strong>complessità</strong>.</p>
-
-<p>Guardando la nostra codebase, abbiamo notato un "code smell" preoccupante: la logica relativa alla qualità e quella relativa ai deliverable erano sparse in più moduli. Cerano funzioni in <code>database.py</code>, <code>executor.py</code>, e in vari file allinterno di <code>ai_quality_assurance</code> e <code>deliverable_system</code>. Sebbene ogni pezzo funzionasse, il quadro generale stava diventando difficile da capire e da mantenere.</p>
-
-<p>Stavamo violando uno dei principi fondamentali dellingegneria del software: <strong>Dont Repeat Yourself (DRY)</strong> e il <strong>Single Responsibility Principle</strong>. Era il momento di fermarsi, non per aggiungere nuove feature, ma per <strong>rifattorizzare e consolidare</strong>.</p>
-
-<h3>La Decisione Architetturale: Creare "Motori" di Servizio Unificati</h3>
-
-<p>La nostra strategia è stata quella di identificare le responsabilità chiave che erano sparse e di consolidarle in "motori" di servizio dedicati. Un "motore" è una classe di alto livello che orchestra una specifica capacità di business dallinizio alla fine.</p>
-
-<p>Abbiamo identificato due aree critiche per il consolidamento:</p>
-
-<ol>
-<li><strong>Qualità:</strong> La logica di validazione, assessment e quality gate era distribuita.</li>
-<li><strong>Deliverable:</strong> La logica di estrazione degli asset, assemblaggio e creazione dei deliverable era frammentata.</li>
-</ol>
-
-<p>Questo ci ha portato a creare due nuovi componenti centrali:</p>
-
-<ul>
-<li><strong><code>UnifiedQualityEngine</code>:</strong> Lunico punto di riferimento per <em>tutte</em> le operazioni relative alla qualità.</li>
-<li><strong><code>UnifiedDeliverableEngine</code>:</strong> Lunico punto di riferimento per <em>tutte</em> le operazioni relative alla creazione di deliverable.</li>
-</ul>
-
-<p><em>Codice di riferimento del commit: <code>a454b34 (feat: Complete consolidation of QA and Deliverable systems)</code></em></p>
-
-<p><strong>Architettura Prima e Dopo il Consolidamento:</strong></p>
-
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>Architettura Prima e Dopo</h4>
-    </div>
-    
-    <div class="mermaid">
+                
+                <div class="mermaid">
 graph TD
-    subgraph "PRIMA: Logica Frammentata"
+    subgraph "BEFORE: Fragmented Logic"
         A[Executor] --> B[database.py]
         A --> C[quality_validator.py]
         A --> D[asset_extractor.py]
         B --> C
     end
 
-    subgraph "DOPO: Architettura a Motori"
+    subgraph "AFTER: Engine Architecture"
         E[Executor] --> F{UnifiedQualityEngine}
         E --> G{UnifiedDeliverableEngine}
         F --> H[Quality Components]
         G --> I[Deliverable Components]
     end
-    </div>
-</div>
+                </div>
+            </div>
 
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>subgraph "DOPO: Architettura a Motori";
-        E[Executor] --> F{UnifiedQualityEngine};
-        E --> G{UnifiedDeliverableEngine};
-        F --> H[Quality Components];
-        G --> I[Deliverable Components];
-    end
-</code></pre></h4>
-    </div>
-    
-    
-</div>
+            <h3>The Refactoring Process: A Practical Example</h3>
 
-<h3>Il Processo di Refactoring: Un Esempio Pratico</h3>
+            <p>Let's take deliverable creation. Before refactoring, our <code>Executor</code> had to:</p>
+            <ol>
+                <li>Call <code>database.py</code> to get completed tasks.</li>
+                <li>Call <code>concrete_asset_extractor.py</code> to extract assets.</li>
+                <li>Call <code>deliverable_assembly.py</code> to assemble content.</li>
+                <li>Call <code>unified_quality_engine.py</code> to validate the result.</li>
+                <li>Finally, call <code>database.py</code> again to save the deliverable.</li>
+            </ol>
 
-<p>Prendiamo la creazione di un deliverable. Prima del refactoring, il nostro <code>Executor</code> doveva:
-1.  Chiamare <code>database.py</code> per ottenere i task completati.
-2.  Chiamare <code>concrete_asset_extractor.py</code> per estrarre gli asset.
-3.  Chiamare <code>deliverable_assembly.py</code> per assemblare il contenuto.
-4.  Chiamare <code>unified_quality_engine.py</code> per validare il risultato.
-5.  Infine, chiamare di nuovo <code>database.py</code> per salvare il deliverable.</p>
+            <p>The Executor knew too many implementation details. It was a fragile architecture.</p>
 
-<p>L'Executor conosceva troppi dettagli implementativi. Era unarchitettura fragile.</p>
+            <p>After refactoring, the process became incredibly simpler and more robust:</p>
 
-<p>Dopo il refactoring, il processo è diventato incredibilmente più semplice e robusto:</p>
+            <p><em>Reference code: <code>backend/executor.py</code> (simplified logic)</em></p>
 
-<p><em>Codice di riferimento: <code>backend/executor.py</code> (logica semplificata)</em></p>
-
-<pre><code class="language-python"># DOPO IL REFACTORING
+            <pre><code class="language-python"># AFTER REFACTORING
 from deliverable_system import unified_deliverable_engine
 
 async def handle_completed_goal(workspace_id, goal_id):
-    &quot;&quot;&quot;
-    L&#x27;Executor ora deve solo fare una chiamata a un singolo motore.
-    Tutta la complessità è nascosta dietro questa semplice interfaccia.
-    &quot;&quot;&quot;
+    """
+    The Executor now only needs to make a single call to a single engine.
+    All complexity is hidden behind this simple interface.
+    """
     try:
         await unified_deliverable_engine.create_goal_specific_deliverable(
             workspace_id=workspace_id,
             goal_id=goal_id
-        );
-        logger.info(f&quot;Deliverable creation for goal {goal_id} successfully triggered.&quot;)
+        )
+        logger.info(f"Deliverable creation for goal {goal_id} successfully triggered.")
     except Exception as e:
-        logger.error(f&quot;Failed to trigger deliverable creation: {e}&quot;)</code></pre>
+        logger.error(f"Failed to trigger deliverable creation: {e}")</code></pre>
 
-<p>Tutta la logica complessa di estrazione, assemblaggio e validazione è ora contenuta allinterno del <code>UnifiedDeliverableEngine</code>, completamente invisibile allExecutor.</p>
+            <p>All the complex logic for extraction, assembly and validation is now contained within the <code>UnifiedDeliverableEngine</code>, completely invisible to the Executor.</p>
 
-<h3>Il Test di Consolidamento: Verificare le Interfacce, non lImplementazione</h3>
+            <h3>The Consolidation Test: Verify Interfaces, not Implementation</h3>
 
-<p>Il nostro approccio ai test è dovuto cambiare. Invece di testare ogni piccolo pezzo in isolamento, abbiamo iniziato a scrivere test di integrazione che si focalizzavano sull<strong>interfaccia pubblica</strong> dei nostri nuovi motori.</p>
+            <p>Our testing approach had to change. Instead of testing every small piece in isolation, we started writing integration tests that focused on the <strong>public interface</strong> of our new engines.</p>
 
-<p><em>Codice di riferimento: <code>tests/test_deliverable_system_integration.py</code></em></p>
+            <p><em>Reference code: <code>tests/test_deliverable_system_integration.py</code></em></p>
 
-<p>Il test non chiamava più <code>test_asset_extractor</code> e <code>test_assembly</code> separatamente. Invece, faceva una sola cosa:
-1.  <strong>Setup:</strong> Creava un workspace con alcuni task completati che contenevano degli asset.
-2.  <strong>Esecuzione:</strong> Chiamava l'unico metodo pubblico: <code>unified_deliverable_engine.create_goal_specific_deliverable(...)</code>.
-3.  <strong>Validazione:</strong> Verificava che, alla fine del processo, un deliverable completo e corretto fosse stato creato nel database.</p>
+            <p>The test no longer called <code>test_asset_extractor</code> and <code>test_assembly</code> separately. Instead, it did one thing:</p>
+            <ol>
+                <li><strong>Setup:</strong> Created a workspace with some completed tasks containing assets.</li>
+                <li><strong>Execution:</strong> Called the single public method: <code>unified_deliverable_engine.create_goal_specific_deliverable(...)</code>.</li>
+                <li><strong>Validation:</strong> Verified that, at the end of the process, a complete and correct deliverable was created in the database.</li>
+            </ol>
 
-<p>Questo approccio ha reso i nostri test più resilienti ai cambiamenti interni. Potevamo cambiare completamente il modo in cui gli asset venivano estratti o assemblati; finché linterfaccia pubblica del motore funzionava come previsto, i test continuavano a passare.</p>
+            <p>This approach made our tests more resilient to internal changes. We could completely change how assets were extracted or assembled; as long as the engine's public interface worked as expected, the tests continued to pass.</p>
 
-<h3>La Lezione Appresa: Semplificare è un Lavoro Attivo</h3>
+            <h3>The Lesson Learned: Simplification is Active Work</h3>
 
-<p>La complessità in un progetto software non è un evento, è un processo. Tende ad aumentare naturalmente con il tempo, a meno che non si intraprendano azioni deliberate per combatterla.</p>
+            <p>Complexity in a software project is not an event, it's a process. It tends to increase naturally over time, unless deliberate actions are taken to combat it.</p>
 
-<ul>
-<li><strong>Pilastro #14 (Tool/Service-Layer Modulare):</strong> Questo refactoring è stata lincarnazione di questo pilastro. Abbiamo trasformato una serie di script e funzioni sparse in veri e propri "servizi" con responsabilità chiare.</li>
-<li><strong>Pilastro #4 (Componenti Riusabili):</strong> I nostri motori sono diventati i componenti di più alto livello e più riutilizzabili del nostro sistema.</li>
-<li><strong>Principio di Progettazione "Facade":</strong> I nostri "motori" agiscono come una "facciata" (Facade design pattern), fornendo uninterfaccia semplice a un sottosistema complesso.</li>
-</ul>
+            <ul>
+                <li><strong>Pillar #14 (Modular Tool/Service-Layer):</strong> This refactoring was the embodiment of this pillar. We transformed a series of scattered scripts and functions into true "services" with clear responsibilities.</li>
+                <li><strong>Pillar #4 (Reusable Components):</strong> Our engines became the highest-level and most reusable components in our system.</li>
+                <li><strong>"Facade" Design Principle:</strong> Our "engines" act as a "facade" (Facade design pattern), providing a simple interface to a complex subsystem.</li>
+            </ul>
 
-<p>Abbiamo imparato che il refactoring non è qualcosa da fare "quando si ha tempo". È unattività di manutenzione essenziale, come cambiare lolio a una macchina. Fermarsi per consolidare e semplificare larchitettura ci ha permesso di accelerare lo sviluppo futuro, perché ora avevamo fondamenta molto più stabili e comprensibili su cui costruire.</p>
+            <p>We learned that refactoring is not something to do "when you have time". It's an essential maintenance activity, like changing the oil in a car. Stopping to consolidate and simplify the architecture allowed us to accelerate future development, because we now had much more stable and understandable foundations to build on.</p>
 
-<div class="key-takeaways-section">
-    <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
-    <p class="takeaway-item">✓ <strong>Combatti Attivamente la Complessità:</strong> Pianifica sessioni di refactoring regolari per consolidare la logica e ridurre il debito tecnico.</p>
-<p class="takeaway-item">✓ <strong>Pensa in Termini di "Motori" o "Servizi":</strong> Raggruppa le funzionalità correlate in classi di alto livello con interfacce semplici. Nascondi la complessità, non esporla.</p>
-<p class="takeaway-item">✓ <strong>Testa le Interfacce, non i Dettagli:</strong> Scrivi test di integrazione che si concentrino sul comportamento pubblico dei tuoi servizi. Questo rende i test più robusti e meno fragili ai cambiamenti interni.</p>
-<p class="takeaway-item">✓ <strong>La Semplificazione è un Prerequisito per la Scalabilità:</strong> Non puoi scalare un sistema che è diventato troppo complesso da capire e da modificare.</p>
-
-</div>
-
-<p><strong>Conclusione del Capitolo</strong></p>
-
-<p>Con unarchitettura consolidata e motori di servizio puliti, il nostro sistema era ora non solo potente, ma anche elegante e manutenibile. Eravamo pronti per lesame di maturità finale: i test "comprensivi", progettati per stressare l'intero sistema e verificare che tutte le sue parti, ora ben organizzate, potessero lavorare in armonia per raggiungere un obiettivo complesso dallinizio alla fine.</p>
+            <div class="key-takeaways-section">
+                <h4 class="key-takeaways-title">📝 Key Takeaways from this Chapter:</h4>
+                <p class="takeaway-item">✓ <strong>Actively Fight Complexity:</strong> Plan regular refactoring sessions to consolidate logic and reduce technical debt.</p>
+                <p class="takeaway-item">✓ <strong>Think in Terms of "Engines" or "Services":</strong> Group related functionality into high-level classes with simple interfaces. Hide complexity, don't expose it.</p>
+                <p class="takeaway-item">✓ <strong>Test Interfaces, not Details:</strong> Write integration tests that focus on the public behavior of your services. This makes tests more robust and less fragile to internal changes.</p>
+                <p class="takeaway-item">✓ <strong>Simplification is a Prerequisite for Scalability:</strong> You can't scale a system that has become too complex to understand and modify.</p>
             </div>
+
+            <p><strong>Chapter Conclusion</strong></p>
+
+            <p>With a consolidated architecture and clean service engines, our system was now not only powerful, but also elegant and maintainable. We were ready for the final maturity exam: "comprehensive" tests, designed to stress the entire system and verify that all its parts, now well-organized, could work in harmony to achieve a complex goal from start to finish.</p>
         </div>
-    
-    <div class="mermaid">
-graph TD
-    A[Timer: Ogni 20 Minuti] --> B{Health Monitor si attiva}
-    B --> C[Scansiona Tutti i Workspace Attivi]
-    C --> D{Per ogni Workspace, esegue una serie di controlli}
-    D --> E[1. Controllo Agenti]
-    D --> F[2. Controllo Task Bloccati]
-    D --> G[3. Controllo Progresso Obiettivi]
-    D --> H[4. Controllo Integrità Memoria];
-    I{Calcola Health Score Complessivo};
-    I -- Score < 70% --> J[Triggera Allerta e/o Auto-Riparazione]
-    I -- Score >= 70% --> K[Workspace Sano]
-    
-    subgraph "Controlli Specifici"
-        E[Ci sono agenti in stato error' da troppo tempo?]
-        F[Ci sono task in_progress da più di 24 ore?]
-        G[Il progresso verso gli obiettivi è fermo nonostante i task completati?]
-        H[Ci sono anomalie o corruzioni nei dati della memoria?]
-    end
-    </div>
-</div>
 
-<div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>System Architecture</h4>
-    </div>
-    
-    
-</div>
-
-<h3>Pattern Architetturali Applicati</h3>
-
-<p>La progettazione del nostro Health Monitor non è casuale, ma si basa su due pattern architetturali consolidati per la gestione di sistemi complessi:</p>
-
-<ol>
-<li><strong>Health Check API Pattern:</strong> Invece di aspettare che il sistema fallisca, esponiamo (internamente) degli endpoint che permettono di interrogare attivamente lo stato di salute dei vari componenti. Il nostro monitor agisce come un client che "chiama" questi endpoint a intervalli regolari. Questo è un approccio proattivo, non reattivo.</li>
-<li><strong>Sidecar Pattern (concettuale):</strong> Sebbene non sia un "sidecar" in senso stretto (come in unarchitettura a container), il nostro monitor agisce concettualmente in modo simile. È un processo separato che "osserva" lapplicazione principale (lExecutor e i suoi agenti) senza essere parte della sua logica di business critica. Questo disaccoppiamento è fondamentale: se lapplicazione principale rallenta o ha problemi, il monitor può continuare a funzionare in modo indipendente per diagnosticarla e, se necessario, riavviarla.</li>
-</ol>
-
-<div class="war-story">
-    <h4>"War Story": LAgente "Fantasma"</h4>
-    <p>Durante un test di lunga durata, abbiamo notato che un workspace aveva smesso di fare progressi. I log non mostravano errori evidenti, ma nessun nuovo task veniva completato.</p>
-
-<p><em>Logbook del Disastro (28 Luglio, pomeriggio):</em></p>
-
-<pre><code class="language-text">HEALTH REPORT: Workspace a352c... Health Score: 65/100.
-ISSUES:;
-- 1 agent in stato &#x27;busy&#x27 da 48 ore.
-- 0 task completati nelle ultime 24 ore.</code></pre>
-
-<p>Il nostro <code>Health Monitor</code> aveva rilevato il problema: un agente era rimasto bloccato in uno stato <code>busy</code> a causa di uneccezione non gestita in un sotto-processo, diventando un "agente fantasma". Non stava lavorando, ma l'Executor lo considerava ancora occupato e non gli assegnava nuovi task. Poiché era lunico agente con un certo set di skill, lintero progetto si era fermato.</p>
-
-<p><strong>La Lezione Appresa: LAuto-Riparazione è il Livello Successivo dellAutonomia.</strong></p>
-
-<p>Rilevare il problema non era abbastanza. Il sistema doveva essere in grado di risolverlo. Abbiamo quindi implementato una serie di <strong>routine di auto-riparazione</strong>, applicando un altro pattern classico.</p>
-
-<p><strong>Pattern Applicato: Circuit Breaker (adattato)</strong></p>
-
-<p>Il nostro sistema di auto-riparazione agisce come un "interruttore automatico".</p>
-
-<ol>
-<li><strong>Rilevamento (Circuito Chiuso):</strong> LHealth Monitor rileva un agente in stato <code>busy</code> per un tempo superiore alla soglia massima.</li>
-<li><strong>Diagnosi (Apertura del Circuito):</strong> Il sistema "apre il circuito" per quell'agente. Tenta una diagnosi (es. verificare se il processo esiste ancora).</li>
-<li><strong>Azione Correttiva (Reset del Circuito):</strong> Se la diagnosi conferma lanomalia, il sistema forza il reset dello stato dellagente (da <code>busy</code> a <code>available</code>), di fatto "resettando il circuito" e permettendo al flusso di riprendere.</li>
-</ol>
-
-<p><em>Codice di riferimento: <code>backend/workspace_recovery_system.py</code></em></p>
-
-<p>Questa logica ha permesso al sistema di "sbloccare" lagente e di riprendere le normali operazioni senza alcun intervento umano, incarnando perfettamente il <strong>Pilastro #13 (Course-Correction Automatico)</strong>, applicato questa volta non alla strategia di progetto, ma alla salute del sistema stesso.</p>
-</div>
-
-<div class="key-takeaways-section">
-    <h4 class="key-takeaways-title">📝 Key Takeaways del Capitolo:</h4>
-    <p class="takeaway-item">✓ <strong>LAutonomia Richiede Auto-Monitoraggio:</strong> Un sistema complesso e autonomo deve avere un "sistema immunitario" in grado di rilevare proattivamente i problemi.</p>
-<p class="takeaway-item">✓ <strong>Applica Pattern Architetturali Consolidati:</strong> Non reinventare la ruota. Pattern come <code>Health Check API</code> e <code>Circuit Breaker</code> sono soluzioni testate per costruire sistemi resilienti.</p>
-<p class="takeaway-item">✓ <strong>Disaccoppia il Monitoraggio dalla Logica Principale:</strong> Un monitor che fa parte dello stesso processo che sta monitorando può fallire insieme ad esso. Un processo separato (o "sidecar") è molto più robusto.</p>
-<p class="takeaway-item">✓ <strong>Progetta per lAuto-Riparazione:</strong> Il vero obiettivo non è solo rilevare i problemi, ma dare al sistema la capacità di risolverli in autonomia, almeno per i casi più comuni.</p>
-
-</div>
-
-<p><strong>Conclusione del Capitolo</strong></p>
-
-<p>Con un sistema di monitoraggio e auto-riparazione, avevamo costruito una rete di sicurezza fondamentale. Questo ci ha dato la fiducia necessaria per affrontare la fase successiva: sottoporre lintero sistema a test end-to-end sempre più complessi, spingendolo ai suoi limiti per scoprire eventuali debolezze nascoste prima che potessero impattare un utente reale. Era il momento di passare dai test sui singoli componenti ai <strong>test "comprensivi" sullintero organismo AI</strong>.</p>
-
-    <!-- Chapter Navigation -->
-    <nav class="chapter-nav">
-        <div class="nav-container">
-            <a href="../autonomous-monitoring/" class="nav-link prev">
-                <span class="nav-direction">← Previous</span>
-                <span class="nav-title">Chapter 16: Autonomous Monitoring - Self-Aware System</span>
-            </a>
-            <a href="../" class="nav-link up">
-                <span class="nav-direction">↑ Up</span>
-                <span class="nav-title">Execution & Quality</span>
-            </a>
-            <a href="../comprehensive-test/" class="nav-link next">
-                <span class="nav-direction">Next →</span>
-                <span class="nav-title">Chapter 18: Comprehensive Testing - The Maturity Exam</span>
-            </a>
-        </div>
-    </nav>
+        <!-- Chapter Navigation -->
+        <nav class="chapter-nav">
+            <div class="nav-container">
+                <a href="../autonomous-monitoring/" class="nav-link prev">
+                    <span class="nav-direction">← Previous</span>
+                    <span class="nav-title">Chapter 16: Autonomous Monitoring - Self-Aware System</span>
+                </a>
+                <a href="../" class="nav-link up">
+                    <span class="nav-direction">↑ Up</span>
+                    <span class="nav-title">Execution & Quality</span>
+                </a>
+                <a href="../comprehensive-test/" class="nav-link next">
+                    <span class="nav-direction">Next →</span>
+                    <span class="nav-title">Chapter 18: Comprehensive Testing - The Maturity Exam</span>
+                </a>
             </div>
+        </nav>
     </div>
 
-        <!-- Reader Tools -->
+    <!-- Reader Tools -->
+    <div class="reader-tools" id="readerTools">
+        <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
+        <div class="reader-tool" onclick="toggleTheme()">
+            <span class="reader-tool-icon" id="themeIcon">🌙</span>
+            <span class="reader-tool-label">Theme</span>
+        </div>
         <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            
-            <div class="language-switcher">
-                <button class="language-option active">EN</button>
-                <button class="language-option" onclick="switchLanguage(en')">EN</button>
-            </div>
-            
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
+            <span class="reader-tool-icon">🔖</span>
+            <span class="reader-tool-label">Bookmark</span>
         </div>
-        
-        <!-- Reading Progress -->
-                <div class="reader-tools" id="readerTools">
-            <button class="reader-tools-toggle" onclick="toggleReaderTools()">⚙</button>
-            <div class="reader-tool" onclick="toggleTheme()">
-                <span class="reader-tool-icon" id="themeIcon">🌙</span>
-                <span class="reader-tool-label">Theme</span>
-            </div>
-            <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            <div class="reader-tool" onclick="showBookmarks()">
-                <span class="reader-tool-icon">📚</span>
-                <span class="reader-tool-label">My Bookmarks</span>
-            </div>
-            <div class="reader-tool">
-                <span class="reader-tool-icon">🌐</span>
-                <select class="language-select" onchange="switchLanguage(this.value)">
-                    <option value="en" selected>English</option>
-                    <option value="it">Italiano</option>
-                </select>
-            </div>
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
+        <div class="reader-tool" onclick="showBookmarks()">
+            <span class="reader-tool-icon">📚</span>
+            <span class="reader-tool-label">My Bookmarks</span>
         </div>
-
-        <div class="reading-progress">
-            <div class="reading-progress-fill" id="progressFill"></div>
+        <div class="reader-tool">
+            <span class="reader-tool-icon">🌐</span>
+            <select class="language-select" onchange="switchLanguage(this.value)">
+                <option value="en" selected>English</option>
+                <option value="it">Italiano</option>
+            </select>
         </div>
-        
-        <!-- Bookmark Toast -->
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>        </div>
-
-        <!-- Bookmarks Modal -->
-        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
-            <div class="bookmarks-content">
-                <div class="bookmarks-header">
-                    <h3 class="bookmarks-title">📚 My Bookmarks</h3>
-                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
-                </div>
-                <div class="bookmarks-list" id="bookmarksList">
-                </div>
-            </div>
-        </div>
-        </div>
-        
-        <!-- Bookmark Toast -->
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>            <!-- Reader Tools -->
-        <div class="reader-tool" onclick="toggleBookmark()">
-                <span class="reader-tool-icon">🔖</span>
-                <span class="reader-tool-label">Bookmark</span>
-            </div>
-            <div class="reader-tool" onclick="showBookmarks()">
-                <span class="reader-tool-icon">📚</span>
-                <span class="reader-tool-label">My Bookmarks</span>
-            </div>
-            <div class="reader-tool">
-                <span class="reader-tool-icon">🌐</span>
-                <select class="language-select" onchange="switchLanguage(this.value)">
-                    <option value="en" selected>English</option>
-                    <option value="it">Italiano</option>
-                </select>
-            </div>
-            <div class="reader-tool" onclick="showFontSizeMenu()">
-                <span class="reader-tool-icon">🔤</span>
-                <span class="reader-tool-label">Font Size</span>
-            </div>
-        </div>
-        <div class="reading-progress">
-            <div class="reading-progress-fill" id="progressFill"></div>
-        </div>
-        <div class="bookmark-toast" id="bookmarkToast">
-            <span id="bookmarkMessage">Bookmark saved!</span>
-        </div>        </div>
-        <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
-            <div class="bookmarks-content">
-                <div class="bookmarks-header">
-                    <h3 class="bookmarks-title">📚 I Miei Bookmark</h3>
-                    <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
-                </div>
-                <div class="bookmarks-list" id="bookmarksList">
-                </div>
-</div>
-
-    
-    <!-- Related Chapters Section -->
-    <div class="related-chapters-section" id="related-chapters-section">
-        <div class="related-chapters-header">
-            <h3>🔗 Related Chapters</h3>
-            <p>Explore these chapters to deepen your understanding of related concepts</p>
-        </div>
-        <div class="related-chapters-grid">
-            
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/agent-toolbox/" class="related-link">Agent Toolbox & Tools Registry</a></h4>
-                <p>Master AI systems with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/agent-toolbox/" class="related-cta">Learn More →</a>
-            </div>
-        
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-link">15 Pillars of AI Systems</a></h4>
-                <p>Master enterprise architecture with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/15-pillars-ai-system/" class="related-cta">Learn More →</a>
-            </div>
-        
-            <div class="related-chapter-item">
-                <h4><a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-link">Orchestrator as Conductor</a></h4>
-                <p>Master production deployment with proven enterprise strategies and <a href="../memory-system-scaling/production-readiness-audit/" class="contextual-link" title="production readiness strategies">production-ready</a> patterns.</p>
-                <a href="../core-philosophy-architecture/orchestrator-conductor/" class="related-cta">Learn More →</a>
-            </div>
-</div>
-    
-    <style>
-    .related-chapters-section {
-        margin: 3rem 0;
-        padding: 2rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 15px;
-        border-left: 5px solid #667eea;
-    }
-    
-    .related-chapters-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    .related-chapters-header h3 {
-        color: #2c3e50;
-        font-size: 1.8rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .related-chapters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .related-chapter-item {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-    }
-    
-    .related-chapter-item:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
-    }
-    
-    .related-link {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 600;
-    }
-    
-    .related-link:hover {
-        color: #5a6fd8;
-        text-decoration: underline;
-    }
-    
-    .related-cta {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        margin-top: 1rem;
-    }
-    
-    .related-cta:hover {
-        color: #5a6fd8;
-    }
-    
-    /* Dark mode support */
-    .dark-mode .related-chapters-section {
-        background: rgba(255, 255, 255, 0.05);
-        color: #e9ecef;
-    }
-    
-    .dark-mode .related-chapters-header h3 {
-        color: #e9ecef;
-    }
-    
-    .dark-mode .related-chapter-item {
-        background: rgba(255, 255, 255, 0.05);
-        color: #e9ecef;
-    }
-    </style>
-    
-    <!-- Continue Reading Section -->
-    <div class="continue-reading-section">
-        <div class="continue-reading-header">
-            <h3>📚 Continue Reading</h3>
-        </div>
-        <div class="continue-reading-actions">
-            <a href="../ai-team-orchestrator.html" class="continue-btn primary">
-                <span class="btn-icon">🏠</span>
-                <span class="btn-text">Back to Guide</span>
-            </a>
-            <a href="../core-philosophy-architecture/" class="continue-btn secondary">
-                <span class="btn-icon">🎭</span>
-                <span class="btn-text">Explore Movement</span>
-            </a>
+        <div class="reader-tool" onclick="showFontSizeMenu()">
+            <span class="reader-tool-icon">🔤</span>
+            <span class="reader-tool-label">Font Size</span>
         </div>
     </div>
+
+    <div class="reading-progress">
+        <div class="reading-progress-fill" id="progressFill"></div>
+    </div>
     
-    <style>
-    .continue-reading-section {
-        margin: 2rem 0;
-        padding: 1.5rem;
-        text-align: center;
-        background: linear-gradient(135deg, #667eea10, #764ba210);
-        border-radius: 15px;
-    }
-    
-    .continue-reading-header h3 {
-        color: #2c3e50;
-        margin-bottom: 1rem;
-    }
-    
-    .continue-reading-actions {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .continue-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.8rem 1.5rem;
-        border-radius: 25px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .continue-btn.primary {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-    }
-    
-    .continue-btn.secondary {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
-        border: 2px solid #667eea;
-    }
-    
-    .continue-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-    }
-    
-    .dark-mode .continue-reading-header h3 {
-        color: #e9ecef;
-    }
-    </style>
+    <!-- Bookmark Toast -->
+    <div class="bookmark-toast" id="bookmarkToast">
+        <span id="bookmarkMessage">Bookmark saved!</span>
+    </div>
+
+    <!-- Bookmarks Modal -->
+    <div class="bookmarks-modal" id="bookmarksModal" onclick="if(event.target === this) closeBookmarksModal()">
+        <div class="bookmarks-content">
+            <div class="bookmarks-header">
+                <h3 class="bookmarks-title">📚 My Bookmarks</h3>
+                <button class="close-bookmarks" onclick="closeBookmarksModal()">×</button>
+            </div>
+            <div class="bookmarks-list" id="bookmarksList">
+            </div>
+        </div>
     </div>
 
     <script>
-
         // Reader Tools JavaScript
         let readerToolsCollapsed = false;
         
         // Initialize reader tools
-        document.addEventListener(DOMContentLoaded, function() {
+        document.addEventListener('DOMContentLoaded', function() {
             initializeReaderTools();
             updateReadingProgress();
             loadUserPreferences();
@@ -1241,7 +956,7 @@ ISSUES:;
         
         // Toggle reader tools visibility
         function toggleReaderTools() {
-            const tools = document.getElementById('readerTools')
+            const tools = document.getElementById('readerTools');
             readerToolsCollapsed = !readerToolsCollapsed;
             
             if (readerToolsCollapsed) {
@@ -1250,13 +965,13 @@ ISSUES:;
                 tools.classList.remove('collapsed');
             }
             
-            localStorage.setItem('readerToolsCollapsed, readerToolsCollapsed);
+            localStorage.setItem('readerToolsCollapsed', readerToolsCollapsed);
         }
         
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
-            const themeIcon = document.getElementById('themeIcon')
+            const themeIcon = document.getElementById('themeIcon');
             const isDarkMode = body.classList.contains('dark-mode');
             
             if (isDarkMode) {
@@ -1264,9 +979,9 @@ ISSUES:;
                 themeIcon.textContent = '🌙';
                 localStorage.setItem('theme', 'light');
             } else {
-                body.classList.add('dark-mode);
+                body.classList.add('dark-mode');
                 themeIcon.textContent = '☀️';
-                localStorage.setItem('theme, ), dark');
+                localStorage.setItem('theme', 'dark');
             }
         }
         
@@ -1275,7 +990,7 @@ ISSUES:;
             const currentPage = window.location.pathname;
             const pageTitle = document.querySelector('.chapter-title').textContent;
             
-            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             const existingIndex = bookmarks.findIndex(b => b.url === currentPage);
             
             if (existingIndex > -1) {
@@ -1298,40 +1013,20 @@ ISSUES:;
             const currentPath = window.location.pathname;
             let newPath;
             
-            if (lang === 'en')  {
-                newPath = currentPath.replace(/it/', /en/);
-                    .replace('filosofia-core-architettura, core-philosophy-architecture)
-                    .replace(user-experience-trasparenza, user-experience-transparency)
-                    .replace(esecuzione-qualita', execution-quality)
-                    .replace(memory-system-scaling, memory-system-scaling')
-                    .replace(i-15-pilastri-sistema-ai, 15-pillars-ai-system)
-                    .replace(primo-agente-specialist-architecture, first-specialist-agent-architecture)
-                    .replace('isolare-intelligenza-mock-llm, ai-mocking-testing-strategy')
-                    .replace(dramma-parsing-contratto-ai, drama-parsing-ai-contracts)
-                    .replace(sdk-vs-api-battle, sdk-vs-direct-api-battle)
-                    .replace('agente-ambiente-interazioni-fondamentali, agent-environment-interactions)
-                    .replace(orchestratore-direttore-orchestra, 'orchestrator-conductor)
-                    .replace(staffetta-mancata-handoff, failed-handoff-delegation)
-                    .replace(recruiter-ai-team-dinamico, ai-recruiter-dynamic-team')
-                    .replace(test-tool-ancorare-realta, 'tool-testing-reality-anchor)
-                    .replace(cassetta-attrezzi-agente, agent-toolbox);
-            } else if (lang === it) {;
-                newPath = currentPath.replace(/en/', /it/);
-                    .replace(core-philosophy-architecture, filosofia-core-architettura')
-                    .replace(user-experience-transparency, user-experience-trasparenza)
-                    .replace(execution-quality, esecuzione-qualita)
-                    .replace('memory-system-scaling, memory-system-scaling')
-                    .replace(15-pillars-ai-system, i-15-pilastri-sistema-ai)
-                    .replace(first-specialist-agent-architecture, primo-agente-specialist-architecture)
-                    .replace('ai-mocking-testing-strategy, isolare-intelligenza-mock-llm)
-                    .replace(drama-parsing-ai-contracts, 'dramma-parsing-contratto-ai)
-                    .replace(sdk-vs-direct-api-battle, sdk-vs-api-battle)
-                    .replace(agent-environment-interactions, agente-ambiente-interazioni-fondamentali')
-                    .replace(orchestrator-conductor, 'orchestratore-direttore-orchestra)
-                    .replace(failed-handoff-delegation, staffetta-mancata-handoff)
-                    .replace(ai-recruiter-dynamic-team, recruiter-ai-team-dinamico')
-                    .replace(tool-testing-reality-anchor, test-tool-ancorare-realta)
-                    .replace(agent-toolbox', cassetta-attrezzi-agente);
+            if (lang === 'en') {
+                newPath = currentPath.replace('/it/', '/en/')
+                    .replace('filosofia-core-architettura', 'core-philosophy-architecture')
+                    .replace('user-experience-trasparenza', 'user-experience-transparency')
+                    .replace('esecuzione-qualita', 'execution-quality')
+                    .replace('memory-system-scaling', 'memory-system-scaling')
+                    .replace('consolidation-test', 'consolidation-test');
+            } else if (lang === 'it') {
+                newPath = currentPath.replace('/en/', '/it/')
+                    .replace('core-philosophy-architecture', 'filosofia-core-architettura')
+                    .replace('user-experience-transparency', 'user-experience-trasparenza')
+                    .replace('execution-quality', 'esecuzione-qualita')
+                    .replace('memory-system-scaling', 'memory-system-scaling')
+                    .replace('consolidation-test', 'test-consolidamento-semplificare');
             }
             
             if (newPath && newPath !== currentPath) {
@@ -1346,21 +1041,21 @@ ISSUES:;
             
             switch (currentSize) {
                 case 'small':
-                    newSize = ''medium';
+                    newSize = 'medium';
                     break;
-                case medium':
-                    newSize = large;
+                case 'medium':
+                    newSize = 'large';
                     break;
                 case 'large':
-                    newSize = small;
+                    newSize = 'small';
                     break;
                 default:
                     newSize = 'medium';
             }
             
             setFontSize(newSize);
-            localStorage.setItem('fontSize, ', 'newSize');
-            showToast('`Dimensione font: ${newSize}`, 'success');
+            localStorage.setItem('fontSize', newSize);
+            showToast(`Font size: ${newSize}`, 'success');
         }
         
         // Set font size
@@ -1369,15 +1064,15 @@ ISSUES:;
             const sizes = {
                 'small': 0.9,
                 'medium': 1.0,
-                'large': 1.1';
+                'large': 1.1
             };
-            root.style.fontSize = sizes[size] + em;
+            root.style.fontSize = sizes[size] + 'em';
         }
         
         // Show toast notification (improved)
-        function showToast('message, type = 'success') {;
-            const toast = document.getElementById('bookmarkToast')
-            const messageEl = document.getElementById('bookmarkMessage')
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('bookmarkToast');
+            const messageEl = document.getElementById('bookmarkMessage');
             
             if (!toast || !messageEl) return;
             
@@ -1387,11 +1082,11 @@ ISSUES:;
             }
             
             // Reset classes and set message
-            toast.classList.remove('show, error);
+            toast.classList.remove('show', 'error');
             messageEl.textContent = message;
             
             // Add appropriate classes
-            if (type === 'error')  {
+            if (type === 'error') {
                 toast.classList.add('error');
             }
             
@@ -1399,16 +1094,16 @@ ISSUES:;
             toast.classList.add('show');
             
             // Hide after delay
-            window.toastTimeout = setTimeout(() =>  {
+            window.toastTimeout = setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
         }
         
         // Reading progress
         function updateReadingProgress() {
-            const progressFill = document.getElementById('progressFill')
+            const progressFill = document.getElementById('progressFill');
             
-            window.addEventListener(scroll', () => {
+            window.addEventListener('scroll', () => {
                 const article = document.querySelector('.chapter-content');
                 if (!article) return;
                 
@@ -1418,7 +1113,7 @@ ISSUES:;
                 const scrollTop = window.pageYOffset;
                 
                 const progress = Math.min(100, Math.max(0, 
-                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100;
+                    ((scrollTop + windowHeight - articleTop) / articleHeight) * 100
                 ));
                 
                 progressFill.style.width = progress + '%';
@@ -1428,7 +1123,7 @@ ISSUES:;
         // Load user preferences
         function loadUserPreferences() {
             // Load theme
-            const savedTheme = localStorage.getItem('theme'');
+            const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
                 document.getElementById('themeIcon').textContent = '☀️';
@@ -1441,7 +1136,7 @@ ISSUES:;
             }
             
             // Load reader tools state
-            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true;
+            const toolsCollapsed = localStorage.getItem('readerToolsCollapsed') === 'true';
             if (toolsCollapsed) {
                 document.getElementById('readerTools').classList.add('collapsed');
                 readerToolsCollapsed = true;
@@ -1452,113 +1147,73 @@ ISSUES:;
         function initializeReaderTools() {
             // Check if current page is bookmarked
             const currentPage = window.location.pathname;
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]);
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             const isBookmarked = bookmarks.some(b => b.url === currentPage);
             
             if (isBookmarked) {
-                document.querySelector('.reader-tool:nth-child(3')).classList.add('active');
+                document.querySelector('.reader-tool:nth-child(3)').classList.add('active');
             }
+        }
         
-    
         // Show bookmarks modal
         function showBookmarks() {
-            const modal = document.getElementById('bookmarksModal')
-            const bookmarksList = document.getElementById('bookmarksList')
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []')
+            const modal = document.getElementById('bookmarksModal');
+            const bookmarksList = document.getElementById('bookmarksList');
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             
             if (bookmarks.length === 0) {
                 bookmarksList.innerHTML = `
-                    <div class="no-bookmarks">
-                        <div class="no-bookmarks-icon">📚</div>
+                    <div class="empty-bookmarks">
+                        <div class="empty-bookmarks-icon">📚</div>
                         <h3>No bookmarks saved</h3>
-                        <p>Start saving your favorite chapters clicking the icon 🔖</p>`;
+                        <p>Start saving your favorite chapters by clicking the bookmark icon 🔖</p>
                     </div>`;
             } else {
                 bookmarksList.innerHTML = bookmarks.map(bookmark => `
                     <div class="bookmark-item">
-                        <a href="${bookmark.url}" class="bookmark-link">
-                            <div class="bookmark-title">${bookmark.title}</div>
-                            <div class="bookmark-date">${new Date(bookmark.date).toLocaleDateString(it-IT')}</div>
-                        </a>
-                        <button class="delete-bookmark" onclick="deleteBookmark(${bookmark.url})">🗑️</button>
+                        <div class="bookmark-info">
+                            <a href="${bookmark.url}" class="bookmark-title">${bookmark.title}</a>
+                            <div class="bookmark-date">${new Date(bookmark.timestamp).toLocaleDateString('en-US')}</div>
+                        </div>
+                        <div class="bookmark-actions">
+                            <button class="bookmark-action" onclick="deleteBookmark('${bookmark.url}')">🗑️</button>
+                        </div>
                     </div>
-                `).join();
+                `).join('');
             }
             
-            modal.style.display = flex;
-            document.body.style.overflow = hidden;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
         
-        function closeBookmarksModal(event) {
-            const modal = document.getElementById('bookmarksModal')
-            if (modal && (!event || event.target === modal))  {
-                modal.style.display = 'none';
-                document.body.style.overflow = ';
-            }
+        function closeBookmarksModal() {
+            const modal = document.getElementById('bookmarksModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
         
         function deleteBookmark(url) {
-            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
+            let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
             bookmarks = bookmarks.filter(b => b.url !== url);
             localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
             showToast('Bookmark removed!', 'error');
-            showBookmarks();
-        }
-        
-        function showToast('message, type = 'success') {;
-            let toast = document.getElementById('bookmarkToast')
-            if (!toast') return;
-            
-            const messageEl = document.getElementById('bookmarkMessage')
-            if (messageEl) messageEl.textContent = message;
-            
-            toast.style.background = type === 'error' ? '#dc3545 : #28a745;
-            toast.style.opacity = 1;
-            toast.style.transform = 'translateY(0)';
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-            }, 3000);
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentPage = window.location.pathname;
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || []);
-            const isBookmarked = bookmarks.some(b => b.url === currentPage);
-            
-            const bookmarkTool = document.querySelector('.reader-tool[onclick*="toggleBookmark"]');
-            if (bookmarkTool) {
-                bookmarkTool.classList.toggle('active', isBookmarked);
-            }
-            
-            // Load saved theme
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-                const themeIcon = document.getElementById('themeIcon')
-                if (themeIcon) themeIcon.textContent = '☀️';
-            }
-        });';
-    
+            showBookmarks(); // Refresh the modal
         }
     </script>
-
-<!-- universal-progress-bar-added -->
 
     <!-- Mermaid.js for diagrams -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
     <script>
         mermaid.initialize({ 
             startOnLoad: true,
-            theme: 'base,
+            theme: 'base',
             themeVariables: {
-                primaryColor: #667eea,
-                primaryTextColor: '#2c3e50',',
-                primaryBorderColor: '#667eea,
-                lineColor: '#7f8c8d',',
-                secondaryColor: #f8f9fa',
-                tertiaryColor: #ffffff'
+                primaryColor: '#667eea',
+                primaryTextColor: '#2c3e50',
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
             }
         });
     </script>

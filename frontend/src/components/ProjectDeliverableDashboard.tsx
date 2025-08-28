@@ -298,29 +298,22 @@ export default function ProjectDeliverableDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Clean Header - Content Focused */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold">📋 Project Deliverables</h1>
-            <p className="text-gray-600">
-              Risultati finali{hasActionableAssets ? ' e asset azionabili' : ''} del progetto
+            <h1 className="text-2xl font-semibold text-gray-900">Deliverables</h1>
+            <p className="text-gray-600 mt-1">
+              {hasActionableAssets ? `${Object.keys(actionableAssets).length} business-ready assets` : 'Project deliverables and assets'}
             </p>
           </div>
-          <div className="text-right">
-            <span className={`px-3 py-1 rounded-full text-sm border ${getStatusColor(deliverables.completion_status)}`}>
-              {getStatusLabel(deliverables.completion_status)}
-            </span>
-            <div className="text-xs text-gray-500 mt-1">
-              {deliverables.completed_tasks}/{deliverables.total_tasks} task completati
+          {/* Auto-completion status indicator */}
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-600">Auto-completing missing deliverables</span>
             </div>
           </div>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
-          <div
-            className="bg-green-600 h-2 rounded-full transition-all"
-            style={{ width: `${(deliverables.completed_tasks / deliverables.total_tasks) * 100}%` }}
-          />
         </div>
       </div>
 
@@ -410,12 +403,7 @@ export default function ProjectDeliverableDashboard({
         </div>
       )}
 
-      {/* Executive summary */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-3">📊 Executive Summary</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">{deliverables.summary}</div>
-        <div className="text-xs text-gray-500 mt-2">Generato il {formatDate(deliverables.generated_at)}</div>
-      </div>
+      {/* Removed executive summary - status overview moved to Overview tab */}
 
       {/* Actionable outputs */}
       {actionableOutputs.length > 0 && (
@@ -434,29 +422,12 @@ export default function ProjectDeliverableDashboard({
         </div>
       )}
 
-      {/* Final deliverable spotlight */}
+      {/* Clean Final Deliverables Section */}
       {showMore && finalDeliverables.length > 0 && (
-        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white rounded-xl shadow-lg p-8 space-y-8">
-          <div className="flex justify-between">
-            <div>
-              <div className="flex items-center mb-2">
-                <span className="text-3xl mr-3">🎯</span>
-                <h2 className="text-2xl font-bold">Deliverable Finale Completato</h2>
-              </div>
-              <p className="text-indigo-100">
-                Il tuo progetto ha raggiunto un traguardo importante con la produzione del deliverable finale
-                {hasActionableAssets && <span className="font-semibold"> contenente {Object.keys(actionableAssets).length} asset azionabili</span>}.
-              </p>
-            </div>
-            <div className="bg-white/20 rounded-full p-4">
-              <svg className="w-8 h-8" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Final Deliverables</h2>
+            <span className="text-sm text-gray-500">{finalDeliverables.length} completed</span>
           </div>
 
           {finalDeliverables.map((d) => (
@@ -548,232 +519,48 @@ export default function ProjectDeliverableDashboard({
             </div>
           ))}
 
-          <div className="bg-white/10 rounded-lg p-4 flex justify-between items-center">
-            <div>
-              <p className="font-medium">Pronto per la revisione finale?</p>
-              <p className="text-sm text-indigo-200">
-                Approva il deliverable{hasActionableAssets ? ' e gli asset' : ''} o richiedi modifiche
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setFeedbackType('approve');
-                  setFeedbackTaskId(finalDeliverables[0]?.task_id || null);
-                  setShowFeedbackForm(true);
-                }}
-                className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-medium"
-              >
-                ✅ Approva
-              </button>
-              <button
-                onClick={() => {
-                  setFeedbackType('request_changes');
-                  setFeedbackTaskId(finalDeliverables[0]?.task_id || null);
-                  setShowFeedbackForm(true);
-                }}
-                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg font-medium"
-              >
-                📝 Modifiche
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* Other deliverables */}
-      <button
-        onClick={() => setShowMore(!showMore)}
-        className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full"
-      >
-        {showMore ? 'Hide details' : 'More details'}
-      </button>
-      {showMore && (
-      <div className="bg-white rounded-lg shadow-sm p-6 mt-4">
-        <div className="flex justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold">🎯 Altri Deliverable del Progetto</h2>
-            <p className="text-sm text-gray-600">Output e risultati intermedi</p>
+      {/* Simplified Additional Deliverables */}
+      {normalDeliverables.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Additional Outputs</h2>
+            <span className="text-sm text-gray-500">{normalDeliverables.length} items</span>
           </div>
-          {!!deliverables.insight_cards?.length && (
-            <button
-              onClick={() => setViewMode(viewMode === 'cards' ? 'detailed' : 'cards')}
-              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full"
-            >
-              {viewMode === 'cards' ? 'View Details' : 'View Cards'}
-            </button>
-          )}
         </div>
-
-        {viewMode === 'cards' && !!deliverables.insight_cards?.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {deliverables.insight_cards.map((c) => (
-              <DeliverableInsightCard
-                key={c.id}
-                card={c}
-                onViewDetails={() => {
-                  setViewMode('detailed');
-                  setExpandedOutput(c.id);
-                }}
-              />
-            ))}
-          </div>
-        ) : normalDeliverables.length ? (
-          <div className="space-y-4">
-            {normalDeliverables.map((o) => (
-              <div key={o.task_id} className={`border rounded-lg p-4 ${getOutputTypeColor(o.type)}`}>
-                <div className="flex justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{getOutputTypeIcon(o.type)}</span>
-                    <h3 className="font-medium">{o.task_name}</h3>
-                    <span className="text-xs px-2 py-0.5 bg-white/60 rounded">{o.type}</span>
+        
+        <div className="space-y-3">
+          {normalDeliverables.map((output) => (
+            <div key={output.task_id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className="font-medium text-gray-900 mb-2">{output.task_name}</h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {output.output.length > 200 ? `${output.output.slice(0, 200)}...` : output.output}
+                  </p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-gray-500">
+                      {output.agent_name} • {formatDate(output.created_at)}
+                    </span>
+                    <button
+                      onClick={() => openOutputModal(output)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View details
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setExpandedOutput(expandedOutput === o.task_id ? null : o.task_id)}
-                    className="text-xs text-gray-600 hover:text-gray-800"
-                  >
-                    {expandedOutput === o.task_id ? 'Riduci' : 'Espandi'}
-                  </button>
-                </div>
-
-                <div className="bg-white/60 rounded p-3 mb-2 text-sm text-gray-700 leading-relaxed">
-                  {expandedOutput === o.task_id
-                    ? o.output
-                    : o.output.length > 200
-                    ? `${o.output.slice(0, 200)}…`
-                    : o.output}
-                </div>
-
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>
-                    <strong>Creato da:</strong> {o.agent_name} ({o.agent_role})
-                  </span>
-                  <span>{formatDate(o.created_at)}</span>
-                </div>
-                <div className="flex gap-2 mt-2 text-xs">
-                  <button
-                    onClick={() => handleQuickFeedback('approve', o.task_id)}
-                    className="flex-1 bg-green-600 text-white py-1 rounded-md"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleQuickFeedback('request_changes', o.task_id)}
-                    className="flex-1 bg-orange-500 text-white py-1 rounded-md"
-                  >
-                    Request Changes
-                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-2">📋</div>
-            {hasActionableAssets 
-              ? 'Tutti i deliverable sono stati consolidati negli asset azionabili' 
-              : 'Nessun deliverable intermedio disponibile'}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+
+        </div>
       )}
 
-      {/* Enhanced Feedback section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">💬 Feedback e Azioni</h2>
-
-        {!showFeedbackForm ? (
-          <>
-            <p className="text-gray-600 mb-4">
-              Cosa ne pensi dei risultati{hasActionableAssets ? ' e degli asset prodotti' : ''}? 
-              Puoi approvare il progetto o richiedere modifiche.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  setFeedbackType('approve');
-                  setShowFeedbackForm(true);
-                }}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                ✅ Approva {hasActionableAssets ? 'Asset e ' : ''}Progetto
-              </button>
-              <button
-                onClick={() => {
-                  setFeedbackType('request_changes');
-                  setShowFeedbackForm(true);
-                }}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                📝 Richiedi Modifiche
-              </button>
-              <button
-                onClick={() => {
-                  setFeedbackType('general_feedback');
-                  setFeedbackTaskId(null);
-                  setShowFeedbackForm(true);
-                }}
-                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-              >
-                💭 Feedback Generale
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <h3 className="font-medium">
-                {feedbackType === 'approve' && `✅ Approva ${hasActionableAssets ? 'Asset e ' : ''}Progetto`}
-                {feedbackType === 'request_changes' && '📝 Richiedi Modifiche'}
-                {feedbackType === 'general_feedback' && '💭 Feedback Generale'}
-              </h3>
-              <button onClick={() => setShowFeedbackForm(false)} className="text-gray-400 hover:text-gray-600">
-                ✕
-              </button>
-            </div>
-
-            <textarea
-              rows={4}
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder={
-                feedbackType === 'approve'
-                  ? `Es. Ottimo lavoro! ${hasActionableAssets ? 'Gli asset sono perfetti e pronti all\'uso. ' : ''}Il progetto soddisfa tutti i requisiti…`
-                  : feedbackType === 'request_changes'
-                  ? `Es. ${hasActionableAssets ? 'Gli asset sono buoni ma vorrei modifiche su... ' : ''}Vorrei che venissero approfonditi i seguenti aspetti…`
-                  : 'Es. Suggerimento per migliorare…'
-              }
-            />
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Priorità</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
-                className="px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="low">Bassa</option>
-                <option value="medium">Media</option>
-                <option value="high">Alta</option>
-              </select>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleSubmitFeedback(feedbackTaskId ? [feedbackTaskId] : undefined)}
-                disabled={submittingFeedback}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-50 hover:bg-indigo-700"
-              >
-                {submittingFeedback ? 'Invio…' : 'Invia Feedback'}
-              </button>
-              <button onClick={() => setShowFeedbackForm(false)} className="px-4 py-2 bg-gray-100 rounded-md">
-                Annulla
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Removed feedback section - moved to dedicated feedback tab/area */}
 
       {/* NEW: Asset Viewer Modal */}
       {selectedAsset && (

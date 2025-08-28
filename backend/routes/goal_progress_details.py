@@ -75,24 +75,30 @@ async def get_goal_progress_details(
             
             deliverable_stats[status] += 1
         
-        # Calculate progress breakdown
+        # Calculate progress breakdown using goal's current_value/target_value as source of truth
+        goal_current_value = goal.get('current_value', 0)
+        goal_target_value = goal.get('target_value', 1)
+        goal_based_progress = (goal_current_value / goal_target_value * 100) if goal_target_value > 0 else 0
+        
+        # Calculate API-based progress (what we find in deliverables table)
         completed_count = deliverable_stats['completed']
         total_count = deliverable_stats['total']
-        calculated_progress = (completed_count / total_count * 100) if total_count > 0 else 0
+        api_calculated_progress = (completed_count / total_count * 100) if total_count > 0 else 0
         
-        # Progress analysis
-        reported_progress = goal.get('progress', 0)
-        progress_discrepancy = abs(reported_progress - calculated_progress)
+        # Progress analysis - compare goal tracking vs API deliverables
+        reported_progress = goal.get('progress', goal_based_progress)  # Use goal-based as fallback
+        progress_discrepancy = abs(goal_based_progress - api_calculated_progress)
         
         # Get hidden items count (what UI normally doesn't show)
         hidden_count = deliverable_stats['failed'] + deliverable_stats['pending'] + deliverable_stats['in_progress']
         visible_count = deliverable_stats['completed']
         
-        # Unblocking summary
+        # Unblocking summary based on goal tracking
         unblocking_summary = {
             'actionable_items': hidden_count,
             'retry_available': deliverable_stats['failed'] + deliverable_stats['pending'],
-            'total_blocked_progress': 100 - calculated_progress if total_count > 0 else 0,
+            'total_blocked_progress': 100 - goal_based_progress,
+            'missing_deliverables': goal_target_value - goal_current_value,
             'recommended_actions': _get_recommended_actions(deliverable_breakdown)
         }
         
@@ -107,11 +113,18 @@ async def get_goal_progress_details(
             },
             'progress_analysis': {
                 'reported_progress': reported_progress,
-                'calculated_progress': calculated_progress,
+                'goal_based_progress': goal_based_progress,
+                'api_calculated_progress': api_calculated_progress,
                 'progress_discrepancy': progress_discrepancy,
-                'calculation_method': 'based_on_deliverable_completion',
-                'total_deliverables': total_count,
-                'completed_deliverables': completed_count
+                'calculation_method': 'goal_tracking_vs_api_deliverables',
+                'goal_metrics': {
+                    'current_value': goal_current_value,
+                    'target_value': goal_target_value
+                },
+                'api_metrics': {
+                    'total_deliverables': total_count,
+                    'completed_deliverables': completed_count
+                }
             },
             'deliverable_breakdown': deliverable_breakdown,
             'deliverable_stats': deliverable_stats,
@@ -122,10 +135,10 @@ async def get_goal_progress_details(
             },
             'unblocking': unblocking_summary,
             'recommendations': [
-                "Show all deliverable statuses in UI for full transparency",
-                "Add status indicators (✅ completed, ❌ failed, ⏳ pending, 🔄 in_progress)",
-                "Provide retry actions for failed/pending items",
-                "Match UI progress display with actual completion calculation"
+                f"Goal tracking shows {goal_current_value}/{goal_target_value} ({goal_based_progress:.1f}%)",
+                f"API found {completed_count}/{total_count} completed deliverables ({api_calculated_progress:.1f}%)",
+                "Discrepancy likely indicates missing deliverable (e.g. sequence 2) not created",
+                "Use goal progress as source of truth for accurate completion tracking"
             ] + unblocking_summary['recommended_actions']
         }
         

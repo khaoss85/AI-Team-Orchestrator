@@ -375,45 +375,6 @@
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
 
-            /* Reader Tools */
-        .reader-tools {
-            position: fixed;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 1rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-            transition: all 0.3s ease;
-            min-width: 60px;
-        }
-        .reader-tools.collapsed { width: 60px; padding: 0.8rem; }
-        .reader-tool { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem; border: none; background: transparent; cursor: pointer; border-radius: 8px; transition: all 0.2s ease; color: #495057; font-size: 0.85rem; white-space: nowrap; }
-        .reader-tool:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; }
-        .reader-tool.active { background: #667eea; color: white; }
-        .reader-tool-icon { font-size: 1.1rem; flex-shrink: 0; }
-        .reader-tool-label { font-size: 0.8rem; font-weight: 500; }
-        .collapsed .reader-tool-label { display: none; }
-        .reader-tools-toggle { position: absolute; top: -10px; left: -10px; width: 30px; height: 30px; background: #667eea; color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
-        .reading-progress { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: rgba(102, 126, 234, 0.2); z-index: 1001; }
-        .reading-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease; }
-        body.dark-mode { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #e9ecef; }
-        .dark-mode .container { color: #e9ecef; }
-        .dark-mode .chapter-header, .dark-mode .chapter-content { background: rgba(255, 255, 255, 0.05); color: #e9ecef; }
-        .dark-mode .breadcrumb { background: rgba(255, 255, 255, 0.1); color: #e9ecef; }
-        .dark-mode .reader-tools { background: rgba(0, 0, 0, 0.8); color: #e9ecef; }
-        .dark-mode .reader-tool { color: #e9ecef; }
-        .dark-mode .reader-tool:hover { background: rgba(255, 255, 255, 0.1); }
-        @media (max-width: 768px) { .reader-tools { right: 10px; padding: 0.8rem; min-width: 50px; } .reader-tools.collapsed { width: 50px; padding: 0.6rem; } .reader-tool { padding: 0.5rem; } .reader-tool-label { font-size: 0.75rem; } }
-        .bookmark-toast { position: fixed; top: 80px; right: 20px; background: #28a745; color: white; padding: 0.8rem 1.2rem; border-radius: 8px; z-index: 1002; transform: translateX(300px); transition: transform 0.3s ease; font-size: 0.9rem; box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3); }
-        .bookmark-toast.show { transform: translateX(0); }
-        .bookmark-toast.error { background: #dc3545; box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3); }
         .bookmarks-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(5px); }
         .bookmarks-modal.show { display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1537,12 +1498,12 @@ Analyze the following completed task and its result. Extract ONE SINGLE actionab
             startOnLoad: true,
             theme: 'base',
             themeVariables: {
-                primaryColor: '#667eea,
+                primaryColor: '#667eea',
                 primaryTextColor: '#2c3e50',
-                primaryBorderColor: #667eea,
-                lineColor: '#7f8c8d',',
-                secondaryColor: #f8f9fa,
-                tertiaryColor: #ffffff
+                primaryBorderColor: '#667eea',
+                lineColor: '#7f8c8d',
+                secondaryColor: '#f8f9fa',
+                tertiaryColor: '#ffffff'
             }
         });
     </script>

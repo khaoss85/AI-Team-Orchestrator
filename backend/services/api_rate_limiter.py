@@ -127,6 +127,26 @@ class APIRateLimiter:
             max_retries=3
         ))
         
+        # Auto-completion operations (conservative limits)
+        self.add_provider_config(RateLimitConfig(
+            provider="auto_completion",
+            requests_per_minute=5,  # Very conservative for auto-completion
+            requests_per_hour=100,
+            max_burst=2,
+            retry_after_seconds=120,  # Longer cooldown
+            max_retries=2
+        ))
+        
+        # Goal unblock operations (moderate limits)
+        self.add_provider_config(RateLimitConfig(
+            provider="goal_unblock",
+            requests_per_minute=10,
+            requests_per_hour=200,
+            max_burst=3,
+            retry_after_seconds=90,
+            max_retries=2
+        ))
+        
         # Generic fallback
         self.add_provider_config(RateLimitConfig(
             provider="default",

@@ -125,6 +125,13 @@ Create `backend/.env` with:
 - `ENABLE_DYNAMIC_AI_ANALYSIS=true` - Enable dynamic AI analysis features
 - `ENABLE_AUTO_PROJECT_COMPLETION=true` - Enable automatic project completion
 
+### Auto-Completion & Security Configuration
+- `DELIVERABLE_COMPLETION_THRESHOLD=60.0` - Progress threshold (%) for missing deliverable detection
+- `DEFAULT_DELIVERABLES_COUNT=3` - Number of default deliverables for unrecognized goal types
+- `DELIVERABLE_TEMPLATES_JSON` - JSON string defining custom deliverable templates per goal type
+- `AUTO_COMPLETION_RATE_LIMIT_PER_MINUTE=5` - Rate limit for auto-completion operations
+- `GOAL_UNBLOCK_RATE_LIMIT_PER_MINUTE=10` - Rate limit for goal unblock operations
+
 ### Goal-Driven System
 - `ENABLE_GOAL_DRIVEN_SYSTEM=true` - Enable goal-driven task generation and monitoring
 - `GOAL_VALIDATION_INTERVAL_MINUTES=20` - Interval for automated goal validation
@@ -170,6 +177,52 @@ Il sistema è stato completamente trasformato da hard-coded a AI-driven, mantene
 - ⚡ **Auto-Adaptive**: Si adatta automaticamente al contesto
 - 🛡️ **Robust Fallbacks**: Graceful degradation quando AI non disponibile
 - 🔄 **Self-Improving**: Migliora con nuovi modelli AI
+
+## 🛡️ Security Guidelines
+
+### Critical Security Principles
+
+#### 1. **Human-in-the-Loop Safety**
+- ❌ **NEVER** auto-approve human feedback tasks without explicit validation
+- ✅ **ALWAYS** flag human feedback tasks for manual review with `requires_manual_review: true`
+- ✅ Use `TaskPriority.URGENT` for security-critical tasks requiring human attention
+- ✅ Add security flags like `security_flag: 'human_feedback_review_required'`
+
+#### 2. **SDK Compliance**
+- ❌ **NEVER** use direct `supabase.table()` calls in business logic
+- ✅ **ALWAYS** use SDK-compliant database functions (`update_task_fields`, `get_deliverables`, etc.)
+- ✅ Maintain proper abstraction layers for data access
+- ✅ Log SDK compliance with clear indicators: "✅ SDK COMPLIANT: operation_name"
+
+#### 3. **Rate Limiting**
+- ✅ **ALWAYS** implement rate limiting for auto-completion operations
+- ✅ Use conservative limits: 5 req/min for auto-completion, 10 req/min for unblocking
+- ✅ Implement proper backoff strategies with exponential delays
+- ✅ Log rate limit acquisitions: "✅ RATE LIMITED: Acquired permit for operation_name"
+
+#### 4. **Configuration Management**
+- ❌ **NEVER** hardcode critical thresholds or limits in source code
+- ✅ **ALWAYS** externalize configuration via environment variables
+- ✅ Provide sensible defaults with clear documentation
+- ✅ Validate configuration on startup with clear logging
+
+#### 5. **Error Handling & Logging**
+- ✅ Log all security-critical operations with 🚨 indicators
+- ✅ Never expose sensitive information in error messages
+- ✅ Implement graceful degradation for security failures
+- ✅ Maintain audit trails for all automated actions
+
+### Security Checklist for New Features
+
+Before deploying any new auto-completion or goal management feature:
+
+- [ ] ✅ Human feedback tasks are flagged for manual review (never auto-approved)
+- [ ] ✅ All database access uses SDK-compliant functions
+- [ ] ✅ Rate limiting is implemented with appropriate limits
+- [ ] ✅ Configuration values are externalized via environment variables
+- [ ] ✅ Security logging is implemented with clear indicators
+- [ ] ✅ Error handling doesn't expose sensitive information
+- [ ] ✅ Documentation is updated with security considerations
 
 ## Architecture Overview
 
