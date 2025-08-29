@@ -270,13 +270,57 @@ function ArtifactCard({ artifact, onClick }: ArtifactCardProps) {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, progress?: number) => {
+    // If progress is 100%, always show as completed regardless of raw status
+    if (progress !== undefined && progress >= 100) {
+      return 'bg-green-100 text-green-800'
+    }
+    
     switch (status) {
       case 'ready': return 'bg-green-100 text-green-800'
       case 'in_progress': return 'bg-yellow-100 text-yellow-800'
-      case 'completed': return 'bg-blue-100 text-blue-800'
+      case 'completed': return 'bg-green-100 text-green-800'
       default: return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  const getDisplayStatus = (status: string, progress?: number) => {
+    // If progress is 100%, always show as completed regardless of raw status
+    if (progress !== undefined && progress >= 100) {
+      return 'completed'
+    }
+    
+    return status
+  }
+
+  const getProgressFromArtifact = (artifact: DeliverableArtifact): number | undefined => {
+    // Check for progress in various possible locations
+    // 1. Direct progress in metadata
+    if (artifact.metadata?.progress !== undefined) {
+      return artifact.metadata.progress
+    }
+    
+    // 2. Progress in content if it's an objective type
+    if (artifact.type === 'progress' && artifact.content?.progress !== undefined) {
+      return artifact.content.progress
+    }
+    
+    // 3. Progress in content.objective (for objective artifacts)
+    if (artifact.content?.objective?.progress !== undefined) {
+      return artifact.content.objective.progress
+    }
+    
+    // 4. Check if content is objectiveData with progress
+    if (artifact.content?.progress !== undefined) {
+      return artifact.content.progress
+    }
+    
+    // 5. Check metadata.objectiveData
+    if (artifact.metadata?.objectiveData?.progress !== undefined) {
+      return artifact.metadata.objectiveData.progress
+    }
+    
+    return undefined
   }
 
   return (
@@ -291,8 +335,8 @@ function ArtifactCard({ artifact, onClick }: ArtifactCardProps) {
             {artifact.title}
           </div>
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(artifact.status)}`}>
-          {artifact.status.replace('_', ' ')}
+        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(artifact.status, getProgressFromArtifact(artifact))}`}>
+          {getDisplayStatus(artifact.status, getProgressFromArtifact(artifact)).replace('_', ' ')}
         </span>
       </div>
 
