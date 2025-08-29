@@ -548,6 +548,224 @@ if workspace.status == "auto_recovering":
 - **Recovery Routes**: `backend/routes/recovery_*.py`
 - **Documentation**: `backend/AUTO_RECOVERY_COMPLIANCE_REPORT.md`
 
+## Development Guidelines
+
+### Goal-Deliverable Development Best Practices
+
+#### **Code Review Checklist for Goal-Deliverable Features**
+Before merging any code that touches goal-deliverable relationships, verify:
+
+- [ ] **Goal ID Validation**: All deliverable creation validates goal_id exists in workspace
+- [ ] **Content-Based Matching**: Semantic content analysis is used as primary assignment method
+- [ ] **Proper Fallback Logic**: Clear fallback hierarchy when primary assignment fails
+- [ ] **Comprehensive Logging**: All goal assignment decisions are logged with reasoning
+- [ ] **Error Handling**: Invalid/missing goal associations are handled gracefully
+- [ ] **Task-Goal Preservation**: Original task-goal relationships are maintained in deliverable creation
+- [ ] **Database Constraints**: Foreign key relationships are properly enforced
+- [ ] **API Consistency**: Frontend APIs return correctly mapped deliverable-goal relationships
+
+#### **Database Development Guidelines**
+
+**Required Integrity Checks**:
+```sql
+-- Before deploying changes, run these validation queries:
+
+-- 1. Check for orphaned deliverables
+SELECT COUNT(*) as orphaned_count 
+FROM deliverables d 
+LEFT JOIN workspace_goals wg ON d.goal_id = wg.id 
+WHERE d.goal_id IS NOT NULL AND wg.id IS NULL;
+
+-- 2. Verify deliverable distribution across goals
+SELECT 
+    wg.description,
+    COUNT(d.id) as deliverable_count,
+    wg.metric_type
+FROM workspace_goals wg
+LEFT JOIN deliverables d ON wg.id = d.goal_id
+GROUP BY wg.id, wg.description, wg.metric_type
+HAVING COUNT(d.id) = 0 AND wg.metric_type LIKE 'deliverable_%';
+
+-- 3. Check constraint enforcement
+SELECT constraint_name, constraint_type 
+FROM information_schema.table_constraints 
+WHERE table_name = 'deliverables' 
+  AND constraint_type = 'FOREIGN KEY';
+```
+
+**Migration Safety Rules**:
+- Always backup deliverables table before schema changes
+- Test goal-deliverable mapping logic on staging data first
+- Verify foreign key constraints are properly enforced
+- Run data integrity checks after any deliverable-related migrations
+
+#### **Frontend-Backend Consistency Guidelines**
+
+**API Response Validation**:
+```typescript
+// Include this validation in frontend API layer
+const validateDeliverableResponse = (data: any[]) => {
+  const issues = []
+  
+  data.forEach(deliverable => {
+    if (!deliverable.goal_id) {
+      issues.push(`Deliverable ${deliverable.id} missing goal_id`)
+    }
+    if (!deliverable.title || deliverable.title.includes('placeholder')) {
+      issues.push(`Deliverable ${deliverable.id} has placeholder title`)
+    }
+  })
+  
+  if (issues.length > 0) {
+    console.error('🚨 DELIVERABLE VALIDATION ISSUES:', issues)
+  }
+  
+  return issues.length === 0
+}
+```
+
+**State Management Patterns**:
+- Always fetch deliverables with their associated goal information
+- Cache deliverable-goal relationships in frontend state
+- Invalidate cache when goal assignments change
+- Handle loading states for goal-specific deliverable queries
+
+### Troubleshooting Guide
+
+#### **Common Goal-Deliverable Mapping Issues**
+
+##### **Symptom**: "No deliverables available yet" in frontend
+**Possible Causes**:
+1. Deliverables mapped to wrong goal IDs
+2. Frontend filtering deliverables incorrectly  
+3. API returning empty results due to missing goal associations
+4. Database constraint violations preventing deliverable creation
+
+**Debugging Steps**:
+```bash
+# 1. Check deliverable count in database
+curl -X GET "http://localhost:8000/api/deliverables/workspace/{workspace_id}" | jq 'length'
+
+# 2. Check goal-deliverable distribution
+curl -X GET "http://localhost:8000/api/deliverables/workspace/{workspace_id}" | \
+  jq 'group_by(.goal_id) | map({goal_id: .[0].goal_id, count: length})'
+
+# 3. Check for orphaned deliverables
+curl -X GET "http://localhost:8000/api/deliverables/workspace/{workspace_id}" | \
+  jq 'map(select(.goal_id == null or .goal_id == ""))'
+```
+
+##### **Symptom**: Deliverables appearing under wrong goals
+**Root Cause**: Usually indicates the "first active goal" bug recurrence
+**Fix**: Verify goal assignment logic in `backend/database.py` deliverable creation functions
+
+```python
+# Check for this anti-pattern:
+for goal in workspace_goals:
+    if goal.get("status") == "active":
+        mapped_goal_id = goal.get("id")  # ❌ DON'T always take first
+        break
+
+# Should use proper content matching instead
+```
+
+##### **Symptom**: Goal progress calculations incorrect
+**Debugging Steps**:
+1. Compare deliverable count per goal vs expected count
+2. Check if deliverables have correct status values
+3. Verify progress calculation logic includes all goal deliverables
+4. Look for deliverables with NULL goal_id affecting calculations
+
+**SQL Diagnostic**:
+```sql
+-- Compare goal progress with actual deliverable completion
+SELECT 
+    wg.description,
+    wg.progress,
+    COUNT(d.id) as total_deliverables,
+    COUNT(CASE WHEN d.status = 'completed' THEN 1 END) as completed_deliverables,
+    ROUND(
+        COUNT(CASE WHEN d.status = 'completed' THEN 1 END)::float / 
+        NULLIF(COUNT(d.id), 0) * 100, 2
+    ) as calculated_progress
+FROM workspace_goals wg
+LEFT JOIN deliverables d ON wg.id = d.goal_id
+WHERE wg.workspace_id = 'workspace_id'
+GROUP BY wg.id, wg.description, wg.progress;
+```
+
+#### **Data Corruption Recovery**
+
+##### **Emergency Fix Procedure**
+If goal-deliverable mapping corruption is detected:
+
+1. **Immediate Assessment**:
+```bash
+python3 backend/check_deliverable_content.py  # Check current state
+```
+
+2. **Create Backup**:
+```sql
+CREATE TABLE deliverables_backup AS SELECT * FROM deliverables;
+```
+
+3. **Apply Pattern-Based Fix**:
+```sql
+-- Use content matching similar to fix_goal_deliverable_mapping.sql
+UPDATE deliverables SET goal_id = (
+  SELECT wg.id 
+  FROM workspace_goals wg 
+  WHERE wg.workspace_id = deliverables.workspace_id 
+    AND deliverables.title ILIKE '%' || split_part(wg.description, ' ', 1) || '%'
+  LIMIT 1
+) WHERE goal_id IS NULL OR goal_id NOT IN (
+  SELECT id FROM workspace_goals WHERE workspace_id = deliverables.workspace_id
+);
+```
+
+4. **Validation**:
+```bash
+python3 backend/check_specific_deliverable.py  # Verify fix success
+```
+
+#### **Prevention Monitoring**
+
+##### **Automated Health Checks**
+Add these queries to system monitoring:
+
+```sql
+-- Alert if orphaned deliverables exceed threshold
+SELECT 
+  workspace_id,
+  COUNT(*) as orphaned_count
+FROM deliverables 
+WHERE goal_id IS NULL 
+GROUP BY workspace_id 
+HAVING COUNT(*) > 5;  -- Alert threshold
+
+-- Alert if any goals have 0 deliverables when they should have some
+SELECT 
+  wg.workspace_id,
+  wg.description as goal_without_deliverables
+FROM workspace_goals wg
+LEFT JOIN deliverables d ON wg.id = d.goal_id
+WHERE wg.metric_type LIKE 'deliverable_%'
+  AND d.id IS NULL
+GROUP BY wg.id, wg.workspace_id, wg.description;
+```
+
+##### **Logging Monitoring**
+Monitor for these log patterns that indicate mapping issues:
+
+```bash
+# Warning signs in logs:
+grep "goal_id not found in workspace goals" backend/logs/*.log
+grep "Fallback: Using first active goal" backend/logs/*.log | wc -l  # Should be rare
+grep "orphaned deliverable" backend/logs/*.log
+```
+
+This comprehensive troubleshooting guide ensures future developers can quickly identify and resolve goal-deliverable mapping issues before they affect users.
+
 ## 🛡️ Security Guidelines
 
 ### Critical Security Principles
@@ -904,6 +1122,259 @@ Sub-agents should trigger on:
 - Uses OpenAI Agents SDK with fallback to openai_agents
 - Graceful degradation when SDK unavailable
 - Tools-within-tools paradigm for complex operations
+
+## UI Status Display Accuracy System
+
+### Overview
+The UI Status Display Accuracy System resolves critical status display issues where objectives appeared "in progress" despite being 100% completed. This system implements progress-aware status calculations that prioritize actual completion percentages over raw backend status fields, ensuring users see accurate, non-misleading status information.
+
+### Key Features
+- **Progress-Aware Status Logic**: Status display prioritizes actual completion percentage over backend status fields
+- **Dynamic Status Calculation**: `getStatusColor()` and `getDisplayStatus()` functions check progress before status
+- **Completion Priority**: Any objective with >= 100% progress automatically shows as "Completed" regardless of raw status
+- **Visual Consistency**: Progress bars, status badges, and colors all align with actual completion state
+- **Anti-Fake Display**: Prevents misleading "in progress" labels when objectives are actually completed
+
+### Implementation Details
+
+#### Progress-Aware Status Functions
+```typescript
+const getStatusColor = (status?: any, progress?: number) => {
+  // If progress is 100%, always show as completed regardless of raw status
+  if (progress !== undefined && progress >= 100) {
+    return 'bg-green-100 text-green-800'
+  }
+  // ... fallback to status-based coloring
+}
+
+const getDisplayStatus = (status?: any, progress?: number) => {
+  // If progress is 100%, always show as completed regardless of raw status
+  if (progress !== undefined && progress >= 100) {
+    return 'Completed'
+  }
+  // ... fallback to status-based labels
+}
+```
+
+#### Component Integration Pattern
+```typescript
+// Status badges use progress-aware functions
+<span className={`${getStatusColor(objectiveData.status, objectiveData.progress)}`}>
+  {getDisplayStatus(objectiveData.status, objectiveData.progress)}
+</span>
+
+// Progress bars align with status display
+<div className={`
+  ${objectiveData.progress >= 100 ? 'bg-green-500' : 'bg-blue-500'}
+`} style={{ width: `${Math.min(objectiveData.progress, 100)}%` }} />
+```
+
+#### Deliverables Tab Filtering Enhancement
+- **Real Data Only**: In Progress tab shows only non-completed deliverables from real API data
+- **Status-Based Filtering**: Filters out deliverables with 'completed' status regardless of progress
+- **No Mock Data**: Eliminates placeholder/mock deliverables that caused confusion
+
+### Usage Guidelines
+
+#### For Frontend Developers
+1. **Always use progress-aware functions**: Use `getStatusColor()` and `getDisplayStatus()` with both status and progress parameters
+2. **Prioritize completion percentage**: When progress >= 100%, always show as completed
+3. **Filter completed items**: In progress views, exclude items with 'completed' status
+4. **Maintain visual consistency**: Ensure all UI elements (badges, bars, colors) align with completion state
+
+#### For Backend Developers
+1. **Reliable progress calculation**: Ensure progress percentages accurately reflect actual completion
+2. **Status field accuracy**: Keep status fields updated, but UI will prioritize progress when >= 100%
+3. **API consistency**: Deliverable status should align with actual completion state
+
+### Files Modified
+- **`frontend/src/components/conversational/ObjectiveArtifact.tsx`**: Core progress-aware status logic
+- **Progress functions**: Lines 100-140 implement the progress-first status calculation
+- **Status integration**: Lines 300-301, 322-324 apply progress-aware styling
+- **Deliverable filtering**: Lines 214-218 filter out completed deliverables from In Progress tab
+
+### Benefits Achieved
+- **Eliminates fake status displays**: No more "in progress" labels when objectives are 100% complete
+- **User confidence**: Status information is now reliable and trustworthy
+- **Visual consistency**: All UI elements reflect the true completion state
+- **Developer clarity**: Clear progress-first logic that's easy to understand and maintain
+
+## Goal-Deliverable Mapping System
+
+### Overview
+The Goal-Deliverable Mapping System ensures proper association between deliverables and their corresponding goals. This system addresses critical data integrity issues where deliverables were incorrectly mapped to goal IDs, causing frontend issues like "No deliverables available yet" and confusion in the UI.
+
+### How the System Works Correctly
+
+#### **Proper Mapping Logic**
+The system uses a multi-step approach to ensure deliverables are correctly associated with goals:
+
+1. **Explicit Goal ID Assignment**: If the deliverable creation includes a specific `goal_id`, the system validates it exists in the workspace
+2. **Content-Based Matching**: Falls back to semantic content analysis to match deliverable content with goal descriptions
+3. **Pattern Recognition**: Uses intelligent string matching to identify the most relevant goal based on deliverable titles and content
+4. **Validation and Fallback**: Ensures every deliverable has a valid goal association with proper error handling
+
+#### **Database Integration**
+Located in `backend/database.py`, the mapping logic follows this pattern:
+
+```python
+# 🎯 FIX: Check if deliverable_data already contains a specific goal_id
+if deliverable_data.get("goal_id"):
+    # Validate that the provided goal_id exists in the workspace
+    provided_goal_id = deliverable_data.get("goal_id")
+    matching_goal = next((g for g in workspace_goals if g.get("id") == provided_goal_id), None)
+    
+    if matching_goal:
+        mapped_goal_id = provided_goal_id
+        logger.info(f"🎯 Using provided goal_id: {mapped_goal_id} for deliverable")
+    else:
+        logger.warning(f"⚠️ Provided goal_id {provided_goal_id} not found in workspace goals, falling back to goal matching")
+
+# Fallback: Find the best matching goal based on content
+if not mapped_goal_id and workspace_goals:
+    for goal in workspace_goals:
+        if goal.get("status") == "active":
+            mapped_goal_id = goal.get("id")
+            logger.info(f"🎯 Fallback: Using first active goal: {mapped_goal_id} for deliverable")
+            break
+```
+
+### The Bug That Was Fixed
+
+#### **Root Cause**
+**File**: `backend/database.py` in deliverable creation functions  
+**Bug**: The system was mapping ALL deliverables to the FIRST active goal instead of the correct goal associated with the task.
+
+**Before (Broken Logic)**:
+```python
+# ❌ ALWAYS ASSIGNED TO FIRST ACTIVE GOAL
+for goal in workspace_goals:
+    if goal.get("status") == "active":
+        mapped_goal_id = goal.get("id")  # Always took the first match
+        break
+```
+
+**After (Fixed Logic)**:
+Now uses proper validation, content matching, and task goal_id relationships with comprehensive fallback logic.
+
+#### **Symptoms of the Bug**
+- Frontend displayed "No deliverables available yet" despite deliverables existing
+- Deliverables appeared under wrong goals in UI
+- Progress calculations were incorrect
+- Goal completion metrics were misleading
+- Data integrity violations in deliverable-goal relationships
+
+### Data Correction Process
+
+#### **Files Created for Fix**
+- **`backend/fix_goal_deliverable_mapping.sql`**: Corrective SQL script for existing data
+- **`backend/goal_deliverable_fix_report.md`**: Detailed analysis and fix documentation
+
+#### **Pattern-Based Content Matching**
+The fix applied intelligent string matching based on deliverable titles:
+
+```sql
+-- Fix deliverables related to "Piano editoriale mensile"
+UPDATE deliverables 
+SET goal_id = '22f28697-e628-48a1-977d-4cf69496f486'
+WHERE workspace_id = 'workspace_id'
+  AND title LIKE '%Piano editoriale%';
+
+-- Fix deliverables related to "Strategia di interazione"
+UPDATE deliverables 
+SET goal_id = 'd707a492-db77-4501-ad7e-cc446efd5f35'
+WHERE workspace_id = 'workspace_id'
+  AND title LIKE '%Strategia di interazione%';
+```
+
+### Debugging Mapping Issues
+
+#### **Diagnostic Queries**
+```sql
+-- Check deliverable-goal distribution
+SELECT 
+    wg.description as goal_description,
+    wg.id as goal_id,
+    COUNT(d.id) as deliverable_count
+FROM workspace_goals wg
+LEFT JOIN deliverables d ON wg.id = d.goal_id 
+WHERE wg.workspace_id = 'workspace_id'
+GROUP BY wg.id, wg.description
+ORDER BY wg.description;
+
+-- Find orphaned deliverables
+SELECT id, title, goal_id 
+FROM deliverables 
+WHERE workspace_id = 'workspace_id' 
+  AND goal_id IS NULL;
+```
+
+#### **Backend Logging Verification**
+```bash
+# Check goal assignment logs
+grep "Using provided goal_id" backend/logs/*.log
+grep "Fallback: Using first active goal" backend/logs/*.log
+grep "goal_id not found in workspace goals" backend/logs/*.log
+```
+
+#### **API Endpoints for Debugging**
+```bash
+# Check deliverable-goal relationships
+curl -X GET "http://localhost:8000/api/deliverables/workspace/{workspace_id}" | \
+  jq '.[] | {id: .id, title: .title, goal_id: .goal_id}'
+
+# Verify goal-specific deliverables
+curl -X GET "http://localhost:8000/api/deliverables?workspace_id={workspace_id}&goal_id={goal_id}"
+```
+
+### Prevention Measures
+
+#### **Code Review Checklist for Goal-Deliverable Relationships**
+- [ ] ✅ Deliverable creation validates goal_id existence in workspace
+- [ ] ✅ Content-based matching has fallback for failed explicit assignments
+- [ ] ✅ Proper logging shows goal assignment reasoning
+- [ ] ✅ Error handling for invalid or missing goal associations
+- [ ] ✅ Task-goal relationships are preserved in deliverable creation
+
+#### **Database Integrity Checks**
+```sql
+-- Regular validation query to run
+SELECT 
+    COUNT(*) as total_deliverables,
+    COUNT(goal_id) as deliverables_with_goals,
+    COUNT(*) - COUNT(goal_id) as orphaned_deliverables
+FROM deliverables 
+WHERE workspace_id = 'workspace_id';
+
+-- Constraint validation
+SELECT constraint_name, constraint_type 
+FROM information_schema.table_constraints 
+WHERE table_name = 'deliverables' 
+  AND constraint_type = 'FOREIGN KEY';
+```
+
+### Frontend-Backend Data Consistency
+
+#### **Verification Steps**
+1. **Backend Data Check**: Ensure deliverables have correct goal_id associations
+2. **Frontend API Response**: Verify API returns properly mapped deliverables  
+3. **UI Display Validation**: Confirm deliverables appear under correct goals
+4. **Progress Calculation**: Check that goal progress reflects correct deliverable count
+
+#### **API Response Validation**
+```typescript
+// Verify deliverable-goal consistency in frontend
+const validateDeliverableGoalMapping = (deliverables: Deliverable[], goals: Goal[]) => {
+  const goalIds = new Set(goals.map(g => g.id))
+  const orphanedDeliverables = deliverables.filter(d => d.goal_id && !goalIds.has(d.goal_id))
+  
+  if (orphanedDeliverables.length > 0) {
+    console.error('🚨 MAPPING ERROR: Deliverables with invalid goal_id:', orphanedDeliverables)
+  }
+  
+  return orphanedDeliverables.length === 0
+}
+```
 
 ## Goal Progress Transparency System
 

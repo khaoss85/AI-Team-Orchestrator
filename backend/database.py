@@ -482,11 +482,27 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                 
                 # Map goals if any exist
                 mapped_goal_id = None
-                if workspace_goals and pipeline_result.execution_successful:
-                    # Find the best matching goal based on content
+                
+                # 🎯 FIX: Check if deliverable_data already contains a specific goal_id
+                if deliverable_data.get("goal_id"):
+                    # Validate that the provided goal_id exists in the workspace
+                    provided_goal_id = deliverable_data.get("goal_id")
+                    matching_goal = None
+                    if workspace_goals:
+                        matching_goal = next((g for g in workspace_goals if g.get("id") == provided_goal_id), None)
+                    
+                    if matching_goal:
+                        mapped_goal_id = provided_goal_id
+                        logger.info(f"🎯 Using provided goal_id: {mapped_goal_id} for deliverable")
+                    else:
+                        logger.warning(f"⚠️ Provided goal_id {provided_goal_id} not found in workspace goals, falling back to goal matching")
+                
+                # Fallback: Find the best matching goal based on content (only if no goal_id was provided or validated)
+                if not mapped_goal_id and workspace_goals and pipeline_result.execution_successful:
                     for goal in workspace_goals:
                         if goal.get("status") == "active":
                             mapped_goal_id = goal.get("id")
+                            logger.info(f"🎯 Fallback: Using first active goal: {mapped_goal_id} for deliverable")
                             break
                 
                 # Create deliverable with pipeline-generated content
