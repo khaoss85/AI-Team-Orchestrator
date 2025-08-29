@@ -182,15 +182,21 @@ export default function ObjectiveArtifact({
       const realInProgressDeliverables = goalProgressDetail.deliverable_breakdown?.in_progress || []
       const realPendingDeliverables = goalProgressDetail.deliverable_breakdown?.pending || []
       const realFailedDeliverables = goalProgressDetail.deliverable_breakdown?.failed || []
+      const unknownDeliverables = goalProgressDetail.deliverable_breakdown?.unknown || []
       
-      // Combine failed, pending, and in_progress deliverables for the "In Progress" tab
+      // Combine ONLY non-completed deliverables for the "In Progress" tab
       const combinedInProgressDeliverables = [
         ...realFailedDeliverables,
         ...realPendingDeliverables, 
-        ...realInProgressDeliverables
-      ]
+        ...realInProgressDeliverables,
+        ...unknownDeliverables
+      ].filter(deliverable => {
+        // Extra safety check: ensure we don't show completed deliverables
+        const status = (deliverable.status || '').toLowerCase()
+        return status !== 'completed'
+      })
       
-      console.log('Real in-progress deliverables loaded:', combinedInProgressDeliverables.length)
+      console.log('Non-completed deliverables loaded for In Progress tab:', combinedInProgressDeliverables.length, 'statuses:', combinedInProgressDeliverables.map(d => d.status))
       setInProgressDeliverables(combinedInProgressDeliverables)
     } catch (err) {
       console.error('Failed to load in-progress deliverables:', err)
@@ -315,12 +321,12 @@ export default function ObjectiveArtifact({
         <TabButton 
           active={activeTab === 'deliverables'} 
           onClick={() => setActiveTab('deliverables')}
-          label="Deliverables"
+          label={`Deliverables${objectiveData.deliverables && objectiveData.deliverables.length > 0 ? ` (${objectiveData.deliverables.length})` : ''}`}
         />
         <TabButton 
           active={activeTab === 'in_progress'} 
           onClick={() => setActiveTab('in_progress')}
-          label="In Progress"
+          label={`In Progress${inProgressDeliverables.length > 0 ? ` (${inProgressDeliverables.length})` : ''}`}
         />
       </div>
 
@@ -938,9 +944,15 @@ function DeliverablesTab({
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                      Complete
-                    </span>
+                    {(() => {
+                      const status = (deliverable.status || 'completed').toLowerCase()
+                      const config = DELIVERABLE_STATUS_CONFIG[status as DeliverableStatus] || DELIVERABLE_STATUS_CONFIG.unknown
+                      return (
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${config.bgColor} ${config.color}`}>
+                          {config.icon} {config.label}
+                        </span>
+                      )
+                    })()}
                     <svg 
                       className={`h-5 w-5 text-gray-400 transition-transform ${
                         isExpanded ? 'rotate-180' : ''
@@ -1088,9 +1100,12 @@ function InProgressTab({ workspaceId, inProgressDeliverables }: InProgressTabPro
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">✅</div>
-        <div className="text-gray-600 mb-2">No deliverables need attention</div>
+        <div className="text-gray-600 mb-2">All deliverables are completed!</div>
         <div className="text-sm text-gray-500">
-          Failed, pending, or in-progress deliverables will appear here
+          Only failed, pending, in-progress, or unknown status deliverables appear in this tab
+        </div>
+        <div className="text-xs text-gray-400 mt-2">
+          Completed deliverables are shown in the "Deliverables" tab
         </div>
       </div>
     )

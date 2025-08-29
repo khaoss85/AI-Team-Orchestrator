@@ -1,1 +1,9 @@
-Files to review: frontend/src/components/conversational/ObjectiveArtifact.tsx
+Files to review: backend/ai_agents/conversational_simple.py
+backend/main.py
+backend/routes/auto_completion.py
+backend/services/enhanced_goal_driven_planner.py
+backend/services/failed_task_resolver.py
+backend/services/missing_deliverable_auto_completion.py
+backend/test_enhanced_auto_complete.py
+frontend/src/components/ProjectActionsSection.tsx
+frontend/src/components/conversational/ConversationInput.tsx

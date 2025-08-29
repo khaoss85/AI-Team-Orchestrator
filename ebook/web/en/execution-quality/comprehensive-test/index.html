@@ -685,23 +685,41 @@
     
     <div class="mermaid">
         graph TD
-            A[Phase 1: Setup] --> B[Create an empty Workspace with the project objective]
-            B --> C[Phase 2: Team Composition]
-            C --> D[Verify that the Director creates an appropriate team]
-            D --> E[Phase 3: Planning]
-            E --> F[Verify that the AnalystAgent breaks down the objective into concrete tasks]
-            F --> G[Phase 4: Autonomous Execution]
-            G --> H[Start the Executor and let it run without interruption]
-            H --> I[Phase 5: Monitoring]
-            I --> J[Monitor the HealthMonitor to ensure there are no stalls]
-            J --> K[Phase 6: Final Validation]
-            K --> L[After a defined time, stop the test and check the final DB state]
+            A[Phase 1: Setup]
+            B[Create an empty Workspace<br/>with the project objective]
+            C[Phase 2: Team Composition]
+            D[Verify that the Director<br/>creates an appropriate team]
+            E[Phase 3: Planning]
+            F[Verify that the AnalystAgent breaks down<br/>the objective into concrete tasks]
+            G[Phase 4: Autonomous Execution]
+            H[Start the Executor and let it<br/>run without interruption]
+            I[Phase 5: Monitoring]
+            J[Monitor the HealthMonitor to<br/>ensure there are no stalls]
+            K[Phase 6: Final Validation]
+            L[After a defined time, stop the test<br/>and check the final DB state]
             
-            subgraph "Success Criteria"
-                L --> M[At least 1 final Deliverable has been created?]
-                M --> N[Is the deliverable content high quality and without placeholders?]
-                N --> O[Is progress towards the "50 contacts" objective > 0?]
-                O --> P[Has the system saved at least one "insight" in Memory?]
+            A --> B
+            B --> C
+            C --> D
+            D --> E
+            E --> F
+            F --> G
+            G --> H
+            H --> I
+            I --> J
+            J --> K
+            K --> L
+            
+            subgraph SC ["Success Criteria"]
+                M[At least 1 final Deliverable<br/>has been created?]
+                N[Is the deliverable content high quality<br/>and without placeholders?]
+                O[Is progress towards the 50 contacts<br/>objective > 0?]
+                P[Has the system saved at least<br/>one insight in Memory?]
+                
+                L --> M
+                M --> N
+                N --> O
+                O --> P
             end
     </div>
 </div>

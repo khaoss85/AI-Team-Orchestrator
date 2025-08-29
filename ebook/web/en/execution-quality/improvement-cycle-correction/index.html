@@ -669,14 +669,29 @@
     
     <div class="mermaid">
 graph TD
-    A[Trigger Event: Task Completed or Periodic Timer] --> B{GoalValidator activates}
-    B --> C[Gap Analysis: Compare Current State vs. Objectives]
-    C -- No Relevant Gap --> D[Continue Normal Operations]
-    C -- Critical Gap Detected --> E{Memory Consultation}
-    E -- Search for Related "Failure Lessons" --> F{Generate Corrective Plan}
-    F -- AI defines new tasks --> G[Create Corrective Tasks]
-    G -- "CRITICAL" Priority --> H{Added to Executor Queue}
+    A[Trigger Event: Task Completed or Periodic Timer]
+    B{GoalValidator activates}
+    C[Gap Analysis: Compare Current State vs. Objectives]
+    D[Continue Normal Operations]
+    E{Memory Consultation}
+    F{Generate Corrective Plan}
+    G[Create Corrective Tasks]
+    H{Added to Executor Queue}
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    E --> F
+    F --> G
+    G --> H
     H --> D
+    
+    C -.->|No Relevant Gap| D
+    C -.->|Critical Gap Detected| E
+    E -.->|Search for Related Failure Lessons| F
+    F -.->|AI defines new tasks| G
+    G -.->|CRITICAL Priority| H
     </div>
 </div>
 
@@ -774,12 +789,20 @@ You are an expert Project Manager in crisis management. A critical gap has been 
     
     <div class="mermaid">
 graph TD
-    A[Task Completed] --> B{Post-Execution Analysis}
-    B --> C{AI analyzes the result and process}
-    C --> D{Extracts a Key Insight}
-    D --> E[Types the Insight (Success, Failure, etc.)]
-    E --> F[Generates Relevance Tags]
-    F --> G{Saves Structured Insight in `WorkspaceMemory`}
+    A[Task Completed]
+    B{Post-Execution Analysis}
+    C{AI analyzes the result and process}
+    D{Extracts a Key Insight}
+    E[Types the Insight:<br/>Success, Failure, etc.]
+    F[Generates Relevance Tags]
+    G{Saves Structured Insight in WorkspaceMemory}
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
     </div>
 </div>
 

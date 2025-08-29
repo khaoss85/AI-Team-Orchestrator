@@ -544,28 +544,43 @@
                 
                 <div class="mermaid">
                     graph TD
-                        A[New Workspace Created] --> B{Semantic Goal Analysis}
-                        B --> C{Key Skills Extraction}
-                        C --> D{Necessary Roles Definition}
-                        D --> E{Complete Agent Profiles Generation}
-                        E --> F[Team Proposal]
-                        F --> G{Human/Automatic Approval}
-                        G -- Approved --> H[Agent Creation in DB]
+                        A[New Workspace Created]
+                        B{Semantic Goal Analysis}
+                        C{Key Skills Extraction}
+                        D{Necessary Roles Definition}
+                        E{Complete Agent Profiles Generation}
+                        F[Team Proposal]
+                        G{Human/Automatic Approval}
+                        H[Agent Creation in DB]
                         
-                        subgraph "Phase 1: Strategic Analysis (AI)"
+                        A --> B
+                        B --> C
+                        C --> D
+                        D --> E
+                        E --> F
+                        F --> G
+                        G --> H
+                        
+                        subgraph P1 ["Phase 1: Strategic Analysis (AI)"]
                             B1[The Director reads the workspace goal]
-                            C1[AI identifies necessary skills: "email marketing", "data analysis", "copywriting"]
-                            D1[AI groups skills into roles: "Marketing Strategist", "Data Analyst"]
+                            C1[AI identifies necessary skills:<br/>email marketing, data analysis, copywriting]
+                            D1[AI groups skills into roles:<br/>Marketing Strategist, Data Analyst]
+                            
+                            B1 --> C1
+                            C1 --> D1
                         end
                         
-                        subgraph "Phase 2: Profile Creation (AI)"
-                            E1[For each role, AI generates a complete profile: name, seniority, hard/soft skills, background]
+                        subgraph P2 ["Phase 2: Profile Creation (AI)"]
+                            E1[For each role, AI generates a complete profile:<br/>name, seniority, hard/soft skills, background]
                         end
                         
-                        subgraph "Phase 3: Finalization"
-                            F1[The Director presents the proposed team with strategic justification]
+                        subgraph P3 ["Phase 3: Finalization"]
+                            F1[The Director presents the proposed team<br/>with strategic justification]
                             G1[User approves or system auto-approves]
                             H1[Agents are saved to database and activated]
+                            
+                            F1 --> G1
+                            G1 --> H1
                         end
                 </div>
             </div>

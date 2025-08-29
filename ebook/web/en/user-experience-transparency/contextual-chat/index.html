@@ -845,7 +845,29 @@
                 
                 <div class="mermaid">
                     graph TD
-                        A[User Sends Message: "Add €1000 to budget"] --> B{Conversational Endpoint} B --> C[Load Workspace and Conversation Context] C --> D{ConversationalAgent analyzes intent} D -- Intent: "modify_budget" --> E{AI decides to use the modify_configuration tool} E --> F[SDK formats tool call with parameters {'amount': 1000, 'operation': 'increase'}] F --> G{Executor executes the tool} G -- Tool updates DB --> H[Action Result] H --> I{ConversationalAgent formulates response} I --> J[Response to User: "OK, I've increased the budget. The new total is €4000."]
+                        A[User Sends Message:<br/>Add €1000 to budget]
+                        B{Conversational Endpoint}
+                        C[Load Workspace and<br/>Conversation Context]
+                        D{ConversationalAgent<br/>analyzes intent}
+                        E{AI decides to use the<br/>modify_configuration tool}
+                        F[SDK formats tool call with parameters:<br/>amount: 1000, operation: increase]
+                        G{Executor executes the tool}
+                        H[Action Result]
+                        I{ConversationalAgent<br/>formulates response}
+                        J[Response to User:<br/>OK, I've increased the budget.<br/>The new total is €4000.]
+                        
+                        A --> B
+                        B --> C
+                        C --> D
+                        D --> E
+                        E --> F
+                        F --> G
+                        G --> H
+                        H --> I
+                        I --> J
+                        
+                        D -.->|Intent: modify_budget| E
+                        G -.->|Tool updates DB| H
                 </div>
             </div>
 

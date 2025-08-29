@@ -1268,14 +1268,24 @@ strategy_agent = Agent(name=&quot;StrategicPlanner&quot;,
     
     <div class="mermaid">
 graph TD
-    A[Agent receives Task] --> B{AI decides to use a tool}
-    B --> C[SDK formats request for "websearch"]
-    C --> D{Executor intercepts the request}
-    D --> E[Calls `tool_registry.get_tool(websearch')`]
-    E --> F[Executes the actual search]
-    F --> G[Returns results to Executor]
-    G --> H[SDK passes results to Agent]
-    H --> I[Agent uses data to complete Task]
+    A[Agent receives Task]
+    B{AI decides to use a tool}
+    C[SDK formats request for websearch]
+    D{Executor intercepts the request}
+    E[Calls tool_registry.get_tool websearch]
+    F[Executes the actual search]
+    G[Returns results to Executor]
+    H[SDK passes results to Agent]
+    I[Agent uses data to complete Task]
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
     </div>
 </div>
 
