@@ -97,7 +97,12 @@ export default function ObjectiveArtifact({
     })
   }
 
-  const getStatusColor = (status?: any) => {
+  const getStatusColor = (status?: any, progress?: number) => {
+    // If progress is 100%, always show as completed regardless of raw status
+    if (progress !== undefined && progress >= 100) {
+      return 'bg-green-100 text-green-800'
+    }
+    
     const statusStr = String(status || '').toLowerCase()
     switch (statusStr) {
       case 'completed': return 'bg-green-100 text-green-800'
@@ -115,6 +120,22 @@ export default function ObjectiveArtifact({
       case 'medium': return 'bg-yellow-100 text-yellow-800'
       case 'low': return 'bg-green-100 text-green-800'
       default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getDisplayStatus = (status?: any, progress?: number) => {
+    // If progress is 100%, always show as completed regardless of raw status
+    if (progress !== undefined && progress >= 100) {
+      return 'Completed'
+    }
+    
+    const statusStr = String(status || '').toLowerCase()
+    switch (statusStr) {
+      case 'completed': return 'Completed'
+      case 'active': return 'Active'
+      case 'paused': return 'Paused'
+      case 'cancelled': return 'Cancelled'
+      default: return status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : 'Unknown'
     }
   }
 
@@ -276,8 +297,8 @@ export default function ObjectiveArtifact({
           </div>
           <div className="flex flex-col items-end space-y-1 ml-4">
             {objectiveData.status && (
-              <span className={`px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(objectiveData.status)}`}>
-                {String(objectiveData.status).charAt(0).toUpperCase() + String(objectiveData.status).slice(1)}
+              <span className={`px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(objectiveData.status, objectiveData.progress)}`}>
+                {getDisplayStatus(objectiveData.status, objectiveData.progress)}
               </span>
             )}
             {objectiveData.priority && (
