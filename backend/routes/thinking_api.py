@@ -18,7 +18,8 @@ async def get_workspace_thinking(
     workspace_id: UUID, 
     limit: int = 10,
     include_completed: bool = True,
-    include_active: bool = True
+    include_active: bool = True,
+    goal_id: Optional[str] = None
 ):
     """
     Get real thinking processes for a workspace

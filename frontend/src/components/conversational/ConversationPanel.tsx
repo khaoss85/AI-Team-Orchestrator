@@ -11,6 +11,7 @@ import ActionButtonsPanel from './ActionButtonsPanel'
 import WelcomeRecapMessage from './WelcomeRecapMessage'
 import useFirstVisitWelcome from '../../hooks/useFirstVisitWelcome'
 import useWorkspaceThinking from '../../hooks/useWorkspaceThinking'
+import useGoalThinking from '../../hooks/useGoalThinking'
 import environment from '../../utils/environment'
 
 interface ConversationPanelProps {
@@ -54,6 +55,17 @@ export default function ConversationPanel({
     recentProcessCount,
     refresh: refreshThinking
   } = useWorkspaceThinking(workspaceId)
+  
+  // 🎯 Goal-specific thinking data (when viewing a deliverable/goal)
+  const isGoalChat = activeChat?.type === 'dynamic' && activeChat.objective?.id
+  const goalId = isGoalChat ? activeChat.objective?.id : ''
+  const { 
+    thinkingData: goalThinkingData, 
+    isLoading: goalThinkingLoading, 
+    error: goalThinkingError,
+    hasThinkingSteps: hasGoalThinkingSteps,
+    refresh: refreshGoalThinking
+  } = useGoalThinking(goalId || '', workspaceId)
   
   // Environment detection
   const isDebugMode = environment.isDebugEnabled()
@@ -156,9 +168,20 @@ export default function ConversationPanel({
           )}
           {/* Show real thinking data count in production, fallback to legacy */}
           {(() => {
-            const displayCount = !isDebugMode && thinkingProcesses.length > 0 
-              ? thinkingProcesses.reduce((total, process) => total + process.steps.length, 0)
-              : thinkingSteps.length;
+            let displayCount = 0;
+            
+            if (!isDebugMode) {
+              if (isGoalChat && hasGoalThinkingSteps) {
+                // For goal chats, show goal-specific thinking steps count
+                displayCount = goalThinkingData?.thinking_steps.length || 0;
+              } else if (thinkingProcesses.length > 0) {
+                // For workspace chats, show workspace thinking processes count
+                displayCount = thinkingProcesses.reduce((total, process) => total + process.steps.length, 0);
+              }
+            } else {
+              // Debug mode shows legacy thinking steps
+              displayCount = thinkingSteps.length;
+            }
             
             return displayCount > 0 && (
               <span className="ml-2 bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
@@ -310,10 +333,49 @@ export default function ConversationPanel({
               </div>
             )}
 
-            {/* 🧠 Production: Real Thinking Data from Workspace */}
+            {/* 🧠 Production: Real Thinking Data from Workspace or Goal */}
             {(() => {
-              // In production, prioritize real thinking data from workspace
+              // 🎯 PRIORITY 1: Goal-specific thinking (when viewing a deliverable/goal)
+              if (!isDebugMode && isGoalChat && hasGoalThinkingSteps && goalThinkingData) {
+                console.log('🎯 [ConversationPanel] Showing goal-specific thinking:', goalThinkingData.thinking_steps.length, 'steps')
+                
+                // Transform goal thinking steps to ThinkingProcessViewer format
+                const transformedSteps = goalThinkingData.thinking_steps.map((step: any) => ({
+                  type: step.step_type || 'goal_thinking',
+                  step: step.id,
+                  title: (step.thinking_content || '').substring(0, 60) + ((step.thinking_content || '').length > 60 ? '...' : ''),
+                  description: step.thinking_content || 'Goal thinking step',
+                  status: 'completed', // Goal thinking steps are already completed
+                  timestamp: step.created_at,
+                  fromMessage: `goal-${goalId}`,
+                  messageTimestamp: step.created_at,
+                  // Additional goal-specific metadata
+                  metadata: {
+                    session_id: step.session_id,
+                    meta_reasoning: step.meta_reasoning,
+                    confidence_level: step.confidence_level,
+                    goal_id: goalId,
+                    goal_title: activeChat?.title
+                  }
+                }));
+
+                return <ThinkingProcessViewer 
+                  steps={transformedSteps} 
+                  isThinking={goalThinkingLoading || loading} 
+                  isRealTime={false} // Goal thinking is historical
+                  currentDecomposition={currentGoalDecomposition}
+                  goalContext={{
+                    goal: goalThinkingData.goal,
+                    todoList: goalThinkingData.todo_list,
+                    decomposition: goalThinkingData.decomposition
+                  }}
+                />;
+              }
+              
+              // 🏢 PRIORITY 2: Workspace-wide thinking (for general chats)
               if (!isDebugMode && thinkingProcesses.length > 0) {
+                console.log('🏢 [ConversationPanel] Showing workspace thinking:', thinkingProcesses.length, 'processes')
+                
                 // Transform real thinking processes to ThinkingProcessViewer format
                 const transformedSteps = thinkingProcesses.flatMap(process => 
                   process.steps.map((step: any) => ({
@@ -361,16 +423,16 @@ export default function ConversationPanel({
             })()}
 
             {/* 🔄 Thinking Error State */}
-            {thinkingError && !isDebugMode && (
+            {(thinkingError || goalThinkingError) && !isDebugMode && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg mx-4 mb-4">
                 <div className="flex items-center space-x-2 text-sm text-red-800">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <span className="font-medium">Thinking system error:</span> {thinkingError}
+                    <span className="font-medium">Thinking system error:</span> {goalThinkingError || thinkingError}
                     <button 
-                      onClick={refreshThinking}
+                      onClick={isGoalChat ? refreshGoalThinking : refreshThinking}
                       className="ml-2 text-red-700 underline hover:text-red-900"
                     >
                       Retry

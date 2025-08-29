@@ -1,1 +1,15 @@
-Files to review: backend/deliverable_system/unified_deliverable_engine.py
+Files to review: CLAUDE.md
+backend/complete_stuck_thinking_processes.py
+backend/executor.py
+backend/main.py
+backend/routes/test_thinking_demo.py
+backend/routes/thinking_api.py
+backend/services/thinking_process.py
+backend/test_thinking_completion_fix.py
+backend/test_thinking_system.py
+frontend/src/components/conversational/ConversationPanel.tsx
+frontend/src/components/conversational/ObjectiveArtifact.tsx
+frontend/src/components/conversational/ThinkingDebugPanel.tsx
+frontend/src/components/conversational/ThinkingStatusIndicator.tsx
+frontend/src/hooks/useWorkspaceThinking.ts
+frontend/src/utils/environment.ts

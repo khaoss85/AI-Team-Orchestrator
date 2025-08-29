@@ -32,31 +32,26 @@ async def get_workspace_thinking_goals(workspace_id: str, request: Request):
         
         goals_thinking = []
         for goal in goals_result.data:
-            # Get decomposition for this goal
-            decomp_result = supabase.table("workspace_goal_decompositions").select("*").eq("goal_id", goal["id"]).execute()
-            decomp = decomp_result.data[0] if decomp_result.data else None
+            # Get tasks for this goal
+            tasks_result = supabase.table("tasks").select("*").eq("goal_id", goal["id"]).eq("workspace_id", workspace_id).execute()
+            tasks = tasks_result.data if tasks_result.data else []
             
-            # Get todos for this goal
-            todos_result = supabase.table("goal_todos").select("*").eq("goal_id", goal["id"]).execute()
-            todos = todos_result.data if todos_result.data else []
-            
-            # Get thinking steps count
-            thinking_result = supabase.table("thinking_process_steps").select("id").eq("workspace_id", workspace_id).execute()
-            thinking_count = len(thinking_result.data) if thinking_result.data else 0
+            # No thinking steps for now since table doesn't exist
+            thinking_count = 0
             
             goal_thinking = {
                 "goal_id": goal["id"],
                 "goal_description": goal["description"],
                 "goal_progress": goal.get("progress", 0),
                 "goal_status": goal["status"],
-                "user_value_score": decomp["user_value_score"] if decomp else 0,
-                "complexity_level": decomp["complexity_level"] if decomp else "simple",
-                "total_todos": len(todos),
-                "asset_todos_count": len([t for t in todos if t["todo_type"] == "asset"]),
-                "thinking_todos_count": len([t for t in todos if t["todo_type"] == "thinking"]),
-                "completed_todos": len([t for t in todos if t["status"] == "completed"]),
+                "user_value_score": 0,
+                "complexity_level": "simple",
+                "total_todos": len(tasks),
+                "asset_todos_count": len([t for t in tasks if t.get("target_asset_type")]),
+                "thinking_todos_count": 0,
+                "completed_todos": len([t for t in tasks if t["status"] == "completed"]),
                 "thinking_steps_count": thinking_count,
-                "has_decomposition": decomp is not None,
+                "has_decomposition": False,
                 "has_thinking_process": thinking_count > 0
             }
             goals_thinking.append(goal_thinking)
@@ -88,88 +83,53 @@ async def get_goal_thinking_process(goal_id: str, workspace_id: str, request: Re
         
         goal = goal_result.data[0]
         
-        # Get goal decomposition
-        decomposition_result = supabase.table("workspace_goal_decompositions").select("*").eq("goal_id", goal_id).execute()
-        decomposition = decomposition_result.data[0] if decomposition_result.data else None
+        # Get tasks for this goal (using tasks table instead of goal_todos)
+        tasks_result = supabase.table("tasks").select("*").eq("goal_id", goal_id).eq("workspace_id", workspace_id).order("created_at").execute()
+        tasks_data = tasks_result.data if tasks_result.data else []
         
-        # Get todo list
-        todos_result = supabase.table("goal_todos").select("*").eq("goal_id", goal_id).order("created_at").execute()
-        todos_data = todos_result.data if todos_result.data else []
+        # For now, return empty thinking steps since the table doesn't exist
+        thinking_steps_data = []
         
-        # Get thinking steps for this workspace
-        thinking_steps_result = supabase.table("thinking_process_steps").select("*").eq("workspace_id", workspace_id).order("created_at").execute()
-        thinking_steps_data = thinking_steps_result.data if thinking_steps_result.data else []
-        
-        # Format todo list
+        # Format task list as todo list
         todo_list = []
-        for todo in todos_data:
+        for task in tasks_data:
             formatted_todo = {
-                "id": str(todo["id"]),
-                "type": todo["todo_type"],
-                "internal_id": todo["internal_id"],
-                "name": todo["name"],
-                "description": todo["description"],
-                "priority": todo["priority"],
-                "status": todo.get("status", "pending"),
-                "progress_percentage": todo.get("progress_percentage", 0),
-                "estimated_effort": todo.get("estimated_effort"),
-                "user_impact": todo.get("user_impact"),
-                "complexity": todo.get("complexity"),
-                "value_proposition": todo.get("value_proposition"),
-                "completion_criteria": todo.get("completion_criteria"),
-                "supports_assets": todo.get("supports_assets", []),
-                "linked_task_id": str(todo["linked_task_id"]) if todo.get("linked_task_id") else None,
-                "created_at": todo["created_at"] if todo.get("created_at") else None,
-                "updated_at": todo["updated_at"] if todo.get("updated_at") else None,
-                "completed_at": todo["completed_at"] if todo.get("completed_at") else None
+                "id": str(task["id"]),
+                "type": "task",  # All tasks are treated as task type
+                "internal_id": task.get("id"),  # Use task ID as internal ID
+                "name": task["name"],
+                "description": task["description"],
+                "priority": task.get("priority", "medium"),
+                "status": task.get("status", "pending"),
+                "progress_percentage": 100 if task.get("status") == "completed" else 0,
+                "estimated_effort": task.get("estimated_effort_hours"),
+                "user_impact": "high",  # Default for all tasks
+                "complexity": "medium",  # Default for all tasks
+                "value_proposition": task.get("description", ""),
+                "completion_criteria": task.get("description", ""),
+                "supports_assets": [],  # Empty for now
+                "linked_task_id": str(task["parent_task_id"]) if task.get("parent_task_id") else None,
+                "created_at": task["created_at"] if task.get("created_at") else None,
+                "updated_at": task["updated_at"] if task.get("updated_at") else None,
+                "completed_at": task.get("completed_at")
             }
             todo_list.append(formatted_todo)
         
-        # Format thinking steps
+        # Format thinking steps (empty for now)
         thinking_steps = []
-        for step in thinking_steps_data:
-            formatted_step = {
-                "id": str(step["id"]),
-                "session_id": str(step["thinking_session_id"]),
-                "step_sequence": step["step_sequence"],
-                "step_type": step["step_type"],
-                "step_title": step["step_title"],
-                "thinking_content": step["thinking_content"],
-                "inputs_considered": step.get("inputs_considered", []),
-                "conclusions_reached": step.get("conclusions_reached", []),
-                "decisions_made": step.get("decisions_made", []),
-                "next_steps_identified": step.get("next_steps_identified", []),
-                "agent_role": step["agent_role"],
-                "model_used": step.get("model_used"),
-                "confidence_level": step["confidence_level"],
-                "reasoning_quality": step["reasoning_quality"],
-                "completion_status": step.get("completion_status"),
-                "timestamp": step["created_at"] if step.get("created_at") else None
-            }
-            thinking_steps.append(formatted_step)
         
-        # Determine execution order
+        # Determine execution order (all tasks are treated as task type)
         execution_order = []
-        thinking_todos = [t for t in todo_list if t["type"] == "thinking"]
-        asset_todos = [t for t in todo_list if t["type"] == "asset"]
         
-        # Add thinking todos first
-        for todo in thinking_todos:
-            execution_order.append({
-                "type": "thinking",
-                "item": todo,
-                "rationale": f"Thinking component per supportare: {', '.join(todo['supports_assets'])}" if todo['supports_assets'] else "Thinking strategico di supporto"
-            })
-        
-        # Add asset todos by priority
+        # Add all tasks by priority
         priority_order = {"high": 3, "medium": 2, "low": 1}
-        sorted_assets = sorted(asset_todos, key=lambda x: priority_order.get(x.get('priority', 'medium'), 2), reverse=True)
+        sorted_tasks = sorted(todo_list, key=lambda x: priority_order.get(x.get('priority', 'medium'), 2), reverse=True)
         
-        for todo in sorted_assets:
+        for task in sorted_tasks:
             execution_order.append({
-                "type": "asset",
-                "item": todo,
-                "rationale": f"Asset deliverable priorità {todo['priority']}, impact {todo.get('user_impact', 'unknown')}"
+                "type": "task",
+                "item": task,
+                "rationale": f"Task priorità {task['priority']}, status {task['status']}"
             })
         
         # Find current step
@@ -189,24 +149,20 @@ async def get_goal_thinking_process(goal_id: str, workspace_id: str, request: Re
         else:
             completion_status = "planning"
         
-        goal_thinking = {
-            "goal_id": goal_id,
-            "goal_description": goal["description"],
-            "goal_progress": goal.get("progress", 0),
-            "goal_status": goal["status"],
-            "todo_list": todo_list,
-            "thinking_steps": thinking_steps,
-            "execution_order": execution_order,
-            "current_step": current_step,
-            "completion_status": completion_status,
-            "decomposition_available": decomposition is not None,
-            "user_value_score": decomposition["user_value_score"] if decomposition else 0,
-            "complexity_level": decomposition["complexity_level"] if decomposition else "simple"
-        }
-        
+        # Return data in format expected by frontend
         return {
-            "success": True,
-            "goal_thinking": goal_thinking
+            "goal": {
+                "id": goal_id,
+                "description": goal["description"],
+                "progress": goal.get("progress", 0),
+                "status": goal["status"]
+            },
+            "decomposition": {
+                "user_value_score": 0,
+                "complexity_level": "simple"
+            },
+            "todo_list": todo_list,
+            "thinking_steps": thinking_steps
         }
         
     except Exception as e:

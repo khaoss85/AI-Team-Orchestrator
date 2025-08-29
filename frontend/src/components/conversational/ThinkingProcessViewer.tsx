@@ -19,6 +19,12 @@ interface ThinkingProcessViewerProps {
   // 🧠 Real-time props (Claude/o3 style)
   isRealTime?: boolean
   currentDecomposition?: any
+  // 🎯 Goal-specific props
+  goalContext?: {
+    goal: any
+    todoList: any[]
+    decomposition: any
+  }
 }
 
 interface ThinkingSession {
@@ -34,18 +40,36 @@ export default function ThinkingProcessViewer({
   steps, 
   isThinking = false, 
   isRealTime = false, 
-  currentDecomposition 
+  currentDecomposition,
+  goalContext 
 }: ThinkingProcessViewerProps) {
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({})
 
   if (!steps || steps.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
-        <div className="text-4xl mb-2">🧠</div>
-        <p className="text-sm">No thinking process to display</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Thinking steps will appear here when the AI processes your message
+        <div className="text-4xl mb-2">{goalContext ? '🎯' : '🧠'}</div>
+        <p className="text-sm">
+          {goalContext 
+            ? 'No thinking process for this deliverable' 
+            : 'No thinking process to display'
+          }
         </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {goalContext 
+            ? 'Goal-specific thinking steps will appear here when available'
+            : 'Thinking steps will appear here when the AI processes your message'
+          }
+        </p>
+        {goalContext && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg text-left">
+            <p className="text-xs font-medium text-gray-600 mb-1">Goal Summary:</p>
+            <p className="text-xs text-gray-700">{goalContext.goal?.description || 'Goal data not available'}</p>
+            {goalContext.todoList && goalContext.todoList.length > 0 && (
+              <p className="text-xs text-gray-600 mt-2">{goalContext.todoList.length} todo items tracked</p>
+            )}
+          </div>
+        )}
       </div>
     )
   }
