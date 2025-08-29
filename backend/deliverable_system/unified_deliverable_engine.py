@@ -164,14 +164,30 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                 {"workspace_id": workspace_id, "goal_id": goal_id}
             )
             
-            # Create goal-specific deliverable
+            # Create goal-specific deliverable with dual-format support
+            # Store display content in 'content' field and backup original JSON in metadata
+            metadata = {
+                "source": "goal_specific_aggregation",
+                "goal_description": goal_description,
+                "tasks_included": [task.get('id') for task in completed_tasks],
+                "creation_method": "automated_goal_completion",
+                "display_enhanced": True,
+                "original_json_content": aggregated_content,  # Backup original JSON
+                "display_transformation": {
+                    "applied_during_creation": True,
+                    "transformation_confidence": display_metadata.get('confidence', 85.0),
+                    "display_format": display_metadata.get('format', 'html'),
+                    "ai_enhanced": display_metadata.get('ai_enhanced', True),
+                    "fallback_used": display_metadata.get('fallback_used', False),
+                    "processing_time": display_metadata.get('processing_time', 0),
+                    "created_at": str(datetime.now())
+                }
+            }
+            
             deliverable_data = {
                 "title": f"{goal_description} - AI-Generated Deliverable",
                 "type": "goal_deliverable",
-                "content": aggregated_content,
-                "display_content": display_content,  # User-friendly HTML/Markdown
-                "display_format": display_metadata.get('format', 'html'),
-                "display_confidence": display_metadata.get('confidence', 85.0),
+                "content": display_content,  # Store user-friendly display content as main content
                 "status": "completed",
                 "goal_id": goal_id,  # CRITICAL: Link to specific goal
                 "readiness_score": 90,
@@ -180,7 +196,8 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                 "quality_metrics": {
                     "task_count": len(valid_tasks),
                     "total_tasks_analyzed": len(completed_tasks),
-                    "content_length": len(str(aggregated_content)),
+                    "content_length": len(str(display_content)),
+                    "original_content_length": len(str(aggregated_content)),
                     "created_from": "ai_quality_assessed_aggregation",
                     "goal_id": goal_id,
                     "ai_quality_score": avg_quality_score,
@@ -188,13 +205,7 @@ async def create_goal_specific_deliverable(workspace_id: str, goal_id: str, forc
                     "final_quality_score": final_quality_score,
                     "display_transformation": display_metadata
                 },
-                "metadata": {
-                    "source": "goal_specific_aggregation",
-                    "goal_description": goal_description,
-                    "tasks_included": [task.get('id') for task in completed_tasks],
-                    "creation_method": "automated_goal_completion",
-                    "display_enhanced": True
-                }
+                "metadata": metadata
             }
         
         # Create the deliverable in database
