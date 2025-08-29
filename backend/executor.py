@@ -1873,6 +1873,13 @@ Focus on delivering practical, actionable results that move the project forward.
                         # Don't fail the task completion due to recovery trigger errors
             # --- END LINKING ---
             
+            # 🧠 THINKING PROCESS COMPLETION: Complete any incomplete thinking processes for this task
+            if workspace_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                try:
+                    await complete_thinking_processes_for_task(workspace_id, task_id, status_to_set, reason)
+                except Exception as thinking_error:
+                    logger.error(f"Failed to complete thinking processes for task {task_id}: {thinking_error}")
+            
             # 🚀 CRITICAL FIX: Trigger deliverable creation check when task is completed
             if status_to_set == TaskStatus.COMPLETED.value and workspace_id:
                 await self._check_and_trigger_deliverable_creation(workspace_id, task_id)
@@ -5197,6 +5204,99 @@ async def reset_workspace_auto_generation(workspace_id: str) -> Dict[str, Any]:
         }
     else:
         return {"success": False, "message": f"Auto-gen not paused for W:{workspace_id}"}
+
+async def complete_thinking_processes_for_task(workspace_id: str, task_id: str, status: str, reason: str):
+    """
+    🧠 Complete any incomplete thinking processes for a completed task
+    
+    This function finds recent thinking processes in the workspace that are incomplete
+    and completes them with appropriate conclusions based on task outcome.
+    """
+    try:
+        # Get recent incomplete thinking processes from this workspace (last 10 minutes)
+        from datetime import datetime, timedelta
+        recent_cutoff = (datetime.utcnow() - timedelta(minutes=10)).isoformat()
+        
+        # Query the database directly since thinking_engine.get_workspace_thinking might not include incomplete ones
+        from database import get_supabase_client
+        supabase = get_supabase_client()
+        
+        recent_processes = supabase.table("thinking_processes") \
+            .select("process_id,started_at,context") \
+            .eq("workspace_id", workspace_id) \
+            .is_("completed_at", "null") \
+            .gte("started_at", recent_cutoff) \
+            .execute()
+        
+        logger.info(f"🧠 Found {len(recent_processes.data)} incomplete thinking processes in workspace {workspace_id}")
+        
+        for process_data in recent_processes.data:
+            process_id = process_data["process_id"]
+            context = process_data.get("context", "")
+            
+            # Check if this thinking process is related to our task
+            if task_id in context or any(keyword in context.lower() for keyword in ["task", "execution", "analysis"]):
+                
+                # Create appropriate conclusion based on task status
+                if status == TaskStatus.COMPLETED.value:
+                    conclusion = f"✅ Task execution completed successfully. The task has been finalized with status: {status}. Reason: {reason}"
+                    confidence = 0.9
+                    
+                    # Add a final step before completion
+                    await thinking_engine.add_thinking_step(
+                        process_id=process_id,
+                        step_type="conclusion",
+                        content=f"🎯 Task finalization successful: {reason}. All requirements have been met and the task is now complete.",
+                        confidence=confidence
+                    )
+                    
+                elif status == TaskStatus.FAILED.value:
+                    conclusion = f"❌ Task execution failed. Status: {status}. Reason: {reason}"
+                    confidence = 0.6
+                    
+                    # Add a final step before completion
+                    await thinking_engine.add_thinking_step(
+                        process_id=process_id,
+                        step_type="error_analysis",
+                        content=f"💥 Task failed during execution: {reason}. This requires investigation to prevent similar failures.",
+                        confidence=confidence
+                    )
+                    
+                elif status == TaskStatus.TIMED_OUT.value:
+                    conclusion = f"⏱️ Task execution timed out. Status: {status}. Reason: {reason}"
+                    confidence = 0.7
+                    
+                    # Add a final step before completion
+                    await thinking_engine.add_thinking_step(
+                        process_id=process_id,
+                        step_type="timeout_analysis", 
+                        content=f"⏰ Task exceeded time limits: {reason}. Consider optimizing execution strategy or increasing timeout thresholds.",
+                        confidence=confidence
+                    )
+                else:
+                    conclusion = f"Task completed with status: {status}. Reason: {reason}"
+                    confidence = 0.8
+                    
+                    # Add a final step before completion
+                    await thinking_engine.add_thinking_step(
+                        process_id=process_id,
+                        step_type="completion",
+                        content=f"🔄 Task finished with final status: {status}. Processing reason: {reason}",
+                        confidence=confidence
+                    )
+                
+                # Complete the thinking process
+                await thinking_engine.complete_thinking_process(
+                    process_id=process_id,
+                    conclusion=conclusion,
+                    overall_confidence=confidence
+                )
+                
+                logger.info(f"🧠 Completed thinking process {process_id} for task {task_id} with status {status}")
+                
+    except Exception as e:
+        logger.error(f"🧠 Error completing thinking processes for task {task_id}: {e}", exc_info=True)
+        # Don't fail the task completion due to thinking process errors
 
     async def _check_and_trigger_deliverable_creation(self, workspace_id: str, completed_task_id: str):
         """

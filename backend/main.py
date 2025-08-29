@@ -55,6 +55,8 @@ from routes.authentic_thinking import router as authentic_thinking_router
 from routes.memory import router as memory_router
 from routes.memory_sessions import router as memory_sessions_router
 from routes.thinking import router as thinking_router
+from routes.test_thinking_demo import router as test_thinking_demo_router
+from routes.thinking_api import router as thinking_api_router
 from routes.assets import router as assets_router
 from routes.websocket_assets import router as websocket_assets_router
 from routes.system_monitoring import router as system_monitoring_router
@@ -279,6 +281,8 @@ app.include_router(human_feedback_router, prefix="/api")
 app.include_router(ai_content_router, prefix="/api")
 app.include_router(authentic_thinking_router, prefix="/api/thinking", tags=["thinking"])
 app.include_router(thinking_router, prefix="/api")
+app.include_router(test_thinking_demo_router, prefix="/api")
+app.include_router(thinking_api_router)  # Production thinking API
 app.include_router(memory_router, prefix="/api")
 app.include_router(memory_sessions_router, prefix="/api")
 

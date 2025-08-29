@@ -367,19 +367,51 @@ class RealTimeThinkingEngine:
     async def _broadcast_thinking_event(self, event_type: str, data: Dict[str, Any]):
         """Broadcast thinking event to WebSocket clients"""
         try:
-            # This would integrate with WebSocket system
-            event = {
-                "event_type": f"thinking_{event_type}",
-                "timestamp": datetime.utcnow().isoformat(),
-                "data": data
-            }
+            # Format the thinking step for WebSocket broadcast
+            if event_type == "step_added" and "step" in data:
+                # Extract workspace_id from process
+                workspace_id = None
+                if data.get("process_id") and data["process_id"] in self.active_processes:
+                    workspace_id = self.active_processes[data["process_id"]].workspace_id
+                
+                if workspace_id:
+                    # Broadcast thinking step via WebSocket
+                    try:
+                        from routes.websocket import broadcast_thinking_step
+                        await broadcast_thinking_step(workspace_id, data["step"])
+                        logger.debug(f"💭 Broadcasted thinking step to workspace {workspace_id}")
+                    except Exception as ws_error:
+                        logger.warning(f"WebSocket broadcast failed: {ws_error}")
             
-            # For now, just log - would broadcast via WebSocket in real implementation
+            # Also handle goal decomposition events
+            elif event_type == "process_started" and data.get("workspace_id"):
+                try:
+                    from routes.websocket import broadcast_goal_decomposition_start
+                    goal_data = {
+                        "id": data.get("process_id"),
+                        "description": data.get("context", "Processing goal...")
+                    }
+                    await broadcast_goal_decomposition_start(data["workspace_id"], goal_data)
+                    logger.debug(f"💭 Broadcasted goal decomposition start to workspace {data['workspace_id']}")
+                except Exception as ws_error:
+                    logger.warning(f"Goal decomposition start broadcast failed: {ws_error}")
+            
+            elif event_type == "process_completed" and data.get("process_id"):
+                # Find workspace_id for completed process
+                workspace_id = None
+                if data["process_id"] in self.active_processes:
+                    workspace_id = self.active_processes[data["process_id"]].workspace_id
+                
+                if workspace_id:
+                    try:
+                        from routes.websocket import broadcast_goal_decomposition_complete
+                        await broadcast_goal_decomposition_complete(workspace_id, data)
+                        logger.debug(f"💭 Broadcasted goal decomposition complete to workspace {workspace_id}")
+                    except Exception as ws_error:
+                        logger.warning(f"Goal decomposition complete broadcast failed: {ws_error}")
+            
+            # Log all thinking events
             logger.debug(f"💭 Broadcasting thinking event: {event_type}")
-            
-            # TODO: Integrate with WebSocket broadcasting system
-            # for handler in self.websocket_handlers:
-            #     await handler.broadcast_thinking_event(event)
             
         except Exception as e:
             logger.error(f"Failed to broadcast thinking event: {e}")
@@ -388,6 +420,10 @@ class RealTimeThinkingEngine:
         """Register WebSocket handler for real-time broadcasting"""
         self.websocket_handlers.append(handler)
         logger.info("📡 WebSocket handler registered for thinking broadcasts")
+    
+    def get_current_time(self) -> str:
+        """Get current time in ISO format"""
+        return datetime.utcnow().isoformat()
 
 # Global thinking engine instance
 thinking_engine = RealTimeThinkingEngine()

@@ -826,6 +826,26 @@ Before deploying any new auto-completion or goal management feature:
 - **Models** (`models.py`): Pydantic models with enums for WorkspaceStatus, TaskStatus, AgentStatus
 - **Database** (`database.py`): Supabase integration layer
 
+### Real-Time Thinking Processes (Pillar 10)
+- **Thinking Engine** (`services/thinking_process.py`): Captures and visualizes AI reasoning similar to Claude/o3 style
+- **WebSocket Broadcasting**: Real-time thinking step updates to frontend
+- **Process Completion System**: Automatic completion of thinking processes when tasks finish
+- **Retroactive Fix**: `complete_stuck_thinking_processes.py` handles incomplete processes
+- **UI Integration**: `ThinkingProcessViewer.tsx` displays thinking processes in conversational interface
+
+#### Thinking Process Lifecycle
+1. **Start**: `start_thinking_process()` creates new thinking session
+2. **Steps**: `add_thinking_step()` adds reasoning steps in real-time  
+3. **Completion**: `complete_thinking_process()` finalizes with conclusion
+4. **Auto-Complete**: Task completion triggers thinking process completion
+5. **Recovery**: Stuck processes auto-completed with system recovery messages
+
+#### Production-Ready Features (2025)
+- **Fixed Completion**: Thinking processes no longer stop at 2 steps
+- **UI Status Fix**: Real "in progress" labels instead of hard-coded fake status
+- **API Reliability**: Fixed `/api/test-thinking/status` 404 errors
+- **Database Integrity**: All incomplete processes auto-completed for clean history
+
 ### Six-Step Improvement Loop
 1. Checkpoint output for human review
 2. Generate feedback tasks automatically

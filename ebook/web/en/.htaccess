@@ -1,0 +1,3 @@
+# Redirect /en/ to /en/index.html to avoid duplicate content
+RewriteEngine On
+RewriteRule ^$ index.html [R=301,L]

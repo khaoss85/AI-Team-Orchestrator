@@ -5,9 +5,13 @@ import { ConversationMessage, Chat, TeamActivity } from './types'
 import ConversationBubble from './ConversationBubble'
 import ConversationInput from './ConversationInput'
 import ThinkingProcessViewer from './ThinkingProcessViewer'
+import ThinkingDebugPanel from './ThinkingDebugPanel'
+import ThinkingStatusIndicator from './ThinkingStatusIndicator'
 import ActionButtonsPanel from './ActionButtonsPanel'
 import WelcomeRecapMessage from './WelcomeRecapMessage'
 import useFirstVisitWelcome from '../../hooks/useFirstVisitWelcome'
+import useWorkspaceThinking from '../../hooks/useWorkspaceThinking'
+import environment from '../../utils/environment'
 
 interface ConversationPanelProps {
   activeChat: Chat | null
@@ -40,6 +44,19 @@ export default function ConversationPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [activeTab, setActiveTab] = useState<'conversation' | 'thinking'>('conversation')
+  
+  // 🧠 Real thinking data from workspace
+  const { 
+    thinkingProcesses, 
+    isLoading: thinkingLoading, 
+    error: thinkingError,
+    hasActiveProcesses,
+    recentProcessCount,
+    refresh: refreshThinking
+  } = useWorkspaceThinking(workspaceId)
+  
+  // Environment detection
+  const isDebugMode = environment.isDebugEnabled()
   
   // 🎉 Welcome message system
   const {
@@ -137,13 +154,20 @@ export default function ConversationPanel({
           {isWebSocketConnected && (
             <span className="ml-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Real-time connected"></span>
           )}
-          {thinkingSteps.length > 0 && (
-            <span className="ml-2 bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-              {thinkingSteps.length}
-            </span>
-          )}
-          {/* Show decomposition status */}
-          {currentGoalDecomposition?.status === 'in_progress' && (
+          {/* Show real thinking data count in production, fallback to legacy */}
+          {(() => {
+            const displayCount = !isDebugMode && thinkingProcesses.length > 0 
+              ? thinkingProcesses.reduce((total, process) => total + process.steps.length, 0)
+              : thinkingSteps.length;
+            
+            return displayCount > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                {displayCount}
+              </span>
+            );
+          })()}
+          {/* Show active thinking indicator */}
+          {(hasActiveProcesses || currentGoalDecomposition?.status === 'in_progress') && (
             <span className="ml-1 text-xs text-orange-600 font-medium">LIVE</span>
           )}
         </button>
@@ -221,6 +245,27 @@ export default function ConversationPanel({
           </div>
         ) : (
           <div className="h-full overflow-y-auto">
+            {/* 🔧 Debug Panel - Only in Development */}
+            {isDebugMode && (
+              <div className="p-4">
+                <ThinkingDebugPanel 
+                  workspaceId={workspaceId} 
+                  isConnected={isWebSocketConnected}
+                />
+              </div>
+            )}
+            
+            {/* 📊 Production Thinking Status */}
+            {!isDebugMode && (
+              <div className="p-4">
+                <ThinkingStatusIndicator 
+                  isConnected={isWebSocketConnected}
+                  hasActiveThinking={hasActiveProcesses}
+                  recentThinkingCount={recentProcessCount}
+                />
+              </div>
+            )}
+            
             {/* 🧠 Real-time Goal Decomposition Status (Claude/o3 style) */}
             {currentGoalDecomposition && (
               <div className="sticky top-0 z-10 bg-white border-b p-4 mb-4">
@@ -254,19 +299,44 @@ export default function ConversationPanel({
             )}
 
             {/* WebSocket Connection Status */}
-            {!isWebSocketConnected && (
+            {!isWebSocketConnected && !isDebugMode && (
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mx-4 mb-4">
                 <div className="flex items-center space-x-2 text-sm text-yellow-800">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span>Real-time thinking updates are currently disconnected</span>
+                  <span>Real-time thinking updates are offline - showing cached data</span>
                 </div>
               </div>
             )}
 
-            {/* Show thinking steps from current conversation + any saved steps from messages */}
+            {/* 🧠 Production: Real Thinking Data from Workspace */}
             {(() => {
+              // In production, prioritize real thinking data from workspace
+              if (!isDebugMode && thinkingProcesses.length > 0) {
+                // Transform real thinking processes to ThinkingProcessViewer format
+                const transformedSteps = thinkingProcesses.flatMap(process => 
+                  process.steps.map((step: any) => ({
+                    type: step.step_type,
+                    step: step.step_id,
+                    title: step.content.substring(0, 50) + (step.content.length > 50 ? '...' : ''),
+                    description: step.content,
+                    status: process.completed_at ? 'completed' : 'in_progress',
+                    timestamp: step.timestamp,
+                    fromMessage: `process-${process.process_id}`,
+                    messageTimestamp: process.started_at
+                  }))
+                );
+
+                return <ThinkingProcessViewer 
+                  steps={transformedSteps} 
+                  isThinking={hasActiveProcesses || loading} 
+                  isRealTime={isWebSocketConnected}
+                  currentDecomposition={currentGoalDecomposition}
+                />;
+              }
+
+              // Fallback: Show legacy thinking steps from conversation
               const allThinkingSteps = [...thinkingSteps];
               
               // Add thinking steps from saved messages
@@ -289,6 +359,26 @@ export default function ConversationPanel({
                 currentDecomposition={currentGoalDecomposition}
               />;
             })()}
+
+            {/* 🔄 Thinking Error State */}
+            {thinkingError && !isDebugMode && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg mx-4 mb-4">
+                <div className="flex items-center space-x-2 text-sm text-red-800">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <span className="font-medium">Thinking system error:</span> {thinkingError}
+                    <button 
+                      onClick={refreshThinking}
+                      className="ml-2 text-red-700 underline hover:text-red-900"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

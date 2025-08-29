@@ -5,9 +5,12 @@
   "main": "convert_to_pdf.js",
   "scripts": {
     "pdf": "node convert_to_pdf.js",
-    "serve": "python3 -m http.server 8000",
-    "build-pdf": "npm install && npm run pdf",
-    "dev": "python3 -m http.server 8000"
+    "pdf:en": "node generate-pdf.js en",
+    "pdf:it": "node generate-pdf.js it",
+    "pdf:both": "npm run pdf:en && npm run pdf:it",
+    "serve": "python3 -m http.server 8888",
+    "build-pdf": "npm install && npm run pdf:both",
+    "dev": "python3 -m http.server 8888"
   },
   "dependencies": {
     "puppeteer": "^21.6.1",

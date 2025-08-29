@@ -214,11 +214,23 @@ export default function ObjectiveArtifact({
       ].filter(deliverable => {
         // Extra safety check: ensure we don't show completed deliverables
         const status = (deliverable.status || '').toLowerCase()
-        return status !== 'completed'
+        
+        // Also check progress percentage - if 100% or higher, consider it completed
+        const progress = deliverable.progress || 0
+        const isCompleted = status === 'completed' || progress >= 100
+        
+        return !isCompleted
       })
       
-      console.log('Non-completed deliverables loaded for In Progress tab:', combinedInProgressDeliverables.length, 'statuses:', combinedInProgressDeliverables.map(d => d.status))
+      console.log('Non-completed deliverables loaded for In Progress tab:', combinedInProgressDeliverables.length, 'statuses:', combinedInProgressDeliverables.map(d => `${d.status} (${d.progress || 0}%)`))
       setInProgressDeliverables(combinedInProgressDeliverables)
+      
+      // If we're currently on the in_progress tab but there are no incomplete deliverables,
+      // switch to the deliverables tab to avoid showing an empty/hidden tab
+      if (combinedInProgressDeliverables.length === 0) {
+        // Only switch away from in_progress tab if user is currently on it
+        setActiveTab(currentTab => currentTab === 'in_progress' ? 'deliverables' : currentTab)
+      }
     } catch (err) {
       console.error('Failed to load in-progress deliverables:', err)
       setInProgressDeliverables([])
@@ -344,11 +356,14 @@ export default function ObjectiveArtifact({
           onClick={() => setActiveTab('deliverables')}
           label={`Deliverables${objectiveData.deliverables && objectiveData.deliverables.length > 0 ? ` (${objectiveData.deliverables.length})` : ''}`}
         />
-        <TabButton 
-          active={activeTab === 'in_progress'} 
-          onClick={() => setActiveTab('in_progress')}
-          label={`In Progress${inProgressDeliverables.length > 0 ? ` (${inProgressDeliverables.length})` : ''}`}
-        />
+        {/* Only show In Progress tab if there are actually incomplete deliverables */}
+        {inProgressDeliverables.length > 0 && (
+          <TabButton 
+            active={activeTab === 'in_progress'} 
+            onClick={() => setActiveTab('in_progress')}
+            label={`In Progress (${inProgressDeliverables.length})`}
+          />
+        )}
       </div>
 
       {/* Content */}
@@ -1213,14 +1228,14 @@ function InProgressTab({ workspaceId, inProgressDeliverables }: InProgressTabPro
         })}
       </div>
 
-      <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
+      <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
         <div className="flex items-center space-x-3">
           <div className="text-2xl">📊</div>
           <div>
-            <h4 className="font-medium text-orange-900 mb-1">Real Data from Backend</h4>
-            <p className="text-sm text-orange-700">
-              This tab shows only real deliverables from the database that need attention (failed, pending, or in-progress). 
-              No mock or placeholder data is displayed.
+            <h4 className="font-medium text-green-900 mb-1">Real Data from Backend</h4>
+            <p className="text-sm text-green-700">
+              This tab shows only real deliverables from the database that need attention (failed, pending, in-progress, or unknown status). 
+              Completed deliverables (including those with 100% progress) are automatically filtered out.
             </p>
           </div>
         </div>
