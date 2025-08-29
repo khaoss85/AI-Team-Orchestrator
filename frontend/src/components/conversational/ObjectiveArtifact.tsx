@@ -277,6 +277,7 @@ export default function ObjectiveArtifact({
             onUnblockAction={handleUnblockAction}
             unblockingInProgress={unblockingInProgress}
             objectiveData={objectiveData}
+            workspaceId={workspaceId}
           />
         )}
       </div>
@@ -461,6 +462,7 @@ interface DeliverablesTabProps {
   onUnblockAction: (action: string, deliverableIds?: string[]) => void
   unblockingInProgress: string | null
   objectiveData: ObjectiveData
+  workspaceId?: string
 }
 
 function DeliverablesTab({ 
@@ -469,11 +471,46 @@ function DeliverablesTab({
   goalProgressDetail, 
   onUnblockAction, 
   unblockingInProgress,
-  objectiveData
+  objectiveData,
+  workspaceId
 }: DeliverablesTabProps) {
   const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null)
   const [autoCompletingMissing, setAutoCompletingMissing] = useState(false)
   const [retryingTransformation, setRetryingTransformation] = useState<string | null>(null)
+
+  // Helper function to handle workspace-dependent actions safely
+  const handleWorkspaceAction = async (actionName: string, actionFn: () => Promise<void>) => {
+    if (!workspaceId) {
+      console.error(`${actionName}: WorkspaceId is not available`)
+      alert('Workspace context is not available. Please refresh the page and try again.')
+      return
+    }
+    
+    try {
+      await actionFn()
+    } catch (error) {
+      console.error(`${actionName} failed:`, error)
+      alert(`${actionName} failed. Please try again.`)
+    }
+  }
+
+  // Show warning if workspaceId is not available
+  if (!workspaceId) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-4">⚠️</div>
+        <div className="text-gray-600 mb-2">Workspace context not available</div>
+        <div className="text-sm text-gray-500 mb-4">
+          Some deliverable actions may not work properly without workspace context
+        </div>
+        {deliverables && deliverables.length > 0 && (
+          <div className="text-sm text-blue-600">
+            {deliverables.length} deliverable{deliverables.length !== 1 ? 's' : ''} found, but limited functionality available
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (!deliverables || deliverables.length === 0) {
     return (
@@ -485,12 +522,7 @@ function DeliverablesTab({
         {/* Auto-completion button for missing deliverables */}
         {objectiveData.objective.id && (
           <button
-            onClick={async () => {
-              if (!workspaceId) {
-                console.error('WorkspaceId is not available for auto-completion')
-                return
-              }
-              
+            onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
               setAutoCompletingMissing(true)
               try {
                 await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
@@ -498,14 +530,17 @@ function DeliverablesTab({
                 })
                 // Reload the page or trigger a refresh
                 window.location.reload()
-              } catch (error) {
-                console.error('Failed to auto-complete missing deliverables:', error)
               } finally {
                 setAutoCompletingMissing(false)
               }
-            }}
-            disabled={autoCompletingMissing}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+            })}
+            disabled={autoCompletingMissing || !workspaceId}
+            className={`px-4 py-2 rounded-lg disabled:opacity-50 ${
+              !workspaceId 
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+            title={!workspaceId ? 'Workspace context not available' : ''}
           >
             {autoCompletingMissing ? 'Creating deliverables...' : 'Auto-complete missing deliverables'}
           </button>
@@ -738,12 +773,7 @@ function DeliverablesTab({
               </p>
             </div>
             <button
-              onClick={async () => {
-                if (!workspaceId) {
-                  console.error('WorkspaceId is not available for auto-completion')
-                  return
-                }
-                
+              onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
                 setAutoCompletingMissing(true)
                 try {
                   await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
@@ -751,14 +781,17 @@ function DeliverablesTab({
                   })
                   // Reload the page or trigger a refresh
                   window.location.reload()
-                } catch (error) {
-                  console.error('Failed to auto-complete missing deliverables:', error)
                 } finally {
                   setAutoCompletingMissing(false)
                 }
-              }}
-              disabled={autoCompletingMissing}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg disabled:opacity-50"
+              })}
+              disabled={autoCompletingMissing || !workspaceId}
+              className={`px-3 py-2 text-sm rounded-lg disabled:opacity-50 ${
+                !workspaceId 
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              title={!workspaceId ? 'Workspace context not available' : ''}
             >
               {autoCompletingMissing ? 'Creating...' : 'Auto-complete'}
             </button>
