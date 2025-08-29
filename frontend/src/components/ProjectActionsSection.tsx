@@ -72,6 +72,7 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
   const [assetData, setAssetData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
+  const [autoCompleting, setAutoCompleting] = useState(false);
 
   const {
     getAssetCompletionStats,
@@ -117,6 +118,57 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
     }
   };
 
+  // 🤖 NEW: Enhanced Auto-Complete with Failed Task Recovery
+  const handleEnhancedAutoComplete = async () => {
+    try {
+      setAutoCompleting(true);
+      console.log('🤖 ENHANCED AUTO-COMPLETE: Starting autonomous recovery...');
+      
+      // Call the enhanced auto-complete endpoint
+      const response = await fetch(`/api/auto-completion/workspace/${workspaceId}/auto-complete-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Auto-completion failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('🤖 ENHANCED AUTO-COMPLETE: Result:', result);
+      
+      // Show user-friendly summary
+      const recoveryStats = result.failed_task_recovery || {};
+      const deliverableStats = result.deliverable_completion || {};
+      const overallStats = result.overall_summary || {};
+      
+      const summaryMessage = `
+✅ Autonomous Recovery Completed!
+
+🔧 Failed Tasks: ${recoveryStats.successful_recoveries || 0}/${recoveryStats.total_failed_tasks || 0} recovered
+📦 Deliverables: ${deliverableStats.successful_completions || 0}/${deliverableStats.total_attempts || 0} completed
+🎯 Overall Success Rate: ${Math.round((overallStats.autonomous_recovery_rate || 0) * 100)}%
+
+The system has automatically resolved issues and completed missing work without requiring manual intervention.
+      `.trim();
+      
+      alert(summaryMessage);
+      
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('🤖 ENHANCED AUTO-COMPLETE: Error:', error);
+      alert(`Auto-completion error: ${error.message}\n\nPlease try again or check the console for details.`);
+    } finally {
+      setAutoCompleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
@@ -140,13 +192,31 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
           <p className="text-sm text-gray-500 mb-4">
             Gli asset verranno generati automaticamente durante l'esecuzione del progetto
           </p>
-          <button
-            onClick={handleTriggerAnalysis}
-            disabled={triggering}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {triggering ? 'Analisi in corso...' : '🔍 Analizza Requirements Asset'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={handleTriggerAnalysis}
+              disabled={triggering}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {triggering ? 'Analisi in corso...' : '🔍 Analizza Requirements Asset'}
+            </button>
+            
+            {/* 🤖 NEW: Enhanced Auto-Complete Button */}
+            <button
+              onClick={handleEnhancedAutoComplete}
+              disabled={autoCompleting || triggering}
+              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center"
+            >
+              {autoCompleting ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
+                  Recupero Autonomo...
+                </>
+              ) : (
+                '🤖 Auto-Complete + Recovery'
+              )}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -249,6 +319,18 @@ const AssetDashboardWidget: React.FC<{ workspaceId: string }> = ({ workspaceId }
               onClick={handleTriggerAnalysis}
               loading={triggering}
               variant="secondary"
+            />
+
+            {/* 🤖 NEW: Enhanced Auto-Complete Action Card */}
+            <AssetActionCard
+              icon="🤖"
+              title="Recupero Autonomo"
+              description="Recupera task falliti + completa deliverables mancanti automaticamente"
+              action="Auto-Complete + Recovery"
+              onClick={handleEnhancedAutoComplete}
+              loading={autoCompleting}
+              disabled={triggering}
+              variant="primary"
             />
 
             {/* Force Completion Action - Emergency */}

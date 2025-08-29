@@ -115,11 +115,16 @@ class MissingDeliverableDetection:
             # Use SDK-compliant function instead of direct database access
             all_deliverables = await get_deliverables(workspace_id)
             
+            # Handle NoneType case - fix for the reported bug
+            if all_deliverables is None:
+                logger.info(f"⚠️ No deliverables returned for workspace {workspace_id}")
+                return []
+            
             # Filter deliverables related to this goal
             goal_deliverables = []
             for deliverable in all_deliverables:
                 # Check if deliverable is linked to this goal
-                metadata = deliverable.get('metadata', {})
+                metadata = deliverable.get('metadata', {}) if deliverable else {}
                 if metadata.get('goal_id') == goal_id:
                     goal_deliverables.append(deliverable)
             

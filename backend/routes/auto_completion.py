@@ -271,12 +271,34 @@ async def auto_complete_all_missing(
     background_tasks: BackgroundTasks,
     request: Request
 ):
-    """Auto-complete all missing deliverables for a workspace"""
+    """
+    🤖 ENHANCED AUTO-COMPLETE: Complete missing deliverables AND recover failed tasks
+    This is the main endpoint for complete autonomous recovery
+    """
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
     
     try:
-        logger.info(f"🚀 Auto-completing all missing deliverables for workspace {workspace_id}")
+        logger.info(f"🚀 ENHANCED AUTO-COMPLETE: Starting complete autonomous recovery for workspace {workspace_id}")
+        
+        # STEP 1: Autonomous Failed Task Recovery FIRST
+        from services.failed_task_resolver import process_workspace_failed_tasks
+        
+        logger.info(f"🔧 STEP 1: Recovering failed tasks in workspace {workspace_id}")
+        recovery_result = await process_workspace_failed_tasks(workspace_id)
+        
+        recovery_summary = {
+            'failed_task_recovery_attempted': True,
+            'recovery_success': recovery_result.get('success', False),
+            'total_failed_tasks': recovery_result.get('total_processed', 0),
+            'successful_recoveries': recovery_result.get('successful_recoveries', 0),
+            'recovery_rate': recovery_result.get('recovery_rate', 0.0)
+        }
+        
+        logger.info(f"🔧 RECOVERY COMPLETE: {recovery_summary['successful_recoveries']}/{recovery_summary['total_failed_tasks']} failed tasks recovered")
+        
+        # STEP 2: Auto-complete missing deliverables (original logic)
+        logger.info(f"📦 STEP 2: Auto-completing missing deliverables for workspace {workspace_id}")
         
         # Get all missing deliverables
         missing_deliverables = await detect_missing_deliverables(workspace_id)
@@ -323,16 +345,34 @@ async def auto_complete_all_missing(
         
         successful_completions = len([r for r in completion_results if r.get('status') == 'success'])
         
-        logger.info(f"✅ Auto-completion batch completed: {successful_completions}/{len(completion_results)} successful")
+        logger.info(f"✅ ENHANCED AUTO-COMPLETE FINISHED:")
+        logger.info(f"   💫 Failed Tasks: {recovery_summary['successful_recoveries']}/{recovery_summary['total_failed_tasks']} recovered")
+        logger.info(f"   📦 Deliverables: {successful_completions}/{len(completion_results)} completed")
         
         return {
             'success': True,
             'workspace_id': workspace_id,
-            'total_attempts': len(completion_results),
-            'successful_completions': successful_completions,
-            'completion_results': completion_results
+            'enhanced_auto_complete': True,
+            
+            # Failed Task Recovery Results
+            'failed_task_recovery': recovery_summary,
+            
+            # Deliverable Completion Results
+            'deliverable_completion': {
+                'total_attempts': len(completion_results),
+                'successful_completions': successful_completions,
+                'completion_results': completion_results
+            },
+            
+            # Overall Summary
+            'overall_summary': {
+                'total_actions': recovery_summary['total_failed_tasks'] + len(completion_results),
+                'total_successes': recovery_summary['successful_recoveries'] + successful_completions,
+                'autonomous_recovery_rate': (recovery_summary['successful_recoveries'] + successful_completions) / max(recovery_summary['total_failed_tasks'] + len(completion_results), 1),
+                'human_intervention_required': False  # Always autonomous
+            }
         }
         
     except Exception as e:
-        logger.error(f"❌ Error in bulk auto-completion for workspace {workspace_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk auto-completion error: {str(e)}")
+        logger.error(f"❌ Error in enhanced auto-completion for workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Enhanced auto-completion error: {str(e)}")

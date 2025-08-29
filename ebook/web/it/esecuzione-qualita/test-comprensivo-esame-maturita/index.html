@@ -586,7 +586,24 @@
     
     <div class="mermaid">
         graph TD
-            A[**Fase 1: Setup**] --> B[Crea un Workspace vuoto con l'obiettivo del progetto] B --> C[**Fase 2: Composizione del Team**] C --> D[Verifica che il `Director` crei un team appropriato] D --> E[**Fase 3: Pianificazione**] E --> F[Verifica che l'`AnalystAgent` scomponga l'obiettivo in task concreti] F --> G[**Fase 4: Esecuzione Autonoma**] G --> H[Avvia l'`Executor` e lo lascia funzionare senza interruzioni] H --> I[**Fase 5: Monitoraggio**] I --> J[Monitora il `HealthMonitor` per assicurarsi che non ci siano stalli] J --> K[**Fase 6: Validazione Finale**] K --> L[Dopo un tempo definito, ferma il test e verifica lo stato finale del DB] subgraph "Criteri di Successo" L --> M[Almeno 1 Deliverable finale è stato creato?] M --> N[Il contenuto del deliverable è di alta qualità e senza placeholder?] N --> O[Il progresso verso l'obiettivo "50 contatti" è > 0?] O --> P[Il sistema ha salvato almeno un "insight" nella Memoria?] end end
+            A[Fase 1: Setup] --> B[Crea un Workspace vuoto<br/>con l'obiettivo del progetto]
+            B --> C[Fase 2: Composizione del Team]
+            C --> D[Verifica che il Director<br/>crei un team appropriato]
+            D --> E[Fase 3: Pianificazione]
+            E --> F[Verifica che l'AnalystAgent<br/>scomponga l'obiettivo in task concreti]
+            F --> G[Fase 4: Esecuzione Autonoma]
+            G --> H[Avvia l'Executor e lo lascia<br/>funzionare senza interruzioni]
+            H --> I[Fase 5: Monitoraggio]
+            I --> J[Monitora il HealthMonitor<br/>per assicurarsi che non ci siano stalli]
+            J --> K[Fase 6: Validazione Finale]
+            K --> L[Dopo un tempo definito, ferma il test<br/>e verifica lo stato finale del DB]
+            
+            subgraph Success[Criteri di Successo]
+                L --> M[Almeno 1 Deliverable finale<br/>è stato creato?]
+                M --> N[Il contenuto del deliverable è<br/>di alta qualità e senza placeholder?]
+                N --> O[Il progresso verso l'obiettivo<br/>50 contatti è > 0?]
+                O --> P[Il sistema ha salvato almeno<br/>un insight nella Memoria?]
+            end
     </div>
 </div>
 

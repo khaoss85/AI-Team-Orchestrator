@@ -548,7 +548,14 @@
     
     <div class="mermaid">
         graph TD
-            A[Trigger: Obiettivo Raggiunto] --> B{DeliverableAssemblyAgent si attiva} B --> C[Analizza l'Obiettivo del Deliverable] C --> D{Query al DB per Asset Rilevanti} D --> E[Seleziona e Ordina gli Asset] E --> F{Genera Struttura Narrativa (Intro, Conclusione, Transizioni)} F --> G[Assembla il Contenuto Finale] G --> H{Validazione Finale di Coerenza} H --> I[Salva Deliverable Finito nel DB]
+            A[Trigger: Obiettivo Raggiunto] --> B{DeliverableAssemblyAgent si attiva}
+            B --> C[Analizza l'Obiettivo del Deliverable]
+            C --> D{Query al DB per Asset Rilevanti}
+            D --> E[Seleziona e Ordina gli Asset]
+            E --> F{Genera Struttura Narrativa<br/>Intro, Conclusione, Transizioni}
+            F --> G[Assembla il Contenuto Finale]
+            G --> H{Validazione Finale di Coerenza}
+            H --> I[Salva Deliverable Finito nel DB]
     </div>
 </div>
 

@@ -122,6 +122,12 @@ export default function ConversationInput({
       title: '🔧 Fix Workspace Issues',
       description: 'Restart failed tasks and resolve issues',
       example: 'Automatically diagnose and fix common problems'
+    },
+    {
+      command: '/auto_complete_with_recovery',
+      title: '🤖 Auto-Complete + Recovery',
+      description: 'Complete missing deliverables and recover failed tasks',
+      example: 'Autonomous recovery of all workspace issues'
     }
   ]
 

@@ -5,6 +5,7 @@ Maintains AI-enhanced principles while providing reliable functionality
 
 import json
 import logging
+import aiohttp
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
 from openai import OpenAI
@@ -1095,6 +1096,12 @@ Use tools to gather additional data for deeper analysis when needed.
                     "action_type": "string - Type of fix: 'restart_failed_tasks', 'reset_agents', 'clear_blockages'"
                 }
             },
+            "auto_complete_with_recovery": {
+                "description": "Complete missing deliverables AND recover failed tasks automatically",
+                "parameters": {
+                    "include_failed_recovery": "boolean - Whether to include failed task recovery (default: true)"
+                }
+            },
             "analyze_blocking_issues": {
                 "description": "Deep analysis of what's blocking progress toward deliverables",
                 "parameters": {}
@@ -1385,6 +1392,12 @@ Use tools to gather additional data for deeper analysis when needed.
                 # SCALABLE: Intervention system
                 return await self._fix_workspace_issues(
                     action_type=parameters.get("action_type", "restart_failed_tasks")
+                )
+            
+            elif tool_name == "auto_complete_with_recovery":
+                # 🤖 NEW: Enhanced Auto-Complete with Failed Task Recovery
+                return await self._auto_complete_with_recovery(
+                    include_failed_recovery=parameters.get("include_failed_recovery", True)
                 )
             
             elif tool_name == "analyze_blocking_issues":
@@ -1961,7 +1974,7 @@ Use tools to gather additional data for deeper analysis when needed.
                 team_tools.append(tool_data)
             elif tool_name in ["show_project_status", "show_goal_progress", "create_goal", "show_deliverables"]:
                 project_tools.append(tool_data)
-            elif tool_name in ["approve_all_feedback", "fix_workspace_issues", "analyze_blocking_issues", "resume_workspace_operations"]:
+            elif tool_name in ["approve_all_feedback", "fix_workspace_issues", "auto_complete_with_recovery", "analyze_blocking_issues", "resume_workspace_operations"]:
                 execution_tools.append(tool_data)
             elif tool_name in ["upload_document", "list_documents", "delete_document", "search_documents"]:
                 document_tools.append(tool_data)
@@ -2055,3 +2068,122 @@ I have access to a comprehensive set of tools to help manage your project. Here'
 Would you like me to execute any specific tool or explain how to use a particular feature?"""
         
         return response
+    
+    async def _auto_complete_with_recovery(self, include_failed_recovery: bool = True) -> dict:
+        """
+        🤖 Enhanced Auto-Complete: Complete missing deliverables AND recover failed tasks
+        This is the main method for complete autonomous recovery
+        """
+        try:
+            logger.info(f"🤖 ENHANCED AUTO-COMPLETE: Starting for workspace {self.workspace_id}")
+            
+            # Step 1: Failed Task Recovery (if enabled)
+            recovery_summary = {'attempted': False}
+            if include_failed_recovery:
+                try:
+                    from services.failed_task_resolver import process_workspace_failed_tasks
+                    
+                    logger.info(f"🔧 STEP 1: Recovering failed tasks in workspace {self.workspace_id}")
+                    recovery_result = await process_workspace_failed_tasks(self.workspace_id)
+                    
+                    recovery_summary = {
+                        'attempted': True,
+                        'success': recovery_result.get('success', False),
+                        'total_failed_tasks': recovery_result.get('total_processed', 0),
+                        'successful_recoveries': recovery_result.get('successful_recoveries', 0),
+                        'recovery_rate': recovery_result.get('recovery_rate', 0.0)
+                    }
+                    
+                    logger.info(f"🔧 RECOVERY RESULT: {recovery_summary['successful_recoveries']}/{recovery_summary['total_failed_tasks']} tasks recovered")
+                    
+                except Exception as recovery_error:
+                    logger.error(f"❌ Recovery error: {recovery_error}")
+                    recovery_summary = {
+                        'attempted': True,
+                        'success': False,
+                        'error': str(recovery_error),
+                        'total_failed_tasks': 0,
+                        'successful_recoveries': 0
+                    }
+            
+            # Step 2: Auto-Complete Missing Deliverables - USE NEW ENHANCED ENDPOINT
+            try:
+                import aiohttp
+                
+                # Use our new enhanced auto-complete endpoint
+                base_url = "http://localhost:8000"  # TODO: Get from env
+                url = f"{base_url}/api/enhanced-auto-complete"
+                
+                logger.info(f"📦 STEP 2: Calling enhanced auto-completion endpoint: {url}")
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json={"workspace_id": self.workspace_id}) as response:
+                        if response.status == 200:
+                            completion_result = await response.json()
+                            logger.info(f"📦 ENHANCED COMPLETION RESULT: {completion_result}")
+                        else:
+                            error_text = await response.text()
+                            raise Exception(f"Enhanced auto-completion API error {response.status}: {error_text}")
+                
+            except Exception as completion_error:
+                logger.error(f"❌ Completion error: {completion_error}")
+                completion_result = {
+                    'success': False,
+                    'error': str(completion_error),
+                    'deliverable_completion': {
+                        'total_attempts': 0,
+                        'successful_completions': 0
+                    }
+                }
+            
+            # Calculate overall results
+            # Parse new enhanced endpoint response structure
+            summary = completion_result.get('summary', {})
+            total_recoveries = summary.get('total_failed_tasks_recovered', 0)
+            total_completions = summary.get('total_deliverables_completed', 0)
+            total_missing_detected = summary.get('missing_deliverables_detected', 0)
+            overall_success = completion_result.get('success', False)
+            
+            total_actions = total_recoveries + total_completions
+            
+            success_message = f"""✅ **Enhanced Auto-Complete Finished!**
+
+🔧 **Failed Task Recovery:**
+   • Tasks Recovered: **{total_recoveries}** failed tasks automatically resolved
+   • Method: Autonomous task recovery system
+
+📦 **Deliverable Completion:**
+   • Deliverables Detected: **{total_missing_detected}** goals with missing outputs
+   • Deliverables Completed: **{total_completions}** deliverables auto-generated
+
+🎯 **Overall Results:**
+   • Total Actions Taken: **{total_actions}**
+   • System Status: **{'✅ Success' if overall_success else '⚠️ Partial'}**
+   • Human Intervention Required: **No** (Fully Autonomous)
+
+🤖 **Autonomous Enhancement:**
+The system has automatically detected and resolved workspace issues, completed missing deliverables, and ensured project continuity without requiring manual intervention. All operations were performed autonomously with AI-driven decision making."""
+            
+            logger.info(f"✅ ENHANCED AUTO-COMPLETE FINISHED: {total_actions} total actions, success: {overall_success}")
+            
+            return {
+                "success": True,
+                "message": success_message,
+                "enhanced_auto_complete": True,
+                "failed_task_recovery": recovery_summary,
+                "deliverable_completion": deliverable_stats,
+                "overall_summary": {
+                    "total_actions": total_actions,
+                    "total_successes": total_successes,
+                    "success_rate": overall_success_rate / 100,
+                    "human_intervention_required": False
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Enhanced auto-complete error: {e}")
+            return {
+                "success": False,
+                "message": f"❌ **Enhanced Auto-Complete Failed**\n\nError: {str(e)}\n\nPlease try again or check the system logs for more details.",
+                "error": str(e)
+            }

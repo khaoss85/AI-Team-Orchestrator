@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 import logging
 import asyncio
+from datetime import datetime
 
 
 # Aggiungi la directory corrente e la root del progetto al path
@@ -386,6 +387,88 @@ async def trigger_quality_check_api(data: Dict[str, Any]):
             "workspace_id": workspace_id,
             "quality_check_triggered": False,
             "error": str(e)
+        }
+
+@app.post("/api/enhanced-auto-complete")
+async def enhanced_auto_complete_api(data: Dict[str, Any]):
+    """🤖 Enhanced Auto-Complete: Failed task recovery + Missing deliverable completion"""
+    workspace_id = data.get("workspace_id")
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="workspace_id required")
+    
+    try:
+        logger.info(f"🚀 ENHANCED AUTO-COMPLETE: Starting for workspace {workspace_id}")
+        
+        # Step 1: Recover failed tasks
+        from services.autonomous_task_recovery import auto_recover_workspace_tasks
+        logger.info("🔧 Step 1: Recovering failed tasks...")
+        recovery_result = await auto_recover_workspace_tasks(workspace_id)
+        
+        # Step 2: Auto-complete missing deliverables
+        from services.missing_deliverable_auto_completion import (
+            detect_missing_deliverables,
+            auto_complete_missing_deliverable
+        )
+        logger.info("📦 Step 2: Detecting and completing missing deliverables...")
+        
+        missing_deliverables = await detect_missing_deliverables(workspace_id)
+        completion_results = []
+        
+        for missing in missing_deliverables:
+            if missing.get('can_auto_complete', False):
+                for deliverable_name in missing.get('missing_deliverables', []):
+                    try:
+                        completion_result = await auto_complete_missing_deliverable(
+                            workspace_id,
+                            missing.get('goal_id'),
+                            deliverable_name
+                        )
+                        completion_results.append({
+                            'goal_id': missing.get('goal_id'),
+                            'deliverable_name': deliverable_name,
+                            'completion_result': completion_result
+                        })
+                        logger.info(f"✅ Completed deliverable: {deliverable_name}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to complete deliverable {deliverable_name}: {e}")
+                        completion_results.append({
+                            'goal_id': missing.get('goal_id'),
+                            'deliverable_name': deliverable_name,
+                            'completion_result': {'success': False, 'error': str(e)}
+                        })
+        
+        # Step 3: Summary
+        total_recoveries = recovery_result.get('successful_recoveries', 0)
+        total_completions = len([r for r in completion_results if r['completion_result'].get('success')])
+        
+        logger.info(f"✅ ENHANCED AUTO-COMPLETE COMPLETE: {total_recoveries} recoveries, {total_completions} completions")
+        
+        return {
+            "success": True,
+            "workspace_id": workspace_id,
+            "enhanced_auto_complete": True,
+            "summary": {
+                "total_failed_tasks_recovered": total_recoveries,
+                "total_deliverables_completed": total_completions,
+                "missing_deliverables_detected": len(missing_deliverables)
+            },
+            "details": {
+                "failed_task_recovery": recovery_result,
+                "missing_deliverables": missing_deliverables,
+                "completion_results": completion_results
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+            "autonomous": True
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Enhanced auto-complete failed: {e}")
+        return {
+            "success": False,
+            "workspace_id": workspace_id,
+            "enhanced_auto_complete": False,
+            "error": str(e),
+            "requires_manual_intervention": False  # Always autonomous
         }
 
 @app.post("/api/generate-team-proposal")

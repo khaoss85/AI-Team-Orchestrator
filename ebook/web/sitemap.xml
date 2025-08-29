@@ -182,12 +182,6 @@
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://books.danielepelleri.com/it/filosofia-core-architettura/parsing-contratti-ai-affidabili/</loc>
-        <lastmod>2025-08-29</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
         <loc>https://books.danielepelleri.com/it/filosofia-core-architettura/orchestratore-direttore-orchestra/</loc>
         <lastmod>2025-08-29</lastmod>
         <changefreq>weekly</changefreq>
@@ -231,12 +225,6 @@
     </url>
     <url>
         <loc>https://books.danielepelleri.com/it/filosofia-core-architettura/i-15-pilastri-sistema-ai/</loc>
-        <lastmod>2025-08-29</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
-        <loc>https://books.danielepelleri.com/it/filosofia-core-architettura/agente-ambiente-database-shared/</loc>
         <lastmod>2025-08-29</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>

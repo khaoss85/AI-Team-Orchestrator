@@ -608,7 +608,12 @@
     
     <div class="mermaid">
         graph TD
-            A[Utente (Linguaggio di Dominio)] -- "Voglio una campagna email" --> B{AnalystAgent} B -- Traduce in --> C[Comando Funzionale: `generate_content_ideas`] C --> D[Backend (Logica Strutturale)] D -- Esegue e prepara il contesto --> E{SpecialistAgent} E -- Traduce in --> F[Output (Linguaggio di Dominio)] F -- "Ecco il contenuto per la tua campagna social..." --> A
+            A[Utente<br/>Linguaggio di Dominio] -->|Voglio una campagna email| B{AnalystAgent}
+            B -->|Traduce in| C[Comando Funzionale:<br/>generate_content_ideas]
+            C --> D[Backend<br/>Logica Strutturale]
+            D -->|Esegue e prepara il contesto| E{SpecialistAgent}
+            E -->|Traduce in| F[Output<br/>Linguaggio di Dominio]
+            F -->|Ecco il contenuto per la tua campagna social...| A
     </div>
 </div>
 

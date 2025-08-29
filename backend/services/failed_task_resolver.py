@@ -263,33 +263,60 @@ class FailedTaskResolver:
         🔎 DISCOVERY: Find workspaces with failed tasks that need recovery
         """
         try:
-            # This is a placeholder - in production, this would query the database
-            # for workspaces with failed tasks or in recovery states
-            
+            # 🔧 FIXED: Import function and handle database response properly
             from database import get_active_workspaces
             
-            workspaces = await get_active_workspaces()
+            workspaces_result = await get_active_workspaces()
+            
+            # Handle both dict and list responses from database
+            if isinstance(workspaces_result, dict):
+                workspaces = workspaces_result.get('workspaces', [])
+            elif isinstance(workspaces_result, list):
+                workspaces = workspaces_result
+            else:
+                logger.warning(f"⚠️ Unexpected workspace result type: {type(workspaces_result)}")
+                return []
+            
             workspaces_with_failures = []
             
             for workspace in workspaces:
-                workspace_id = workspace.get('id')
-                status = workspace.get('status')
+                # 🔧 FIXED: Ensure workspace is a dict before accessing attributes
+                if isinstance(workspace, str):
+                    # If workspace is just an ID string, use it directly
+                    workspace_id = workspace
+                    status = None
+                elif isinstance(workspace, dict):
+                    workspace_id = workspace.get('id')
+                    status = workspace.get('status')
+                else:
+                    logger.warning(f"⚠️ Unexpected workspace type: {type(workspace)}")
+                    continue
                 
-                # Check if workspace needs recovery
-                if status in [WorkspaceStatus.AUTO_RECOVERING.value, WorkspaceStatus.DEGRADED_MODE.value]:
+                if not workspace_id:
+                    continue
+                
+                # Check if workspace needs recovery based on status
+                if status and status in [WorkspaceStatus.AUTO_RECOVERING.value, WorkspaceStatus.DEGRADED_MODE.value]:
                     workspaces_with_failures.append(workspace_id)
-                elif status == WorkspaceStatus.ACTIVE.value:
-                    # Check if there are failed tasks
-                    tasks = await list_tasks(workspace_id)
-                    failed_tasks = [t for t in tasks if t.get('status') == TaskStatus.FAILED.value]
-                    
-                    if failed_tasks:
-                        workspaces_with_failures.append(workspace_id)
+                elif not status or status == WorkspaceStatus.ACTIVE.value:
+                    # Check if there are failed tasks - this is the main check
+                    try:
+                        tasks = await list_tasks(workspace_id)
+                        failed_tasks = [t for t in tasks if isinstance(t, dict) and t.get('status') == TaskStatus.FAILED.value]
+                        
+                        if failed_tasks:
+                            workspaces_with_failures.append(workspace_id)
+                            logger.info(f"🔍 Found {len(failed_tasks)} failed tasks in workspace {workspace_id}")
+                    except Exception as task_error:
+                        logger.error(f"❌ Error checking tasks for workspace {workspace_id}: {task_error}")
+                        continue
             
+            logger.info(f"🔍 DISCOVERY: Found {len(workspaces_with_failures)} workspaces needing recovery")
             return workspaces_with_failures
             
         except Exception as e:
             logger.error(f"❌ Error finding workspaces needing recovery: {e}")
+            # 🔧 GRACEFUL FALLBACK: Return empty list instead of crashing
             return []
     
     async def _update_workspace_recovery_status(self, workspace_id: str, recovery_event: str):

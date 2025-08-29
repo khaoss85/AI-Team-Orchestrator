@@ -690,7 +690,15 @@
     
     <div class="mermaid">
         graph TD
-            A[Utente Invia Messaggio: "Aggiungi 1000€ al budget"] --> B{Endpoint Conversazionale} B --> C[Carica Contesto del Workspace e della Conversazione] C --> D{ConversationalAgent analizza l'intento} D -- Intento: "modify_budget" --> E{AI decide di usare il tool `modify_configuration`} E --> F[SDK formatta la chiamata al tool con i parametri {'amount': 1000, 'operation': 'increase'}] F --> G{Executor esegue il tool} G -- Tool aggiorna il DB --> H[Risultato dell'azione] H --> I{ConversationalAgent formula la risposta} I --> J[Risposta all'Utente: "Ok, ho aumentato il budget. Il nuovo totale è 4000€."]
+            A[Utente Invia Messaggio:<br/>Aggiungi 1000€ al budget] --> B{Endpoint Conversazionale}
+            B --> C[Carica Contesto del Workspace<br/>e della Conversazione]
+            C --> D{ConversationalAgent<br/>analizza l'intento}
+            D -->|Intento: modify_budget| E{AI decide di usare il tool<br/>modify_configuration}
+            E --> F[SDK formatta la chiamata al tool<br/>con i parametri amount: 1000, operation: increase]
+            F --> G{Executor esegue il tool}
+            G -->|Tool aggiorna il DB| H[Risultato dell'azione]
+            H --> I{ConversationalAgent<br/>formula la risposta}
+            I --> J[Risposta all'Utente:<br/>Ok, ho aumentato il budget.<br/>Il nuovo totale è 4000€.]
     </div>
 </div>
 
@@ -707,7 +715,15 @@
     
     <div class="mermaid">
         graph TD
-            A[Utente Invia Messaggio: "Aggiungi 1000€ al budget"] --> B{Endpoint Conversazionale} B --> C[Carica Contesto del Workspace e della Conversazione] C --> D{ConversationalAgent analizza l'intento} D -- Intento: "modify_budget" --> E{AI decide di usare il tool `modify_configuration`} E --> F[SDK formatta la chiamata al tool con i parametri {'amount': 1000, 'operation': 'increase'}] F --> G{Executor esegue il tool} G -- Tool aggiorna il DB --> H[Risultato dell'azione] H --> I{ConversationalAgent formula la risposta} I --> J[Risposta all'Utente: "Ok, ho aumentato il budget. Il nuovo totale è 4000€."]
+            A[Utente Invia Messaggio:<br/>Aggiungi 1000€ al budget] --> B{Endpoint Conversazionale}
+            B --> C[Carica Contesto del Workspace<br/>e della Conversazione]
+            C --> D{ConversationalAgent<br/>analizza l'intento}
+            D -->|Intento: modify_budget| E{AI decide di usare il tool<br/>modify_configuration}
+            E --> F[SDK formatta la chiamata al tool<br/>con i parametri amount: 1000, operation: increase]
+            F --> G{Executor esegue il tool}
+            G -->|Tool aggiorna il DB| H[Risultato dell'azione]
+            H --> I{ConversationalAgent<br/>formula la risposta}
+            I --> J[Risposta all'Utente:<br/>Ok, ho aumentato il budget.<br/>Il nuovo totale è 4000€.]
     </div>
 </div>
 

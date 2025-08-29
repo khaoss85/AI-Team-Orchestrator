@@ -607,7 +607,12 @@ class WorkspaceInsight(BaseModel):
     
     <div class="mermaid">
         graph TD
-            A[Task Completato] --> B{Analisi Post --> Esecuzione} B --> C{L'AI analizza il risultato e il processo} C --> D{Estrae un Insight Chiave} D --> E[Tipizza l'Insight (Successo, Fallimento, etc.)] E --> F[Genera Tag di Rilevanza] F --> G{Salva l'Insight Strutturato nel `WorkspaceMemory`}
+            A[Task Completato] --> B{Analisi Post-Esecuzione}
+            B --> C{L'AI analizza il risultato e il processo}
+            C --> D{Estrae un Insight Chiave}
+            D --> E[Tipizza l'Insight<br/>Successo, Fallimento, etc.]
+            E --> F[Genera Tag di Rilevanza]
+            F --> G{Salva l'Insight Strutturato<br/>nel WorkspaceMemory}
     </div>
 </div>
 

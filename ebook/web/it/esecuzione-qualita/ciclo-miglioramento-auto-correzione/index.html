@@ -541,7 +541,14 @@
     
     <div class="mermaid">
         graph TD
-            A[Evento Trigger: Task Completato o Timer Periodico] --> B{GoalValidator si attiva} B --> C[Analisi del Gap: Confronta Stato Attuale vs. Obiettivi] C -- Nessun Gap Rilevante --> D[Continua Operazioni Normali] C -- Gap Critico Rilevato --> E{Consultazione Memoria} E -- Cerca "Failure Lessons" Correlate --> F{Generazione Piano Correttivo} F -- L'AI definisce nuovi task --> G[Creazione Task Correttivi] G -- Priorità "CRITICAL" --> H{Aggiunti alla Coda dell'Executor} H --> D
+            A[Evento Trigger:<br/>Task Completato o Timer Periodico] --> B{GoalValidator si attiva}
+            B --> C[Analisi del Gap:<br/>Confronta Stato Attuale vs. Obiettivi]
+            C -->|Nessun Gap Rilevante| D[Continua Operazioni Normali]
+            C -->|Gap Critico Rilevato| E{Consultazione Memoria}
+            E -->|Cerca Failure Lessons Correlate| F{Generazione Piano Correttivo}
+            F -->|L'AI definisce nuovi task| G[Creazione Task Correttivi]
+            G -->|Priorità CRITICAL| H{Aggiunti alla Coda dell'Executor}
+            H --> D
     </div>
 </div>
 

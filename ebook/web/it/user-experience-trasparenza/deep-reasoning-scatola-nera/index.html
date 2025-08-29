@@ -563,7 +563,17 @@
     
     <div class="mermaid">
         graph TD
-            A[Utente Invia Messaggio] --> B{ConversationalAgent} B --> C[**Inizia a Registrare i Passi del Ragionamento**] C --> D[Passo 1: Analisi Contesto] D --> E[Passo 2: Consultazione Memoria] E --> F[Passo 3: Generazione Alternative] F --> G[Passo 4: Valutazione e Auto --> Critica] G --> H{**Fine Ragionamento**} H --> I[Genera Risposta Finale Concisa] H --> J[Salva i Passi del Ragionamento come Artefatto] I --> K[Inviata alla UI (Tab "Conversation")] J --> L[Inviato alla UI (Tab "Thinking")]
+            A[Utente Invia Messaggio] --> B{ConversationalAgent}
+            B --> C[Inizia a Registrare<br/>i Passi del Ragionamento]
+            C --> D[Passo 1: Analisi Contesto]
+            D --> E[Passo 2: Consultazione Memoria]
+            E --> F[Passo 3: Generazione Alternative]
+            F --> G[Passo 4: Valutazione<br/>e Auto-Critica]
+            G --> H{Fine Ragionamento}
+            H --> I[Genera Risposta Finale Concisa]
+            H --> J[Salva i Passi del Ragionamento<br/>come Artefatto]
+            I --> K[Inviata alla UI<br/>Tab Conversation]
+            J --> L[Inviato alla UI<br/>Tab Thinking]
     </div>
 </div>
 
@@ -580,7 +590,17 @@
     
     <div class="mermaid">
         graph TD
-            A[Utente Invia Messaggio] --> B{ConversationalAgent} B --> C[**Inizia a Registrare i Passi del Ragionamento**] C --> D[Passo 1: Analisi Contesto] D --> E[Passo 2: Consultazione Memoria] E --> F[Passo 3: Generazione Alternative] F --> G[Passo 4: Valutazione e Auto --> Critica] G --> H{**Fine Ragionamento**} H --> I[Genera Risposta Finale Concisa] H --> J[Salva i Passi del Ragionamento come Artefatto] I --> K[Inviata alla UI (Tab "Conversation")] J --> L[Inviato alla UI (Tab "Thinking")]
+            A[Utente Invia Messaggio] --> B{ConversationalAgent}
+            B --> C[Inizia a Registrare<br/>i Passi del Ragionamento]
+            C --> D[Passo 1: Analisi Contesto]
+            D --> E[Passo 2: Consultazione Memoria]
+            E --> F[Passo 3: Generazione Alternative]
+            F --> G[Passo 4: Valutazione<br/>e Auto-Critica]
+            G --> H{Fine Ragionamento}
+            H --> I[Genera Risposta Finale Concisa]
+            H --> J[Salva i Passi del Ragionamento<br/>come Artefatto]
+            I --> K[Inviata alla UI<br/>Tab Conversation]
+            J --> L[Inviato alla UI<br/>Tab Thinking]
     </div>
 </div>
 

@@ -769,6 +769,88 @@ class EnhancedGoalDrivenPlanner:
             logger.error(f"Failed to generate strategic recommendations: {e}")
             return []
     
+    async def _create_goal_driven_tasks(
+        self, 
+        workspace_id: str,
+        goal_requirements: List[Dict[str, Any]],
+        context: Optional[Dict[str, Any]] = None
+    ) -> List[EnhancedTask]:
+        """Create goal-driven tasks from requirements - Missing method implementation"""
+        
+        try:
+            logger.info(f"🎯 Creating {len(goal_requirements)} goal-driven tasks for workspace {workspace_id}")
+            
+            tasks = []
+            context = context or {}
+            
+            for i, requirement in enumerate(goal_requirements):
+                try:
+                    requirement_text = requirement.get('requirement', '')
+                    priority = requirement.get('priority', 'medium')
+                    deliverable_type = requirement.get('deliverable_type', 'content_asset')
+                    goal_id = context.get('goal_id')
+                    
+                    # Create enhanced task
+                    task = EnhancedTask(
+                        id=uuid4(),
+                        workspace_id=UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id,
+                        goal_id=UUID(goal_id) if goal_id and isinstance(goal_id, str) else goal_id,
+                        
+                        # Core task information
+                        name=f"Goal-Driven Task: {requirement_text}",
+                        description=f"Auto-generated goal-driven task to fulfill requirement: {requirement_text}",
+                        expected_output=f"Completed {deliverable_type}: {requirement_text}",
+                        
+                        # Task classification
+                        task_type="creation",
+                        priority=priority,
+                        estimated_duration_hours=4.0,
+                        
+                        # Success criteria
+                        success_criteria=[
+                            f"Requirement fulfilled: {requirement_text}",
+                            f"Deliverable type created: {deliverable_type}",
+                            "Quality standards met"
+                        ],
+                        
+                        # Status and timing
+                        status=TaskStatus.PENDING,
+                        created_at=datetime.utcnow(),
+                        
+                        # Goal-driven metadata
+                        ai_generated=True,
+                        generation_context={
+                            "generation_type": "goal_driven_auto_completion",
+                            "requirement": requirement_text,
+                            "deliverable_type": deliverable_type,
+                            "auto_completion": context.get('auto_completion', False),
+                            "sequence_position": i + 1,
+                            "total_tasks": len(goal_requirements)
+                        },
+                        
+                        # Pillar compliance
+                        pillar_compliance={
+                            "goal_driven": True,
+                            "concrete_deliverable": True,
+                            "ai_generated": True,
+                            "auto_completion": True
+                        }
+                    )
+                    
+                    tasks.append(task)
+                    logger.info(f"✅ Created goal-driven task {i+1}: {requirement_text}")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Failed to create task {i+1} from requirement: {e}")
+                    continue
+            
+            logger.info(f"✅ Successfully created {len(tasks)} goal-driven tasks")
+            return tasks
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to create goal-driven tasks: {e}")
+            return []
+
     async def get_planning_metrics(self, workspace_id: UUID) -> Dict[str, Any]:
         """Get comprehensive planning and goal metrics"""
         

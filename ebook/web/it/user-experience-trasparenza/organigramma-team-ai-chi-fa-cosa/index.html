@@ -650,7 +650,28 @@
     
     <div class="mermaid">
         graph TD
-            A[Cliente arriva con un Obiettivo] --> B{Director (HR) analizza e assume il Team di Progetto} B --> C{AnalystAgent (Planner) crea il Piano di Lavoro (Tasks)} C --> D{Executor assegna un Task al Team di Progetto} D -- Lavoro Eseguito --> E[Risultato Grezzo] E --> F{Dipartimento di Produzione lo trasforma in Asset} F --> G{QA Manager lo valida} G -- Approvato --> H[Asset salvato in DB] H --> I{Memory (R&D) estrae una lezione} I --> J[Lezione salvata in Memoria] subgraph "Ciclo di Lavoro" C D E F G H I J end H -- Abbastanza Asset? --> K{Deliverable Assembly (Editor) crea il prodotto finale end K --> L[Deliverable Pronto per il Cliente] end
+            A[Cliente arriva con un Obiettivo] --> B{Director HR<br/>analizza e assume il Team di Progetto}
+            B --> C{AnalystAgent Planner<br/>crea il Piano di Lavoro Tasks}
+            C --> D{Executor assegna un Task<br/>al Team di Progetto}
+            D -->|Lavoro Eseguito| E[Risultato Grezzo]
+            E --> F{Dipartimento di Produzione<br/>lo trasforma in Asset}
+            F --> G{QA Manager lo valida}
+            G -->|Approvato| H[Asset salvato in DB]
+            H --> I{Memory R&D<br/>estrae una lezione}
+            I --> J[Lezione salvata in Memoria]
+            H -->|Abbastanza Asset?| K{Deliverable Assembly Editor<br/>crea il prodotto finale}
+            K --> L[Deliverable Pronto per il Cliente]
+            
+            subgraph Cycle[Ciclo di Lavoro]
+                C
+                D
+                E
+                F
+                G
+                H
+                I
+                J
+            end
     </div>
 </div>
 

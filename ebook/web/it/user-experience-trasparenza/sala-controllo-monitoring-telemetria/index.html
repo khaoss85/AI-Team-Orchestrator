@@ -567,7 +567,13 @@
     
     <div class="mermaid">
         graph TD
-            A[Richiesta API con nuovo X --> Trace --> ID: 123] --> B{Executor} B -- X --> Trace --> ID: 123 --> C{AnalystAgent} C -- X --> Trace --> ID: 123 --> D[Task Creato nel DB] D -- ha una colonna `trace_id`='123' --> E{SpecialistAgent} E -- X --> Trace --> ID: 123 --> F[Chiamata a OpenAI] F -- X --> Trace --> ID: 123 --> G[Insight Salvato in Memoria] G -- ha una colonna `trace_id`='123' --> H[Deliverable Creato]
+            A[Richiesta API con nuovo<br/>X-Trace-ID: 123] --> B{Executor}
+            B -->|X-Trace-ID: 123| C{AnalystAgent}
+            C -->|X-Trace-ID: 123| D[Task Creato nel DB<br/>trace_id='123']
+            D --> E{SpecialistAgent}
+            E -->|X-Trace-ID: 123| F[Chiamata a OpenAI]
+            F -->|X-Trace-ID: 123| G[Insight Salvato in Memoria<br/>trace_id='123']
+            G --> H[Deliverable Creato]
     </div>
 </div>
 
@@ -584,7 +590,13 @@
     
     <div class="mermaid">
         graph TD
-            A[Richiesta API con nuovo X --> Trace --> ID: 123] --> B{Executor} B -- X --> Trace --> ID: 123 --> C{AnalystAgent} C -- X --> Trace --> ID: 123 --> D[Task Creato nel DB] D -- ha una colonna `trace_id`='123' --> E{SpecialistAgent} E -- X --> Trace --> ID: 123 --> F[Chiamata a OpenAI] F -- X --> Trace --> ID: 123 --> G[Insight Salvato in Memoria] G -- ha una colonna `trace_id`='123' --> H[Deliverable Creato]
+            A[Richiesta API con nuovo<br/>X-Trace-ID: 123] --> B{Executor}
+            B -->|X-Trace-ID: 123| C{AnalystAgent}
+            C -->|X-Trace-ID: 123| D[Task Creato nel DB<br/>trace_id='123']
+            D --> E{SpecialistAgent}
+            E -->|X-Trace-ID: 123| F[Chiamata a OpenAI]
+            F -->|X-Trace-ID: 123| G[Insight Salvato in Memoria<br/>trace_id='123']
+            G --> H[Deliverable Creato]
     </div>
 </div>
 

@@ -715,7 +715,21 @@ Sei un Chief Strategy Officer (CSO) AI. Il tuo unico scopo è identificare la pr
     
     <div class="mermaid">
         graph TD
-            A[Deliverable Completato] --> B{StrategistAgent Monitoring} B --> C[Analisi Performance Timeline] C --> D{Trigger Proattivo: 2-3 settimane} D --> E[Richiesta Feedback all'Utente] E --> F{Utente Fornisce Dati} F --> G[AI Analysis: Pattern Recognition] G --> H[Identificazione Opportunità di Evoluzione] H --> I[Generazione Proposta Strategica] I --> J{Utente Approva?} J -- Sì --> K[Creazione Nuovo Goal Evolutivo] J -- No --> L[Salvataggio Lesson Learned] K --> M[Nuovo Ciclo di Esecuzione] L --> N[Aggiornamento Strategia Futura] M --> A N --> B
+            A[Deliverable Completato] --> B{StrategistAgent Monitoring}
+            B --> C[Analisi Performance Timeline]
+            C --> D{Trigger Proattivo:<br/>2-3 settimane}
+            D --> E[Richiesta Feedback all'Utente]
+            E --> F{Utente Fornisce Dati}
+            F --> G[AI Analysis:<br/>Pattern Recognition]
+            G --> H[Identificazione Opportunità<br/>di Evoluzione]
+            H --> I[Generazione Proposta Strategica]
+            I --> J{Utente Approva?}
+            J -->|Sì| K[Creazione Nuovo Goal Evolutivo]
+            J -->|No| L[Salvataggio Lesson Learned]
+            K --> M[Nuovo Ciclo di Esecuzione]
+            L --> N[Aggiornamento Strategia Futura]
+            M --> A
+            N --> B
     </div>
 </div>
 
