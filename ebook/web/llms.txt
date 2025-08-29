@@ -1,0 +1,64 @@
+# AI Team Orchestrator
+
+> A comprehensive ebook guide to building production-ready AI systems with autonomous agent orchestration, from MVP to global platform scale. Covers architecture patterns, team dynamics, quality gates, and scalable AI implementations with real-world case studies and technical deep-dives.
+
+The AI Team Orchestrator book is a practical guide for developers, architects, and engineering leaders who want to build sophisticated AI systems that can operate autonomously while maintaining high quality and reliability. The book is structured in 4 main movements covering core philosophy, execution quality, user experience, and memory system scaling.
+
+Key topics include:
+- AI agent architecture and orchestration patterns
+- Quality gates and human-in-the-loop systems
+- Semantic caching and performance optimization
+- Enterprise security and compliance
+- Mobile-first responsive design for AI applications
+- Production readiness and monitoring strategies
+
+## Core Philosophy & Architecture
+
+- [15 Pillars of AI System Design](https://books.danielepelleri.com/en/core-philosophy-architecture/15-pillars-ai-system/index.html): Fundamental principles for building robust AI systems
+- [Agent Toolbox & Environment](https://books.danielepelleri.com/en/core-philosophy-architecture/agent-toolbox/index.html): Essential tools and interfaces for AI agents
+- [AI Recruiter & Dynamic Team](https://books.danielepelleri.com/en/core-philosophy-architecture/ai-recruiter-dynamic-team/index.html): Patterns for dynamic agent team formation
+- [SDK vs Direct API Battle](https://books.danielepelleri.com/en/core-philosophy-architecture/sdk-vs-direct-api-battle/index.html): Choosing the right integration approach
+- [First Specialist Agent Architecture](https://books.danielepelleri.com/en/core-philosophy-architecture/first-specialist-agent-architecture/index.html): Building your first specialized AI agent
+
+## Execution Quality
+
+- [Quality Gates & Human Loop](https://books.danielepelleri.com/en/execution-quality/quality-gates-human-loop/index.html): Implementing quality controls with human oversight
+- [Final Assembly Last Mile](https://books.danielepelleri.com/en/execution-quality/final-assembly-last-mile/index.html): Completing complex AI workflows
+- [Autonomous Monitoring](https://books.danielepelleri.com/en/execution-quality/autonomous-monitoring/index.html): Self-monitoring AI systems
+- [Memory System Learning](https://books.danielepelleri.com/en/execution-quality/memory-system-learning/index.html): AI systems that learn from experience
+- [Production Test Strategy](https://books.danielepelleri.com/en/execution-quality/production-test/index.html): Testing AI systems in production
+
+## User Experience & Transparency
+
+- [Control Room & Monitoring](https://books.danielepelleri.com/en/user-experience-transparency/control-room/index.html): Building monitoring dashboards for AI systems
+- [Contextual Chat Interface](https://books.danielepelleri.com/en/user-experience-transparency/contextual-chat/index.html): Creating intuitive AI chat experiences
+- [AI Team Org Chart](https://books.danielepelleri.com/en/user-experience-transparency/ai-team-org-chart/index.html): Visualizing AI agent relationships
+- [Onboarding UX](https://books.danielepelleri.com/en/user-experience-transparency/onboarding-ux/index.html): User onboarding for AI systems
+- [Tech Stack Foundations](https://books.danielepelleri.com/en/user-experience-transparency/tech-stack/index.html): Technology choices for AI applications
+
+## Memory System & Scaling
+
+- [Semantic Caching System](https://books.danielepelleri.com/en/memory-system-scaling/semantic-caching/index.html): Advanced caching for AI performance optimization
+- [Orchestrator Wars](https://books.danielepelleri.com/en/memory-system-scaling/orchestrator-wars/index.html): Comparing orchestration frameworks
+- [Security Hardening](https://books.danielepelleri.com/en/memory-system-scaling/security-hardening/index.html): Enterprise security for AI systems
+- [Global Scale Architecture](https://books.danielepelleri.com/en/memory-system-scaling/global-scale/index.html): Scaling AI systems worldwide
+- [Production Readiness Audit](https://books.danielepelleri.com/en/memory-system-scaling/production-readiness-audit/index.html): Preparing AI systems for production
+
+## Complete Book
+
+- [Complete English Book](https://books.danielepelleri.com/en/book.html): Full ebook in single page format
+- [Complete Italian Book](https://books.danielepelleri.com/it/libro.html): Libro completo in formato pagina singola
+- [Topic Clusters](https://books.danielepelleri.com/topic-clusters.html): Thematic organization of chapters
+- [Complete Index](https://books.danielepelleri.com/complete-index.html): Comprehensive chapter index
+
+## Navigation
+
+- [English Home](https://books.danielepelleri.com/en/index.html): Main English navigation page
+- [Italian Home](https://books.danielepelleri.com/it/index.html): Pagina principale italiana
+- [Sitemap](https://books.danielepelleri.com/sitemap.xml): Complete site structure
+
+## Optional
+
+- [Performance Optimization Guide](https://books.danielepelleri.com/PERFORMANCE_OPTIMIZATION_GUIDE.md): Technical guide for Core Web Vitals optimization
+- [Shared CSS Styles](https://books.danielepelleri.com/shared-styles.css): Optimized CSS for mobile-first responsive design
+- [Reader Tools JavaScript](https://books.danielepelleri.com/shared-reader-tools.js): Interactive reading features and accessibility tools

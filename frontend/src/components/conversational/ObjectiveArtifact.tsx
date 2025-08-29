@@ -127,15 +127,15 @@ export default function ObjectiveArtifact({
     }
   }, [goalId, workspaceId])
 
-  // Polling for in-progress deliverables
+  // Load in-progress deliverables when tab is active and goal data is available
   useEffect(() => {
-    if (activeTab === 'in_progress' && workspaceId) {
+    if (activeTab === 'in_progress' && workspaceId && goalProgressDetail) {
       loadInProgressDeliverables()
       
-      // Start polling every 5 seconds
+      // Start polling every 10 seconds to reload goal progress detail
       const interval = setInterval(() => {
-        loadInProgressDeliverables()
-      }, 5000)
+        loadGoalProgressDetails() // This will refresh the goalProgressDetail data
+      }, 10000)
       
       setPollingInterval(interval)
       
@@ -149,7 +149,7 @@ export default function ObjectiveArtifact({
       clearInterval(pollingInterval)
       setPollingInterval(null)
     }
-  }, [activeTab, workspaceId])
+  }, [activeTab, workspaceId, goalProgressDetail])
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -175,61 +175,23 @@ export default function ObjectiveArtifact({
   }
 
   const loadInProgressDeliverables = async () => {
-    if (!workspaceId) return
+    if (!workspaceId || !goalProgressDetail) return
     
     try {
-      // Try multiple endpoints to find available tasks data
-      let tasks = []
+      // ONLY use real data from goalProgressDetail - NO MOCK DATA
+      const realInProgressDeliverables = goalProgressDetail.deliverable_breakdown?.in_progress || []
+      const realPendingDeliverables = goalProgressDetail.deliverable_breakdown?.pending || []
+      const realFailedDeliverables = goalProgressDetail.deliverable_breakdown?.failed || []
       
-      // First, try the monitoring endpoint (requires proper UUID)
-      if (workspaceId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        try {
-          const response = await fetch(`${api.getBaseUrl()}/api/monitoring/workspace/${workspaceId}/tasks`)
-          if (response.ok) {
-            const data = await response.json()
-            tasks = data.tasks || []
-          }
-        } catch (monitoringError) {
-          console.log('Monitoring endpoint not available, trying fallback')
-        }
-      }
+      // Combine failed, pending, and in_progress deliverables for the "In Progress" tab
+      const combinedInProgressDeliverables = [
+        ...realFailedDeliverables,
+        ...realPendingDeliverables, 
+        ...realInProgressDeliverables
+      ]
       
-      // If no tasks found or UUID invalid, create mock data for demo purposes
-      if (tasks.length === 0) {
-        // For demo: create a mock in-progress deliverable if auto-completion was recently triggered
-        const now = Date.now()
-        const mockDeliverables = []
-        
-        // This is a fallback for when the real API isn't available
-        // In production, this would be replaced with proper task tracking
-        if (sessionStorage.getItem(`autoCompleting_${workspaceId}`)) {
-          const startTime = parseInt(sessionStorage.getItem(`autoCompleting_${workspaceId}`) || '0')
-          if (now - startTime < 30000) { // Show for 30 seconds
-            mockDeliverables.push({
-              id: 'mock-1',
-              title: 'Creating Missing Deliverable',
-              description: 'Auto-completing missing deliverable for objective',
-              status: 'running',
-              created_at: new Date(startTime).toISOString(),
-              assigned_agent_id: 'AI Assistant'
-            })
-          } else {
-            sessionStorage.removeItem(`autoCompleting_${workspaceId}`)
-          }
-        }
-        
-        tasks = mockDeliverables
-      } else {
-        // Filter for deliverable-creation tasks
-        tasks = tasks.filter((task: any) => 
-          task.description && 
-          (task.description.toLowerCase().includes('deliverable') || 
-           task.description.toLowerCase().includes('create') ||
-           task.description.toLowerCase().includes('generate'))
-        )
-      }
-      
-      setInProgressDeliverables(tasks)
+      console.log('Real in-progress deliverables loaded:', combinedInProgressDeliverables.length)
+      setInProgressDeliverables(combinedInProgressDeliverables)
     } catch (err) {
       console.error('Failed to load in-progress deliverables:', err)
       setInProgressDeliverables([])
@@ -637,30 +599,31 @@ function DeliverablesTab({
             onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
               setAutoCompletingMissing(true)
               
-              // Mark the start time for the In Progress tab
-              sessionStorage.setItem(`autoCompleting_${workspaceId}`, Date.now().toString())
-              
               try {
+                console.log('Making auto-completion request to:', `${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`)
                 const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
-                  method: 'POST'
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  }
                 })
                 
+                console.log('Auto-completion response status:', response.status)
+                
                 if (response.ok) {
-                  console.log('Auto-completion request successful')
-                  // Switch to In Progress tab to show real-time updates
-                  setActiveTab('in_progress')
-                  alert('Auto-completion request submitted successfully! Check the "In Progress" tab to see real-time updates.')
-                  // Optionally reload the ObjectiveArtifact data without full page reload
+                  const responseData = await response.json()
+                  console.log('Auto-completion response data:', responseData)
+                  alert('Auto-completion request submitted successfully! The system will generate missing deliverables.')
+                  // Reload goal progress details to show updated data
                   await loadGoalProgressDetails()
                 } else {
-                  console.error('Auto-completion request failed:', response.status, response.statusText)
-                  sessionStorage.removeItem(`autoCompleting_${workspaceId}`)
-                  alert('Auto-completion request failed. Please try again.')
+                  const errorText = await response.text()
+                  console.error('Auto-completion request failed:', response.status, response.statusText, errorText)
+                  alert(`Auto-completion request failed: ${response.status} - ${errorText || 'Please try again.'}`)
                 }
               } catch (error) {
                 console.error('Auto-completion request error:', error)
-                sessionStorage.removeItem(`autoCompleting_${workspaceId}`)
-                alert('Auto-completion request failed due to network error. Please try again.')
+                alert(`Auto-completion request failed due to network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
               } finally {
                 setAutoCompletingMissing(false)
               }
@@ -907,30 +870,31 @@ function DeliverablesTab({
               onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
                 setAutoCompletingMissing(true)
                 
-                // Mark the start time for the In Progress tab
-                sessionStorage.setItem(`autoCompleting_${workspaceId}`, Date.now().toString())
-                
                 try {
+                  console.log('Making auto-completion request to:', `${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`)
                   const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    }
                   })
                   
+                  console.log('Auto-completion response status:', response.status)
+                  
                   if (response.ok) {
-                    console.log('Auto-completion request successful')
-                    // Switch to In Progress tab to show real-time updates
-                    setActiveTab('in_progress')
-                    alert('Auto-completion request submitted successfully! Check the "In Progress" tab to see real-time updates.')
-                    // Reload the ObjectiveArtifact data without full page reload
+                    const responseData = await response.json()
+                    console.log('Auto-completion response data:', responseData)
+                    alert('Auto-completion request submitted successfully! The system will generate missing deliverables.')
+                    // Reload goal progress details to show updated data
                     await loadGoalProgressDetails()
                   } else {
-                    console.error('Auto-completion request failed:', response.status, response.statusText)
-                    sessionStorage.removeItem(`autoCompleting_${workspaceId}`)
-                    alert('Auto-completion request failed. Please try again.')
+                    const errorText = await response.text()
+                    console.error('Auto-completion request failed:', response.status, response.statusText, errorText)
+                    alert(`Auto-completion request failed: ${response.status} - ${errorText || 'Please try again.'}`)
                   }
                 } catch (error) {
                   console.error('Auto-completion request error:', error)
-                  sessionStorage.removeItem(`autoCompleting_${workspaceId}`)
-                  alert('Auto-completion request failed due to network error. Please try again.')
+                  alert(`Auto-completion request failed due to network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
                 } finally {
                   setAutoCompletingMissing(false)
                 }
@@ -1123,10 +1087,10 @@ function InProgressTab({ workspaceId, inProgressDeliverables }: InProgressTabPro
   if (!inProgressDeliverables || inProgressDeliverables.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">🎯</div>
-        <div className="text-gray-600 mb-2">No deliverables in progress</div>
+        <div className="text-6xl mb-4">✅</div>
+        <div className="text-gray-600 mb-2">No deliverables need attention</div>
         <div className="text-sm text-gray-500">
-          Active deliverable creation tasks will appear here
+          Failed, pending, or in-progress deliverables will appear here
         </div>
       </div>
     )
@@ -1136,76 +1100,91 @@ function InProgressTab({ workspaceId, inProgressDeliverables }: InProgressTabPro
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-medium text-gray-900">
-          Deliverables in Progress ({inProgressDeliverables.length})
+          Deliverables Needing Attention ({inProgressDeliverables.length})
         </h3>
         <div className="flex items-center space-x-2">
-          <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full"></div>
-          <span className="text-sm text-gray-500">Auto-refreshing every 5 seconds</span>
+          <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full"></div>
+          <span className="text-sm text-gray-500">Auto-refreshing every 10 seconds</span>
         </div>
       </div>
 
       <div className="space-y-3">
-        {inProgressDeliverables.map((task, index) => (
-          <div key={task.id || index} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  <h4 className="font-medium text-blue-900">
-                    {task.title || task.description || 'Creating Deliverable'}
-                  </h4>
+        {inProgressDeliverables.map((deliverable, index) => {
+          const getStatusColor = (status: string) => {
+            switch (status?.toLowerCase()) {
+              case 'failed': return 'bg-red-100 border-red-300 text-red-800'
+              case 'pending': return 'bg-yellow-100 border-yellow-300 text-yellow-800'
+              case 'in_progress': return 'bg-blue-100 border-blue-300 text-blue-800'
+              default: return 'bg-gray-100 border-gray-300 text-gray-800'
+            }
+          }
+          
+          const getStatusIcon = (status: string) => {
+            switch (status?.toLowerCase()) {
+              case 'failed': return '❌'
+              case 'pending': return '⏳'
+              case 'in_progress': return '🔄'
+              default: return '❓'
+            }
+          }
+          
+          return (
+            <div key={deliverable.id || index} className={`border rounded-lg p-4 ${getStatusColor(deliverable.status)}`}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="text-lg">{getStatusIcon(deliverable.status)}</div>
+                    <h4 className="font-medium">
+                      {deliverable.title || `Deliverable ${index + 1}`}
+                    </h4>
+                  </div>
+                  
+                  <div className="text-sm mb-2">
+                    <div className="flex items-center space-x-4">
+                      <span>Status: <strong>{deliverable.status?.toUpperCase() || 'UNKNOWN'}</strong></span>
+                      {deliverable.type && (
+                        <span>Type: <strong>{deliverable.type}</strong></span>
+                      )}
+                    </div>
+                  </div>
+
+                  {deliverable.retry_reason && (
+                    <div className="text-sm text-red-700 bg-red-50 rounded p-2 border border-red-200 mb-2">
+                      <strong>Issue:</strong> {deliverable.retry_reason}
+                    </div>
+                  )}
+                  
+                  {deliverable.unblock_actions && deliverable.unblock_actions.length > 0 && (
+                    <div className="text-sm mb-2">
+                      <strong>Available Actions:</strong> {deliverable.unblock_actions.join(', ')}
+                    </div>
+                  )}
                 </div>
                 
-                <div className="text-sm text-blue-700 mb-2">
-                  <div className="flex items-center space-x-4">
-                    <span>Status: <strong>{task.status || 'In Progress'}</strong></span>
-                    {task.assigned_agent_id && (
-                      <span>Agent: <strong>{task.assigned_agent_id}</strong></span>
-                    )}
+                <div className="flex flex-col items-end space-y-1 ml-4">
+                  <div className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(deliverable.status)}`}>
+                    {deliverable.status?.toUpperCase() || 'UNKNOWN'}
                   </div>
+                  {deliverable.created_at && (
+                    <div className="text-xs text-gray-500">
+                      Created {new Date(deliverable.created_at).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
-
-                {task.description && (
-                  <div className="text-sm text-gray-600 bg-white rounded p-2 border">
-                    {task.description}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex flex-col items-end space-y-1 ml-4">
-                <div className="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full font-medium">
-                  {task.status === 'running' ? 'Active' : 'Pending'}
-                </div>
-                {task.created_at && (
-                  <div className="text-xs text-gray-500">
-                    Started {new Date(task.created_at).toLocaleTimeString()}
-                  </div>
-                )}
               </div>
             </div>
-            
-            {/* Progress indicator */}
-            <div className="mt-3">
-              <div className="w-full bg-blue-100 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-              </div>
-              <div className="flex justify-between text-xs text-blue-600 mt-1">
-                <span>Processing...</span>
-                <span>Estimated completion soon</span>
-              </div>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+      <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
         <div className="flex items-center space-x-3">
-          <div className="text-2xl">💡</div>
+          <div className="text-2xl">📊</div>
           <div>
-            <h4 className="font-medium text-blue-900 mb-1">Real-time Updates</h4>
-            <p className="text-sm text-blue-700">
-              This tab automatically refreshes to show the latest deliverable creation progress. 
-              Completed deliverables will automatically appear in the "Deliverables" tab.
+            <h4 className="font-medium text-orange-900 mb-1">Real Data from Backend</h4>
+            <p className="text-sm text-orange-700">
+              This tab shows only real deliverables from the database that need attention (failed, pending, or in-progress). 
+              No mock or placeholder data is displayed.
             </p>
           </div>
         </div>
