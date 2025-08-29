@@ -425,7 +425,21 @@
                 text-align: center;
             }
         }
-    </style>
+        
+        /* PDF/Print Specific Styles - Hide UI Elements */
+        @media print {
+            .bookmarks-modal,
+            .reader-tools,
+            .bookmark-toast,
+            #bookmarksModal,
+            #bookmarkToast {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                z-index: -1000 !important;
+            }
+        }
+            </style>
 </head>
 <body>
     <!-- Reading Progress Bar -->
