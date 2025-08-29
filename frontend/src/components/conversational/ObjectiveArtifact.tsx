@@ -525,11 +525,23 @@ function DeliverablesTab({
             onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
               setAutoCompletingMissing(true)
               try {
-                await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
+                const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                   method: 'POST'
                 })
-                // Reload the page or trigger a refresh
-                window.location.reload()
+                
+                if (response.ok) {
+                  console.log('Auto-completion request successful')
+                  // Instead of page reload, show success message and optionally refresh data
+                  alert('Auto-completion request submitted successfully! Deliverables will be created shortly.')
+                  // Optionally reload the ObjectiveArtifact data without full page reload
+                  // You could call loadGoalProgressDetails() here to refresh data
+                } else {
+                  console.error('Auto-completion request failed:', response.status, response.statusText)
+                  alert('Auto-completion request failed. Please try again.')
+                }
+              } catch (error) {
+                console.error('Auto-completion request error:', error)
+                alert('Auto-completion request failed due to network error. Please try again.')
               } finally {
                 setAutoCompletingMissing(false)
               }
@@ -776,11 +788,23 @@ function DeliverablesTab({
               onClick={() => handleWorkspaceAction('Auto-complete missing deliverables', async () => {
                 setAutoCompletingMissing(true)
                 try {
-                  await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
+                  const response = await fetch(`http://localhost:8000/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                     method: 'POST'
                   })
-                  // Reload the page or trigger a refresh
-                  window.location.reload()
+                  
+                  if (response.ok) {
+                    console.log('Auto-completion request successful')
+                    // Instead of page reload, show success message and optionally refresh data
+                    alert('Auto-completion request submitted successfully! Deliverables will be created shortly.')
+                    // Optionally reload the ObjectiveArtifact data without full page reload
+                    // await loadGoalProgressDetails()
+                  } else {
+                    console.error('Auto-completion request failed:', response.status, response.statusText)
+                    alert('Auto-completion request failed. Please try again.')
+                  }
+                } catch (error) {
+                  console.error('Auto-completion request error:', error)
+                  alert('Auto-completion request failed due to network error. Please try again.')
                 } finally {
                   setAutoCompletingMissing(false)
                 }
