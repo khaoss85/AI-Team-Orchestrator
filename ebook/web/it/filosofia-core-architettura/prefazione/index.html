@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prefazione: La Mappa per l'Iceberg Sommerso | Core Philosophy & Architecture | AI Team Orchestrator</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Prefazione del libro AI Team Orchestrator: La Mappa per l'Iceberg Sommerso. Introduzione alla filosofia e architettura dei sistemi AI-driven.">
+    <meta name="keywords" content="AI agents, sistema AI-driven, architettura AI, OpenAI SDK, team AI, prefazione, iceberg AI">
+    <meta name="author" content="Daniele Pelleri">
+    <meta name="robots" content="index, follow">
+
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Prefazione: La Mappa per l'Iceberg Sommerso - AI Team Orchestrator">
+    <meta property="og:description" content="Introduzione alla filosofia e architettura dei sistemi AI-driven. Come costruire l'infrastruttura nascosta che rende possibile la 'magia AI'.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://books.danielepelleri.com/it/filosofia-core-architettura/prefazione/">
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://books.danielepelleri.com/it/filosofia-core-architettura/prefazione/">
+    <link rel="alternate" hreflang="en" href="https://books.danielepelleri.com/en/core-philosophy-architecture/preface/">
+    <link rel="alternate" hreflang="it" href="https://books.danielepelleri.com/it/filosofia-core-architettura/prefazione/">
+    <link rel="alternate" hreflang="x-default" href="https://books.danielepelleri.com/en/core-philosophy-architecture/preface/">
+    
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Header */
+        .chapter-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .chapter-number {
+            font-size: 1rem;
+            color: #667eea;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+        
+        .chapter-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        
+        .chapter-subtitle {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        /* AI Acknowledgment Box */
+        .ai-acknowledgment {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+            position: relative;
+        }
+        
+        .ai-acknowledgment::before {
+            content: '🤖';
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 2rem;
+        }
+        
+        .ai-acknowledgment h3 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .ai-acknowledgment p {
+            margin-bottom: 1rem;
+            opacity: 0.95;
+        }
+        
+        .ai-tools {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .ai-tool {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        /* Prerequisites Box */
+        .prerequisites {
+            background: #f8f9fa;
+            border: 2px solid #e74c3c;
+            border-left: 5px solid #e74c3c;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+        
+        .prerequisites::before {
+            content: '📚';
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 2rem;
+        }
+        
+        .prerequisites h3 {
+            color: #e74c3c;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .prerequisites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .prereq-category h4 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .prereq-category ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .prereq-category li {
+            padding: 0.3rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .prereq-category li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        /* Content */
+        .chapter-content {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+        
+        .chapter-content p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .chapter-content strong {
+            color: #2c3e50;
+            font-weight: 700;
+        }
+        
+        .chapter-content ul {
+            margin: 1.5rem 0;
+            padding-left: 2rem;
+        }
+        
+        .chapter-content li {
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+        }
+        
+        .chapter-content li strong {
+            color: #667eea;
+        }
+        
+        .highlight-quote {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            color: #2d3436;
+            position: relative;
+        }
+        
+        .highlight-quote::before {
+            content: '💡';
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 25px;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .breadcrumb nav {
+            font-size: 0.9rem;
+        }
+        
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .breadcrumb a:hover {
+            color: #2c3e50;
+        }
+        
+        .breadcrumb span {
+            color: #7f8c8d;
+            margin: 0 0.5rem;
+        }
+        
+        /* Navigation */
+        .chapter-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .nav-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.3);
+        }
+        
+        .nav-button.secondary {
+            background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+        }
+        
+        .nav-button.secondary:hover {
+            box-shadow: 0 12px 24px rgba(253, 121, 168, 0.3);
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .chapter-title {
+                font-size: 2rem;
+            }
+            
+            .chapter-content {
+                padding: 2rem;
+            }
+            
+            .chapter-nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .prerequisites-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .ai-tools {
+                justify-content: center;
+            }
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .nav-button,
+            .breadcrumb {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <div class="breadcrumb">
+            <nav>
+                <a href="../../">🏠 AI Team Orchestrator</a>
+                <span>→</span>
+                <a href="../">🎭 Filosofia Core & Architettura</a>
+                <span>→</span>
+                <span>Prefazione</span>
+            </nav>
+        </div>
+
+        <!-- Chapter Header -->
+        <div class="chapter-header">
+            <div class="chapter-number">Movimento 1 - Introduzione</div>
+            <h1 class="chapter-title">Prefazione: La Mappa per l'Iceberg Sommerso</h1>
+            <p class="chapter-subtitle">Introduzione alla filosofia e architettura dei sistemi AI-driven</p>
+        </div>
+
+        <!-- AI Acknowledgment -->
+        <div class="ai-acknowledgment">
+            <h3>🤖 Nota sull'uso dell'AI</h3>
+            <p>Questo libro è stato scritto con il supporto di strumenti di intelligenza artificiale per la ricerca, la strutturazione dei contenuti e la revisione. L'esperienza, le metodologie e gli insight strategici sono frutto del lavoro pratico dell'autore, mentre l'AI ha assistito nel processo di scrittura e organizzazione delle idee.</p>
+            <div class="ai-tools">
+                <span class="ai-tool">Claude (Anthropic)</span>
+                <span class="ai-tool">Gemini (Google)</span>
+                <span class="ai-tool">Ricerca assistita</span>
+                <span class="ai-tool">Revisione contenuti</span>
+            </div>
+        </div>
+
+        <!-- Prerequisites -->
+        <div class="prerequisites">
+            <h3>📚 Prerequisiti Consigliati</h3>
+            <p>Per sfruttare al meglio questo libro, è consigliabile avere familiarità con i seguenti concetti e tecnologie:</p>
+            
+            <div class="prerequisites-grid">
+                <div class="prereq-category">
+                    <h4>🐍 Python & Backend</h4>
+                    <ul>
+                        <li>Python (base/intermedio)</li>
+                        <li>FastAPI framework</li>
+                        <li>Pydantic models</li>
+                        <li>Async/await patterns</li>
+                        <li>REST API design</li>
+                    </ul>
+                </div>
+                
+                <div class="prereq-category">
+                    <h4>🧠 AI & LLM</h4>
+                    <ul>
+                        <li>Concetti base di LLM</li>
+                        <li>OpenAI API usage</li>
+                        <li>Prompt engineering</li>
+                        <li>Token management</li>
+                        <li>RAG concepts</li>
+                    </ul>
+                </div>
+                
+                <div class="prereq-category">
+                    <h4>🏗️ Architecture & DevOps</h4>
+                    <ul>
+                        <li>Microservices patterns</li>
+                        <li>Database design (SQL)</li>
+                        <li>Docker & containers</li>
+                        <li>API orchestration</li>
+                        <li>System monitoring</li>
+                    </ul>
+                </div>
+                
+                <div class="prereq-category">
+                    <h4>🌐 Frontend (opzionale)</h4>
+                    <ul>
+                        <li>React/Next.js basics</li>
+                        <li>TypeScript</li>
+                        <li>State management</li>
+                        <li>API integration</li>
+                        <li>UI/UX principles</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="chapter-content">
+            <p>Nel 2015, Google pubblicò un paper profetico, "Hidden Technical Debt in Machine Learning", mostrando come in un'applicazione ML, il codice di machine learning fosse solo una piccola scatola nera al centro di un'enorme e complessa infrastruttura.</p>
+
+            <p>Dieci anni dopo, la storia si ripete. L'industria è innamorata della promessa degli agenti AI: una semplice "scatola magica" in cui inserire un obiettivo e da cui estrarre valore. Ma chiunque abbia provato a costruire un'applicazione reale sa la verità. Come scrive Tomasz Tunguz, "Ciò che appariva come una semplice 'scatola magica AI' si rivela essere un iceberg, con la maggior parte del lavoro di ingegneria nascosto sotto la superficie."</p>
+
+            <p>Quell'iceberg sommerso è fatto di gestione del contesto, orchestrazione di tool, sistemi di memoria, information retrieval (RAG), guardrail di sicurezza, monitoraggio e, soprattutto, la gestione dei costi galoppanti delle API.</p>
+
+            <div class="highlight-quote">
+                <strong>Questo libro è la mappa per costruire quell'iceberg.</strong>
+            </div>
+
+            <p>Non troverete qui un altro tutorial su come fare una chiamata a un'API. Questo è un case study strategico su come abbiamo costruito l'infrastruttura nascosta, il 90% del lavoro che permette al 10% di "magia AI" di funzionare in modo affidabile e scalabile.</p>
+
+            <p>Abbiamo capito che per gestire agenti non-deterministici, che improvvisano e hanno "libertà creativa", non serve un tool migliore. Serve un'<strong>organizzazione migliore</strong>, replicata nel codice. In questi capitoli, scoprirete come abbiamo costruito:</p>
+
+            <ul>
+                <li>Un <strong>Dipartimento Risorse Umane (<code>Director</code>)</strong> che "assume" team su misura.</li>
+                <li>Un <strong>Dipartimento di Project Management (<code>Executor</code>)</strong> che orchestra il lavoro.</li>
+                <li>Un <strong>Dipartimento di Quality Assurance (<code>HolisticQualityAssuranceAgent</code>)</strong> che valuta il valore di business.</li>
+                <li>Un <strong>Archivio Aziendale Intelligente (<code>WorkspaceMemory</code>)</strong> che permette all'organizzazione di imparare.</li>
+            </ul>
+
+            <p>Abbiamo costruito un <strong>"Agente Manager"</strong>: un sistema operativo AI che gestisce altri agenti, risolvendo il problema della complessità e del debito tecnico alla radice. Questo manuale è la storia di come ci siamo riusciti, pieno delle nostre cicatrici e delle lezioni che abbiamo imparato. È la guida per chiunque voglia smettere di giocare con la punta dell'iceberg e iniziare a costruire le fondamenta sommerse.</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="chapter-nav">
+            <a href="../" class="nav-button secondary">← Indice Movimento</a>
+            <a href="../i-15-pilastri-sistema-ai/" class="nav-button">Prossimo Capitolo →</a>
+        </div>
+    </div>
+
+    <!-- Reader Tools -->
+    <script src="../../shared-reader-tools.js"></script>
+</body>
+</html>
