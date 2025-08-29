@@ -36,7 +36,7 @@ interface ObjectiveData {
 
 interface ObjectiveArtifactProps {
   objectiveData: ObjectiveData
-  workspaceId: string
+  workspaceId?: string
   title: string
 }
 
@@ -45,6 +45,18 @@ export default function ObjectiveArtifact({
   workspaceId, 
   title 
 }: ObjectiveArtifactProps) {
+  // Early return if workspaceId is not available
+  if (!workspaceId) {
+    console.warn('ObjectiveArtifact: workspaceId is undefined or null')
+    return (
+      <div className="p-4 text-center text-gray-500">
+        <div className="text-2xl mb-2">⚠️</div>
+        <div>Workspace ID not available</div>
+        <div className="text-sm mt-1">Cannot display objective details</div>
+      </div>
+    )
+  }
+
   const [activeTab, setActiveTab] = useState<'overview' | 'deliverables'>('overview')
   const [goalProgressDetail, setGoalProgressDetail] = useState<GoalProgressDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,6 +64,27 @@ export default function ObjectiveArtifact({
   const [unblockingInProgress, setUnblockingInProgress] = useState<string | null>(null)
   
   const goalId = objectiveData.objective.id
+
+  // Defensive check for workspaceId
+  if (!workspaceId) {
+    return (
+      <div className="p-6">
+        <div className="border-b border-gray-100 pb-4 mb-6">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">{title}</h1>
+          <p className="text-gray-600 text-sm leading-relaxed">{objectiveData.objective.description}</p>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <span className="text-yellow-500 text-xl mr-3">⚠️</span>
+            <div>
+              <h3 className="font-medium text-yellow-800">Missing Workspace Context</h3>
+              <p className="text-sm text-yellow-700 mt-1">WorkspaceId is required to display objective details and auto-completion features.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set'
@@ -440,6 +473,7 @@ function DeliverablesTab({
 }: DeliverablesTabProps) {
   const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null)
   const [autoCompletingMissing, setAutoCompletingMissing] = useState(false)
+  const [retryingTransformation, setRetryingTransformation] = useState<string | null>(null)
 
   if (!deliverables || deliverables.length === 0) {
     return (
@@ -452,17 +486,14 @@ function DeliverablesTab({
         {objectiveData.objective.id && (
           <button
             onClick={async () => {
+              if (!workspaceId) {
+                console.error('WorkspaceId is not available for auto-completion')
+                return
+              }
+              
               setAutoCompletingMissing(true)
               try {
-                // Ensure workspaceId is available
-                const currentWorkspaceId = workspaceId;
-                if (!currentWorkspaceId) {
-                  console.error('WorkspaceId not available for auto-completion');
-                  setAutoCompletingMissing(false);
-                  return;
-                }
-                
-                await fetch(`/api/auto-completion/workspace/${currentWorkspaceId}/missing-deliverables`, {
+                await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                   method: 'POST'
                 })
                 // Reload the page or trigger a refresh
@@ -708,17 +739,14 @@ function DeliverablesTab({
             </div>
             <button
               onClick={async () => {
+                if (!workspaceId) {
+                  console.error('WorkspaceId is not available for auto-completion')
+                  return
+                }
+                
                 setAutoCompletingMissing(true)
                 try {
-                  // Ensure workspaceId is available
-                  const currentWorkspaceId = workspaceId;
-                  if (!currentWorkspaceId) {
-                    console.error('WorkspaceId not available for auto-completion');
-                    setAutoCompletingMissing(false);
-                    return;
-                  }
-                  
-                  await fetch(`/api/auto-completion/workspace/${currentWorkspaceId}/missing-deliverables`, {
+                  await fetch(`/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                     method: 'POST'
                   })
                   // Reload the page or trigger a refresh
@@ -808,7 +836,17 @@ function DeliverablesTab({
                       <div className="flex items-center space-x-2 text-sm">
                         <button 
                           className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-xs"
-                          onClick={() => window.location.reload()}
+                          onClick={async () => {
+                            const delivId = deliverable.id || `deliverable-${index}`
+                            setRetryingTransformation(delivId)
+                            try {
+                              // Add actual retry transformation logic here if needed
+                              await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate retry
+                              window.location.reload()
+                            } finally {
+                              setRetryingTransformation(null)
+                            }
+                          }}
                           disabled={retryingTransformation === deliverable.id}
                         >
                           {retryingTransformation === deliverable.id ? '🔄 Retrying...' : '🔄 Retry Enhancement'}

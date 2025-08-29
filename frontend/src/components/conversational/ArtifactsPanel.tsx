@@ -155,13 +155,15 @@ export default function ArtifactsPanel({
         )}
 
         {activeTab === 'viewer' && selectedArtifact && (
-          <ArtifactViewer
-            artifact={selectedArtifact}
-            workspaceId={workspaceId}
-            onClose={() => {
-              setSelectedArtifact(null)
-              setActiveTab('artifacts')
-            }}
+          <>
+            {console.log('📋 [ArtifactsPanel] Rendering ArtifactViewer with workspaceId:', workspaceId, 'for artifact:', selectedArtifact.type)}
+            <ArtifactViewer
+              artifact={selectedArtifact}
+              workspaceId={workspaceId}
+              onClose={() => {
+                setSelectedArtifact(null)
+                setActiveTab('artifacts')
+              }}
             onArtifactUpdate={(updatedArtifact) => {
               setSelectedArtifact(updatedArtifact)
               // TODO: Notify parent component of artifact update
@@ -173,6 +175,7 @@ export default function ArtifactsPanel({
             onUnblockWorkspace={onUnblockWorkspace}
             onResumeAutoGeneration={onResumeAutoGeneration}
           />
+          </>
         )}
       </div>
     </div>

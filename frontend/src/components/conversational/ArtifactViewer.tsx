@@ -376,7 +376,11 @@ function ContentView({
     )
   }
 
-  if (artifact.type === 'objective' && workspaceId) {
+  if (artifact.type === 'objective') {
+    console.log('🎯 [ArtifactViewer] Rendering ObjectiveArtifact with workspaceId:', workspaceId)
+    if (!workspaceId) {
+      console.warn('🎯 [ArtifactViewer] WorkspaceId is undefined for objective artifact')
+    }
     return (
       <ObjectiveArtifact
         objectiveData={artifact.content}
