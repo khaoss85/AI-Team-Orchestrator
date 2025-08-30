@@ -497,31 +497,35 @@
 
         /* Framework Comparison Styles */
         .framework-comparison {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(102, 126, 234, 0.08);
             border-radius: 12px;
-            padding: 2rem;
+            padding: 1.5rem;
             margin: 2rem 0;
-            border-left: 4px solid #3498db;
+            border-left: 4px solid #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.15);
         }
 
         .framework-comparison h3 {
-            color: #2c3e50;
+            color: #667eea;
             margin-bottom: 1.5rem;
             font-size: 1.3rem;
+            font-weight: 600;
         }
 
         .framework-guidance {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(243, 156, 18, 0.08);
             border-radius: 12px;
-            padding: 2rem;
+            padding: 1.5rem;
             margin: 2rem 0;
             border-left: 4px solid #f39c12;
+            border: 1px solid rgba(243, 156, 18, 0.15);
         }
 
         .framework-guidance h3 {
-            color: #2c3e50;
+            color: #f39c12;
             margin-bottom: 1.5rem;
             font-size: 1.3rem;
+            font-weight: 600;
         }
 
         .decision-matrix {
@@ -554,21 +558,26 @@
             line-height: 1.5;
         }
 
-        .decision-rationale {
+        .war-story.decision-rationale {
             background: rgba(25, 135, 84, 0.1);
             border-left: 4px solid #198754;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
         }
 
-        .decision-rationale h3 {
+        .war-story.decision-rationale h3 {
             color: #198754;
             margin-bottom: 1rem;
+            font-size: 1.3rem;
+            font-weight: 600;
         }
 
-        .decision-rationale ul {
+        .war-story.decision-rationale ul {
             margin: 1.5rem 0;
         }
 
-        .decision-rationale li {
+        .war-story.decision-rationale li {
             margin-bottom: 1rem;
             line-height: 1.6;
         }
@@ -599,8 +608,13 @@
             color: #adb5bd;
         }
 
-        .dark-mode .decision-rationale {
+        .dark-mode .war-story.decision-rationale {
             background: rgba(25, 135, 84, 0.15);
+            border-left-color: #198754;
+        }
+
+        .dark-mode .war-story.decision-rationale h3 {
+            color: #20c997;
         }
 
         /* Industry Insight Icons and Headers */

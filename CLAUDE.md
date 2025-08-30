@@ -865,11 +865,55 @@ API endpoints: `/api/improvement/start/{task_id}`, `/api/improvement/status/{tas
 
 ## Performance Optimization
 
-### Critical Performance Breakthroughs
+### Critical Performance Breakthroughs (Updated 2025-08-30)
 
-**Root Issue Identified**: The unified-assets API endpoint was taking 90+ seconds and blocking the entire UI, creating a perceived "broken app" experience for users.
+**Multiple Root Issues Identified and Systematically Fixed**:
+1. **Unified-assets API blocking**: 90+ seconds endpoint blocking entire UI
+2. **Cascading useEffect chains**: Multiple useEffects triggering duplicate operations  
+3. **Artifact clearing bug**: loadArtifacts clearing existing artifacts instead of merging
+4. **URL-state desynchronization**: Two systems managing same state causing conflicts
+5. **WebSocket timeout issues**: 5-second timeout too aggressive causing connection failures
+6. **Infinite console loops**: Race conditions causing infinite API calls and re-renders
+7. **"Scattoso" (jerky) behavior**: Goal selection triggering multiple redundant operations
 
-**Solution**: Progressive loading architecture that delivers **94% performance improvement** (90s → 3-5s perceived load time).
+**Comprehensive Solution**: Progressive loading architecture + systematic architectural fixes delivering **94% performance improvement** (90s → 3-5s perceived load time) + elimination of all infinite loops and smooth goal transitions.
+
+### Systematic Architectural Fixes (2025-08-30)
+
+Based on the comprehensive analysis documented in `PERFORMANCE_FIX_VERIFICATION.md`, the following architectural fixes were implemented to eliminate infinite loops and performance issues:
+
+#### **1. Cascading useEffect Chain Fix** ✅
+**Problem**: Multiple useEffects triggering duplicate operations  
+**Solution**: State-first, URL-following pattern with debouncing
+
+**Files Modified**:
+- `frontend/src/app/projects/[id]/conversation/page.tsx:56-78`
+- `frontend/src/hooks/useConversationalWorkspace.ts:2030-2053`
+
+**Pattern Applied**: Single source of truth - URL controls state, never reverse
+
+#### **2. Artifact Clearing Bug Fix** ✅  
+**Problem**: `loadArtifacts` clearing existing artifacts instead of merging  
+**Solution**: Null-safe merging with fallback preservation
+
+**File**: `frontend/src/hooks/useConversationalWorkspace.ts:703-726`
+
+#### **3. URL-State Desync Fix** ✅
+**Problem**: Two systems managing same state causing conflicts  
+**Solution**: Single source of truth pattern - URL controls state, component follows
+
+#### **4. WebSocket Timeout Fix** ✅
+**Problem**: 5-second timeout too aggressive, causing connection failures  
+**Solution**: Increased to 10 seconds with better error handling
+
+**File**: `frontend/src/hooks/useWorkspaceWebSocket.ts:47-70`
+
+#### **Architectural Principles Applied**
+1. **Single Source of Truth**: URL is authoritative, state follows
+2. **Defensive Programming**: Null checks and fallback mechanisms 
+3. **Debouncing**: Prevent rapid successive operations (100ms delay)
+4. **Graceful Degradation**: System works even when parts fail
+5. **Performance-First**: Minimize duplicate API calls and re-renders
 
 ### Progressive Loading Architecture
 
@@ -1030,12 +1074,23 @@ const loadGoalsProgressive = async () => {
 })
 ```
 
-### Key Performance Files
+### Key Performance Files (Updated 2025-08-30)
 
-- **`frontend/src/hooks/useConversationalWorkspace.ts`**: Core progressive loading implementation
-- **`frontend/src/components/conversational/ConversationalWorkspace.tsx`**: Loading states integration  
+**Critical Files for Performance Fixes**:
+- **`frontend/src/hooks/useConversationalWorkspace.ts`**: Core progressive loading + systematic architectural fixes (debouncing, artifact merging)
+- **`frontend/src/app/projects/[id]/conversation/page.tsx`**: State-first URL synchronization pattern
+- **`frontend/src/components/conversational/ConversationalWorkspace.tsx`**: Simplified chat selection handlers
+- **`frontend/src/hooks/useWorkspaceWebSocket.ts`**: Enhanced WebSocket timeout and error handling
+- **`PERFORMANCE_FIX_VERIFICATION.md`**: Complete documentation of all architectural fixes
 - **Backend API optimization**: Identify slow endpoints for caching/optimization
 - **Network monitoring**: Tools for performance analysis
+
+**Warning Signs to Monitor**:
+- Infinite console loops with duplicate API calls
+- Artifacts disappearing/reappearing during goal transitions
+- "Scattoso" (jerky) behavior during navigation
+- WebSocket connection timeouts during startup
+- Race conditions between URL and state management
 
 ### Performance Testing Approach
 
