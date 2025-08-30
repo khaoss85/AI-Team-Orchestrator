@@ -83,31 +83,14 @@ export default function ConversationalWorkspace({
   const [realtimeThinkingSteps, setRealtimeThinkingSteps] = useState<any[]>([])
   const [currentGoalDecomposition, setCurrentGoalDecomposition] = useState<any>(null)
 
-  // 🎯 ARCHITECTURAL FIX: Enhanced chat selection with URL synchronization
+  // 🎯 FIX: Simple chat selection without URL manipulation to prevent loops
   const handleChatSelect = useCallback((chat: Chat) => {
-    console.log('🎯 ConversationalWorkspace: Processing chat selection:', chat.id, chat.title)
-    console.log('🔍 Chat object full data:', chat)
+    console.log('🎯 ConversationalWorkspace: Chat selected:', chat.id, chat.title)
     
-    // Update active chat state immediately for instant UI response
+    // Only update the active chat state - no URL manipulation here
+    // The parent component will handle URL synchronization separately
     onSetActiveChat(chat)
-    
-    // Trigger URL update if navigation handler is provided
-    if (onGoalNavigate) {
-      if (chat.id.startsWith('goal-')) {
-        const goalId = chat.id.replace('goal-', '')
-        console.log('🎯 Extracted goalId from chat.id:', goalId)
-        console.log('🎯 Triggering goal navigation:', goalId)
-        onGoalNavigate(goalId)
-      } else if (chat.type === 'fixed') {
-        console.log('🎯 Triggering navigation to general conversation')
-        onGoalNavigate(null)
-      } else {
-        console.log('⚠️ Chat type not recognized for URL update:', chat.type, chat.id)
-      }
-    } else {
-      console.log('⚠️ onGoalNavigate not provided')
-    }
-  }, [onSetActiveChat, onGoalNavigate])
+  }, [onSetActiveChat])
   
   // 🧠 WebSocket integration for real-time thinking
   const { isConnected, realtimeUpdates } = useWorkspaceWebSocket({

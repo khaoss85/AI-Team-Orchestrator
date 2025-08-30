@@ -26,6 +26,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
   const [workspaceContext, setWorkspaceContext] = useState<WorkspaceContext | null>(null)
   const [thinkingSteps, setThinkingSteps] = useState<any[]>([])
   const [suggestedActions, setSuggestedActions] = useState<any[]>([])
+  const [switchingChat, setSwitchingChat] = useState<boolean>(false) // SYSTEMATIC FIX: Prevent rapid switching
   
   // UI state
   const [loading, setLoading] = useState(true)
@@ -1202,31 +1203,39 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
     }
   }, [chats, workspaceId, saveDynamicChats])
 
-  // Switch active chat
+  // 🎯 FIX: Optimized chat switching with proper race condition prevention
   const handleSetActiveChat = useCallback(async (chat: Chat) => {
-    console.log('🔄 [handleSetActiveChat] Switching to chat:', chat.id, chat.title)
-    setActiveChat(chat)
-    setTeamActivities([]) // Clear activities
-    setThinkingSteps([]) // Clear thinking steps
-    setSuggestedActions([]) // Clear suggested actions
-    
-    // Load chat-specific data first, then clear messages only if loading succeeds
-    try {
-      if (chat.type === 'fixed') {
-        await loadFixedChatData(chat)
-        // FIX: Add small delay to prevent race conditions with multiple rapid calls
-        setTimeout(() => loadChatSpecificArtifacts(chat), 100)
-      } else {
-        await loadDynamicChatData(chat)
-        // FIX: Add small delay to prevent race conditions with multiple rapid calls
-        setTimeout(() => loadChatSpecificArtifacts(chat), 100)
-      }
-    } catch (error) {
-      console.error('❌ [handleSetActiveChat] Failed to load chat data:', error)
-      // Clear messages only if loading fails to show empty state
-      setMessages([])
+    // Check if we're already on this chat - no need to switch
+    if (activeChat?.id === chat.id) {
+      console.log('✅ [handleSetActiveChat] Already on chat:', chat.id)
+      return
     }
-  }, [])
+    
+    // Prevent rapid successive switches
+    if (switchingChat) {
+      console.log('⏸️ [handleSetActiveChat] Switching in progress, ignoring request for:', chat.id)
+      return
+    }
+
+    console.log('🔄 [handleSetActiveChat] Switching to chat:', chat.id, chat.title)
+    setSwitchingChat(true)
+    
+    try {
+      setActiveChat(chat)
+      // Only clear data that's chat-specific, not workspace-wide data
+      setMessages([]) // Clear messages for new chat
+      setTeamActivities([]) // Clear activities
+      setThinkingSteps([]) // Clear thinking steps
+      setSuggestedActions([]) // Clear suggested actions
+      
+      // Chat-specific data will be loaded by separate useEffect
+    } catch (error) {
+      console.error('❌ [handleSetActiveChat] Failed to switch chat:', error)
+    } finally {
+      // Small delay to prevent immediate re-triggers
+      setTimeout(() => setSwitchingChat(false), 100)
+    }
+  }, [activeChat, switchingChat]) // Include activeChat to check if already selected
 
   // Load artifacts specific to the selected chat
   const loadChatSpecificArtifacts = useCallback(async (chat: Chat) => {
@@ -1756,7 +1765,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
       console.error('❌ [loadChatSpecificArtifacts] Failed to load chat artifacts:', error)
       // FIX: Don't clear all artifacts on error, just don't add chat-specific ones
     }
-  }, [workspaceId]) // FIX: Remove all dependencies to prevent infinite loop
+  }, [workspaceId, workspaceContext]) // SYSTEMATIC FIX: Include workspaceContext dependency
 
   // Load data for fixed chats
   const loadFixedChatData = useCallback(async (chat: Chat) => {
@@ -1999,16 +2008,44 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
     }
   }, [activeChat, loading, messages.length])
 
-  // Reload chat-specific artifacts when workspace context is available
+  // 🎯 FIX: Smart artifact loading with proper debouncing and deduplication
   useEffect(() => {
-    if (workspaceContext && activeChat) {
-      console.log('🔄 [useEffect] workspaceContext loaded, reloading artifacts for active chat:', activeChat.id)
-      // Call directly to avoid dependency cycle
-      loadChatSpecificArtifacts(activeChat)
+    if (workspaceContext && activeChat && !switchingChat) {
+      console.log('🔄 [useEffect] Scheduling artifact load for:', activeChat.id)
+      
+      const debounceTimeout = setTimeout(() => {
+        // Double-check we're still on the same chat after debounce
+        if (activeChat) {
+          console.log('🎯 [useEffect] Loading artifacts for:', activeChat.id)
+          loadChatSpecificArtifacts(activeChat)
+        }
+      }, 300) // Slightly longer debounce to ensure stability
+      
+      return () => {
+        clearTimeout(debounceTimeout)
+      }
     }
-    // Intentionally exclude loadChatSpecificArtifacts from deps to avoid infinite loop
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceContext, activeChat])
+  }, [workspaceContext, activeChat?.id, switchingChat]) // Only depend on chat ID and switching state
+
+  // Load chat data after activeChat changes (separated from handleSetActiveChat)
+  useEffect(() => {
+    const loadChatData = async () => {
+      if (activeChat && !switchingChat) {
+        console.log('🔄 [useEffect] Loading chat data for:', activeChat.id)
+        try {
+          if (activeChat.type === 'fixed') {
+            await loadFixedChatData(activeChat)
+          } else {
+            await loadDynamicChatData(activeChat)
+          }
+        } catch (error) {
+          console.error('❌ [useEffect] Failed to load chat data:', error)
+        }
+      }
+    }
+
+    loadChatData()
+  }, [activeChat, loadFixedChatData, loadDynamicChatData, switchingChat])
 
   // Initial goal progress refresh after workspace loads
   useEffect(() => {
