@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Form Contrast Test - Light & Dark Mode</title>
+    
+    <!-- Include our improved shared lead generation system -->
+    <link rel="stylesheet" href="shared-lead-generation.css?v=1.3">
+    <script src="shared-lead-generation.js?v=1.3"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        /* Light mode (default) */
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #2d3748;
+        }
+        
+        /* Dark mode */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            color: #e2e8f0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        body.dark-mode .container {
+            background: #2d3748;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        
+        .mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .mode-toggle:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        body.dark-mode .test-section {
+            background: #374151;
+            border-color: #4b5563;
+            color: #f9fafb;
+        }
+        
+        .contrast-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .contrast-sample {
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        body.dark-mode .contrast-sample {
+            border-color: #4b5563;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+        
+        .test-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .test-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .test-btn.reset {
+            background: #e53e3e;
+        }
+        
+        .test-btn.reset:hover {
+            background: #c53030;
+        }
+        
+        @media (max-width: 768px) {
+            .contrast-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-toggle {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 2rem;
+                display: block;
+                width: fit-content;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="mode-toggle" onclick="toggleDarkMode()" id="modeToggle">
+        🌙 Switch to Dark Mode
+    </button>
+    
+    <div class="container">
+        <h1>🎨 Form Contrast Test</h1>
+        <p>Test form visibility and contrast in both light and dark modes</p>
+        
+        <div class="test-section">
+            <h3>✅ Fixes Applied:</h3>
+            <ul>
+                <li><strong>Text Color Fixed:</strong> Added explicit <code>color: #2c3e50</code> to all inputs</li>
+                <li><strong>Focus State:</strong> Stronger color <code>color: #1a202c</code> on focus</li>
+                <li><strong>Dark Mode:</strong> Complete dark theme with proper contrast</li>
+                <li><strong>Placeholders:</strong> Visible <code>color: #9ca3af</code> in both modes</li>
+                <li><strong>Select Options:</strong> Proper background and text colors</li>
+            </ul>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-btn reset" onclick="resetAndShowPopup()">
+                🚀 Test Form in Current Mode
+            </button>
+            <button class="test-btn" onclick="testWithSampleData()">
+                📝 Fill with Sample Data
+            </button>
+            <button class="test-btn" onclick="clearTestData()">
+                🧹 Clear Test Data
+            </button>
+        </div>
+        
+        <div class="contrast-grid">
+            <div class="contrast-sample">
+                <h4>🌅 Light Mode</h4>
+                <p><strong>Input text:</strong> #2c3e50 on #ffffff background</p>
+                <p><strong>Focus text:</strong> #1a202c on #fefefe background</p>
+                <p><strong>Placeholder:</strong> #9ca3af (opacity: 1)</p>
+                <p><strong>Border:</strong> Purple with orange focus</p>
+            </div>
+            
+            <div class="contrast-sample">
+                <h4>🌙 Dark Mode</h4>
+                <p><strong>Input text:</strong> #f9fafb on #374151 background</p>
+                <p><strong>Focus text:</strong> Same with purple border</p>
+                <p><strong>Placeholder:</strong> #9ca3af (opacity: 0.8)</p>
+                <p><strong>Border:</strong> Purple theme throughout</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Testing Instructions:</h3>
+            <ol>
+                <li><strong>Click "Test Form in Current Mode"</strong> to see the popup</li>
+                <li><strong>Try typing in all fields</strong> - text should be clearly visible</li>
+                <li><strong>Test focus states</strong> - click in each input to see focus styling</li>
+                <li><strong>Switch modes</strong> using the toggle button</li>
+                <li><strong>Test in both light and dark modes</strong></li>
+                <li><strong>Check mobile</strong> - resize browser or test on phone</li>
+            </ol>
+            <p><strong>✅ Expected:</strong> All text clearly visible in both light and dark modes, no white-on-white or invisible text.</p>
+        </div>
+        
+        <!-- Fake content for scroll testing -->
+        <div style="height: 100vh; display: flex; align-items: center; justify-content: center; color: #666;">
+            <div style="text-align: center;">
+                <h2>📜 Scroll area for trigger testing</h2>
+                <p>This provides enough content height for scroll depth triggers.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let isDarkMode = false;
+        
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            
+            const toggle = document.getElementById('modeToggle');
+            toggle.textContent = isDarkMode ? '☀️ Switch to Light Mode' : '🌙 Switch to Dark Mode';
+            
+            // Force redraw to ensure CSS updates
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // Trigger reflow
+            document.body.style.display = '';
+        }
+        
+        function resetAndShowPopup() {
+            if (window.resetLeadGenState) {
+                window.resetLeadGenState();
+                setTimeout(() => {
+                    if (window.showLeadPopup) {
+                        window.showLeadPopup('contrast-test');
+                    }
+                }, 200);
+            } else {
+                alert('Lead generation system not loaded. Check console for errors.');
+            }
+        }
+        
+        function testWithSampleData() {
+            resetAndShowPopup();
+            
+            // Fill form after popup appears
+            setTimeout(() => {
+                const nameInput = document.getElementById('lead-name');
+                const emailInput = document.getElementById('lead-email');
+                const roleSelect = document.getElementById('lead-role');
+                const challengeTextarea = document.getElementById('lead-challenge');
+                
+                if (nameInput) nameInput.value = 'Test User';
+                if (emailInput) emailInput.value = 'test@example.com';
+                if (roleSelect) roleSelect.value = 'developer';
+                if (challengeTextarea) challengeTextarea.value = 'Testing form contrast and visibility';
+                
+                console.log('🎯 Sample data filled - check if text is visible in current mode');
+            }, 500);
+        }
+        
+        function clearTestData() {
+            const inputs = document.querySelectorAll('#lead-form input, #lead-form select, #lead-form textarea');
+            inputs.forEach(input => {
+                if (input.type !== 'checkbox') {
+                    input.value = '';
+                }
+            });
+        }
+        
+        // Auto-detect system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            toggleDarkMode();
+        }
+        
+        // Show popup after 2 seconds for immediate testing
+        setTimeout(() => {
+            resetAndShowPopup();
+        }, 2000);
+    </script>
+</body>
+</html>

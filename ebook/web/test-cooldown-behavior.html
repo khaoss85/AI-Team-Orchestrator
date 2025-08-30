@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⏰ Cooldown Behavior Test</title>
+    
+    <!-- Include our improved shared lead generation system -->
+    <link rel="stylesheet" href="shared-lead-generation.css?v=1.4">
+    <script src="shared-lead-generation.js?v=1.4"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .behavior-section {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+        
+        .test-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .test-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .test-btn.reset {
+            background: #e53e3e;
+        }
+        
+        .test-btn.reset:hover {
+            background: #c53030;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .status-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .status-card.active {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .status-card.blocked {
+            border-color: #f56565;
+            background: #fffaf0;
+        }
+        
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        
+        .countdown {
+            font-family: 'Courier New', monospace;
+            background: #2d3748;
+            color: #68d391;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 0.5rem 0;
+        }
+        
+        .explanation {
+            background: #e6fffa;
+            border: 1px solid #38b2ac;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .explanation h3 {
+            color: #2c7a7b;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⏰ Cooldown Behavior Test</h1>
+        <p>Test the intelligent cooldown system for lead generation popups</p>
+        
+        <div class="explanation">
+            <h3>🧠 Intelligent Cooldown Logic:</h3>
+            <ol>
+                <li><strong>Form Completed</strong> → <span style="color: #38a169;">✅ NEVER shows again (permanent)</span></li>
+                <li><strong>User Closes (❌)</strong> → <span style="color: #d69e2e;">⏸️ 15-minute cooldown</span></li>
+                <li><strong>Session Limit</strong> → <span style="color: #3182ce;">🔄 Once per session max</span></li>
+                <li><strong>Return Visits</strong> → <span style="color: #805ad5;">📅 24-hour minimum between sessions</span></li>
+            </ol>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-btn reset" onclick="resetAllStates()">
+                🔄 Reset All States
+            </button>
+            <button class="test-btn" onclick="showPopupTest()">
+                🚀 Test Show Popup
+            </button>
+            <button class="test-btn" onclick="simulateDismissal()">
+                ❌ Simulate Dismissal
+            </button>
+            <button class="test-btn" onclick="simulateCompletion()">
+                ✅ Simulate Completion
+            </button>
+            <button class="test-btn" onclick="updateStatus()">
+                📊 Refresh Status
+            </button>
+        </div>
+        
+        <div class="status-grid" id="statusGrid">
+            <!-- Status cards will be populated by JavaScript -->
+        </div>
+        
+        <div class="behavior-section">
+            <h3>🧪 Testing Scenarios:</h3>
+            <ol>
+                <li><strong>First Visit:</strong> Reset → Test Show → Should work</li>
+                <li><strong>User Dismissal:</strong> Close popup with ❌ → Try again → Should be blocked for 15min</li>
+                <li><strong>Session Limit:</strong> Show → Close → Reset session only → Try again → Should be blocked</li>
+                <li><strong>Form Completion:</strong> Simulate completion → Try again → Should NEVER work again</li>
+                <li><strong>Cooldown Expiry:</strong> Wait 15min after dismissal → Should work again</li>
+            </ol>
+        </div>
+        
+        <div id="debugLog" style="background: #2d3748; color: #68d391; padding: 1rem; border-radius: 8px; font-family: monospace; max-height: 200px; overflow-y: auto; margin: 2rem 0;">
+            <strong>Debug Log:</strong><br>
+        </div>
+        
+        <!-- Large content for scroll testing -->
+        <div style="height: 200vh; display: flex; align-items: center; justify-content: center; color: #718096;">
+            <div style="text-align: center;">
+                <h2>📜 Scroll Content Area</h2>
+                <p>This provides enough height to test scroll triggers if needed.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let debugLogElement = document.getElementById('debugLog');
+        let originalConsoleLog = console.log;
+        
+        // Override console.log to show in our debug area
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            if (args[0] && args[0].includes('🎯 LeadGen:')) {
+                debugLogElement.innerHTML += args.join(' ') + '<br>';
+                debugLogElement.scrollTop = debugLogElement.scrollHeight;
+            }
+        };
+        
+        function resetAllStates() {
+            if (window.resetLeadGenState) {
+                window.resetLeadGenState();
+                debugLogElement.innerHTML = '<strong>Debug Log:</strong><br>🔄 All states reset<br>';
+                updateStatus();
+                console.log('🎯 LeadGen: All states reset for testing');
+            }
+        }
+        
+        function showPopupTest() {
+            if (window.showLeadPopup) {
+                window.showLeadPopup('cooldown-test');
+                updateStatus();
+            }
+        }
+        
+        function simulateDismissal() {
+            // Simulate user dismissing popup
+            sessionStorage.setItem('leadPopupDismissed', 'true');
+            localStorage.setItem('leadPopupDismissedAt', Date.now().toString());
+            console.log('🎯 LeadGen: Simulated user dismissal - 15 minute cooldown applied');
+            updateStatus();
+        }
+        
+        function simulateCompletion() {
+            // Simulate form completion
+            localStorage.setItem('leadPopupShown', 'true');
+            localStorage.setItem('leadPopupData', JSON.stringify({
+                email: 'test@example.com',
+                timestamp: new Date().toISOString()
+            }));
+            console.log('🎯 LeadGen: Simulated form completion - PERMANENT block applied');
+            updateStatus();
+        }
+        
+        function updateStatus() {
+            const now = Date.now();
+            const statusGrid = document.getElementById('statusGrid');
+            
+            // Check all storage states
+            const completed = localStorage.getItem('leadPopupShown') === 'true';
+            const sessionDismissed = sessionStorage.getItem('leadPopupDismissed') === 'true';
+            const sessionShown = sessionStorage.getItem('leadPopupShown') === 'true';
+            const dismissalTime = localStorage.getItem('leadPopupDismissedAt');
+            const lastShownTime = localStorage.getItem('lastPopupShownAt');
+            
+            // Calculate cooldowns
+            const dismissalCooldown = 15 * 60 * 1000; // 15 minutes
+            const sessionCooldown = 24 * 60 * 60 * 1000; // 24 hours
+            
+            let dismissalRemaining = 0;
+            let sessionRemaining = 0;
+            
+            if (dismissalTime) {
+                dismissalRemaining = Math.max(0, dismissalCooldown - (now - parseInt(dismissalTime)));
+            }
+            
+            if (lastShownTime) {
+                sessionRemaining = Math.max(0, sessionCooldown - (now - parseInt(lastShownTime)));
+            }
+            
+            statusGrid.innerHTML = `
+                <div class="status-card ${completed ? 'blocked' : 'active'}">
+                    <h4>📋 Form Status</h4>
+                    <div class="status-value">${completed ? '✅ COMPLETED' : '⏳ Pending'}</div>
+                    <p>${completed ? 'Popup will NEVER show again' : 'Form not completed yet'}</p>
+                </div>
+                
+                <div class="status-card ${dismissalRemaining > 0 ? 'blocked' : 'active'}">
+                    <h4>❌ Dismissal Cooldown</h4>
+                    <div class="status-value">${dismissalRemaining > 0 ? 'ACTIVE' : 'INACTIVE'}</div>
+                    ${dismissalRemaining > 0 ? 
+                        `<div class="countdown">${Math.ceil(dismissalRemaining / 60000)} min remaining</div>` : 
+                        '<p>No dismissal cooldown active</p>'
+                    }
+                </div>
+                
+                <div class="status-card ${sessionShown ? 'blocked' : 'active'}">
+                    <h4>🔄 Session Limit</h4>
+                    <div class="status-value">${sessionShown ? 'SHOWN' : 'AVAILABLE'}</div>
+                    <p>${sessionShown ? 'Already shown this session' : 'Can show in this session'}</p>
+                </div>
+                
+                <div class="status-card ${sessionRemaining > 0 ? 'blocked' : 'active'}">
+                    <h4>📅 Session Cooldown</h4>
+                    <div class="status-value">${sessionRemaining > 0 ? 'ACTIVE' : 'INACTIVE'}</div>
+                    ${sessionRemaining > 0 ? 
+                        `<div class="countdown">${Math.ceil(sessionRemaining / 3600000)}h remaining</div>` : 
+                        '<p>No session cooldown active</p>'
+                    }
+                </div>
+                
+                <div class="status-card ${sessionDismissed ? 'blocked' : 'active'}">
+                    <h4>🚫 Session Dismissed</h4>
+                    <div class="status-value">${sessionDismissed ? 'YES' : 'NO'}</div>
+                    <p>${sessionDismissed ? 'User dismissed this session' : 'Not dismissed this session'}</p>
+                </div>
+                
+                <div class="status-card active">
+                    <h4>🎯 Can Show Popup?</h4>
+                    <div class="status-value">${canShowPopup() ? '✅ YES' : '❌ NO'}</div>
+                    <p>${getBlockReason()}</p>
+                </div>
+            `;
+        }
+        
+        function canShowPopup() {
+            if (window.shouldShowPopup) {
+                return window.shouldShowPopup('status-check');
+            }
+            return false;
+        }
+        
+        function getBlockReason() {
+            if (localStorage.getItem('leadPopupShown') === 'true') {
+                return 'Form completed - permanent block';
+            }
+            
+            const dismissalTime = localStorage.getItem('leadPopupDismissedAt');
+            if (dismissalTime) {
+                const remaining = (15 * 60 * 1000) - (Date.now() - parseInt(dismissalTime));
+                if (remaining > 0) {
+                    return 'In dismissal cooldown';
+                }
+            }
+            
+            if (sessionStorage.getItem('leadPopupDismissed') === 'true') {
+                return 'Dismissed this session';
+            }
+            
+            if (sessionStorage.getItem('leadPopupShown') === 'true') {
+                return 'Already shown this session';
+            }
+            
+            const lastShownTime = localStorage.getItem('lastPopupShownAt');
+            if (lastShownTime) {
+                const remaining = (24 * 60 * 60 * 1000) - (Date.now() - parseInt(lastShownTime));
+                if (remaining > 0) {
+                    return 'In session cooldown (24h)';
+                }
+            }
+            
+            return 'Ready to show';
+        }
+        
+        // Auto-update status every 5 seconds
+        setInterval(updateStatus, 5000);
+        
+        // Initial status update
+        setTimeout(updateStatus, 1000);
+        
+        // Show initial test popup after 3 seconds
+        setTimeout(() => {
+            if (canShowPopup()) {
+                showPopupTest();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

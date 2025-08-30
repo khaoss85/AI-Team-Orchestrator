@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Shared Components Test Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 1rem;
+        }
+        
+        .test-page {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .test-page:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .test-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 0.5rem;
+            transition: background 0.3s ease;
+        }
+        
+        .test-link:hover {
+            background: #5a6fd8;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .status.testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .instructions {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Shared Components Test Dashboard</h1>
+            <p>Testing lead generation popup integration across different page structures</p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Testing Instructions:</h3>
+            <ol>
+                <li><strong>Open browser console</strong> (F12 → Console) to see debug messages</li>
+                <li><strong>FIRST TIME:</strong> If you see "Lead popup already shown", click "🔄 Reset Lead Gen State" below</li>
+                <li><strong>Visit each test page</strong> and look for "🎯 LeadGen:" messages in console</li>
+                <li><strong>TEST AUTOMATIC TRIGGERS:</strong>
+                    <ul>
+                        <li>📜 <strong>Scroll trigger:</strong> Scroll down 30% of page (popup appears after 2s delay)</li>
+                        <li>⏰ <strong>Time trigger:</strong> Stay on page for 10 seconds (reduced for testing)</li>
+                        <li>🚪 <strong>Exit intent:</strong> Move mouse cursor above browser window</li>
+                    </ul>
+                </li>
+                <li><strong>Test user dismissal behavior:</strong> Close popup with ❌ button - it should NOT reappear</li>
+                <li><strong>Check popup styling</strong> and verify no conflicts with existing page functionality</li>
+            </ol>
+            <p><strong>✅ Expected Behavior:</strong> If user closes popup (❌ button), it respects their choice and won't show again in the same session. Only successful form submission saves permanently in localStorage.</p>
+        </div>
+        
+        <h2>Test Pages:</h2>
+        
+        <div class="test-page">
+            <h3>📄 Test 1: Core Philosophy Architecture</h3>
+            <p><strong>Page:</strong> 15 Pillars AI System</p>
+            <p><strong>Structure:</strong> Simple layout with reader tools</p>
+            <span class="status testing">TESTING</span>
+            <br>
+            <a href="en/core-philosophy-architecture/15-pillars-ai-system/test-with-shared-components.html" class="test-link" target="_blank">Open Test Page →</a>
+        </div>
+        
+        <div class="test-page">
+            <h3>📄 Test 2: Execution Quality</h3>
+            <p><strong>Page:</strong> Quality Gates & Human-in-Loop</p>
+            <p><strong>Structure:</strong> Complex layout with Twitter Cards and schemas</p>
+            <span class="status testing">TESTING</span>
+            <br>
+            <a href="en/execution-quality/quality-gates-human-loop/test-with-shared-components.html" class="test-link" target="_blank">Open Test Page →</a>
+        </div>
+        
+        <div class="test-page">
+            <h3>📄 Test 3: Memory System Scaling</h3>
+            <p><strong>Page:</strong> Semantic Caching System</p>
+            <p><strong>Structure:</strong> Full featured layout with SEO metadata</p>
+            <span class="status testing">TESTING</span>
+            <br>
+            <a href="en/memory-system-scaling/semantic-caching/test-with-shared-components.html" class="test-link" target="_blank">Open Test Page →</a>
+        </div>
+        
+        <div class="instructions">
+            <h3>✅ Success Criteria:</h3>
+            <ul>
+                <li>Console shows "🎯 LeadGen: Initializing lead generation system" on page load</li>
+                <li>Lead popup appears after scrolling 50% of page</li>
+                <li>Popup styling matches the design (professional look, no conflicts)</li>
+                <li>Form fields work correctly (name, email, role, challenge)</li>
+                <li>Close button functions properly</li>
+                <li>No JavaScript errors in console</li>
+                <li>Existing page functionality (bookmarks, reader tools) still works</li>
+            </ul>
+        </div>
+        
+        <div class="test-page" style="border-color: #28a745; background: #d4edda;">
+            <h3>🎯 Manual Test: Lead Popup</h3>
+            <p>Click the button below to manually trigger the lead popup and test its functionality:</p>
+            <button onclick="if(window.resetLeadGenState) { window.resetLeadGenState(); alert('Lead Gen state reset! Try the trigger now.'); } else resetLeadGenForTesting()" 
+                    style="background: #dc3545; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 5px; cursor: pointer; margin-right: 1rem;">
+                🔄 Reset Lead Gen State
+            </button>
+            <button onclick="if(window.showLeadPopup) window.showLeadPopup('manual-test'); else alert('Lead generation system not loaded on this page')" 
+                    style="background: #28a745; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 5px; cursor: pointer;">
+                🚀 Trigger Lead Popup
+            </button>
+            
+            <script>
+                function resetLeadGenForTesting() {
+                    // Clear all lead generation storage
+                    sessionStorage.removeItem('leadPopupShown');
+                    sessionStorage.removeItem('leadPopupTrigger');
+                    localStorage.removeItem('leadPopupShown');
+                    localStorage.removeItem('leadPopupData');
+                    localStorage.removeItem('ebook-visit-count');
+                    
+                    // Reset state if available
+                    if (window.leadPopupState) {
+                        window.leadPopupState.shown = false;
+                        window.leadPopupState.triggers = {
+                            scrollDepth: false,
+                            timeOnPage: false,
+                            exitIntent: false,
+                            mobileScrollStop: false,
+                            returnVisitor: false
+                        };
+                        window.leadPopupState.timeOnPage = 0;
+                    }
+                    
+                    console.log('🎯 LeadGen: Testing state reset - popup should work now');
+                    alert('Lead generation state reset! Now you can test the popup.');
+                }
+            </script>
+        </div>
+        
+        <!-- Include our shared lead generation system on this test page too -->
+        <link rel="stylesheet" href="shared-lead-generation.css">
+        <script src="shared-lead-generation.js"></script>
+    </div>
+</body>
+</html>
