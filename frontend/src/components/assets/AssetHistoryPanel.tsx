@@ -380,7 +380,7 @@ export const AssetHistoryPanel: React.FC<Props> = ({
       // Fallback: Try to fetch real asset history from API
       try {
         // First, get the workspace tasks to find the asset's source task
-        const tasksResponse = await fetch(`http://localhost:8000/monitoring/workspace/${workspaceId}/tasks`);
+        const tasksResponse = await fetch(`http://localhost:8000/api/monitoring/workspace/${workspaceId}/tasks`);
         if (tasksResponse.ok) {
           const tasksData = await tasksResponse.json();
           const tasks = Array.isArray(tasksData) ? tasksData : tasksData.tasks;

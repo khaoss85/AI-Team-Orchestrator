@@ -1041,6 +1041,131 @@
                 min-width: auto;
             }
         }
+        
+        /* Exploration Box Styles */
+        .exploration-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-top: 3px solid #667eea;
+            margin: 4rem 0 0 0;
+            padding: 3rem 0;
+        }
+        
+        .exploration-content {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .exploration-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        
+        .exploration-header h3 {
+            font-size: 1.8rem;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .exploration-header p {
+            color: #4a5568;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .exploration-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .exploration-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+        
+        .exploration-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+        
+        .exploration-icon {
+            font-size: 2.5rem;
+            flex-shrink: 0;
+            margin-top: 0.25rem;
+        }
+        
+        .exploration-details h4 {
+            font-size: 1.3rem;
+            color: #2d3748;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .exploration-details p {
+            color: #4a5568;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .exploration-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .exploration-footer {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .exploration-footer small {
+            color: #4a5568;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 768px) {
+            .exploration-options {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .exploration-card {
+                padding: 1.5rem;
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .exploration-header h3 {
+                font-size: 1.5rem;
+            }
+            
+            .exploration-box {
+                padding: 2rem 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1379,6 +1504,42 @@
                         <a href="https://github.com/khaoss85/ai-team-orchestrator/blob/main/README.md" class="github-btn secondary" target="_blank" rel="noopener">
                             📖 Guida Setup
                         </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Exploration Suggestion Box -->
+        <section class="exploration-box">
+            <div class="container">
+                <div class="exploration-content">
+                    <div class="exploration-header">
+                        <h3>🗺️ Esplora Altri Modi per Navigare</h3>
+                        <p>Oltre ai 4 movimenti, puoi esplorare il contenuto attraverso diverse modalità di apprendimento</p>
+                    </div>
+                    
+                    <div class="exploration-options">
+                        <a href="../topic-clusters.html" class="exploration-card">
+                            <div class="exploration-icon">🎯</div>
+                            <div class="exploration-details">
+                                <h4>Topic Clusters</h4>
+                                <p>Percorsi di apprendimento tematici raggruppati per competenze specifiche e livello di complessità</p>
+                                <span class="exploration-badge">Apprendimento Strutturato</span>
+                            </div>
+                        </a>
+                        
+                        <a href="../complete-index.html" class="exploration-card">
+                            <div class="exploration-icon">📚</div>
+                            <div class="exploration-details">
+                                <h4>Indice Completo</h4>
+                                <p>Accesso diretto a tutti i 31 capitoli con descrizioni dettagliate e collegamenti rapidi</p>
+                                <span class="exploration-badge">Accesso Diretto</span>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <div class="exploration-footer">
+                        <small>💡 <strong>Consiglio:</strong> Usa i Topic Clusters per apprendimento sequenziale, l'Indice Completo per consultazione rapida</small>
                     </div>
                 </div>
             </div>

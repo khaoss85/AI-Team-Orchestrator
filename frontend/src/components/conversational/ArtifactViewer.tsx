@@ -13,6 +13,13 @@ import ObjectiveArtifact from './ObjectiveArtifact'
 interface ArtifactViewerProps {
   artifact: DeliverableArtifact
   workspaceId?: string
+  activeChat?: {
+    id: string
+    title: string
+    type: 'dynamic' | 'fixed'
+    objective?: any
+    metadata?: Record<string, any>
+  } | null
   onClose: () => void
   onArtifactUpdate?: (updatedArtifact: DeliverableArtifact) => void
   onSendMessage?: (message: string) => void
@@ -25,7 +32,8 @@ interface ArtifactViewerProps {
 
 export default function ArtifactViewer({ 
   artifact, 
-  workspaceId, 
+  workspaceId,
+  activeChat, 
   onClose, 
   onArtifactUpdate,
   onSendMessage,
@@ -93,6 +101,7 @@ export default function ArtifactViewer({
           <ContentView 
             artifact={artifact} 
             workspaceId={workspaceId}
+            activeChat={activeChat}
             onArtifactUpdate={onArtifactUpdate}
             onSendMessage={onSendMessage}
             workspaceHealthStatus={workspaceHealthStatus}
@@ -173,6 +182,7 @@ export default function ArtifactViewer({
           <ContentView 
             artifact={artifact} 
             workspaceId={workspaceId}
+            activeChat={activeChat}
             onArtifactUpdate={onArtifactUpdate}
             onSendMessage={onSendMessage}
             workspaceHealthStatus={workspaceHealthStatus}
@@ -225,6 +235,13 @@ function ViewTab({ active, onClick, label, icon }: ViewTabProps) {
 interface ContentViewProps {
   artifact: DeliverableArtifact
   workspaceId?: string
+  activeChat?: {
+    id: string
+    title: string
+    type: 'dynamic' | 'fixed'
+    objective?: any
+    metadata?: Record<string, any>
+  } | null
   onArtifactUpdate?: (updatedArtifact: DeliverableArtifact) => void
   onSendMessage?: (message: string) => void
   workspaceHealthStatus?: any
@@ -243,7 +260,8 @@ function ContentView({
   healthLoading,
   onCheckWorkspaceHealth,
   onUnblockWorkspace,
-  onResumeAutoGeneration
+  onResumeAutoGeneration,
+  activeChat
 }: ContentViewProps) {
   // Check if this artifact type has a specialized component - if so, render without additional wrapper
   const hasSpecializedComponent = [
@@ -377,7 +395,7 @@ function ContentView({
   }
 
   if (artifact.type === 'objective') {
-    console.log('🎯 [ArtifactViewer] Rendering ObjectiveArtifact with workspaceId:', workspaceId)
+    console.log('🎯 [ArtifactViewer] Rendering ObjectiveArtifact with workspaceId:', workspaceId, 'activeChat:', activeChat ? activeChat.id : 'null/undefined')
     if (!workspaceId) {
       console.warn('🎯 [ArtifactViewer] WorkspaceId is undefined for objective artifact')
     }
@@ -385,6 +403,7 @@ function ContentView({
       <ObjectiveArtifact
         objectiveData={artifact.content}
         workspaceId={workspaceId}
+        activeChat={activeChat}
         title={artifact.title}
       />
     )

@@ -13,140 +13,91 @@
 
       gtag('config', 'G-VEGK4VZMG0');
     </script>
-    <meta name="description" content="AI Team Orchestrator - Choose your language / Scegli la tua lingua">
+    <meta name="description" content="AI Team Orchestrator: Complete guide from MVP to global platform. Learn to build production-ready AI agent systems with OpenAI SDK, FastAPI, and Next.js. Free multilingual ebook by Daniele Pelleri.">
+    <meta name="keywords" content="AI agents, OpenAI SDK, FastAPI, Next.js, AI architecture, machine learning, software engineering, AI team orchestrator, artificial intelligence">
+    <meta name="author" content="Daniele Pelleri">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="AI Team Orchestrator - Free Technical Ebook">
+    <meta property="og:description" content="Complete guide to building production-ready AI agent systems. From MVP to global platform with real-world examples and best practices.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://books.danielepelleri.com/og-image.jpg">
+    <meta property="og:url" content="https://books.danielepelleri.com/">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AI Team Orchestrator - Free Technical Ebook">
+    <meta name="twitter:description" content="Learn to build production-ready AI agent systems with OpenAI SDK, FastAPI, and Next.js">
     
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     
+    <!-- External Styles -->
+    <link rel="stylesheet" href="shared-landing-styles.css">
+    
     <!-- AI-friendly content -->
     <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-friendly content">
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        
-        .language-selector {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            max-width: 500px;
-            width: 90%;
-        }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .subtitle {
-            font-size: 1.1rem;
-            margin-bottom: 30px;
-            opacity: 0.9;
-        }
-        
-        .languages {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 30px;
-        }
-        
-        .language-option {
-            display: block;
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid transparent;
-            border-radius: 15px;
-            text-decoration: none;
-            color: white;
-            font-size: 1.1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .language-option:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
-        }
-        
-        .flag {
-            font-size: 1.5rem;
-            margin-right: 10px;
-        }
-        
-        .detecting {
-            font-size: 0.9rem;
-            opacity: 0.8;
-            margin-top: 20px;
-        }
-        
-        .loader {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        @media (max-width: 480px) {
-            h1 { font-size: 2rem; }
-            .language-selector { padding: 30px 20px; }
-            .languages { grid-template-columns: 1fr; }
-        }
-    </style>
 </head>
 <body>
     <div class="language-selector">
         <h1>🎼 AI Team Orchestrator</h1>
         <p class="subtitle">Choose your language / Scegli la tua lingua</p>
         
-        <div class="languages">
+        <div class="language-options">
             <a href="/it/" class="language-option" data-lang="it">
                 <span class="flag">🇮🇹</span>
-                Italiano
+                <strong>Italiano</strong>
+                <small>Guida completa per costruire sistemi AI di produzione</small>
             </a>
             <a href="/en/" class="language-option" data-lang="en">
                 <span class="flag">🇬🇧</span>
-                English
+                <strong>English</strong>
+                <small>Complete guide to building production-ready AI systems</small>
             </a>
-            <!-- Future languages will be added here -->
-            <!-- <a href="/es/" class="language-option" data-lang="es">
-                <span class="flag">🇪🇸</span>
-                Español
-                <small style="display: block; opacity: 0.7; font-size: 0.8rem;">Coming Soon</small>
-            </a>
-            <a href="/fr/" class="language-option" data-lang="fr">
-                <span class="flag">🇫🇷</span>
-                Français
-                <small style="display: block; opacity: 0.7; font-size: 0.8rem;">Bientôt</small>
-            </a> -->
+        </div>
+        
+        <div class="book-description">
+            <h2>What you'll learn in this book</h2>
+            <ul>
+                <li>🤖 Build AI agent orchestration systems from scratch</li>
+                <li>⚡ Implement real-time thinking processes and decision making</li>
+                <li>🏗️ Design scalable multi-agent architectures</li>
+                <li>🔧 Use OpenAI SDK, FastAPI, and Next.js in production</li>
+                <li>📊 Create goal-driven task management systems</li>
+                <li>🎯 Implement quality gates and human-in-the-loop patterns</li>
+                <li>🚀 Deploy autonomous recovery and monitoring systems</li>
+                <li>💡 Master AI-driven content generation and enhancement</li>
+            </ul>
+            
+            <div class="tech-stack">
+                <h3>Technology Stack Covered</h3>
+                <div class="tech-items">
+                    <span class="tech-tag">OpenAI SDK</span>
+                    <span class="tech-tag">FastAPI</span>
+                    <span class="tech-tag">Next.js</span>
+                    <span class="tech-tag">TypeScript</span>
+                    <span class="tech-tag">Supabase</span>
+                    <span class="tech-tag">WebSocket</span>
+                    <span class="tech-tag">AI Agents</span>
+                    <span class="tech-tag">Python</span>
+                </div>
+            </div>
+            
+            <div class="book-stats">
+                <div class="stat">
+                    <strong>31 Chapters</strong>
+                    <span>Comprehensive coverage</span>
+                </div>
+                <div class="stat">
+                    <strong>Production Ready</strong>
+                    <span>Real-world examples</span>
+                </div>
+                <div class="stat">
+                    <strong>100% Free</strong>
+                    <span>Open source</span>
+                </div>
+            </div>
         </div>
         
         <div class="detecting" id="detecting" style="display: none;">
@@ -155,154 +106,7 @@
         </div>
     </div>
 
-    <script>
-        // Language detection and auto-redirect
-        class LanguageDetector {
-            constructor() {
-                this.supportedLanguages = ['it', 'en'];
-                this.fallbackLanguage = 'it';
-                this.init();
-            }
-            
-            init() {
-                // Always perform auto-detection and redirect
-                this.detectAndRedirect();
-            }
-            
-            detectAndRedirect() {
-                const detectedLang = this.detectLanguage();
-                
-                if (detectedLang && this.isSupported(detectedLang)) {
-                    // Show detection message
-                    document.getElementById('detecting').style.display = 'block';
-                    
-                    // Auto-redirect after 1 second
-                    setTimeout(() => {
-                        this.redirectToLanguage(detectedLang);
-                    }, 1000);
-                }
-            }
-            
-            detectLanguage() {
-                // Priority cascade:
-                // 1. URL parameter (?lang=en)
-                const urlParams = new URLSearchParams(window.location.search);
-                const urlLang = urlParams.get('lang');
-                if (urlLang && this.isSupported(urlLang)) {
-                    return urlLang;
-                }
-                
-                // 2. Saved preference
-                const savedLang = localStorage.getItem('preferred_language');
-                if (savedLang && this.isSupported(savedLang)) {
-                    return savedLang;
-                }
-                
-                // 3. Browser language
-                const browserLang = navigator.language.substring(0, 2);
-                if (this.isSupported(browserLang)) {
-                    return browserLang;
-                }
-                
-                // 4. Accept-Language header (approximation)
-                const acceptLanguages = navigator.languages || [navigator.language];
-                for (const lang of acceptLanguages) {
-                    const langCode = lang.substring(0, 2);
-                    if (this.isSupported(langCode)) {
-                        return langCode;
-                    }
-                }
-                
-                return this.fallbackLanguage;
-            }
-            
-            isSupported(lang) {
-                return this.supportedLanguages.includes(lang);
-            }
-            
-            redirectToLanguage(lang) {
-                // Save preference
-                localStorage.setItem('preferred_language', lang);
-                
-                // Analytics tracking
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'language_detected', {
-                        'detected_language': lang,
-                        'method': 'automatic'
-                    });
-                }
-                
-                // Handle local file system vs production paths
-                const isLocalFile = window.location.protocol === 'file:';
-                
-                if (isLocalFile) {
-                    // For local development - direct to the specific files
-                    if (lang === 'it') {
-                        window.location.href = './it/index.html';
-                    } else if (lang === 'en') {
-                        window.location.href = './en/index.html';
-                    } else {
-                        // Fallback to Italian for unsupported languages in local
-                        window.location.href = './it/index.html';
-                    }
-                } else {
-                    // For production - use clean URLs
-                    window.location.href = `/${lang}/`;
-                }
-            }
-        }
-        
-        // Initialize detector
-        const detector = new LanguageDetector();
-        
-        // Manual language selection
-        document.querySelectorAll('.language-option').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const lang = this.dataset.lang;
-                
-                // Save preference
-                localStorage.setItem('preferred_language', lang);
-                
-                // Analytics tracking
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'language_selected', {
-                        'selected_language': lang,
-                        'method': 'manual'
-                    });
-                }
-                
-                // Additional language validation
-                if (!['it', 'en'].includes(lang)) {
-                    e.preventDefault();
-                    return;
-                }
-                
-                // Handle local file system vs production paths for manual selection
-                const isLocalFile = window.location.protocol === 'file:';
-                
-                if (isLocalFile) {
-                    e.preventDefault(); // Prevent default navigation
-                    // For local development - direct to the specific files
-                    if (lang === 'it') {
-                        window.location.href = './it/index.html';
-                    } else if (lang === 'en') {
-                        window.location.href = './en/index.html';
-                    }
-                }
-                // For production, let the default href work normally
-            });
-        });
-        
-        // Keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key >= '1' && e.key <= '4') {
-                const index = parseInt(e.key) - 1;
-                const links = document.querySelectorAll('.language-option');
-                if (links[index]) {
-                    links[index].click();
-                }
-            }
-        });
-    </script>
+    <!-- Language detection and interaction scripts -->
+    <script src="shared-landing-scripts.js"></script>
 </body>
 </html>

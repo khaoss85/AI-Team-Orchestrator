@@ -34,7 +34,7 @@ export default function ProjectTasksPage({ params: paramsPromise, searchParams }
       setLoading(true);
       
       // Fetch real tasks from monitoring API
-      const tasksResponse = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${id}/tasks`);
+      const tasksResponse = await fetch(`${api.getBaseUrl()}/api/monitoring/workspace/${id}/tasks`);
       if (!tasksResponse.ok) {
         throw new Error(`Failed to fetch tasks: ${tasksResponse.status}`);
       }

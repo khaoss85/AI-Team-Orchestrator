@@ -1,5 +1,4 @@
 // Asset Dependency Management Components
-export { AssetDependencyManager } from './AssetDependencyManager';
 export { RelatedAssetsModal } from './RelatedAssetsModal';
 export { AssetHistoryPanel } from './AssetHistoryPanel';
 export { DependencyGraph } from './DependencyGraph';

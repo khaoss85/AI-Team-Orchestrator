@@ -158,6 +158,32 @@ except ImportError as e:
     recovery_analysis_engine = None
     should_attempt_recovery = None
 
+# 🎭 Import Optimized Sub-Agent Orchestration System
+try:
+    from config.optimized_sub_agent_configs_2025 import (
+        optimized_orchestrator,
+        suggest_agents_for_task as suggest_optimized_agents,
+        get_orchestration_pattern as get_optimized_pattern,
+        track_agent_performance,
+        get_orchestrator_dashboard
+    )
+    from services.enhanced_sub_agent_orchestrator import (
+        enhanced_orchestrator,
+        orchestrate_task as orchestrate_sub_agents
+    )
+    SUB_AGENT_ORCHESTRATION_AVAILABLE = True
+    logger.info("🎭 Optimized Sub-Agent Orchestration System available")
+except ImportError as e:
+    logger.warning(f"⚠️ Sub-Agent Orchestration System not available: {e}")
+    SUB_AGENT_ORCHESTRATION_AVAILABLE = False
+    optimized_orchestrator = None
+    suggest_optimized_agents = None
+    get_optimized_pattern = None
+    track_agent_performance = None
+    get_orchestrator_dashboard = None
+    enhanced_orchestrator = None
+    orchestrate_sub_agents = None
+
 # 📊 Import System Telemetry Monitor for comprehensive monitoring
 try:
     from services.system_telemetry_monitor import system_telemetry_monitor
@@ -639,6 +665,25 @@ class TaskExecutor(AssetCoordinationMixin):
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize ATOE: {e}")
                 self.atoe = None
+
+        # 🎭 SUB-AGENT ORCHESTRATION: Initialize optimized sub-agent system
+        self.sub_agent_orchestrator = None
+        self.sub_agent_performance_tracker = None
+        if SUB_AGENT_ORCHESTRATION_AVAILABLE:
+            try:
+                self.sub_agent_orchestrator = optimized_orchestrator
+                self.sub_agent_performance_tracker = track_agent_performance
+                # Feature flag for gradual rollout
+                self.sub_agent_orchestration_enabled = os.getenv("ENABLE_SUB_AGENT_ORCHESTRATION", "true").lower() == "true"
+                if self.sub_agent_orchestration_enabled:
+                    logger.info("🎭 Optimized Sub-Agent Orchestration System initialized - ready for intelligent agent coordination")
+                else:
+                    logger.info("🎭 Sub-Agent Orchestration System loaded but disabled via feature flag")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Sub-Agent Orchestration System: {e}")
+                self.sub_agent_orchestrator = None
+                self.sub_agent_performance_tracker = None
+                self.sub_agent_orchestration_enabled = False
 
     async def get_workspace_settings(self, workspace_id: str):
         """Get workspace-specific settings with fallback to defaults"""
@@ -1580,6 +1625,48 @@ Focus on delivering practical, actionable results that move the project forward.
                 
             except Exception as e:
                 logger.warning(f"⚠️ Holistic orchestration analysis failed: {e}")
+
+        # 🎭 SUB-AGENT ORCHESTRATION: Intelligent agent coordination
+        sub_agent_coordination_attempted = False
+        if (self.sub_agent_orchestrator and self.sub_agent_orchestration_enabled and 
+            SUB_AGENT_ORCHESTRATION_AVAILABLE):
+            try:
+                task_description = task_dict.get("name", "") + " " + task_dict.get("description", "")
+                task_context = {
+                    "workspace_id": workspace_id,
+                    "task_id": task_id,
+                    "task_type": task_dict.get("task_type", "hybrid"),
+                    "priority": task_dict.get("priority", "medium"),
+                    "agent_id": task_dict.get("agent_id"),
+                    "current_agent_count": await self._count_active_agents(workspace_id)
+                }
+                
+                # Check if task requires sub-agent coordination
+                suggested_agents = await suggest_optimized_agents(task_description, task_context)
+                
+                # Only orchestrate if multiple specialized agents are suggested
+                if len(suggested_agents) >= 2:
+                    logger.info(f"🎭 SUB-AGENT ORCHESTRATION: Task {task_id} requires {len(suggested_agents)} agents: {', '.join(suggested_agents)}")
+                    
+                    # This would orchestrate the task through specialized agents
+                    # For now, we track the recommendation and let normal execution proceed
+                    sub_agent_coordination_attempted = True
+                    
+                    # Track this for performance metrics
+                    if self.sub_agent_performance_tracker:
+                        await self.sub_agent_performance_tracker("orchestration_trigger", {
+                            "task_id": task_id,
+                            "agents_suggested": suggested_agents,
+                            "task_complexity": len(suggested_agents),
+                            "timestamp": datetime.now().isoformat(),
+                            "status": "triggered"
+                        })
+                else:
+                    logger.debug(f"🎭 SUB-AGENT ORCHESTRATION: Task {task_id} uses single agent - no coordination needed")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Sub-agent orchestration analysis failed: {e}")
+                sub_agent_coordination_attempted = False
         
         # 🚀 FALLBACK: ATOE for backward compatibility  
         elif self.atoe:

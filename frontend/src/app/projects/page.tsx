@@ -211,8 +211,8 @@ export default function ProjectsPage() {
   }, []);
   
   const handleProjectClick = (id: string) => {
-    // Use the router to navigate programmatically
-    router.push(`/projects/${id}`);
+    // Navigate directly to conversation interface, bypassing intermediate redirect
+    router.push(`/projects/${id}/conversation`);
   };
   
   const handleSuggestedProjectClick = (project: typeof suggestedProjects[number]) => {

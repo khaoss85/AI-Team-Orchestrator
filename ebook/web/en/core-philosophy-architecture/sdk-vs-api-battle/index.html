@@ -495,6 +495,114 @@
             font-weight: 600;
         }
 
+        /* Framework Comparison Styles */
+        .framework-comparison {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .framework-comparison h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .framework-guidance {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-left: 4px solid #f39c12;
+        }
+
+        .framework-guidance h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .decision-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .framework-scenario {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .framework-scenario h4 {
+            color: #495057;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .framework-scenario ul {
+            margin-left: 1.2rem;
+            color: #6c757d;
+        }
+
+        .framework-scenario li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .decision-rationale {
+            background: rgba(25, 135, 84, 0.1);
+            border-left: 4px solid #198754;
+        }
+
+        .decision-rationale h3 {
+            color: #198754;
+            margin-bottom: 1rem;
+        }
+
+        .decision-rationale ul {
+            margin: 1.5rem 0;
+        }
+
+        .decision-rationale li {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Dark Mode - Framework Styles */
+        .dark-mode .framework-comparison,
+        .dark-mode .framework-guidance {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-comparison h3,
+        .dark-mode .framework-guidance h3 {
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-scenario {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dark-mode .framework-scenario h4 {
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-scenario ul,
+        .dark-mode .framework-scenario li {
+            color: #adb5bd;
+        }
+
+        .dark-mode .decision-rationale {
+            background: rgba(25, 135, 84, 0.15);
+        }
+
         /* Industry Insight Icons and Headers */
         .insight-header {
             background: #28a745;
@@ -1443,6 +1551,115 @@
             </table>
             
             <p>The decision was unanimous and immediate. Even though it would require greater initial time investment, adopting an SDK was the only choice consistent with our vision of building a robust, long-term system.</p>
+            
+            <h2 id="multi-framework-landscape"># 🌍 The Multi-Framework Landscape: OpenAI SDK in Context</h2>
+            
+            <p>While we chose OpenAI Agents SDK for our architecture, it's important to understand that the AI orchestration ecosystem offers several robust alternatives. Each framework embodies different philosophical approaches to agent coordination and addresses distinct use cases in the enterprise AI landscape.</p>
+            
+            <div class="framework-comparison">
+                <h3>🏛️ Framework Philosophy & Architecture Patterns</h3>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Framework</th>
+                            <th>Core Philosophy</th>
+                            <th>Primary Use Case</th>
+                            <th>Architecture Pattern</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>OpenAI SDK</strong></td>
+                            <td>Native integration, simplicity</td>
+                            <td>OpenAI-centric systems</td>
+                            <td><code>Agent → Session → Tools</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>CrewAI</strong></td>
+                            <td>Role-based collaboration</td>
+                            <td>Team orchestration</td>
+                            <td><code>Crew → Roles → Tasks</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>AutoGen</strong></td>
+                            <td>Conversational AI</td>
+                            <td>Interactive problem-solving</td>
+                            <td><code>GroupChat → Conversations</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>LangChain</strong></td>
+                            <td>Provider-agnostic pipelines</td>
+                            <td>RAG and document workflows</td>
+                            <td><code>Chains → Memory → Tools</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>LangGraph</strong></td>
+                            <td>Workflow state machines</td>
+                            <td>Complex process orchestration</td>
+                            <td><code>Graph → Nodes → State</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Semantic Kernel</strong></td>
+                            <td>Enterprise integration</td>
+                            <td>Microsoft ecosystem apps</td>
+                            <td><code>Kernel → Plugins → Functions</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="framework-guidance">
+                <h3>🎯 When to Consider Alternatives</h3>
+                
+                <div class="decision-matrix">
+                    <div class="framework-scenario">
+                        <h4><strong>Choose CrewAI when:</strong></h4>
+                        <ul>
+                            <li>You need explicit role-based agent collaboration (CEO, CTO, Developer roles)</li>
+                            <li>Team dynamics and hierarchies are core to your use case</li>
+                            <li>You want built-in delegation and task handoff patterns</li>
+                            <li>Your workflow mirrors real organizational structures</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="framework-scenario">
+                        <h4><strong>Choose AutoGen when:</strong></h4>
+                        <ul>
+                            <li>Human-in-the-loop is central to your workflow</li>
+                            <li>You need sophisticated multi-agent conversations and debates</li>
+                            <li>Code generation, execution, and iterative refinement are primary features</li>
+                            <li>Interactive brainstorming and problem-solving are key requirements</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="framework-scenario">
+                        <h4><strong>Choose LangChain/LangGraph when:</strong></h4>
+                        <ul>
+                            <li>Provider independence is critical (multi-LLM support)</li>
+                            <li>You're building complex RAG systems with document processing</li>
+                            <li>You need mature ecosystem integration (vector databases, embeddings)</li>
+                            <li>Complex state management and workflow orchestration are required</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="war-story decision-rationale">
+                <h3>🎯 Our Decision: Why OpenAI SDK Aligned with Our 15 Pillars</h3>
+                <p>For our AI Team Orchestrator, OpenAI SDK emerged as the clear choice based on our architectural principles:</p>
+                
+                <ul>
+                    <li><strong>Pillar #1 (Native SDK Usage):</strong> Direct integration with OpenAI's latest capabilities without abstraction overhead</li>
+                    <li><strong>Pillar #4 (Reusable Components):</strong> Clean primitives (Agents, Sessions, Tools) that compose elegantly</li>
+                    <li><strong>Pillar #9 (Production-Ready Standards):</strong> Enterprise-grade reliability and support directly from OpenAI</li>
+                    <li><strong>Pillar #15 (Explainability):</strong> Clear reasoning paths and transparent agent decision-making</li>
+                </ul>
+                
+                <p>The alternative frameworks are excellent tools that solve different architectural challenges. <strong>CrewAI</strong> excels at role-based orchestration, <strong>AutoGen</strong> shines in conversational AI scenarios, and <strong>LangChain</strong> provides unmatched ecosystem breadth. However, they address fundamentally different use cases than our goal of building a production-ready AI team orchestrator with OpenAI at its core.</p>
+                
+                <p>Understanding these alternatives validates our choice: we didn't pick OpenAI SDK by default, but through conscious architectural decision-making that prioritizes <strong>native integration depth over ecosystem breadth</strong>.</p>
+            </div>
             
             <div class="industry-insight">
                 <div class="insight-header">

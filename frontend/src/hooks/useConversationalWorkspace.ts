@@ -700,11 +700,11 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
 
       console.log('📦 [loadArtifacts] Final artifacts:', artifacts)
       
-      // Preserve existing inline artifacts (like tools_overview) when loading
+      // 🎯 FIX: Artifact preservation with null safety
       setArtifacts(prev => {
         console.log('📦 [loadArtifacts] Previous artifacts count:', prev.length)
         
-        // Find inline artifacts that should be preserved
+        // PRESERVE INLINE ARTIFACTS: Keep user-generated content
         const inlineArtifacts = prev.filter(artifact => 
           artifact.id === 'available-tools' || 
           artifact.id === 'project-description'
@@ -712,13 +712,17 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
         
         console.log('📦 [loadArtifacts] Preserving inline artifacts:', inlineArtifacts.length)
         
-        // Merge new artifacts with preserved inline artifacts
+        // PREVENT EMPTY ARTIFACTS BUG: Ensure artifacts array exists
+        const safeArtifacts = Array.isArray(artifacts) ? artifacts : []
+        
+        // Merge without duplicates
         const existingIds = new Set(inlineArtifacts.map(a => a.id))
-        const newArtifacts = artifacts.filter(a => !existingIds.has(a.id))
+        const newArtifacts = safeArtifacts.filter(a => !existingIds.has(a.id))
         const mergedArtifacts = [...inlineArtifacts, ...newArtifacts]
         
         console.log('📦 [loadArtifacts] Merged artifacts count:', mergedArtifacts.length)
-        return mergedArtifacts
+        // GUARD AGAINST ARTIFACT LOSS: Always return at least previous if merge failed
+        return mergedArtifacts.length > 0 ? mergedArtifacts : prev
       })
     } catch (error) {
       console.error('Failed to load artifacts:', error)
@@ -2027,25 +2031,30 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
     }
   }, [workspaceContext, activeChat?.id, switchingChat]) // Only depend on chat ID and switching state
 
-  // Load chat data after activeChat changes (separated from handleSetActiveChat)
+  // 🎯 ARCHITECTURAL FIX: Debounced chat data loading prevents duplicates
   useEffect(() => {
-    const loadChatData = async () => {
-      if (activeChat && !switchingChat) {
-        console.log('🔄 [useEffect] Loading chat data for:', activeChat.id)
-        try {
-          if (activeChat.type === 'fixed') {
-            await loadFixedChatData(activeChat)
-          } else {
-            await loadDynamicChatData(activeChat)
-          }
-        } catch (error) {
-          console.error('❌ [useEffect] Failed to load chat data:', error)
+    // PREVENT DUPLICATE OPERATIONS: Only load if chat actually changed
+    if (!activeChat || switchingChat) return
+    
+    // DEBOUNCING: Small delay prevents rapid successive calls
+    const timeoutId = setTimeout(async () => {
+      console.log('🔄 [useEffect] Debounced chat data loading for:', activeChat.id)
+      try {
+        if (activeChat.type === 'fixed') {
+          await loadFixedChatData(activeChat)
+        } else {
+          await loadDynamicChatData(activeChat)
         }
+      } catch (error) {
+        console.error('❌ [useEffect] Failed to load chat data:', error)
       }
-    }
+    }, 100) // 100ms debounce
 
-    loadChatData()
-  }, [activeChat, loadFixedChatData, loadDynamicChatData, switchingChat])
+    return () => {
+      clearTimeout(timeoutId)
+    }
+    // CRITICAL DEPENDENCY FIX: Only depend on activeChat.id, not the functions
+  }, [activeChat?.id, switchingChat])
 
   // Initial goal progress refresh after workspace loads
   useEffect(() => {

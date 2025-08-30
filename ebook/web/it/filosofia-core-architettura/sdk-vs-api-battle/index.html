@@ -290,7 +290,114 @@
                 text-align: center;
             }
         }
-    </style>
+        
+        /* Framework Comparison Styles */
+        .framework-comparison {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .framework-comparison h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .framework-guidance {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border-left: 4px solid #f39c12;
+        }
+
+        .framework-guidance h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .decision-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .framework-scenario {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .framework-scenario h4 {
+            color: #495057;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .framework-scenario ul {
+            margin-left: 1.2rem;
+            color: #6c757d;
+        }
+
+        .framework-scenario li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .decision-rationale {
+            background: rgba(25, 135, 84, 0.1);
+            border-left: 4px solid #198754;
+        }
+
+        .decision-rationale h3 {
+            color: #198754;
+            margin-bottom: 1rem;
+        }
+
+        .decision-rationale ul {
+            margin: 1.5rem 0;
+        }
+
+        .decision-rationale li {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Dark Mode - Framework Styles */
+        .dark-mode .framework-comparison,
+        .dark-mode .framework-guidance {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-comparison h3,
+        .dark-mode .framework-guidance h3 {
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-scenario {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dark-mode .framework-scenario h4 {
+            color: #e9ecef;
+        }
+
+        .dark-mode .framework-scenario ul,
+        .dark-mode .framework-scenario li {
+            color: #adb5bd;
+        }
+
+        .dark-mode .decision-rationale {
+            background: rgba(25, 135, 84, 0.15);
+        }
     </style>
         
         <!-- 🎯 Shared Lead Generation System -->
@@ -370,6 +477,115 @@
 </table>
 
 <p>La decisione fu unanime e immediata. Anche se avrebbe richiesto un investimento di tempo iniziale maggiore, adottare un SDK era l'unica scelta coerente con la nostra visione di costruire un sistema robusto e a lungo termine.</p>
+
+<h2 id="panorama-multi-framework"># 🌍 Il Panorama Multi-Framework: OpenAI SDK nel Contesto</h2>
+
+<p>Mentre abbiamo scelto OpenAI Agents SDK per la nostra architettura, è importante capire che l'ecosistema di orchestrazione AI offre diverse alternative robuste. Ogni framework incarna diversi approcci filosofici alla coordinazione degli agenti e affronta casi d'uso distinti nel panorama AI aziendale.</p>
+
+<div class="framework-comparison">
+    <h3>🏛️ Filosofie dei Framework e Pattern Architetturali</h3>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Framework</th>
+                <th>Filosofia Core</th>
+                <th>Caso d'Uso Primario</th>
+                <th>Pattern Architetturale</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>OpenAI SDK</strong></td>
+                <td>Integrazione nativa, semplicità</td>
+                <td>Sistemi OpenAI-centrici</td>
+                <td><code>Agent → Session → Tools</code></td>
+            </tr>
+            <tr>
+                <td><strong>CrewAI</strong></td>
+                <td>Collaborazione basata sui ruoli</td>
+                <td>Orchestrazione di team</td>
+                <td><code>Crew → Roles → Tasks</code></td>
+            </tr>
+            <tr>
+                <td><strong>AutoGen</strong></td>
+                <td>AI conversazionale</td>
+                <td>Problem-solving interattivo</td>
+                <td><code>GroupChat → Conversations</code></td>
+            </tr>
+            <tr>
+                <td><strong>LangChain</strong></td>
+                <td>Pipeline provider-agnostiche</td>
+                <td>RAG e workflow documentali</td>
+                <td><code>Chains → Memory → Tools</code></td>
+            </tr>
+            <tr>
+                <td><strong>LangGraph</strong></td>
+                <td>Macchine a stati workflow</td>
+                <td>Orchestrazione processi complessi</td>
+                <td><code>Graph → Nodes → State</code></td>
+            </tr>
+            <tr>
+                <td><strong>Semantic Kernel</strong></td>
+                <td>Integrazione enterprise</td>
+                <td>Applicazioni ecosistema Microsoft</td>
+                <td><code>Kernel → Plugins → Functions</code></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="framework-guidance">
+    <h3>🎯 Quando Considerare le Alternative</h3>
+    
+    <div class="decision-matrix">
+        <div class="framework-scenario">
+            <h4><strong>Scegli CrewAI quando:</strong></h4>
+            <ul>
+                <li>Hai bisogno di collaborazione esplicita basata sui ruoli (CEO, CTO, Developer)</li>
+                <li>Le dinamiche di team e le gerarchie sono centrali nel tuo caso d'uso</li>
+                <li>Vuoi pattern built-in di delegazione e handoff dei compiti</li>
+                <li>Il tuo workflow rispecchia strutture organizzative reali</li>
+            </ul>
+        </div>
+        
+        <div class="framework-scenario">
+            <h4><strong>Scegli AutoGen quando:</strong></h4>
+            <ul>
+                <li>L'human-in-the-loop è centrale nel tuo workflow</li>
+                <li>Hai bisogno di conversazioni e dibattiti sofisticati tra multi-agenti</li>
+                <li>La generazione, esecuzione e raffinamento iterativo del codice sono funzionalità primarie</li>
+                <li>Il brainstorming interattivo e il problem-solving sono requisiti chiave</li>
+            </ul>
+        </div>
+        
+        <div class="framework-scenario">
+            <h4><strong>Scegli LangChain/LangGraph quando:</strong></h4>
+            <ul>
+                <li>L'indipendenza dai provider è critica (supporto multi-LLM)</li>
+                <li>Stai costruendo sistemi RAG complessi con processamento documentale</li>
+                <li>Hai bisogno di integrazione ecosistema matura (database vettoriali, embeddings)</li>
+                <li>Sono richiesti gestione complessa dello stato e orchestrazione workflow</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="war-story decision-rationale">
+    <h3>🎯 La Nostra Decisione: Perché OpenAI SDK Si Allinea ai Nostri 15 Pilastri</h3>
+    <p>Per il nostro AI Team Orchestrator, OpenAI SDK è emerso come la scelta chiara basata sui nostri principi architetturali:</p>
+    
+    <ul>
+        <li><strong>Pilastro #1 (Uso SDK Nativo):</strong> Integrazione diretta con le ultime capacità OpenAI senza overhead di astrazione</li>
+        <li><strong>Pilastro #4 (Componenti Riusabili):</strong> Primitive pulite (Agents, Sessions, Tools) che si compongono elegantemente</li>
+        <li><strong>Pilastro #9 (Standard Production-Ready):</strong> Affidabilità e supporto enterprise-grade direttamente da OpenAI</li>
+        <li><strong>Pilastro #15 (Spiegabilità):</strong> Percorsi di ragionamento chiari e decision-making trasparente degli agenti</li>
+    </ul>
+    
+    <p>I framework alternativi sono strumenti eccellenti che risolvono sfide architetturali diverse. <strong>CrewAI</strong> eccelle nell'orchestrazione basata sui ruoli, <strong>AutoGen</strong> brilla negli scenari di AI conversazionale, e <strong>LangChain</strong> fornisce un'ampiezza di ecosistema ineguagliabile. Tuttavia, affrontano casi d'uso fondamentalmente diversi dal nostro obiettivo di costruire un orchestratore di team AI production-ready con OpenAI al suo centro.</p>
+    
+    <p>Comprendere queste alternative convalida la nostra scelta: non abbiamo scelto OpenAI SDK per default, ma attraverso un decision-making architetturale consapevole che prioritizza la <strong>profondità di integrazione nativa rispetto all'ampiezza dell'ecosistema</strong>.</p>
+</div>
 
 <div class="industry-insight">
     <div class="insight-header">

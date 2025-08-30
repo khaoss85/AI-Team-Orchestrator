@@ -286,39 +286,43 @@ class SubAgentOrchestrator:
                 ]
             ),
             
-            # NEW SPECIALIST: Based on "Missing Specialists" feedback
+            # NEW SPECIALIST: Based on "Missing Specialists" feedback - Enhanced triggers
             "frontend-ux-specialist": SubAgentConfig(
                 agent_id="frontend-ux-specialist",
                 name="Frontend UX Specialist",
-                description="Dedicated UX/UI expert for user experience and interface design decisions.",
+                description="Dedicated React/Next.js UX expert for component design, user interactions, and frontend architecture.",
                 specialization=AgentSpecialization.UX_FRONTEND,
                 proactive_triggers=[
-                    "UI component creation or modification", 
-                    "user interaction implementation",
-                    "responsive design requirements",
-                    "accessibility concerns",
-                    "user experience optimization"
+                    "React component creation or modification", 
+                    "Next.js page or layout implementation",
+                    "user interface design and styling",
+                    "responsive design and mobile optimization",
+                    "accessibility compliance implementation",
+                    "user experience and interaction patterns",
+                    "frontend state management setup"
                 ],
                 reactive_keywords=[
-                    "ui", "ux", "frontend", "interface", "component", 
-                    "responsive", "accessibility", "user", "design"
+                    "ui", "ux", "frontend", "interface", "component", "react", "next.js", "nextjs",
+                    "responsive", "accessibility", "user", "design", "tsx", "jsx", "css", "styling",
+                    "layout", "page", "navigation", "modal", "form", "button", "hook", "state"
                 ],
                 file_pattern_triggers=[
-                    "*/components/*", "*/ui/*", "*/styles/*",
-                    "*.tsx", "*.jsx", "*.css", "*.scss"
+                    "*/components/*", "*/ui/*", "*/styles/*", "*/pages/*", "*/app/*",
+                    "*.tsx", "*.jsx", "*.css", "*.scss", "*.module.css", "tailwind.config.*"
                 ],
-                priority_boost=0,  # New agent, no historical data
+                priority_boost=5,  # Increased for better activation
                 success_rate=0.0,
-                works_well_with=["api-contract-guardian", "system-architect"],
+                works_well_with=["api-contract-guardian", "system-architect", "placeholder-police"],
                 verification_chain_position=2,
                 primary_responsibilities=[
-                    "User interface design and implementation",
-                    "User experience optimization", 
-                    "Frontend component architecture",
-                    "Accessibility and responsive design"
+                    "React/Next.js component design and implementation",
+                    "User experience optimization and interaction design", 
+                    "Frontend component architecture and reusability",
+                    "Accessibility compliance and responsive design implementation",
+                    "UI state management and user interaction patterns"
                 ],
                 should_not_handle=[
-                    "Backend API design", "Database architecture", "Security implementation"
+                    "Backend API design", "Database architecture", "Security implementation", "Server-side logic"
                 ]
             ),
             

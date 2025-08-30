@@ -45,6 +45,7 @@ export default function ThinkingProcessViewer({
 }: ThinkingProcessViewerProps) {
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({})
 
+
   if (!steps || steps.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -119,28 +120,27 @@ export default function ThinkingProcessViewer({
   }
 
   return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🧠</span>
-          <h3 className="font-semibold text-gray-900">Thinking</h3>
-          <span className="text-xs text-gray-500">({steps.length} steps)</span>
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">🧠</span>
+          <h3 className="text-lg font-semibold text-gray-900">Thinking Process</h3>
           {isRealTime && (
-            <div className="flex items-center gap-1 ml-2">
+            <div className="flex items-center gap-2 ml-3">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-xs text-green-600 font-medium">REAL-TIME</span>
+              <span className="text-sm text-green-600 font-medium">REAL-TIME</span>
             </div>
           )}
         </div>
         
         {/* Goal decomposition progress indicator */}
         {currentDecomposition && (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <div className={`w-2 h-2 rounded-full ${
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className={`w-2.5 h-2.5 rounded-full ${
               currentDecomposition.status === 'in_progress' ? 'bg-orange-500 animate-pulse' :
               currentDecomposition.status === 'completed' ? 'bg-green-500' : 'bg-gray-400'
             }`}></div>
-            <span className="capitalize">{currentDecomposition.status || 'analyzing'}</span>
+            <span className="capitalize font-medium">{currentDecomposition.status || 'analyzing'}</span>
           </div>
         )}
       </div>
@@ -155,12 +155,12 @@ export default function ThinkingProcessViewer({
       ))}
 
       {isThinking && (
-        <div className="flex items-center justify-center py-4">
-          <div className="animate-pulse flex items-center gap-2 text-blue-600">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            <span className="ml-2 text-sm">AI is thinking...</span>
+        <div className="flex items-center justify-center py-6">
+          <div className="animate-pulse flex items-center gap-3 text-blue-600">
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></div>
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <span className="ml-3 text-sm font-medium">AI is thinking...</span>
           </div>
         </div>
       )}
@@ -212,11 +212,11 @@ function ClaudeStyleThinkingSession({ session, onToggle, isThinking = false }: C
   const totalSteps = session.steps.length
   
   return (
-    <div className="border rounded-lg overflow-hidden bg-white">
+    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
       {/* Collapsible Header - Claude Style */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+        className="w-full px-5 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -233,14 +233,16 @@ function ClaudeStyleThinkingSession({ session, onToggle, isThinking = false }: C
             </div>
             
             <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900">
+              <div className="text-sm font-semibold text-gray-900 leading-relaxed">
                 {session.summary}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {completedSteps}/{totalSteps} steps completed
+              <div className="text-xs text-gray-600 mt-1.5">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {completedSteps}/{totalSteps} steps
+                </span>
                 {session.id !== 'current' && session.timestamp && (
-                  <span className="ml-2">
-                    • {new Date(session.timestamp).toLocaleString()}
+                  <span className="ml-3 text-gray-500">
+                    {new Date(session.timestamp).toLocaleString()}
                   </span>
                 )}
               </div>
@@ -265,7 +267,7 @@ function ClaudeStyleThinkingSession({ session, onToggle, isThinking = false }: C
       
       {/* Expandable Content */}
       {session.isExpanded && (
-        <div className="p-4 space-y-3 bg-gray-50">
+        <div className="px-5 py-4 space-y-3 bg-gray-50 border-t border-gray-100">
           {session.steps.map((step, index) => (
             <ThinkingStepCard 
               key={index}
@@ -305,37 +307,39 @@ function ThinkingStepCard({ step, index, isActive = false, isFromSavedMessage = 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600 bg-white border-green-200'
+        return 'text-green-700 bg-green-50 border-green-200'
       case 'in_progress':
-        return 'text-blue-600 bg-blue-50 border-blue-200 ring-1 ring-blue-300'
+        return 'text-blue-700 bg-blue-50 border-blue-200 ring-1 ring-blue-300'
       case 'pending':
-        return 'text-gray-500 bg-white border-gray-200'
+        return 'text-gray-600 bg-gray-50 border-gray-200'
       default:
-        return 'text-green-600 bg-white border-green-200'
+        return 'text-green-700 bg-green-50 border-green-200'
     }
   }
 
   return (
     <div className={`
-      border rounded-md p-3 transition-all duration-200 text-sm
+      border rounded-lg p-4 transition-all duration-200 text-sm
       ${getStatusColor(step.status)}
       ${isActive ? 'ring-2 ring-blue-300 shadow-sm' : ''}
-      ${isFromSavedMessage ? 'opacity-80' : ''}
+      ${isFromSavedMessage ? 'opacity-90' : ''}
     `}>
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 mt-0.5">
-          <span className="text-xs font-mono">{getStatusIcon(step.status)}</span>
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-white border">
+          <span className="text-sm font-semibold">{getStatusIcon(step.status)}</span>
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-medium text-gray-900">
+          <div className="flex items-center gap-2 mb-2">
+            <h4 className="text-sm font-semibold text-gray-900 leading-snug">
               {step.title}
             </h4>
-            <span className="text-xs text-gray-400">#{index + 1}</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
+              #{index + 1}
+            </span>
           </div>
           
-          <p className="text-xs text-gray-700 leading-relaxed">
+          <p className="text-sm text-gray-700 leading-relaxed">
             {step.description}
           </p>
           

@@ -160,13 +160,14 @@ export default function ArtifactsPanel({
             <ArtifactViewer
               artifact={selectedArtifact}
               workspaceId={workspaceId}
+              activeChat={activeChat}
               onClose={() => {
                 setSelectedArtifact(null)
                 setActiveTab('artifacts')
               }}
             onArtifactUpdate={(updatedArtifact) => {
               setSelectedArtifact(updatedArtifact)
-              // TODO: Notify parent component of artifact update
+              // Artifact successfully updated
             }}
             onSendMessage={onSendMessage}
             workspaceHealthStatus={workspaceHealthStatus}

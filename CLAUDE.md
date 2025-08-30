@@ -140,6 +140,13 @@ Create `backend/.env` with:
 - `MAX_GOAL_DRIVEN_TASKS_PER_CYCLE=5` - Maximum goal-driven tasks created per cycle
 - `GOAL_COMPLETION_THRESHOLD=80` - Completion percentage threshold for goal success
 
+### Sub-Agent Orchestration System
+- `ENABLE_SUB_AGENT_ORCHESTRATION=true` - Enable optimized sub-agent orchestration system
+- `SUB_AGENT_FRONTEND_UX_ENABLED=true` - Enable frontend-ux-specialist for React/Next.js tasks
+- `SUB_AGENT_ORCHESTRATION_LOG_LEVEL=INFO` - Logging level for orchestration debugging
+- `SUB_AGENT_MAX_CONCURRENT_AGENTS=5` - Maximum agents that can work on a single task
+- `SUB_AGENT_PERFORMANCE_TRACKING=true` - Enable performance metrics tracking for agents
+
 ### AI Agent Enhancement
 - `ENABLE_AI_AGENT_MATCHING=true` - Use AI for semantic agent-task matching instead of keywords
 - `ENABLE_AI_PERSONALITY_GENERATION=true` - Use AI for dynamic personality trait generation
@@ -1543,6 +1550,47 @@ When adding new tools to the system, ensure you update these locations:
 - Explainability: mostra reasoning steps e alternative quando richiesto.
 - Tool/Service-layer modulare; registry unico di tool.
 - Conversazione context-aware via endpoints conversazionali / Agents SDK.
+
+## 🤖 Claude Code Sub-Agents Configuration
+
+### Available Sub-Agents (6 configured)
+Located in `.claude/agents/`:
+
+#### **Quality Gates & Architecture**
+- **director** (opus): Orchestrator that triggers other agents as quality gates
+- **system-architect** (opus): Architectural decisions, component reuse, anti-silo patterns
+- **principles-guardian** (opus): 15 Pillars compliance enforcement, blocks critical violations
+
+#### **Specialized Guardians**
+- **db-steward** (sonnet): Database schema guardian, prevents duplicates, ensures migrations safety
+- **placeholder-police** (sonnet): Detects hard-coded values, placeholders, TODOs, incomplete implementations
+
+#### **Frontend & Documentation**
+- **frontend-ux-specialist** (sonnet): **MINIMAL UI/UX** specialist following **ChatGPT/Claude design patterns**
+  - **Design Philosophy**: Clean, uncluttered interfaces without visual bloat
+  - **Anti-patterns**: ❌ Excessive colors, gradients, animations, complex hierarchies
+  - **Success Metrics**: Professional minimal appearance, fast interactions, intuitive flows
+- **docs-scribe** (sonnet): Documentation synchronization and consistency
+
+### Design Philosophy for frontend-ux-specialist
+**MINIMAL IS BETTER** - Follow ChatGPT/Claude principles:
+- Clean typography without decorations
+- Subtle color schemes (grays, whites, minimal accent colors)  
+- No unnecessary animations or visual effects
+- Focus on content and functionality over aesthetics
+- Plenty of whitespace and breathing room
+- Simple, intuitive interactions
+- Clear hierarchy without visual clutter
+
+### Auto-Activation Triggers
+Sub-agents automatically activate on:
+- **director**: Changes to `backend/ai_agents/`, `backend/services/`, `backend/routes/`, `src/components/`, `src/hooks/`
+- **frontend-ux-specialist**: Frontend component changes, UI modifications, styling updates
+- **docs-scribe**: Changes to `CLAUDE.md`, `README.md`, `backend/main.py`, documentation files
+
+### Usage
+- **Manual**: Use Task tool with specific agent: `/task director Review these changes`
+- **Automatic**: Agents should trigger on matching file patterns (investigation needed for activation issues)
 
 ## 🎯 Claude Code Director Automation
 

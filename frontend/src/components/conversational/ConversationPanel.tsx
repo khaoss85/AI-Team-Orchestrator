@@ -5,7 +5,6 @@ import { ConversationMessage, Chat, TeamActivity } from './types'
 import ConversationBubble from './ConversationBubble'
 import ConversationInput from './ConversationInput'
 import ThinkingProcessViewer from './ThinkingProcessViewer'
-import ThinkingDebugPanel from './ThinkingDebugPanel'
 import ThinkingStatusIndicator from './ThinkingStatusIndicator'
 import ActionButtonsPanel from './ActionButtonsPanel'
 import WelcomeRecapMessage from './WelcomeRecapMessage'
@@ -24,9 +23,13 @@ interface ConversationPanelProps {
   onRefreshMessages?: () => Promise<void>
   loading: boolean
   workspaceId: string
+  goalId?: string
   // 🧠 Real-time thinking props (Claude/o3 style)
   isWebSocketConnected?: boolean
   currentGoalDecomposition?: any
+  // URL-controlled tab state
+  activeTab?: 'conversation' | 'thinking'
+  onTabChange?: (tab: 'conversation' | 'thinking') => void
 }
 
 export default function ConversationPanel({
@@ -39,12 +42,19 @@ export default function ConversationPanel({
   onRefreshMessages,
   loading,
   workspaceId,
+  goalId,
   isWebSocketConnected,
-  currentGoalDecomposition
+  currentGoalDecomposition,
+  activeTab: externalActiveTab,
+  onTabChange
 }: ConversationPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
-  const [activeTab, setActiveTab] = useState<'conversation' | 'thinking'>('conversation')
+  const [internalActiveTab, setInternalActiveTab] = useState<'conversation' | 'thinking'>('conversation')
+  
+  // Use external tab control if provided, otherwise use internal state
+  const activeTab = externalActiveTab || internalActiveTab
+  const setActiveTab = onTabChange || setInternalActiveTab
   
   // 🧠 Real thinking data from workspace
   const { 
@@ -57,15 +67,50 @@ export default function ConversationPanel({
   } = useWorkspaceThinking(workspaceId)
   
   // 🎯 Goal-specific thinking data (when viewing a deliverable/goal)
-  const isGoalChat = activeChat?.type === 'dynamic' && activeChat.objective?.id
-  const goalId = isGoalChat ? activeChat.objective?.id : ''
+  // Check if this is a goal-related chat (either from URL param or activeChat data)
+  // CRITICAL FIX: Check for objective data regardless of chat type (for artifact viewing)
+  const isGoalChat = !!(goalId || (
+    activeChat?.objective?.id || 
+    activeChat?.metadata?.goal_id ||
+    activeChat?.objective?.objective?.id ||
+    (activeChat?.type === 'dynamic' && activeChat.objective)
+  ))
+  
+  
+  // Consolidate goalId extraction: use prop first, then extract from activeChat
+  const resolvedGoalId = (() => {
+    // 1. Use goalId prop if provided (from URL routing)
+    if (goalId) {
+      return goalId
+    }
+    
+    // 2. Extract from activeChat for goal-specific conversations
+    if (isGoalChat) {
+      // Try the primary objective ID
+      let extractedGoalId = activeChat.objective?.id || ''
+      
+      // If viewing an objective artifact, check if there's a goal_id in metadata
+      if (!extractedGoalId && activeChat.metadata?.goal_id) {
+        extractedGoalId = activeChat.metadata.goal_id
+      }
+      
+      // For objective artifacts, also check the objective data structure
+      if (!extractedGoalId && activeChat.objective?.objective?.id) {
+        extractedGoalId = activeChat.objective.objective.id
+      }
+      
+      return extractedGoalId
+    }
+    
+    return ''
+  })()
   const { 
     thinkingData: goalThinkingData, 
     isLoading: goalThinkingLoading, 
     error: goalThinkingError,
     hasThinkingSteps: hasGoalThinkingSteps,
     refresh: refreshGoalThinking
-  } = useGoalThinking(goalId || '', workspaceId)
+  } = useGoalThinking(resolvedGoalId, workspaceId)
   
   // Environment detection
   const isDebugMode = environment.isDebugEnabled()
@@ -268,15 +313,6 @@ export default function ConversationPanel({
           </div>
         ) : (
           <div className="h-full overflow-y-auto">
-            {/* 🔧 Debug Panel - Only in Development */}
-            {isDebugMode && (
-              <div className="p-4">
-                <ThinkingDebugPanel 
-                  workspaceId={workspaceId} 
-                  isConnected={isWebSocketConnected}
-                />
-              </div>
-            )}
             
             {/* 📊 Production Thinking Status */}
             {!isDebugMode && (
@@ -336,8 +372,7 @@ export default function ConversationPanel({
             {/* 🧠 Production: Real Thinking Data from Workspace or Goal */}
             {(() => {
               // 🎯 PRIORITY 1: Goal-specific thinking (when viewing a deliverable/goal)
-              if (!isDebugMode && isGoalChat && hasGoalThinkingSteps && goalThinkingData) {
-                console.log('🎯 [ConversationPanel] Showing goal-specific thinking:', goalThinkingData.thinking_steps.length, 'steps')
+              if (goalThinkingData && goalThinkingData.thinking_steps && goalThinkingData.thinking_steps.length > 0) {
                 
                 // Transform goal thinking steps to ThinkingProcessViewer format
                 const transformedSteps = goalThinkingData.thinking_steps.map((step: any) => ({
@@ -347,18 +382,18 @@ export default function ConversationPanel({
                   description: step.thinking_content || 'Goal thinking step',
                   status: 'completed', // Goal thinking steps are already completed
                   timestamp: step.created_at,
-                  fromMessage: `goal-${goalId}`,
+                  fromMessage: `goal-${resolvedGoalId}`,
                   messageTimestamp: step.created_at,
                   // Additional goal-specific metadata
                   metadata: {
                     session_id: step.session_id,
                     meta_reasoning: step.meta_reasoning,
                     confidence_level: step.confidence_level,
-                    goal_id: goalId,
+                    goal_id: resolvedGoalId,
                     goal_title: activeChat?.title
                   }
                 }));
-
+                
                 return <ThinkingProcessViewer 
                   steps={transformedSteps} 
                   isThinking={goalThinkingLoading || loading} 
@@ -374,7 +409,6 @@ export default function ConversationPanel({
               
               // 🏢 PRIORITY 2: Workspace-wide thinking (for general chats)
               if (!isDebugMode && thinkingProcesses.length > 0) {
-                console.log('🏢 [ConversationPanel] Showing workspace thinking:', thinkingProcesses.length, 'processes')
                 
                 // Transform real thinking processes to ThinkingProcessViewer format
                 const transformedSteps = thinkingProcesses.flatMap(process => 
@@ -467,7 +501,6 @@ export default function ConversationPanel({
             actions={suggestedActions}
             workspaceId={workspaceId}
             onActionExecuted={async (result) => {
-              console.log('Action executed:', result)
               // Refresh messages to show the action result
               if (onRefreshMessages) {
                 await onRefreshMessages()

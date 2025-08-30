@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Chat, WorkspaceContext } from './types'
 
 interface ChatSidebarProps {
@@ -65,6 +66,7 @@ export default function ChatSidebar({
   onRenameChat,
   onToggleCollapse
 }: ChatSidebarProps) {
+  const router = useRouter()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newObjective, setNewObjective] = useState('')
   const { pendingCount, urgentCount } = useFeedbackCount(workspaceContext.id)
@@ -75,13 +77,36 @@ export default function ChatSidebar({
   const activeObjectives = chats.filter(chat => chat.type === 'dynamic' && chat.status !== 'archived')
   const archivedChats = chats.filter(chat => chat.status === 'archived')
   
-  console.log('🎯 [ChatSidebar] chats:', chats.length, 'activeObjectives:', activeObjectives.length, 'archived:', archivedChats.length)
+  // Removed excessive logging that was causing performance issues
 
   const handleCreateChat = async () => {
     if (newObjective.trim()) {
       await onCreateChat(newObjective.trim())
       setNewObjective('')
       setShowCreateModal(false)
+    }
+  }
+
+  // 🎯 FIX: Direct chat selection with URL update through router
+  const handleChatSelect = (chat: Chat) => {
+    console.log('🎯 ChatSidebar: Selecting chat:', chat.id)
+    
+    // Update state
+    onChatSelect(chat)
+    
+    // Update URL to match the selected chat
+    if (chat.id.startsWith('goal-')) {
+      const goalId = chat.id.replace('goal-', '')
+      const params = new URLSearchParams(window.location.search)
+      params.set('goalId', goalId)
+      // Use replaceState to update URL without triggering navigation
+      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+    } else if (chat.type === 'fixed') {
+      const params = new URLSearchParams(window.location.search)
+      params.delete('goalId')
+      const queryString = params.toString()
+      const url = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname
+      window.history.replaceState({}, '', url)
     }
   }
 
@@ -103,7 +128,7 @@ export default function ChatSidebar({
           {chats.slice(0, 6).map(chat => (
             <button
               key={chat.id}
-              onClick={() => onChatSelect(chat)}
+              onClick={() => handleChatSelect(chat)}
               className={`w-full h-10 rounded-lg flex items-center justify-center ${
                 activeChat?.id === chat.id 
                   ? 'bg-blue-100 text-blue-600' 
@@ -171,7 +196,7 @@ export default function ChatSidebar({
                 key={chat.id}
                 chat={chat}
                 isActive={activeChat?.id === chat.id}
-                onClick={() => onChatSelect(chat)}
+                onClick={() => handleChatSelect(chat)}
                 feedbackCount={chat.id === 'feedback-requests' ? pendingCount : undefined}
                 urgentCount={chat.id === 'feedback-requests' && urgentCount > 0 ? urgentCount : undefined}
               />
@@ -210,7 +235,7 @@ export default function ChatSidebar({
                     key={chat.id}
                     chat={chat}
                     isActive={activeChat?.id === chat.id}
-                    onClick={() => onChatSelect(chat)}
+                    onClick={() => handleChatSelect(chat)}
                     onArchive={() => onArchiveChat(chat.id)}
                     onRename={onRenameChat ? (newName) => onRenameChat(chat.id, newName) : undefined}
                   />
@@ -237,7 +262,7 @@ export default function ChatSidebar({
                   key={chat.id}
                   chat={chat}
                   isActive={false}
-                  onClick={() => onChatSelect(chat)}
+                  onClick={() => handleChatSelect(chat)}
                   isArchived
                   onReactivate={onReactivateChat ? () => onReactivateChat(chat.id) : undefined}
                   onRename={onRenameChat ? (newName) => onRenameChat(chat.id, newName) : undefined}

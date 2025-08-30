@@ -44,12 +44,12 @@ export const useWorkspaceWebSocket = ({
     setRealtimeUpdates(prev => [...prev.slice(-19), update]) // Keep last 20 updates
   }, [])
 
-  // Check if backend is available before connecting
+  // 🎯 FIX: WebSocket health check with reasonable timeout
   const checkBackendHealth = useCallback(async () => {
     try {
-      // Create AbortController for timeout (better browser compatibility)
+      // Create AbortController for timeout (increased for stability)
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
       
       const response = await fetch('http://localhost:8000/health', { 
         method: 'GET',
@@ -59,7 +59,12 @@ export const useWorkspaceWebSocket = ({
       clearTimeout(timeoutId)
       return response.ok
     } catch (error) {
-      console.warn('Backend health check failed:', error)
+      // 🔧 More specific error handling - don't log AbortError as warning
+      if (error.name === 'AbortError') {
+        console.log('⏱️ Backend health check timed out (normal during startup)')
+      } else {
+        console.warn('❌ Backend health check failed:', error.message)
+      }
       return false
     }
   }, [])

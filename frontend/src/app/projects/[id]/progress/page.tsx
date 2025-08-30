@@ -29,7 +29,7 @@ export default function ProjectProgressPage({ params: paramsPromise }: Props) {
       setLoading(true);
       
       // Fetch simplified task data
-      const tasksResponse = await fetch(`${api.getBaseUrl()}/monitoring/workspace/${id}/tasks`);
+      const tasksResponse = await fetch(`${api.getBaseUrl()}/api/monitoring/workspace/${id}/tasks`);
       if (tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
         setTasks(Array.isArray(tasksData) ? tasksData : tasksData.tasks || []);
