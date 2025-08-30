@@ -292,6 +292,10 @@
         }
     </style>
     </style>
+        
+        <!-- 🎯 Shared Lead Generation System -->
+        <link rel="stylesheet" href="../../../shared-lead-generation.css">
+        <script src="../../../shared-lead-generation.js"></script>
 </head>
 <body>
     <div class="container">
@@ -413,7 +417,29 @@
     
     <div class="mermaid">
         graph TD
-            A[Nuovo Workspace Creato] --> B{Analisi Semantica del Goal} B --> C{Estrazione Competenze Chiave} C --> D{Definizione Ruoli Necessari} D --> E{Generazione Profili Agenti Completi} E --> F[Proposta del Team] F --> G{Approvazione Umana/Automatica} G -- Approvato --> H[Creazione Agenti nel DB] subgraph "Fase 1: Analisi Strategica (AI)" B --> B1[Il `Director` legge il goal del workspace] C --> C1[L'AI identifica le skill necessarie: email marketing, data analysis, copywriting] D --> D1[L'AI raggruppa le skill in ruoli: Marketing Strategist, Data Analyst] end subgraph "Fase 2: Creazione Profili (AI)" E --> E1[Per ogni ruolo, l'AI genera un profilo completo: nome, seniority, hard/soft skills, background] end subgraph "Fase 3: Finalizzazione" F --> F1[Il `Director` presenta il team proposto con una giustificazione strategica] G --> G1[L'utente approva o il sistema auto-approva] H --> H1[Gli agenti vengono salvati nel database e attivati] end end
+            A[Nuovo Workspace Creato] --> B{Analisi Semantica del Goal} 
+            B --> C{Estrazione Competenze Chiave} 
+            C --> D{Definizione Ruoli Necessari} 
+            D --> E{Generazione Profili Agenti Completi} 
+            E --> F[Proposta del Team] 
+            F --> G{Approvazione Umana/Automatica} 
+            G -- Approvato --> H[Creazione Agenti nel DB] 
+            
+            subgraph "Fase 1: Analisi Strategica (AI)"
+                B --> B1[Il Director legge il goal del workspace]
+                C --> C1[L'AI identifica le skill necessarie: email marketing, data analysis, copywriting]
+                D --> D1[L'AI raggruppa le skill in ruoli: Marketing Strategist, Data Analyst]
+            end
+            
+            subgraph "Fase 2: Creazione Profili (AI)"
+                E --> E1[Per ogni ruolo, l'AI genera un profilo completo: nome, seniority, hard/soft skills, background]
+            end
+            
+            subgraph "Fase 3: Finalizzazione"
+                F --> F1[Il Director presenta il team proposto con una giustificazione strategica]
+                G --> G1[L'utente approva o il sistema auto-approva]
+                H --> H1[Gli agenti vengono salvati nel database e attivati]
+            end
     </div>
 </div>
 
