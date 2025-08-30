@@ -9,6 +9,7 @@ import { useWorkspaceWebSocket } from '@/hooks/useWorkspaceWebSocket'
 
 interface ConversationalWorkspaceProps {
   workspaceId: string
+  goalId?: string
   workspaceContext: any
   chats: Chat[]
   activeChat: Chat | null
@@ -36,10 +37,15 @@ interface ConversationalWorkspaceProps {
   onCheckWorkspaceHealth?: () => Promise<any>
   onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
   onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
+  activeTab?: 'conversation' | 'thinking'
+  onTabChange?: (tab: 'conversation' | 'thinking') => void
+  // 🎯 NEW: Enhanced navigation handler for SPA goal switching
+  onGoalNavigate?: (goalId: string | null) => void
 }
 
 export default function ConversationalWorkspace({
   workspaceId,
+  goalId,
   workspaceContext,
   chats,
   activeChat,
@@ -66,13 +72,42 @@ export default function ConversationalWorkspace({
   onRefreshMessages,
   onCheckWorkspaceHealth,
   onUnblockWorkspace,
-  onResumeAutoGeneration
+  onResumeAutoGeneration,
+  activeTab,
+  onTabChange,
+  onGoalNavigate
 }: ConversationalWorkspaceProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   // 🧠 Real-time thinking state (Claude/o3 style)
   const [realtimeThinkingSteps, setRealtimeThinkingSteps] = useState<any[]>([])
   const [currentGoalDecomposition, setCurrentGoalDecomposition] = useState<any>(null)
+
+  // 🎯 ARCHITECTURAL FIX: Enhanced chat selection with URL synchronization
+  const handleChatSelect = useCallback((chat: Chat) => {
+    console.log('🎯 ConversationalWorkspace: Processing chat selection:', chat.id, chat.title)
+    console.log('🔍 Chat object full data:', chat)
+    
+    // Update active chat state immediately for instant UI response
+    onSetActiveChat(chat)
+    
+    // Trigger URL update if navigation handler is provided
+    if (onGoalNavigate) {
+      if (chat.id.startsWith('goal-')) {
+        const goalId = chat.id.replace('goal-', '')
+        console.log('🎯 Extracted goalId from chat.id:', goalId)
+        console.log('🎯 Triggering goal navigation:', goalId)
+        onGoalNavigate(goalId)
+      } else if (chat.type === 'fixed') {
+        console.log('🎯 Triggering navigation to general conversation')
+        onGoalNavigate(null)
+      } else {
+        console.log('⚠️ Chat type not recognized for URL update:', chat.type, chat.id)
+      }
+    } else {
+      console.log('⚠️ onGoalNavigate not provided')
+    }
+  }, [onSetActiveChat, onGoalNavigate])
   
   // 🧠 WebSocket integration for real-time thinking
   const { isConnected, realtimeUpdates } = useWorkspaceWebSocket({
@@ -158,7 +193,7 @@ export default function ConversationalWorkspace({
           collapsed={sidebarCollapsed}
           goalsLoading={goalsLoading}
           goalsError={goalsError}
-          onChatSelect={onSetActiveChat}
+          onChatSelect={handleChatSelect} // 🎯 Use enhanced chat selection handler
           onCreateChat={onCreateDynamicChat}
           onArchiveChat={onArchiveChat}
           onReactivateChat={onReactivateChat}
@@ -179,9 +214,13 @@ export default function ConversationalWorkspace({
           onRefreshMessages={onRefreshMessages}
           loading={sendingMessage}
           workspaceId={workspaceId}
+          goalId={goalId}
           // 🧠 Real-time thinking props
           isWebSocketConnected={isConnected}
           currentGoalDecomposition={currentGoalDecomposition}
+          // URL-controlled tab state
+          activeTab={activeTab}
+          onTabChange={onTabChange}
         />
       </div>
 

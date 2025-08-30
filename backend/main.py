@@ -68,6 +68,9 @@ from routes.debug import router as debug_router
 from routes.recovery_explanations import router as recovery_explanations_router
 from routes.recovery_analysis import router as recovery_analysis_router
 
+# Sub-agent orchestration route
+from routes.sub_agent_orchestration import router as sub_agent_orchestration_router
+
 # Import task executor
 from executor import start_task_executor, stop_task_executor
 
@@ -219,7 +222,7 @@ app = FastAPI(
 
 # Configure CORS
 # Allow specific origins for frontend development and production
-origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:3003,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
 
 # Clean up origins list (remove whitespace and empty strings)
 origins = [origin.strip() for origin in origins if origin.strip()]
@@ -255,6 +258,7 @@ app.include_router(tools_router, prefix="/api")
 # Goal and task management
 app.include_router(goal_validation_router, prefix="/api")
 app.include_router(workspace_goals_router, prefix="/api")
+app.include_router(workspace_goals_direct_router)  # Mount direct router without /api prefix
 app.include_router(goal_progress_details_router, prefix="/api")
 
 # Business value analysis
@@ -313,6 +317,9 @@ app.include_router(utils_router, prefix="/api")
 # Recovery system routes
 app.include_router(recovery_explanations_router)  # Already includes /api/recovery-explanations prefix
 app.include_router(recovery_analysis_router)  # Already includes /api/recovery-analysis prefix
+
+# Sub-agent orchestration routes
+app.include_router(sub_agent_orchestration_router)  # Already includes /api/sub-agent-orchestration prefix
 
 # All routers now use consistent /api prefix - compatibility layer removed
 app.include_router(debug_router)

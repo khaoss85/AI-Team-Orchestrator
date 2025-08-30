@@ -60,7 +60,7 @@ if CONVERSATIONAL_AI_TYPE == "fallback":
         
         model_config = {"extra": "allow"}
 
-router = APIRouter(prefix="/api/conversation", tags=["conversation"])
+router = APIRouter(prefix="/conversation", tags=["conversation"])
 
 # Request/Response Models
 

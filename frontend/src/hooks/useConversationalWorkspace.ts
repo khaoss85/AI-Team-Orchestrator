@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/utils/api'
 import { 
   ConversationMessage, 
@@ -9,7 +9,14 @@ import {
   AIResponse 
 } from '@/components/conversational/types'
 
-export function useConversationalWorkspace(workspaceId: string) {
+export function useConversationalWorkspace(workspaceId: string, initialChatId?: string) {
+  // 🎯 ARCHITECTURAL FIX: Stable navigation state to prevent re-initialization
+  const [navigationState] = useState(() => ({
+    initialWorkspaceId: workspaceId,
+    initialChatId: initialChatId,
+    isInitialized: false
+  }))
+
   // Core state
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
@@ -34,8 +41,17 @@ export function useConversationalWorkspace(workspaceId: string) {
   const [workspaceHealthStatus, setWorkspaceHealthStatus] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
 
+  // 🚨 CRITICAL FIX: Memoized cache to prevent infinite loop
+  const businessValueCache = useRef(new Map<string, number>())
+  
   // 🤖 AI-DRIVEN: Semantic Business Value Scoring Function - replaces hardcoded logic
   const calculateTaskBusinessValueScore = useCallback(async (task: any, goalData: any): Promise<number> => {
+    // 🛡️ CACHE CHECK: Prevent duplicate API calls for same task
+    const cacheKey = `${task.id || task.name}-${JSON.stringify(goalData)}`
+    if (businessValueCache.current.has(cacheKey)) {
+      return businessValueCache.current.get(cacheKey)!
+    }
+    
     try {
       // Call AI-driven semantic analysis endpoint
       const response = await fetch('/api/analyze-task-business-value', {
@@ -52,18 +68,22 @@ export function useConversationalWorkspace(workspaceId: string) {
       if (response.ok) {
         const result = await response.json()
         if (result.success) {
-          console.log(`🤖 AI Business Value Analysis for "${task.name}": ${result.business_value_score} (${result.content_type}) - ${result.reasoning}`)
+          // 🗂️ CACHE RESULT: Store to prevent re-computation
+          businessValueCache.current.set(cacheKey, result.business_value_score)
           return result.business_value_score
         }
       }
       
       // Fallback to basic content-based scoring
-      console.warn(`⚠️ AI analysis failed for task "${task.name}", using content-based fallback`)
-      return calculateTaskBusinessValueScoreFallback(task, goalData)
+      const fallbackScore = calculateTaskBusinessValueScoreFallback(task, goalData)
+      businessValueCache.current.set(cacheKey, fallbackScore)
+      return fallbackScore
       
     } catch (error) {
       console.error(`❌ AI analysis error for task "${task.name}":`, error)
-      return calculateTaskBusinessValueScoreFallback(task, goalData)
+      const fallbackScore = calculateTaskBusinessValueScoreFallback(task, goalData)
+      businessValueCache.current.set(cacheKey, fallbackScore)
+      return fallbackScore
     }
   }, [])
   
@@ -92,18 +112,33 @@ export function useConversationalWorkspace(workspaceId: string) {
     return Math.min(100, Math.max(0, score))
   }, [])
 
-  // 🎯 ENHANCED: Business Value-Aware Content Extraction
+  // 🎯 ENHANCED: Business Value-Aware Content Extraction with Rate Limiting
   const extractBusinessContentFromTasks = useCallback(async (completedTasks: any[], goalData: any) => {
     try {
-      console.log('📝 [ENHANCED extractBusinessContentFromTasks] Processing', completedTasks.length, 'completed tasks for goal:', goalData?.description)
+      // 🛡️ BATCH LIMITER: Process tasks in small batches to prevent API overload
+      const BATCH_SIZE = 5
+      const BATCH_DELAY = 100 // ms between batches
       
-      // 🧠 PILLAR 7: AI-driven intelligent business content scoring and filtering
-      const scoredTasks = await Promise.all(
-        completedTasks.map(async (task: any) => {
-          const score = await calculateTaskBusinessValueScore(task, goalData)
-          return { ...task, businessValueScore: score }
-        })
-      )
+      const scoredTasks: any[] = []
+      
+      // Process tasks in batches to prevent API overload
+      for (let i = 0; i < completedTasks.length; i += BATCH_SIZE) {
+        const batch = completedTasks.slice(i, i + BATCH_SIZE)
+        
+        const batchResults = await Promise.all(
+          batch.map(async (task: any) => {
+            const score = await calculateTaskBusinessValueScore(task, goalData)
+            return { ...task, businessValueScore: score }
+          })
+        )
+        
+        scoredTasks.push(...batchResults)
+        
+        // Add delay between batches (except for last batch)
+        if (i + BATCH_SIZE < completedTasks.length) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY))
+        }
+      }
       
       // 🎯 ENHANCED: Separate high-value deliverable tasks from thinking/meta tasks
       const highValueTasks = scoredTasks
@@ -119,12 +154,6 @@ export function useConversationalWorkspace(workspaceId: string) {
       const metaTasks = scoredTasks
         .filter((task: any) => task.businessValueScore < 20.0)
       
-      console.log('📊 [ENHANCED] Task Analysis:', {
-        'High-Value (≥40)': highValueTasks.length,
-        'Thinking (20-39)': thinkingTasks.length, 
-        'Meta (<20)': metaTasks.length,
-        'Total': completedTasks.length
-      })
       
       if (highValueTasks.length === 0) {
         // 🧠 ENHANCED: Check if we have thinking tasks to show instead
@@ -276,6 +305,12 @@ export function useConversationalWorkspace(workspaceId: string) {
   // Initialize workspace and fixed chats (OPTIMIZED: progressive loading)
   const initializeWorkspace = useCallback(async () => {
     try {
+      // 🎯 ARCHITECTURAL FIX: Prevent re-initialization if already initialized for this workspace
+      if (navigationState.isInitialized && navigationState.initialWorkspaceId === workspaceId) {
+        console.log('🔄 Workspace already initialized, skipping re-initialization')
+        return
+      }
+      
       setLoading(true)
       setError(null)
 
@@ -399,8 +434,16 @@ export function useConversationalWorkspace(workspaceId: string) {
       // Set initial chats without dynamic chats (will be loaded progressively)
       setChats(fixedChats)
       
-      // Set default active chat to team management
-      const defaultChat = fixedChats[0]
+      // Set active chat based on initialChatId parameter or default to team management
+      let defaultChat = fixedChats[0]
+      if (initialChatId) {
+        // Try to find the chat by ID from fixedChats first
+        const foundChat = fixedChats.find(chat => chat.id === initialChatId)
+        if (foundChat) {
+          defaultChat = foundChat
+        }
+        // If not found in fixed chats, we'll set it later when dynamic chats are loaded
+      }
       setActiveChat(defaultChat)
       
       // Load initial artifacts (without heavy assets)
@@ -435,8 +478,20 @@ export function useConversationalWorkspace(workspaceId: string) {
           // Load dynamic chats with goals (only if we have workspace context)
           if (workspaceContext || goalsArray.length > 0) {
             const dynamicChats = await loadDynamicChats()
-            setChats(prev => [...prev.filter(c => c.type === 'fixed'), ...dynamicChats])
+            setChats(prev => {
+              const fixedOnly = prev.filter(c => c.type === 'fixed')
+              return [...fixedOnly, ...dynamicChats]
+            })
             console.log('✅ [Progressive] Dynamic chats loaded:', dynamicChats.length, 'chats')
+            
+            // If we have an initialChatId and haven't found it yet, look in dynamic chats
+            if (initialChatId) {
+              const foundDynamicChat = dynamicChats.find(chat => chat.id === initialChatId)
+              if (foundDynamicChat) {
+                console.log('🎯 [Progressive] Setting active chat to requested goal:', foundDynamicChat.title)
+                setActiveChat(foundDynamicChat)
+              }
+            }
           }
           
         } catch (error) {
@@ -449,6 +504,9 @@ export function useConversationalWorkspace(workspaceId: string) {
       
       // Start progressive loading with optimal timing
       setTimeout(loadGoalsProgressive, 50) // Reduced from 100ms to 50ms for faster perceived loading
+      
+      // Mark as initialized to prevent re-initialization
+      navigationState.isInitialized = true
 
     } catch (err: any) {
       console.error('Failed to initialize workspace:', err)
@@ -456,7 +514,7 @@ export function useConversationalWorkspace(workspaceId: string) {
     } finally {
       setLoading(false) // UI ready after basic data, goals loading in background
     }
-  }, [workspaceId])
+  }, [workspaceId, navigationState])
 
   // Load dynamic chats from storage/API
   const loadDynamicChats = useCallback(async (): Promise<Chat[]> => {
@@ -1156,10 +1214,12 @@ export function useConversationalWorkspace(workspaceId: string) {
     try {
       if (chat.type === 'fixed') {
         await loadFixedChatData(chat)
-        loadChatSpecificArtifacts(chat)
+        // FIX: Add small delay to prevent race conditions with multiple rapid calls
+        setTimeout(() => loadChatSpecificArtifacts(chat), 100)
       } else {
         await loadDynamicChatData(chat)
-        loadChatSpecificArtifacts(chat)
+        // FIX: Add small delay to prevent race conditions with multiple rapid calls
+        setTimeout(() => loadChatSpecificArtifacts(chat), 100)
       }
     } catch (error) {
       console.error('❌ [handleSetActiveChat] Failed to load chat data:', error)
@@ -1180,8 +1240,10 @@ export function useConversationalWorkspace(workspaceId: string) {
       switch (chat.id) {
         case 'team-management':
           // Load team-specific artifacts with handoffs
-          if (workspaceContext?.team && workspaceContext.team.length > 0) {
-            console.log('👥 [loadChatSpecificArtifacts] Creating team artifact with team:', workspaceContext.team)
+          // FIX: Access team from workspaceContext but use it only as read
+          const currentTeam = workspaceContext?.team
+          if (currentTeam && currentTeam.length > 0) {
+            console.log('👥 [loadChatSpecificArtifacts] Creating team artifact with team:', currentTeam)
             
             // Also load handoffs for the team
             let handoffsData = []
@@ -1196,12 +1258,12 @@ export function useConversationalWorkspace(workspaceId: string) {
               id: 'team-overview',
               type: 'team_status',
               title: 'Team Overview',
-              description: `${workspaceContext.team.length} active team members, ${handoffsData.length} handoffs`,
+              description: `${currentTeam.length} active team members, ${handoffsData.length} handoffs`,
               status: 'ready',
               content: {
-                agents: workspaceContext.team,
+                agents: currentTeam,
                 handoffs: handoffsData,
-                team_members: workspaceContext.team.length,
+                team_members: currentTeam.length,
                 success: true
               },
               lastUpdated: new Date().toISOString()
@@ -1241,18 +1303,8 @@ export function useConversationalWorkspace(workspaceId: string) {
 
         case 'configuration':
           // Load configuration-specific artifacts
-          if (workspaceContext?.configuration) {
-            console.log('⚙️ [loadChatSpecificArtifacts] Creating config artifact with:', workspaceContext.configuration)
-            chatArtifacts.push({
-              id: 'workspace-config',
-              type: 'configuration',
-              title: 'Workspace Configuration',
-              description: 'Current workspace settings and parameters',
-              status: 'ready',
-              content: workspaceContext.configuration,
-              lastUpdated: new Date().toISOString()
-            })
-          } else {
+          // FIX: Always fallback to API since we removed workspaceContext dependency
+          {
             console.log('⚠️ [loadChatSpecificArtifacts] No configuration data available, trying direct API call')
             // Fallback: try loading configuration directly from API
             try {
@@ -1567,7 +1619,7 @@ export function useConversationalWorkspace(workspaceId: string) {
                 const allDeliverables = await api.monitoring.getGoalDeliverables(workspaceId, goalId)
                 
                 // 🎯 FIXED: Get completed tasks SPECIFIC to this goal (not all workspace tasks)
-                const tasksResponse = await fetch(`http://localhost:8000/monitoring/workspace/${workspaceId}/tasks?status=completed`)
+                const tasksResponse = await fetch(`http://localhost:8000/api/monitoring/workspace/${workspaceId}/tasks?status=completed`)
                 const tasksData = await tasksResponse.json()
                 const allCompletedTasks = tasksData?.tasks || []
                 
@@ -1581,8 +1633,11 @@ export function useConversationalWorkspace(workspaceId: string) {
                 console.log(`🤖 [AI-Driven] Processing ${goalSpecificTasks.length} completed tasks for goal: "${goalDescription}"`)
                 console.log('📊 [Legacy Data] Using all workspace tasks - new workspaces will have proper goal→task relationships')
                 
-                // 📝 GENERATE: Business content from goal-specific tasks only
-                const goalSpecificBusinessContent = await extractBusinessContentFromTasks(goalSpecificTasks, fullGoalData)
+                // 🚨 TEMPORARY FIX: Disable AI analysis to stop infinite loop
+                // TODO: Re-enable after fixing the loop trigger
+                // const goalSpecificBusinessContent = await extractBusinessContentFromTasks(goalSpecificTasks, fullGoalData)
+                const goalSpecificBusinessContent = null
+                console.log('🚨 TEMPORARY: Disabled business content extraction to fix infinite loop')
                 
                 // 🎯 PRIORITY FIX: Use actual deliverables from database first
                 if (allDeliverables && allDeliverables.length > 0) {
@@ -1682,23 +1737,33 @@ export function useConversationalWorkspace(workspaceId: string) {
       }
 
       console.log('🎯 [loadChatSpecificArtifacts] Setting chat-specific artifacts:', chatArtifacts)
-      setArtifacts(chatArtifacts)
+      // FIX: Merge with existing artifacts instead of replacing
+      setArtifacts(prevArtifacts => {
+        // Keep artifacts from loadArtifacts (deliverables, assets)
+        const baseArtifacts = prevArtifacts.filter(a => 
+          a.type === 'deliverable' || 
+          a.type === 'asset' || 
+          !['team_status', 'configuration', 'knowledge', 'tools_overview', 'objective'].includes(a.type)
+        )
+        
+        // Merge with chat-specific artifacts
+        const mergedArtifacts = [...baseArtifacts, ...chatArtifacts]
+        console.log('📦 [loadChatSpecificArtifacts] Merged artifacts:', mergedArtifacts.length, 'base:', baseArtifacts.length, 'chat:', chatArtifacts.length)
+        return mergedArtifacts
+      })
 
     } catch (error) {
       console.error('❌ [loadChatSpecificArtifacts] Failed to load chat artifacts:', error)
-      setArtifacts([])
+      // FIX: Don't clear all artifacts on error, just don't add chat-specific ones
     }
-  }, [workspaceContext, workspaceId])
+  }, [workspaceId]) // FIX: Remove all dependencies to prevent infinite loop
 
   // Load data for fixed chats
   const loadFixedChatData = useCallback(async (chat: Chat) => {
     console.log('🔧 [loadFixedChatData] Loading data for chat:', chat.id, chat.title)
     
-    // Force refresh artifacts when switching to team management
-    if (chat.id === 'team-management') {
-      console.log('👥 [loadFixedChatData] Team chat selected, refreshing artifacts...')
-      await loadArtifacts()
-    }
+    // FIX: Removed loadArtifacts() call that was causing infinite loop
+    // Artifacts are loaded separately in loadChatSpecificArtifacts
     
     try {
       // Load actual conversation history from API
@@ -1938,9 +2003,12 @@ export function useConversationalWorkspace(workspaceId: string) {
   useEffect(() => {
     if (workspaceContext && activeChat) {
       console.log('🔄 [useEffect] workspaceContext loaded, reloading artifacts for active chat:', activeChat.id)
+      // Call directly to avoid dependency cycle
       loadChatSpecificArtifacts(activeChat)
     }
-  }, [workspaceContext, activeChat, loadChatSpecificArtifacts])
+    // Intentionally exclude loadChatSpecificArtifacts from deps to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceContext, activeChat])
 
   // Initial goal progress refresh after workspace loads
   useEffect(() => {

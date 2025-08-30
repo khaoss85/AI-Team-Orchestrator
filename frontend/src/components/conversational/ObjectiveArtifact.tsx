@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import DeliverableActionBar from './DeliverableActionBar'
 import MarkdownRenderer from './MarkdownRenderer'
 import { api } from '@/utils/api'
@@ -38,12 +39,20 @@ interface ObjectiveArtifactProps {
   objectiveData: ObjectiveData
   workspaceId?: string
   title: string
+  activeChat?: {
+    id: string
+    title: string
+    type: 'dynamic' | 'fixed'
+    objective?: any
+    metadata?: Record<string, any>
+  }
 }
 
 export default function ObjectiveArtifact({ 
   objectiveData, 
   workspaceId, 
-  title 
+  title,
+  activeChat
 }: ObjectiveArtifactProps) {
   // Early return if workspaceId is not available
   if (!workspaceId) {
@@ -65,7 +74,61 @@ export default function ObjectiveArtifact({
   const [inProgressDeliverables, setInProgressDeliverables] = useState<any[]>([])
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
   
-  const goalId = objectiveData.objective.id
+  // Optimized goal ID extraction using useMemo to avoid recalculation on every render
+  const goalId = useMemo(() => {
+    // Method 1: Extract from activeChat.id if it starts with 'goal-'
+    if (activeChat?.id?.startsWith('goal-')) {
+      return activeChat.id.replace('goal-', '')
+    }
+    
+    // Method 2: Extract from current URL if it contains goal- pattern
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname + window.location.hash
+      const goalMatch = currentPath.match(/goal-([a-f0-9-]+)/)
+      if (goalMatch) {
+        return goalMatch[1]
+      }
+    }
+    
+    // Method 3: Try activeChat objective data
+    if (activeChat?.objective?.id) {
+      return activeChat.objective.id
+    }
+    
+    // Method 4: Try activeChat metadata
+    if (activeChat?.metadata?.goal_id) {
+      return activeChat.metadata.goal_id
+    }
+    
+    // Method 5: Try objectiveData sources
+    return objectiveData.objective?.id || 
+           objectiveData.goal_data?.id || 
+           objectiveData.metadata?.goal_id || 
+           objectiveData.deliverables?.[0]?.metadata?.goal_id || 
+           ''
+  }, [activeChat?.id, activeChat?.objective?.id, activeChat?.metadata?.goal_id, objectiveData.objective?.id, objectiveData.goal_data?.id, objectiveData.metadata?.goal_id, objectiveData.deliverables])
+
+  // Optimized deliverable title extraction using useMemo
+  const deliverableTitle = useMemo(() => {
+    // Try to find a deliverable with a valid title
+    if (objectiveData.deliverables && objectiveData.deliverables.length > 0) {
+      for (const deliverable of objectiveData.deliverables) {
+        if (deliverable.title && deliverable.title !== 'undefined') {
+          return deliverable.title
+        }
+      }
+    }
+    
+    // Fallback to objective description or title
+    if (objectiveData.objective.description && objectiveData.objective.description !== title) {
+      return objectiveData.objective.description
+    }
+    
+    return title || undefined
+  }, [objectiveData.deliverables, objectiveData.objective.description, title])
+
+
+
 
   // Defensive check for workspaceId
   if (!workspaceId) {
@@ -222,7 +285,6 @@ export default function ObjectiveArtifact({
         return !isCompleted
       })
       
-      console.log('Non-completed deliverables loaded for In Progress tab:', combinedInProgressDeliverables.length, 'statuses:', combinedInProgressDeliverables.map(d => `${d.status} (${d.progress || 0}%)`))
       setInProgressDeliverables(combinedInProgressDeliverables)
       
       // If we're currently on the in_progress tab but there are no incomplete deliverables,
@@ -300,6 +362,7 @@ export default function ObjectiveArtifact({
 
   return (
     <div className="p-6">
+      
       {/* Clean Header - Claude Code style */}
       <div className="border-b border-gray-100 pb-4 mb-6">
         <div className="flex items-start justify-between">
@@ -394,6 +457,7 @@ export default function ObjectiveArtifact({
             inProgressDeliverables={inProgressDeliverables}
           />
         )}
+        
       </div>
     </div>
   )
@@ -642,7 +706,6 @@ function DeliverablesTab({
               setAutoCompletingMissing(true)
               
               try {
-                console.log('Making auto-completion request to:', `${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`)
                 const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                   method: 'POST',
                   headers: {
@@ -650,11 +713,9 @@ function DeliverablesTab({
                   }
                 })
                 
-                console.log('Auto-completion response status:', response.status)
                 
                 if (response.ok) {
                   const responseData = await response.json()
-                  console.log('Auto-completion response data:', responseData)
                   alert('Auto-completion request submitted successfully! The system will generate missing deliverables.')
                   // Reload goal progress details to show updated data
                   await loadGoalProgressDetails()
@@ -913,20 +974,17 @@ function DeliverablesTab({
                 setAutoCompletingMissing(true)
                 
                 try {
-                  console.log('Making auto-completion request to:', `${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`)
-                  const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
+                    const response = await fetch(`${api.getBaseUrl()}/api/auto-completion/workspace/${workspaceId}/missing-deliverables`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
                     }
                   })
                   
-                  console.log('Auto-completion response status:', response.status)
-                  
+                    
                   if (response.ok) {
                     const responseData = await response.json()
-                    console.log('Auto-completion response data:', responseData)
-                    alert('Auto-completion request submitted successfully! The system will generate missing deliverables.')
+                      alert('Auto-completion request submitted successfully! The system will generate missing deliverables.')
                     // Reload goal progress details to show updated data
                     await loadGoalProgressDetails()
                   } else {
@@ -1049,7 +1107,7 @@ function DeliverablesTab({
                         {deliverable.available_formats && deliverable.available_formats.length > 1 && (
                           <select 
                             className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                            onChange={(e) => console.log('Format change requested:', e.target.value)}
+                            onChange={(e) => { /* Format change handler can be implemented here */ }}
                             value={deliverable.display_format || 'html'}
                           >
                             {deliverable.available_formats.map((format: string) => (
@@ -1243,3 +1301,4 @@ function InProgressTab({ workspaceId, inProgressDeliverables }: InProgressTabPro
     </div>
   )
 }
+
