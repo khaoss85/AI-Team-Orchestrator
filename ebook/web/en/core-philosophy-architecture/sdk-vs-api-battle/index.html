@@ -202,20 +202,27 @@
         }
         
         /* Content Area */
-        .content-area {
-            background: white;
-            padding: 3rem;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            margin-bottom: 3rem;
+        .content-area,
+        main.content-area {
+            background: white !important;
+            padding: 3rem !important;
+            border-radius: 20px !important;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+            margin-bottom: 3rem !important;
+            max-width: 100% !important;
+            overflow-x: visible !important;
+            box-sizing: border-box !important;
         }
         
-        .content-area h2 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            margin: 2rem 0 1rem 0;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #667eea;
+        .content-area h2,
+        main.content-area h2 {
+            color: #2c3e50 !important;
+            font-size: 1.8rem !important;
+            margin: 2rem 0 1rem 0 !important;
+            padding-bottom: 0.5rem !important;
+            border-bottom: 2px solid #667eea !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
         
         .content-area h3 {
@@ -558,19 +565,50 @@
             line-height: 1.5;
         }
 
-        .war-story.decision-rationale {
-            background: rgba(25, 135, 84, 0.1);
-            border-left: 4px solid #198754;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 2rem 0;
+        /* Base War Story Styles - Updated 2025-08-31 */
+        .content-area .war-story,
+        main .war-story,
+        div.war-story {
+            background: linear-gradient(135deg, #fff9e6 0%, #fef3d1 100%) !important;
+            border: 1px solid #f39c12 !important;
+            border-radius: 12px !important;
+            padding: 1.5rem !important;
+            margin: 2rem 0 !important;
+            border-left: 4px solid #f39c12 !important;
+            box-sizing: border-box !important;
+            display: block !important;
+        }
+
+        .war-story h3 {
+            color: #d68910 !important;
+            margin-bottom: 1rem !important;
+            font-size: 1.3rem !important;
+            font-weight: 600 !important;
+        }
+
+        .war-story p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .content-area .war-story.decision-rationale,
+        main .war-story.decision-rationale,
+        div.war-story.decision-rationale {
+            background: rgba(25, 135, 84, 0.1) !important;
+            border-left: 4px solid #198754 !important;
+            border: 1px solid rgba(25, 135, 84, 0.2) !important;
+            border-radius: 12px !important;
+            padding: 1.5rem !important;
+            margin: 2rem 0 !important;
+            box-sizing: border-box !important;
+            display: block !important;
         }
 
         .war-story.decision-rationale h3 {
-            color: #198754;
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-            font-weight: 600;
+            color: #198754 !important;
+            margin-bottom: 1rem !important;
+            font-size: 1.3rem !important;
+            font-weight: 600 !important;
         }
 
         .war-story.decision-rationale ul {
@@ -617,28 +655,28 @@
             color: #20c997;
         }
 
-        /* Industry Insight Icons and Headers */
-        .insight-header {
-            background: #28a745;
-            color: white;
-            padding: 1rem 1.5rem;
-            margin: -2rem -2rem 1.5rem -2rem;
-            border-radius: 10px 10px 0 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .dark-mode .war-story {
+            background: rgba(243, 156, 18, 0.1);
+            border-color: rgba(243, 156, 18, 0.3);
+            color: #e9ecef;
         }
+
+        .dark-mode .war-story h3 {
+            color: #ffc107;
+        }
+
+        .dark-mode .war-story p {
+            color: #e9ecef;
+        }
+
+        /* FIXED: All CSS and HTML structure issues resolved */
+        
+        /* Industry Insight Icons and Headers - REMOVED DUPLICATE */
 
         .insight-icon {
             width: 24px;
             height: 24px;
             flex-shrink: 0;
-        }
-
-        .insight-header h4 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 600;
         }
         /* Reader Tools */
         .reader-tools {
@@ -1685,7 +1723,7 @@
                     </svg>
                     <h4>🏛️ Industry Validation: Emerging Design Patterns</h4>
                 </div>
-                
+                <div>
                     <p>Our architectural choice finds confirmation in the <strong>AI Design Patterns</strong> identified by <strong>Tomasz Tunguz</strong> (2024). Among the emerging patterns in the industry, two resonate perfectly with our approach:</p>
                     
                     <p><strong>1. AI Query Router Pattern:</strong> A router that directs easy requests to small, fast models, and only complex queries to expensive LLMs. This is analogous to our <code>Director</code> that selects "the right agent for the right task," balancing costs, performance, and UX.</p>
@@ -1697,8 +1735,8 @@
             </div>
             
             <h2># <strong>SDK Primitives: Our New Superpowers</strong></h2>
-            ;
-            <p>Adopting the OpenAI Agents SDK didnt just mean adding a new library; it meant changing our way of thinking. Instead of reasoning in terms of "HTTP calls," we started reasoning in terms of "agent capabilities." The SDK provided us with a set of powerful primitives that became the building blocks of our architecture.</p>
+            
+            <p>Adopting the OpenAI Agents SDK didn't just mean adding a new library; it meant changing our way of thinking. Instead of reasoning in terms of "HTTP calls," we started reasoning in terms of "agent capabilities." The SDK provided us with a set of powerful primitives that became the building blocks of our architecture.</p>
             
             <table>
                 <thead>
@@ -1748,19 +1786,6 @@
             <p>Imagine a world where every AI tool (an analysis tool, a vector database, another agent) speaks a different language. To make them collaborate, you must build a custom adapter for each pair. Its an integration nightmare.</p>
             
             <p>MCP proposes to solve this problem. Its an open protocol that standardizes how applications provide context and tools to LLMs. It works like a USB-C port: a single standard that allows any AI model to connect to any data source or tool that "speaks" the same language.</p>
-            
-            <div class="architecture-section">
-    <div class="architecture-title">
-        <svg class="architecture-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="9" x2="15" y2="9"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
-            <line x1="9" y1="15" x2="15" y2="15"/>
-        </svg>
-        <h4>Architecture Before and After MCP:</h4>
-    </div>
-    
-</div>
 
             
             <div class="architecture-section">
