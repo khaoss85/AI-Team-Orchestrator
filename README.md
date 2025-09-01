@@ -60,6 +60,109 @@ npm run dev     # Frontend (port 3000)
 python main.py  # Backend (port 8000) - run from backend/
 ```
 
+## ⚙️ Configuration Files
+
+The following configuration files are **required** but **not included in Git** for security. Create them locally:
+
+### 📁 **Backend Configuration** (`backend/.env`)
+
+Copy `backend/.env.example` and fill in your credentials:
+
+```bash
+# 🔑 Required API Keys
+OPENAI_API_KEY=sk-your-openai-api-key-here
+SUPABASE_URL=https://your-project-id.supabase.co  
+SUPABASE_KEY=your-supabase-anon-public-key
+
+# 🎯 Goal-Driven System (Core Features)
+ENABLE_GOAL_DRIVEN_SYSTEM=true
+AUTO_CREATE_GOALS_FROM_WORKSPACE=true
+GOAL_VALIDATION_INTERVAL_MINUTES=20
+MAX_GOAL_DRIVEN_TASKS_PER_CYCLE=5
+GOAL_COMPLETION_THRESHOLD=80
+
+# 📦 Asset & Deliverable Configuration
+USE_ASSET_FIRST_DELIVERABLE=true
+PREVENT_DUPLICATE_DELIVERABLES=true
+MAX_DELIVERABLES_PER_WORKSPACE=3
+DELIVERABLE_READINESS_THRESHOLD=100
+MIN_COMPLETED_TASKS_FOR_DELIVERABLE=2
+DELIVERABLE_CHECK_COOLDOWN_SECONDS=30
+
+# 🤖 AI Quality Assurance
+ENABLE_AI_QUALITY_ASSURANCE=true
+ENABLE_DYNAMIC_AI_ANALYSIS=true
+ENABLE_AUTO_PROJECT_COMPLETION=true
+
+# 🧠 Enhanced Reasoning (Claude/o3 Style)
+ENABLE_DEEP_REASONING=true
+DEEP_REASONING_THRESHOLD=0.7
+REASONING_CONFIDENCE_MIN=0.6
+MAX_REASONING_ALTERNATIVES=3
+
+# ⚡ Performance & Rate Limiting
+OPENAI_RPM_LIMIT=3000
+VALIDATION_CACHE_TTL=600
+ENABLE_AGGRESSIVE_CACHING=true
+AUTO_REFRESH_INTERVAL=600
+```
+
+### 🔗 **Getting Your API Keys**
+
+#### **OpenAI API Key**
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Create new API key  
+3. Copy the `sk-...` key to your `.env` file
+4. **Important**: Add payment method for usage beyond free tier
+
+#### **Supabase Configuration**
+1. Visit [Supabase Dashboard](https://supabase.com/dashboard)
+2. Create new project (free tier available)
+3. Go to **Settings** → **API**
+4. Copy **Project URL** and **anon public** key
+5. Paste both in your `.env` file
+
+### 🛡️ **Security Best Practices**
+
+- ✅ **Never commit `.env` files** to Git
+- ✅ **Use different API keys** for development/production  
+- ✅ **Set OpenAI usage limits** to control costs
+- ✅ **Rotate keys regularly** for production deployments
+- ⚠️ **Keep your `.env` file private** - it contains sensitive credentials
+
+### 📋 **Files Excluded from Git**
+
+The following files are automatically ignored for security/cleanup:
+
+```bash
+# 🔐 Sensitive configuration files
+.env*                    # Environment variables with API keys
+!*.env.example          # Example files are kept in repo
+
+# 📊 Development artifacts  
+*.log                   # Log files from development
+*.tmp, *.bak           # Temporary and backup files
+__pycache__/           # Python bytecode
+node_modules/          # NPM dependencies
+
+# 🧪 Test artifacts
+test_results/          # Test output files
+.pytest_cache/         # Python test cache
+.coverage              # Coverage reports
+
+# 🔧 Development tools
+.vscode/, .idea/       # IDE configuration
+.DS_Store             # macOS system files
+```
+
+### 🔧 **Optional Configuration**
+
+For development customization, you can also create:
+
+- **Backend**: Additional `.env.local` for local overrides
+- **Frontend**: No additional config files needed (Next.js handles this)
+- **Database**: Supabase handles all database configuration remotely
+
 ## 🏗️ Architecture Overview
 
 ```
