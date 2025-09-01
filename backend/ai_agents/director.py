@@ -199,8 +199,11 @@ class DirectorAgent:
 
             budget = (
                 constraints_dict.get("max_amount")
+                or constraints_dict.get("max_cost")  # Support both field names
                 or constraints_dict.get("budget", {}).get("max_amount")
+                or constraints_dict.get("budget", {}).get("max_cost")
                 or constraints_dict.get("budget_constraint", {}).get("max_amount")
+                or constraints_dict.get("budget_constraint", {}).get("max_cost")
                 or 0
             )
             if not isinstance(budget, (int, float)):
@@ -1180,7 +1183,8 @@ Execute tasks directly and provide substantial, actionable results.""",
         )
 
         # Create a dictionary for budget constraints from the proposal_request
-        budget_constraint_dict = {"max_amount": proposal_request.budget_limit} if proposal_request.budget_limit is not None else {}
+        # Use max_cost to match BudgetConstraint model
+        budget_constraint_dict = {"max_cost": proposal_request.budget_limit} if proposal_request.budget_limit is not None else {}
 
         # Instructions per l'LLM orchestratore
         # L'LLM deve capire che `constraints_json` per `analyze_project_requirements_llm` deve essere una stringa JSON.
@@ -1470,7 +1474,10 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             agents_list = data["agents"]
 
         # 1. Cap team size to calculated performance limit (now dynamic)
-        performance_max = max_team_for_performance  # Use the dynamic calculation from above
+        # Calculate the dynamic performance max based on budget
+        budget_amount = proposal_request.budget_limit or 5000
+        performance_max = min(8, max(3, int(budget_amount / 1500)))  # Dynamic sizing based on budget
+        
         if len(agents_list) > performance_max:
             logger.info(
                 f"Team size {len(agents_list)} exceeds calculated performance max {performance_max}. Truncating for quality."
@@ -1690,7 +1697,8 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         logger.debug("Creating smart fallback agents set based on budget and domain.")
         current_budget = 1000.0  # Default budget if parsing fails or not provided
         if isinstance(budget_constraint_data, dict):
-            current_budget = float(budget_constraint_data.get("max_amount", 1000.0))
+            # Support both max_amount and max_cost field names
+            current_budget = float(budget_constraint_data.get("max_amount", budget_constraint_data.get("max_cost", 1000.0)))
         elif isinstance(budget_constraint_data, (int, float)):
             current_budget = float(budget_constraint_data)
         
@@ -1747,7 +1755,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Specializes in B2B research, lead generation, and contact list building. Expert in identifying ICP profiles and business intelligence gathering.",
                     "system_prompt": "You are a Business Research Specialist focused on B2B lead generation and market research. Your goal is to produce high-quality prospect lists and business intelligence reports.",
                     "llm_config": {"model": "gpt-4o", "temperature": 0.1},
-                    "tools": ["web_search", "data_analysis", "lead_research"],
+                    "tools": [
+                        {"type": "web_search", "name": "web_search", "description": "Web search capability"},
+                        {"type": "function", "name": "data_analysis", "description": "Data analysis capability"},
+                        {"type": "function", "name": "lead_research", "description": "Lead research capability"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
@@ -1760,7 +1772,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Creates compelling email sequences and outbound sales campaigns. Expert in conversion-focused copywriting and email automation.",
                     "system_prompt": "You are an Email Marketing Specialist. Create high-converting email sequences and outbound campaigns that generate responses and conversions.",
                     "llm_config": {"model": "gpt-4o", "temperature": 0.2},
-                    "tools": ["email_templates", "copywriting", "campaign_design"],
+                    "tools": [
+                        {"type": "function", "name": "email_templates", "description": "Email template creation"},
+                        {"type": "function", "name": "copywriting", "description": "Copywriting capability"},
+                        {"type": "function", "name": "campaign_design", "description": "Campaign design capability"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
@@ -1775,7 +1791,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Creates engaging content for social media, blogs, and marketing campaigns. Expert in storytelling and audience engagement.",
                     "system_prompt": "You are a Content Marketing Specialist. Create compelling, engaging content that drives audience engagement and achieves marketing goals.",
                     "llm_config": {"model": "gpt-4o", "temperature": 0.3},
-                    "tools": ["content_creation", "social_media", "copywriting"],
+                    "tools": [
+                        {"type": "function", "name": "content_creation", "description": "Content creation capability"},
+                        {"type": "function", "name": "social_media", "description": "Social media management"},
+                        {"type": "function", "name": "copywriting", "description": "Copywriting capability"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
@@ -1788,7 +1808,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Manages social media strategy, posting schedules, and community engagement. Focuses on audience growth and engagement metrics.",
                     "system_prompt": "You are a Social Media Manager. Develop and execute social media strategies that grow audiences and increase engagement.",
                     "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
-                    "tools": ["social_media", "analytics", "community_management"],
+                    "tools": [
+                        {"type": "function", "name": "social_media", "description": "Social media management"},
+                        {"type": "function", "name": "analytics", "description": "Analytics and reporting"},
+                        {"type": "function", "name": "community_management", "description": "Community engagement"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
                 })
                 remaining_slots -= 1
@@ -1805,7 +1829,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Analyzes project data, generates insights, and creates performance reports. Provides data-driven recommendations for optimization.",
                     "system_prompt": "You are a Data Analyst. Analyze project performance data and generate actionable insights that drive better results.",
                     "llm_config": {"model": "gpt-4o", "temperature": 0.1},
-                    "tools": ["data_analysis", "reporting", "visualization"],
+                    "tools": [
+                        {"type": "function", "name": "data_analysis", "description": "Data analysis capability"},
+                        {"type": "function", "name": "reporting", "description": "Report generation"},
+                        {"type": "function", "name": "visualization", "description": "Data visualization"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
@@ -1819,7 +1847,11 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "description": "Versatile specialist who executes various project tasks and supports team objectives. Adaptable to different project needs.",
                     "system_prompt": "You are a Task Execution Specialist. Execute assigned tasks efficiently and support the team in achieving project objectives.",
                     "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
-                    "tools": ["task_execution", "research", "documentation"],
+                    "tools": [
+                        {"type": "function", "name": "task_execution", "description": "General task execution"},
+                        {"type": "function", "name": "research", "description": "Research capability"},
+                        {"type": "function", "name": "documentation", "description": "Documentation creation"}
+                    ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
                 })
                 remaining_slots -= 1
