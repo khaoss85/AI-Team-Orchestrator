@@ -1204,21 +1204,35 @@ PROJECT: {proposal_request.requirements}
 BUDGET: {budget_amount} EUR
 MAX TEAM SIZE: {max_team_for_performance} agents (analyze project needs to determine optimal size)
 
-DOMAIN ANALYSIS REQUIRED:
-1. **Content/Marketing Projects**: Need Content Creators, Social Media Managers, Copywriters, Community Managers, Brand Strategists
-2. **Technical Projects**: Need Developers, Architects, DevOps, QA Engineers  
-3. **Business Projects**: Need Analysts, Consultants, Project Managers, Researchers
-4. **Design Projects**: Need UX/UI Designers, Graphic Designers, Product Designers
-5. **Mixed Projects**: Combine domain-specific roles intelligently
+CRITICAL: ANALYZE PROJECT DOMAIN FIRST - Match project to the correct category below:
 
-ESSENTIAL ROLES FOR INSTAGRAM/SOCIAL MEDIA PROJECTS:
-- Content Creator/Writer (creates actual posts, captions, content)
-- Social Media Manager (strategy, posting, engagement)
-- Community Manager (audience interaction, relationship building) 
-- Brand Strategist (brand voice, messaging, positioning)
-- Visual Content Designer (graphics, layouts, visual identity)
-- Copywriter (compelling copy, hooks, call-to-actions)
-- SEO/Analytics Specialist (hashtag research, performance analysis)
+1. **B2B/LEAD GENERATION PROJECTS** (Keywords: contatti, ICP, CMO, CTO, SaaS, leads, outbound, Hubspot, CRM, B2B):
+   REQUIRED SPECIALISTS (assign EXPERT or SENIOR level for high-budget projects):
+   - Business Research Specialist (EXPERT: finds target companies, ICPs, decision makers)
+   - Lead Generation Expert (EXPERT: builds prospect lists, enriches contact data)
+   - Email Marketing Strategist (SENIOR: creates sequences, nurture campaigns)
+   - Sales Copywriter (SENIOR: persuasive B2B messaging, value propositions)
+   - CRM Integration Specialist (SENIOR: Hubspot, Salesforce setup)
+   - Market Intelligence Analyst (EXPERT: competitive analysis, industry insights)
+
+2. **SOCIAL MEDIA/CONTENT PROJECTS** (Keywords: Instagram, TikTok, social, posts, stories, reels):
+   - Content Creator/Writer (creates posts, captions, content calendars)
+   - Social Media Manager (strategy, posting schedules, engagement)
+   - Visual Content Designer (graphics, layouts, visual identity)
+   - Community Manager (audience interaction, relationship building)
+   - Brand Strategist (brand voice, messaging consistency)
+
+3. **TECHNICAL/DEVELOPMENT PROJECTS** (Keywords: app, website, API, code, software, system):
+   - Software Developer (coding, implementation)
+   - System Architect (design, infrastructure)
+   - DevOps Engineer (deployment, CI/CD)
+   - QA Engineer (testing, quality assurance)
+
+4. **BUSINESS ANALYSIS PROJECTS** (Keywords: analysis, strategy, planning, research):
+   - Business Analyst (requirements, process analysis)
+   - Strategic Consultant (business strategy, recommendations)
+   - Data Analyst (metrics, insights, reporting)
+   - Market Researcher (trends, opportunities)
 
 Create a focused, expert team with detailed profiles. Each agent should have:
 - Rich personality traits and background
@@ -1263,13 +1277,23 @@ Return ONLY this JSON structure:
   "rationale": "Brief explanation of team design"
 }}
 
-TEAM GUIDELINES:
-- Budget: junior=8€/day, senior=15€/day, expert=25€/day (×30 for monthly)
-- If budget ≥{budget_amount}: Use {min(4, max(2, int(budget_amount)//1000))} agents
+TEAM SIZING RULES (CRITICAL - FOLLOW EXACTLY):
+- Budget: junior=240€/month, senior=450€/month, expert=750€/month
+- TEAM SIZE CALCULATION:
+  * Budget <1500€: 1-2 agents
+  * Budget 1500-3000€: 3 agents  
+  * Budget 3000-5000€: 4 agents
+  * Budget 5000-8000€: 5 agents
+  * Budget 8000-12000€: 6 agents
+  * Budget >12000€: 7-8 agents
+- For €{budget_amount} budget: Create EXACTLY {min(8, max(3, int(budget_amount / 1500)))} agents
+- BUDGET UTILIZATION TARGET: Use 50-70% of available budget (€{int(budget_amount * 0.6)} target)
+- MIX SENIORITIES STRATEGICALLY:
+  * High budget (>8000€): Include 2-3 EXPERT agents + 2-3 SENIOR + remaining JUNIOR
+  * Medium budget (3000-8000€): Include 1 EXPERT + majority SENIOR + 1-2 JUNIOR
+  * Low budget (<3000€): Mostly SENIOR with 1 JUNIOR
 - Always include 1 Project Manager (senior) if team >1
-- Make agents domain-specific to the goal
 - Tools: web_search for senior+, file_search for research roles
-- Minimal handoffs: Manager→Specialists, critical escalations only
 - AGENT NAMES: Use format "NomeCognome" (e.g., "ElenaRossi", "MarcoBianchi")
 
 RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
@@ -1711,9 +1735,10 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         agents_list_default: List[Dict[str, Any]] = []
         
         # Determine domain and create appropriate specialists
-        is_content_marketing = any(term in goal_lower for term in ['instagram', 'social', 'content', 'marketing', 'email', 'outbound', 'leads'])
-        is_business_analysis = any(term in goal_lower for term in ['contatti', 'contacts', 'icp', 'b2b', 'sales', 'lead', 'crm'])
-        is_technical = any(term in goal_lower for term in ['development', 'coding', 'app', 'website', 'api', 'software'])
+        # IMPORTANT: Check B2B FIRST as it's more specific than general content marketing
+        is_b2b_lead_gen = any(term in goal_lower for term in ['contatti', 'contacts', 'icp', 'cmo', 'cto', 'saas', 'b2b', 'sales', 'lead', 'crm', 'hubspot', 'outbound', 'sequenze email'])
+        is_content_marketing = any(term in goal_lower for term in ['instagram', 'tiktok', 'social media', 'posts', 'stories', 'reels', 'influencer']) and not is_b2b_lead_gen
+        is_technical = any(term in goal_lower for term in ['development', 'coding', 'app', 'website', 'api', 'software', 'backend', 'frontend'])
         
         # Always start with a project manager for teams > 1
         if optimal_team_size > 1:
@@ -1745,7 +1770,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
         # Add domain-specific specialists based on remaining budget and goal analysis
         remaining_slots = optimal_team_size - len(agents_list_default)
         
-        if is_business_analysis or 'b2b' in goal_lower:
+        if is_b2b_lead_gen:
             # B2B/Sales project - add business intelligence specialists
             if remaining_slots > 0:
                 agents_list_default.append({
@@ -1780,8 +1805,43 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
+            
+            # Add more B2B specialists if budget allows
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "SalesCopywriter",
+                    "role": "B2B Sales Copywriter",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Creates persuasive B2B sales copy and email sequences. Expert in value propositions and conversion optimization.",
+                    "system_prompt": "You are a B2B Sales Copywriter. Create compelling sales copy that converts prospects into customers.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "tools": [
+                        {"type": "function", "name": "copywriting", "description": "Sales copywriting"},
+                        {"type": "function", "name": "email_sequences", "description": "Email sequence creation"},
+                        {"type": "function", "name": "conversion_optimization", "description": "Conversion optimization"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "CRMSpecialist",
+                    "role": "CRM Integration Specialist", 
+                    "seniority": AgentSeniority.JUNIOR.value,
+                    "description": "Configures and integrates CRM systems like Hubspot and Salesforce. Sets up automation workflows and tracking.",
+                    "system_prompt": "You are a CRM Integration Specialist. Configure CRM systems for optimal lead management and sales processes.",
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
+                    "tools": [
+                        {"type": "function", "name": "crm_setup", "description": "CRM configuration"},
+                        {"type": "function", "name": "automation", "description": "Workflow automation"},
+                        {"type": "function", "name": "integration", "description": "System integration"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
+                })
+                remaining_slots -= 1
         
-        if is_content_marketing:
+        elif is_content_marketing:
             # Content/Marketing project - add creative specialists
             if remaining_slots > 0:
                 agents_list_default.append({
