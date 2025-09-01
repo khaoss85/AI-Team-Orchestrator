@@ -234,10 +234,6 @@ export default function ConversationPanel({
               </span>
             );
           })()}
-          {/* Show active thinking indicator */}
-          {(hasActiveProcesses || currentGoalDecomposition?.status === 'in_progress') && (
-            <span className="ml-1 text-xs text-orange-600 font-medium">LIVE</span>
-          )}
         </button>
       </div>
 
@@ -346,13 +342,6 @@ export default function ConversationPanel({
                       {currentGoalDecomposition.goal_name || currentGoalDecomposition.description || currentGoalDecomposition.objective || 'Processing objective'}
                     </p>
                   </div>
-                  {/* Real-time connection status */}
-                  {isWebSocketConnected && (
-                    <div className="ml-auto flex items-center text-xs text-green-600">
-                      <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-                      LIVE
-                    </div>
-                  )}
                 </div>
               </div>
             )}

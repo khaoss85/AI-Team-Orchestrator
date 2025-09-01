@@ -1,13 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { DeliverableArtifact, TeamActivity, Chat, MacroTheme } from './types'
+import { DeliverableArtifact, TeamActivity, Chat } from './types'
 import TeamThinkingStream from './TeamThinkingStream'
 import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
 import AuthenticThinkingViewer from './AuthenticThinkingViewer'
-import MacroDeliverableView from './MacroDeliverableView'
-import ThemeArtifact from './ThemeArtifact'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -22,7 +20,6 @@ interface ArtifactsPanelProps {
   onCheckWorkspaceHealth?: () => Promise<any>
   onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
   onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
-  selectedTheme?: MacroTheme | null
 }
 
 export default function ArtifactsPanel({
@@ -37,8 +34,7 @@ export default function ArtifactsPanel({
   healthLoading,
   onCheckWorkspaceHealth,
   onUnblockWorkspace,
-  onResumeAutoGeneration,
-  selectedTheme
+  onResumeAutoGeneration
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
   const [activeTab, setActiveTab] = useState<'artifacts' | 'viewer'>('artifacts')
@@ -139,7 +135,7 @@ export default function ArtifactsPanel({
           />
         )}
 
-        {!selectedTheme && activeTab === 'viewer' && selectedArtifact && (
+        {activeTab === 'viewer' && selectedArtifact && (
           <>
             {console.log('📋 [ArtifactsPanel] Rendering ArtifactViewer with workspaceId:', workspaceId, 'for artifact:', selectedArtifact.type)}
             <ArtifactViewer

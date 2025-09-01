@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Chat, WorkspaceContext, MacroTheme } from './types'
-import { useThemeExtraction } from '@/hooks/useThemeExtraction'
+import { Chat, WorkspaceContext } from './types'
 
 interface ChatSidebarProps {
   chats: Chat[]
@@ -19,7 +18,6 @@ interface ChatSidebarProps {
   onReactivateChat?: (chatId: string) => Promise<void>
   onRenameChat?: (chatId: string, newName: string) => Promise<void>
   onToggleCollapse: () => void
-  onThemeSelect?: (theme: MacroTheme) => void
 }
 
 // Hook for feedback count
@@ -66,25 +64,18 @@ export default function ChatSidebar({
   onArchiveChat,
   onReactivateChat,
   onRenameChat,
-  onToggleCollapse,
-  onThemeSelect
+  onToggleCollapse
 }: ChatSidebarProps) {
   const router = useRouter()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newObjective, setNewObjective] = useState('')
   const { pendingCount, urgentCount } = useFeedbackCount(workspaceContext.id)
-  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
-  
-  // AI-driven theme extraction
-  const { themes, loading: themesLoading, error: themesError } = useThemeExtraction(workspaceContext.id)
 
   // Separate fixed and dynamic chats
   const fixedChats = chats.filter(chat => chat.type === 'fixed')
   // Show ALL dynamic chats (active, completed, and in_progress) - not just active ones
   const activeObjectives = chats.filter(chat => chat.type === 'dynamic' && chat.status !== 'archived')
   const archivedChats = chats.filter(chat => chat.status === 'archived')
-  
-  // Removed excessive logging that was causing performance issues
 
   const handleCreateChat = async () => {
     if (newObjective.trim()) {
@@ -94,9 +85,9 @@ export default function ChatSidebar({
     }
   }
 
-  // 🎯 FIX: Direct chat selection with URL update through router
+  // Direct chat selection with URL update through router
   const handleChatSelect = (chat: Chat) => {
-    console.log('🎯 ChatSidebar: Selecting chat:', chat.id)
+    console.log('ChatSidebar: Selecting chat:', chat.id)
     
     // Update state
     onChatSelect(chat)
@@ -195,7 +186,7 @@ export default function ChatSidebar({
         {/* Fixed System Chats */}
         <div className="p-3">
           <div className="text-xs font-medium text-gray-500 mb-2 px-1">
-            📌 SYSTEM
+            SYSTEM
           </div>
           <div className="space-y-1">
             {fixedChats.map(chat => (
@@ -211,11 +202,11 @@ export default function ChatSidebar({
           </div>
         </div>
 
-        {/* AI-Generated Themes or Objectives */}
+        {/* Objectives */}
         <div className="p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-gray-500 px-1">
-              {themes.length > 0 ? '📈 THEMES' : '🎯 OBJECTIVES'}
+              OBJECTIVES
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -226,34 +217,16 @@ export default function ChatSidebar({
             </button>
           </div>
           <div className="space-y-1">
-            {themesLoading || goalsLoading ? (
+            {goalsLoading ? (
               <div className="flex items-center px-1 py-2 text-xs text-gray-500">
                 <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                {themesLoading ? 'Extracting themes...' : 'Loading objectives...'}
+                Loading objectives...
               </div>
-            ) : themesError || goalsError ? (
+            ) : goalsError ? (
               <div className="text-xs text-red-500 px-1 py-2">
-                Error: {themesError || goalsError}
+                Error: {goalsError}
               </div>
-            ) : themes.length > 0 ? (
-              // Display AI-generated themes
-              <>
-                {themes.map(theme => (
-                  <ThemeItem
-                    key={theme.theme_id}
-                    theme={theme}
-                    isActive={selectedThemeId === theme.theme_id}
-                    onClick={() => {
-                      setSelectedThemeId(theme.theme_id)
-                      if (onThemeSelect) {
-                        onThemeSelect(theme)
-                      }
-                    }}
-                  />
-                ))}
-              </>
             ) : (
-              // Fallback to individual objectives if no themes
               <>
                 {activeObjectives.map(chat => (
                   <ChatItem 
@@ -279,7 +252,7 @@ export default function ChatSidebar({
         {archivedChats.length > 0 && (
           <div className="p-3">
             <div className="text-xs font-medium text-gray-500 mb-2 px-1">
-              🗄️ ARCHIVED
+              ARCHIVED
             </div>
             <div className="space-y-1">
               {archivedChats.slice(0, 3).map(chat => (
@@ -305,17 +278,22 @@ export default function ChatSidebar({
 
       {/* Create Objective Modal */}
       {showCreateModal && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Create New Objective</h3>
-            <textarea
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-80">
+            <h2 className="text-lg font-semibold mb-4">Create New Objective</h2>
+            <input
+              type="text"
               value={newObjective}
               onChange={(e) => setNewObjective(e.target.value)}
-              placeholder="Describe your objective (e.g., 'Create Q1 content strategy for LinkedIn')"
-              className="w-full h-24 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Enter objective description..."
+              className="w-full px-3 py-2 border rounded-lg mb-4"
               autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateChat()
+                if (e.key === 'Escape') setShowCreateModal(false)
+              }}
             />
-            <div className="flex justify-end space-x-3 mt-4">
+            <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
@@ -324,8 +302,7 @@ export default function ChatSidebar({
               </button>
               <button
                 onClick={handleCreateChat}
-                disabled={!newObjective.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Create
               </button>
@@ -341,254 +318,182 @@ export default function ChatSidebar({
 interface ChatItemProps {
   chat: Chat
   isActive: boolean
-  isArchived?: boolean
   onClick: () => void
   onArchive?: () => void
   onReactivate?: () => void
   onRename?: (newName: string) => void
+  isArchived?: boolean
   feedbackCount?: number
   urgentCount?: number
 }
 
-// Theme Item Component for AI-generated themes
-interface ThemeItemProps {
-  theme: MacroTheme
-  isActive: boolean
-  onClick: () => void
-}
-
-function ThemeItem({ theme, isActive, onClick }: ThemeItemProps) {
-  return (
-    <div 
-      onClick={onClick}
-      className={`
-        group relative p-2 rounded-lg cursor-pointer transition-colors
-        ${isActive 
-          ? 'bg-blue-100 text-blue-900' 
-          : 'text-gray-700 hover:bg-gray-100'
-        }
-      `}
-    >
-      <div className="flex items-center space-x-2 w-full">
-        {/* Theme icon */}
-        <span className="text-sm flex-shrink-0">{theme.icon}</span>
-        
-        {/* Theme name and statistics */}
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate flex items-center">
-            {theme.name}
-            {/* Progress indicator */}
-            <div className="ml-2 text-xs text-gray-500">
-              {Math.round(theme.statistics.average_progress)}%
-            </div>
-          </div>
-          <div className="text-xs opacity-75 truncate">
-            {theme.statistics.total_goals} goals • {theme.statistics.total_deliverables} items
-          </div>
-        </div>
-        
-        {/* Confidence score indicator */}
-        <div className="flex-shrink-0" title={`AI Confidence: ${theme.confidence_score}%`}>
-          <div className={`w-2 h-2 rounded-full ${
-            theme.confidence_score >= 80 ? 'bg-green-500' : 
-            theme.confidence_score >= 60 ? 'bg-yellow-500' : 
-            'bg-orange-500'
-          }`} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ChatItem({ chat, isActive, isArchived, onClick, onArchive, onReactivate, onRename, feedbackCount, urgentCount }: ChatItemProps) {
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [showRenameModal, setShowRenameModal] = useState(false)
-  const [newName, setNewName] = useState(chat.title)
+function ChatItem({ 
+  chat, 
+  isActive, 
+  onClick, 
+  onArchive, 
+  onReactivate, 
+  onRename,
+  isArchived = false,
+  feedbackCount,
+  urgentCount
+}: ChatItemProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedTitle, setEditedTitle] = useState(chat.title)
+  const [showActions, setShowActions] = useState(false)
 
   const handleRename = () => {
-    if (newName.trim() && newName !== chat.title && onRename) {
-      onRename(newName.trim())
-      setShowRenameModal(false)
+    if (onRename && editedTitle.trim() && editedTitle !== chat.title) {
+      onRename(editedTitle.trim())
+    }
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleRename()
+    } else if (e.key === 'Escape') {
+      setEditedTitle(chat.title)
+      setIsEditing(false)
     }
   }
 
+  const getStatusColor = () => {
+    if (!chat.objective) return ''
+    const progress = chat.objective.progress || 0
+    if (progress >= 100) return 'bg-green-500'
+    if (progress >= 75) return 'bg-blue-500'
+    if (progress >= 50) return 'bg-yellow-500'
+    if (progress >= 25) return 'bg-orange-500'
+    return 'bg-gray-400'
+  }
+
+  const getStatusIndicator = () => {
+    if (!chat.objective) return null
+    const progress = chat.objective.progress || 0
+    
+    return (
+      <div className="flex items-center space-x-1">
+        <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`} />
+        <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
+      </div>
+    )
+  }
+
   return (
-    <div className={`
-      group relative p-2 rounded-lg cursor-pointer transition-colors
-      ${isActive 
-        ? 'bg-blue-100 text-blue-900' 
-        : isArchived
-          ? 'text-gray-400 hover:text-gray-600'
-          : 'text-gray-700 hover:bg-gray-100'
-      }
-    `}>
-      <div onClick={onClick} className="flex items-center space-x-2 w-full">
-        {/* Goal progress indicator instead of icon */}
-        {chat.id.startsWith('goal-') ? (
-          <div className="flex-shrink-0 w-3 h-3 rounded-full" title={`Goal ${chat.status || 'unknown'}`}>
-            {(() => {
-              const progress = chat.objective?.progress || 0
-              if (progress >= 100) return <div className="w-3 h-3 bg-green-500 rounded-full" />
-              if (progress >= 1) return <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-              return <div className="w-3 h-3 bg-red-500 rounded-full" />
-            })()}
-          </div>
-        ) : (
-          <span className="text-sm flex-shrink-0">
-            {chat.icon || (chat.type === 'fixed' ? '📌' : '🎯')}
-          </span>
-        )}
+    <div
+      className={`
+        relative group px-2 py-1.5 rounded-lg cursor-pointer transition-all
+        ${isActive 
+          ? 'bg-blue-50 text-blue-700 shadow-sm' 
+          : 'hover:bg-gray-50 text-gray-700'
+        }
+        ${isArchived ? 'opacity-60' : ''}
+      `}
+      onClick={onClick}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      <div className="flex items-start space-x-2">
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate flex items-center">
-            {chat.title}
-            {/* Progress percentage for goals */}
-            {chat.id.startsWith('goal-') && chat.objective?.progress !== undefined && (
-              <div className="ml-2 text-xs text-gray-500">
-                {Math.round(chat.objective.progress)}%
+          {isEditing ? (
+            <input
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full px-1 py-0 text-sm bg-white border rounded"
+              autoFocus
+            />
+          ) : (
+            <>
+              <div className="text-sm font-medium truncate">
+                {chat.title}
               </div>
-            )}
-          </div>
-          {chat.lastActivity && (
-            <div className="text-xs opacity-75 truncate">
-              {new Date(chat.lastActivity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
+              {chat.subtitle && (
+                <div className="text-xs text-gray-500 truncate">
+                  {chat.subtitle}
+                </div>
+              )}
+              {chat.type === 'dynamic' && getStatusIndicator()}
+            </>
           )}
         </div>
-        {/* Show feedback count for feedback-requests chat */}
-        {feedbackCount !== undefined && feedbackCount > 0 ? (
-          <div className="relative flex-shrink-0">
-            <div className={`text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ${
-              urgentCount && urgentCount > 0 ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
-            }`}>
-              {feedbackCount > 99 ? '99+' : feedbackCount}
-            </div>
-            {/* Urgent indicator dot */}
-            {urgentCount && urgentCount > 0 ? (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
-            ) : null}
+        
+        {/* Action buttons */}
+        {showActions && !isEditing && (onArchive || onReactivate || onRename) && (
+          <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+            {onRename && !isArchived && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsEditing(true)
+                }}
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+                title="Rename"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
+            {onArchive && !isArchived && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onArchive()
+                }}
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+                title="Archive"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+              </button>
+            )}
+            {onReactivate && isArchived && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onReactivate()
+                }}
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+                title="Reactivate"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
           </div>
-        ) : null}
-        {/* Regular unread count for other chats */}
-        {chat.unreadCount && feedbackCount === undefined && (
-          <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+        )}
+        
+        {/* Feedback count badge */}
+        {feedbackCount !== undefined && feedbackCount > 0 && (
+          <div className="flex items-center space-x-1">
+            {urgentCount && urgentCount > 0 && (
+              <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
+                {urgentCount}
+              </span>
+            )}
+            <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+              {feedbackCount}
+            </span>
+          </div>
+        )}
+        
+        {/* Unread indicator */}
+        {chat.unreadCount && chat.unreadCount > 0 && (
+          <div className="absolute top-1 right-1">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
           </div>
         )}
       </div>
-      
-      {/* Options dropdown for goal chats */}
-      {(chat.id.startsWith('goal-') || chat.type === 'dynamic') && (
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowDropdown(!showDropdown)
-            }}
-            className="p-1 text-gray-400 hover:text-gray-600"
-            title="Goal options"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
-          </button>
-          
-          {/* Dropdown Menu */}
-          {showDropdown && (
-            <div className="absolute right-0 top-6 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowRenameModal(true)
-                  setShowDropdown(false)
-                }}
-                className="w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
-              >
-                ✏️ Rename
-              </button>
-              
-              {isArchived && onReactivate ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onReactivate()
-                    setShowDropdown(false)
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-xs text-green-700 hover:bg-green-50"
-                >
-                  🔄 Reactivate
-                </button>
-              ) : (
-                onArchive && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onArchive()
-                      setShowDropdown(false)
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
-                  >
-                    🗄️ Archive
-                  </button>
-                )
-              )}
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowDropdown(false)
-                }}
-                className="w-full px-3 py-1.5 text-left text-xs text-gray-500 hover:bg-gray-100"
-              >
-                ❌ Cancel
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Rename Modal */}
-      {showRenameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-sm">
-            <h3 className="text-sm font-semibold mb-3">Rename Goal</h3>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter new name"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename()
-                if (e.key === 'Escape') setShowRenameModal(false)
-              }}
-            />
-            <div className="flex justify-end space-x-2 mt-3">
-              <button
-                onClick={() => setShowRenameModal(false)}
-                className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRename}
-                disabled={!newName.trim() || newName === chat.title}
-                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Click outside to close dropdown */}
-      {showDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowDropdown(false)}
-        />
-      )}
     </div>
   )
 }
+
+// Export for use in pages
+export { ChatSidebar }

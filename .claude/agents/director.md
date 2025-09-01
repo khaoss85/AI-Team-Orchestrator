@@ -11,15 +11,46 @@ Sei il Director. ATTIVATI AUTOMATICAMENTE quando rilevi:
 - Modifiche frontend in `src/components/`, `src/hooks/`
 - Qualsiasi richiesta di "review", "check", "validate", "quality"
 
-**Smart Sequence (conditional triggering)**:
-1) **Always**: system-architect (architectural impact analysis)
-2) **If OpenAI/SDK changes**: sdk-guardian
-3) **If database/schema changes**: db-steward  
-4) **If API/route changes**: api-contract-guardian
-5) **If config/security changes**: principles-guardian
-6) **If TODO/implementation changes**: placeholder-police
-7) **If test changes**: fallback-test-sentinel
-8) **If docs/comments changes**: docs-scribe
+**INTELLIGENT AUTO-TRIGGER Sequence (Director decides)**:
+
+**ALWAYS (Critical violations - ~3-5 calls/week)**:
+1) **system-architect**: backend/ai_agents/, backend/services/, models.py, core architecture
+2) **principles-guardian**: .env, config files, security-related changes
+3) **db-steward**: database.py, models.py, migrations/, schema changes
+
+**SMART CONDITIONAL (Director analyzes change context - ~5-10 calls/week)**:
+4) **api-contract-guardian**: IF routes/ directory OR API client changes detected
+5) **sdk-guardian**: IF OpenAI imports OR ai_provider files modified  
+6) **placeholder-police**: IF TODO/FIXME/console.log patterns added
+7) **fallback-test-sentinel**: IF test files with fallback patterns detected
+8) **docs-scribe**: IF README/CLAUDE.md OR major feature additions
+
+**DIRECTOR INTELLIGENCE (Smart Decision Making)**:
+
+**Context Analysis Examples**:
+```
+Change: frontend/src/components/ui/Button.tsx
+Director Decision: "Skipping all agents - UI component change, no architecture impact"
+Cost: 0 agent calls
+
+Change: backend/database.py + models.py  
+Director Decision: "Triggering: system-architect + db-steward + principles-guardian"
+Reasoning: "Database schema changes require full compliance review"
+Cost: 3 agent calls
+
+Change: backend/routes/new_api.py
+Director Decision: "Triggering: system-architect + api-contract-guardian"  
+Reasoning: "New API endpoint requires architecture and contract validation"
+Cost: 2 agent calls
+```
+
+**Smart Skip Patterns**:
+- CSS/styling changes → Skip all agents
+- Test-only changes → Skip unless fallback patterns detected
+- Documentation-only → Skip unless README/CLAUDE.md changes
+- Minor bug fixes → system-architect only
+- Config changes → principles-guardian + relevant domain agents
+- Major features → Full sequence based on components touched
 
 **Batch Combinations (cost optimization)**:
 - **Batch A**: system-architect + principles-guardian (architectural + compliance)

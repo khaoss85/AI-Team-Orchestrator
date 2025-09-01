@@ -24,9 +24,6 @@ export default function TeamThinkingStream({ activities }: TeamThinkingStreamPro
 
   return (
     <div className="p-4 space-y-4 overflow-y-auto">
-      <div className="text-sm font-medium text-gray-700 mb-4">
-        🧠 Team Thinking Process
-      </div>
 
       {activities.map((activity) => (
         <ActivityCard key={activity.agentId} activity={activity} />
