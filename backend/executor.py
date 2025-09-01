@@ -1971,6 +1971,54 @@ Focus on delivering practical, actionable results that move the project forward.
             if status_to_set == TaskStatus.COMPLETED.value and workspace_id:
                 await self._check_and_trigger_deliverable_creation(workspace_id, task_id)
                 
+                # 🧠 WORKSPACE MEMORY: Generate insights from completed task
+                try:
+                    from workspace_memory import workspace_memory
+                    from models import InsightType
+                    from uuid import UUID
+                    
+                    task_name = task_dict.get("name", "Unknown task")
+                    task_output = completion_result.get("output", "")
+                    task_type = task_dict.get("task_type", "general")
+                    agent_role = task_dict.get("assigned_to_role", "specialist")
+                    
+                    # Generate insight based on task completion
+                    insight_content = f"Completed {task_type} task: {task_name}"
+                    if task_output and len(str(task_output)) > 50:
+                        output_preview = str(task_output)[:150] + "..." if len(str(task_output)) > 150 else str(task_output)
+                        insight_content += f" - Output: {output_preview}"
+                    
+                    # Determine insight type based on task characteristics
+                    insight_type = InsightType.SUCCESS_PATTERN
+                    confidence = 0.8
+                    
+                    # Store the insight
+                    await workspace_memory.store_insight(
+                        workspace_id=UUID(workspace_id),
+                        task_id=UUID(task_id) if task_id else None,
+                        agent_role=agent_role,
+                        insight_type=insight_type,
+                        content=insight_content,
+                        relevance_tags=[
+                            f"task_{task_type}",
+                            f"agent_{agent_role}",
+                            "task_completed",
+                            "execution_success"
+                        ],
+                        confidence_score=confidence,
+                        metadata={
+                            "task_name": task_name,
+                            "task_type": task_type,
+                            "completion_reason": reason,
+                            "forced_completion": True
+                        }
+                    )
+                    logger.info(f"✅ Stored workspace insight for completed task {task_id}")
+                    
+                except Exception as insight_error:
+                    logger.error(f"Failed to store workspace insight for task {task_id}: {insight_error}")
+                    # Don't fail task completion due to insight storage errors
+                
                 # EVENT-DRIVEN: Create task completion event
                 await self._create_integration_event(
                     workspace_id=workspace_id,
@@ -2289,6 +2337,31 @@ Original Task:
             # 🔍 Trace agent initialization
             if TASK_MONITOR_AVAILABLE:
                 trace_stage(task_id, ExecutionStage.AGENT_INITIALIZED, f"Agent {agent.agent_data.name} initialized")
+            
+            # 🧠 ENHANCED: Add agent assignment thinking step with metadata
+            if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                try:
+                    agent_info = {
+                        "id": str(agent_id),
+                        "name": agent.agent_data.name if hasattr(agent.agent_data, 'name') else "Unknown Agent",
+                        "role": agent.agent_data.role,
+                        "seniority": agent.agent_data.seniority,
+                        "skills": agent.agent_data.skills if hasattr(agent.agent_data, 'skills') else [],
+                        "status": "assigned",
+                        "workspace_id": workspace_id,
+                        "task_id": task_id
+                    }
+                    
+                    action_description = f"assigned to execute task '{task_name}' with priority {task_pydantic_obj.priority}"
+                    await thinking_engine.add_agent_thinking_step(
+                        process_id=thinking_process_id,
+                        agent_info=agent_info,
+                        action_description=action_description,
+                        confidence=0.9
+                    )
+                    logger.debug(f"💭 Added agent assignment metadata to thinking process {thinking_process_id}")
+                except Exception as agent_meta_error:
+                    logger.warning(f"Failed to add agent metadata to thinking process: {agent_meta_error}")
 
             # 🧠 SDK Session integration (handled in specialist.py now)
             session = None  # Session creation is now handled in SpecialistAgent.execute()
@@ -2317,6 +2390,27 @@ Original Task:
                 
                 logger.info(f"🎯 Executing task {task_id} through holistic task-to-deliverable pipeline")
                 
+                # 🧠 ENHANCED: Add holistic execution start thinking step
+                if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
+                    try:
+                        execution_info = {
+                            "execution_type": "holistic_pipeline",
+                            "workspace_agents_count": len(workspace_agents_data),
+                            "pipeline_mode": "task_to_deliverable",
+                            "rate_limited": API_RATE_LIMITER_AVAILABLE
+                        }
+                        
+                        await thinking_engine.add_thinking_step(
+                            process_id=thinking_process_id,
+                            step_type="reasoning",
+                            content=f"🎯 Starting holistic task-to-deliverable pipeline execution. Available workspace agents: {len(workspace_agents_data)}. This approach will ensure the task produces real business content and creates deliverables if appropriate.",
+                            confidence=0.8,
+                            metadata={"execution_context": execution_info, "task_id": task_id}
+                        )
+                        logger.debug(f"💭 Added holistic execution start to thinking process {thinking_process_id}")
+                    except Exception as exec_meta_error:
+                        logger.warning(f"Failed to add execution metadata to thinking process: {exec_meta_error}")
+                
                 # 🚦 Apply rate limiting if available
                 if API_RATE_LIMITER_AVAILABLE:
                     # Determine provider based on agent seniority
@@ -2332,7 +2426,7 @@ Original Task:
                     # Execute with rate limiting through holistic pipeline
                     execution_result = await execute_with_rate_limit(
                         lambda: asyncio.wait_for(
-                            execute_task_holistically(task_pydantic_obj, workspace_agents_data, session), 
+                            execute_task_holistically(task_pydantic_obj, workspace_agents_data, session, thinking_process_id), 
                             timeout=300.0
                         ),
                         provider=provider,
@@ -2341,7 +2435,7 @@ Original Task:
                 else:
                     # Direct holistic execution without rate limiting
                     execution_result = await asyncio.wait_for(
-                        execute_task_holistically(task_pydantic_obj, workspace_agents_data, session), 
+                        execute_task_holistically(task_pydantic_obj, workspace_agents_data, session, thinking_process_id), 
                         timeout=300.0
                     )
                 
@@ -4428,15 +4522,42 @@ Original Task:
 
                 logger.info(f"Coordinated task processing completed successfully for {task_id}")
 
-                # 🧠 Add final completion step (Codex-style)
+                # 🧠 ENHANCED: Add final completion step with performance metadata
                 if thinking_process_id and THINKING_PROCESS_AVAILABLE and thinking_engine:
-                    await thinking_engine.add_thinking_step(
-                        process_id=thinking_process_id,
-                        step_type="conclusion",
-                        content=f"✅ Task '{task_name}' completed successfully. Post-processing finished, all quality gates passed. The task result has been validated and stored for deliverable generation.",
-                        confidence=0.95,
-                        metadata={"completion_status": "success", "post_processing": "completed"}
-                    )
+                    try:
+                        # Get execution performance data if available
+                        execution_duration = time.time() - loop_start if 'loop_start' in locals() else None
+                        
+                        completion_metadata = {
+                            "completion_status": "success", 
+                            "post_processing": "completed",
+                            "task_id": task_id,
+                            "workspace_id": workspace_id,
+                            "execution_duration_seconds": execution_duration,
+                            "agent_delegation_depth": delegation_depth,
+                            "holistic_pipeline_used": self.holistic_pipeline is not None,
+                            "result_has_data": bool(result and result.get("data")),
+                            "completion_timestamp": datetime.now().isoformat()
+                        }
+                        
+                        await thinking_engine.add_thinking_step(
+                            process_id=thinking_process_id,
+                            step_type="conclusion",
+                            content=f"✅ Task '{task_name}' completed successfully. Post-processing finished, all quality gates passed. The task result has been validated and stored for deliverable generation. Execution duration: {execution_duration:.2f}s",
+                            confidence=0.95,
+                            metadata=completion_metadata
+                        )
+                        logger.debug(f"💭 Added enhanced completion metadata to thinking process {thinking_process_id}")
+                    except Exception as completion_meta_error:
+                        logger.warning(f"Failed to add enhanced completion metadata: {completion_meta_error}")
+                        # Fallback to simple completion
+                        await thinking_engine.add_thinking_step(
+                            process_id=thinking_process_id,
+                            step_type="conclusion",
+                            content=f"✅ Task '{task_name}' completed successfully. Post-processing finished, all quality gates passed.",
+                            confidence=0.95,
+                            metadata={"completion_status": "success", "post_processing": "completed"}
+                        )
                     
                     # Complete the thinking process
                     await thinking_engine.complete_thinking_process(
@@ -5551,11 +5672,12 @@ async def complete_thinking_processes_for_task(workspace_id: str, task_id: str, 
                     # Store quality gate failure in insights for tracking  
                     try:
                         from workspace_memory import workspace_memory
+                        from models import InsightType
                         await workspace_memory.store_insight(
                             workspace_id=workspace_id,
-                            insight_type="quality_gate_failure",
+                            insight_type=InsightType.CONSTRAINT,  # Quality failures are constraints
                             content=f"Task {task_name} failed quality assessment: {quality_reasoning}",
-                            relevance_tags=["quality", "task_completion", "validation"],
+                            relevance_tags=["quality", "task_completion", "validation", "quality_gate_failure"],
                             confidence_score=0.9,
                             metadata=quality_assessment
                         )

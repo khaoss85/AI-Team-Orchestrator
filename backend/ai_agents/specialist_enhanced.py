@@ -83,7 +83,7 @@ class SpecialistAgent:
 
     # ... (other methods remain the same) ...
 
-    async def execute(self, task: Task, session: Optional[Any] = None) -> TaskExecutionOutput:
+    async def execute(self, task: Task, session: Optional[Any] = None, thinking_process_id: Optional[str] = None) -> TaskExecutionOutput:
         """🧠 AI-DRIVEN Execute task with task classification and proper tool usage"""
         logger.info(f"🚀 Enhanced execution for task {task.id}")
         
@@ -93,6 +93,15 @@ class SpecialistAgent:
         from ai_quality_assurance.unified_quality_engine import unified_quality_engine
         from services.sdk_memory_bridge import create_workspace_session
         from services.ai_task_execution_classifier import classify_task_for_execution
+        
+        # Import thinking engine for enhanced metadata capture
+        thinking_engine = None
+        if thinking_process_id:
+            try:
+                from services.thinking_process import thinking_engine
+                logger.debug(f"💭 Thinking engine loaded for process {thinking_process_id}")
+            except ImportError:
+                logger.warning("Thinking engine not available for metadata capture")
 
         try:
             await update_agent_status(str(self.agent_data.id), AgentStatus.BUSY.value)
@@ -147,6 +156,34 @@ class SpecialistAgent:
             
             agent = OpenAIAgent(**{k: v for k, v in agent_config.items() if v})
 
+            # 🧠 ENHANCED: Add agent execution start thinking step
+            if thinking_process_id and thinking_engine:
+                try:
+                    agent_info = {
+                        "id": str(self.agent_data.id),
+                        "name": self.agent_data.name,
+                        "role": self.agent_data.role,
+                        "seniority": self.agent_data.seniority,
+                        "skills": getattr(self.agent_data, 'skills', []),
+                        "status": "executing",
+                        "workspace_id": str(task.workspace_id),
+                        "task_id": str(task.id),
+                        "execution_type": task_classification.execution_type.value,
+                        "tools_configured": len(execution_tools),
+                        "tools_required": task_classification.requires_tools
+                    }
+                    
+                    action_description = f"beginning execution of {task_classification.execution_type.value} task '{task.name}' with {len(execution_tools)} configured tools"
+                    await thinking_engine.add_agent_thinking_step(
+                        process_id=thinking_process_id,
+                        agent_info=agent_info,
+                        action_description=action_description,
+                        confidence=0.85
+                    )
+                    logger.debug(f"💭 Added agent execution start metadata to thinking process {thinking_process_id}")
+                except Exception as agent_start_error:
+                    logger.warning(f"Failed to add agent execution start to thinking process: {agent_start_error}")
+
             start_time = time.time()
             
             # 🎯 CRITICAL: For DATA_COLLECTION tasks, enforce web tool usage
@@ -172,6 +209,37 @@ class SpecialistAgent:
             }
             run_result = await Runner.run(**run_params)
             execution_time = time.time() - start_time
+            
+            # 🧠 ENHANCED: Add tool execution metadata after run completion
+            if thinking_process_id and thinking_engine:
+                try:
+                    tool_results = {
+                        "tool_name": "Agent_Execution_Pipeline",
+                        "tool_type": "composite",
+                        "execution_time_ms": int(execution_time * 1000),
+                        "success": True,  # Will be updated based on validation
+                        "parameters": {
+                            "classification": task_classification.execution_type.value,
+                            "max_turns": run_params.get("max_turns", 5),
+                            "tools_available": len(execution_tools)
+                        },
+                        "output_type": type(run_result.final_output).__name__,
+                        "output_size": len(str(run_result.final_output)) if run_result.final_output else 0,
+                        "summary": f"Completed {task_classification.execution_type.value} execution in {execution_time:.2f}s",
+                        "agent_id": str(self.agent_data.id),
+                        "task_id": str(task.id)
+                    }
+                    
+                    step_description = f"execution completed with classification {task_classification.execution_type.value}"
+                    await thinking_engine.add_tool_execution_step(
+                        process_id=thinking_process_id,
+                        tool_results=tool_results,
+                        step_description=step_description,
+                        confidence=0.8
+                    )
+                    logger.debug(f"💭 Added tool execution metadata to thinking process {thinking_process_id}")
+                except Exception as tool_meta_error:
+                    logger.warning(f"Failed to add tool execution metadata to thinking process: {tool_meta_error}")
             
             # 🔍 CRITICAL: Validate that DATA_COLLECTION tasks produced real data
             result_content = str(run_result.final_output)

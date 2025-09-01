@@ -39,7 +39,8 @@ class HolisticTaskDeliverablePipeline:
         self, 
         task: Task, 
         workspace_agents: List[Dict[str, Any]],
-        session: Optional[Any] = None
+        session: Optional[Any] = None,
+        thinking_process_id: Optional[str] = None
     ) -> TaskExecutionOutput:
         """
         🎯 Execute task attraverso pipeline olistico task-to-deliverable
@@ -97,7 +98,7 @@ class HolisticTaskDeliverablePipeline:
             
             # Step 3: Execute with classification context 
             logger.info(f"🚀 Step 3: Executing task with specialist agent...")
-            execution_result = await specialist_agent.execute(task, session)
+            execution_result = await specialist_agent.execute(task, session, thinking_process_id)
             
             # Step 4: Validate execution result based on classification
             logger.info(f"✅ Step 4: Validating execution result...")
@@ -365,11 +366,12 @@ holistic_pipeline = HolisticTaskDeliverablePipeline()
 async def execute_task_holistically(
     task: Task, 
     workspace_agents: List[Dict[str, Any]],
-    session: Optional[Any] = None
+    session: Optional[Any] = None,
+    thinking_process_id: Optional[str] = None
 ) -> TaskExecutionOutput:
     """
     🎯 Entry point for holistic task execution with deliverable pipeline
     """
     return await holistic_pipeline.execute_task_with_deliverable_pipeline(
-        task, workspace_agents, session
+        task, workspace_agents, session, thinking_process_id
     )

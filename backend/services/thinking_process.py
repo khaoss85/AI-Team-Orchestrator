@@ -7,7 +7,7 @@ import os
 import json
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, AsyncGenerator
 from uuid import UUID, uuid4
 from dataclasses import dataclass
@@ -115,7 +115,8 @@ class RealTimeThinkingEngine:
                 "step_type": step_type,
                 "content": content,
                 "confidence": confidence,
-                "timestamp": step.timestamp
+                "timestamp": step.timestamp,
+                "metadata": metadata  # Include metadata in broadcast
             }
         })
         
@@ -424,6 +425,477 @@ class RealTimeThinkingEngine:
     def get_current_time(self) -> str:
         """Get current time in ISO format"""
         return datetime.utcnow().isoformat()
+    
+    # ============= ENHANCED AGENT AND TOOL METADATA METHODS =============
+    
+    async def add_agent_thinking_step(self, process_id: str, agent_info: Dict[str, Any], 
+                                     action_description: str, confidence: float = 0.7) -> str:
+        """
+        Add a thinking step with agent metadata capture.
+        
+        Args:
+            process_id: ID of the active thinking process
+            agent_info: Dict containing agent metadata (name, role, seniority, id, etc.)
+            action_description: Description of what the agent is doing
+            confidence: Confidence level for this action (0.0-1.0)
+        
+        Returns:
+            step_id: ID of the created thinking step
+        """
+        # Structure agent metadata
+        agent_metadata = {
+            "agent": {
+                "id": agent_info.get("id"),
+                "name": agent_info.get("name"),
+                "role": agent_info.get("role"),
+                "seniority": agent_info.get("seniority"),
+                "skills": agent_info.get("skills", []),
+                "status": agent_info.get("status")
+            },
+            "execution_context": {
+                "workspace_id": agent_info.get("workspace_id"),
+                "task_id": agent_info.get("task_id"),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        }
+        
+        # Create content with agent context
+        content = f"🤖 Agent '{agent_info.get('role', 'Unknown')}' ({agent_info.get('seniority', 'unknown')} level): {action_description}"
+        
+        # Add the thinking step with agent metadata
+        # Use 'reasoning' as the step_type since it's an allowed value
+        step_id = await self.add_thinking_step(
+            process_id=process_id,
+            step_type="reasoning",  # Use allowed step_type
+            content=content,
+            confidence=confidence,
+            metadata=agent_metadata
+        )
+        
+        logger.info(f"💭 Added agent thinking step: {agent_info.get('role')} - {action_description[:50]}")
+        return step_id
+    
+    async def add_tool_execution_step(self, process_id: str, tool_results: Dict[str, Any],
+                                     step_description: str, confidence: float = 0.8) -> str:
+        """
+        Add a thinking step with tool execution metadata.
+        
+        Args:
+            process_id: ID of the active thinking process
+            tool_results: Dict containing tool execution results and metadata
+            step_description: Description of the tool execution
+            confidence: Confidence level for the results (0.0-1.0)
+        
+        Returns:
+            step_id: ID of the created thinking step
+        """
+        # Structure tool execution metadata
+        tool_metadata = {
+            "tool": {
+                "name": tool_results.get("tool_name"),
+                "type": tool_results.get("tool_type"),
+                "parameters": tool_results.get("parameters", {}),
+                "execution_time_ms": tool_results.get("execution_time_ms"),
+                "success": tool_results.get("success", False),
+                "error": tool_results.get("error")
+            },
+            "results": {
+                "output_type": tool_results.get("output_type"),
+                "output_size": tool_results.get("output_size"),
+                "summary": tool_results.get("summary"),
+                "artifacts_created": tool_results.get("artifacts_created", [])
+            },
+            "context": {
+                "agent_id": tool_results.get("agent_id"),
+                "task_id": tool_results.get("task_id"),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        }
+        
+        # Create content with tool execution details
+        success_indicator = "✅" if tool_results.get("success", False) else "❌"
+        content = f"🔧 Tool '{tool_results.get('tool_name', 'Unknown')}' execution {success_indicator}: {step_description}"
+        
+        # Add error details if present
+        if tool_results.get("error"):
+            content += f" | Error: {tool_results.get('error')[:100]}"
+        
+        # Add the thinking step with tool metadata
+        # Use 'evaluation' as the step_type since it's an allowed value
+        step_id = await self.add_thinking_step(
+            process_id=process_id,
+            step_type="evaluation",  # Use allowed step_type
+            content=content,
+            confidence=confidence,
+            metadata=tool_metadata
+        )
+        
+        logger.info(f"💭 Added tool execution step: {tool_results.get('tool_name')} - {success_indicator}")
+        return step_id
+    
+    async def update_step_with_agent_info(self, step_id: str, agent_info: Dict[str, Any]) -> bool:
+        """
+        Update an existing thinking step with agent information.
+        
+        Args:
+            step_id: ID of the thinking step to update
+            agent_info: Agent metadata to add/update
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Find the step in active processes
+            step_found = False
+            for process_id, process in self.active_processes.items():
+                for step in process.steps:
+                    if step.step_id == step_id:
+                        # Update metadata
+                        if not step.metadata:
+                            step.metadata = {}
+                        
+                        step.metadata["agent"] = {
+                            "id": agent_info.get("id"),
+                            "name": agent_info.get("name"),
+                            "role": agent_info.get("role"),
+                            "seniority": agent_info.get("seniority"),
+                            "updated_at": datetime.utcnow().isoformat()
+                        }
+                        step_found = True
+                        break
+                if step_found:
+                    break
+            
+            if not step_found:
+                # Try updating in database directly
+                response = self.supabase.table("thinking_steps") \
+                    .select("metadata") \
+                    .eq("step_id", step_id) \
+                    .execute()
+                
+                if response.data:
+                    existing_metadata = response.data[0].get("metadata", {})
+                    existing_metadata["agent"] = {
+                        "id": agent_info.get("id"),
+                        "name": agent_info.get("name"),
+                        "role": agent_info.get("role"),
+                        "seniority": agent_info.get("seniority"),
+                        "updated_at": datetime.utcnow().isoformat()
+                    }
+                    
+                    self.supabase.table("thinking_steps") \
+                        .update({"metadata": existing_metadata}) \
+                        .eq("step_id", step_id) \
+                        .execute()
+                    
+                    logger.debug(f"💭 Updated step {step_id} with agent info in database")
+                    return True
+            else:
+                # Update in database
+                self.supabase.table("thinking_steps") \
+                    .update({"metadata": step.metadata}) \
+                    .eq("step_id", step_id) \
+                    .execute()
+                
+                logger.debug(f"💭 Updated step {step_id} with agent info")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to update step {step_id} with agent info: {e}")
+            return False
+    
+    async def update_step_with_tool_info(self, step_id: str, tool_results: Dict[str, Any]) -> bool:
+        """
+        Update an existing thinking step with tool execution results.
+        
+        Args:
+            step_id: ID of the thinking step to update
+            tool_results: Tool execution results and metadata
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Find the step in active processes
+            step_found = False
+            for process_id, process in self.active_processes.items():
+                for step in process.steps:
+                    if step.step_id == step_id:
+                        # Update metadata
+                        if not step.metadata:
+                            step.metadata = {}
+                        
+                        step.metadata["tool"] = {
+                            "name": tool_results.get("tool_name"),
+                            "type": tool_results.get("tool_type"),
+                            "success": tool_results.get("success", False),
+                            "execution_time_ms": tool_results.get("execution_time_ms"),
+                            "error": tool_results.get("error"),
+                            "updated_at": datetime.utcnow().isoformat()
+                        }
+                        step_found = True
+                        break
+                if step_found:
+                    break
+            
+            if not step_found:
+                # Try updating in database directly
+                response = self.supabase.table("thinking_steps") \
+                    .select("metadata") \
+                    .eq("step_id", step_id) \
+                    .execute()
+                
+                if response.data:
+                    existing_metadata = response.data[0].get("metadata", {})
+                    existing_metadata["tool"] = {
+                        "name": tool_results.get("tool_name"),
+                        "type": tool_results.get("tool_type"),
+                        "success": tool_results.get("success", False),
+                        "execution_time_ms": tool_results.get("execution_time_ms"),
+                        "error": tool_results.get("error"),
+                        "updated_at": datetime.utcnow().isoformat()
+                    }
+                    
+                    self.supabase.table("thinking_steps") \
+                        .update({"metadata": existing_metadata}) \
+                        .eq("step_id", step_id) \
+                        .execute()
+                    
+                    logger.debug(f"💭 Updated step {step_id} with tool info in database")
+                    return True
+            else:
+                # Update in database
+                self.supabase.table("thinking_steps") \
+                    .update({"metadata": step.metadata}) \
+                    .eq("step_id", step_id) \
+                    .execute()
+                
+                logger.debug(f"💭 Updated step {step_id} with tool info")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Failed to update step {step_id} with tool info: {e}")
+            return False
+    
+    async def add_multi_agent_collaboration_step(self, process_id: str, agents: List[Dict[str, Any]],
+                                                collaboration_type: str, description: str) -> str:
+        """
+        Add a thinking step for multi-agent collaboration scenarios.
+        
+        Args:
+            process_id: ID of the active thinking process
+            agents: List of agent info dicts participating in collaboration
+            collaboration_type: Type of collaboration (handoff, parallel, sequential, etc.)
+            description: Description of the collaboration
+        
+        Returns:
+            step_id: ID of the created thinking step
+        """
+        # Structure collaboration metadata
+        collaboration_metadata = {
+            "collaboration": {
+                "type": collaboration_type,
+                "agents": [
+                    {
+                        "id": agent.get("id"),
+                        "role": agent.get("role"),
+                        "seniority": agent.get("seniority"),
+                        "responsibility": agent.get("responsibility")
+                    }
+                    for agent in agents
+                ],
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        }
+        
+        # Create content with collaboration details
+        agent_roles = ", ".join([agent.get("role", "Unknown") for agent in agents])
+        content = f"🤝 Multi-agent collaboration ({collaboration_type}): {agent_roles} - {description}"
+        
+        # Add the thinking step
+        # Use 'analysis' as the step_type since it's an allowed value
+        step_id = await self.add_thinking_step(
+            process_id=process_id,
+            step_type="analysis",  # Use allowed step_type
+            content=content,
+            confidence=0.75,
+            metadata=collaboration_metadata
+        )
+        
+        logger.info(f"💭 Added collaboration step: {collaboration_type} with {len(agents)} agents")
+        return step_id
+    
+    async def get_agent_performance_metrics(self, workspace_id: str, agent_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Analyze thinking processes to extract agent performance metrics.
+        
+        Args:
+            workspace_id: Workspace ID to analyze
+            agent_id: Optional specific agent ID to filter by
+        
+        Returns:
+            Dict containing performance metrics per agent
+        """
+        try:
+            # Get recent thinking processes
+            # Filter by step_type 'reasoning' which contains agent actions
+            query = self.supabase.table("thinking_steps") \
+                .select("step_id, step_type, confidence, metadata, created_at") \
+                .eq("step_type", "reasoning")
+            
+            if agent_id:
+                # Note: JSON filtering would need to be done client-side
+                # as Supabase doesn't support direct JSON field queries with ilike
+                pass  # Will filter in post-processing
+            
+            response = query.execute()
+            
+            if not response.data:
+                return {}
+            
+            # Analyze agent performance
+            agent_metrics = {}
+            for step in response.data:
+                metadata = step.get("metadata", {})
+                agent_info = metadata.get("agent", {})
+                step_agent_id = agent_info.get("id")
+                
+                # Filter by agent_id if specified
+                if agent_id and step_agent_id != agent_id:
+                    continue
+                
+                if not step_agent_id:
+                    continue
+                
+                if step_agent_id not in agent_metrics:
+                    agent_metrics[step_agent_id] = {
+                        "agent_id": step_agent_id,
+                        "role": agent_info.get("role"),
+                        "seniority": agent_info.get("seniority"),
+                        "total_actions": 0,
+                        "average_confidence": 0,
+                        "confidence_scores": [],
+                        "action_types": {},
+                        "first_action": step.get("created_at"),
+                        "last_action": step.get("created_at")
+                    }
+                
+                metrics = agent_metrics[step_agent_id]
+                metrics["total_actions"] += 1
+                metrics["confidence_scores"].append(step.get("confidence", 0.5))
+                
+                # Track action types
+                action_type = metadata.get("execution_context", {}).get("action_type", "unknown")
+                metrics["action_types"][action_type] = metrics["action_types"].get(action_type, 0) + 1
+                
+                # Update time range
+                if step.get("created_at") < metrics["first_action"]:
+                    metrics["first_action"] = step.get("created_at")
+                if step.get("created_at") > metrics["last_action"]:
+                    metrics["last_action"] = step.get("created_at")
+            
+            # Calculate averages
+            for agent_id, metrics in agent_metrics.items():
+                if metrics["confidence_scores"]:
+                    metrics["average_confidence"] = sum(metrics["confidence_scores"]) / len(metrics["confidence_scores"])
+                del metrics["confidence_scores"]  # Remove raw scores from output
+            
+            return agent_metrics
+            
+        except Exception as e:
+            logger.error(f"Failed to get agent performance metrics: {e}")
+            return {}
+    
+    async def get_tool_usage_statistics(self, workspace_id: str, time_window_hours: int = 24) -> Dict[str, Any]:
+        """
+        Analyze thinking processes to extract tool usage statistics.
+        
+        Args:
+            workspace_id: Workspace ID to analyze
+            time_window_hours: Hours to look back for statistics
+        
+        Returns:
+            Dict containing tool usage statistics
+        """
+        try:
+            # Calculate time window
+            cutoff_time = (datetime.utcnow() - timedelta(hours=time_window_hours)).isoformat()
+            
+            # Get tool execution steps
+            # Use 'evaluation' step_type which contains tool executions
+            response = self.supabase.table("thinking_steps") \
+                .select("step_id, metadata, confidence, created_at") \
+                .eq("step_type", "evaluation") \
+                .gte("created_at", cutoff_time) \
+                .execute()
+            
+            if not response.data:
+                return {"message": "No tool executions found in time window"}
+            
+            # Analyze tool usage
+            tool_stats = {}
+            total_executions = 0
+            total_successes = 0
+            total_failures = 0
+            
+            for step in response.data:
+                metadata = step.get("metadata", {})
+                tool_info = metadata.get("tool", {})
+                tool_name = tool_info.get("name", "unknown")
+                
+                if tool_name not in tool_stats:
+                    tool_stats[tool_name] = {
+                        "name": tool_name,
+                        "type": tool_info.get("type"),
+                        "executions": 0,
+                        "successes": 0,
+                        "failures": 0,
+                        "average_execution_time_ms": 0,
+                        "execution_times": [],
+                        "error_types": {}
+                    }
+                
+                stats = tool_stats[tool_name]
+                stats["executions"] += 1
+                total_executions += 1
+                
+                if tool_info.get("success", False):
+                    stats["successes"] += 1
+                    total_successes += 1
+                else:
+                    stats["failures"] += 1
+                    total_failures += 1
+                    
+                    # Track error types
+                    error = tool_info.get("error", "unknown_error")
+                    error_type = error.split(":")[0] if ":" in error else error[:50]
+                    stats["error_types"][error_type] = stats["error_types"].get(error_type, 0) + 1
+                
+                # Track execution times
+                exec_time = tool_info.get("execution_time_ms")
+                if exec_time:
+                    stats["execution_times"].append(exec_time)
+            
+            # Calculate averages and success rates
+            for tool_name, stats in tool_stats.items():
+                if stats["execution_times"]:
+                    stats["average_execution_time_ms"] = sum(stats["execution_times"]) / len(stats["execution_times"])
+                del stats["execution_times"]  # Remove raw data
+                
+                stats["success_rate"] = (stats["successes"] / stats["executions"] * 100) if stats["executions"] > 0 else 0
+            
+            return {
+                "time_window_hours": time_window_hours,
+                "total_executions": total_executions,
+                "total_successes": total_successes,
+                "total_failures": total_failures,
+                "overall_success_rate": (total_successes / total_executions * 100) if total_executions > 0 else 0,
+                "tools": tool_stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get tool usage statistics: {e}")
+            return {"error": str(e)}
 
 # Global thinking engine instance
 thinking_engine = RealTimeThinkingEngine()
@@ -432,11 +904,40 @@ thinking_engine = RealTimeThinkingEngine()
 async def start_thinking(workspace_id: UUID, context: str, process_type: str = "general") -> str:
     return await thinking_engine.start_thinking_process(workspace_id, context, process_type)
 
-async def add_thinking_step(process_id: str, step_type: str, content: str, confidence: float = 0.5) -> str:
-    return await thinking_engine.add_thinking_step(process_id, step_type, content, confidence)
+async def add_thinking_step(process_id: str, step_type: str, content: str, confidence: float = 0.5, metadata: Optional[Dict] = None) -> str:
+    return await thinking_engine.add_thinking_step(process_id, step_type, content, confidence, metadata)
 
 async def complete_thinking(process_id: str, conclusion: str, confidence: float) -> ThinkingProcess:
     return await thinking_engine.complete_thinking_process(process_id, conclusion, confidence)
 
 async def get_workspace_thinking(workspace_id: UUID, limit: int = 10) -> List[ThinkingProcess]:
     return await thinking_engine.get_workspace_thinking(workspace_id, limit)
+
+# Enhanced convenience functions for agent and tool metadata
+async def add_agent_thinking_step(process_id: str, agent_info: Dict[str, Any], action_description: str, confidence: float = 0.7) -> str:
+    """Convenience function for adding agent thinking steps"""
+    return await thinking_engine.add_agent_thinking_step(process_id, agent_info, action_description, confidence)
+
+async def add_tool_execution_step(process_id: str, tool_results: Dict[str, Any], step_description: str, confidence: float = 0.8) -> str:
+    """Convenience function for adding tool execution steps"""
+    return await thinking_engine.add_tool_execution_step(process_id, tool_results, step_description, confidence)
+
+async def update_step_with_agent_info(step_id: str, agent_info: Dict[str, Any]) -> bool:
+    """Convenience function for updating step with agent info"""
+    return await thinking_engine.update_step_with_agent_info(step_id, agent_info)
+
+async def update_step_with_tool_info(step_id: str, tool_results: Dict[str, Any]) -> bool:
+    """Convenience function for updating step with tool info"""
+    return await thinking_engine.update_step_with_tool_info(step_id, tool_results)
+
+async def add_multi_agent_collaboration_step(process_id: str, agents: List[Dict[str, Any]], collaboration_type: str, description: str) -> str:
+    """Convenience function for adding multi-agent collaboration steps"""
+    return await thinking_engine.add_multi_agent_collaboration_step(process_id, agents, collaboration_type, description)
+
+async def get_agent_performance_metrics(workspace_id: str, agent_id: Optional[str] = None) -> Dict[str, Any]:
+    """Convenience function for getting agent performance metrics"""
+    return await thinking_engine.get_agent_performance_metrics(workspace_id, agent_id)
+
+async def get_tool_usage_statistics(workspace_id: str, time_window_hours: int = 24) -> Dict[str, Any]:
+    """Convenience function for getting tool usage statistics"""
+    return await thinking_engine.get_tool_usage_statistics(workspace_id, time_window_hours)
