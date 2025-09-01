@@ -920,8 +920,8 @@ async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[st
             best_practices_response = await workspace_memory.query_insights(UUID(workspace_id), best_practices_query)
             
             learnings_query = MemoryQueryRequest(
-                query="lessons learned failures constraints",
-                insight_types=[InsightType.FAILURE_LESSON, InsightType.CONSTRAINT],
+                query="lessons learned failures constraints progress insights",
+                insight_types=[InsightType.FAILURE_LESSON, InsightType.CONSTRAINT, InsightType.PROGRESS],
                 limit=10
             )
             learnings_response = await workspace_memory.query_insights(UUID(workspace_id), learnings_query)
