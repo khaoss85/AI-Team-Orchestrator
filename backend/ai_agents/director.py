@@ -1657,8 +1657,8 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
     def _create_fallback_dict(self, proposal_request: DirectorTeamProposal) -> Dict[str, Any]:
         """Creates a fallback proposal dictionary for internal use."""
         logger.info("Creating fallback proposal dictionary.")
-        # Pass budget_constraint (which can be None or Dict) to _create_default_agents
-        default_agents_list = self._create_default_agents(proposal_request.budget_limit)
+        # Pass budget_constraint and project goal to _create_default_agents for smart fallback
+        default_agents_list = self._create_default_agents(proposal_request.budget_limit, proposal_request.requirements)
 
         total_est_cost = sum(
             agent.get(
@@ -1684,22 +1684,36 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         }
 
     def _create_default_agents(
-        self, budget_constraint_data: Optional[Union[Dict[str, Any], float]] = None
+        self, budget_constraint_data: Optional[Union[Dict[str, Any], float]] = None, project_goal: str = ""
     ) -> List[Dict[str, Any]]:
-        """Creates a default list of agent specifications."""
-        logger.debug("Creating default agents set for fallback.")
+        """Creates a budget-aware and domain-specific list of agent specifications for fallback."""
+        logger.debug("Creating smart fallback agents set based on budget and domain.")
         current_budget = 1000.0  # Default budget if parsing fails or not provided
         if isinstance(budget_constraint_data, dict):
             current_budget = float(budget_constraint_data.get("max_amount", 1000.0))
         elif isinstance(budget_constraint_data, (int, float)):
             current_budget = float(budget_constraint_data)
+        
+        # Calculate optimal team size using same logic as main proposal
+        optimal_team_size = min(8, max(3, int(current_budget / 1500)))
+        logger.info(f"🔄 Fallback: Creating {optimal_team_size} agents for {current_budget} EUR budget")
 
-        # estimated_monthly_cost is for internal fallback logic, not the primary estimate_costs tool
-        default_pm_spec = {
-            "name": "ProjectManager",
-            "role": "Project Manager",
-            "seniority": AgentSeniority.SENIOR.value,
-            "description": "Fallback: Manages project execution, coordinates team, ensures efficient completion.",
+        # Domain-specific agent templates based on project goal
+        goal_lower = project_goal.lower() if project_goal else ""
+        agents_list_default: List[Dict[str, Any]] = []
+        
+        # Determine domain and create appropriate specialists
+        is_content_marketing = any(term in goal_lower for term in ['instagram', 'social', 'content', 'marketing', 'email', 'outbound', 'leads'])
+        is_business_analysis = any(term in goal_lower for term in ['contatti', 'contacts', 'icp', 'b2b', 'sales', 'lead', 'crm'])
+        is_technical = any(term in goal_lower for term in ['development', 'coding', 'app', 'website', 'api', 'software'])
+        
+        # Always start with a project manager for teams > 1
+        if optimal_team_size > 1:
+            agents_list_default.append({
+                "name": "ProjectManager",
+                "role": "Project Manager",
+                "seniority": AgentSeniority.SENIOR.value,
+                "description": "Manages project execution, coordinates team, ensures efficient completion.",
             "system_prompt": """You are a Project Manager. Your primary goal is to lead the team to successfully complete the project by ensuring concrete deliverables are produced.
 
 🎯 DELIVERABLE-FIRST MANAGEMENT:
@@ -1718,28 +1732,99 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                 "Project Manager", AgentSeniority.SENIOR.value
             ),
             "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
-        }
-        agents_list_default: List[Dict[str, Any]] = [default_pm_spec]
-
-        if current_budget > 1500 or len(agents_list_default) < self.min_team_size:
-            default_specialist_spec = {
-                "name": "TaskExecutorSpecialist",
-                "role": "Task Executor Specialist",
-                "seniority": AgentSeniority.JUNIOR.value,
-                "description": "Fallback: Handles specific project tasks and provides general support.",
-                "system_prompt": self._create_specialist_prompt(
-                    "Task Executor Specialist", ["task execution", "problem solving"]
-                ),
-                "llm_config": {
-                    "model": self._get_model_for_seniority(AgentSeniority.JUNIOR.value),
-                    "temperature": 0.35,
-                },
-                "tools": self._get_tools_for_role(
-                    "Task Executor Specialist", AgentSeniority.JUNIOR.value
-                ),
-                "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
-            }
-            agents_list_default.append(default_specialist_spec)
+        })
+        
+        # Add domain-specific specialists based on remaining budget and goal analysis
+        remaining_slots = optimal_team_size - len(agents_list_default)
+        
+        if is_business_analysis or 'b2b' in goal_lower:
+            # B2B/Sales project - add business intelligence specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "BusinessResearcher",
+                    "role": "Business Research Specialist",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Specializes in B2B research, lead generation, and contact list building. Expert in identifying ICP profiles and business intelligence gathering.",
+                    "system_prompt": "You are a Business Research Specialist focused on B2B lead generation and market research. Your goal is to produce high-quality prospect lists and business intelligence reports.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": ["web_search", "data_analysis", "lead_research"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+            
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "EmailStrategist",
+                    "role": "Email Marketing Specialist", 
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Creates compelling email sequences and outbound sales campaigns. Expert in conversion-focused copywriting and email automation.",
+                    "system_prompt": "You are an Email Marketing Specialist. Create high-converting email sequences and outbound campaigns that generate responses and conversions.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "tools": ["email_templates", "copywriting", "campaign_design"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+        
+        if is_content_marketing:
+            # Content/Marketing project - add creative specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "ContentCreator",
+                    "role": "Content Marketing Specialist",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Creates engaging content for social media, blogs, and marketing campaigns. Expert in storytelling and audience engagement.",
+                    "system_prompt": "You are a Content Marketing Specialist. Create compelling, engaging content that drives audience engagement and achieves marketing goals.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.3},
+                    "tools": ["content_creation", "social_media", "copywriting"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "SocialMediaManager",
+                    "role": "Social Media Manager",
+                    "seniority": AgentSeniority.JUNIOR.value,
+                    "description": "Manages social media strategy, posting schedules, and community engagement. Focuses on audience growth and engagement metrics.",
+                    "system_prompt": "You are a Social Media Manager. Develop and execute social media strategies that grow audiences and increase engagement.",
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
+                    "tools": ["social_media", "analytics", "community_management"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
+                })
+                remaining_slots -= 1
+        
+        # Fill remaining slots with versatile specialists
+        data_analyst_added = False
+        while remaining_slots > 0:
+            if remaining_slots >= 2 and not data_analyst_added:
+                # Add a data analyst for larger teams (only once)
+                agents_list_default.append({
+                    "name": "DataAnalyst",
+                    "role": "Data Analyst",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Analyzes project data, generates insights, and creates performance reports. Provides data-driven recommendations for optimization.",
+                    "system_prompt": "You are a Data Analyst. Analyze project performance data and generate actionable insights that drive better results.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": ["data_analysis", "reporting", "visualization"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                data_analyst_added = True
+            else:
+                # Add a general specialist
+                agents_list_default.append({
+                    "name": f"TaskExecutor{len([a for a in agents_list_default if 'TaskExecutor' in a['name']]) + 1}",
+                    "role": "Task Execution Specialist",
+                    "seniority": AgentSeniority.JUNIOR.value,
+                    "description": "Versatile specialist who executes various project tasks and supports team objectives. Adaptable to different project needs.",
+                    "system_prompt": "You are a Task Execution Specialist. Execute assigned tasks efficiently and support the team in achieving project objectives.",
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
+                    "tools": ["task_execution", "research", "documentation"],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
+                })
+                remaining_slots -= 1
+        
+        logger.info(f"🔄 Fallback created {len(agents_list_default)} agents: {[a['role'] for a in agents_list_default]}")
         return agents_list_default
 
     def _create_minimal_fallback_proposal(
@@ -1774,7 +1859,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                 )
 
         if not minimal_agents_list:  # Ensure at least one agent always
-            panic_agent_spec = self._create_default_agents()[0]  # Get the PM spec
+            panic_agent_spec = self._create_default_agents(proposal_request.budget_limit, proposal_request.requirements)[0]  # Get the PM spec
             panic_agent_spec["workspace_id"] = proposal_request.workspace_id
             panic_agent_spec["seniority"] = AgentSeniority(
                 panic_agent_spec["seniority"]
