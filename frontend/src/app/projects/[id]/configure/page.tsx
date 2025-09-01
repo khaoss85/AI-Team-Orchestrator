@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react'; // Importa 'use' da React
+import React, { useState, useEffect, use } from 'react'; // Import 'use' from React
 import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace, DirectorTeamProposal, AgentSeniority } from '@/types';
@@ -15,9 +15,9 @@ type Props = {
 };
 
 export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
-  // Usa React.use() per "sbloccare" la Promise dei parametri
+  // Use React.use() to "unlock" the parameters Promise
   const params = use(paramsPromise);
-  const { id } = params; // Ora 'id' è accessibile dall'oggetto params risolto
+  const { id } = params; // Now 'id' is accessible from the resolved params object
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   // Progress tracking state
   const [progressState, setProgressState] = useState({
     progress: 0,
-    message: 'Inizializzazione...',
+    message: 'Initializing...',
     status: 'analyzing'
   });
 
@@ -63,20 +63,20 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     const fetchWorkspace = async () => {
       try {
         setLoading(true);
-        // Usa 'id' risolto
+        // Use resolved 'id'
         const data = await api.workspaces.get(id);
         setWorkspace(data);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch workspace:', err);
-        setError('Impossibile caricare i dettagli del progetto. Riprova più tardi.');
+        setError('Unable to load project details. Please try again later.');
         setWorkspace({
-          id: id, // Usa 'id' risolto
-          name: 'Progetto Marketing Digitale',
-          description: 'Campagna di marketing sui social media',
+          id: id, // Use resolved 'id'
+          name: 'Digital Marketing Project',
+          description: 'Social media marketing campaign',
           user_id: mockUserId,
           status: 'created',
-          goal: 'Aumentare la visibilità del brand',
+          goal: 'Increase brand visibility',
           budget: { max_amount: 1000, currency: 'EUR' },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -86,10 +86,10 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       }
     };
 
-    if (id) { // Verifica 'id' risolto prima di fare il fetch
+    if (id) { // Check resolved 'id' before fetching
       fetchWorkspace();
     }
-  }, [id]); // Usa 'id' risolto come dipendenza
+  }, [id]); // Use resolved 'id' as dependency
 
   // Progress monitoring is now handled by useGoalPreview hook
 
@@ -168,7 +168,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     if (workspace?.goal) {
       resetGoals();
       // Reset progress state and start monitoring
-      setProgressState({ progress: 0, message: 'Inizializzazione...', status: 'analyzing' });
+      setProgressState({ progress: 0, message: 'Initializing...', status: 'analyzing' });
       await previewGoals(workspace.goal);
     }
   };
@@ -183,14 +183,14 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       // Build enhanced goal description with extracted goals
       const enhancedGoalDescription = (() => {
         if (!extractedGoals.length) {
-          return workspace.goal || 'Completare il progetto con successo';
+          return workspace.goal || 'Complete the project successfully';
         }
         
         const goalsSummary = extractedGoals.map(goal => 
           `${goal.description} (${goal.value} ${goal.unit})`
         ).join(', ');
         
-        return `${workspace.goal}\n\nObiettivi Specifici: ${goalsSummary}`;
+        return `${workspace.goal}\n\nSpecific Objectives: ${goalsSummary}`;
       })();
 
       const directorConfig = {
@@ -205,9 +205,9 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
       console.log('🚀 Creating proposal with config:', directorConfig);
 
-      // Aggiungi timeout alla chiamata API
+      // Add timeout to API call
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout: Il Director sta impiegando troppo tempo')), 120000); // 2 minuti
+        setTimeout(() => reject(new Error('Timeout: The Director is taking too long')), 120000); // 2 minutes
       });
 
       const apiPromise = api.director.createProposal(directorConfig);
@@ -226,12 +226,12 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       console.error('❌ Failed to create team proposal:', err);
       
       if (err.message.includes('Timeout')) {
-        setError('Il Director sta ancora processando. Prova a ricaricare la pagina tra qualche secondo.');
+        setError('The Director is still processing. Try reloading the page in a few seconds.');
       } else {
-        setError(`Errore nella generazione proposta: ${err.message || 'Errore sconosciuto'}`);
+        setError(`Error generating proposal: ${err.message || 'Unknown error'}`);
       }
 
-      // Fallback proposal solo se non è un timeout
+      // Fallback proposal only if it's not a timeout
       if (!err.message.includes('Timeout') && workspace) {
         setProposal({
           workspace_id: workspace.id,
@@ -241,31 +241,31 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
               name: "Project Manager",
               role: "Project Management",
               seniority: "expert" as AgentSeniority,
-              description: "Coordina l'intero progetto e gestisce gli handoff tra gli agenti",
-              system_prompt: "Sei un project manager esperto che coordina un team di agenti specializzati."
+              description: "Coordinates the entire project and manages handoffs between agents",
+              system_prompt: "You are an expert project manager who coordinates a team of specialized agents."
             },
             {
               workspace_id: workspace.id,
               name: "Content Specialist",
               role: "Content Creation",
               seniority: "senior" as AgentSeniority,
-              description: "Specialista nella creazione di contenuti di alta qualità",
-              system_prompt: "Sei uno specialista nella creazione di contenuti marketing coinvolgenti."
+              description: "Specialist in creating high-quality content",
+              system_prompt: "You are a specialist in creating engaging marketing content."
             },
             {
               workspace_id: workspace.id,
               name: "Data Analyst",
               role: "Data Analysis",
               seniority: "senior" as AgentSeniority,
-              description: "Analizza dati e crea visualizzazioni informative",
-              system_prompt: "Sei un analista di dati specializzato nell'interpretazione e visualizzazione dei dati."
+              description: "Analyzes data and creates informative visualizations",
+              system_prompt: "You are a data analyst specialized in data interpretation and visualization."
             }
           ],
           handoffs: [
             {
               source_agent_id: "00000000-0000-0000-0000-000000000000",
               target_agent_id: "00000000-0000-0000-0000-000000000000",
-              description: "Handoff dei risultati dell'analisi per la creazione di contenuti"
+              description: "Handoff of analysis results for content creation"
             }
           ],
           estimated_cost: {
@@ -276,7 +276,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
               "Data Analyst": 200
             }
           },
-          rationale: "Team progettato per bilanciare competenze e vincoli di budget. Il PM esperto garantirà una gestione efficiente, mentre gli specialisti senior forniranno risultati di alta qualità a un costo ragionevole."
+          rationale: "Team designed to balance skills and budget constraints. The expert PM will ensure efficient management, while senior specialists will provide high-quality results at a reasonable cost."
         });
       }
     } finally {
@@ -310,10 +310,10 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       
       if (err.message === 'APPROVAL_TIMEOUT') {
         // Timeout case - team is likely being created in background
-        setError('Il team sta ancora essere creato in background. Ti stiamo reindirizzando al progetto...');
+        setError('The team is still being created in the background. We\'re redirecting you to the project...');
         console.log('⏰ Approval timed out, but team creation likely started - redirecting anyway');
       } else {
-        setError('Impossibile approvare la proposta di team. Il processo potrebbe essere ancora in corso...');
+        setError('Unable to approve the team proposal. The process might still be in progress...');
       }
 
       // Always redirect after a short delay, regardless of error type
@@ -349,12 +349,21 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
     }
   };
 
+  const formatAgentName = (name: string) => {
+    // Handle names like "ElenaRossi" -> "Elena Rossi"
+    if (name && typeof name === 'string') {
+      // Add space before uppercase letters that follow lowercase letters
+      return name.replace(/([a-z])([A-Z])/g, '$1 $2');
+    }
+    return name;
+  };
+
   if (loading && !workspace) {
     return (
       <div className="container mx-auto max-w-4xl">
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
-          <p className="mt-2 text-gray-600">Caricamento progetto...</p>
+          <p className="mt-2 text-gray-600">Loading project...</p>
         </div>
       </div>
     );
@@ -363,12 +372,12 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
   return (
     <div className="container mx-auto max-w-4xl">
       <h1 className="text-2xl font-semibold mb-1">
-        {!goalsConfirmed ? 'Conferma Obiettivi del Progetto' : 'Configura Team di Agenti'}
+        {!goalsConfirmed ? 'Confirm Project Objectives' : 'Configure Agent Team'}
       </h1>
       <p className="text-gray-600 mb-6">
         {!goalsConfirmed 
-          ? "L'AI ha analizzato il tuo obiettivo. Conferma o modifica i target prima di procedere."
-          : "Il direttore virtuale proporrà un team di agenti ottimale per raggiungere i tuoi obiettivi."
+          ? "The AI has analyzed your objective using strategic decomposition. Confirm or modify the targets before proceeding."
+          : "The virtual director will propose an optimal agent team to achieve your objectives."
         }
       </p>
 
@@ -380,16 +389,16 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
       {workspace && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Dettagli Progetto</h2>
+          <h2 className="text-lg font-semibold mb-4">Project Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <p className="text-sm text-gray-500">Nome</p>
+              <p className="text-sm text-gray-500">Name</p>
               <p className="font-medium">{workspace.name}</p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">Stato</p>
+              <p className="text-sm text-gray-500">Status</p>
               <p className="font-medium">
                 <span className={`inline-block px-2 py-1 text-xs rounded-full ${
                   workspace.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -398,18 +407,18 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
                   workspace.status === 'completed' ? 'bg-gray-100 text-gray-800' :
                   'bg-red-100 text-red-800'
                 }`}>
-                  {workspace.status === 'active' ? 'Attivo' :
-                  workspace.status === 'created' ? 'Creato' :
-                  workspace.status === 'paused' ? 'In pausa' :
-                  workspace.status === 'completed' ? 'Completato' :
-                  'Errore'}
+                  {workspace.status === 'active' ? 'Active' :
+                  workspace.status === 'created' ? 'Created' :
+                  workspace.status === 'paused' ? 'Paused' :
+                  workspace.status === 'completed' ? 'Completed' :
+                  'Error'}
                 </span>
               </p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500">Obiettivo</p>
-              <p className="font-medium">{workspace.goal || 'Non specificato'}</p>
+              <p className="text-sm text-gray-500">Objective</p>
+              <p className="font-medium">{workspace.goal || 'Not specified'}</p>
             </div>
 
             <div>
@@ -417,7 +426,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
               <p className="font-medium">
                 {workspace.budget
                   ? `${workspace.budget.max_amount} ${workspace.budget.currency}`
-                  : 'Non specificato'}
+                  : 'Not specified'}
               </p>
             </div>
           </div>
@@ -429,9 +438,9 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       {workspace && goalPreviewLoading && extractedGoals.length === 0 && (
         <div className="mb-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4 text-center">Analisi AI degli Obiettivi</h2>
+            <h2 className="text-lg font-semibold mb-4 text-center">AI Objective Analysis</h2>
             <p className="text-gray-600 mb-6 text-center">
-              La nostra AI sta analizzando il tuo obiettivo per creare un piano dettagliato e identificare i deliverable strategici.
+              Our AI is analyzing your objective to create a detailed plan and identify strategic deliverables.
             </p>
             <ProgressIndicator
               progress={progressState.progress}
@@ -440,7 +449,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
               className="mb-4"
             />
             <div className="text-sm text-gray-500 text-center mt-4">
-              Questo processo può richiedere alcuni secondi per garantire un'analisi accurata.
+              This process may take a few seconds to ensure accurate analysis.
             </div>
           </div>
         </div>
@@ -467,42 +476,42 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       {/* Show proposal generation button only after goals are confirmed */}
       {workspace && goalsConfirmed && !proposal && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-2">Genera Team di Agenti</h2>
+          <h2 className="text-lg font-semibold mb-2">Generate Agent Team</h2>
           <p className="text-gray-600 mb-4">
-            Ora che gli obiettivi sono confermati, possiamo procedere a creare il team perfetto per raggiungerli.
+            Now that the objectives are confirmed, we can proceed to create the perfect team to achieve them.
           </p>
           <button
             onClick={handleCreateProposal}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors duration-150 flex items-center"
             disabled={proposalLoading}
           >
             {proposalLoading ? (
               <>
                 <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                Generazione proposta...
+                Generating proposal...
               </>
             ) : (
-              'Genera Proposta Team'
+              'Generate Team Proposal'
             )}
           </button>
           <p className="mt-2 text-xs text-gray-500">
-            Il direttore analizzerà gli obiettivi confermati e proporrà un team di agenti ottimale.
+            The director will analyze the confirmed objectives and propose an optimal agent team.
           </p>
         </div>
       )}
           
-    {/* 🎯 AGGIUNGI QUI - Team Explanation Animation */}
+    {/* 🎯 ADD HERE - Team Explanation Animation */}
       {proposalLoading && (
         <div className="mb-6">
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex items-center justify-center mb-4">
               <div className="h-4 w-4 border-2 border-indigo-600 border-r-transparent rounded-full animate-spin mr-3"></div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Il Director sta analizzando il progetto...
+                The Director is analyzing the project...
               </h2>
             </div>
             <p className="text-center text-gray-600 mb-6">
-              Stiamo creando il team perfetto per i tuoi obiettivi. Nel frattempo, scopri come funziona il nostro sistema:
+              We're creating the perfect team for your objectives. In the meantime, discover how our system works:
             </p>
           </div>
           <TeamExplanationAnimation />
@@ -511,24 +520,24 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
 
 {proposal && (
   <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-    <h2 className="text-lg font-semibold mb-2">Proposta Team</h2>
+    <h2 className="text-lg font-semibold mb-2">Team Proposal</h2>
     <p className="text-gray-600 mb-4">{proposal.rationale}</p>
 
     <div className="mb-6">
-      <h3 className="text-md font-medium mb-2">Costo Stimato</h3>
+      <h3 className="text-md font-medium mb-2">Estimated Cost</h3>
       <div className="bg-gray-50 p-4 rounded-md">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-600">Costo Totale:</span>
+          <span className="text-gray-600">Total Cost:</span>
           <span className="font-semibold">
             {proposal.estimated_cost.total || proposal.estimated_cost.total_estimated_cost || 0} EUR
           </span>
         </div>
 
-        {/* Supporta entrambi i formati di breakdown */}
+        {/* Supports both breakdown formats */}
         {((proposal.estimated_cost.breakdown_by_agent && Object.keys(proposal.estimated_cost.breakdown_by_agent).length > 0) ||
           (proposal.estimated_cost.breakdown && Object.keys(proposal.estimated_cost.breakdown).length > 0)) && (
           <div className="text-sm text-gray-600">
-            <div className="mt-2 mb-1">Dettaglio costi:</div>
+            <div className="mt-2 mb-1">Cost breakdown:</div>
             <ul className="space-y-1">
               {Object.entries(
                 proposal.estimated_cost.breakdown_by_agent || 
@@ -546,24 +555,51 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       </div>
     </div>
 
-          <h3 className="text-md font-medium mb-3">Agenti Proposti</h3>
+          <h3 className="text-md font-medium mb-3">Proposed Agents</h3>
+          
+          {/* Team Composition Overview */}
+          {proposal.agents?.length > 0 && (
+            <div className="flex items-center gap-4 mb-4 p-3 bg-gray-50 rounded-md">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-900">{proposal.agents?.length || 0}</span> agents
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-900">
+                  {proposal.agents?.filter(a => a.seniority === 'expert').length || 0}
+                </span> expert
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-900">
+                  {proposal.agents?.filter(a => a.seniority === 'senior').length || 0}
+                </span> senior
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-gray-900">
+                  {proposal.agents?.filter(a => a.seniority === 'junior').length || 0}
+                </span> junior
+              </div>
+            </div>
+          )}
+          
           <div className="space-y-4 mb-6">
             {proposal.agents?.length > 0 ? proposal.agents.map((agent, index) => (
-              <div key={index} className="border border-gray-200 rounded-md p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-medium">{agent.name}</h4>
-                    <p className="text-gray-600 text-sm">{agent.role}</p>
+              <div key={index} className="border border-gray-200 rounded-md p-4 hover:border-gray-300 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-base text-gray-900">{formatAgentName(agent.name)}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getSeniorityColor(agent.seniority)}`}>
+                        {getSeniorityLabel(agent.seniority)}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-indigo-600 mb-2">{agent.role}</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{agent.description}</p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getSeniorityColor(agent.seniority)}`}>
-                    {getSeniorityLabel(agent.seniority)}
-                  </span>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{agent.description}</p>
               </div>
             )) : (
               <div className="text-center text-gray-500 py-4">
-                <p>Nessun agente disponibile nella proposta</p>
+                <p>No agents available in the proposal</p>
               </div>
             )}
           </div>
@@ -574,28 +610,28 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       {showFeedbackInput ? (
         <div className="w-full mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Feedback per migliorare la prossima proposta
+            Feedback to improve the next proposal
           </label>
           <textarea
             value={userFeedback}
             onChange={(e) => setUserFeedback(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             rows={3}
-            placeholder="Es. 'Vorrei un team più piccolo', 'Serve un esperto in SEO', 'Ridurre i costi' ecc."
+            placeholder="E.g. 'I'd like a smaller team', 'Need an SEO expert', 'Reduce costs', etc."
           />
           <div className="flex justify-end mt-2">
             <button
               onClick={() => setShowFeedbackInput(false)}
               className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition mr-2"
             >
-              Annulla
+              Cancel
             </button>
             <button
               onClick={handleCreateProposal}
               className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition"
               disabled={proposalLoading}
             >
-              {proposalLoading ? "Generazione..." : "Genera con feedback"}
+              {proposalLoading ? "Generating..." : "Generate with feedback"}
             </button>
           </div>
         </div>
@@ -605,7 +641,7 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
           disabled={loading}
         >
-          Rigenera con feedback
+          Regenerate with feedback
         </button>
       )}
       <button
@@ -617,44 +653,44 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
         className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
         disabled={loading || proposalLoading}
       >
-        Rigenera proposta
+        Regenerate proposal
       </button>
     </>
   )}
     {proposal && proposal.user_feedback && (
   <div className="bg-blue-50 p-4 rounded-md mb-4">
-    <h3 className="text-md font-medium mb-1">Feedback considerato</h3>
+    <h3 className="text-md font-medium mb-1">Feedback considered</h3>
     <p className="text-gray-600 text-sm">{proposal.user_feedback}</p>
   </div>
 )}
   {!proposal && (
     <button
       onClick={handleCreateProposal}
-      className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+      className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors duration-150 flex items-center"
       disabled={proposalLoading}
     >
       {proposalLoading ? (
         <>
           <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-          Generazione proposta...
+          Generating proposal...
         </>
       ) : (
-        'Genera Proposta Team'
+        'Generate Team Proposal'
       )}
     </button>
   )}
   <button
     onClick={handleApproveProposal}
-    className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition flex items-center"
+    className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors duration-150 flex items-center"
     disabled={loading || !proposal}
   >
     {loading ? (
       <>
         <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-        Approvazione in corso...
+        Approval in progress...
       </>
     ) : (
-      'Approva e Crea Team'
+      'Approve and Create Team'
     )}
   </button>
 </div>

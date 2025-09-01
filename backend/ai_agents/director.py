@@ -1191,18 +1191,34 @@ Execute tasks directly and provide substantial, actionable results.""",
         # 🚀 SIMPLE SOLUTION: Just increase timeout and simplify prompt
         budget_amount = proposal_request.budget_limit or 5000
         
-        # 🎯 PERFORMANCE FIX: Limit team size for complex projects to maintain quality
-        max_team_for_performance = 4  # Max 4 agents for fast, detailed team generation
+        # 🎯 DYNAMIC TEAM SIZING: Calculate optimal team size based on budget and complexity  
+        max_team_for_performance = min(8, max(3, int(budget_amount / 1500)))  # Dynamic sizing based on budget
         
         director_instructions = f"""You are an AI Team Designer. Create a complete team proposal.
 
 PROJECT: {proposal_request.requirements}
 BUDGET: {budget_amount} EUR
-MAX TEAM SIZE: {max_team_for_performance} agents (focus on quality over quantity)
+MAX TEAM SIZE: {max_team_for_performance} agents (analyze project needs to determine optimal size)
+
+DOMAIN ANALYSIS REQUIRED:
+1. **Content/Marketing Projects**: Need Content Creators, Social Media Managers, Copywriters, Community Managers, Brand Strategists
+2. **Technical Projects**: Need Developers, Architects, DevOps, QA Engineers  
+3. **Business Projects**: Need Analysts, Consultants, Project Managers, Researchers
+4. **Design Projects**: Need UX/UI Designers, Graphic Designers, Product Designers
+5. **Mixed Projects**: Combine domain-specific roles intelligently
+
+ESSENTIAL ROLES FOR INSTAGRAM/SOCIAL MEDIA PROJECTS:
+- Content Creator/Writer (creates actual posts, captions, content)
+- Social Media Manager (strategy, posting, engagement)
+- Community Manager (audience interaction, relationship building) 
+- Brand Strategist (brand voice, messaging, positioning)
+- Visual Content Designer (graphics, layouts, visual identity)
+- Copywriter (compelling copy, hooks, call-to-actions)
+- SEO/Analytics Specialist (hashtag research, performance analysis)
 
 Create a focused, expert team with detailed profiles. Each agent should have:
 - Rich personality traits and background
-- Detailed hard/soft skills
+- Detailed hard/soft skills  
 - Clear role specialization
 - Professional communication style
 
@@ -1453,11 +1469,11 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
             )  # This returns a dict with 'agents'
             agents_list = data["agents"]
 
-        # 1. Cap team size to performance limit
-        performance_max = 4  # Same as in prompt
+        # 1. Cap team size to calculated performance limit (now dynamic)
+        performance_max = max_team_for_performance  # Use the dynamic calculation from above
         if len(agents_list) > performance_max:
             logger.info(
-                f"Team size {len(agents_list)} exceeds performance max {performance_max}. Truncating for quality."
+                f"Team size {len(agents_list)} exceeds calculated performance max {performance_max}. Truncating for quality."
             )
             agents_list = agents_list[: performance_max]
 
