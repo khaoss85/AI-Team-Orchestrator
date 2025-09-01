@@ -900,92 +900,157 @@ async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[st
 
     """
     Get knowledge insights for a workspace including best practices and learnings.
+    This version falls back to deliverables as knowledge items when workspace_memory is not available.
     """
     try:
-        from workspace_memory import workspace_memory
-        from models import MemoryQueryRequest, InsightType
-        
-        # Get workspace memory summary
-        summary = await workspace_memory.get_workspace_summary(UUID(workspace_id))
-        
-        # Query specific types of insights
-        best_practices_query = MemoryQueryRequest(
-            query="best practices success patterns",
-            insight_types=[InsightType.SUCCESS_PATTERN],
-            limit=10
-        )
-        best_practices_response = await workspace_memory.query_insights(UUID(workspace_id), best_practices_query)
-        
-        learnings_query = MemoryQueryRequest(
-            query="lessons learned failures constraints",
-            insight_types=[InsightType.FAILURE_LESSON, InsightType.CONSTRAINT],
-            limit=10
-        )
-        learnings_response = await workspace_memory.query_insights(UUID(workspace_id), learnings_query)
-        
-        discoveries_query = MemoryQueryRequest(
-            query="discoveries optimizations",
-            insight_types=[InsightType.DISCOVERY, InsightType.OPTIMIZATION],
-            limit=10
-        )
-        discoveries_response = await workspace_memory.query_insights(UUID(workspace_id), discoveries_query)
-        
-        return {
-            "workspace_id": workspace_id,
-            "total_insights": summary.total_insights,
-            "insights": [
-                {
-                    "id": str(insight.id),
-                    "type": insight.insight_type.value,
-                    "content": insight.content,
-                    "confidence": insight.confidence_score,
-                    "created_at": insight.created_at.isoformat(),
-                    "tags": insight.relevance_tags
+        # Try to use workspace_memory if available
+        try:
+            from workspace_memory import workspace_memory
+            from models import MemoryQueryRequest, InsightType
+            
+            # Get workspace memory summary
+            summary = await workspace_memory.get_workspace_summary(UUID(workspace_id))
+            
+            # Query specific types of insights
+            best_practices_query = MemoryQueryRequest(
+                query="best practices success patterns",
+                insight_types=[InsightType.SUCCESS_PATTERN],
+                limit=10
+            )
+            best_practices_response = await workspace_memory.query_insights(UUID(workspace_id), best_practices_query)
+            
+            learnings_query = MemoryQueryRequest(
+                query="lessons learned failures constraints",
+                insight_types=[InsightType.FAILURE_LESSON, InsightType.CONSTRAINT],
+                limit=10
+            )
+            learnings_response = await workspace_memory.query_insights(UUID(workspace_id), learnings_query)
+            
+            discoveries_query = MemoryQueryRequest(
+                query="discoveries optimizations",
+                insight_types=[InsightType.DISCOVERY, InsightType.OPTIMIZATION],
+                limit=10
+            )
+            discoveries_response = await workspace_memory.query_insights(UUID(workspace_id), discoveries_query)
+            
+            return {
+                "workspace_id": workspace_id,
+                "total_insights": summary.total_insights,
+                "insights": [
+                    {
+                        "id": str(insight.id),
+                        "type": insight.insight_type.value,
+                        "content": insight.content,
+                        "confidence": insight.confidence_score,
+                        "created_at": insight.created_at.isoformat(),
+                        "tags": insight.relevance_tags
+                    }
+                    for insight in discoveries_response.insights
+                ],
+                "bestPractices": [
+                    {
+                        "id": str(insight.id),
+                        "content": insight.content,
+                        "confidence": insight.confidence_score,
+                        "created_at": insight.created_at.isoformat()
+                    }
+                    for insight in best_practices_response.insights
+                ],
+                "learnings": [
+                    {
+                        "id": str(insight.id),
+                        "type": insight.insight_type.value,
+                        "content": insight.content,
+                        "confidence": insight.confidence_score,
+                        "created_at": insight.created_at.isoformat()
+                    }
+                    for insight in learnings_response.insights
+                ],
+                "summary": {
+                    "recent_discoveries": summary.recent_discoveries[:5],
+                    "key_constraints": summary.key_constraints[:5],
+                    "success_patterns": summary.success_patterns[:5],
+                    "top_tags": summary.top_tags[:10]
                 }
-                for insight in discoveries_response.insights
-            ],
-            "bestPractices": [
-                {
-                    "id": str(insight.id),
-                    "content": insight.content,
-                    "confidence": insight.confidence_score,
-                    "created_at": insight.created_at.isoformat()
-                }
-                for insight in best_practices_response.insights
-            ],
-            "learnings": [
-                {
-                    "id": str(insight.id),
-                    "type": insight.insight_type.value,
-                    "content": insight.content,
-                    "confidence": insight.confidence_score,
-                    "created_at": insight.created_at.isoformat()
-                }
-                for insight in learnings_response.insights
-            ],
-            "summary": {
-                "recent_discoveries": summary.recent_discoveries[:5],
-                "key_constraints": summary.key_constraints[:5],
-                "success_patterns": summary.success_patterns[:5],
-                "top_tags": summary.top_tags[:10]
             }
-        }
-        
+        except (ImportError, AttributeError) as e:
+            # Workspace memory not available, fall through to deliverables approach
+            logger.info(f"Workspace memory not available: {e}, using deliverables as knowledge items")
+            raise ImportError("Workspace memory not available")
+            
     except ImportError:
         # Fallback if workspace_memory is not available
-        logger.warning("Workspace memory not available, returning empty insights")
+        logger.warning("Workspace memory not available, falling back to deliverables as knowledge items")
+        
+        # Import required modules for deliverables
+        from database import get_deliverables, get_supabase_client
+        import json
+        
+        # Fetch deliverables from the workspace
+        deliverables = await get_deliverables(workspace_id)
+        logger.info(f"Found {len(deliverables)} deliverables for workspace {workspace_id}")
+        
+        # Transform deliverables into knowledge items
+        insights = []
+        best_practices = []
+        learnings = []
+        
+        for deliverable in deliverables:
+            # Create a knowledge item from each deliverable
+            knowledge_item = {
+                "id": deliverable.get("id"),
+                "type": "discovery",  # Default type
+                "content": deliverable.get("title", ""),
+                "confidence": deliverable.get("content_quality_score", 0.7) / 100.0 if deliverable.get("content_quality_score") else 0.7,
+                "created_at": deliverable.get("created_at", ""),
+                "tags": []
+            }
+            
+            # Add full content as extended description
+            if deliverable.get("content"):
+                # Extract meaningful summary from content
+                content_str = deliverable.get("content", "")
+                if isinstance(content_str, str):
+                    # Take first 500 characters as summary
+                    content_preview = content_str[:500] + "..." if len(content_str) > 500 else content_str
+                    knowledge_item["content"] = f"{deliverable.get('title', 'Deliverable')}: {content_preview}"
+                    
+                    # Categorize based on content keywords
+                    content_lower = content_str.lower()
+                    if any(word in content_lower for word in ["strategia", "strategy", "piano", "plan", "approach"]):
+                        knowledge_item["type"] = "success_pattern"
+                        knowledge_item["tags"] = ["strategy", "planning"]
+                        best_practices.append(knowledge_item.copy())
+                    elif any(word in content_lower for word in ["report", "performance", "analisi", "analysis", "metrics"]):
+                        knowledge_item["type"] = "optimization"
+                        knowledge_item["tags"] = ["analytics", "performance"]
+                        insights.append(knowledge_item.copy())
+                    elif any(word in content_lower for word in ["research", "data", "ricerca", "informazioni"]):
+                        knowledge_item["type"] = "discovery"
+                        knowledge_item["tags"] = ["research", "data"]
+                        learnings.append(knowledge_item.copy())
+                    else:
+                        # Default to insights
+                        insights.append(knowledge_item.copy())
+            else:
+                # If no content, add to insights by default
+                insights.append(knowledge_item)
+        
+        # Create summary from deliverables
+        summary = {
+            "recent_discoveries": [d.get("title", "")[:100] for d in deliverables[:3] if d.get("title")],
+            "key_constraints": [],  # No constraints from deliverables
+            "success_patterns": [d.get("title", "")[:100] for d in deliverables if "strategia" in d.get("title", "").lower() or "strategy" in d.get("title", "").lower()][:3],
+            "top_tags": ["strategy", "planning", "analytics", "research", "instagram", "social-media"]
+        }
+        
         return {
             "workspace_id": workspace_id,
-            "total_insights": 0,
-            "insights": [],
-            "bestPractices": [],
-            "learnings": [],
-            "summary": {
-                "recent_discoveries": [],
-                "key_constraints": [],
-                "success_patterns": [],
-                "top_tags": []
-            }
+            "total_insights": len(deliverables),
+            "insights": insights,
+            "bestPractices": best_practices,
+            "learnings": learnings,
+            "summary": summary
         }
     except Exception as e:
         logger.error(f"Error fetching knowledge insights: {e}")

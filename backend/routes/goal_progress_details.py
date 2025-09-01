@@ -70,7 +70,19 @@ async def get_goal_progress_details(
                 'quality_level': deliverable.get('quality_level'),
                 'can_retry': status in ['failed', 'pending'],  # Actionable items
                 'retry_reason': _get_retry_reason(status, deliverable),
-                'unblock_actions': _get_unblock_actions(status, deliverable)
+                'unblock_actions': _get_unblock_actions(status, deliverable),
+                # Include enhanced display content fields for frontend
+                'content': deliverable.get('content'),  # Original content
+                'display_content': deliverable.get('display_content'),  # AI-enhanced HTML/Markdown
+                'display_format': deliverable.get('display_format', 'html'),  # Format type
+                'display_quality_score': deliverable.get('display_quality_score'),  # AI confidence
+                'display_summary': deliverable.get('display_summary'),  # Brief summary
+                'user_friendliness_score': deliverable.get('user_friendliness_score'),  # UX score
+                'auto_display_generated': deliverable.get('auto_display_generated'),  # AI vs manual
+                'transformation_timestamp': deliverable.get('transformation_timestamp'),  # When transformed
+                'can_retry_transformation': deliverable.get('can_retry_transformation', False),
+                'available_formats': deliverable.get('available_formats', ['html', 'markdown']),
+                'transformation_error': deliverable.get('transformation_error')
             })
             
             deliverable_stats[status] += 1

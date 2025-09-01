@@ -88,3 +88,37 @@ export interface DeliverableReference {
   type: string
   preview?: string
 }
+
+// AI-Driven Theme Types for Macro-Deliverable Grouping
+export interface MacroTheme {
+  theme_id: string
+  name: string
+  description: string
+  icon: string
+  business_value: string
+  confidence_score: number
+  goals: string[] // Goal IDs in this theme
+  deliverables: any[] // Deliverables in this theme
+  statistics: {
+    total_goals: number
+    total_deliverables: number
+    average_progress: number
+    completed_deliverables: number
+  }
+  reasoning: string
+}
+
+export interface ThemeExtractionResult {
+  workspace_id: string
+  macro_deliverables: MacroTheme[]
+  view_type: 'themed_groups' | 'simple_goals'
+  ungrouped_goals: string[]
+  extraction_summary: {
+    total_goals: number
+    total_themes: number
+    goals_grouped: number
+    goals_ungrouped: number
+    grouping_efficiency: number
+  }
+  timestamp: string
+}

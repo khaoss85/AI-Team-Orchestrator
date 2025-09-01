@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface WorkspaceUpdate {
-  type: 'task_update' | 'agent_update' | 'deliverable_update' | 'general_update' | 'thinking_step' | 'goal_decomposition_start' | 'goal_decomposition_complete'
+  type: 'task_update' | 'agent_update' | 'deliverable_update' | 'general_update' | 'thinking_step' | 'goal_decomposition_start' | 'goal_decomposition_complete' | 'goal_progress_update'
   data: any
   timestamp: string
 }
@@ -19,6 +19,8 @@ interface UseWorkspaceWebSocketOptions {
   onThinkingStep?: (thinkingData: any) => void
   onGoalDecompositionStart?: (goalData: any) => void
   onGoalDecompositionComplete?: (decompositionData: any) => void
+  // 🎯 Real-time goal progress updates
+  onGoalProgressUpdate?: (progressData: any) => void
 }
 
 export const useWorkspaceWebSocket = ({
@@ -29,7 +31,8 @@ export const useWorkspaceWebSocket = ({
   onGeneralUpdate,
   onThinkingStep,
   onGoalDecompositionStart,
-  onGoalDecompositionComplete
+  onGoalDecompositionComplete,
+  onGoalProgressUpdate
 }: UseWorkspaceWebSocketOptions) => {
   const [isConnected, setIsConnected] = useState(false)
   const [realtimeUpdates, setRealtimeUpdates] = useState<WorkspaceUpdate[]>([])
@@ -172,6 +175,26 @@ export const useWorkspaceWebSocket = ({
                 addUpdate({
                   type: 'deliverable_update',
                   data: message.data,
+                  timestamp: message.timestamp
+                })
+              }
+              break
+              
+            case 'goal_progress_update':
+              // 🎯 Real-time goal progress updates
+              if (message.data || message.goal_id) {
+                const progressData = {
+                  goal_id: message.goal_id,
+                  progress: message.progress,
+                  asset_completion_rate: message.asset_completion_rate,
+                  quality_score: message.quality_score,
+                  workspace_id: message.workspace_id,
+                  ...message.data
+                }
+                onGoalProgressUpdate?.(progressData)
+                addUpdate({
+                  type: 'goal_progress_update',
+                  data: progressData,
                   timestamp: message.timestamp
                 })
               }

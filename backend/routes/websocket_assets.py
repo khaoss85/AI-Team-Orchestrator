@@ -346,7 +346,17 @@ async def broadcast_goal_progress_update(
             "timestamp": datetime.utcnow().isoformat()
         }
         
+        # Broadcast to asset WebSocket connections
         await websocket_manager.broadcast_to_workspace(workspace_id, update_data)
+        
+        # 🔥 CRITICAL FIX: Also broadcast to main workspace WebSocket connections
+        try:
+            from routes.websocket import manager as main_websocket_manager
+            await main_websocket_manager.broadcast_to_workspace(workspace_id, update_data)
+            logger.info(f"📡 Broadcasted goal progress to MAIN WebSocket: {goal_id}")
+        except Exception as main_ws_error:
+            logger.error(f"Failed to broadcast to main WebSocket: {main_ws_error}")
+        
         logger.info(f"📡 Broadcasted goal progress update: {goal_id}")
         
     except Exception as e:

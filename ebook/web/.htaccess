@@ -1,3 +1,7 @@
+RewriteEngine On
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /index\.html\ HTTP/
+RewriteRule ^index\.html$ https://books.danielepelleri.com/ [R=301,L]
+
 # Apache configuration for AI Team Orchestrator Book
 # Redirect rules for easier access
 

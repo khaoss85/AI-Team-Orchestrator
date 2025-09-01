@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "puppeteer": "^21.6.1",
-    "vercel": "^46.0.5"
+    "vercel": "^46.1.1"
   },
   "keywords": [
     "ai",

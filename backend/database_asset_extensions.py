@@ -700,12 +700,14 @@ class AssetDrivenDatabaseManager:
             
             # Update current_value based on progress
             goal_response = self.supabase.table("workspace_goals") \
-                .select("target_value") \
+                .select("target_value, workspace_id") \
                 .eq("id", str(goal_id)) \
                 .execute()
             
+            workspace_id = None
             if goal_response.data:
                 target_value = goal_response.data[0]["target_value"]
+                workspace_id = goal_response.data[0]["workspace_id"]
                 new_current_value = (progress_percentage / 100) * target_value
                 update_data["current_value"] = new_current_value
             
@@ -718,6 +720,21 @@ class AssetDrivenDatabaseManager:
             if success:
                 logger.info(f"📈 Updated goal progress: {goal_id} -> {progress_percentage:.1f}%")
                 await self.log_goal_progress(goal_id, progress_percentage, quality_score or 0.0)
+                
+                # 🔥 FIX: Broadcast real-time goal progress update via WebSocket
+                if workspace_id:
+                    try:
+                        from routes.websocket_assets import broadcast_goal_progress_update
+                        await broadcast_goal_progress_update(
+                            workspace_id=workspace_id,
+                            goal_id=str(goal_id),
+                            progress=progress_percentage,
+                            asset_completion_rate=progress_percentage,
+                            quality_score=quality_score or 0.0
+                        )
+                        logger.info(f"📡 Broadcasted goal progress update: {goal_id} -> {progress_percentage:.1f}%")
+                    except Exception as broadcast_error:
+                        logger.error(f"Failed to broadcast goal progress update: {broadcast_error}")
                 
             return success
             

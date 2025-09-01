@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect } from 'react'
-import { ConversationMessage, Chat, DeliverableArtifact, TeamActivity, WorkspaceContext } from './types'
+import { ConversationMessage, Chat, DeliverableArtifact, TeamActivity, WorkspaceContext, MacroTheme } from './types'
 import ChatSidebar from './ChatSidebar'
 import ConversationPanel from './ConversationPanel'
 import ArtifactsPanel from './ArtifactsPanel'
@@ -82,6 +82,8 @@ export default function ConversationalWorkspace({
   // 🧠 Real-time thinking state (Claude/o3 style)
   const [realtimeThinkingSteps, setRealtimeThinkingSteps] = useState<any[]>([])
   const [currentGoalDecomposition, setCurrentGoalDecomposition] = useState<any>(null)
+  // 🎯 AI Theme state
+  const [selectedTheme, setSelectedTheme] = useState<MacroTheme | null>(null)
 
   // 🎯 FIX: Simple chat selection without URL manipulation to prevent loops
   const handleChatSelect = useCallback((chat: Chat) => {
@@ -90,6 +92,30 @@ export default function ConversationalWorkspace({
     // Only update the active chat state - no URL manipulation here
     // The parent component will handle URL synchronization separately
     onSetActiveChat(chat)
+    // Clear theme selection when selecting a regular chat
+    setSelectedTheme(null)
+  }, [onSetActiveChat])
+  
+  // 🎨 Handle AI theme selection
+  const handleThemeSelect = useCallback((theme: MacroTheme) => {
+    console.log('🎨 Theme selected:', theme.name, theme.theme_id)
+    setSelectedTheme(theme)
+    
+    // Create a virtual chat for the theme with proper goal references
+    const themeChat: Chat = {
+      id: `theme-${theme.theme_id}`,
+      type: 'dynamic',
+      title: theme.name,
+      icon: theme.icon,
+      status: 'active',
+      objective: {
+        description: theme.description,
+        progress: theme.statistics.average_progress,
+        // 🎯 Include the actual goal IDs for this theme
+        goals: theme.goals || []
+      }
+    }
+    onSetActiveChat(themeChat)
   }, [onSetActiveChat])
   
   // 🧠 WebSocket integration for real-time thinking
@@ -107,6 +133,20 @@ export default function ConversationalWorkspace({
     onGoalDecompositionComplete: (decompositionData) => {
       console.log('✅ Goal decomposition completed:', decompositionData)
       setCurrentGoalDecomposition(prev => ({ ...prev, ...decompositionData, status: 'completed' }))
+    },
+    onGoalProgressUpdate: (progressData) => {
+      console.log('🎯 Real-time goal progress update:', progressData)
+      // Update the goal progress in the objectives state
+      setObjectives(prev => prev.map(objective => 
+        objective.id === progressData.goal_id 
+          ? { 
+              ...objective, 
+              progress: progressData.progress || objective.progress,
+              quality_score: progressData.quality_score || objective.quality_score,
+              asset_completion_rate: progressData.asset_completion_rate || objective.asset_completion_rate
+            }
+          : objective
+      ))
     }
   })
   const [artifactsPanelWidth, setArtifactsPanelWidth] = useState(() => {
@@ -182,6 +222,7 @@ export default function ConversationalWorkspace({
           onReactivateChat={onReactivateChat}
           onRenameChat={onRenameChat}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onThemeSelect={handleThemeSelect} // 🎨 AI theme selection handler
         />
       </div>
 
@@ -257,6 +298,7 @@ export default function ConversationalWorkspace({
           onCheckWorkspaceHealth={onCheckWorkspaceHealth}
           onUnblockWorkspace={onUnblockWorkspace}
           onResumeAutoGeneration={onResumeAutoGeneration}
+          selectedTheme={selectedTheme} // 🎨 Pass selected theme for themed display
         />
       </div>
     </div>

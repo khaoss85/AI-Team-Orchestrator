@@ -1586,8 +1586,68 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
           break
 
         default:
-          // For dynamic chats, load objective-specific artifacts with full database data
-          if (chat.type === 'dynamic' && chat.objective) {
+          // 🎨 Handle theme chats separately - they aggregate multiple goals
+          if (chat.id.startsWith('theme-')) {
+            console.log('🎨 [loadChatSpecificArtifacts] Loading theme artifacts for:', chat.title)
+            
+            // For theme chats, we aggregate deliverables from all goals in the theme
+            // Extract the theme ID from the chat ID (format: theme-{uuid})
+            const themeId = chat.id.replace('theme-', '')
+            
+            // The objective contains the aggregated goals for this theme
+            const themeGoals = chat.objective?.goals || []
+            console.log('📊 [loadChatSpecificArtifacts] Theme contains', themeGoals.length, 'goals')
+            
+            // Aggregate deliverables from all goals in the theme
+            let themeDeliverables: any[] = []
+            for (const goalId of themeGoals) {
+              try {
+                const goalDeliverables = await api.monitoring.getGoalDeliverables(workspaceId, goalId)
+                themeDeliverables = [...themeDeliverables, ...goalDeliverables]
+              } catch (error) {
+                console.warn(`⚠️ Could not load deliverables for goal ${goalId}:`, error)
+              }
+            }
+            
+            console.log('📦 [loadChatSpecificArtifacts] Theme deliverables loaded:', themeDeliverables.length)
+            
+            // Create theme artifact showing aggregated deliverables
+            if (themeDeliverables.length > 0) {
+              chatArtifacts.push({
+                id: `theme-${themeId}-deliverables`,
+                type: 'deliverables',
+                title: `${chat.title} - Deliverables`,
+                description: `All deliverables for the ${chat.title} theme`,
+                status: 'ready',
+                content: {
+                  theme: chat.title,
+                  deliverables: themeDeliverables,
+                  goalCount: themeGoals.length
+                },
+                lastUpdated: new Date().toISOString()
+              })
+            }
+            
+            // Add theme overview artifact
+            chatArtifacts.push({
+              id: `theme-${themeId}-overview`,
+              type: 'theme',
+              title: chat.title,
+              description: chat.objective?.description || '',
+              status: 'ready',
+              content: {
+                theme_id: themeId,
+                name: chat.title,
+                description: chat.objective?.description,
+                goals: themeGoals,
+                deliverables_count: themeDeliverables.length,
+                progress: chat.objective?.progress || 0
+              },
+              lastUpdated: new Date().toISOString()
+            })
+            
+          } else if (chat.type === 'dynamic' && chat.objective) {
+            // For regular goal chats, load objective-specific artifacts with full database data
             try {
               // Load complete goal data from database including metadata
               const goalId = chat.objective.id || chat.id.replace('goal-', '')

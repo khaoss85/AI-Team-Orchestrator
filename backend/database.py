@@ -497,13 +497,41 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     else:
                         logger.warning(f"⚠️ Provided goal_id {provided_goal_id} not found in workspace goals, falling back to goal matching")
                 
-                # Fallback: Find the best matching goal based on content (only if no goal_id was provided or validated)
+                # Fallback: Use AI Goal Matcher for semantic content-based matching (Pillar 1, 6, 10)
                 if not mapped_goal_id and workspace_goals and pipeline_result.execution_successful:
-                    for goal in workspace_goals:
-                        if goal.get("status") == "active":
-                            mapped_goal_id = goal.get("id")
-                            logger.info(f"🎯 Fallback: Using first active goal: {mapped_goal_id} for deliverable")
-                            break
+                    try:
+                        from services.ai_goal_matcher import AIGoalMatcher
+                        
+                        ai_matcher = AIGoalMatcher()
+                        active_goals = [goal for goal in workspace_goals if goal.get("status") == "active"]
+                        
+                        if active_goals:
+                            # Prepare deliverable data for AI matching
+                            deliverable_for_matching = {
+                                "title": deliverable_data.get('title', 'Business Asset'),
+                                "type": deliverable_data.get('type', 'real_business_asset'),
+                                "content": pipeline_result.final_content if pipeline_result.final_content else deliverable_data.get('content', {})
+                            }
+                            
+                            # Use AI semantic matching (Pillar-compliant)
+                            match_result = await ai_matcher.analyze_and_match(
+                                deliverable_content=deliverable_for_matching,
+                                available_goals=active_goals
+                            )
+                            
+                            mapped_goal_id = match_result.goal_id
+                            logger.info(f"🎯 AI Goal Matcher: {match_result.reasoning} (confidence: {match_result.confidence:.2f})")
+                        else:
+                            logger.warning("⚠️ No active goals found for AI matching")
+                            
+                    except Exception as e:
+                        logger.error(f"❌ AI Goal Matcher failed: {e}, using emergency fallback")
+                        # Emergency fallback only if AI matching fails
+                        for goal in workspace_goals:
+                            if goal.get("status") == "active":
+                                mapped_goal_id = goal.get("id")
+                                logger.warning(f"🚨 Emergency fallback: Using first active goal: {mapped_goal_id}")
+                                break
                 
                 # Create deliverable with pipeline-generated content
                 ai_deliverable_data = {

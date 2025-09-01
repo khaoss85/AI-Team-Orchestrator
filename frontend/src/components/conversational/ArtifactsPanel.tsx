@@ -1,11 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
-import { DeliverableArtifact, TeamActivity, Chat } from './types'
+import { DeliverableArtifact, TeamActivity, Chat, MacroTheme } from './types'
 import TeamThinkingStream from './TeamThinkingStream'
 import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
 import AuthenticThinkingViewer from './AuthenticThinkingViewer'
+import MacroDeliverableView from './MacroDeliverableView'
+import ThemeArtifact from './ThemeArtifact'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -20,6 +22,7 @@ interface ArtifactsPanelProps {
   onCheckWorkspaceHealth?: () => Promise<any>
   onUnblockWorkspace?: (reason?: string) => Promise<{ success: boolean; message: string }>
   onResumeAutoGeneration?: () => Promise<{ success: boolean; message: string }>
+  selectedTheme?: MacroTheme | null
 }
 
 export default function ArtifactsPanel({
@@ -34,10 +37,11 @@ export default function ArtifactsPanel({
   healthLoading,
   onCheckWorkspaceHealth,
   onUnblockWorkspace,
-  onResumeAutoGeneration
+  onResumeAutoGeneration,
+  selectedTheme
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
-  const [activeTab, setActiveTab] = useState<'artifacts' | 'documents' | 'viewer'>('artifacts')
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'viewer'>('artifacts')
 
   // Auto-switch to artifacts when new ones arrive
   React.useEffect(() => {
@@ -78,12 +82,8 @@ export default function ArtifactsPanel({
               }}
               title={artifact.title}
             >
-              <span className="text-sm">
-                {artifact.type === 'deliverable' ? '📦' : 
-                 artifact.type === 'progress' ? '📊' : 
-                 artifact.type === 'team_status' ? '👥' : 
-                 artifact.type === 'feedback' ? '💬' : 
-                 artifact.type === 'knowledge' ? '💡' : '⚙️'}
+              <span className="text-xs text-gray-500">
+                •
               </span>
             </div>
           ))}
@@ -109,33 +109,25 @@ export default function ArtifactsPanel({
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - Simplified */}
         <div className="flex space-x-1 mt-3">
           <TabButton
             active={activeTab === 'artifacts'}
             onClick={() => setActiveTab('artifacts')}
-            icon="📋"
             label="Results"
             count={artifacts.length}
-          />
-          <TabButton
-            active={activeTab === 'documents'}
-            onClick={() => setActiveTab('documents')}
-            icon="📁"
-            label="Docs"
           />
           {selectedArtifact && (
             <TabButton
               active={activeTab === 'viewer'}
               onClick={() => setActiveTab('viewer')}
-              icon="👁️"
               label="View"
             />
           )}
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - Simplified */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'artifacts' && (
           <ArtifactsList
@@ -147,14 +139,7 @@ export default function ArtifactsPanel({
           />
         )}
 
-        {activeTab === 'documents' && (
-          <DocumentsSection 
-            workspaceId={workspaceId}
-            onSendMessage={onSendMessage || (async () => {})}
-          />
-        )}
-
-        {activeTab === 'viewer' && selectedArtifact && (
+        {!selectedTheme && activeTab === 'viewer' && selectedArtifact && (
           <>
             {console.log('📋 [ArtifactsPanel] Rendering ArtifactViewer with workspaceId:', workspaceId, 'for artifact:', selectedArtifact.type)}
             <ArtifactViewer
@@ -187,12 +172,11 @@ export default function ArtifactsPanel({
 interface TabButtonProps {
   active: boolean
   onClick: () => void
-  icon: string
   label: string
   count?: number
 }
 
-function TabButton({ active, onClick, icon, label, count }: TabButtonProps) {
+function TabButton({ active, onClick, label, count }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -204,7 +188,6 @@ function TabButton({ active, onClick, icon, label, count }: TabButtonProps) {
         }
       `}
     >
-      <span>{icon}</span>
       <span>{label}</span>
       {count !== undefined && count > 0 && (
         <span className={`
@@ -330,8 +313,7 @@ function ArtifactCard({ artifact, onClick }: ArtifactCardProps) {
       className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all"
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg">{getTypeIcon(artifact.type)}</span>
+        <div className="flex items-center">
           <div className="font-medium text-gray-900 text-sm line-clamp-1">
             {artifact.title}
           </div>

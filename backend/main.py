@@ -70,6 +70,7 @@ from routes.recovery_analysis import router as recovery_analysis_router
 
 # Sub-agent orchestration route
 from routes.sub_agent_orchestration import router as sub_agent_orchestration_router
+from routes.theme_extraction import router as theme_extraction_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -320,6 +321,9 @@ app.include_router(recovery_analysis_router)  # Already includes /api/recovery-a
 
 # Sub-agent orchestration routes
 app.include_router(sub_agent_orchestration_router)  # Already includes /api/sub-agent-orchestration prefix
+
+# Theme extraction and macro-deliverables routes
+app.include_router(theme_extraction_router, prefix="/api")
 
 # All routers now use consistent /api prefix - compatibility layer removed
 app.include_router(debug_router)

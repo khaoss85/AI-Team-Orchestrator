@@ -59,7 +59,6 @@ export default function ObjectiveArtifact({
     console.warn('ObjectiveArtifact: workspaceId is undefined or null')
     return (
       <div className="p-4 text-center text-gray-500">
-        <div className="text-2xl mb-2">⚠️</div>
         <div>Workspace ID not available</div>
         <div className="text-sm mt-1">Cannot display objective details</div>
       </div>
@@ -343,7 +342,7 @@ export default function ObjectiveArtifact({
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center">
-            <span className="text-red-500 text-xl mr-3">❌</span>
+            <span className="text-red-500 text-sm mr-3">Error:</span>
             <div>
               <h3 className="font-medium text-red-800">Failed to Load Progress Details</h3>
               <p className="text-sm text-red-700 mt-1">{error}</p>
@@ -417,7 +416,7 @@ export default function ObjectiveArtifact({
         <TabButton 
           active={activeTab === 'deliverables'} 
           onClick={() => setActiveTab('deliverables')}
-          label={`Deliverables${objectiveData.deliverables && objectiveData.deliverables.length > 0 ? ` (${objectiveData.deliverables.length})` : ''}`}
+          label={`Deliverables${goalProgressDetail?.deliverable_breakdown?.completed && goalProgressDetail.deliverable_breakdown.completed.length > 0 ? ` (${goalProgressDetail.deliverable_breakdown.completed.length})` : (objectiveData.deliverables && objectiveData.deliverables.length > 0 ? ` (${objectiveData.deliverables.length})` : '')}`}
         />
         {/* Only show In Progress tab if there are actually incomplete deliverables */}
         {inProgressDeliverables.length > 0 && (
@@ -513,11 +512,11 @@ function OverviewTab({ objectiveData, goalProgressDetail }: OverviewTabProps) {
       {/* Progress Overview */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
         <div className="text-center">
-          <div className="text-4xl font-bold text-blue-600 mb-2">
+          <div className="text-3xl font-semibold text-gray-900 mb-2">
             {progressPercentage}%
           </div>
-          <div className="text-gray-700 mb-4">
-            {isCompleted ? 'Objective Completed!' : 'Progress towards goal'}
+          <div className="text-gray-600 text-sm mb-4">
+            {isCompleted ? 'Completed' : 'In progress'}
           </div>
           <div className="w-full bg-white rounded-full h-4 shadow-inner mb-4">
             <div 
@@ -657,6 +656,20 @@ function DeliverablesTab({
   const [expandedDeliverable, setExpandedDeliverable] = useState<number | null>(null)
   const [autoCompletingMissing, setAutoCompletingMissing] = useState(false)
   const [retryingTransformation, setRetryingTransformation] = useState<string | null>(null)
+  
+  // CRITICAL FIX: Use goalProgressDetail.deliverable_breakdown.completed as primary source
+  // This ensures we show actual deliverables from the API instead of empty props data
+  const actualDeliverables = useMemo(() => {
+    // Priority 1: Use completed deliverables from goalProgressDetail if available
+    if (goalProgressDetail?.deliverable_breakdown?.completed && goalProgressDetail.deliverable_breakdown.completed.length > 0) {
+      console.log('✅ Using goalProgressDetail.deliverable_breakdown.completed:', goalProgressDetail.deliverable_breakdown.completed.length, 'deliverables')
+      return goalProgressDetail.deliverable_breakdown.completed
+    }
+    
+    // Fallback: Use prop deliverables if no goal progress detail available
+    console.log('⚠️ Falling back to prop deliverables:', deliverables?.length || 0, 'deliverables')
+    return deliverables || []
+  }, [goalProgressDetail?.deliverable_breakdown?.completed, deliverables])
 
   // Helper function to handle workspace-dependent actions safely
   const handleWorkspaceAction = async (actionName: string, actionFn: () => Promise<void>) => {
@@ -692,7 +705,7 @@ function DeliverablesTab({
     )
   }
 
-  if (!deliverables || deliverables.length === 0) {
+  if (!actualDeliverables || actualDeliverables.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="text-4xl mb-4">📦</div>
@@ -1015,7 +1028,7 @@ function DeliverablesTab({
       
       {/* Clean deliverable list - Claude Code style */}
       <div className="space-y-3">
-        {deliverables.map((deliverable, index) => {
+        {actualDeliverables.map((deliverable, index) => {
           const isExpanded = expandedDeliverable === index
           
           return (

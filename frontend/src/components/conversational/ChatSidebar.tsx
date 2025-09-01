@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Chat, WorkspaceContext } from './types'
+import { Chat, WorkspaceContext, MacroTheme } from './types'
+import { useThemeExtraction } from '@/hooks/useThemeExtraction'
 
 interface ChatSidebarProps {
   chats: Chat[]
@@ -18,6 +19,7 @@ interface ChatSidebarProps {
   onReactivateChat?: (chatId: string) => Promise<void>
   onRenameChat?: (chatId: string, newName: string) => Promise<void>
   onToggleCollapse: () => void
+  onThemeSelect?: (theme: MacroTheme) => void
 }
 
 // Hook for feedback count
@@ -64,12 +66,17 @@ export default function ChatSidebar({
   onArchiveChat,
   onReactivateChat,
   onRenameChat,
-  onToggleCollapse
+  onToggleCollapse,
+  onThemeSelect
 }: ChatSidebarProps) {
   const router = useRouter()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newObjective, setNewObjective] = useState('')
   const { pendingCount, urgentCount } = useFeedbackCount(workspaceContext.id)
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null)
+  
+  // AI-driven theme extraction
+  const { themes, loading: themesLoading, error: themesError } = useThemeExtraction(workspaceContext.id)
 
   // Separate fixed and dynamic chats
   const fixedChats = chats.filter(chat => chat.type === 'fixed')
@@ -204,11 +211,11 @@ export default function ChatSidebar({
           </div>
         </div>
 
-        {/* Active Objectives */}
+        {/* AI-Generated Themes or Objectives */}
         <div className="p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-gray-500 px-1">
-              🎯 OBJECTIVES
+              {themes.length > 0 ? '📈 THEMES' : '🎯 OBJECTIVES'}
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -219,16 +226,34 @@ export default function ChatSidebar({
             </button>
           </div>
           <div className="space-y-1">
-            {goalsLoading ? (
+            {themesLoading || goalsLoading ? (
               <div className="flex items-center px-1 py-2 text-xs text-gray-500">
                 <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                Loading objectives...
+                {themesLoading ? 'Extracting themes...' : 'Loading objectives...'}
               </div>
-            ) : goalsError ? (
+            ) : themesError || goalsError ? (
               <div className="text-xs text-red-500 px-1 py-2">
-                Error loading goals: {goalsError}
+                Error: {themesError || goalsError}
               </div>
+            ) : themes.length > 0 ? (
+              // Display AI-generated themes
+              <>
+                {themes.map(theme => (
+                  <ThemeItem
+                    key={theme.theme_id}
+                    theme={theme}
+                    isActive={selectedThemeId === theme.theme_id}
+                    onClick={() => {
+                      setSelectedThemeId(theme.theme_id)
+                      if (onThemeSelect) {
+                        onThemeSelect(theme)
+                      }
+                    }}
+                  />
+                ))}
+              </>
             ) : (
+              // Fallback to individual objectives if no themes
               <>
                 {activeObjectives.map(chat => (
                   <ChatItem 
@@ -323,6 +348,56 @@ interface ChatItemProps {
   onRename?: (newName: string) => void
   feedbackCount?: number
   urgentCount?: number
+}
+
+// Theme Item Component for AI-generated themes
+interface ThemeItemProps {
+  theme: MacroTheme
+  isActive: boolean
+  onClick: () => void
+}
+
+function ThemeItem({ theme, isActive, onClick }: ThemeItemProps) {
+  return (
+    <div 
+      onClick={onClick}
+      className={`
+        group relative p-2 rounded-lg cursor-pointer transition-colors
+        ${isActive 
+          ? 'bg-blue-100 text-blue-900' 
+          : 'text-gray-700 hover:bg-gray-100'
+        }
+      `}
+    >
+      <div className="flex items-center space-x-2 w-full">
+        {/* Theme icon */}
+        <span className="text-sm flex-shrink-0">{theme.icon}</span>
+        
+        {/* Theme name and statistics */}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate flex items-center">
+            {theme.name}
+            {/* Progress indicator */}
+            <div className="ml-2 text-xs text-gray-500">
+              {Math.round(theme.statistics.average_progress)}%
+            </div>
+          </div>
+          <div className="text-xs opacity-75 truncate">
+            {theme.statistics.total_goals} goals • {theme.statistics.total_deliverables} items
+          </div>
+        </div>
+        
+        {/* Confidence score indicator */}
+        <div className="flex-shrink-0" title={`AI Confidence: ${theme.confidence_score}%`}>
+          <div className={`w-2 h-2 rounded-full ${
+            theme.confidence_score >= 80 ? 'bg-green-500' : 
+            theme.confidence_score >= 60 ? 'bg-yellow-500' : 
+            'bg-orange-500'
+          }`} />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ChatItem({ chat, isActive, isArchived, onClick, onArchive, onReactivate, onRename, feedbackCount, urgentCount }: ChatItemProps) {

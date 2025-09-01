@@ -580,6 +580,12 @@ class ProjectDeliverableCard(BaseModel):
     updated_at: datetime
 
 class InsightType(str, Enum):
+    SUCCESS_PATTERN = "success_pattern"
+    FAILURE_LESSON = "failure_lesson"
+    CONSTRAINT = "constraint"
+    DISCOVERY = "discovery"
+    OPTIMIZATION = "optimization"
+    # Legacy values for backward compatibility
     PROGRESS = "progress"
     RISK = "risk"
     OPPORTUNITY = "opportunity"
@@ -588,17 +594,47 @@ class InsightType(str, Enum):
 class WorkspaceInsight(BaseModel):
     id: UUID
     workspace_id: UUID
-    insight_type: str
-    insight_data: Dict[str, Any]
-    confidence_score: float = 0.0
+    task_id: Optional[UUID] = None
+    agent_role: str = "system"
+    insight_type: InsightType
+    content: str
+    relevance_tags: List[str] = Field(default_factory=list)
+    confidence_score: float = 0.5
+    expires_at: Optional[datetime] = None
     created_at: datetime
-    updated_at: datetime
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    # Legacy fields for backward compatibility
+    insight_data: Optional[Dict[str, Any]] = None
+    updated_at: Optional[datetime] = None
 
 class MemoryQueryRequest(BaseModel):
+    query: str = ""
+    insight_types: Optional[List[InsightType]] = None
+    relevance_tags: Optional[List[str]] = None
+    tags: Optional[List[str]] = None  # Alias for relevance_tags
+    min_confidence: float = 0.0
+    exclude_expired: bool = True
+    max_results: int = 10
+    limit: int = 10  # Alias for max_results
+    # Legacy fields for backward compatibility
     workspace_id: Optional[UUID] = None
-    query_text: str
+    query_text: Optional[str] = None
     context_types: Optional[List[str]] = None
-    limit: int = 10
+
+class MemoryQueryResponse(BaseModel):
+    insights: List[WorkspaceInsight]
+    total_found: int
+    query_context: str = ""
+
+class WorkspaceMemorySummary(BaseModel):
+    workspace_id: UUID
+    total_insights: int = 0
+    insights_by_type: Dict[str, int] = Field(default_factory=dict)
+    top_tags: List[str] = Field(default_factory=list)
+    recent_discoveries: List[str] = Field(default_factory=list)
+    key_constraints: List[str] = Field(default_factory=list)
+    success_patterns: List[str] = Field(default_factory=list)
+    last_updated: datetime = Field(default_factory=datetime.now)
 
 # --- Book Lead Models ---
 class BookLeadCreate(BaseModel):
