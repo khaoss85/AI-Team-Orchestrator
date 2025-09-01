@@ -169,30 +169,131 @@ For development customization, you can also create:
 - **Frontend**: No additional config files needed (Next.js handles this)
 - **Database**: Supabase handles all database configuration remotely
 
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture
+
+AI Team Orchestrator implements a **multi-layer intelligent architecture** that transforms business objectives into concrete deliverables through specialized AI agents.
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   🎯 Director   │───▶│  🤖 Sub-Agents  │───▶│ 📊 Quality Gates│
-│   Orchestrator  │    │   (8 Specialists)│    │   & Validation  │  
+│  👤 User Input  │───▶│ 🎯 Goal Engine  │───▶│ 📋 Task Planner │
+│  Business Goal  │    │ AI Decomposition│    │ Smart Breakdown │  
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ 🧠 Thinking     │    │ 🛡️ Autonomous   │    │ 🎨 AI Content   │
-│ Process Engine  │    │ Recovery System │    │ Transformation  │
+│ 🤖 Agent Team   │───▶│ ⚡ Task Executor │───▶│ 📦 Deliverable  │
+│ Dynamic Assembly│    │ Real-time Exec  │    │ Generator       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ 🧠 Memory &     │    │ 🛡️ Quality      │    │ 🔄 Improvement  │
+│ Learning Engine │    │ Assurance       │    │ Loop System     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### 🤖 **Sub-Agent Specialists**
-1. **🏗️ System Architect** - Ensures architectural coherence and component reuse
-2. **🔧 SDK Guardian** - Enforces OpenAI SDK best practices vs custom implementations  
-3. **🗄️ DB Steward** - Maintains database schema integrity and constraints
-4. **📡 API Contract Guardian** - Validates frontend-backend API consistency
-5. **🛡️ Principles Guardian** - Enforces security and 15 architectural pillars
-6. **🎯 Placeholder Police** - Eliminates TODO/FIXME and enforces AI-driven logic
-7. **🧪 Test Sentinel** - Prevents fallback-dependent test patterns
-8. **📝 Docs Scribe** - Maintains documentation-code consistency
+### 🧠 **Core Components**
+
+#### **1. Goal-Driven Planning Engine** (`backend/ai_agents/director.py`)
+- **AI Goal Decomposition**: Transforms high-level business objectives into concrete sub-goals
+- **Dynamic Team Assembly**: Intelligently selects specialized agents based on project requirements
+- **Context-Aware Resource Planning**: Estimates time, cost, and skill requirements
+
+#### **2. Multi-Agent Orchestration System** (`backend/executor.py`)
+- **Semantic Task Distribution**: AI-powered task-agent matching beyond keyword filtering
+- **Real-Time Coordination**: Agents collaborate with handoffs and shared context
+- **Adaptive Priority Management**: Dynamic task prioritization based on business impact
+
+#### **3. Intelligent Quality Assurance** (`backend/improvement_loop.py`)
+- **Six-Step Improvement Loop**: Automated feedback, iteration, and quality gates
+- **AI-Driven Enhancement**: Content quality assessment and automatic improvements  
+- **Human-in-the-Loop Integration**: Strategic manual review for critical decisions
+
+#### **4. Professional Output Generation**
+- **AI Content Transformation**: Raw JSON → Business-ready HTML/Markdown documents
+- **Asset-First Architecture**: Generates concrete deliverables, not just status reports
+- **Dual-Format System**: Technical data for processing + professional display for users
+
+### 🔄 **Data Flow Architecture**
+
+```python
+# 1. Business Goal Input
+workspace = {
+    "goal": "Increase Instagram engagement by 40% in 3 months",
+    "domain": "social_media_marketing"
+}
+
+# 2. AI Goal Decomposition  
+goals = await director.decompose_goal(workspace.goal)
+# → ["Content Strategy", "Engagement Analysis", "Growth Tactics"]
+
+# 3. Dynamic Agent Team Assembly
+team = await director.assemble_team(goals, workspace.domain)
+# → [MarketingStrategist, ContentCreator, DataAnalyst, SocialMediaExpert]
+
+# 4. Intelligent Task Generation
+tasks = await goal_engine.generate_tasks(goals, team)
+# → Concrete, actionable tasks with skill requirements
+
+# 5. Semantic Task-Agent Matching
+for task in tasks:
+    agent = await ai_matcher.find_best_match(task, team, context)
+    await executor.assign_task(task, agent)
+
+# 6. Real-Time Execution with Quality Gates
+result = await executor.execute_with_qa(task, agent)
+# → Includes thinking process, quality validation, improvement loops
+
+# 7. Professional Deliverable Generation
+deliverable = await content_transformer.generate_asset(result)
+# → Business-ready document with insights and recommendations
+```
+
+### 🛠️ **Technical Implementation**
+
+#### **Backend Architecture** (FastAPI + Python)
+```
+backend/
+├── 🎯 ai_agents/           # Specialized AI agent implementations
+│   ├── director.py         # Team composition & project planning  
+│   ├── conversational.py   # Natural language task interface
+│   └── specialist_*.py     # Domain expert agents
+├── ⚡ services/            # Core business logic services
+│   ├── autonomous_task_recovery.py    # Self-healing task system
+│   ├── content_aware_learning_engine.py  # Business insights extraction
+│   ├── unified_memory_engine.py       # Context & learning storage
+│   └── thinking_process.py            # Real-time reasoning capture
+├── 🔄 routes/             # RESTful API endpoints  
+│   ├── director.py        # Team proposal & approval
+│   ├── conversational.py  # Chat interface & tool execution
+│   └── monitoring.py      # System health & metrics
+├── 💾 database.py         # Supabase integration & data layer
+├── ⚙️ executor.py          # Task execution & orchestration engine  
+└── 🏃 main.py             # FastAPI application entry point
+```
+
+#### **Frontend Architecture** (Next.js 15 + TypeScript)
+```
+frontend/src/
+├── 📱 app/                # App Router (Next.js 15)
+│   ├── layout.tsx         # Global layout & providers
+│   ├── page.tsx          # Landing page
+│   └── projects/         # Project management interface
+├── 🧩 components/         # Reusable UI components
+│   ├── conversational/   # Chat interface & thinking display
+│   ├── orchestration/    # Team management & task views
+│   └── improvement/      # Quality feedback & enhancement
+├── 🔧 hooks/             # Custom React hooks for data management
+│   ├── useConversationalWorkspace.ts  # Progressive loading system
+│   ├── useGoalThinking.ts            # Goal-driven UI state
+│   └── useAssetManagement.ts         # Deliverable management
+├── 🔌 utils/             # API client & utilities
+│   ├── api.ts            # Type-safe API client
+│   └── websocket.ts      # Real-time updates
+└── 🎨 types/             # TypeScript definitions
+    ├── workspace.ts      # Core domain models
+    └── agent.ts          # Agent & task types
+```
 
 ## 🔬 **Technical Deep Dive**
 

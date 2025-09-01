@@ -43,7 +43,30 @@ class LearningFeedbackEngine:
                 logger.info("Not enough execution data for meaningful analysis")
                 return {"status": "insufficient_data", "insights_generated": 0}
             
-            # Analyze different aspects
+            # ENHANCED: Content-aware learning system integration for domain-specific insights
+            content_insights = 0
+            business_insight_summary = {}
+            try:
+                from services.content_aware_learning_engine import content_aware_learning_engine
+                from services.enhanced_insight_database import get_workspace_insight_summary
+                
+                # Run content analysis to generate new business insights
+                content_analysis = await content_aware_learning_engine.analyze_workspace_content(workspace_id)
+                content_insights = content_analysis.get('insights_generated', 0)
+                
+                # Get summary of all domain insights for performance tracking
+                business_insight_summary = await get_workspace_insight_summary(workspace_id)
+                
+                logger.info(f"✅ Content-aware analysis: {content_insights} new insights, "
+                          f"{business_insight_summary.get('total_insights', 0)} total business insights")
+                          
+            except ImportError:
+                logger.warning("Content-aware learning engine not available - using standard analysis only")
+            except Exception as e:
+                logger.warning(f"Content-aware analysis failed: {e}")
+                content_insights = 0
+            
+            # Analyze different aspects (original analysis for backward compatibility)
             analyses = await asyncio.gather(
                 self._analyze_task_success_patterns(workspace_id),
                 self._analyze_failure_patterns(workspace_id),
@@ -52,23 +75,115 @@ class LearningFeedbackEngine:
                 return_exceptions=True
             )
             
-            insights_generated = 0
+            insights_generated = content_insights  # Start with content insights
             for analysis in analyses:
                 if isinstance(analysis, Exception):
                     logger.error(f"Analysis failed: {analysis}")
                     continue
                 insights_generated += analysis.get('insights_generated', 0)
             
-            logger.info(f"✅ Generated {insights_generated} insights from performance analysis")
+            logger.info(f"✅ Generated {insights_generated} total insights (including {content_insights} business insights)")
             return {
                 "status": "completed",
                 "insights_generated": insights_generated,
-                "analysis_timestamp": datetime.now().isoformat()
+                "business_insights_generated": content_insights,
+                "business_insight_summary": business_insight_summary,
+                "analysis_timestamp": datetime.now().isoformat(),
+                "content_aware_enabled": content_insights > 0
             }
             
         except Exception as e:
             logger.error(f"Error analyzing workspace performance: {e}")
             return {"status": "error", "error": str(e)}
+    
+    async def get_domain_insights_for_task(self, workspace_id: str, task_description: str, 
+                                         task_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get relevant domain insights for task execution
+        
+        This method retrieves domain-specific business insights that can improve task execution.
+        It's designed to be called by the task executor to inject learned knowledge into task context.
+        
+        Args:
+            workspace_id: Workspace to get insights from
+            task_description: Description of the task being executed
+            task_type: Optional task type for better matching
+            
+        Returns:
+            List of relevant domain insights with actionable recommendations
+        """
+        try:
+            from services.enhanced_insight_database import search_domain_insights, get_high_value_insights
+            
+            # Search for insights relevant to the task description
+            content_insights = await search_domain_insights(workspace_id, task_description)
+            
+            # Also get high-value insights for the workspace
+            high_value_insights = await get_high_value_insights(workspace_id, top_n=5)
+            
+            # Combine and deduplicate insights
+            all_insights = {}
+            for insight in content_insights + high_value_insights:
+                all_insights[insight.insight_title] = insight
+            
+            # Convert to executor-friendly format
+            executor_insights = []
+            for insight in all_insights.values():
+                if insight.business_value_score >= 0.6 and insight.confidence_score >= 0.6:
+                    executor_insights.append({
+                        "insight_id": str(insight.workspace_id),  # Use as identifier for application tracking
+                        "title": insight.insight_title,
+                        "description": insight.description,
+                        "domain": insight.domain_type,
+                        "recommendations": insight.action_recommendations,
+                        "metrics": insight.quantifiable_metrics,
+                        "business_value": insight.business_value_score,
+                        "confidence": insight.confidence_score,
+                        "priority": insight.learning_priority
+                    })
+            
+            # Sort by composite score (business_value * confidence)
+            executor_insights.sort(
+                key=lambda x: x["business_value"] * x["confidence"], 
+                reverse=True
+            )
+            
+            logger.info(f"✅ Retrieved {len(executor_insights)} domain insights for task execution")
+            return executor_insights[:10]  # Return top 10 most relevant
+            
+        except ImportError:
+            logger.info("Domain insights not available - enhanced learning system not imported")
+            return []
+        except Exception as e:
+            logger.error(f"Error retrieving domain insights for task: {e}")
+            return []
+    
+    async def record_insight_application(self, insight_id: str, task_id: str, success: bool) -> bool:
+        """Record that a domain insight was applied to a task
+        
+        Args:
+            insight_id: ID of the insight that was applied
+            task_id: ID of the task it was applied to
+            success: Whether the task succeeded
+            
+        Returns:
+            bool: True if successfully recorded
+        """
+        try:
+            from services.enhanced_insight_database import mark_insight_used
+            
+            # Mark the insight as used
+            marked = await mark_insight_used(insight_id)
+            
+            if marked:
+                logger.info(f"✅ Recorded insight {insight_id} application to task {task_id} (success: {success})")
+            
+            return marked
+            
+        except ImportError:
+            return False
+        except Exception as e:
+            logger.error(f"Error recording insight application: {e}")
+            return False
     
     async def _analyze_task_success_patterns(self, workspace_id: str) -> Dict[str, Any]:
         """Analyze patterns in successful task execution"""

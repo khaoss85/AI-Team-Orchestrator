@@ -290,6 +290,14 @@ app.include_router(thinking_api_router)  # Production thinking API
 app.include_router(memory_router, prefix="/api")
 app.include_router(memory_sessions_router, prefix="/api")
 
+# Content-aware learning extraction
+from routes.content_learning import router as content_learning_router
+app.include_router(content_learning_router)  # Already has /api/content-learning prefix
+
+# Learning-Quality Feedback Loop for performance boost
+from routes.learning_feedback_routes import router as learning_feedback_router
+app.include_router(learning_feedback_router)  # Already has /api/learning-feedback prefix
+
 # Monitoring and system management
 app.include_router(monitoring_router, prefix="/api")
 app.include_router(system_monitoring_router, prefix="/api")

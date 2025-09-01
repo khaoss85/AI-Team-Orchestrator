@@ -252,9 +252,151 @@ class ContentCalendar(BaseModel):
     calendar_name: str
     content_pieces: List[ContentPiece]
 
+# Legacy model (from deliverable_standards.py)
 class BusinessInsight(BaseModel):
     insight_title: str
     description: str
+
+# Enhanced BusinessInsight for Content-Aware Learning System
+class EnhancedBusinessInsight(BaseModel):
+    """Enhanced Business Insight model for Content-Aware Learning System
+    
+    This model represents domain-specific insights extracted from deliverable content
+    with quantifiable metrics and actionable recommendations.
+    """
+    # Core insight information
+    insight_title: str
+    description: str
+    
+    # Domain specificity  
+    domain_type: str = "general"  # instagram_marketing, email_marketing, etc.
+    insight_category: str = "general"  # performance_metric, best_practice, etc.
+    
+    # Domain-specific metadata (flexible JSON structure)
+    domain_specific_metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Quantifiable metrics with before/after comparisons
+    quantifiable_metrics: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Actionable recommendations for future tasks
+    action_recommendations: List[str] = Field(default_factory=list)
+    
+    # Business value and quality scoring
+    business_value_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    quality_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
+    
+    # Content analysis metadata
+    content_source_type: str = "deliverable_content"  # task_result, user_feedback, etc.
+    extraction_method: str = "ai_analysis"  # manual, pattern_recognition, etc.
+    
+    # Validation and application tracking
+    validation_status: str = "pending"  # validated, rejected, needs_review, applied
+    learning_priority: int = Field(default=1, ge=1, le=5)  # 1=highest, 5=lowest
+    
+    # Performance tracking
+    performance_impact_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    application_count: int = Field(default=0, ge=0)
+    last_applied_at: Optional[datetime] = None
+    
+    # Workspace context
+    workspace_id: Optional[UUID] = None
+    task_id: Optional[UUID] = None
+    agent_role: str = "content_aware_learning_engine"
+    
+    # Standard insight fields (for compatibility with WorkspaceInsight)
+    relevance_tags: List[str] = Field(default_factory=list)
+    expires_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    def to_workspace_insight(self) -> "WorkspaceInsight":
+        """Convert to WorkspaceInsight model for database storage"""
+        # Prepare enhanced metadata with domain-specific information
+        enhanced_metadata = {
+            **self.metadata,
+            "domain_type": self.domain_type,
+            "insight_category": self.insight_category,
+            "domain_specific_metadata": self.domain_specific_metadata,
+            "quantifiable_metrics": self.quantifiable_metrics,
+            "action_recommendations": self.action_recommendations,
+            "business_value_score": self.business_value_score,
+            "quality_threshold": self.quality_threshold,
+            "content_source_type": self.content_source_type,
+            "extraction_method": self.extraction_method,
+            "validation_status": self.validation_status,
+            "learning_priority": self.learning_priority,
+            "performance_impact_score": self.performance_impact_score,
+            "application_count": self.application_count,
+            "last_applied_at": self.last_applied_at.isoformat() if self.last_applied_at else None
+        }
+        
+        # Create content that combines title and description
+        content = f"{self.insight_title}: {self.description}"
+        if self.action_recommendations:
+            content += f" Recommendations: {'; '.join(self.action_recommendations)}"
+        
+        return WorkspaceInsight(
+            id=uuid4(),
+            workspace_id=self.workspace_id or uuid4(),
+            task_id=self.task_id,
+            agent_role=self.agent_role,
+            insight_type=InsightType.SUCCESS_PATTERN,  # Default to success pattern
+            content=content,
+            relevance_tags=self.relevance_tags,
+            confidence_score=self.confidence_score,
+            expires_at=self.expires_at,
+            created_at=self.created_at,
+            metadata=enhanced_metadata
+        )
+    
+    @classmethod
+    def from_workspace_insight(cls, insight: "WorkspaceInsight") -> "EnhancedBusinessInsight":
+        """Create from existing WorkspaceInsight"""
+        # Extract enhanced metadata
+        metadata = insight.metadata or {}
+        
+        # Parse title and description from content
+        parts = insight.content.split(": ", 1)
+        title = parts[0] if len(parts) > 1 else "Insight"
+        description = parts[1].split(" Recommendations:")[0] if len(parts) > 1 else insight.content
+        
+        # Extract recommendations if present
+        recommendations = []
+        if "Recommendations:" in insight.content:
+            rec_part = insight.content.split("Recommendations:", 1)[1].strip()
+            recommendations = [r.strip() for r in rec_part.split(";") if r.strip()]
+        
+        return cls(
+            insight_title=title,
+            description=description,
+            domain_type=metadata.get("domain_type", "general"),
+            insight_category=metadata.get("insight_category", "general"),
+            domain_specific_metadata=metadata.get("domain_specific_metadata", {}),
+            quantifiable_metrics=metadata.get("quantifiable_metrics", {}),
+            action_recommendations=recommendations or metadata.get("action_recommendations", []),
+            business_value_score=metadata.get("business_value_score", 0.0),
+            confidence_score=insight.confidence_score,
+            quality_threshold=metadata.get("quality_threshold", 0.0),
+            content_source_type=metadata.get("content_source_type", "deliverable_content"),
+            extraction_method=metadata.get("extraction_method", "ai_analysis"),
+            validation_status=metadata.get("validation_status", "pending"),
+            learning_priority=metadata.get("learning_priority", 1),
+            performance_impact_score=metadata.get("performance_impact_score", 0.0),
+            application_count=metadata.get("application_count", 0),
+            last_applied_at=datetime.fromisoformat(metadata["last_applied_at"]) if metadata.get("last_applied_at") else None,
+            workspace_id=insight.workspace_id,
+            task_id=insight.task_id,
+            agent_role=insight.agent_role,
+            relevance_tags=insight.relevance_tags,
+            expires_at=insight.expires_at,
+            metadata=metadata,
+            created_at=insight.created_at,
+            updated_at=insight.updated_at or insight.created_at
+        )
 
 class BusinessAnalysis(BaseModel):
     analysis_title: str
