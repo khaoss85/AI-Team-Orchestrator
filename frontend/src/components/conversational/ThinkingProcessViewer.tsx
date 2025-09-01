@@ -177,14 +177,6 @@ export default function ThinkingProcessViewer({
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <span className="text-xl">🧠</span>
-          <h3 className="text-lg font-semibold text-gray-900">Thinking Process</h3>
-          {isRealTime && (
-            <div className="flex items-center gap-2 ml-3">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-sm text-green-600 font-medium">REAL-TIME</span>
-            </div>
-          )}
         </div>
         
         {/* Goal decomposition progress indicator */}
