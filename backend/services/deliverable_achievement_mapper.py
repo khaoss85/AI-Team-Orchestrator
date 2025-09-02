@@ -233,23 +233,30 @@ Return ONLY a JSON object with the extracted data.
                 achievements.deliverables_completed = 1
                 total_confidence += 0.3
                 
-            # Default heuristics if no specific patterns found
+            # 🤖 AI-DRIVEN: Semantic classification if no specific patterns found
             if not achievements.items_created and not achievements.deliverables_completed and all_quantities:
                 largest_qty = max(all_quantities)
                 
-                # Heuristic classification based on size and context
-                if largest_qty > 50 and any(keyword in search_text for keyword in ['contact', 'lead', 'list', 'database']):
+                try:
+                    # Use AI to classify the achievement type
+                    ai_classification = await self._classify_achievement_type_ai(task_result, task_name, largest_qty)
+                    if ai_classification:
+                        achievements.items_created = ai_classification.get('items_created', 0)
+                        achievements.deliverables_completed = ai_classification.get('deliverables_completed', 0)  
+                        total_confidence += ai_classification.get('confidence_boost', 0.0)
+                        achievements.reasoning += f" AI classification: {ai_classification.get('reasoning', '')}"
+                    else:
+                        # Fallback: Use quantity without keyword assumptions
+                        achievements.items_created = largest_qty
+                        achievements.deliverables_completed = 1  # Default to one deliverable
+                        total_confidence += 0.2
+                        achievements.reasoning += " Used fallback classification"
+                except Exception as e:
+                    logger.warning(f"AI achievement classification failed: {e}")
+                    # Emergency fallback
                     achievements.items_created = largest_qty
-                    achievements.deliverables_completed = 1  # Always count the list as a deliverable
-                    total_confidence += 0.5
-                elif largest_qty <= 20 and any(keyword in search_text for keyword in ['sequence', 'strategy', 'campaign', 'email']):
-                    achievements.items_created = largest_qty  # Count individual items
-                    achievements.deliverables_completed = 1  # Count the sequence/strategy as one deliverable
-                    total_confidence += 0.4
-                else:
-                    achievements.items_created = largest_qty
-                    achievements.deliverables_completed = 1  # Default to one deliverable
-                    total_confidence += 0.3
+                    achievements.deliverables_completed = 1
+                    total_confidence += 0.1
             
             # Calculate final confidence
             achievements.confidence_score = min(total_confidence / max(matches_found, 1), 1.0)
@@ -322,27 +329,25 @@ Return ONLY a JSON object with the extracted data.
             numbers = re.findall(r'\d+', task_name)
             largest_number = max([int(n) for n in numbers], default=0)
             
-            # Classify based on task type
-            if any(keyword in task_lower for keyword in ['contact', 'lead', 'prospect', 'icp', 'customer']):
-                achievements.items_created = largest_number if largest_number > 0 else 1
-                achievements.confidence_score = 0.7 if largest_number > 0 else 0.3
-                achievements.reasoning = f"Inferred contact/lead task: {largest_number or 'unspecified'} items"
-                
-            elif any(keyword in task_lower for keyword in ['sequence', 'strategy', 'campaign', 'plan', 'email']):
+            # 🤖 AI-DRIVEN: Semantic task classification instead of keyword matching
+            try:
+                ai_task_classification = await self._classify_task_achievements_ai(task_name, largest_number)
+                if ai_task_classification:
+                    achievements.items_created = ai_task_classification.get('items_created', 0)
+                    achievements.deliverables_completed = ai_task_classification.get('deliverables_completed', 0)
+                    achievements.confidence_score = ai_task_classification.get('confidence', 0.3)
+                    achievements.reasoning = ai_task_classification.get('reasoning', 'AI task classification')
+                else:
+                    # Fallback: Generic task completion without keyword assumptions
+                    achievements.deliverables_completed = 1
+                    achievements.confidence_score = 0.2
+                    achievements.reasoning = "Generic task completion inference"
+            except Exception as e:
+                logger.warning(f"AI task classification failed: {e}")
+                # Emergency fallback
                 achievements.deliverables_completed = 1
-                achievements.confidence_score = 0.5
-                achievements.reasoning = "Inferred deliverable creation task"
-                
-            elif any(keyword in task_lower for keyword in ['compile', 'list', 'create', 'generate']):
-                achievements.items_created = largest_number if largest_number > 0 else 1
-                achievements.confidence_score = 0.4
-                achievements.reasoning = "Inferred creation task"
-                
-            else:
-                # Generic task completion
-                achievements.deliverables_completed = 1
-                achievements.confidence_score = 0.2
-                achievements.reasoning = "Generic task completion inference"
+                achievements.confidence_score = 0.1
+                achievements.reasoning = "Emergency fallback: task completion assumed"
             
             return achievements
             
@@ -420,6 +425,99 @@ Return ONLY a JSON object with the extracted data.
         except Exception as e:
             logger.error(f"Error mapping achievements to goals: {e}")
             return []
+    
+    async def _classify_achievement_type_ai(self, task_result: Dict[str, Any], task_name: str, quantity: int) -> Optional[Dict[str, Any]]:
+        """🤖 AI-DRIVEN: Classify achievement type based on task result and context"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        # 🤖 SELF-CONTAINED: Create achievement type classifier config internally
+        ACHIEVEMENT_CLASSIFIER_CONFIG = {
+            "name": "AchievementTypeClassifier",
+            "instructions": """
+                You are an achievement classification specialist.
+                Analyze task results to determine the type of achievements (items created vs deliverables completed).
+                Focus on understanding the business value and tangible outcomes.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        # Prepare context for AI analysis
+        result_summary = json.dumps(task_result, default=str)[:500]
+        
+        prompt = f"""Analyze this task completion to classify achievement type:
+
+TASK: {task_name}
+RESULT: {result_summary}
+QUANTITY FOUND: {quantity}
+
+Determine:
+1. Are these {quantity} items individual creations (like contacts, leads, entries) or part of one deliverable?
+2. What is the primary business value delivered?
+
+Return JSON with:
+{{"items_created": number, "deliverables_completed": number, "confidence_boost": 0.1-0.5, "reasoning": "explanation"}}
+
+Classification:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=ACHIEVEMENT_CLASSIFIER_CONFIG,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+            
+            if result and result.get('items_created') is not None:
+                return result
+            return None
+        except Exception as e:
+            logger.warning(f"AI achievement type classification error: {e}")
+            return None
+    
+    async def _classify_task_achievements_ai(self, task_name: str, largest_number: int) -> Optional[Dict[str, Any]]:
+        """🤖 AI-DRIVEN: Classify task achievements based on semantic understanding of task name"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        # 🤖 SELF-CONTAINED: Create task achievement classifier config internally
+        TASK_CLASSIFIER_CONFIG = {
+            "name": "TaskAchievementClassifier",
+            "instructions": """
+                You are a task achievement analysis specialist.
+                Analyze task names to predict likely achievements and deliverable outcomes.
+                Focus on business intent rather than specific keywords.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        prompt = f"""Analyze this task name to predict achievements:
+
+TASK: {task_name}
+NUMBER FOUND: {largest_number}
+
+Based on the task description, predict:
+1. How many individual items might be created (contacts, entries, pieces)?
+2. How many deliverables/documents might be completed?
+3. What is the confidence level of this prediction?
+
+Return JSON with:
+{{"items_created": number, "deliverables_completed": number, "confidence": 0.1-0.7, "reasoning": "explanation"}}
+
+Prediction:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=TASK_CLASSIFIER_CONFIG,
+                prompt=prompt,
+                response_format={"type": "json_object"}
+            )
+            
+            if result and result.get('confidence') is not None:
+                return result
+            return None
+        except Exception as e:
+            logger.warning(f"AI task achievement classification error: {e}")
+            return None
 
 # Global instance
 deliverable_achievement_mapper = DeliverableAchievementMapper()

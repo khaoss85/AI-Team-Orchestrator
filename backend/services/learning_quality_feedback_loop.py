@@ -558,7 +558,7 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
             logger.info(f"🚀 Enhancing task {task_id} execution with learned insights")
             
             # Detect likely domain from agent role
-            domain = self._infer_domain_from_agent(agent_role)
+            domain = await self._infer_domain_from_agent(agent_role)
             
             # Get relevant insights for this domain
             insights = await self._get_domain_insights(workspace_id, domain)
@@ -627,24 +627,61 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
             logger.error(f"Error enhancing task execution: {e}")
             return {"enhanced": False, "error": str(e)}
     
-    def _infer_domain_from_agent(self, agent_role: str) -> str:
-        """Infer business domain from agent role"""
-        agent_lower = agent_role.lower()
-        
-        if 'instagram' in agent_lower or 'social' in agent_lower:
-            return 'instagram_marketing'
-        elif 'email' in agent_lower or 'newsletter' in agent_lower:
-            return 'email_marketing'
-        elif 'content' in agent_lower or 'blog' in agent_lower:
-            return 'content_strategy'
-        elif 'lead' in agent_lower or 'sales' in agent_lower or 'outreach' in agent_lower:
-            return 'lead_generation'
-        elif 'data' in agent_lower or 'analytic' in agent_lower:
-            return 'data_analysis'
-        elif 'strategy' in agent_lower or 'business' in agent_lower:
-            return 'business_strategy'
-        else:
+    async def _infer_domain_from_agent(self, agent_role: str) -> str:
+        """🤖 AI-DRIVEN: Infer business domain from agent role using semantic understanding"""
+        try:
+            domain_classification = await self._classify_agent_domain_ai(agent_role)
+            return domain_classification if domain_classification else 'general'
+        except Exception as e:
+            logger.warning(f"AI agent domain classification failed: {e}, using fallback")
             return 'general'
+    
+    async def _classify_agent_domain_ai(self, agent_role: str) -> Optional[str]:
+        """🤖 AI-DRIVEN: Classify agent role into business domain using semantic analysis"""
+        # 🤖 SELF-CONTAINED: Create agent domain classifier config internally
+        AGENT_DOMAIN_CLASSIFIER_CONFIG = {
+            "name": "AgentDomainClassifier",
+            "instructions": """
+                You are a business domain classification specialist.
+                Classify AI agent roles into business domains for performance optimization.
+                Focus on the primary business function, not just keywords.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        # Define valid domain types for classification
+        valid_domains = [
+            'instagram_marketing', 'email_marketing', 'content_strategy', 
+            'lead_generation', 'data_analysis', 'business_strategy',
+            'general'
+        ]
+        
+        domains_str = ", ".join(valid_domains)
+        
+        prompt = f"""Classify this AI agent role into a business domain:
+
+AGENT ROLE: {agent_role}
+
+Choose the most appropriate domain from:
+{domains_str}
+
+Consider the primary business function and purpose of this role.
+Return only the exact domain name from the list above.
+
+Domain:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=AGENT_DOMAIN_CLASSIFIER_CONFIG,
+                prompt=prompt
+            )
+            
+            classification = result.get('content', '').strip().lower() if result else None
+            return classification if classification in valid_domains else None
+        except Exception as e:
+            logger.warning(f"AI agent domain classification error: {e}")
+            return None
     
     async def get_performance_report(self, workspace_id: str) -> Dict[str, Any]:
         """Generate a comprehensive performance report showing feedback loop effectiveness"""

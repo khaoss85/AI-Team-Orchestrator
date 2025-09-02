@@ -82,7 +82,7 @@ class MissingDeliverableDetection:
                     existing_deliverables = await self._get_goal_deliverables(workspace_id, goal_id)
                     
                     # Determine expected deliverables based on goal type
-                    expected = self._get_expected_deliverables_for_goal(goal_title)
+                    expected = await self._get_expected_deliverables_for_goal(goal_title)
                     
                     # Find missing deliverables
                     missing = self._find_missing_deliverables(existing_deliverables, expected)
@@ -135,19 +135,22 @@ class MissingDeliverableDetection:
             logger.error(f"❌ Error getting goal deliverables: {e}")
             return []
     
-    def _get_expected_deliverables_for_goal(self, goal_title: str) -> List[str]:
+    async def _get_expected_deliverables_for_goal(self, goal_title: str) -> List[str]:
         """Determine expected deliverables based on goal type"""
         goal_title_lower = goal_title.lower()
         
-        # Pattern matching for goal types
-        if any(keyword in goal_title_lower for keyword in ['email', 'newsletter', 'sequence']):
-            return self.expected_deliverables_per_goal.get('email_marketing', ['email_sequence_1', 'email_sequence_2', 'email_sequence_3'])
-        elif any(keyword in goal_title_lower for keyword in ['content', 'blog', 'article']):
-            return self.expected_deliverables_per_goal.get('content_creation', ['content_strategy', 'content_pieces'])
-        elif any(keyword in goal_title_lower for keyword in ['marketing', 'campaign', 'promotion']):
-            return self.expected_deliverables_per_goal.get('marketing_campaign', ['campaign_strategy', 'marketing_assets'])
-        elif any(keyword in goal_title_lower for keyword in ['website', 'site', 'web']):
-            return self.expected_deliverables_per_goal.get('website_development', ['website_structure', 'website_content'])
+        # 🤖 AI-DRIVEN: Semantic goal type classification
+        try:
+            goal_classification = await self._classify_goal_type_ai(goal_title)
+            if goal_classification and goal_classification in self.expected_deliverables_per_goal:
+                return self.expected_deliverables_per_goal.get(goal_classification, [])
+            
+            # AI-based deliverable generation for unrecognized types
+            custom_deliverables = await self._generate_deliverables_ai(goal_title)
+            if custom_deliverables:
+                return custom_deliverables
+        except Exception as e:
+            logger.warning(f"AI goal classification failed: {e}, using fallback")
         
         # CONFIGURED: Default deliverables for unrecognized goals
         default_count = int(os.getenv('DEFAULT_DELIVERABLES_COUNT', '3'))
@@ -441,6 +444,93 @@ class MissingDeliverableAutoCompleter:
                     'human_intervention_required': False
                 }
 
+    async def _classify_goal_type_ai(self, goal_title: str) -> Optional[str]:
+        """🤖 AI-DRIVEN: Classify goal type using semantic understanding"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        # 🤖 SELF-CONTAINED: Create goal classifier config internally
+        GOAL_CLASSIFIER_CONFIG = {
+            "name": "GoalTypeClassifier",
+            "instructions": """
+                You are a business goal classification specialist.
+                Classify business goals into standard types for deliverable planning.
+                Return only the classification type, no explanation.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        # Map to our existing deliverable types
+        valid_types = list(self.expected_deliverables_per_goal.keys())
+        types_str = ", ".join(valid_types)
+        
+        prompt = f"""Classify this business goal into one of these types:
+{types_str}
+
+GOAL: {goal_title}
+
+Return only the exact type name from the list above, or 'custom' if none match.
+
+Type:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=GOAL_CLASSIFIER_CONFIG,
+                prompt=prompt
+            )
+            
+            classification = result.get('content', '').strip().lower() if result else None
+            return classification if classification in valid_types else None
+        except Exception as e:
+            logger.warning(f"AI goal classification error: {e}")
+            return None
+    
+    async def _generate_deliverables_ai(self, goal_title: str) -> List[str]:
+        """🤖 AI-DRIVEN: Generate appropriate deliverables for custom goal types"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        # 🤖 SELF-CONTAINED: Create deliverable generator config internally  
+        DELIVERABLE_GENERATOR_CONFIG = {
+            "name": "DeliverableGenerator",
+            "instructions": """
+                You are a project deliverable specialist.
+                Generate 2-3 concrete, actionable deliverables for business goals.
+                Focus on tangible outcomes and measurable results.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        prompt = f"""Generate 2-3 concrete deliverables for this business goal:
+
+GOAL: {goal_title}
+
+Return deliverable names that are:
+- Specific and actionable
+- Measurable outcomes  
+- Professional terminology
+- One per line
+
+Deliverables:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk', 
+                agent=DELIVERABLE_GENERATOR_CONFIG,
+                prompt=prompt
+            )
+            
+            content = result.get('content', '') if result else ''
+            deliverables = []
+            
+            for line in content.split('\n'):
+                clean_line = line.strip().strip('•-*').strip()
+                if clean_line and len(clean_line) > 5 and not clean_line.startswith(('Deliverables:', 'Examples:')):
+                    deliverables.append(clean_line.lower().replace(' ', '_'))
+            
+            return deliverables[:3]  # Max 3 deliverables
+        except Exception as e:
+            logger.warning(f"AI deliverable generation error: {e}")
+            return []
 
 # Singleton instances
 missing_deliverable_detector = MissingDeliverableDetection()

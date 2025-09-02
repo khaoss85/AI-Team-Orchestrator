@@ -148,7 +148,7 @@ class SimpleToolOrchestrator:
                 )
             
             # Create search query based on task objective and business context
-            search_query = self._create_search_query(task_objective, business_context)
+            search_query = await self._create_search_query(task_objective, business_context)
             logger.info(f"🔍 Executing web search with query: {search_query}")
             
             # Execute the search
@@ -184,7 +184,7 @@ class SimpleToolOrchestrator:
                 error_message=str(e)
             )
     
-    def _create_search_query(self, task_objective: str, business_context: Dict[str, Any]) -> str:
+    async def _create_search_query(self, task_objective: str, business_context: Dict[str, Any]) -> str:
         """Create an effective search query based on task and context"""
         
         # Extract business domain if available
@@ -194,50 +194,120 @@ class SimpleToolOrchestrator:
         # Build query components
         query_parts = []
         
-        # Add main task objective
-        if "contact" in task_objective.lower() or "lead" in task_objective.lower():
-            query_parts.append("lead generation contact database")
-        elif "email" in task_objective.lower():
-            query_parts.append("email marketing campaigns templates")
-        elif "content" in task_objective.lower():
-            query_parts.append("content marketing strategy examples")
-        else:
-            # Use the task objective directly but clean it up
+        # 🤖 AI-DRIVEN: Generate semantic search query based on task understanding
+        try:
+            semantic_query = await self._generate_semantic_query_ai(task_objective, business_context)
+            if semantic_query:
+                query_parts.append(semantic_query)
+            else:
+                # Fallback: Clean task objective without keyword-based logic
+                clean_objective = task_objective.replace("🎯", "").replace("🤖", "").strip()
+                query_parts.append(clean_objective)
+        except Exception as e:
+            logger.warning(f"AI semantic query generation failed: {e}")
+            # Fallback: Clean task objective without keyword-based logic  
             clean_objective = task_objective.replace("🎯", "").replace("🤖", "").strip()
             query_parts.append(clean_objective)
         
-        # Add business context
+        # 🤖 AI-DRIVEN: Add semantic business context  
         if workspace_goal:
-            # Extract business domain keywords
-            domain_keywords = self._extract_domain_keywords(workspace_goal)
-            if domain_keywords:
-                query_parts.extend(domain_keywords[:2])  # Add top 2 keywords
+            try:
+                domain_context = await self._extract_domain_context_ai(workspace_goal)
+                if domain_context:
+                    query_parts.extend(domain_context[:2])  # Add top 2 semantic terms
+            except Exception as e:
+                logger.warning(f"AI domain context extraction failed: {e}")
+                # Fallback: Use goal directly without keyword matching
+                clean_goal = workspace_goal.replace("🎯", "").replace("🤖", "").strip()[:50]
+                query_parts.append(clean_goal)
         
         # Add current year for recent results
         query_parts.append("2024")
         
         return " ".join(query_parts)
     
-    def _extract_domain_keywords(self, text: str) -> List[str]:
-        """Extract relevant business domain keywords from text"""
-        keywords = []
-        text_lower = text.lower()
+    async def _generate_semantic_query_ai(self, task_objective: str, business_context: Dict[str, Any]) -> str:
+        """🤖 AI-DRIVEN: Generate semantic search query based on task understanding"""
+        from services.ai_provider_abstraction import ai_provider_manager
         
-        # Business domains
-        if "saas" in text_lower or "software" in text_lower:
-            keywords.append("SaaS")
-        if "ecommerce" in text_lower or "e-commerce" in text_lower:
-            keywords.append("ecommerce")
-        if "marketing" in text_lower:
-            keywords.append("digital marketing")
-        if "fintech" in text_lower or "finance" in text_lower:
-            keywords.append("fintech")
-        if "health" in text_lower or "medical" in text_lower:
-            keywords.append("healthcare")
-        if "education" in text_lower or "learning" in text_lower:
-            keywords.append("edtech")
+        # 🤖 SELF-CONTAINED: Create query generator config internally
+        QUERY_GENERATOR_CONFIG = {
+            "name": "SemanticQueryGenerator", 
+            "instructions": """
+                You are a semantic search query specialist.
+                Generate optimized search terms for finding relevant business information.
+                Focus on intent rather than keywords. Return only the search terms.
+            """,
+            "model": "gpt-4o-mini"
+        }
         
-        return keywords
+        prompt = f"""Generate semantic search terms for this business task:
+
+TASK: {task_objective}
+CONTEXT: {business_context.get('workspace_goal', '')}
+
+Return 3-5 search terms that capture the intent and domain, not just keywords.
+Example: Instead of 'contact lead' return 'customer acquisition strategies'
+
+Search terms:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=QUERY_GENERATOR_CONFIG,
+                prompt=prompt
+            )
+            
+            return result.get('content', '').strip() if result else None
+        except Exception as e:
+            logger.warning(f"AI semantic query generation error: {e}")
+            return None
+    
+    async def _extract_domain_context_ai(self, workspace_goal: str) -> List[str]:
+        """🤖 AI-DRIVEN: Extract domain-specific context terms using semantic understanding"""
+        from services.ai_provider_abstraction import ai_provider_manager
+        
+        # 🤖 SELF-CONTAINED: Create domain extractor config internally
+        DOMAIN_EXTRACTOR_CONFIG = {
+            "name": "DomainContextExtractor",
+            "instructions": """
+                You are a business domain specialist.
+                Extract 2-3 domain-specific search terms that enhance search relevance.
+                Focus on industry context and business domain, not generic keywords.
+            """,
+            "model": "gpt-4o-mini"
+        }
+        
+        prompt = f"""Extract domain context terms for this business goal:
+
+GOAL: {workspace_goal}
+
+Return 2-3 industry/domain terms that provide search context.
+Example: For 'Build learning platform' return ['educational technology', 'e-learning solutions']
+
+Domain terms:"""
+        
+        try:
+            result = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent=DOMAIN_EXTRACTOR_CONFIG,
+                prompt=prompt
+            )
+            
+            content = result.get('content', '') if result else ''
+            # Simple parsing - split on common delimiters
+            terms = []
+            for line in content.split('\n'):
+                if line.strip() and not line.startswith(('Example:', 'Domain:', 'Terms:')):
+                    # Clean and extract terms
+                    clean_line = line.strip().strip('•-').strip('[]"\'')
+                    if clean_line and len(clean_line) > 3:
+                        terms.append(clean_line)
+            
+            return terms[:3]  # Max 3 terms
+        except Exception as e:
+            logger.warning(f"AI domain context extraction error: {e}")
+            return []
 
 # Create singleton instance
 simple_tool_orchestrator = SimpleToolOrchestrator()
