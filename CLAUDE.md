@@ -1632,6 +1632,129 @@ Complete system documentation available in:
 - `/docs/GOAL_PROGRESS_TRANSPARENCY_SYSTEM.md` - Full technical documentation
 - API schemas and configuration details included
 
+## Document Management System
+
+### Overview
+The Document Management System provides intelligent document handling with OpenAI native vector store integration for Retrieval-Augmented Generation (RAG). This system enables seamless document upload, semantic search, and AI-powered content analysis within workspace contexts.
+
+### Architecture Components
+
+#### Backend Infrastructure
+- **Document Manager Service** (`backend/services/document_manager.py`): Core document operations with OpenAI Files API integration
+- **Database Schema** (`backend/database/migrations/008_add_document_tables.sql`): Document metadata and vector store tracking
+- **API Routes** (`backend/routes/documents.py`): RESTful endpoints for document management
+- **OpenAI SDK Tools** (`backend/tools/openai_sdk_tools.py`): Native OpenAI vector search implementation
+
+#### Frontend Components  
+- **DocumentsSection** (`frontend/src/components/conversational/DocumentsSection.tsx`): Main document management UI
+- **Document Upload Integration**: Seamless file upload in conversational interface
+- **API Client** (`frontend/src/utils/api.ts`): TypeScript client for document operations
+
+### Key Features
+
+#### 1. OpenAI Vector Store Integration
+- **Automatic Vector Store Creation**: Dedicated vector stores per workspace
+- **Semantic Search**: AI-powered document content search with relevance scoring
+- **Agent-Specific Scoping**: Documents can be restricted to specific AI agents
+- **RAG Capabilities**: Search results integrated into AI conversations
+
+#### 2. Document Operations
+- **Multiple Upload Methods**: Base64 and multipart form support
+- **File Deduplication**: SHA256 hash checking prevents duplicates
+- **Metadata Management**: Description, tags, and sharing scope configuration
+- **Safe Deletion**: Removes from both OpenAI and local storage
+- **MIME Type Support**: PDF, DOC, TXT, images, and more
+
+#### 3. UI Access Points
+- **Knowledge Base Chat**: Primary access through dedicated Knowledge Base chat interface
+- **Conversational Integration**: Upload button available in chat interface
+- **Search Interface**: Semantic search bar within DocumentsSection
+- **Tool Integration**: Available as conversational tool (`/search_documents`)
+
+### API Endpoints
+
+#### Core Document Operations
+```bash
+# Upload document (Base64)
+POST /api/documents/{workspace_id}/upload
+
+# Upload document (Multipart form)  
+POST /api/documents/{workspace_id}/upload-file
+
+# List documents with optional scope filtering
+GET /api/documents/{workspace_id}?scope=team
+
+# Search documents semantically
+GET /api/documents/{workspace_id}/search?query=semantic_search_query
+
+# Delete document
+DELETE /api/documents/{workspace_id}/{document_id}
+
+# Get vector store IDs
+GET /api/documents/{workspace_id}/vector-stores
+```
+
+### Usage Instructions
+
+#### For Users
+1. **Accessing Document Management**: Navigate to Knowledge Base chat in conversation sidebar
+2. **Uploading Documents**: Use upload button (📎) to add files with metadata
+3. **Searching Documents**: Use search bar for semantic queries like "financial reports Q4"
+4. **Managing Documents**: View, organize, and delete documents from DocumentsSection interface
+
+#### For Developers
+1. **Integration**: Import and use DocumentsSection component in custom UI
+2. **API Usage**: Leverage document API client for custom document workflows
+3. **Tool Extension**: Add new document-related tools in conversational interface
+4. **OpenAI Integration**: Access vector store IDs for custom AI implementations
+
+### Configuration
+
+#### Environment Variables
+```bash
+# Required for OpenAI integration
+OPENAI_API_KEY=sk-proj-...
+
+# Optional document configuration
+DOCUMENT_MAX_SIZE_MB=50
+DOCUMENT_VECTOR_STORE_PREFIX=ato_workspace_
+```
+
+#### File Type Support
+- **Documents**: PDF, DOC, DOCX, TXT, RTF
+- **Spreadsheets**: XLS, XLSX, CSV  
+- **Presentations**: PPT, PPTX
+- **Images**: PNG, JPG, JPEG, GIF
+- **Code**: Various programming language files
+
+### Security Features
+- **Workspace Isolation**: Documents scoped to specific workspaces
+- **Access Control**: Team-wide vs agent-specific sharing options
+- **Secure Storage**: Files stored in OpenAI's secure infrastructure
+- **Input Validation**: Comprehensive validation for uploads and operations
+
+### Diagnostic Commands
+```bash
+# Test OpenAI API connectivity
+curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/files
+
+# Test document upload endpoint
+curl -X POST localhost:8000/api/documents/{workspace_id}/upload \
+  -H "Content-Type: application/json" \
+  -d '{"file_data":"base64...", "filename":"test.txt"}'
+
+# List workspace documents  
+curl localhost:8000/api/documents/{workspace_id}
+
+# Test semantic search
+curl "localhost:8000/api/documents/{workspace_id}/search?query=project+specifications"
+```
+
+### Documentation
+Complete technical documentation available in:
+- `/docs/DOCUMENT_MANAGEMENT_SYSTEM.md` - Comprehensive implementation guide
+- `/backend/DOCUMENT_MANAGEMENT_SYSTEM_AUDIT.md` - System audit and integration details
+
 ## Available Tools
 
 The conversational AI system provides access to various tools through natural language commands or slash commands (`/`). When users type `/` in the chat input, they can discover and use these tools:
