@@ -35,6 +35,13 @@
 - **Goal-Driven Planning**: AI decomposes objectives into concrete deliverables
 - **Professional Output**: Raw JSON → Business-ready documents via AI transformation
 
+### 📚 **Advanced RAG & Document Intelligence**
+- **Document Upload & Processing**: Upload PDFs, docs, and files for agent-specific or team-wide knowledge
+- **Intelligent RAG Pipeline**: Contextual retrieval-augmented generation with semantic search
+- **Agent-Specific Knowledge**: Assign domain documents to specialized agents for expert reasoning
+- **MCP Integration Ready**: Model Context Protocol support for advanced tool and knowledge connectivity
+- **Multi-Modal Understanding**: Process text, images, and structured data within agent workflows
+
 ## 🚀 Quick Start (< 5 minutes)
 
 ### Prerequisites
@@ -335,10 +342,13 @@ backend/
 │   ├── autonomous_task_recovery.py    # Self-healing task system
 │   ├── content_aware_learning_engine.py  # Business insights extraction
 │   ├── unified_memory_engine.py       # Context & learning storage
-│   └── thinking_process.py            # Real-time reasoning capture
+│   ├── thinking_process.py            # Real-time reasoning capture
+│   ├── document_manager.py            # RAG document processing & indexing
+│   └── mcp_tool_discovery.py          # Model Context Protocol integration
 ├── 🔄 routes/             # RESTful API endpoints  
 │   ├── director.py        # Team proposal & approval
 │   ├── conversational.py  # Chat interface & tool execution
+│   ├── documents.py       # Document upload & RAG management
 │   └── monitoring.py      # System health & metrics
 ├── 💾 database.py         # Supabase integration & data layer
 ├── ⚙️ executor.py          # Task execution & orchestration engine  
@@ -355,7 +365,8 @@ frontend/src/
 ├── 🧩 components/         # Reusable UI components
 │   ├── conversational/   # Chat interface & thinking display
 │   ├── orchestration/    # Team management & task views
-│   └── improvement/      # Quality feedback & enhancement
+│   ├── improvement/      # Quality feedback & enhancement
+│   └── documents/        # Document upload, RAG, and knowledge management
 ├── 🔧 hooks/             # Custom React hooks for data management
 │   ├── useConversationalWorkspace.ts  # Progressive loading system
 │   ├── useGoalThinking.ts            # Goal-driven UI state
@@ -688,6 +699,153 @@ npm install --save-dev # Frontend dev dependencies
 ./scripts/run-quality-gates.sh
 ```
 
+## 📚 **Document Intelligence & RAG**
+
+The AI Team Orchestrator includes advanced document processing and retrieval-augmented generation (RAG) capabilities for knowledge-enhanced agent interactions.
+
+### **📄 Document Upload & Processing**
+
+#### **Upload Documents for Agent Knowledge**
+```bash
+# Upload domain-specific documents for specialized agents
+curl -X POST "http://localhost:8000/api/documents/upload" \
+  -F "file=@./company-guidelines.pdf" \
+  -F "agent_id=specialist_agent_id" \
+  -F "scope=agent" \
+  -F "description=Company guidelines for business analysis"
+
+# Upload team-wide knowledge base
+curl -X POST "http://localhost:8000/api/documents/upload" \
+  -F "file=@./industry-report.pdf" \
+  -F "workspace_id=workspace_id" \
+  -F "scope=team" \
+  -F "description=Industry market analysis for all agents"
+```
+
+#### **Supported Document Formats**
+- **📄 Text Documents**: PDF, DOCX, TXT, Markdown
+- **📊 Structured Data**: CSV, JSON, XML
+- **🎨 Images**: PNG, JPG (with OCR processing)
+- **📋 Presentations**: PPTX (text extraction)
+- **🔗 Web Content**: URLs for automatic scraping
+
+### **🧠 RAG-Enhanced Agent Interactions**
+
+#### **Agent-Specific Knowledge**
+```typescript
+// Agents automatically access their knowledge base during task execution
+const specialist = {
+  "role": "Financial Analyst",
+  "knowledge_sources": [
+    "financial_reports_2024.pdf",
+    "market_analysis.docx", 
+    "company_policies.md"
+  ],
+  "rag_enabled": true
+}
+
+// Agent reasoning with document context
+"Based on the Q3 financial report (uploaded document), 
+ I recommend focusing on the emerging markets strategy..."
+```
+
+#### **Multi-Modal Document Understanding**
+```python
+# Process complex documents with text, images, and tables
+document_insights = await document_manager.process_document(
+    file_path="comprehensive_report.pdf",
+    agent_context="business_strategy",
+    extract_modes=["text", "images", "tables", "charts"]
+)
+
+# Agents can reason about visual content
+# "The chart on page 5 shows declining trend in Q4..."
+```
+
+### **🔍 Intelligent Knowledge Retrieval**
+
+#### **Context-Aware Document Search**
+```bash
+# Search across agent knowledge base
+curl -X GET "http://localhost:8000/api/documents/search" \
+  -G \
+  -d "query=customer retention strategies" \
+  -d "agent_id=marketing_specialist" \
+  -d "limit=5"
+
+# Team-wide knowledge search
+curl -X GET "http://localhost:8000/api/documents/search" \
+  -G \
+  -d "query=risk assessment frameworks" \
+  -d "workspace_id=workspace_id" \
+  -d "scope=team"
+```
+
+#### **Semantic Similarity Matching**
+- **📊 Vector Embeddings**: Documents indexed with OpenAI embeddings
+- **🎯 Contextual Retrieval**: Relevant content based on current task context
+- **🔄 Real-Time Updates**: Document changes reflected immediately in agent knowledge
+- **📈 Usage Analytics**: Track which documents agents reference most frequently
+
+### **🔧 MCP Integration (Model Context Protocol)**
+
+#### **External Tool Connectivity**
+```python
+# MCP-enabled agents can connect to external systems
+mcp_tools = [
+    "database_connector",    # Direct database queries
+    "api_integrations",     # REST/GraphQL APIs
+    "file_system_access",   # Local and cloud file systems
+    "web_scraping",         # Real-time web content
+    "email_integration"     # Email and calendar access
+]
+
+# Agents automatically discover and use available MCP tools
+agent_capabilities = await mcp_discovery.scan_available_tools(workspace_id)
+```
+
+#### **Dynamic Knowledge Expansion**
+- **🌐 Web Integration**: Real-time access to web resources and APIs
+- **💾 Database Connectivity**: Direct queries to business databases
+- **📧 Communication Tools**: Email, Slack, and messaging platform integration
+- **☁️ Cloud Services**: Integration with Google Drive, Dropbox, OneDrive
+
+### **⚙️ Configuration**
+
+```bash
+# RAG & Document Processing Configuration
+ENABLE_DOCUMENT_RAG=true                    # Enable RAG capabilities
+DOCUMENT_STORAGE_PATH="./documents"         # Local document storage
+ENABLE_OCR_PROCESSING=true                  # Image text extraction
+MAX_DOCUMENT_SIZE_MB=50                     # Upload size limit
+DOCUMENT_RETENTION_DAYS=365                 # Automatic cleanup
+
+# Vector Search Configuration  
+EMBEDDING_MODEL="text-embedding-3-large"    # OpenAI embedding model
+VECTOR_SIMILARITY_THRESHOLD=0.8             # Relevance threshold
+MAX_RAG_CONTEXT_TOKENS=8000                 # Context window limit
+
+# MCP Integration
+ENABLE_MCP_TOOLS=true                       # Model Context Protocol
+MCP_DISCOVERY_INTERVAL=3600                 # Tool discovery frequency
+MCP_SECURITY_VALIDATION=true               # Security checks for external tools
+```
+
+### **📊 Document Analytics & Insights**
+
+```bash
+# Monitor document usage and effectiveness
+curl "http://localhost:8000/api/documents/analytics/workspace/workspace_id"
+
+# Document usage by agents
+curl "http://localhost:8000/api/documents/usage/agent/agent_id"
+
+# Knowledge gap analysis
+curl "http://localhost:8000/api/documents/gaps/workspace_id"
+```
+
+The RAG system transforms agents from generic AI assistants into domain experts with access to your specific business knowledge, documents, and external systems! 🚀
+
 ## 🗺️ Roadmap
 
 ### 🎯 **Q1 2025**
@@ -760,7 +918,7 @@ Help spread the word about AI Team Orchestrator!
 - **📚 [Complete Book Guide](https://books.danielepelleri.com)** - Deep learning resource
 
 ### **🏷️ Trending Keywords**
-`#AIOrchestration` `#MultiAgentSystems` `#OpenAI` `#ProductivityTools` `#AutomationPlatform` `#EnterpriseAI` `#SemanticIntelligence` `#QualityGates` `#RealTimeThinking` `#CostOptimization`
+`#AIOrchestration` `#MultiAgentSystems` `#OpenAI` `#ProductivityTools` `#AutomationPlatform` `#EnterpriseAI` `#SemanticIntelligence` `#QualityGates` `#RealTimeThinking` `#CostOptimization` `#RAG` `#DocumentIntelligence` `#MCP` `#KnowledgeManagement`
 
 ---
 
@@ -781,6 +939,8 @@ The AI Team Orchestrator evolves through systematic implementation of architectu
 - **Adaptive Tool Selection**: Context-aware tool recommendation engine for optimal task execution
 - **Custom Tool Generation**: AI-powered creation of domain-specific tools for specialized workflows
 - **Tool Performance Analytics**: Intelligent tool usage optimization based on success patterns
+- **Advanced RAG Integration**: Multi-modal document processing with agent-specific knowledge bases
+- **MCP Ecosystem Expansion**: Model Context Protocol support for external tool and data connectivity
 
 #### **💰 Cost & Resource Optimization**  
 - **Predictive Budget Management**: AI forecasting of project costs based on scope and team composition
