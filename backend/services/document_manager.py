@@ -7,7 +7,6 @@ Handles file uploads, vector store management, and document sharing
 import os
 import logging
 import asyncio
-import requests
 import json
 from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
@@ -19,6 +18,7 @@ import hashlib
 from openai import OpenAI
 from database import get_supabase_client
 from models import AgentStatus
+from services.pdf_content_extractor import pdf_extractor, PDFContent
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,31 @@ class DocumentMetadata:
     description: Optional[str] = None
     tags: List[str] = None
     file_hash: Optional[str] = None
+    extracted_text: Optional[str] = None  # Full extracted text content
+    text_chunks: Optional[List[Dict[str, Any]]] = None  # Chunked text for retrieval
+    extraction_confidence: Optional[float] = None  # Confidence in extraction quality
+    extraction_method: Optional[str] = None  # Method used for extraction
+    page_count: Optional[int] = None  # Number of pages in document
+    extraction_timestamp: Optional[datetime] = None  # When extraction happened
+    created_at: Optional[datetime] = None  # Database creation timestamp
+    updated_at: Optional[datetime] = None  # Database update timestamp
 
     def __post_init__(self):
         if self.tags is None:
             self.tags = []
+        # Convert string timestamps to datetime if needed
+        if isinstance(self.upload_date, str):
+            from dateutil import parser
+            self.upload_date = parser.parse(self.upload_date)
+        if isinstance(self.extraction_timestamp, str):
+            from dateutil import parser
+            self.extraction_timestamp = parser.parse(self.extraction_timestamp)
+        if isinstance(self.created_at, str):
+            from dateutil import parser
+            self.created_at = parser.parse(self.created_at)
+        if isinstance(self.updated_at, str):
+            from dateutil import parser
+            self.updated_at = parser.parse(self.updated_at)
 
 @dataclass
 class VectorStoreInfo:
@@ -58,22 +79,15 @@ class DocumentManager:
     """Manages document upload, storage, and vector store operations"""
     
     def __init__(self):
-        self.openai_client = None
         self.supabase = get_supabase_client()
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.base_url = "https://api.openai.com/v1"
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "OpenAI-Beta": "assistants=v2"
-        }
         
-        # Initialize OpenAI client for file operations
+        # Initialize OpenAI client for file operations (SDK NATIVE)
         try:
             self.openai_client = OpenAI()
-            logger.info("OpenAI client initialized for document management")
+            logger.info("✅ SDK COMPLIANT: OpenAI client initialized for document management")
         except Exception as e:
             logger.warning(f"OpenAI client not available: {e}")
+            self.openai_client = None
     
     async def upload_document(
         self,
@@ -102,12 +116,58 @@ class DocumentManager:
         
         if existing.data:
             logger.info(f"Document already exists: {filename}")
-            return DocumentMetadata(**existing.data[0])
+            # Parse the existing data properly
+            existing_doc = existing.data[0]
+            # Handle extracted_text and text_chunks which might be stored as JSON strings
+            if 'extracted_text' in existing_doc and existing_doc['extracted_text']:
+                existing_doc['extracted_text'] = existing_doc['extracted_text']
+            if 'text_chunks' in existing_doc and existing_doc['text_chunks']:
+                if isinstance(existing_doc['text_chunks'], str):
+                    try:
+                        existing_doc['text_chunks'] = json.loads(existing_doc['text_chunks'])
+                    except:
+                        existing_doc['text_chunks'] = None
+            return DocumentMetadata(**existing_doc)
         
         # Determine MIME type
         mime_type, _ = mimetypes.guess_type(filename)
         if not mime_type:
             mime_type = "application/octet-stream"
+        
+        # Extract content if PDF
+        extracted_text = None
+        text_chunks = None
+        extraction_confidence = None
+        extraction_method = None
+        page_count = None
+        
+        if mime_type == "application/pdf" or filename.lower().endswith('.pdf'):
+            logger.info(f"📄 Extracting content from PDF: {filename}")
+            try:
+                pdf_content = await pdf_extractor.extract_content(
+                    file_content=file_content,
+                    filename=filename,
+                    chunk_size=1000,
+                    overlap=200
+                )
+                
+                if pdf_content:
+                    extracted_text = pdf_content.text
+                    text_chunks = pdf_content.chunks
+                    extraction_confidence = pdf_content.confidence
+                    extraction_method = pdf_content.extraction_method
+                    page_count = pdf_content.page_count
+                    logger.info(f"✅ Extracted {len(extracted_text)} chars from PDF with {extraction_confidence:.0%} confidence")
+                    
+                    # Add extraction info to description
+                    extraction_info = f" [Extracted: {len(extracted_text)} chars, {len(text_chunks)} chunks]"
+                    if description:
+                        description = description + extraction_info
+                    else:
+                        description = f"PDF document{extraction_info}"
+            except Exception as e:
+                logger.error(f"PDF extraction failed: {e}")
+                # Continue with upload even if extraction fails
         
         # Upload to OpenAI
         try:
@@ -137,43 +197,29 @@ class DocumentManager:
             workspace_id, sharing_scope
         )
         
-        # Add file to vector store using real OpenAI API via HTTP
+        # Add file to vector store using native OpenAI SDK
         try:
-            payload = {"file_id": openai_file.id}
-            
-            response = requests.post(
-                f"{self.base_url}/vector_stores/{vector_store_id}/files",
-                headers=self.headers,
-                json=payload,
-                timeout=30
+            # ✅ SDK COMPLIANT: Use native vector store file creation
+            vector_store_file = self.openai_client.beta.vector_stores.files.create(
+                vector_store_id=vector_store_id,
+                file_id=openai_file.id
             )
+            logger.info(f"✅ SDK COMPLIANT: File added to vector store: {vector_store_id}, file status: {vector_store_file.status}")
             
-            if response.status_code == 200:
-                vector_store_file = response.json()
-                logger.info(f"File added to vector store: {vector_store_id}, file status: {vector_store_file['status']}")
+            # Wait for file processing to complete using native SDK
+            import time
+            max_wait = 30  # Wait max 30 seconds
+            waited = 0
+            while vector_store_file.status == "in_progress" and waited < max_wait:
+                time.sleep(2)
+                waited += 2
                 
-                # Wait for file processing to complete (optional)
-                import time
-                max_wait = 30  # Wait max 30 seconds
-                waited = 0
-                while vector_store_file.get('status') == "in_progress" and waited < max_wait:
-                    time.sleep(2)
-                    waited += 2
-                    
-                    # Check status
-                    status_response = requests.get(
-                        f"{self.base_url}/vector_stores/{vector_store_id}/files/{openai_file.id}",
-                        headers=self.headers,
-                        timeout=10
-                    )
-                    
-                    if status_response.status_code == 200:
-                        vector_store_file = status_response.json()
-                        logger.info(f"File processing status: {vector_store_file['status']}")
-                    else:
-                        break
-            else:
-                logger.warning(f"Failed to add file to vector store: HTTP {response.status_code}: {response.text}")
+                # ✅ SDK COMPLIANT: Check status using native SDK
+                vector_store_file = self.openai_client.beta.vector_stores.files.retrieve(
+                    vector_store_id=vector_store_id,
+                    file_id=openai_file.id
+                )
+                logger.info(f"File processing status: {vector_store_file.status}")
             
         except Exception as e:
             logger.error(f"Failed to add file to vector store: {e}")
@@ -193,7 +239,12 @@ class DocumentManager:
             openai_file_id=openai_file.id,
             description=description,
             tags=tags or [],
-            file_hash=file_hash
+            file_hash=file_hash,
+            extracted_text=extracted_text,
+            text_chunks=text_chunks,
+            extraction_confidence=extraction_confidence,
+            extraction_method=extraction_method,
+            page_count=page_count
         )
         
         # Save to database
@@ -210,8 +261,17 @@ class DocumentManager:
             "openai_file_id": openai_file.id,
             "description": description,
             "tags": tags or [],
-            "file_hash": file_hash
+            "file_hash": file_hash,
+            "extracted_text": extracted_text[:5000] if extracted_text else None,  # Store first 5000 chars
+            "text_chunks": json.dumps(text_chunks[:10]) if text_chunks else None,  # Store first 10 chunks as JSON
+            "extraction_confidence": extraction_confidence,
+            "extraction_method": extraction_method,
+            # "page_count": page_count  # TODO: Re-enable after migration 017 is applied
         }
+        
+        # TODO: TEMPORARY FIX - Remove page_count until migration 017 is applied
+        # After running: ALTER TABLE workspace_documents ADD COLUMN page_count INTEGER;
+        # Uncomment the page_count line above
         
         result = self.supabase.table("workspace_documents").insert(doc_data).execute()
         
@@ -238,48 +298,36 @@ class DocumentManager:
         if existing.data:
             return existing.data[0]["openai_vector_store_id"]
         
-        # Create new vector store using real OpenAI API via HTTP
+        # Create new vector store using native OpenAI SDK
         try:
             store_name = f"workspace-{workspace_id}-{scope}"
             
-            # Create vector store using HTTP API
-            payload = {
-                "name": store_name,
-                "expires_after": {
+            # ✅ SDK COMPLIANT: Create vector store using native SDK
+            vector_store = self.openai_client.beta.vector_stores.create(
+                name=store_name,
+                expires_after={
                     "anchor": "last_active_at",
                     "days": 365
                 }
+            )
+            vector_store_id = vector_store.id
+            
+            # Save to database
+            store_data = {
+                "id": str(uuid4()),
+                "workspace_id": workspace_id,
+                "openai_vector_store_id": vector_store_id,
+                "name": store_name,
+                "scope": scope,
+                "file_count": 0,
+                "created_at": datetime.now().isoformat(),
+                "last_updated": datetime.now().isoformat()
             }
             
-            response = requests.post(
-                f"{self.base_url}/vector_stores",
-                headers=self.headers,
-                json=payload,
-                timeout=30
-            )
+            self.supabase.table("workspace_vector_stores").insert(store_data).execute()
             
-            if response.status_code == 200:
-                vector_store = response.json()
-                vector_store_id = vector_store["id"]
-                
-                # Save to database
-                store_data = {
-                    "id": str(uuid4()),
-                    "workspace_id": workspace_id,
-                    "openai_vector_store_id": vector_store_id,
-                    "name": store_name,
-                    "scope": scope,
-                    "file_count": 0,
-                    "created_at": datetime.now().isoformat(),
-                    "last_updated": datetime.now().isoformat()
-                }
-                
-                self.supabase.table("workspace_vector_stores").insert(store_data).execute()
-                
-                logger.info(f"Created real vector store: {vector_store_id}")
-                return vector_store_id
-            else:
-                raise Exception(f"HTTP {response.status_code}: {response.text}")
+            logger.info(f"✅ SDK COMPLIANT: Created vector store: {vector_store_id}")
+            return vector_store_id
             
         except Exception as e:
             logger.error(f"Failed to create vector store: {e}")
@@ -429,24 +477,18 @@ To view the original content, you would need to re-upload the file or store it s
         doc_data = doc_result.data[0]
         
         try:
-            # Remove from vector store using real OpenAI API via HTTP
+            # ✅ SDK COMPLIANT: Remove from vector store using native SDK
             if doc_data.get("vector_store_id") and doc_data.get("openai_file_id"):
-                response = requests.delete(
-                    f"{self.base_url}/vector_stores/{doc_data['vector_store_id']}/files/{doc_data['openai_file_id']}",
-                    headers=self.headers,
-                    timeout=30
+                deleted_vs_file = self.openai_client.beta.vector_stores.files.delete(
+                    vector_store_id=doc_data['vector_store_id'],
+                    file_id=doc_data['openai_file_id']
                 )
-                
-                if response.status_code == 200:
-                    deleted_vs_file = response.json()
-                    logger.info(f"Removed file from vector store: {deleted_vs_file.get('deleted', False)}")
-                else:
-                    logger.warning(f"Failed to remove file from vector store: HTTP {response.status_code}")
+                logger.info(f"✅ SDK COMPLIANT: Removed file from vector store: {deleted_vs_file.deleted}")
             
-            # Delete OpenAI file
+            # ✅ SDK COMPLIANT: Delete OpenAI file using native SDK
             if doc_data.get("openai_file_id"):
                 deleted_file = self.openai_client.files.delete(doc_data["openai_file_id"])
-                logger.info(f"Deleted OpenAI file: {deleted_file.deleted}")
+                logger.info(f"✅ SDK COMPLIANT: Deleted OpenAI file: {deleted_file.deleted}")
             
         except Exception as e:
             logger.error(f"Failed to delete from OpenAI: {e}")

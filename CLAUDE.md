@@ -102,6 +102,10 @@ Create `backend/.env` with:
 - `SUPABASE_URL` - Supabase project URL
 - `SUPABASE_KEY` - Supabase public API key
 
+### OpenAI Assistants API Configuration (RAG)
+- `USE_OPENAI_ASSISTANTS=true` - Enable native OpenAI Assistants API for RAG functionality
+- `OPENAI_ASSISTANT_MODEL=gpt-4-turbo-preview` - Model for OpenAI Assistants
+
 ### Asset & Deliverable Configuration
 - `USE_ASSET_FIRST_DELIVERABLE=true` - Enable asset-oriented output generation
 - `PREVENT_DUPLICATE_DELIVERABLES=true` - Prevent duplicate deliverable creation
@@ -1797,6 +1801,53 @@ When adding new tools to the system, ensure you update these locations:
 
 **Critical**: Always maintain consistency between the backend tool implementation and frontend discovery interface. Test both slash command discovery and natural language invocation.
 
+## 📚 OpenAI Assistants API RAG Implementation
+
+### Overview
+The system now uses **native OpenAI Assistants API** for RAG functionality, replacing custom implementations with native SDK calls. This ensures better reliability, security, and future compatibility.
+
+### Key Components
+
+#### **Native Implementation**
+- **OpenAI Assistant Manager** (`backend/services/openai_assistant_manager.py`) - Manages assistant lifecycle, threads, and runs
+- **Conversational Assistant** (`backend/ai_agents/conversational_assistant.py`) - Native RAG agent using Assistants API
+- **Factory Pattern** (`backend/ai_agents/conversational_factory.py`) - Seamless switching between implementations
+
+#### **SDK Compliance**
+- ✅ **100% Native SDK**: All OpenAI operations use `openai` library methods
+- ✅ **No Custom HTTP**: Removed `requests` library for OpenAI API calls  
+- ✅ **Vector Store Operations**: `beta.vector_stores.create()`, `beta.vector_stores.files.create()`
+- ✅ **File Management**: `files.create()`, `files.delete()` with proper SDK patterns
+
+#### **Database Schema**
+```sql
+-- New table for OpenAI Assistants support
+CREATE TABLE workspace_assistants (
+    workspace_id UUID PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+    assistant_id VARCHAR(255) NOT NULL,
+    thread_id VARCHAR(255),
+    vector_store_ids JSONB DEFAULT '[]'::jsonb,
+    configuration JSONB DEFAULT '{}'::jsonb
+);
+```
+
+#### **Migration and Fallback**
+- **Graceful Migration**: Set `USE_OPENAI_ASSISTANTS=true` to enable native implementation
+- **Automatic Fallback**: Falls back to `SimpleConversationalAgent` if Assistants API fails
+- **Zero Downtime**: Factory pattern ensures seamless switching during deployment
+
+### Benefits Achieved
+- **True Semantic Search**: Documents are searchable through OpenAI's native vector search
+- **Document Citations**: Automatic citation extraction from search results
+- **Persistent Context**: Conversation threads maintain context across messages  
+- **Reduced Complexity**: No custom HTTP handling or error management needed
+- **Future-Proof**: Automatic updates with OpenAI SDK improvements
+
+### Testing
+- **Integration Tests**: `test_openai_assistants_integration.py` - Full RAG functionality test
+- **SDK Compliance**: `test_simple_rag_fallback.py` - Verify native SDK usage
+- **Fallback Testing**: Factory pattern automatically switches implementations
+
 ## Key Files
 - `backend/main.py`: FastAPI app entry point
 - `backend/ai_agents/director.py`: Team proposal generation
@@ -1805,6 +1856,13 @@ When adding new tools to the system, ensure you update these locations:
 - `frontend/src/app/layout.tsx`: Main app layout
 - `frontend/src/components/orchestration/`: Core orchestration UI
 - `frontend/src/components/conversational/ConversationInput.tsx`: Slash command implementation
+
+### OpenAI Assistants RAG Files
+- `backend/services/openai_assistant_manager.py`: Native OpenAI Assistants API manager
+- `backend/ai_agents/conversational_assistant.py`: RAG agent using native Assistants API
+- `backend/ai_agents/conversational_factory.py`: Factory for agent implementation switching
+- `backend/services/document_manager.py`: Document upload and vector store management (SDK native)
+- `backend/migrations/018_add_openai_assistants_support.sql`: Database schema for assistants
 - # Guiding Principles (Project Memory)
 - Rileva lingua utente e rispondi coerentemente (IT/EN/…).
 - Evita hard-coding; usa config/env e SDK ufficiali dove esistono (Agents SDK/OpenAI).
