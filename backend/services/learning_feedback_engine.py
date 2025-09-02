@@ -47,11 +47,11 @@ class LearningFeedbackEngine:
             content_insights = 0
             business_insight_summary = {}
             try:
-                from services.content_aware_learning_engine import content_aware_learning_engine
+                from services.universal_learning_engine import universal_learning_engine
                 from services.enhanced_insight_database import get_workspace_insight_summary
                 
                 # Run content analysis to generate new business insights
-                content_analysis = await content_aware_learning_engine.analyze_workspace_content(workspace_id)
+                content_analysis = await universal_learning_engine.analyze_workspace_content(workspace_id)
                 content_insights = content_analysis.get('insights_generated', 0)
                 
                 # Get summary of all domain insights for performance tracking

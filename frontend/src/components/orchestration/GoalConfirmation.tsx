@@ -91,23 +91,23 @@ export function GoalConfirmation({
   };
 
   const getConfidenceLabel = (confidence: number) => {
-    if (confidence >= 0.9) return 'Alta';
-    if (confidence >= 0.7) return 'Media';
-    return 'Bassa';
+    if (confidence >= 0.9) return 'High';
+    if (confidence >= 0.7) return 'Medium';
+    return 'Low';
   };
 
   const getAutonomyInfo = (autonomyLevel?: string) => {
     switch (autonomyLevel) {
       case 'autonomous':
-        return { icon: '🤖', label: 'Autonomo', color: 'bg-green-100 text-green-800', description: 'AI può completare autonomamente' };
+        return { icon: '🤖', label: 'Autonomous', color: 'bg-green-100 text-green-800', description: 'AI can complete autonomously' };
       case 'assisted':
-        return { icon: '🤝', label: 'Assistito', color: 'bg-yellow-100 text-yellow-800', description: 'AI + input umano' };
+        return { icon: '🤝', label: 'Assisted', color: 'bg-yellow-100 text-yellow-800', description: 'AI + human input' };
       case 'human_required':
-        return { icon: '👥', label: 'Umano', color: 'bg-red-100 text-red-800', description: 'Richiede lavoro umano' };
+        return { icon: '👥', label: 'Human', color: 'bg-red-100 text-red-800', description: 'Requires human work' };
       case 'tool_upgradeable':
-        return { icon: '🔧', label: 'Upgradabile', color: 'bg-blue-100 text-blue-800', description: 'Diventerà autonomo con nuovi tools' };
+        return { icon: '🔧', label: 'Upgradeable', color: 'bg-blue-100 text-blue-800', description: 'Will become autonomous with new tools' };
       default:
-        return { icon: '🤖', label: 'Autonomo', color: 'bg-green-100 text-green-800', description: 'AI può completare autonomamente' };
+        return { icon: '🤖', label: 'Autonomous', color: 'bg-green-100 text-green-800', description: 'AI can complete autonomously' };
     }
   };
 
@@ -116,16 +116,16 @@ export function GoalConfirmation({
       <div className="p-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Target className="h-5 w-5" />
-          Conferma Obiettivi
+          Confirm Objectives
         </h3>
         <p className="text-sm text-gray-600 mt-2">
-          L&apos;AI ha analizzato il tuo obiettivo usando decomposizione strategica
+          The AI has analyzed your objective using strategic decomposition
         </p>
         {goalSummary && (
           <div className="flex gap-4 text-xs text-gray-500 mt-2">
-            <span>{goalSummary.final_metrics_count} metriche finali</span>
+            <span>{goalSummary.final_metrics_count} final metrics</span>
             <span>•</span>
-            <span>{goalSummary.strategic_deliverables_count} deliverable strategici</span>
+            <span>{goalSummary.strategic_deliverables_count} strategic deliverables</span>
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ export function GoalConfirmation({
         {/* Original Goal Display */}
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
           <p className="text-sm">
-            <strong>Obiettivo originale:</strong> {originalGoal}
+            <strong>Original objective:</strong> {originalGoal}
           </p>
         </div>
 
@@ -142,10 +142,10 @@ export function GoalConfirmation({
         {finalMetrics && finalMetrics.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-md font-semibold text-blue-600 flex items-center gap-2">
-              🎯 Metriche Finali da Raggiungere
+              🎯 Final Metrics to Achieve
             </h4>
             <p className="text-sm text-gray-600 mb-3">
-              Questi sono gli obiettivi quantificabili che definiranno il successo del progetto
+              These are the quantifiable objectives that will define the project's success
             </p>
             {finalMetrics.map((goal, index) => (
               <div
@@ -186,14 +186,14 @@ export function GoalConfirmation({
                           <button
                             onClick={() => handleEditStart(index)}
                             className="text-gray-500 hover:text-blue-600 transition-colors"
-                            title="Modifica valore"
+                            title="Edit value"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                         </>
                       )}
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        📊 Metrica
+                        📊 Metric
                       </span>
                     </div>
                     
@@ -225,7 +225,7 @@ export function GoalConfirmation({
                         <button
                           onClick={() => handleEditStart(index, 'description')}
                           className="text-gray-500 hover:text-blue-600 transition-colors"
-                          title="Modifica descrizione"
+                          title="Edit description"
                         >
                           <Edit2 className="h-3 w-3" />
                         </button>
@@ -233,7 +233,7 @@ export function GoalConfirmation({
                     )}
                     
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-500">Confidenza:</span>
+                      <span className="text-xs text-gray-500">Confidence:</span>
                       <span className={`text-xs font-medium ${getConfidenceColor(goal.confidence)}`}>
                         {getConfidenceLabel(goal.confidence)} ({Math.round(goal.confidence * 100)}%)
                       </span>
@@ -249,10 +249,10 @@ export function GoalConfirmation({
         {strategicDeliverables && strategicDeliverables.length > 0 && (
           <div className="space-y-3 mt-6">
             <h4 className="text-md font-semibold text-green-600 flex items-center gap-2">
-              📋 Asset Strategici da Creare
+              📋 Strategic Assets to Create
             </h4>
             <p className="text-sm text-gray-600 mb-3">
-              Questi deliverable saranno creati dagli agenti AI per raggiungere le metriche finali
+              These deliverables will be created by AI agents to achieve the final metrics
             </p>
             {strategicDeliverables.map((goal, index) => {
               const autonomyInfo = getAutonomyInfo(goal.autonomy_level);
@@ -283,38 +283,38 @@ export function GoalConfirmation({
                     
                     {goal.business_value && (
                       <p className="text-xs text-gray-600 mb-2">
-                        <strong>Valore Business:</strong> {goal.business_value}
+                        <strong>Business Value:</strong> {goal.business_value}
                       </p>
                     )}
                     
                     {/* Autonomy Details */}
                     {goal.autonomy_reason && (
                       <p className="text-xs text-gray-600 mb-2">
-                        <strong>Modalità di Esecuzione:</strong> {goal.autonomy_reason}
+                        <strong>Execution Mode:</strong> {goal.autonomy_reason}
                       </p>
                     )}
                     
                     {goal.human_input_required && goal.human_input_required.length > 0 && (
                       <p className="text-xs text-red-600 mb-2">
-                        <strong>Input Umano Richiesto:</strong> {goal.human_input_required.join(', ')}
+                        <strong>Human Input Required:</strong> {goal.human_input_required.join(', ')}
                       </p>
                     )}
                     
                     {goal.available_tools && goal.available_tools.length > 0 && (
                       <p className="text-xs text-blue-600 mb-2">
-                        <strong>Strumenti AI Utilizzati:</strong> {goal.available_tools.join(', ')}
+                        <strong>AI Tools Used:</strong> {goal.available_tools.join(', ')}
                       </p>
                     )}
                     
                     {goal.autonomy_level === 'tool_upgradeable' && (
                       <p className="text-xs text-blue-600 mb-2">
-                        <strong>🔧 Tool Roadmap:</strong> Diventerà autonomo quando svilupperemo l'integrazione diretta con i sistemi esterni
+                        <strong>🔧 Tool Roadmap:</strong> Will become autonomous when we develop direct integration with external systems
                       </p>
                     )}
 
                     {goal.acceptance_criteria && goal.acceptance_criteria.length > 0 && (
                       <div className="text-xs text-gray-600">
-                        <strong>Criteri di Accettazione:</strong>
+                        <strong>Acceptance Criteria:</strong>
                         <ul className="list-disc list-inside mt-1 ml-2">
                           {goal.acceptance_criteria.slice(0, 3).map((criteria, idx) => (
                             <li key={idx}>{criteria}</li>
@@ -324,7 +324,7 @@ export function GoalConfirmation({
                     )}
                     
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-500">Confidenza:</span>
+                      <span className="text-xs text-gray-500">Confidence:</span>
                       <span className={`text-xs font-medium ${getConfidenceColor(goal.confidence)}`}>
                         {getConfidenceLabel(goal.confidence)} ({Math.round(goal.confidence * 100)}%)
                       </span>
@@ -341,7 +341,7 @@ export function GoalConfirmation({
         {(!finalMetrics || finalMetrics.length === 0) && (!strategicDeliverables || strategicDeliverables.length === 0) && (
           <div className="space-y-3">
             <h4 className="text-md font-semibold text-gray-600">
-              Obiettivi Estratti
+              Extracted Objectives
             </h4>
             {goals.map((goal, index) => (
             <div
@@ -424,11 +424,11 @@ export function GoalConfirmation({
           <div className="flex items-center gap-2 mb-2">
             <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse"></div>
             <p className="text-sm font-medium text-yellow-800">
-              ⚡ Azione Richiesta
+              ⚡ Action Required
             </p>
           </div>
           <p className="text-xs text-yellow-700">
-            Gli obiettivi sono stati estratti con successo! Clicca "Conferma e Procedi" per salvarli nel database e avviare il team.
+            The objectives have been successfully extracted! Click "Confirm and Proceed" to save them to the database and start the team.
           </p>
         </div>
         
@@ -442,7 +442,7 @@ export function GoalConfirmation({
             className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             <CheckCircle2 className="h-4 w-4 mr-2" />
-            ✅ Conferma e Procedi ({goals.length} obiettivi)
+            ✅ Confirm and Proceed ({goals.length} objectives)
           </button>
           
           <button
@@ -451,7 +451,7 @@ export function GoalConfirmation({
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Rianalizza
+            Reanalyze
           </button>
         </div>
       </div>

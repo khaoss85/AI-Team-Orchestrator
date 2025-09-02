@@ -573,6 +573,21 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     except Exception as e:
                         logger.error(f"❌ Error creating asset_artifact for deliverable {deliverable['id']}: {e}")
                     
+                    # 🧠 CONTENT-AWARE LEARNING: Automatically extract insights from new deliverable
+                    try:
+                        from services.universal_learning_engine import universal_learning_engine
+                        import asyncio
+                        
+                        # Trigger content learning asynchronously to not block deliverable creation
+                        asyncio.create_task(
+                            universal_learning_engine.integrate_with_quality_validation(
+                                workspace_id, deliverable['id']
+                            )
+                        )
+                        logger.info(f"🧠 Triggered content-aware learning for deliverable {deliverable['id']}")
+                    except Exception as learning_error:
+                        logger.warning(f"Could not trigger content-aware learning: {learning_error}")
+                    
                     return deliverable
                 else:
                     raise Exception(f"Failed to create AI-driven deliverable: {result}")
@@ -609,6 +624,21 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     logger.warning(f"⚠️ Failed to create asset_artifact for deliverable {deliverable['id']}")
             except Exception as e:
                 logger.error(f"❌ Error creating asset_artifact for deliverable {deliverable['id']}: {e}")
+            
+            # 🧠 CONTENT-AWARE LEARNING: Automatically extract insights from new deliverable
+            try:
+                from services.universal_learning_engine import universal_learning_engine
+                import asyncio
+                
+                # Trigger content learning asynchronously to not block deliverable creation
+                asyncio.create_task(
+                    universal_learning_engine.integrate_with_quality_validation(
+                        workspace_id, deliverable['id']
+                    )
+                )
+                logger.info(f"🧠 Triggered content-aware learning for deliverable {deliverable['id']}")
+            except Exception as learning_error:
+                logger.warning(f"Could not trigger content-aware learning: {learning_error}")
             
             return deliverable
         else:

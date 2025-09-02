@@ -24,7 +24,7 @@ export default function NewProjectPage() {
     }
   });
   
-  // Carica i dati dal template se presente in localStorage
+  // Load data from template if present in localStorage
   useEffect(() => {
     const templateData = localStorage.getItem('projectTemplate');
     if (templateData) {
@@ -38,7 +38,7 @@ export default function NewProjectPage() {
           budget: template.budget || prev.budget
         }));
         
-        // Rimuovi il template dopo l'uso
+        // Remove template after use
         localStorage.removeItem('projectTemplate');
       } catch (e) {
         console.error('Error parsing template data:', e);
@@ -74,11 +74,11 @@ export default function NewProjectPage() {
       
       // Validate form data
       if (!formData.name.trim()) {
-        throw new Error('Il nome del progetto è obbligatorio');
+        throw new Error('Project name is required');
       }
       
       if (!formData.goal?.trim()) {
-        throw new Error('L\'obiettivo del progetto è obbligatorio');
+        throw new Error('Project goal is required');
       }
       
       const createdWorkspace = await api.workspaces.create(formData);
@@ -88,7 +88,7 @@ export default function NewProjectPage() {
       router.push(`/projects/${createdWorkspace.id}/configure`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      setError(err instanceof Error ? err.message : 'Si è verificato un errore durante la creazione del progetto');
+      setError(err instanceof Error ? err.message : 'An error occurred while creating the project');
       
       // Don't redirect to fake ID - let user see error and retry
       // If backend is down, user should fix connection and retry
@@ -99,7 +99,7 @@ export default function NewProjectPage() {
   
   return (
     <div className="container mx-auto max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">Crea Nuovo Progetto</h1>
+      <h1 className="text-2xl font-semibold mb-6">Create New Project</h1>
       
       {error && (
         <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
@@ -111,7 +111,7 @@ export default function NewProjectPage() {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Nome del Progetto *
+              Project Name *
             </label>
             <input
               type="text"
@@ -126,7 +126,7 @@ export default function NewProjectPage() {
           
           <div className="mb-4">
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Descrizione
+              Description
             </label>
             <textarea
               id="description"
@@ -140,7 +140,7 @@ export default function NewProjectPage() {
           
           <div className="mb-4">
             <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-1">
-              Obiettivo del Progetto *
+              Project Goal *
             </label>
             <textarea
               id="goal"
@@ -152,13 +152,13 @@ export default function NewProjectPage() {
               required
             ></textarea>
             <p className="mt-1 text-sm text-gray-500">
-              Descrivi chiaramente cosa vuoi ottenere con questo progetto. Questo aiuterà il direttore a pianificare il team di agenti.
+              Clearly describe what you want to achieve with this project. This will help the director plan the team of agents.
             </p>
           </div>
           
           <div className="mb-6">
             <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
-              Budget Massimo (EUR)
+              Maximum Budget (EUR)
             </label>
             <input
               type="number"
@@ -170,7 +170,7 @@ export default function NewProjectPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
             <p className="mt-1 text-sm text-gray-500">
-              Il budget determinerà la complessità e la seniority del team di agenti AI.
+              The budget will determine the complexity and seniority of the AI agent team.
             </p>
           </div>
           
@@ -181,7 +181,7 @@ export default function NewProjectPage() {
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 transition"
               disabled={loading}
             >
-              Annulla
+              Cancel
             </button>
             <button
               type="submit"
@@ -191,10 +191,10 @@ export default function NewProjectPage() {
               {loading ? (
                 <>
                   <div className="h-4 w-4 border-2 border-white border-r-transparent rounded-full animate-spin mr-2"></div>
-                  Creazione...
+                  Creating...
                 </>
               ) : (
-                'Crea Progetto'
+                'Create Project'
               )}
             </button>
           </div>

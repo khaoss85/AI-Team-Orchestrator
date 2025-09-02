@@ -147,7 +147,7 @@ export default function AuthenticThinkingViewer({
         session_id: 'session_1',
         goal_id: goalId,
         step_type: 'analysis',
-        step_title: 'Analizzando la todo list generata dal goal decomposition',
+        step_title: 'Analyzing todo list generated from goal decomposition',
         thinking_content: `Il sistema ha scomposto il goal in una todo list strutturata:
 
 📦 ASSET DELIVERABLES (2 items):
@@ -167,17 +167,17 @@ export default function AuthenticThinkingViewer({
      🔗 Supports: Content Library, Content Calendar
      📊 Complexity: medium
 
-Adesso procedo con l'analisi di ogni componente per determinare l'ordine di esecuzione ottimale.`,
+Now I proceed with the analysis of each component to determine the optimal execution order.`,
         inputs_considered: [
-          'Goal decomposition con 2 asset deliverables',
-          '1 thinking components di supporto',
-          'Priorità e dipendenze tra i componenti',
-          'Effort stimato per ogni todo item'
+          'Goal decomposition with 2 asset deliverables',
+          '1 supporting thinking components',
+          'Priority and dependencies between components',
+          'Estimated effort for each todo item'
         ],
         conclusions_reached: [
-          'Todo list validata con 3 items totali',
-          'Identificate le dipendenze tra asset e thinking components',
-          'Pronto per iniziare l\'esecuzione sequenziale'
+          'Todo list validated with 3 total items',
+          'Identified dependencies between asset and thinking components',
+          'Ready to start sequential execution'
         ],
         decisions_made: [],
         next_steps_identified: [],
@@ -190,7 +190,7 @@ Adesso procedo con l'analisi di ogni componente per determinare l'ordine di esec
         session_id: 'session_1',
         goal_id: goalId,
         step_type: 'planning',
-        step_title: 'Determinando l\'ordine di esecuzione della todo list',
+        step_title: 'Determining execution order for the todo list',
         thinking_content: `Basandomi sulla todo list, ho determinato questo ordine di esecuzione:
 
   1. 🧠 Content Strategy Analysis
@@ -281,7 +281,7 @@ Procedo con l'implementazione usando gli strumenti disponibili.`,
   - Added engaging visuals and captions
   - Tested content with focus group
 
-🟢 SITUAZIONE: Nessun ostacolo rilevato, esecuzione fluida
+🟢 STATUS: No obstacles detected, smooth execution
 
 🎯 NEXT STEPS: Continuo con gli ultimi dettagli per raggiungere il 100%`,
         inputs_considered: [

@@ -7,66 +7,66 @@ const TeamExplanationAnimation = () => {
   const steps = [
     {
       id: 'intro',
-      title: 'Team Reale vs Replica AI',
-      description: 'Trasformiamo un singolo LLM in una squadra auto-gestita, misurabile e antifrode',
+      title: 'Real Team vs AI Replica',
+      description: 'We transform a single LLM into a self-managed, measurable and anti-fraud team',
       icon: '👥',
-      highlight: 'Team reale ma composto da agenti AI autonomi'
+      highlight: 'Real team but composed of autonomous AI agents'
     },
     {
       id: 'director',
       title: 'AI Director',
-      description: 'Analizza il progetto e crea il team ottimale',
+      description: 'Analyzes the project and creates the optimal team',
       icon: '🎯',
-      highlight: 'Strategia e budget di profondità'
+      highlight: 'In-depth strategy and budget analysis'
     },
     {
       id: 'manager',
       title: 'AI Manager',
-      description: 'Coordina il team e gestisce gli handoff',
+      description: 'Coordinates the team and manages handoffs',
       icon: '🧠',
-      highlight: 'Project manager per evitare loop infiniti'
+      highlight: 'Project manager to avoid infinite loops'
     },
     {
       id: 'specialists',
       title: 'Specialist Skills',
-      description: 'Embeddings personali + vector-DB dedicata',
+      description: 'Personal embeddings + dedicated vector-DB',
       icon: '⚡',
-      highlight: 'Strumenti potenziati per ogni specialista'
+      highlight: 'Enhanced tools for each specialist'
     },
     {
       id: 'persona',
       title: 'Soft Skills',
-      description: 'Prompt persona collaborativo e risultato-oriented',
+      description: 'Collaborative and result-oriented persona prompts',
       icon: '🎭',
-      highlight: 'Personalità dedicate per ogni ruolo'
+      highlight: 'Dedicated personalities for each role'
     },
     {
       id: 'tools',
-      title: 'Strumenti',
-      description: 'API/tool call: Instagram, SMTP, SQL...',
+      title: 'Tools',
+      description: 'API/tool calls: Instagram, SMTP, SQL...',
       icon: '🔧',
-      highlight: 'Tool-wrapper specializzati'
+      highlight: 'Specialized tool-wrappers'
     },
     {
       id: 'communication',
-      title: 'Colleghi',
-      description: 'Message passing con protocollo JSON',
+      title: 'Colleagues',
+      description: 'Message passing with JSON protocol',
       icon: '💬',
-      highlight: 'Comunicazione strutturata tra agenti'
+      highlight: 'Structured communication between agents'
     },
     {
       id: 'qa',
-      title: 'QA Interna',
-      description: 'Critic Agent con scoring + grounded-RAG',
+      title: 'Internal QA',
+      description: 'Critic Agent with scoring + grounded-RAG',
       icon: '🛡️',
-      highlight: 'Sistema antifrode e anti-allucinazioni'
+      highlight: 'Anti-fraud and anti-hallucination system'
     },
     {
       id: 'human',
       title: 'Human in the Loop',
-      description: 'Approvazione per passaggi critici',
+      description: 'Approval for critical steps',
       icon: '👤',
-      highlight: 'Controllo umano su budget e decisioni critiche'
+      highlight: 'Human control over budget and critical decisions'
     }
   ];
 
@@ -87,13 +87,13 @@ const TeamExplanationAnimation = () => {
       {/* Main Title */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-3">
-          Come Funziona il Nostro Team AI
+          How Our AI Team Works
         </h2>
         <p className="text-gray-700 leading-relaxed max-w-4xl mx-auto">
-          <strong>Portiamo in cloud l'organigramma:</strong> un AI Director crea il team mettendo al centro un AI Manager 
-          che forma e coordina specialisti virtuali, ognuno equipaggiato con skill, tool e personalità dedicati. 
-          Il Critic garantisce qualità e dati veri. <strong>Risultato:</strong> la stessa collaborazione di un team umano, 
-          ma scalabile, 24/7 e misurabile a token-cost.
+          <strong>We bring the organizational chart to the cloud:</strong> an AI Director creates the team centered around an AI Manager 
+          that trains and coordinates virtual specialists, each equipped with dedicated skills, tools and personalities. 
+          The Critic ensures quality and real data. <strong>Result:</strong> the same collaboration of a human team, 
+          but scalable, 24/7 and measurable at token-cost.
         </p>
       </div>
 
@@ -107,7 +107,7 @@ const TeamExplanationAnimation = () => {
               : 'bg-green-100 text-green-700 hover:bg-green-200'
           }`}
         >
-          {isAnimating ? '⏸️ Pausa' : '▶️ Riproduci'} Animazione
+          {isAnimating ? '⏸️ Pause' : '▶️ Play'} Animation
         </button>
       </div>
 
@@ -124,7 +124,7 @@ const TeamExplanationAnimation = () => {
             </div>
             <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 text-center z-20">
               <div className="text-sm font-medium text-purple-700">AI Manager</div>
-              <div className="text-xs text-purple-600">Coordinamento</div>
+              <div className="text-xs text-purple-600">Coordination</div>
             </div>
 
             {/* Orbiting Elements */}
@@ -203,7 +203,7 @@ const TeamExplanationAnimation = () => {
             <div className="text-2xl">👤</div>
             <div>
               <div className="font-medium">Human in the Loop</div>
-              <div className="text-sm opacity-90">Approvazioni critiche</div>
+              <div className="text-sm opacity-90">Critical approvals</div>
             </div>
           </div>
         </div>
@@ -246,31 +246,31 @@ const TeamExplanationAnimation = () => {
 
       {/* Benefits Footer */}
       <div className="mt-8 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg p-6 border border-purple-200">
-        <h4 className="font-semibold text-purple-800 mb-3">🚀 Vantaggi del Sistema</h4>
+        <h4 className="font-semibold text-purple-800 mb-3">🚀 System Benefits</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Scalabile 24/7</span>
+            <span className="text-sm text-purple-700">Scalable 24/7</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Costi misurabili</span>
+            <span className="text-sm text-purple-700">Measurable costs</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Output verificati</span>
+            <span className="text-sm text-purple-700">Verified outputs</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Anti-allucinazioni</span>
+            <span className="text-sm text-purple-700">Anti-hallucinations</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Controllo umano</span>
+            <span className="text-sm text-purple-700">Human control</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-green-600">✅</div>
-            <span className="text-sm text-purple-700">Specializzazione</span>
+            <span className="text-sm text-purple-700">Specialization</span>
           </div>
         </div>
       </div>

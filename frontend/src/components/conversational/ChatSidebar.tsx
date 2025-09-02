@@ -73,6 +73,10 @@ export default function ChatSidebar({
 
   // Separate fixed and dynamic chats
   const fixedChats = chats.filter(chat => chat.type === 'fixed')
+  // Debug: Log fixed chats to see if Knowledge Base is present
+  console.log('ChatSidebar - Fixed Chats:', fixedChats.map(c => ({ id: c.id, title: c.title, systemType: c.systemType })))
+  console.log('ChatSidebar - Knowledge Base chat present?', fixedChats.some(c => c.id === 'knowledge-base'))
+  
   // Show ALL dynamic chats (active, completed, and in_progress) - not just active ones
   const activeObjectives = chats.filter(chat => chat.type === 'dynamic' && chat.status !== 'archived')
   const archivedChats = chats.filter(chat => chat.status === 'archived')
@@ -127,14 +131,14 @@ export default function ChatSidebar({
             <button
               key={chat.id}
               onClick={() => handleChatSelect(chat)}
-              className={`w-full h-10 rounded-lg flex items-center justify-center ${
+              className={`w-full h-10 rounded-lg flex items-center justify-center transition-all ${
                 activeChat?.id === chat.id 
-                  ? 'bg-blue-100 text-blue-600' 
+                  ? 'bg-blue-100 text-blue-600 shadow-sm' 
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
-              title={chat.title}
+              title={`${chat.icon && chat.type === 'fixed' ? chat.icon + ' ' : ''}${chat.title}`}
             >
-              <span className="text-lg">{chat.icon || '💬'}</span>
+              <span className="text-xl">{chat.type === 'fixed' && chat.icon ? chat.icon : '💬'}</span>
               {chat.unreadCount && (
                 <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
               )}
@@ -395,6 +399,13 @@ function ChatItem({
       onMouseLeave={() => setShowActions(false)}
     >
       <div className="flex items-start space-x-2">
+        {/* Icon only for system chats (fixed type) */}
+        {chat.icon && chat.type === 'fixed' && (
+          <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+            <span className="text-base leading-none">{chat.icon}</span>
+          </div>
+        )}
+        
         <div className="flex-1 min-w-0">
           {isEditing ? (
             <input

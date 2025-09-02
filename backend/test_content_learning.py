@@ -18,7 +18,7 @@ async def test_content_learning_extraction():
     """Test the content-aware learning extraction system"""
     
     # Import necessary components
-    from services.content_aware_learning_engine import content_aware_learning_engine, DomainType
+    from services.universal_learning_engine import universal_learning_engine
     from database import get_supabase_client
     
     try:
@@ -77,7 +77,7 @@ async def test_content_learning_extraction():
             
             # Run content-aware analysis
             logger.info(f"\n🔍 Running content-aware analysis...")
-            result = await content_aware_learning_engine.analyze_workspace_content(workspace_id)
+            result = await universal_learning_engine.analyze_workspace_content(workspace_id)
             
             # Display results
             logger.info(f"\n📊 Analysis Results:")
@@ -89,7 +89,7 @@ async def test_content_learning_extraction():
             # Get and display actionable learnings
             if result.get('insights_generated', 0) > 0:
                 logger.info(f"\n💡 Actionable Business Insights:")
-                learnings = await content_aware_learning_engine.get_actionable_learnings(workspace_id)
+                learnings = await universal_learning_engine.get_actionable_learnings(workspace_id)
                 
                 for i, learning in enumerate(learnings[:5], 1):
                     logger.info(f"  {i}. {learning}")
@@ -97,8 +97,8 @@ async def test_content_learning_extraction():
                 # Test domain-specific extraction
                 for domain in result.get('domains_analyzed', [])[:2]:
                     try:
-                        domain_enum = DomainType(domain)
-                        domain_learnings = await content_aware_learning_engine.get_actionable_learnings(
+                        # Domain is now a string, no enum conversion needed
+                        domain_learnings = await universal_learning_engine.get_actionable_learnings(
                             workspace_id, 
                             domain_enum
                         )

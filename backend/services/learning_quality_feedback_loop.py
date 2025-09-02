@@ -12,11 +12,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 
-from services.content_aware_learning_engine import (
-    content_aware_learning_engine,
-    BusinessInsight,
-    DomainType
+from services.universal_learning_engine import (
+    universal_learning_engine,
+    UniversalBusinessInsight as BusinessInsight
 )
+# Note: str enum removed as Universal Learning Engine is domain-agnostic
 from ai_quality_assurance.unified_quality_engine import unified_quality_engine
 from database import (
     get_supabase_client,
@@ -46,7 +46,7 @@ class QualityLearningFeedback:
     insight_applied: Optional[BusinessInsight] = None
     quality_impact: Optional[float] = None  # Change in quality score
     performance_boost: Optional[float] = None  # Improvement percentage
-    domain: Optional[DomainType] = None
+    domain: Optional[str] = None  # Dynamic domain string instead of enum
     confidence: float = 0.5
     timestamp: datetime = field(default_factory=datetime.now)
     
@@ -70,7 +70,7 @@ class LearningQualityFeedbackLoop:
     """
     
     def __init__(self):
-        self.learning_engine = content_aware_learning_engine
+        self.learning_engine = universal_learning_engine
         self.quality_engine = unified_quality_engine
         self.mode = FeedbackLoopMode.PERFORMANCE_BOOST
         
@@ -82,22 +82,22 @@ class LearningQualityFeedbackLoop:
         
         # Domain-specific quality criteria enhanced by learning
         self.domain_quality_criteria = {
-            DomainType.INSTAGRAM_MARKETING: {
+            'instagram_marketing': {
                 "base_threshold": 0.7,
                 "learned_criteria": [],
                 "performance_multiplier": 1.0
             },
-            DomainType.EMAIL_MARKETING: {
+            'email_marketing': {
                 "base_threshold": 0.7,
                 "learned_criteria": [],
                 "performance_multiplier": 1.0
             },
-            DomainType.CONTENT_STRATEGY: {
+            'content_strategy': {
                 "base_threshold": 0.65,
                 "learned_criteria": [],
                 "performance_multiplier": 1.0
             },
-            DomainType.LEAD_GENERATION: {
+            'lead_generation': {
                 "base_threshold": 0.75,
                 "learned_criteria": [],
                 "performance_multiplier": 1.0
@@ -203,7 +203,7 @@ class LearningQualityFeedbackLoop:
     async def _quality_validation_with_insights(
         self,
         deliverable: Dict[str, Any],
-        domain: DomainType,
+        domain: str,
         learned_insights: List[BusinessInsight]
     ) -> Dict[str, Any]:
         """Enhanced quality validation using learned business insights"""
@@ -318,7 +318,7 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
         self,
         workspace_id: str,
         deliverable: Dict[str, Any],
-        domain: DomainType,
+        domain: str,
         quality_score: float
     ) -> Dict[str, Any]:
         """Extract learnings from high-quality deliverables"""
@@ -370,7 +370,7 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
     
     async def _update_quality_criteria_from_learnings(
         self,
-        domain: DomainType,
+        domain: str,
         new_insights: List[BusinessInsight]
     ) -> None:
         """Update domain-specific quality criteria based on new learnings"""
@@ -417,7 +417,7 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
     async def _get_domain_insights(
         self,
         workspace_id: str,
-        domain: DomainType
+        domain: str
     ) -> List[BusinessInsight]:
         """Get relevant learned insights for a domain"""
         try:
@@ -460,7 +460,7 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
     async def _calculate_performance_boost(
         self,
         workspace_id: str,
-        domain: DomainType,
+        domain: str,
         current_quality: float
     ) -> Dict[str, Any]:
         """Calculate the performance boost from the feedback loop"""
@@ -627,24 +627,24 @@ Return JSON: {{"compliance_score": float, "reasoning": "brief explanation"}}"""
             logger.error(f"Error enhancing task execution: {e}")
             return {"enhanced": False, "error": str(e)}
     
-    def _infer_domain_from_agent(self, agent_role: str) -> DomainType:
+    def _infer_domain_from_agent(self, agent_role: str) -> str:
         """Infer business domain from agent role"""
         agent_lower = agent_role.lower()
         
         if 'instagram' in agent_lower or 'social' in agent_lower:
-            return DomainType.INSTAGRAM_MARKETING
+            return 'instagram_marketing'
         elif 'email' in agent_lower or 'newsletter' in agent_lower:
-            return DomainType.EMAIL_MARKETING
+            return 'email_marketing'
         elif 'content' in agent_lower or 'blog' in agent_lower:
-            return DomainType.CONTENT_STRATEGY
+            return 'content_strategy'
         elif 'lead' in agent_lower or 'sales' in agent_lower or 'outreach' in agent_lower:
-            return DomainType.LEAD_GENERATION
+            return 'lead_generation'
         elif 'data' in agent_lower or 'analytic' in agent_lower:
-            return DomainType.DATA_ANALYSIS
+            return 'data_analysis'
         elif 'strategy' in agent_lower or 'business' in agent_lower:
-            return DomainType.BUSINESS_STRATEGY
+            return 'business_strategy'
         else:
-            return DomainType.GENERAL
+            return 'general'
     
     async def get_performance_report(self, workspace_id: str) -> Dict[str, Any]:
         """Generate a comprehensive performance report showing feedback loop effectiveness"""

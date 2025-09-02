@@ -7,6 +7,7 @@ import logging
 import json
 import re
 import asyncio
+import hashlib
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
@@ -767,9 +768,65 @@ Return specific, quantified insights where possible."""
         
         return stored_count
     
-    async def _store_insight(self, workspace_id: str, insight: BusinessInsight) -> bool:
-        """Store a single insight in the database"""
+    def _generate_insight_hash(self, insight: BusinessInsight) -> str:
+        """Generate unique hash for insight content to detect duplicates"""
+        learning_text = insight.to_learning_format()
+        normalized_content = learning_text.strip().lower()
+        hash_input = f"{normalized_content}|{insight.confidence_score}|{insight.domain.value}"
+        return hashlib.md5(hash_input.encode()).hexdigest()
+    
+    async def _check_insight_exists(self, workspace_id: str, content_hash: str) -> bool:
+        """Check if an insight with the same content hash already exists"""
         try:
+            from database import get_supabase_client
+            supabase = get_supabase_client()
+            
+            # Check for existing insights with same content hash
+            # Since we don't have content_hash column yet, we'll check by content similarity
+            result = supabase.table('workspace_insights')\
+                .select('content')\
+                .eq('workspace_id', workspace_id)\
+                .execute()
+            
+            if result.data:
+                for existing_insight in result.data:
+                    existing_content = existing_insight.get('content', '')
+                    if isinstance(existing_content, str):
+                        try:
+                            parsed_content = json.loads(existing_content)
+                            existing_learning = parsed_content.get('learning', '')
+                        except:
+                            existing_learning = existing_content
+                    elif isinstance(existing_content, dict):
+                        existing_learning = existing_content.get('learning', str(existing_content))
+                    else:
+                        existing_learning = str(existing_content)
+                    
+                    # Generate hash for existing content for comparison
+                    normalized_existing = existing_learning.strip().lower()
+                    # Simple duplicate detection by comparing normalized content
+                    if len(normalized_existing) > 10:  # Avoid empty content
+                        similarity_hash = hashlib.md5(normalized_existing.encode()).hexdigest()
+                        if similarity_hash == content_hash or normalized_existing in content_hash or content_hash in normalized_existing:
+                            return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking insight existence: {e}")
+            return False
+    
+    async def _store_insight(self, workspace_id: str, insight: BusinessInsight) -> bool:
+        """Store a single insight in the database with deduplication"""
+        try:
+            # Generate content hash for duplicate detection
+            content_hash = self._generate_insight_hash(insight)
+            
+            # Check if similar insight already exists
+            if await self._check_insight_exists(workspace_id, content_hash):
+                logger.info(f"🚫 Skipping duplicate insight: {insight.to_learning_format()[:60]}...")
+                return False
+            
             # Convert to learning format
             learning_text = insight.to_learning_format()
             
@@ -781,7 +838,8 @@ Return specific, quantified insights where possible."""
                 "confidence_score": insight.confidence_score,
                 "extraction_method": insight.extraction_method,
                 "evidence_sources": insight.evidence_sources,
-                "created_at": insight.created_at.isoformat()
+                "created_at": insight.created_at.isoformat(),
+                "content_hash": content_hash  # Store hash for future reference
             }
             
             # Add metrics if available
@@ -799,12 +857,12 @@ Return specific, quantified insights where possible."""
                 workspace_id=workspace_id,
                 insight_type="business_learning",
                 content=json.dumps(insight_content, indent=2),
-                agent_role="content_learning_engine",
+                agent_role="content_aware_learning_engine",
                 confidence_score=insight.confidence_score,
                 relevance_tags=[insight.domain.value, insight.insight_type]
             )
             
-            logger.info(f"✅ Stored business insight: {learning_text}")
+            logger.info(f"✅ Stored new business insight: {learning_text[:60]}...")
             return True
             
         except Exception as e:

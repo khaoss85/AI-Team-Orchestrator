@@ -1,0 +1,226 @@
+# Critical Compliance Fix Patch for Director Agent
+# Apply this patch to fix Pillar 2 & 3 violations immediately
+
+## Step 1: Add to backend/.env
+```bash
+# Domain Detection Configuration (Pillar 2 & 3 Compliance)
+DOMAIN_DETECTION_METHOD=keywords  # 'keywords' or 'ai' (ai requires ai_domain_classifier service)
+B2B_DETECTION_KEYWORDS=b2b,sales,lead,crm,hubspot,outbound,prospect,icp,cmo,cto,saas,contatti,sequenze
+CONTENT_DETECTION_KEYWORDS=instagram,tiktok,social,media,posts,stories,reels,influencer,content,marketing
+TECHNICAL_DETECTION_KEYWORDS=development,coding,app,website,api,software,backend,frontend,database
+BUDGET_PER_AGENT=1500
+MIN_TEAM_SIZE=3
+MAX_TEAM_SIZE=8
+TEAM_SIZE_BUDGET_SCALING=true
+```
+
+## Step 2: Apply this code patch to director.py
+
+```python
+# Add imports at top of file (around line 10)
+import os
+from typing import List
+
+# Add configuration loading (after imports, around line 155)
+# Domain detection configuration (Pillar 2 & 3 compliance)
+DOMAIN_DETECTION_METHOD = os.getenv("DOMAIN_DETECTION_METHOD", "keywords")
+B2B_KEYWORDS = os.getenv("B2B_DETECTION_KEYWORDS", "b2b,sales,lead,crm").split(",")
+CONTENT_KEYWORDS = os.getenv("CONTENT_DETECTION_KEYWORDS", "instagram,social,content").split(",")
+TECHNICAL_KEYWORDS = os.getenv("TECHNICAL_DETECTION_KEYWORDS", "development,api,backend").split(",")
+
+# Budget configuration (Pillar 2 compliance)
+BUDGET_PER_AGENT = float(os.getenv("BUDGET_PER_AGENT", "1500"))
+MIN_TEAM_SIZE = int(os.getenv("MIN_TEAM_SIZE", "3"))
+MAX_TEAM_SIZE = int(os.getenv("MAX_TEAM_SIZE", "8"))
+TEAM_SIZE_BUDGET_SCALING = os.getenv("TEAM_SIZE_BUDGET_SCALING", "true").lower() == "true"
+
+# Replace hard-coded team sizing (line 1199)
+# OLD: max_team_for_performance = min(8, max(3, int(budget_amount / 1500)))
+# NEW:
+if TEAM_SIZE_BUDGET_SCALING:
+    max_team_for_performance = min(MAX_TEAM_SIZE, max(MIN_TEAM_SIZE, int(budget_amount / BUDGET_PER_AGENT)))
+else:
+    max_team_for_performance = MIN_TEAM_SIZE  # Fixed team size if scaling disabled
+
+# Replace hard-coded domain detection (line 1739)
+# OLD: is_b2b_lead_gen = any(term in goal_lower for term in ['contatti', 'contacts', ...])
+# NEW:
+def detect_domain(goal_text: str) -> Dict[str, bool]:
+    """Domain detection using configurable keywords (Pillar 3 compliance)"""
+    goal_lower = goal_text.lower()
+    
+    # Use configured keywords instead of hard-coded ones
+    is_b2b = any(keyword.strip().lower() in goal_lower for keyword in B2B_KEYWORDS)
+    is_content = any(keyword.strip().lower() in goal_lower for keyword in CONTENT_KEYWORDS) and not is_b2b
+    is_technical = any(keyword.strip().lower() in goal_lower for keyword in TECHNICAL_KEYWORDS)
+    
+    return {
+        "is_b2b_lead_gen": is_b2b,
+        "is_content_marketing": is_content,
+        "is_technical": is_technical
+    }
+
+# In the fallback function (around line 1739), replace:
+# is_b2b_lead_gen = any(term in goal_lower for term in [...])
+# is_content_marketing = any(term in goal_lower for term in [...])
+# WITH:
+domain_detection = detect_domain(goal_lower)
+is_b2b_lead_gen = domain_detection["is_b2b_lead_gen"]
+is_content_marketing = domain_detection["is_content_marketing"]
+is_technical = domain_detection["is_technical"]
+
+# Also update line 1730 for consistent configuration
+# OLD: optimal_team_size = min(8, max(3, int(current_budget / 1500)))
+# NEW:
+if TEAM_SIZE_BUDGET_SCALING:
+    optimal_team_size = min(MAX_TEAM_SIZE, max(MIN_TEAM_SIZE, int(current_budget / BUDGET_PER_AGENT)))
+else:
+    optimal_team_size = MIN_TEAM_SIZE
+```
+
+## Step 3: Create AI Domain Classifier (Future Enhancement)
+
+Create `backend/services/ai_domain_classifier.py`:
+
+```python
+"""
+AI Domain Classifier Service
+Pillar 3 Compliance: Domain-agnostic project classification
+"""
+import os
+import json
+import logging
+from typing import Dict, List, Optional
+from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
+
+class AIDomainClassifier:
+    """AI-driven domain classification for true domain agnosticism"""
+    
+    def __init__(self):
+        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.enabled = os.getenv("DOMAIN_DETECTION_METHOD", "keywords") == "ai"
+    
+    async def classify_project(self, goal: str, context: Optional[Dict] = None) -> Dict[str, any]:
+        """
+        Classify project domain using AI semantic understanding
+        
+        Returns:
+        {
+            "primary_domain": "b2b_sales",  # or "content_marketing", "technical", "healthcare", etc.
+            "confidence": 0.95,
+            "required_specialists": ["Business Researcher", "Email Marketer"],
+            "reasoning": "Project focuses on B2B lead generation with email outreach"
+        }
+        """
+        if not self.enabled:
+            return None
+            
+        prompt = f"""
+        Analyze this project goal and classify its domain:
+        
+        Goal: {goal}
+        Context: {json.dumps(context or {})}
+        
+        Return JSON with:
+        1. primary_domain: Main business domain (unrestricted, any industry)
+        2. confidence: 0-1 confidence score
+        3. required_specialists: List of specialist roles needed
+        4. reasoning: Brief explanation of classification
+        
+        Be domain-agnostic - support ANY industry or business type.
+        """
+        
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a domain classification expert."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            logger.info(f"✅ AI Domain Classification: {result['primary_domain']} (confidence: {result['confidence']})")
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ AI domain classification failed: {e}")
+            return None
+
+# Singleton instance
+ai_domain_classifier = AIDomainClassifier()
+```
+
+## Step 4: Update director.py to use AI classifier when available
+
+```python
+# In director.py, add import
+from services.ai_domain_classifier import ai_domain_classifier
+
+# In create_fallback_proposal function, enhance domain detection:
+async def detect_project_domain(goal_text: str) -> Dict[str, bool]:
+    """Enhanced domain detection with AI fallback"""
+    
+    # Try AI classification first if enabled
+    if os.getenv("DOMAIN_DETECTION_METHOD") == "ai":
+        try:
+            ai_result = await ai_domain_classifier.classify_project(goal_text)
+            if ai_result and ai_result.get("confidence", 0) > 0.7:
+                # Map AI domains to boolean flags for backward compatibility
+                domain = ai_result["primary_domain"].lower()
+                return {
+                    "is_b2b_lead_gen": "b2b" in domain or "sales" in domain,
+                    "is_content_marketing": "content" in domain or "marketing" in domain,
+                    "is_technical": "tech" in domain or "development" in domain,
+                    "ai_classification": ai_result  # Store full AI result
+                }
+        except Exception as e:
+            logger.warning(f"AI classification failed, falling back to keywords: {e}")
+    
+    # Fallback to keyword detection
+    return detect_domain(goal_text)
+```
+
+## Validation Commands
+
+After applying this patch, run these commands to verify compliance:
+
+```bash
+# 1. Check configuration is loaded
+python3 -c "
+import os
+print('Domain Detection:', os.getenv('DOMAIN_DETECTION_METHOD', 'not set'))
+print('B2B Keywords:', os.getenv('B2B_DETECTION_KEYWORDS', 'not set'))
+print('Budget per Agent:', os.getenv('BUDGET_PER_AGENT', 'not set'))
+"
+
+# 2. Test domain detection is configurable
+curl -X POST http://localhost:8000/api/director/proposal \
+  -H "Content-Type: application/json" \
+  -d '{"workspace_id": "test", "workspace_goal": "Create healthcare patient portal"}'
+# Should work even though "healthcare" isn't in original hard-coded keywords
+
+# 3. Verify no hard-coded values remain
+grep -n "1500\|'contatti'\|'hubspot'" backend/ai_agents/director.py
+# Should return no results after patch applied
+```
+
+## Expected Outcome
+
+After applying this patch:
+- ✅ Pillar 2 violation fixed: No more hard-coded values
+- ✅ Pillar 3 violation fixed: Domain-agnostic through configuration
+- ✅ System remains backward compatible
+- ✅ Easy migration path to AI classification
+- ✅ All existing functionality preserved
+
+## Risk Mitigation
+
+- Configuration defaults match current hard-coded values
+- Keyword-based detection remains as fallback
+- AI classification is optional (requires explicit enablement)
+- No breaking changes to API contracts

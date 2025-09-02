@@ -27,7 +27,7 @@ async def test_feedback_loop():
     
     try:
         from services.learning_quality_feedback_loop import learning_quality_feedback_loop
-        from services.content_aware_learning_engine import content_aware_learning_engine, DomainType
+        from services.universal_learning_engine import universal_learning_engine
         from database import get_supabase_client, get_deliverables
         
         # Step 1: Get a deliverable from the workspace

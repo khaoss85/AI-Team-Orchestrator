@@ -150,6 +150,43 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("STARTUP: Goal-driven system disabled.")
     
+    # 🧠 CONTENT-AWARE LEARNING: Start periodic content analysis scheduler
+    if os.getenv("ENABLE_CONTENT_AWARE_LEARNING", "true").lower() == "true":
+        logger.info("STARTUP: Starting content-aware learning scheduler...")
+        try:
+            async def content_learning_scheduler():
+                """Periodically analyze workspace content for business insights"""
+                await asyncio.sleep(300)  # Wait 5 minutes after startup
+                
+                while True:
+                    try:
+                        from services.universal_learning_engine import universal_learning_engine
+                        from database import get_active_workspaces
+                        
+                        workspaces = await get_active_workspaces()
+                        for workspace in workspaces:
+                            try:
+                                result = await universal_learning_engine.analyze_workspace_content(
+                                    workspace['id']
+                                )
+                                if result.get('insights_generated', 0) > 0:
+                                    logger.info(f"🧠 Generated {result['insights_generated']} insights for workspace {workspace['id']}")
+                            except Exception as e:
+                                logger.error(f"Content learning failed for workspace {workspace['id']}: {e}")
+                        
+                        await asyncio.sleep(1800)  # Run every 30 minutes
+                        
+                    except Exception as e:
+                        logger.error(f"Content learning scheduler error: {e}")
+                        await asyncio.sleep(300)  # Retry in 5 minutes
+            
+            asyncio.create_task(content_learning_scheduler())
+            logger.info("STARTUP: Content-aware learning scheduler started in background.")
+        except Exception as e:
+            logger.error(f"STARTUP: Failed to start content learning scheduler: {e}")
+    else:
+        logger.info("STARTUP: Content-aware learning disabled.")
+    
     # Skip all other heavy initializations that could cause blocking
     logger.info("STARTUP: Skipping heavy initializations for fast startup...")
     

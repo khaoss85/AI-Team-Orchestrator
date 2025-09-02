@@ -3,6 +3,8 @@
 
 Genera e valida proposte di team di AI‑agents usando il paradigma tools‑within‑tools.
 Include:
+* AI-driven domain classification per domain-agnostic team generation
+* Semantic specialist role matching invece di keyword-based detection
 * fallback completo quando l'SDK "agents" non è disponibile
 * protezioni anti‑loop (team size, handoff, nomi univoci)
 * un'unica sorgente di costi (RATES_PER_DAY) condivisa fra estimatore e designer
@@ -20,6 +22,7 @@ from uuid import UUID
 from enum import Enum
 
 from services.unified_memory_engine import unified_memory_engine
+from services.ai_domain_classifier import ai_domain_classifier, detect_project_domain
 from database import get_supabase_client, get_workspace_goals, create_agent, get_agent, update_agent_status
 from models import Agent as AgentModel, Task, AgentStatus, DirectorTeamProposal, AgentCreate, DirectorHandoffProposal
 from .specialist_enhanced import SpecialistAgent
@@ -1734,11 +1737,23 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         goal_lower = project_goal.lower() if project_goal else ""
         agents_list_default: List[Dict[str, Any]] = []
         
-        # Determine domain and create appropriate specialists
-        # IMPORTANT: Check B2B FIRST as it's more specific than general content marketing
-        is_b2b_lead_gen = any(term in goal_lower for term in ['contatti', 'contacts', 'icp', 'cmo', 'cto', 'saas', 'b2b', 'sales', 'lead', 'crm', 'hubspot', 'outbound', 'sequenze email'])
-        is_content_marketing = any(term in goal_lower for term in ['instagram', 'tiktok', 'social media', 'posts', 'stories', 'reels', 'influencer']) and not is_b2b_lead_gen
-        is_technical = any(term in goal_lower for term in ['development', 'coding', 'app', 'website', 'api', 'software', 'backend', 'frontend'])
+        # 🤖 CONFIGURABLE DOMAIN DETECTION (supports AI-driven + keyword fallback)
+        # This enables domain-agnostic team generation for ANY business sector
+        from services.ai_domain_classifier import detect_domain_keywords
+        
+        # Use configurable keyword detection with environment variable support
+        domain_flags = detect_domain_keywords(project_goal)
+        is_b2b_lead_gen = domain_flags.get('is_b2b_lead_gen', False)
+        is_content_marketing = domain_flags.get('is_content_marketing', False)
+        is_technical = domain_flags.get('is_technical', False)
+        is_learning_education = domain_flags.get('is_learning_education', False)
+        is_financial_research = domain_flags.get('is_financial_research', False)
+        is_healthcare = domain_flags.get('is_healthcare', False)
+        is_legal_compliance = domain_flags.get('is_legal_compliance', False)
+        
+        # Log detected domains for transparency
+        detected_domains = [k.replace('is_', '') for k, v in domain_flags.items() if v]
+        logger.info(f"🎯 Domain Detection (keywords): {detected_domains} for project: {project_goal[:50]}...")
         
         # Always start with a project manager for teams > 1
         if optimal_team_size > 1:
@@ -1874,6 +1889,150 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                         {"type": "function", "name": "community_management", "description": "Community engagement"}
                     ],
                     "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.JUNIOR.value],
+                })
+                remaining_slots -= 1
+        
+        elif is_learning_education:
+            # Learning/Education project - add educational specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "CurriculumDesigner",
+                    "role": "Curriculum Designer",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Designs comprehensive learning curricula with clear objectives, progressive skill development, and effective assessment strategies.",
+                    "system_prompt": "You are a Curriculum Designer specializing in creating effective learning experiences. Design curricula that engage learners, build skills progressively, and achieve measurable learning outcomes. Focus on practical application and real-world relevance.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "tools": [
+                        {"type": "function", "name": "content_creation", "description": "Educational content creation"},
+                        {"type": "function", "name": "research", "description": "Educational research capability"},
+                        {"type": "function", "name": "assessment_design", "description": "Assessment and evaluation design"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+            
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "InstructionalDesigner",
+                    "role": "Instructional Designer",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Creates engaging educational materials, interactive exercises, and multimedia learning resources that enhance knowledge retention.",
+                    "system_prompt": "You are an Instructional Designer focused on creating engaging, interactive learning materials. Design exercises, activities, and resources that promote active learning and skill development.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.3},
+                    "tools": [
+                        {"type": "function", "name": "content_creation", "description": "Interactive content creation"},
+                        {"type": "function", "name": "multimedia_design", "description": "Multimedia learning resources"},
+                        {"type": "function", "name": "learning_analytics", "description": "Learning effectiveness analysis"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                
+        elif is_financial_research:
+            # Financial/Investment project - add financial specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "FinancialAnalyst",
+                    "role": "Financial Research Analyst",
+                    "seniority": AgentSeniority.EXPERT.value,
+                    "description": "Conducts comprehensive financial analysis, market research, and investment due diligence. Expert in financial modeling and risk assessment.",
+                    "system_prompt": "You are a Financial Research Analyst specializing in investment analysis and market research. Conduct thorough financial analysis, evaluate investment opportunities, and assess risk factors. Provide data-driven insights and actionable recommendations.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": [
+                        {"type": "web_search", "name": "web_search", "description": "Financial data and market research"},
+                        {"type": "function", "name": "financial_analysis", "description": "Financial modeling and analysis"},
+                        {"type": "function", "name": "risk_assessment", "description": "Risk analysis capability"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.EXPERT.value],
+                })
+                remaining_slots -= 1
+            
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "ESGSpecialist",
+                    "role": "ESG Investment Specialist",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Specializes in Environmental, Social, and Governance (ESG) investment analysis. Expert in sustainable finance and impact measurement.",
+                    "system_prompt": "You are an ESG Investment Specialist focused on sustainable and responsible investment analysis. Evaluate companies and investments based on ESG criteria, assess sustainability impact, and identify opportunities in sustainable finance.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "tools": [
+                        {"type": "web_search", "name": "web_search", "description": "ESG data and sustainability research"},
+                        {"type": "function", "name": "esg_analysis", "description": "ESG evaluation and scoring"},
+                        {"type": "function", "name": "sustainability_reporting", "description": "Sustainability impact reporting"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                
+        elif is_healthcare:
+            # Healthcare project - add medical and compliance specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "HealthcareConsultant",
+                    "role": "Healthcare Systems Consultant",
+                    "seniority": AgentSeniority.EXPERT.value,
+                    "description": "Designs patient engagement platforms and healthcare technology solutions. Expert in healthcare workflows and patient experience optimization.",
+                    "system_prompt": "You are a Healthcare Systems Consultant specializing in patient engagement and healthcare technology. Design systems that improve patient outcomes, streamline healthcare workflows, and enhance the patient experience while maintaining compliance.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": [
+                        {"type": "function", "name": "healthcare_design", "description": "Healthcare system design"},
+                        {"type": "function", "name": "patient_experience", "description": "Patient journey optimization"},
+                        {"type": "function", "name": "workflow_analysis", "description": "Healthcare workflow analysis"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.EXPERT.value],
+                })
+                remaining_slots -= 1
+            
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "HealthComplianceSpecialist",
+                    "role": "Healthcare Compliance Specialist",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Ensures healthcare solutions meet regulatory requirements including HIPAA, FDA, and medical device standards. Expert in healthcare compliance frameworks.",
+                    "system_prompt": "You are a Healthcare Compliance Specialist focused on ensuring healthcare technology solutions meet all regulatory requirements. Navigate complex healthcare regulations, ensure patient data privacy, and implement compliance frameworks.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": [
+                        {"type": "function", "name": "compliance_audit", "description": "Healthcare compliance auditing"},
+                        {"type": "function", "name": "regulatory_research", "description": "Healthcare regulation research"},
+                        {"type": "function", "name": "privacy_assessment", "description": "Patient privacy and data protection"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
+                })
+                remaining_slots -= 1
+                
+        elif is_legal_compliance:
+            # Legal/Compliance project - add legal and regulatory specialists
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "ComplianceAuditor",
+                    "role": "Regulatory Compliance Auditor",
+                    "seniority": AgentSeniority.EXPERT.value,
+                    "description": "Conducts comprehensive compliance audits and develops regulatory frameworks. Expert in GDPR, data privacy, and corporate compliance requirements.",
+                    "system_prompt": "You are a Regulatory Compliance Auditor specializing in corporate compliance and data privacy regulations. Conduct thorough compliance audits, develop regulatory frameworks, and ensure organizations meet all legal requirements.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": [
+                        {"type": "function", "name": "compliance_audit", "description": "Regulatory compliance auditing"},
+                        {"type": "function", "name": "legal_research", "description": "Legal and regulatory research"},
+                        {"type": "function", "name": "policy_development", "description": "Compliance policy development"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.EXPERT.value],
+                })
+                remaining_slots -= 1
+            
+            if remaining_slots > 0:
+                agents_list_default.append({
+                    "name": "PrivacyOfficer",
+                    "role": "Data Privacy Officer",
+                    "seniority": AgentSeniority.SENIOR.value,
+                    "description": "Implements data privacy frameworks and ensures GDPR compliance. Expert in privacy impact assessments and data protection strategies.",
+                    "system_prompt": "You are a Data Privacy Officer focused on implementing comprehensive data protection strategies. Ensure GDPR compliance, conduct privacy impact assessments, and develop data governance frameworks that protect individual privacy rights.",
+                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "tools": [
+                        {"type": "function", "name": "privacy_assessment", "description": "Privacy impact assessment"},
+                        {"type": "function", "name": "gdpr_compliance", "description": "GDPR compliance evaluation"},
+                        {"type": "function", "name": "data_governance", "description": "Data governance framework design"}
+                    ],
+                    "estimated_monthly_cost": COST_PER_MONTH[AgentSeniority.SENIOR.value],
                 })
                 remaining_slots -= 1
         

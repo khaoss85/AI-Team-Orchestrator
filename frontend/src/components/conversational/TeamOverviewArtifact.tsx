@@ -325,7 +325,7 @@ function TeamMembersTab({
               onClick={() => onEditAgent(agent)}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              Modifica
+              Edit
             </button>
           </div>
 
@@ -333,7 +333,7 @@ function TeamMembersTab({
           {((agent.hard_skills && agent.hard_skills.length > 0) || 
             (agent.soft_skills && agent.soft_skills.length > 0)) && (
             <div className="border-t pt-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Competenze</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Skills</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Hard Skills */}
                 {agent.hard_skills && agent.hard_skills.length > 0 && (

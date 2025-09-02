@@ -37,13 +37,34 @@ fix_*.sql
 *.bak
 *.swp
 *~
+*.copy
+*.backup_*
+*_backup
 .vscode/
 .idea/
+
+# 🍎 OS artifacts
+.DS_Store
+Thumbs.db
+*.db
+
+# 📦 Build cache and artifacts
+.next/
+dist/
+build/
+*.pack.old
+node_modules/
 
 # 📊 Development artifacts
 dump.rdb
 *.pid
+dev_output.log
+health_monitor.log
 
+# 🗂️ Backup directories
+backups/
+*/backups/
+interventions/backups/
 
 # Ebook content (private)
 /ebook/

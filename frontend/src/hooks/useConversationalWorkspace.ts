@@ -432,6 +432,15 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
         }
       ]
 
+      // Debug: Log fixed chats to verify Knowledge Base is included
+      console.log('useConversationalWorkspace - Created fixed chats:', fixedChats.map(c => ({ 
+        id: c.id, 
+        title: c.title, 
+        type: c.type,
+        systemType: c.systemType 
+      })))
+      console.log('useConversationalWorkspace - Knowledge Base chat present?', fixedChats.some(c => c.id === 'knowledge-base'))
+
       // Set initial chats without dynamic chats (will be loaded progressively)
       setChats(fixedChats)
       
@@ -481,7 +490,12 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
             const dynamicChats = await loadDynamicChats()
             setChats(prev => {
               const fixedOnly = prev.filter(c => c.type === 'fixed')
-              return [...fixedOnly, ...dynamicChats]
+              console.log('📚 DEBUG: Fixed chats before merging with dynamic:', fixedOnly.map(c => ({ id: c.id, title: c.title, type: c.type })))
+              console.log('📚 DEBUG: Knowledge Base present in fixed?', fixedOnly.some(c => c.id === 'knowledge-base'))
+              const merged = [...fixedOnly, ...dynamicChats]
+              console.log('📚 DEBUG: Final merged chats:', merged.map(c => ({ id: c.id, title: c.title, type: c.type })))
+              console.log('📚 DEBUG: Knowledge Base present in merged?', merged.some(c => c.id === 'knowledge-base'))
+              return merged
             })
             console.log('✅ [Progressive] Dynamic chats loaded:', dynamicChats.length, 'chats')
             

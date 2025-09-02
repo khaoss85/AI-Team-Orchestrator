@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 
 from services.learning_quality_feedback_loop import learning_quality_feedback_loop
-from services.content_aware_learning_engine import content_aware_learning_engine, DomainType
+from services.universal_learning_engine import universal_learning_engine
+# Note: DomainType enum removed as Universal Learning Engine is domain-agnostic
 from database import get_supabase_client
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,7 @@ async def analyze_workspace_for_learnings(
         logger.info(f"🔍 Analyzing workspace {workspace_id} for business insights")
         
         # First run content analysis
-        analysis_result = await content_aware_learning_engine.analyze_workspace_content(workspace_id)
+        analysis_result = await universal_learning_engine.analyze_workspace_content(workspace_id)
         
         if analysis_result.get("status") == "error":
             raise HTTPException(status_code=500, detail=analysis_result.get("error"))
@@ -198,12 +199,13 @@ async def get_domain_specific_insights(
         domain_type = None
         if domain:
             try:
-                domain_type = DomainType(domain)
+                # Domain is now a string, no enum conversion needed
+                domain_type = domain
             except ValueError:
                 raise HTTPException(status_code=400, detail=f"Invalid domain: {domain}")
         
         # Get actionable learnings
-        learnings = await content_aware_learning_engine.get_actionable_learnings(
+        learnings = await universal_learning_engine.get_actionable_learnings(
             workspace_id=workspace_id,
             domain=domain_type
         )
