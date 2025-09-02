@@ -37,7 +37,10 @@ export default function ArtifactsPanel({
   onResumeAutoGeneration
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
-  const [activeTab, setActiveTab] = useState<'artifacts' | 'viewer'>('artifacts')
+  const [activeTab, setActiveTab] = useState<'artifacts' | 'viewer' | 'documents'>('artifacts')
+  
+  // Show documents tab when Knowledge Base chat is active
+  const showDocumentsTab = activeChat?.id === 'knowledge-base'
 
   // Auto-switch to artifacts when new ones arrive
   React.useEffect(() => {
@@ -113,6 +116,13 @@ export default function ArtifactsPanel({
             label="Results"
             count={artifacts.length}
           />
+          {showDocumentsTab && (
+            <TabButton
+              active={activeTab === 'documents'}
+              onClick={() => setActiveTab('documents')}
+              label="📚 Documents"
+            />
+          )}
           {selectedArtifact && (
             <TabButton
               active={activeTab === 'viewer'}
@@ -133,6 +143,10 @@ export default function ArtifactsPanel({
               setActiveTab('viewer')
             }}
           />
+        )}
+
+        {activeTab === 'documents' && (
+          <DocumentsSection workspaceId={workspaceId} />
         )}
 
         {activeTab === 'viewer' && selectedArtifact && (

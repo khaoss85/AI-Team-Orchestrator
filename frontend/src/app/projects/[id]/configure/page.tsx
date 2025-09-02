@@ -215,6 +215,11 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
       const data = await Promise.race([apiPromise, timeoutPromise]) as DirectorTeamProposal;
       
       console.log('✅ Received proposal data:', data);
+      console.log('📊 Team proposal details:', {
+        agentCount: data.agents?.length || 0,
+        totalCost: data.estimated_cost?.total || data.estimated_cost?.total_estimated_cost || 0,
+        agents: data.agents?.map(a => ({ name: a.name, role: a.role, seniority: a.seniority }))
+      });
       
       setProposal(data);
       if (data.id) {
@@ -231,8 +236,12 @@ export default function ConfigureProjectPage({ params: paramsPromise }: Props) {
         setError(`Error generating proposal: ${err.message || 'Unknown error'}`);
       }
 
-      // Fallback proposal only if it's not a timeout
-      if (!err.message.includes('Timeout') && workspace) {
+      // 🔧 FIX: Only use fallback for real network/connection errors, not API responses
+      const isNetworkError = err.name === 'NetworkError' || err.code === 'NETWORK_ERROR' || 
+                            err.message.includes('fetch') || err.message.includes('network');
+      
+      // Fallback proposal only for network errors (not API errors or timeouts)
+      if (isNetworkError && workspace) {
         setProposal({
           workspace_id: workspace.id,
           agents: [

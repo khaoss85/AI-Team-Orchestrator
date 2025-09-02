@@ -1570,16 +1570,30 @@ export const api = {
         
         // Transform DirectorTeamProposalResponse to DirectorTeamProposal
         if (data.team_members && !data.agents) {
-          return {
+          console.log('🔄 API TRANSFORM: Converting team_members to agents', {
+            originalCount: data.team_members?.length || 0,
+            originalCost: data.estimated_cost,
+            teamMembers: data.team_members?.map(t => ({name: t.name, role: t.role, seniority: t.seniority}))
+          });
+          
+          const transformed = {
             id: data.proposal_id,
             workspace_id: config.workspace_id,
             agents: data.team_members,
             handoffs: [],
             estimated_cost: {
+              total: data.estimated_cost || 0,
               total_estimated_cost: data.estimated_cost || 0
             },
             timeline: data.timeline || "30 days"
           };
+          
+          console.log('✅ API TRANSFORM: Final result', {
+            agentCount: transformed.agents?.length || 0,
+            totalCost: transformed.estimated_cost?.total || 0
+          });
+          
+          return transformed;
         }
         
         return data;
@@ -2279,7 +2293,7 @@ export const api = {
       };
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/upload`, {
+        const response = await fetch(`${API_BASE_URL}/api/documents/${workspaceId}/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2313,7 +2327,7 @@ export const api = {
       total: number;
     }> => {
       try {
-        const url = new URL(`${API_BASE_URL}/documents/${workspaceId}`);
+        const url = new URL(`${API_BASE_URL}/api/documents/${workspaceId}`);
         if (scope) url.searchParams.append('scope', scope);
         
         const response = await fetch(url.toString());
@@ -2324,13 +2338,18 @@ export const api = {
       }
     },
 
+    // View a document (returns the document URL for viewing)
+    getViewUrl: (workspaceId: string, documentId: string): string => {
+      return `${API_BASE_URL}/api/documents/${workspaceId}/${documentId}/view`;
+    },
+
     // Delete a document
     delete: async (workspaceId: string, documentId: string): Promise<{
       success: boolean;
       message: string;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/${documentId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/documents/${workspaceId}/${documentId}`, {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -2347,7 +2366,7 @@ export const api = {
       count: number;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/documents/${workspaceId}/vector-stores`);
+        const response = await fetch(`${API_BASE_URL}/api/documents/${workspaceId}/vector-stores`);
         if (!response.ok) throw new Error(`API error: ${response.status}`);
         return await response.json();
       } catch (error) {

@@ -55,7 +55,18 @@ class OpenAISDKProvider(BaseProvider):
             # Create proper agent object from dict if needed
             if isinstance(agent, dict):
                 from agents import Agent as OpenAIAgent
-                sdk_agent = OpenAIAgent(**agent)
+                # Filter out parameters not accepted by OpenAI Agent constructor
+                # Remove 'role' and other non-SDK parameters that cause initialization failures
+                excluded_params = ['role', 'id', 'status', 'workspace_id', 'seniority']
+                valid_agent_params = {k: v for k, v in agent.items() if k not in excluded_params}
+                
+                # Log filtered parameters for debugging
+                filtered_out = {k: v for k, v in agent.items() if k in excluded_params}
+                if filtered_out:
+                    logger.debug(f"🔧 SDK COMPATIBILITY FIX: Filtered out parameters: {filtered_out}")
+                    logger.debug(f"✅ Using valid parameters for OpenAI Agent: {list(valid_agent_params.keys())}")
+                
+                sdk_agent = OpenAIAgent(**valid_agent_params)
             else:
                 sdk_agent = agent
             

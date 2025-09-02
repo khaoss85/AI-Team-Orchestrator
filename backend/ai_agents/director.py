@@ -1187,7 +1187,21 @@ Execute tasks directly and provide substantial, actionable results.""",
 
         # Create a dictionary for budget constraints from the proposal_request
         # Use max_cost to match BudgetConstraint model
-        budget_constraint_dict = {"max_cost": proposal_request.budget_limit} if proposal_request.budget_limit is not None else {}
+        # 🔧 DEBUG: Log budget parsing details
+        logger.info(f"🔍 BUDGET DEBUG - budget_limit: {proposal_request.budget_limit}")
+        logger.info(f"🔍 BUDGET DEBUG - budget_constraint: {proposal_request.budget_constraint}")
+        if proposal_request.budget_constraint:
+            logger.info(f"🔍 BUDGET DEBUG - budget_constraint.max_cost: {proposal_request.budget_constraint.max_cost}")
+        
+        # Fix: Check budget_constraint.max_cost as fallback when budget_limit is None
+        budget_value = proposal_request.budget_limit
+        if budget_value is None and proposal_request.budget_constraint:
+            budget_value = proposal_request.budget_constraint.max_cost
+            logger.info(f"🔧 BUDGET EXTRACTED from budget_constraint: {budget_value}")
+        else:
+            logger.info(f"🔧 BUDGET from budget_limit: {budget_value}")
+            
+        budget_constraint_dict = {"max_cost": budget_value} if budget_value is not None else {}
 
         # Instructions per l'LLM orchestratore
         # L'LLM deve capire che `constraints_json` per `analyze_project_requirements_llm` deve essere una stringa JSON.
@@ -1196,10 +1210,18 @@ Execute tasks directly and provide substantial, actionable results.""",
         enhanced_constraints = budget_constraint_dict
         
         # 🚀 SIMPLE SOLUTION: Just increase timeout and simplify prompt
-        budget_amount = proposal_request.budget_limit or 5000
+        # Fix: Check budget_constraint.max_cost as fallback when budget_limit is None
+        budget_amount = proposal_request.budget_limit
+        if budget_amount is None and proposal_request.budget_constraint:
+            budget_amount = proposal_request.budget_constraint.max_cost
+        budget_amount = budget_amount or 5000
+        
+        # 🔧 DEBUG: Log final budget amount and team size calculation
+        logger.info(f"💰 FINAL BUDGET AMOUNT: {budget_amount} EUR")
         
         # 🎯 DYNAMIC TEAM SIZING: Calculate optimal team size based on budget and complexity  
         max_team_for_performance = min(8, max(3, int(budget_amount / 1500)))  # Dynamic sizing based on budget
+        logger.info(f"👥 CALCULATED TEAM SIZE: {max_team_for_performance} agents (budget {budget_amount} / 1500)")
         
         director_instructions = f"""You are an AI Team Designer. Create a complete team proposal.
 
@@ -1441,6 +1463,14 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
                             tools_list_sanitized.append(t_item)  # type: ignore
                 agent_spec_dict["tools"] = tools_list_sanitized
 
+                # 🔧 FIX: Calculate estimated_monthly_cost based on seniority
+                if "estimated_monthly_cost" not in agent_spec_dict:
+                    seniority = agent_spec_dict.get("seniority", AgentSeniority.JUNIOR)
+                    if isinstance(seniority, AgentSeniority):
+                        agent_spec_dict["estimated_monthly_cost"] = COST_PER_MONTH[seniority.value]
+                    else:
+                        agent_spec_dict["estimated_monthly_cost"] = COST_PER_MONTH[AgentSeniority.JUNIOR.value]
+
                 try:
                     agents_create_obj_list.append(AgentCreate(**agent_spec_dict))
                 except Exception as e_ac:  # Catch Pydantic validation errors etc.
@@ -1502,7 +1532,11 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
 
         # 1. Cap team size to calculated performance limit (now dynamic)
         # Calculate the dynamic performance max based on budget
-        budget_amount = proposal_request.budget_limit or 5000
+        # Fix: Check budget_constraint.max_cost as fallback when budget_limit is None
+        budget_amount = proposal_request.budget_limit
+        if budget_amount is None and proposal_request.budget_constraint:
+            budget_amount = proposal_request.budget_constraint.max_cost
+        budget_amount = budget_amount or 5000
         performance_max = min(8, max(3, int(budget_amount / 1500)))  # Dynamic sizing based on budget
         
         if len(agents_list) > performance_max:
@@ -2102,6 +2136,14 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
             except:
                 agent_s["seniority"] = AgentSeniority.JUNIOR
 
+            # 🔧 FIX: Add estimated_monthly_cost for minimal fallback agents
+            if "estimated_monthly_cost" not in agent_s:
+                seniority = agent_s.get("seniority", AgentSeniority.JUNIOR)
+                if isinstance(seniority, AgentSeniority):
+                    agent_s["estimated_monthly_cost"] = COST_PER_MONTH[seniority.value]
+                else:
+                    agent_s["estimated_monthly_cost"] = COST_PER_MONTH[AgentSeniority.JUNIOR.value]
+
             try:
                 minimal_agents_list.append(AgentCreate(**agent_s))
             except Exception as e_ac_fb:
@@ -2115,6 +2157,13 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
             panic_agent_spec["seniority"] = AgentSeniority(
                 panic_agent_spec["seniority"]
             )
+            # 🔧 FIX: Add estimated_monthly_cost for panic agent
+            if "estimated_monthly_cost" not in panic_agent_spec:
+                seniority = panic_agent_spec.get("seniority", AgentSeniority.JUNIOR)
+                if isinstance(seniority, AgentSeniority):
+                    panic_agent_spec["estimated_monthly_cost"] = COST_PER_MONTH[seniority.value]
+                else:
+                    panic_agent_spec["estimated_monthly_cost"] = COST_PER_MONTH[AgentSeniority.JUNIOR.value]
             minimal_agents_list.append(AgentCreate(**panic_agent_spec))
             logger.warning(
                 "Panic: Created an ultra-minimal agent as last resort in fallback proposal."

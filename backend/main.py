@@ -345,6 +345,10 @@ app.include_router(improvement_router, prefix="/api")
 from routes.task_monitoring import router as task_monitoring_router
 app.include_router(task_monitoring_router, prefix="/api")
 
+# 🔥 Workspace monitoring and cleanup routes
+# from routes.workspace_monitoring import router as workspace_monitoring_router
+# app.include_router(workspace_monitoring_router, prefix="/api")  # Temporarily disabled for testing
+
 # Service management
 app.include_router(service_registry_router, prefix="/api")
 app.include_router(service_registry_compat_router)  # Legacy compatibility

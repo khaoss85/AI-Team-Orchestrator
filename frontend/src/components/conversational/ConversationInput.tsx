@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Chat } from './types'
-import { DocumentUpload } from './DocumentUpload'
+import { DocumentUploadEnhanced } from './DocumentUploadEnhanced'
 
 interface ConversationInputProps {
   activeChat: Chat | null
@@ -209,13 +209,16 @@ export default function ConversationInput({
     textareaRef.current?.focus()
   }
 
-  const handleFileUpload = async (file: File, sharingScope: string, description?: string) => {
+  const handleFileUpload = async (file: File, sharingScope: string, description?: string, tags?: string[]) => {
     // Convert file to base64
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64 = e.target?.result?.toString().split(',')[1] // Remove data:type/subtype;base64, prefix
       if (base64) {
-        const uploadMessage = `EXECUTE_TOOL: upload_document {"file_data": "${base64}", "filename": "${file.name}", "sharing_scope": "${sharingScope}"${description ? `, "description": "${description}"` : ''}}`
+        let uploadMessage = `EXECUTE_TOOL: upload_document {"file_data": "${base64}", "filename": "${file.name}", "sharing_scope": "${sharingScope}"`
+        if (description) uploadMessage += `, "description": "${description}"`
+        if (tags && tags.length > 0) uploadMessage += `, "tags": ${JSON.stringify(tags)}`
+        uploadMessage += '}'
         await onSendMessage(uploadMessage)
       }
     }
@@ -272,7 +275,7 @@ export default function ConversationInput({
         <div className="flex items-end space-x-3">
           {/* Document Upload - Only for Knowledge Base chat */}
           {activeChat.type === 'fixed' && activeChat.systemType === 'knowledge' && (
-            <DocumentUpload
+            <DocumentUploadEnhanced
               onUpload={handleFileUpload}
               disabled={loading}
               workspaceId={workspaceId}

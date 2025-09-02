@@ -30,15 +30,32 @@ class EnhancedDirectorAgent(DirectorAgent):
                 self.workspace_id = req.workspace_id
                 self.goal = enhanced_goal
                 self.requirements = req.requirements
-                self.budget_constraint = {"max_amount": req.budget_limit} if req.budget_limit is not None else {}
-                self.budget_limit = req.budget_limit
+                # 🔧 FIX: Use budget_constraint.max_cost instead of budget_limit, with correct field name
+                budget_value = None
+                if hasattr(req, 'budget_constraint') and req.budget_constraint:
+                    budget_value = req.budget_constraint.max_cost
+                elif hasattr(req, 'budget_limit') and req.budget_limit:
+                    budget_value = req.budget_limit
+                
+                self.budget_constraint = {"max_cost": budget_value} if budget_value is not None else {}
+                self.budget_limit = budget_value
                 self.user_feedback = getattr(req, 'user_feedback', '')
 
         temp_config = TempConfig(proposal_request)
         
+        # 🔧 FIX: Create proper DirectorTeamProposal object instead of TempConfig
+        enhanced_proposal = DirectorTeamProposal(
+            workspace_id=proposal_request.workspace_id,
+            workspace_goal=enhanced_goal,
+            user_feedback=proposal_request.user_feedback,
+            budget_constraint=proposal_request.budget_constraint,
+            budget_limit=temp_config.budget_limit,
+            requirements=enhanced_goal  # Use enhanced goal as requirements
+        )
+        
         # Use the standard director to create the proposal with the enhanced goal
         standard_director = DirectorAgent()
-        return await standard_director.create_team_proposal(temp_config)
+        return await standard_director.create_team_proposal(enhanced_proposal)
     
     def _enhance_goal_with_context(self, original_goal: str, strategic_goals: Dict[str, Any]) -> str:
         """Add strategic context to the goal description"""

@@ -45,12 +45,19 @@ async def create_new_agent(workspace_id: UUID, agent: AgentCreate, request: Requ
                 detail="Agent workspace_id does not match URL workspace_id"
             )
             
+        # 🔧 FIX: Ensure agents always have meaningful descriptions
+        description = agent.description
+        if not description or description.strip() == "":
+            # Generate a default description based on role and seniority
+            description = f"A {agent.seniority} {agent.role} responsible for {agent.role.lower()}-related tasks and deliverables."
+            logger.info(f"Generated default description for agent {agent.name}: {description}")
+        
         agent_data = await create_agent(
             workspace_id=str(agent.workspace_id),
             name=agent.name,
             role=agent.role,
             seniority=agent.seniority,
-            description=agent.description
+            description=description
         )
         
         return Agent.model_validate(agent_data)

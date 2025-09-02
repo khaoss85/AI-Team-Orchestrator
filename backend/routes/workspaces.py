@@ -183,6 +183,19 @@ async def delete_workspace_by_id(workspace_id: UUID, request: Request):
         # from human_feedback_manager import human_feedback_manager
         # await human_feedback_manager.cleanup_workspace_requests(str(workspace_id))
         
+        # 🔥 CRITICAL: Cleanup OpenAI resources before workspace deletion
+        try:
+            from services.workspace_cleanup_service import workspace_cleanup_service
+            cleanup_results = await workspace_cleanup_service.cleanup_workspace_resources(str(workspace_id))
+            logger.info(f"✅ OpenAI resources cleanup completed: {cleanup_results['documents_deleted']} docs, {cleanup_results['vector_stores_deleted']} stores, {cleanup_results['openai_files_deleted']} files")
+            
+            if cleanup_results.get("errors"):
+                logger.warning(f"⚠️ Cleanup had some errors: {cleanup_results['errors']}")
+                
+        except Exception as e:
+            # Don't block workspace deletion if cleanup fails
+            logger.warning(f"⚠️ OpenAI resources cleanup failed for workspace {workspace_id}: {e}")
+        
         # Elimina il workspace (cascading delete will handle related records)
         await delete_workspace(str(workspace_id))
         

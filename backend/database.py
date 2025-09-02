@@ -1100,6 +1100,12 @@ async def create_agent(
     background_story: Optional[str] = None
 ):
     try:
+        # 🔧 FIX: Ensure agents always have meaningful descriptions (system-level prevention)
+        if not description or description.strip() == "":
+            # Generate a default description based on role and seniority
+            description = f"A {seniority} {role} responsible for {role.lower().replace('_', ' ')}-related tasks and deliverables."
+            logger.info(f"Database layer generated default description for agent {name}: {description}")
+        
         data = {
             "workspace_id": workspace_id,
             "name": name,
@@ -1107,9 +1113,9 @@ async def create_agent(
             "seniority": seniority,
             "status": "active",  # 🔧 FIX: Use "active" status (standardized) so agents can be found by task planner
             "health": {"status": "unknown", "last_update": datetime.now().isoformat()},
-            "can_create_tools": can_create_tools
+            "can_create_tools": can_create_tools,
+            "description": description  # Always include description (either provided or generated)
         }
-        if description: data["description"] = description
         if system_prompt: data["system_prompt"] = system_prompt
         if llm_config: data["llm_config"] = json.dumps(llm_config)
         if tools: data["tools"] = json.dumps(tools)

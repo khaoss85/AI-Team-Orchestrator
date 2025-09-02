@@ -159,6 +159,64 @@ async def list_documents(
             detail=f"Document listing failed: {str(e)}"
         )
 
+@router.get("/{workspace_id}/{document_id}/view")
+async def view_document(
+    workspace_id: str,
+    document_id: str
+):
+    """Retrieve and serve a document for viewing in browser"""
+    from fastapi.responses import Response, StreamingResponse
+    import io
+    
+    try:
+        # Retrieve the document content and metadata
+        document_data = await document_manager.retrieve_document(document_id, workspace_id)
+        
+        if not document_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        content = document_data.get("content")
+        metadata = document_data.get("metadata")
+        
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document content not available"
+            )
+        
+        # Set appropriate headers based on MIME type
+        mime_type = metadata.get("mime_type", "application/octet-stream")
+        filename = metadata.get("filename", "document")
+        
+        # For PDFs and images, display inline; for others, offer download
+        if mime_type.startswith(("image/", "application/pdf", "text/")):
+            content_disposition = f'inline; filename="{filename}"'
+        else:
+            content_disposition = f'attachment; filename="{filename}"'
+        
+        # Return the document content with appropriate headers
+        return Response(
+            content=content,
+            media_type=mime_type,
+            headers={
+                "Content-Disposition": content_disposition,
+                "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+                "Access-Control-Allow-Origin": "*"  # Allow cross-origin for frontend
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document retrieval failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Document retrieval failed: {str(e)}"
+        )
+
 @router.delete("/{workspace_id}/{document_id}")
 async def delete_document(
     workspace_id: str,

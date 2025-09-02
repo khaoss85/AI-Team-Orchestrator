@@ -175,11 +175,26 @@ async def _process_team_creation_background(
             if hasattr(agent_create_data.seniority, 'value'):
                 agent_data_for_creation["seniority"] = agent_create_data.seniority.value
             
-            # CRITICAL FIX: Remove 'status' before calling create_agent
-            agent_data_for_creation.pop('status', None)
+            # CRITICAL FIX: Remove fields that create_agent doesn't accept
+            # Only keep fields that are supported by the create_agent function
+            supported_fields = {
+                'workspace_id', 'name', 'role', 'seniority', 'description', 
+                'system_prompt', 'llm_config', 'tools', 'can_create_tools',
+                'first_name', 'last_name', 'personality_traits', 'communication_style',
+                'hard_skills', 'soft_skills', 'background_story'
+            }
+            
+            # Filter agent data to only include supported fields
+            filtered_agent_data = {
+                key: value for key, value in agent_data_for_creation.items() 
+                if key in supported_fields
+            }
+            
+            logger.info(f"🔧 Filtered agent data fields: {list(filtered_agent_data.keys())}")
+            logger.info(f"🗑️ Removed unsupported fields: {set(agent_data_for_creation.keys()) - supported_fields}")
 
             # Create agent in database - expand dict as keyword arguments
-            created_agent_db = await create_agent(**agent_data_for_creation)
+            created_agent_db = await create_agent(**filtered_agent_data)
             if created_agent_db:
                 created_agents_db.append(created_agent_db)
                 agent_name_to_id_map[agent_create_data.name] = str(created_agent_db['id'])

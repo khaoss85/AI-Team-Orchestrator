@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { FileText, Download, Trash2, Users, User, Search } from 'lucide-react'
+import { FileText, Download, Trash2, Users, User, Search, Upload, Eye, ExternalLink } from 'lucide-react'
 import { api } from '@/utils/api'
+import { DocumentUploadEnhanced } from './DocumentUploadEnhanced'
 
 interface Document {
   id: string
@@ -25,6 +26,7 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterTag, setFilterTag] = useState<string | null>(null)
 
   // Load documents
   useEffect(() => {
@@ -43,6 +45,39 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleUpload = async (file: File, sharingScope: string, description?: string, tags?: string[]) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('sharing_scope', sharingScope)
+      if (description) formData.append('description', description)
+      if (tags && tags.length > 0) {
+        formData.append('tags', tags.join(','))
+      }
+
+      const response = await fetch(`${api.getBaseUrl()}/api/documents/${workspaceId}/upload-file`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`)
+      }
+
+      // Reload documents after successful upload
+      await loadDocuments()
+    } catch (error) {
+      console.error('Upload error:', error)
+      throw error
+    }
+  }
+
+  const handleView = (documentId: string, filename: string) => {
+    // Open document in new tab
+    const viewUrl = api.documents.getViewUrl(workspaceId, documentId)
+    window.open(viewUrl, '_blank')
   }
 
   const handleDelete = async (documentId: string, filename: string) => {
@@ -88,6 +123,18 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
     return '📎'
   }
 
+  // Get all unique tags from documents
+  const allTags = Array.from(new Set(documents.flatMap(doc => doc.tags)))
+
+  // Filter documents based on search and tag filter
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = !searchQuery || 
+      doc.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesTag = !filterTag || doc.tags.includes(filterTag)
+    return matchesSearch && matchesTag
+  })
+
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -98,9 +145,9 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
+      {/* Header with Search and Upload */}
       <div className="px-4 pt-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-3">
           <input
             type="text"
             value={searchQuery}
@@ -112,23 +159,70 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
           <button
             onClick={handleSearch}
             disabled={!searchQuery.trim()}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Search className="w-4 h-4" />
           </button>
+          <DocumentUploadEnhanced 
+            workspaceId={workspaceId}
+            onUpload={handleUpload}
+            buttonVariant="button"
+          />
         </div>
+
+        {/* Tag Filter */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-gray-500">Filter by tag:</span>
+            <button
+              onClick={() => setFilterTag(null)}
+              className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                !filterTag 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setFilterTag(tag === filterTag ? null : tag)}
+                className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                  filterTag === tag 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Documents List */}
       {documents.length === 0 ? (
-        <div className="p-8 text-center text-gray-500">
+        <div className="p-8 text-center">
           <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-sm">No documents uploaded yet</p>
-          <p className="text-xs mt-1">Upload files from the Knowledge Base chat</p>
+          <p className="text-sm text-gray-600 font-medium">No documents uploaded yet</p>
+          <p className="text-xs text-gray-500 mt-1 mb-4">Share knowledge with your AI team</p>
+          <DocumentUploadEnhanced 
+            workspaceId={workspaceId}
+            onUpload={handleUpload}
+            buttonVariant="button"
+            className="mx-auto"
+          />
+        </div>
+      ) : filteredDocuments.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm">No documents match your filters</p>
+          <p className="text-xs mt-1">Try adjusting your search or filters</p>
         </div>
       ) : (
         <div className="px-4 space-y-2">
-          {documents.map((doc) => (
+          {filteredDocuments.map((doc) => (
             <div
               key={doc.id}
               className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -170,13 +264,22 @@ export function DocumentsSection({ workspaceId, onSendMessage }: DocumentsSectio
                   )}
                 </div>
                 
-                <button
-                  onClick={() => handleDelete(doc.id, doc.filename)}
-                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                  title="Delete document"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleView(doc.id, doc.filename)}
+                    className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="View document"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(doc.id, doc.filename)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Delete document"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

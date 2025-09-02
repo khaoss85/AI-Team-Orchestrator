@@ -594,6 +594,7 @@ class AgentCreate(BaseModel):
     hard_skills: Optional[List[Dict[str, Any]]] = None
     soft_skills: Optional[List[Dict[str, Any]]] = None
     background_story: Optional[str] = None
+    estimated_monthly_cost: Optional[float] = None  # Cost estimate for Director budgeting
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None

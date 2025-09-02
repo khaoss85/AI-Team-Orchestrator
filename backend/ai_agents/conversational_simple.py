@@ -439,8 +439,18 @@ class SimpleConversationalAgent:
             if self._is_asking_about_tools(user_message):
                 return await self._generate_tools_artifact_response()
             
+            # 🔍 DOCUMENT SEARCH: Check if user is asking about documents
+            document_search_results = None
+            if self._is_asking_about_documents(user_message):
+                logger.info("📄 Document-related query detected, searching documents...")
+                document_search_results = await self._search_relevant_documents(user_message)
+            
             # Prepare context for AI
             context_summary = self._prepare_context_for_ai()
+            
+            # Include document search results in context if available
+            if document_search_results:
+                context_summary += f"\n\n📄 DOCUMENT SEARCH RESULTS:\n{document_search_results}"
             
             # Create intelligent prompt with tool awareness
             tools_description = self._get_tools_description()
@@ -456,12 +466,18 @@ AVAILABLE TOOLS:
 {tools_description}
 
 CORE INTELLIGENCE FRAMEWORK:
-You have access to ALL workspace data - team composition, performance metrics, budget, goals, insights, deliverables, and project history. Use this context to:
+You have access to ALL workspace data - team composition, performance metrics, budget, goals, insights, deliverables, project history, AND uploaded documents. Use this context to:
 
 1. **ANALYZE** - Always gather relevant data first using appropriate tools
 2. **REASON** - Apply project management expertise to the situation  
 3. **RECOMMEND** - Provide specific, actionable recommendations
 4. **EXECUTE** - Offer quick actions when appropriate
+
+DOCUMENT AWARENESS:
+- When users ask about uploaded documents, files, or specific content, the system has already searched for relevant documents
+- Use the DOCUMENT SEARCH RESULTS provided in the context to answer questions about document content
+- If document search results are provided, incorporate them into your response
+- You can reference specific documents by name and provide summaries based on search results
 
 RESPONSE STYLE GUIDANCE:
 Query Classification: {query_type}
@@ -1948,6 +1964,85 @@ Use tools to gather additional data for deeper analysis when needed.
         ]
         message_lower = user_message.lower()
         return any(keyword in message_lower for keyword in tools_keywords)
+    
+    def _is_asking_about_documents(self, user_message: str) -> bool:
+        """Check if user is asking about documents or specific files"""
+        document_keywords = [
+            "document",
+            "file",
+            "pdf",
+            "book",
+            "paper",
+            "report",
+            "presentation",
+            "summarize",
+            "summary",
+            "what's in",
+            "content of",
+            "read the",
+            "analyze the",
+            "review the",
+            "uploaded",
+            "knowledge base",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".txt",
+            ".md"
+        ]
+        message_lower = user_message.lower()
+        return any(keyword in message_lower for keyword in document_keywords)
+    
+    async def _search_relevant_documents(self, user_message: str) -> str:
+        """Search for relevant documents based on user query"""
+        try:
+            # Extract potential search terms from the user message
+            # Remove common words to focus on key terms
+            stop_words = {"the", "a", "an", "is", "are", "what", "whats", "in", "of", "and", "or", "but", "for", "to", "from", "about", "summarize", "summary", "please", "can", "you", "show", "me", "tell"}
+            
+            # Clean the message and extract search terms
+            words = user_message.lower().split()
+            search_terms = [word.strip('.,!?') for word in words if word.strip('.,!?') not in stop_words]
+            
+            # If we have specific file mentions, prioritize those
+            file_extensions = [".pdf", ".doc", ".docx", ".txt", ".md"]
+            specific_files = [word for word in words if any(ext in word for ext in file_extensions)]
+            
+            # Construct search query
+            if specific_files:
+                search_query = " ".join(specific_files)
+            else:
+                # Use the most relevant terms
+                search_query = " ".join(search_terms[:5])  # Limit to 5 terms
+            
+            if not search_query:
+                search_query = user_message  # Fallback to full message
+            
+            logger.info(f"🔍 Searching documents with query: {search_query}")
+            
+            # Execute document search
+            from tools.document_tools import document_tools
+            search_tool = document_tools["search_documents"]
+            
+            context = {"workspace_id": self.workspace_id}
+            search_result = await search_tool.execute(
+                query=search_query,
+                max_results=3,  # Limit results to avoid token overflow
+                context=context
+            )
+            
+            # Also list available documents for context
+            list_tool = document_tools["list_documents"]
+            docs_list = await list_tool.execute(context=context)
+            
+            # Combine results
+            combined_results = f"SEARCH RESULTS for '{search_query}':\n{search_result}\n\nAVAILABLE DOCUMENTS:\n{docs_list}"
+            
+            return combined_results
+            
+        except Exception as e:
+            logger.error(f"Document search failed: {e}")
+            return f"Note: Document search encountered an error: {str(e)}. Please ensure documents are properly uploaded to the workspace."
     
     async def _generate_tools_artifact_response(self) -> str:
         """Generate a properly formatted artifact response for available tools"""
