@@ -368,6 +368,82 @@ frontend/src/
     └── agent.ts          # Agent & task types
 ```
 
+### 📊 **Built-in Telemetry & Monitoring**
+
+The AI Team Orchestrator includes **production-ready observability** out-of-the-box. Once you add your OpenAI API key, the system automatically enables comprehensive monitoring:
+
+#### **🔍 OpenAI Tracing Integration**
+- **Automatic Request Tracking**: All OpenAI API calls are traced with performance metrics
+- **Token Usage Monitoring**: Real-time tracking of prompt/completion tokens and costs
+- **Model Performance Analytics**: Response times, success rates, and quality metrics per model
+- **Rate Limit Management**: Built-in monitoring and adaptive throttling for API limits
+
+#### **📈 System Health Dashboard**
+```bash
+# Built-in health monitoring endpoints
+curl localhost:8000/health                    # Overall system status
+curl localhost:8000/api/monitoring/metrics    # Performance metrics
+curl localhost:8000/api/monitoring/costs      # API usage and costs
+curl localhost:8000/api/system-telemetry      # Comprehensive telemetry
+```
+
+#### **🧠 AI Agent Activity Tracking**
+- **Real-time Agent Status**: Monitor which agents are active, thinking, or completing tasks
+- **Task Execution Traces**: Complete visibility into task lifecycle and handoffs  
+- **Quality Gate Monitoring**: Track which sub-agents are triggered and their success rates
+- **Memory System Analytics**: Insights into learning patterns and knowledge retention
+
+#### **⚡ Performance Intelligence**
+```python
+# Automatic performance logging (built-in)
+# No configuration needed - works immediately after API key setup
+
+logger.info(f"🔍 Web search completed in {execution_time:.2f}s")
+logger.info(f"🤖 AI classification confidence: {result.confidence:.2f}")  
+logger.info(f"💰 API cost estimate: ${cost_tracker.current_session}")
+logger.info(f"🧠 Thinking process: {thinking_steps} steps completed")
+```
+
+#### **🎯 Debug Mode Features**
+- **Live Thinking Processes**: Watch AI agents reason through problems step-by-step (Claude/o3 style)
+- **Tool Orchestration Traces**: See exactly which tools are selected and why
+- **Domain Classification Insights**: Understand how the system identifies project domains
+- **Memory Pattern Analysis**: Visualize how the system learns from past projects
+
+#### **🔒 Privacy-First Telemetry**
+- **No External Services**: All telemetry stays within your infrastructure
+- **Configurable Logging**: Fine-tune what gets logged via environment variables
+- **API Key Security**: Telemetry never exposes your API keys or sensitive data
+- **GDPR Compliant**: No personal data collection by default
+
+#### **📊 Production Monitoring Commands**
+```bash
+# System performance check
+python3 backend/check_system_health.py
+
+# View recent API usage and costs
+curl localhost:8000/api/monitoring/usage-summary
+
+# Export telemetry for analysis
+curl localhost:8000/api/system-telemetry/export > telemetry-$(date +%Y%m%d).json
+
+# Monitor thinking processes in real-time
+curl localhost:8000/api/monitoring/thinking-processes/active
+```
+
+#### **⚙️ Telemetry Configuration**
+```bash
+# Optional: Customize monitoring (all enabled by default)
+ENABLE_OPENAI_TRACING=true          # OpenAI API call tracking
+ENABLE_PERFORMANCE_LOGGING=true     # Execution time monitoring  
+ENABLE_COST_TRACKING=true          # API usage cost calculation
+ENABLE_THINKING_TRACE=true         # Real-time reasoning capture
+TELEMETRY_LOG_LEVEL=INFO           # DEBUG, INFO, WARNING, ERROR
+TELEMETRY_EXPORT_INTERVAL=3600     # Export telemetry every hour
+```
+
+**🎉 Zero Configuration Required**: Simply add your `OPENAI_API_KEY` and the system automatically provides enterprise-grade monitoring and debugging capabilities.
+
 ## 🎨 User Experience
 
 ### **Professional Interface Design**
