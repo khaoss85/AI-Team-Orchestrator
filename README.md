@@ -121,12 +121,85 @@ AUTO_REFRESH_INTERVAL=600
 3. Copy the `sk-...` key to your `.env` file
 4. **Important**: Add payment method for usage beyond free tier
 
-#### **Supabase Configuration**
+#### **Supabase Database Setup**
 1. Visit [Supabase Dashboard](https://supabase.com/dashboard)
-2. Create new project (free tier available)
+2. Create new project (free tier available - 500MB database, 2 CPU hours)
 3. Go to **Settings** → **API**
 4. Copy **Project URL** and **anon public** key
 5. Paste both in your `.env` file
+
+## 🗄️ Database Schema Setup
+
+The AI Team Orchestrator uses a sophisticated PostgreSQL schema optimized for AI-driven operations with support for multi-agent coordination, real-time thinking processes, and intelligent deliverable management.
+
+### **🚀 Quick Database Setup**
+
+1. **Create Supabase Project**
+   ```bash
+   # After creating your Supabase project, get your connection details:
+   # Project URL: https://YOUR-PROJECT-ID.supabase.co
+   # API Key: your-anon-public-key
+   ```
+
+2. **Run Complete Production Schema**
+   
+   We provide a complete production-ready database schema that includes all tables, indexes, and optimizations used in our live system.
+
+   **Option A: Using Supabase SQL Editor**
+   1. Open your [Supabase Dashboard](https://supabase.com/dashboard)
+   2. Go to **SQL Editor**
+   3. Copy the contents of [`database-schema.sql`](./database-schema.sql) 
+   4. Execute the complete script
+
+   **Option B: Using CLI (if you have psql)**
+   ```bash
+   # Download and execute the schema file
+   psql -h db.YOUR-PROJECT-ID.supabase.co -p 5432 -d postgres -U postgres -f database-schema.sql
+   ```
+
+   The complete schema includes:
+   - **🏗️ Core Tables**: workspaces, agents, tasks, deliverables, workspace_goals
+   - **🧠 AI Features**: thinking_processes, memory_patterns, learning_insights
+   - **📊 Analytics**: system_health_logs, agent_performance_metrics
+   - **🔧 Performance**: 25+ optimized indexes for AI operations
+   - **🛡️ Security**: Proper foreign keys, constraints, and RLS policies
+
+3. **Verify Setup**
+   ```sql
+   -- Check all tables were created (should return 15+ tables)
+   SELECT table_name FROM information_schema.tables 
+   WHERE table_schema = 'public' 
+   ORDER BY table_name;
+   
+   -- Verify core functionality
+   SELECT 
+     (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') as total_tables,
+     (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public') as total_columns,
+     (SELECT count(*) FROM pg_indexes WHERE schemaname = 'public') as total_indexes;
+   ```
+
+### **⚡ Quick Test**
+
+After setup, test your database connection:
+
+```bash
+# From backend directory
+python -c "
+from database import get_supabase_client
+client = get_supabase_client()
+result = client.table('workspaces').select('count').execute()
+print('✅ Database connected successfully!')
+print(f'Tables accessible: {bool(result.data is not None)}')
+"
+```
+
+### **🔧 Environment Variables**
+
+Make sure your `backend/.env` contains:
+```bash
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-public-key-here
+```
 
 ### 🛡️ **Security Best Practices**
 
