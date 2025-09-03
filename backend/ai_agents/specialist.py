@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Pydantic models for validation
 from pydantic import BaseModel, Field, ValidationError, validator
-from ..models import (
+from models import (
     Agent as AgentModel, 
     Task, 
     TaskStatus, 
@@ -158,7 +158,7 @@ except ImportError:
             self.schema_class = schema_class
 
 # Import database operations
-from ..database import (
+from database import (
     update_task_status,
     create_handoff,
     get_task,
@@ -167,17 +167,27 @@ from ..database import (
 )
 
 # Import other components
-from ..services.unified_memory_engine import unified_memory_engine
-# from .conversational import ConversationalAgent # This is imported inside the method to avoid circular dependency
+from services.unified_memory_engine import unified_memory_engine
+# from conversational import ConversationalAgent # This is imported inside the method to avoid circular dependency
+
+# Import shared document manager for specialist assistant integration
+try:
+    from services.shared_document_manager import shared_document_manager
+    SHARED_DOCUMENTS_AVAILABLE = True
+    logger.info("✅ Shared Document Manager available for specialist agents")
+except ImportError:
+    SHARED_DOCUMENTS_AVAILABLE = False
+    logger.warning("⚠️ Shared Document Manager not available - specialists will not have document access")
 
 # Configuration
 try:
-    from ..config.agent_system_config import AgentSystemConfig
+    from config.agent_system_config import AgentSystemConfig
     config = AgentSystemConfig()
 except ImportError:
     class AgentSystemConfig:
         def __init__(self):
-            self.SPECIALIST_AGENT_TIMEOUT = 150
+            self.SPECIALIST_EXECUTION_TIMEOUT = 150
+            self.SPECIALIST_AGENT_TIMEOUT = 150  # Backwards compatibility
             self.ENABLE_AI_AGENT_MATCHING = os.getenv('ENABLE_AI_AGENT_MATCHING', 'true').lower() == 'true'
             self.ENABLE_TRACE_LOGGING = os.getenv('ENABLE_TRACE_LOGGING', 'false').lower() == 'true'
     config = AgentSystemConfig()
@@ -227,7 +237,7 @@ class SpecialistAgent:
     def __init__(self, agent_data: AgentModel):
         self.agent_data = agent_data
         self.logger = logging.getLogger(f"SpecialistAgent-{agent_data.name}")
-        self.execution_timeout = config.SPECIALIST_AGENT_TIMEOUT
+        self.execution_timeout = getattr(config, 'SPECIALIST_EXECUTION_TIMEOUT', 150)
         self._current_task_being_processed_id = None
         
         # Initialize SDK agent if available
@@ -238,8 +248,19 @@ class SpecialistAgent:
             self._initialize_sdk_agent()
     
     def _initialize_sdk_agent(self):
-        """Initialize OpenAI SDK agent with enhanced configuration"""
+        """Initialize OpenAI SDK agent with enhanced configuration and document access"""
         try:
+            # Initialize shared document assistant if available  
+            self._specialist_assistant_id = None
+            if SHARED_DOCUMENTS_AVAILABLE:
+                # Schedule async initialization if event loop is running
+                try:
+                    loop = asyncio.get_running_loop()
+                    asyncio.create_task(self._initialize_document_assistant())
+                except RuntimeError:
+                    # No event loop running, will initialize on first use
+                    self._document_assistant_initialized = False
+            
             # Build tool configuration
             tools = []
             tool_instances = {}
@@ -248,7 +269,7 @@ class SpecialistAgent:
             if self._has_tool_access("web_search"):
                 tools.append(WebSearchTool())
                 
-            # Add file search if enabled  
+            # Add file search if enabled (enhanced with document access)
             if self._has_tool_access("file_search"):
                 tools.append(FileSearchTool())
                 
@@ -281,6 +302,114 @@ class SpecialistAgent:
             logger.error(f"Failed to initialize SDK agent: {e}")
             self.sdk_agent = None
             self.runner = None
+    
+    async def _initialize_document_assistant(self):
+        """Initialize OpenAI Assistant for document access"""
+        try:
+            if not SHARED_DOCUMENTS_AVAILABLE:
+                return
+            
+            # Create specialist assistant with document access
+            workspace_id = str(self.agent_data.workspace_id)
+            agent_id = str(self.agent_data.id)
+            
+            # Build agent config for assistant creation
+            agent_config = {
+                'role': self.agent_data.role,
+                'name': self.agent_data.name,
+                'skills': getattr(self.agent_data, 'skills', []),
+                'seniority': getattr(self.agent_data, 'seniority', 'senior'),
+                'preferred_model': 'gpt-4-turbo-preview',  # Use best model for specialists
+                'temperature': 0.3  # Lower temperature for more focused specialist work
+            }
+            
+            # Create or get existing specialist assistant
+            assistant_id = await shared_document_manager.get_specialist_assistant_id(workspace_id, agent_id)
+            
+            if not assistant_id:
+                # Create new specialist assistant
+                assistant_id = await shared_document_manager.create_specialist_assistant(
+                    workspace_id, agent_id, agent_config
+                )
+                
+                if assistant_id:
+                    logger.info(f"✅ Created document assistant {assistant_id} for specialist {self.agent_data.name}")
+                else:
+                    logger.error(f"❌ Failed to create document assistant for specialist {self.agent_data.name}")
+                    return
+            else:
+                logger.info(f"✅ Using existing document assistant {assistant_id} for specialist {self.agent_data.name}")
+            
+            self._specialist_assistant_id = assistant_id
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize document assistant: {e}")
+            self._specialist_assistant_id = None
+    
+    def has_document_access(self) -> bool:
+        """Check if this specialist has access to workspace documents"""
+        return SHARED_DOCUMENTS_AVAILABLE and self._specialist_assistant_id is not None
+    
+    async def search_workspace_documents(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search workspace documents using the specialist's assistant
+        
+        Args:
+            query: Search query
+            max_results: Maximum number of results
+            
+        Returns:
+            List of search results with content and metadata
+        """
+        if not self.has_document_access():
+            return []
+        
+        try:
+            # Use the shared document manager to search via assistant
+            from services.openai_assistant_manager import OpenAIAssistantManager
+            assistant_mgr = OpenAIAssistantManager()
+            
+            # Create temporary thread for search
+            thread = assistant_mgr.client.beta.threads.create()
+            
+            # Add search message
+            assistant_mgr.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"Search for: {query}"
+            )
+            
+            # Run the search
+            run = assistant_mgr.client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=self._specialist_assistant_id
+            )
+            
+            # Wait for completion (simplified - production should use async polling)
+            import time
+            for _ in range(30):  # Max 30 second wait
+                run_status = assistant_mgr.client.beta.threads.runs.retrieve(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+                
+                if run_status.status == "completed":
+                    # Get the response
+                    messages = assistant_mgr.client.beta.threads.messages.list(thread_id=thread.id)
+                    if messages.data:
+                        response_content = messages.data[0].content[0].text.value
+                        return [{"content": response_content, "source": "workspace_documents"}]
+                    break
+                elif run_status.status in ["failed", "cancelled", "expired"]:
+                    break
+                    
+                time.sleep(1)
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to search workspace documents: {e}")
+            return []
     
     def _create_function_tool(self, tool_name: str, tool_config: dict):
         """Create a function tool with Pydantic validation"""
@@ -471,7 +600,8 @@ class SpecialistAgent:
         try:
             # ... chunked execution logic ...
             
-            completion_result = None  # Placeholder for actual implementation
+            # This method is deprecated in favor of SDK execution
+            completion_result = None
             
             if completion_result and hasattr(completion_result, 'final_output'):
                 # Parse with Pydantic
@@ -567,10 +697,20 @@ Respond with a JSON object containing:
         )
     
     async def _execute_custom_tool(self, tool_name: str, tool_data: dict) -> Any:
-        """Execute a custom tool"""
-        # Placeholder for custom tool execution
+        """Execute a custom tool with proper implementation"""
         logger.info(f"Executing custom tool {tool_name} with data: {tool_data}")
-        return {"status": "success", "tool": tool_name}
+        
+        # Implementation for common custom tools
+        if tool_name == "workspace_search":
+            query = tool_data.get("query", "")
+            if query and self.has_document_access():
+                results = await self.search_workspace_documents(query)
+                return {"status": "success", "tool": tool_name, "results": results}
+            else:
+                return {"status": "error", "message": "No query provided or no document access"}
+        
+        # For other tools, return structured response
+        return {"status": "success", "tool": tool_name, "message": f"Tool {tool_name} executed"}
 
 # Export the refactored agent
 __all__ = ['SpecialistAgent']

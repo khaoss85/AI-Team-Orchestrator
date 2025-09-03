@@ -1121,6 +1121,10 @@ Use tools to gather additional data for deeper analysis when needed.
                     "force_restart": "boolean - Whether to force restart stuck processes"
                 }
             },
+            "list_available_tools": {
+                "description": "List all tools available to AI agents in the system",
+                "parameters": {}
+            },
             # OpenAI SDK Tools
             "web_search": {
                 "description": "Search the web for current information",
@@ -1441,6 +1445,43 @@ Use tools to gather additional data for deeper analysis when needed.
                 return await self._resume_workspace_operations(
                     force_restart=parameters.get("force_restart", False)
                 )
+            
+            elif tool_name == "list_available_tools":
+                # List all available tools from the tool registry
+                try:
+                    from tools.registry import tool_registry
+                    available_tools = tool_registry.list_tools()
+                    
+                    # Also include conversational tools
+                    conversational_tools = list(self.tools.keys())
+                    
+                    return {
+                        "success": True,
+                        "message": "Available Tools",
+                        "modular_tools": available_tools,
+                        "conversational_tools": conversational_tools,
+                        "total_tools": len(available_tools) + len(conversational_tools),
+                        "formatted": f"""
+🛠️ **Available Tools in the System**
+
+**Modular Agent Tools ({len(available_tools)})**:
+{chr(10).join(f"• {tool}" for tool in available_tools)}
+
+**Conversational Tools ({len(conversational_tools)})**:
+{chr(10).join(f"• /{tool}" for tool in conversational_tools)}
+
+💡 **Usage Tips**:
+- Modular tools are used by AI agents automatically
+- Conversational tools can be accessed via slash commands (/)
+- Type "/" in any chat to see available commands
+                        """
+                    }
+                except Exception as e:
+                    logger.error(f"Error listing tools: {e}")
+                    return {
+                        "success": False,
+                        "message": f"Error listing tools: {str(e)}"
+                    }
                 
             elif tool_name in ["web_search", "code_interpreter", "generate_image", "file_search"]:
                 # Use OpenAI SDK tools with context

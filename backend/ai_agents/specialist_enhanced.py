@@ -52,6 +52,15 @@ from models import Agent as AgentModel, Task, TaskStatus, TaskExecutionOutput, A
 from pydantic import BaseModel
 from typing import Any
 
+# Import shared document manager for specialist assistant integration
+try:
+    from services.shared_document_manager import shared_document_manager
+    SHARED_DOCUMENTS_AVAILABLE = True
+    logger.info("✅ Shared Document Manager available for specialist agents")
+except ImportError:
+    SHARED_DOCUMENTS_AVAILABLE = False
+    logger.warning("⚠️ Shared Document Manager not available - specialists will not have document access")
+
 # Orchestration Context Model remains for now, will be replaced by RunContextWrapper in Phase 3
 class OrchestrationContext(BaseModel):
     workspace_id: str
@@ -80,8 +89,144 @@ class SpecialistAgent:
         # 🧠 AI-DRIVEN: Use SDK native guardrails with AI validation
         self.input_guardrail = self._get_ai_input_guardrail() if SDK_AVAILABLE else None
         self.output_guardrail = self._get_ai_output_guardrail() if SDK_AVAILABLE else None
+        
+        # Initialize document access
+        self._specialist_assistant_id = None
+        if SHARED_DOCUMENTS_AVAILABLE:
+            asyncio.create_task(self._initialize_document_assistant())
 
-    # ... (other methods remain the same) ...
+    async def _initialize_document_assistant(self):
+        """Initialize OpenAI Assistant for document access"""
+        try:
+            if not SHARED_DOCUMENTS_AVAILABLE:
+                return
+            
+            # Create specialist assistant with document access
+            workspace_id = str(self.agent_data.workspace_id)
+            agent_id = str(self.agent_data.id)
+            
+            # Build agent config for assistant creation
+            agent_config = {
+                'role': self.agent_data.role,
+                'name': self.agent_data.name,
+                'skills': getattr(self.agent_data, 'skills', []),
+                'seniority': self.agent_data.seniority,
+                'preferred_model': 'gpt-4-turbo-preview',
+                'temperature': 0.3
+            }
+            
+            # Create or get existing specialist assistant
+            assistant_id = await shared_document_manager.get_specialist_assistant_id(workspace_id, agent_id)
+            
+            if not assistant_id:
+                # Create new specialist assistant
+                assistant_id = await shared_document_manager.create_specialist_assistant(
+                    workspace_id, agent_id, agent_config
+                )
+                
+                if assistant_id:
+                    logger.info(f"✅ Created document assistant {assistant_id} for specialist {self.agent_data.name}")
+                    self._specialist_assistant_id = assistant_id
+                else:
+                    logger.warning(f"Could not create document assistant for specialist {self.agent_data.name}")
+            else:
+                logger.info(f"✅ Retrieved existing assistant {assistant_id} for specialist {self.agent_data.name}")
+                self._specialist_assistant_id = assistant_id
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize document assistant: {e}")
+            self._specialist_assistant_id = None
+    
+    def has_document_access(self) -> bool:
+        """Check if this specialist has access to workspace documents"""
+        return SHARED_DOCUMENTS_AVAILABLE and self._specialist_assistant_id is not None
+    
+    async def search_workspace_documents(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search workspace documents using the specialist's assistant
+        
+        Args:
+            query: Search query
+            max_results: Maximum number of results
+            
+        Returns:
+            List of search results with content and metadata
+        """
+        if not self.has_document_access():
+            return []
+        
+        try:
+            # Use the shared document manager to search via assistant
+            from services.openai_assistant_manager import OpenAIAssistantManager
+            assistant_mgr = OpenAIAssistantManager()
+            
+            # Create temporary thread for search
+            thread = assistant_mgr.client.beta.threads.create()
+            
+            # Add search message
+            assistant_mgr.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"Search for: {query}"
+            )
+            
+            # Run the search
+            run = assistant_mgr.client.beta.threads.runs.create(
+                thread_id=thread.id,
+                assistant_id=self._specialist_assistant_id,
+                tools=[{"type": "file_search"}],
+                tool_resources={
+                    "file_search": {
+                        "max_num_results": max_results
+                    }
+                }
+            )
+            
+            # Wait for completion
+            import time
+            while run.status in ["queued", "in_progress", "requires_action"]:
+                time.sleep(0.5)
+                run = assistant_mgr.client.beta.threads.runs.retrieve(
+                    thread_id=thread.id,
+                    run_id=run.id
+                )
+            
+            if run.status == "completed":
+                # Get messages
+                messages = assistant_mgr.client.beta.threads.messages.list(
+                    thread_id=thread.id
+                )
+                
+                # Extract search results
+                results = []
+                for message in messages:
+                    if message.role == "assistant":
+                        for content in message.content:
+                            if content.type == "text":
+                                # Parse citations if present
+                                annotations = getattr(content.text, 'annotations', [])
+                                for annotation in annotations:
+                                    if annotation.type == "file_citation":
+                                        results.append({
+                                            "content": annotation.text,
+                                            "file_id": annotation.file_citation.file_id,
+                                            "quote": annotation.file_citation.quote
+                                        })
+                                
+                                # Also include the main response
+                                if not results and content.text.value:
+                                    results.append({
+                                        "content": content.text.value,
+                                        "source": "assistant_response"
+                                    })
+                
+                return results[:max_results]
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Failed to search workspace documents: {e}")
+            return []
 
     async def execute(self, task: Task, session: Optional[Any] = None, thinking_process_id: Optional[str] = None) -> TaskExecutionOutput:
         """🧠 AI-DRIVEN Execute task with task classification and proper tool usage"""

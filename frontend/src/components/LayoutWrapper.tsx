@@ -3,6 +3,7 @@
 import React from 'react'
 import { usePathname } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import MinimalFloatingSidebar from '@/components/MinimalFloatingSidebar'
 import Header from '@/components/Header'
 
 interface LayoutWrapperProps {
@@ -12,17 +13,35 @@ interface LayoutWrapperProps {
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname()
   const isConversationPage = pathname?.includes('/conversation')
+  
+  // Feature flag for minimal sidebar (default: false for safety)
+  const useMinimalSidebar = process.env.NEXT_PUBLIC_ENABLE_MINIMAL_SIDEBAR === 'true'
 
   if (isConversationPage) {
-    // Full-height layout for conversational UI
+    // Full-height layout for conversational UI with floating sidebar
     return (
-      <div className="h-screen w-full">
+      <div className="h-screen w-full relative">
+        {useMinimalSidebar && <MinimalFloatingSidebar />}
         {children}
       </div>
     )
   }
 
-  // Standard layout with sidebar and header
+  if (useMinimalSidebar) {
+    // Minimal layout with floating sidebar only
+    return (
+      <div className="min-h-screen bg-gray-50 relative">
+        <MinimalFloatingSidebar />
+        <div className="pl-20"> {/* Offset content for floating sidebar */}
+          <main className="p-4">
+            {children}
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  // Standard layout with sidebar and header (legacy)
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />

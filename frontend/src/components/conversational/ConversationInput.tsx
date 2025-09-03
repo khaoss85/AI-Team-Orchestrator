@@ -128,6 +128,12 @@ export default function ConversationInput({
       title: '🤖 Auto-Complete + Recovery',
       description: 'Complete missing deliverables and recover failed tasks',
       example: 'Autonomous recovery of all workspace issues'
+    },
+    {
+      command: '/list_available_tools',
+      title: '🛠️ List Available Tools',
+      description: 'Show all tools available to AI agents',
+      example: 'Displays modular tools and their capabilities'
     }
   ]
 
