@@ -202,7 +202,7 @@ INSERT INTO workspace_insights (
 ) VALUES (
     gen_random_uuid(),
     'f35639dc-12ae-4720-882d-3e35a70a79b8', -- Replace with actual workspace ID
-    'best_practice',
+    'success_pattern', -- FIXED: Changed from 'best_practice' to comply with check constraint
     'Sistema User Insights Management Operativo',
     'Il sistema di gestione insight utente è ora completamente operativo con tutte le funzionalità di CRUD, audit trail e categorizzazione AI.',
     'technical',

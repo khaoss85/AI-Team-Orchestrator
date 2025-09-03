@@ -18,10 +18,9 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const useMinimalSidebar = process.env.NEXT_PUBLIC_ENABLE_MINIMAL_SIDEBAR === 'true'
 
   if (isConversationPage) {
-    // Full-height layout for conversational UI with floating sidebar
+    // Full-height layout for conversational UI (no sidebar for immersive experience)
     return (
-      <div className="h-screen w-full relative">
-        {useMinimalSidebar && <MinimalFloatingSidebar />}
+      <div className="h-screen w-full">
         {children}
       </div>
     )

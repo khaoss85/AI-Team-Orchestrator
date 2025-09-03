@@ -5,7 +5,8 @@ const ROUTE_REDIRECTS = {
   '/teams': '/projects',
   '/tools': '/projects', 
   '/knowledge': '/projects',
-  '/settings': '/projects'
+  '/settings': '/projects',
+  '/library': '/projects'
 } as const
 
 // Feature flags for gradual rollout
@@ -45,6 +46,7 @@ export const config = {
     '/tools', 
     '/knowledge',
     '/settings',
+    '/library',
     // Don't match API routes or static files
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],

@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, FileText, User } from 'lucide-react'
+import { Home, FolderOpen, User } from 'lucide-react'
 
 interface MinimalSidebarItem {
   icon: React.ComponentType<{ className?: string }>
@@ -24,10 +24,10 @@ const MinimalFloatingSidebar: React.FC = () => {
       ariaLabel: 'Navigate to home dashboard'
     },
     { 
-      icon: FileText, 
-      label: 'Library', 
-      href: '/library', 
-      ariaLabel: 'Open document library and knowledge base'
+      icon: FolderOpen, 
+      label: 'Progetti', 
+      href: '/projects', 
+      ariaLabel: 'Open projects and workspace management'
     },
     { 
       icon: User, 

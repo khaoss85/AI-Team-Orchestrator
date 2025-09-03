@@ -12,6 +12,9 @@ from database import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
+# Availability flag for other modules to check
+SHARED_DOCUMENTS_AVAILABLE = True
+
 class SharedDocumentManager:
     """
     Manages document sharing between conversational assistants and specialist agents

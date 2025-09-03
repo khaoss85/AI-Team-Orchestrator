@@ -24,8 +24,9 @@ export default function NewProjectPage() {
     }
   });
   
-  // Load data from template if present in localStorage
+  // Load data from template or demo example if present in localStorage
   useEffect(() => {
+    // Check for project template first (from suggested projects)
     const templateData = localStorage.getItem('projectTemplate');
     if (templateData) {
       try {
@@ -42,6 +43,20 @@ export default function NewProjectPage() {
         localStorage.removeItem('projectTemplate');
       } catch (e) {
         console.error('Error parsing template data:', e);
+      }
+    } else {
+      // Check for demo example (from homepage)
+      const demoExample = localStorage.getItem('demoExample');
+      if (demoExample) {
+        setFormData(prev => ({
+          ...prev,
+          goal: demoExample,
+          name: `Project: ${demoExample.split(' ').slice(0, 4).join(' ')}...`,
+          description: `AI-generated project based on: ${demoExample}`
+        }));
+        
+        // Remove demo example after use
+        localStorage.removeItem('demoExample');
       }
     }
   }, []);

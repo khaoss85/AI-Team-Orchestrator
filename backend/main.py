@@ -259,7 +259,7 @@ app = FastAPI(
 
 # Configure CORS
 # Allow specific origins for frontend development and production
-origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003,http://localhost:3004,http://localhost:5173,http://localhost:8000,http://localhost:8080").split(",")
 
 # Clean up origins list (remove whitespace and empty strings)
 origins = [origin.strip() for origin in origins if origin.strip()]

@@ -529,34 +529,32 @@ export default function ProjectDeliverableDashboard({
             <h2 className="text-lg font-semibold text-gray-900">Additional Outputs</h2>
             <span className="text-sm text-gray-500">{normalDeliverables.length} items</span>
           </div>
-        </div>
         
-        <div className="space-y-3">
-          {normalDeliverables.map((output) => (
-            <div key={output.task_id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 mb-2">{output.task_name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {output.output.length > 200 ? `${output.output.slice(0, 200)}...` : output.output}
-                  </p>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="text-xs text-gray-500">
-                      {output.agent_name} • {formatDate(output.created_at)}
-                    </span>
-                    <button
-                      onClick={() => openOutputModal(output)}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      View details
-                    </button>
+          <div className="space-y-3">
+            {normalDeliverables.map((output) => (
+              <div key={output.task_id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 mb-2">{output.task_name}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {output.output.length > 200 ? `${output.output.slice(0, 200)}...` : output.output}
+                    </p>
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-xs text-gray-500">
+                        {output.agent_name} • {formatDate(output.created_at)}
+                      </span>
+                      <button
+                        onClick={() => openOutputModal(output)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        View details
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
+            ))}
+          </div>
         </div>
       )}
 
