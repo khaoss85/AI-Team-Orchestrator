@@ -5,23 +5,139 @@ from typing import List, Dict, Any, Optional
 from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 import json
-from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable, delete_deliverable
+from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable, delete_deliverable, get_workspace
 from models import *
 
 router = APIRouter(prefix="/deliverables", tags=["deliverables"])
 logger = logging.getLogger(__name__)
 
+async def enhance_deliverables_with_display_content(deliverables: List[Dict[str, Any]], workspace_id: str) -> List[Dict[str, Any]]:
+    """
+    🎨 Runtime enhancement of deliverables with AI-transformed display content
+    This is a temporary solution until database schema is updated with display_content columns
+    
+    OPTIMIZATION: Process deliverables asynchronously with timeout and limit
+    """
+    try:
+        import asyncio
+        from services.ai_content_display_transformer import transform_deliverable_to_html
+        
+        # Limit the number of deliverables to transform (to prevent timeouts)
+        MAX_TRANSFORM = 3  # Only transform first 3 deliverables per request
+        TRANSFORM_TIMEOUT = 5.0  # 5 second timeout per transformation
+        
+        # Get workspace context for better transformation
+        business_context = {}
+        try:
+            workspace = await get_workspace(workspace_id)
+            if workspace:
+                business_context = {
+                    "company_name": workspace.get("company_name", ""),
+                    "industry": workspace.get("industry", ""),
+                    "workspace_name": workspace.get("name", "")
+                }
+        except Exception as e:
+            logger.warning(f"Could not get workspace context: {e}")
+        
+        # Separate deliverables that need transformation
+        to_transform = []
+        already_enhanced = []
+        
+        for deliverable in deliverables:
+            if deliverable.get('display_content'):
+                already_enhanced.append(deliverable)
+            else:
+                to_transform.append(deliverable)
+        
+        # Limit transformations
+        if len(to_transform) > MAX_TRANSFORM:
+            logger.info(f"⚠️ Limiting transformation to first {MAX_TRANSFORM} of {len(to_transform)} deliverables")
+            remaining = to_transform[MAX_TRANSFORM:]
+            to_transform = to_transform[:MAX_TRANSFORM]
+        else:
+            remaining = []
+        
+        # Transform deliverables asynchronously
+        async def transform_single(deliverable):
+            """Transform a single deliverable with timeout"""
+            try:
+                # Create a copy to avoid modifying original
+                enhanced = deliverable.copy()
+                
+                # Extract content
+                content = enhanced.get('content', {})
+                if isinstance(content, str):
+                    try:
+                        content = json.loads(content)
+                    except json.JSONDecodeError:
+                        content = {"raw_content": content}
+                
+                # Transform with timeout
+                logger.info(f"🎨 Transforming deliverable {enhanced.get('id')} to display format")
+                
+                transformation_result = await asyncio.wait_for(
+                    transform_deliverable_to_html(content, business_context),
+                    timeout=TRANSFORM_TIMEOUT
+                )
+                
+                if transformation_result:
+                    # Add display fields to deliverable
+                    enhanced['display_content'] = transformation_result.transformed_content
+                    enhanced['display_format'] = transformation_result.display_format
+                    enhanced['display_quality_score'] = transformation_result.transformation_confidence / 100.0
+                    enhanced['auto_display_generated'] = True
+                    
+                    logger.info(f"✅ Enhanced deliverable {enhanced.get('id')} with display content (confidence: {transformation_result.transformation_confidence}%)")
+                else:
+                    logger.warning(f"⚠️ Transformation returned no result for deliverable {enhanced.get('id')}")
+                
+                return enhanced
+                
+            except asyncio.TimeoutError:
+                logger.warning(f"⏱️ Transformation timed out for deliverable {deliverable.get('id')}")
+                return deliverable
+            except Exception as e:
+                logger.error(f"❌ Failed to transform deliverable {deliverable.get('id')}: {e}")
+                return deliverable
+        
+        # Process transformations concurrently
+        if to_transform:
+            logger.info(f"🎨 Transforming {len(to_transform)} deliverables concurrently...")
+            transformation_tasks = [transform_single(d) for d in to_transform]
+            transformed = await asyncio.gather(*transformation_tasks, return_exceptions=False)
+        else:
+            transformed = []
+        
+        # Combine all deliverables
+        all_enhanced = already_enhanced + transformed + remaining
+        
+        # Log summary
+        total_with_display = sum(1 for d in all_enhanced if d.get('display_content'))
+        logger.info(f"📊 Enhancement summary: {total_with_display}/{len(all_enhanced)} deliverables have display content")
+        
+        return all_enhanced
+        
+    except Exception as e:
+        logger.error(f"❌ Error enhancing deliverables: {e}")
+        # Return original deliverables if enhancement fails
+        return deliverables
+
 @router.get("/workspace/{workspace_id}")
 async def get_workspace_deliverables(request: Request, workspace_id: str):
-    """Get all deliverables for a workspace"""
+    """Get all deliverables for a workspace with AI-enhanced display content"""
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
     logger.info(f"Route get_workspace_deliverables called for workspace {workspace_id}", endpoint="get_workspace_deliverables", trace_id=trace_id)
     try:
         logger.info(f"Querying deliverables for workspace {workspace_id}...")
         deliverables = await get_deliverables(workspace_id)
-        logger.info(f"Deliverables query completed for workspace {workspace_id}. Found {len(deliverables)} deliverables. Data: {deliverables}")
-        return deliverables
+        logger.info(f"Deliverables query completed for workspace {workspace_id}. Found {len(deliverables)} deliverables.")
+        
+        # 🎨 RUNTIME TRANSFORMATION: Add display_content to deliverables
+        # This is a temporary solution until database schema is updated
+        enhanced_deliverables = await enhance_deliverables_with_display_content(deliverables, workspace_id)
+        
+        return enhanced_deliverables
     except Exception as e:
         logger.error(f"❌ Error fetching deliverables for workspace {workspace_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch deliverables: {str(e)}")
@@ -187,7 +303,7 @@ async def force_finalize_deliverables(workspace_id: str, request: Request):
 
 @router.get("/workspace/{workspace_id}/goal/{goal_id}")
 async def get_goal_deliverables(request: Request, workspace_id: str, goal_id: str):
-    """Get deliverables for a specific goal"""
+    """Get deliverables for a specific goal with AI-enhanced display content"""
     trace_id = get_trace_id(request)
     logger = create_traced_logger(request, __name__)
     logger.info(f"Route get_goal_deliverables called for goal {goal_id}", endpoint="get_goal_deliverables", trace_id=trace_id)
@@ -195,7 +311,11 @@ async def get_goal_deliverables(request: Request, workspace_id: str, goal_id: st
         logger.info(f"Querying deliverables for goal {goal_id} in workspace {workspace_id}...")
         deliverables = await get_deliverables(workspace_id, goal_id=goal_id)
         logger.info(f"Goal deliverables query completed. Found {len(deliverables)} deliverables for goal {goal_id}")
-        return deliverables
+        
+        # 🎨 RUNTIME TRANSFORMATION: Add display_content to deliverables
+        enhanced_deliverables = await enhance_deliverables_with_display_content(deliverables, workspace_id)
+        
+        return enhanced_deliverables
     except Exception as e:
         logger.error(f"❌ Error fetching deliverables for goal {goal_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch goal deliverables: {str(e)}")

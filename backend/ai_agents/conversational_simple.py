@@ -17,17 +17,10 @@ from tools.openai_sdk_tools import openai_tools_manager
 from tools.workspace_service import get_workspace_service
 from ai_agents.enhanced_reasoning import EnhancedReasoningEngine
 
-logger = logging.getLogger(__name__)
+# Import shared conversation response model
+from ai_agents.conversation_models import ConversationResponse
 
-class ConversationResponse(BaseModel):
-    """Structured response from conversational agent"""
-    message: str
-    message_type: str = "text"
-    artifacts: Optional[List[Dict[str, Any]]] = None
-    actions_performed: Optional[List[Dict[str, Any]]] = None
-    needs_confirmation: bool = False
-    confirmation_id: Optional[str] = None
-    suggested_actions: Optional[List[Dict[str, Any]]] = None
+logger = logging.getLogger(__name__)
 
 class SimpleConversationalAgent:
     """
@@ -1182,6 +1175,29 @@ Use tools to gather additional data for deeper analysis when needed.
                     "query": "string - Search query for document content",
                     "max_results": "int - Maximum number of results (default: 5)"
                 }
+            },
+            "search_document_content": {
+                "description": "Search and retrieve actual content from uploaded documents (enhanced RAG)",
+                "parameters": {
+                    "query": "string - Search query for document content",
+                    "max_results": "int - Maximum number of results (default: 3)",
+                    "include_full_text": "bool - Include full extracted text (default: false)"
+                }
+            },
+            "read_document_content": {
+                "description": "Read the full content of a specific document",
+                "parameters": {
+                    "filename": "string - Document filename to read",
+                    "document_id": "string - Alternative: document ID to read"
+                }
+            },
+            "summarize_document": {
+                "description": "Generate an AI summary of document content",
+                "parameters": {
+                    "filename": "string - Document filename to summarize",
+                    "document_id": "string - Alternative: document ID to summarize",
+                    "summary_type": "string - Type of summary: brief/detailed/key_points (default: brief)"
+                }
             }
         }
         return tools
@@ -1440,6 +1456,40 @@ Use tools to gather additional data for deeper analysis when needed.
                         "success": False,
                         "message": f"Error: {result.get('error', 'Unknown error')}"
                     }
+                    
+            elif tool_name in ["search_document_content", "read_document_content", "summarize_document"]:
+                # Use Enhanced RAG tools for content search
+                from tools.enhanced_document_search import enhanced_document_tools
+                
+                tool_instance = enhanced_document_tools[tool_name]
+                
+                # Call the enhanced RAG tool with proper parameters
+                if tool_name == "search_document_content":
+                    result = await tool_instance.execute(
+                        query=parameters.get("query"),
+                        workspace_id=self.workspace_id,
+                        max_results=parameters.get("max_results", 3),
+                        include_full_text=parameters.get("include_full_text", False)
+                    )
+                elif tool_name == "read_document_content":
+                    result = await tool_instance.execute(
+                        document_id=parameters.get("document_id"),
+                        filename=parameters.get("filename"),
+                        workspace_id=self.workspace_id
+                    )
+                elif tool_name == "summarize_document":
+                    result = await tool_instance.execute(
+                        document_id=parameters.get("document_id"),
+                        filename=parameters.get("filename"),
+                        workspace_id=self.workspace_id,
+                        summary_type=parameters.get("summary_type", "brief")
+                    )
+                
+                return {
+                    "success": True,
+                    "message": result,
+                    "action": tool_name
+                }
                     
             elif tool_name in ["upload_document", "list_documents", "delete_document", "search_documents"]:
                 # Use Document Management tools with context
@@ -1994,8 +2044,51 @@ Use tools to gather additional data for deeper analysis when needed.
         return any(keyword in message_lower for keyword in document_keywords)
     
     async def _search_relevant_documents(self, user_message: str) -> str:
-        """Search for relevant documents based on user query"""
+        """Search for relevant documents based on user query - WITH FULL CONTENT RETRIEVAL"""
         try:
+            # First try enhanced content search
+            try:
+                from tools.enhanced_document_search import enhanced_document_tools
+                
+                # Use the enhanced search that retrieves actual content
+                search_tool = enhanced_document_tools["search_document_content"]
+                
+                logger.info(f"🔍 Using ENHANCED document search with CONTENT RETRIEVAL for: {user_message}")
+                
+                # Execute enhanced search
+                search_result = await search_tool.execute(
+                    query=user_message,
+                    workspace_id=self.workspace_id,
+                    max_results=3,
+                    include_full_text=False  # Don't include full text to avoid token overflow
+                )
+                
+                # Check if user is asking for a summary
+                if any(word in user_message.lower() for word in ["summarize", "summary", "riassumi", "riassunto"]):
+                    # Try to find a specific document to summarize
+                    file_extensions = [".pdf", ".doc", ".docx", ".txt", ".md"]
+                    words = user_message.lower().split()
+                    specific_files = [word for word in words if any(ext in word for ext in file_extensions)]
+                    
+                    if specific_files:
+                        summary_tool = enhanced_document_tools["summarize_document"]
+                        summary_result = await summary_tool.execute(
+                            filename=specific_files[0],
+                            workspace_id=self.workspace_id,
+                            summary_type="detailed"
+                        )
+                        
+                        if "❌" not in summary_result:
+                            search_result = f"{search_result}\n\n{summary_result}"
+                
+                return search_result
+                
+            except ImportError:
+                logger.warning("Enhanced document search not available, falling back to basic search")
+                # Fall back to original implementation
+                pass
+            
+            # Fallback: Original implementation
             # Extract potential search terms from the user message
             # Remove common words to focus on key terms
             stop_words = {"the", "a", "an", "is", "are", "what", "whats", "in", "of", "and", "or", "but", "for", "to", "from", "about", "summarize", "summary", "please", "can", "you", "show", "me", "tell"}
@@ -2071,7 +2164,7 @@ Use tools to gather additional data for deeper analysis when needed.
                 project_tools.append(tool_data)
             elif tool_name in ["approve_all_feedback", "fix_workspace_issues", "auto_complete_with_recovery", "analyze_blocking_issues", "resume_workspace_operations"]:
                 execution_tools.append(tool_data)
-            elif tool_name in ["upload_document", "list_documents", "delete_document", "search_documents"]:
+            elif tool_name in ["upload_document", "list_documents", "delete_document", "search_documents", "search_document_content", "read_document_content", "summarize_document"]:
                 document_tools.append(tool_data)
             elif tool_name in ["web_search", "code_interpreter", "generate_image", "file_search"]:
                 openai_tools.append(tool_data)

@@ -737,6 +737,7 @@ async def convert_deliverable_to_asset_artifact(deliverable: dict) -> Optional[d
     1. Processing deliverable content into readable format
     2. Creating corresponding asset_artifact entries
     3. Maintaining compatibility with existing pipeline
+    4. 🎨 NEW: Transforming content to user-friendly display format using AI
     """
     try:
         from models import AssetArtifact
@@ -746,7 +747,7 @@ async def convert_deliverable_to_asset_artifact(deliverable: dict) -> Optional[d
         deliverable_id = deliverable.get('id')
         workspace_id = deliverable.get('workspace_id')
         
-        logger.info(f"🔗 Converting deliverable {deliverable_id} to asset_artifact")
+        logger.info(f"🔗 Converting deliverable {deliverable_id} to asset_artifact with AI display transformation")
         
         # Extract content from deliverable
         content = deliverable.get('content', {})
@@ -759,6 +760,55 @@ async def convert_deliverable_to_asset_artifact(deliverable: dict) -> Optional[d
         # Generate artifact name and type based on deliverable
         deliverable_title = deliverable.get('title', 'Business Asset')
         deliverable_type = deliverable.get('type', 'business_asset')
+        
+        # 🎨 AI CONTENT TRANSFORMATION: Transform raw content to user-friendly display format
+        display_content = None
+        display_format = 'html'
+        display_quality_score = 0.0
+        transformation_status = 'pending'
+        transformation_error = None
+        
+        try:
+            from services.ai_content_display_transformer import transform_deliverable_to_html
+            
+            logger.info(f"🎨 Starting AI content transformation for deliverable {deliverable_id}")
+            
+            # Get business context for better transformation
+            business_context = {}
+            if workspace_id:
+                try:
+                    workspace = await get_workspace(workspace_id)
+                    if workspace:
+                        business_context = {
+                            "company_name": workspace.get("company_name", ""),
+                            "industry": workspace.get("industry", ""),
+                            "workspace_name": workspace.get("name", "")
+                        }
+                except Exception as e:
+                    logger.warning(f"Could not get workspace context: {e}")
+            
+            # Transform to HTML format
+            transformation_result = await transform_deliverable_to_html(content, business_context)
+            
+            if transformation_result:
+                display_content = transformation_result.transformed_content
+                display_format = transformation_result.display_format
+                display_quality_score = transformation_result.transformation_confidence / 100.0  # Convert to 0-1 range
+                transformation_status = 'success'
+                
+                logger.info(f"✅ AI transformation successful for deliverable {deliverable_id}. " + 
+                          f"Confidence: {transformation_result.transformation_confidence}%, " +
+                          f"Processing time: {transformation_result.processing_time}s")
+            else:
+                transformation_status = 'failed'
+                transformation_error = "Transformation returned no result"
+                logger.warning(f"⚠️ AI transformation returned no result for deliverable {deliverable_id}")
+                
+        except Exception as e:
+            transformation_status = 'failed'
+            transformation_error = str(e)
+            logger.error(f"❌ AI content transformation failed for deliverable {deliverable_id}: {e}")
+            # Continue with conversion even if transformation fails - will show raw JSON
         
         # 🚀 DIRECT DB INSERT: Bypass AssetArtifact model to avoid schema conflicts
         # Insert directly with only the fields that exist in the database
@@ -788,11 +838,20 @@ async def convert_deliverable_to_asset_artifact(deliverable: dict) -> Optional[d
             "validation_passed": True,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
+            # 🎨 NEW: AI Display Content Fields
+            "display_content": display_content,
+            "display_format": display_format,
+            "display_quality_score": display_quality_score,
+            "content_transformation_status": transformation_status,
+            "content_transformation_error": transformation_error,
+            "transformation_timestamp": datetime.now().isoformat() if transformation_status == 'success' else None,
+            "auto_display_generated": True if display_content else False,
             "metadata": {
                 "source": "deliverable_conversion", 
                 "original_deliverable_id": deliverable_id,
                 "creation_reasoning": deliverable.get('creation_reasoning', ''),
-                "quality_level": deliverable.get('quality_level', 'good')
+                "quality_level": deliverable.get('quality_level', 'good'),
+                "ai_transformation_applied": transformation_status == 'success'
             }
         }
         

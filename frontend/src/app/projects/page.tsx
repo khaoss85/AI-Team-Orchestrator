@@ -294,15 +294,23 @@ export default function ProjectsPage() {
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       workspace.status === 'active' ? 'bg-green-100 text-green-800' :
                       workspace.status === 'created' ? 'bg-blue-100 text-blue-800' :
+                      workspace.status === 'processing_tasks' ? 'bg-blue-100 text-blue-800' :
                       workspace.status === 'paused' ? 'bg-yellow-100 text-yellow-800' :
                       workspace.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                      'bg-red-100 text-red-800'
+                      workspace.status === 'auto_recovering' ? 'bg-orange-100 text-orange-800' :
+                      workspace.status === 'degraded_mode' ? 'bg-yellow-100 text-yellow-800' :
+                      workspace.status === 'error' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
                       {workspace.status === 'active' ? 'Attivo' :
                        workspace.status === 'created' ? 'Creato' :
+                       workspace.status === 'processing_tasks' ? 'Elaborazione' :
                        workspace.status === 'paused' ? 'In pausa' :
                        workspace.status === 'completed' ? 'Completato' :
-                       'Errore'}
+                       workspace.status === 'auto_recovering' ? 'Recupero automatico' :
+                       workspace.status === 'degraded_mode' ? 'Modalità ridotta' :
+                       workspace.status === 'error' ? 'Errore' :
+                       workspace.status}
                     </span>
                   </div>
                   

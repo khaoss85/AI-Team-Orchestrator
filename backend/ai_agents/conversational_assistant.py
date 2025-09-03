@@ -15,20 +15,10 @@ from database import get_supabase_client
 from services.openai_assistant_manager import assistant_manager, MessageResponse
 from utils.context_manager import get_workspace_context
 
-logger = logging.getLogger(__name__)
+# Import shared conversation response model
+from ai_agents.conversation_models import ConversationResponse
 
-class ConversationResponse(BaseModel):
-    """Structured response from conversational assistant"""
-    message: str
-    message_type: str = "text"
-    artifacts: Optional[List[Dict[str, Any]]] = None
-    actions_performed: Optional[List[Dict[str, Any]]] = None
-    needs_confirmation: bool = False
-    confirmation_id: Optional[str] = None
-    suggested_actions: Optional[List[Dict[str, Any]]] = None
-    citations: Optional[List[Dict[str, Any]]] = None
-    thread_id: Optional[str] = None
-    run_id: Optional[str] = None
+logger = logging.getLogger(__name__)
 
 class ConversationalAssistant:
     """

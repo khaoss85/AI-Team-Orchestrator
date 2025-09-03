@@ -190,7 +190,18 @@ function ViewTab({ active, onClick, label, icon }: ViewTabProps) {
 // Team Overview Tab
 function TeamOverviewTab({ team, teamDimensions }: { team: any[], teamDimensions: any }) {
   const activeMembersCount = team.filter(agent => agent.status === 'active').length
-  const totalSkills = [...new Set(team.flatMap(agent => agent.skills || []))].length
+  
+  // Calculate total unique skills from hard_skills and soft_skills
+  const allSkillNames = team.flatMap(agent => [
+    ...(agent.hard_skills || []).map((skill: any) => 
+      typeof skill === 'object' && skill?.name ? skill.name : skill
+    ),
+    ...(agent.soft_skills || []).map((skill: any) => 
+      typeof skill === 'object' && skill?.name ? skill.name : skill
+    )
+  ]).filter(Boolean)
+  
+  const totalSkills = [...new Set(allSkillNames)].length
   
   return (
     <div className="p-4 space-y-4">
@@ -456,9 +467,25 @@ function TeamMembersTab({
 
 // Team Skills Tab
 function TeamSkillsTab({ team, teamDimensions }: { team: any[], teamDimensions: any }) {
-  const allSkills = team.flatMap(agent => agent.skills || [])
+  // Aggregate all hard and soft skills from all team members
+  const allHardSkills = team.flatMap(agent => 
+    (agent.hard_skills || []).map((skill: any) => 
+      typeof skill === 'object' && skill?.name ? skill.name : skill
+    )
+  ).filter(Boolean)
+  
+  const allSoftSkills = team.flatMap(agent => 
+    (agent.soft_skills || []).map((skill: any) => 
+      typeof skill === 'object' && skill?.name ? skill.name : skill
+    )
+  ).filter(Boolean)
+
+  const allSkills = [...allHardSkills, ...allSoftSkills]
+  
+  // Count skill occurrences
   const skillCounts = allSkills.reduce((acc: Record<string, number>, skill) => {
-    acc[skill] = (acc[skill] || 0) + 1
+    const skillName = typeof skill === 'string' ? skill : 'Unknown'
+    acc[skillName] = (acc[skillName] || 0) + 1
     return acc
   }, {})
 
@@ -466,33 +493,100 @@ function TeamSkillsTab({ team, teamDimensions }: { team: any[], teamDimensions: 
     .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 10)
 
+  // Count hard vs soft skills
+  const hardSkillsCount = allHardSkills.length
+  const softSkillsCount = allSoftSkills.length
+
   return (
-    <div className="p-4 space-y-4">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-3">Detailed Skills Radar</h4>
-        <AgentDetailRadarSection
-          agent={null}
-          teamDimensions={teamDimensions}
-        />
+    <div className="p-4 space-y-6">
+      {/* Skills Overview Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-blue-50 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-blue-600">{hardSkillsCount}</div>
+          <div className="text-sm text-blue-700">Hard Skills</div>
+        </div>
+        <div className="bg-green-50 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-green-600">{softSkillsCount}</div>
+          <div className="text-sm text-green-700">Soft Skills</div>
+        </div>
+        <div className="bg-purple-50 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-purple-600">{Object.keys(skillCounts).length}</div>
+          <div className="text-sm text-purple-700">Unique Skills</div>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <h4 className="font-medium text-gray-900">Top Skills</h4>
-        {topSkills.map(([skill, count]) => (
-          <div key={skill} className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">{skill}</span>
-            <div className="flex items-center space-x-2">
-              <div className="w-20 bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full" 
-                  style={{ width: `${((count as number) / team.length) * 100}%` }}
-                />
-              </div>
-              <span className="text-sm text-gray-600 w-8">{count}</span>
+      {/* Team Skills Radar */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h4 className="font-medium text-gray-900 mb-3">Team Skills Radar</h4>
+        <div className="flex justify-center">
+          <AgentSkillRadarChart
+            skills={teamDimensions}
+            title="Team Combined Skills"
+            size={300}
+            colorScheme="team"
+          />
+        </div>
+        
+        {/* Skills Legend */}
+        {teamDimensions && teamDimensions.length > 0 && (
+          <div className="mt-4">
+            <h5 className="text-sm font-medium text-gray-800 mb-2">Skills Breakdown:</h5>
+            <div className="grid grid-cols-2 gap-2">
+              {teamDimensions.map((dim: any, index: number) => (
+                <div key={index} className="bg-white p-2 rounded border border-gray-200 flex justify-between items-center">
+                  <span className="text-sm font-medium">{dim.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-16 h-2 bg-gray-200 rounded-full">
+                      <div 
+                        className="h-2 bg-purple-600 rounded-full"
+                        style={{ width: `${(dim.value / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">{dim.value}/5</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
       </div>
+
+      {/* Top Skills List */}
+      {topSkills.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 mb-3">Most Common Skills</h4>
+          <div className="space-y-3">
+            {topSkills.map(([skill, count]) => (
+              <div key={skill} className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 font-medium">{skill}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-indigo-600 h-2 rounded-full" 
+                      style={{ width: `${((count as number) / team.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-600 w-8 text-right">{count}</span>
+                  <span className="text-xs text-gray-500">
+                    ({Math.round(((count as number) / team.length) * 100)}%)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No Skills Message */}
+      {topSkills.length === 0 && (
+        <div className="bg-gray-50 p-8 rounded-lg text-center">
+          <div className="text-gray-500">
+            <div className="text-3xl mb-3">🎯</div>
+            <div className="text-lg font-medium mb-2">No Skills Data</div>
+            <div className="text-sm">Team members need skills data to display the skills overview.</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

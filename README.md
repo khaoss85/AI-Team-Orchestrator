@@ -36,9 +36,12 @@
 - **Professional Output**: Raw JSON → Business-ready documents via AI transformation
 
 ### 📚 **Advanced RAG & Document Intelligence**
+- **OpenAI Assistants API**: Native RAG functionality with OpenAI's vector search and file_search tools
 - **Document Upload & Processing**: Upload PDFs, docs, and files for agent-specific or team-wide knowledge
-- **Intelligent RAG Pipeline**: Contextual retrieval-augmented generation with semantic search
+- **Vector Store Integration**: Automatic workspace-specific vector stores for semantic document search
+- **Citation & References**: Automatic extraction of document quotes and source references in AI responses
 - **Agent-Specific Knowledge**: Assign domain documents to specialized agents for expert reasoning
+- **Thread Persistence**: Conversation context maintained across sessions with document memory
 - **MCP Integration Ready**: Model Context Protocol support for advanced tool and knowledge connectivity
 - **Multi-Modal Understanding**: Process text, images, and structured data within agent workflows
 
@@ -86,6 +89,12 @@ Copy `backend/.env.example` and fill in your credentials:
 OPENAI_API_KEY=sk-your-openai-api-key-here
 SUPABASE_URL=https://your-project-id.supabase.co  
 SUPABASE_KEY=your-supabase-anon-public-key
+
+# 📚 OpenAI Assistants API (RAG)
+USE_OPENAI_ASSISTANTS=true                    # Enable native OpenAI Assistants for RAG
+OPENAI_ASSISTANT_MODEL=gpt-4-turbo-preview    # Model for assistants (optional)
+OPENAI_ASSISTANT_TEMPERATURE=0.7              # Response temperature (optional)
+OPENAI_FILE_SEARCH_MAX_RESULTS=10             # Max search results (optional)
 
 # 🎯 Goal-Driven System (Core Features)
 ENABLE_GOAL_DRIVEN_SYSTEM=true

@@ -161,6 +161,26 @@ class AutonomousTaskRecovery:
             retry_count = task.get('retry_count', 0)
             
             # AI logic for strategy selection
+            
+            # Guardrail failures need alternative approach or different agent
+            if any(keyword in error_message for keyword in ['guardrail', 'tripwire', 'validation', 'quality']):
+                logger.info(f"🛡️ Guardrail failure detected - selecting recovery strategy based on retry count")
+                if retry_count == 0:
+                    # First attempt: try with a more experienced agent
+                    return RecoveryStrategy.RETRY_WITH_DIFFERENT_AGENT
+                elif retry_count == 1:
+                    # Second attempt: use alternative approach
+                    return RecoveryStrategy.ALTERNATIVE_APPROACH
+                else:
+                    # Third+ attempt: decompose the task
+                    return RecoveryStrategy.DECOMPOSE_INTO_SUBTASKS
+            
+            # Output quality issues
+            if 'content seems short' in error_message or 'empty' in error_message:
+                logger.info(f"📝 Empty/short content detected - will retry with enhanced instructions")
+                return RecoveryStrategy.ALTERNATIVE_APPROACH
+            
+            # Standard recovery logic
             if 'timeout' in error_message or 'connection' in error_message:
                 return RecoveryStrategy.RETRY_WITH_DELAY
             elif 'context' in error_message or 'missing' in error_message:

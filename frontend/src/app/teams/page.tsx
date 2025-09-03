@@ -99,7 +99,11 @@ export default function TeamsPage() {
     switch(status) {
       case 'active': return 'bg-green-100 text-green-800';
       case 'created': return 'bg-blue-100 text-blue-800';
+      case 'processing_tasks': return 'bg-blue-100 text-blue-800';
       case 'paused': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'auto_recovering': return 'bg-orange-100 text-orange-800';
+      case 'degraded_mode': return 'bg-yellow-100 text-yellow-800';
       case 'error': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -150,9 +154,13 @@ export default function TeamsPage() {
                     <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(workspace.status)}`}>
                       {workspace.status === 'active' ? 'Attivo' : 
                        workspace.status === 'created' ? 'Creato' : 
+                       workspace.status === 'processing_tasks' ? 'Elaborazione' :
                        workspace.status === 'paused' ? 'In pausa' : 
                        workspace.status === 'completed' ? 'Completato' : 
-                       'Errore'}
+                       workspace.status === 'auto_recovering' ? 'Recupero automatico' :
+                       workspace.status === 'degraded_mode' ? 'Modalità ridotta' :
+                       workspace.status === 'error' ? 'Errore' :
+                       workspace.status}
                     </span>
                   </div>
                   

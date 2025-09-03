@@ -18,11 +18,12 @@ from models import Workspace
 
 logger = logging.getLogger(__name__)
 
-# Use simple AI-driven conversational agent for reliable functionality
+# Use factory pattern to select appropriate conversational agent
 try:
-    from ai_agents.conversational_simple import SimpleConversationalAgent as ConversationalAgent, ConversationResponse
-    CONVERSATIONAL_AI_TYPE = "simple"  
-    logger.info("✅ AI-driven ConversationalAgent loaded (simple version)")
+    from ai_agents.conversational_factory import create_and_initialize_agent
+    from ai_agents.conversation_models import ConversationResponse  # Use shared response model
+    CONVERSATIONAL_AI_TYPE = "factory"  
+    logger.info("✅ Conversational Factory loaded - will select appropriate agent based on configuration")
 except ImportError as e:
     logger.error(f"No conversational AI available: {e}")
     CONVERSATIONAL_AI_TYPE = "fallback"
@@ -115,8 +116,12 @@ async def send_chat_message(
     start_time = datetime.now()
     
     try:
-        # Initialize conversational agent for this workspace and chat
-        agent = ConversationalAgent(workspace_id, request.chat_id)
+        # Use factory to get appropriate agent (SimpleConversationalAgent or ConversationalAssistant)
+        if CONVERSATIONAL_AI_TYPE == "factory":
+            agent = await create_and_initialize_agent(workspace_id, request.chat_id)
+        else:
+            # Fallback if factory not available
+            agent = ConversationalAgent(workspace_id, request.chat_id)
         
         # Process the message
         response = await agent.process_message(
@@ -152,8 +157,11 @@ async def send_chat_message_with_thinking(
     start_time = datetime.now()
     
     try:
-        # Initialize conversational agent
-        agent = ConversationalAgent(workspace_id, request.chat_id)
+        # Use factory to get appropriate agent
+        if CONVERSATIONAL_AI_TYPE == "factory":
+            agent = await create_and_initialize_agent(workspace_id, request.chat_id)
+        else:
+            agent = ConversationalAgent(workspace_id, request.chat_id)
         
         # Store thinking steps for response
         thinking_steps = []
@@ -263,8 +271,12 @@ async def execute_suggested_action(
             raise HTTPException(status_code=400, detail="Tool name is required")
         
         # Initialize agent to use tool execution
-        from ai_agents.conversational_simple import SimpleConversationalAgent
-        agent = SimpleConversationalAgent(workspace_id, chat_id)
+        # Use factory if available, otherwise use simple agent
+        if CONVERSATIONAL_AI_TYPE == "factory":
+            agent = await create_and_initialize_agent(workspace_id, chat_id)
+        else:
+            from ai_agents.conversational_simple import SimpleConversationalAgent
+            agent = SimpleConversationalAgent(workspace_id, chat_id)
         await agent._load_context()
         
         # Execute the tool directly to get the full result dict
@@ -525,8 +537,11 @@ async def get_conversation_context(request: Request, workspace_id: str, chat_id:
     """
     try:
         if CONVERSATIONAL_AI_AVAILABLE:
-            # Initialize agent to load context (full version)
-            agent = ConversationalAgent(workspace_id, chat_id)
+            # Use factory to get appropriate agent
+            if CONVERSATIONAL_AI_TYPE == "factory":
+                agent = await create_and_initialize_agent(workspace_id, chat_id)
+            else:
+                agent = ConversationalAgent(workspace_id, chat_id)
             await agent._load_context()
             
             if not agent.context:
@@ -617,8 +632,11 @@ async def websocket_chat(websocket: WebSocket, workspace_id: str, chat_id: str =
     await websocket.accept()
     
     try:
-        # Initialize agent
-        agent = ConversationalAgent(workspace_id, chat_id)
+        # Use factory to get appropriate agent for websocket
+        if CONVERSATIONAL_AI_TYPE == "factory":
+            agent = await create_and_initialize_agent(workspace_id, chat_id)
+        else:
+            agent = ConversationalAgent(workspace_id, chat_id)
         
         logger.info(f"WebSocket chat connected for workspace {workspace_id}, chat {chat_id}")
         
@@ -932,6 +950,18 @@ async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[st
                 limit=10
             )
             discoveries_response = await workspace_memory.query_insights(UUID(workspace_id), discoveries_query)
+            
+            # Check if workspace memory returned meaningful insights
+            total_workspace_insights = (
+                len(discoveries_response.insights) + 
+                len(best_practices_response.insights) + 
+                len(learnings_response.insights)
+            )
+            
+            # If workspace memory has no insights, force fallback to deliverables
+            if total_workspace_insights == 0 and summary.total_insights == 0:
+                logger.info(f"Workspace memory returned empty insights, falling back to deliverables for workspace {workspace_id}")
+                raise ImportError("Empty workspace memory results - forcing deliverables fallback")
             
             return {
                 "workspace_id": workspace_id,

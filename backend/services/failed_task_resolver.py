@@ -231,6 +231,11 @@ class FailedTaskResolver:
             if any(keyword in error_lower for keyword in ['timeout', 'connection', 'rate_limit']):
                 return True
             
+            # Guardrail failures should be immediately retried with different approach
+            if any(keyword in error_lower for keyword in ['guardrail', 'tripwire', 'validation']):
+                logger.info(f"🛡️ Guardrail failure detected for task {task.get('id')} - triggering immediate recovery")
+                return True
+            
             if 'agent' in error_lower and retry_count < 2:
                 return True
             

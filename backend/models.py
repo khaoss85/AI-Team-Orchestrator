@@ -1164,6 +1164,217 @@ class MigrationStatus(BaseModel):
     recent_errors: List[str] = Field(default_factory=list)
     retry_queue: List[UUID] = Field(default_factory=list)
 
+# --- PDF CONTENT EXTRACTION MODELS ---
+
+class DocumentContentExtraction(BaseModel):
+    """Model for PDF content extraction data matching database schema"""
+    # Core document fields
+    id: Optional[UUID] = Field(default_factory=uuid4)
+    workspace_id: UUID
+    filename: str
+    file_size: int
+    mime_type: str
+    upload_date: datetime = Field(default_factory=datetime.now)
+    uploaded_by: str  # 'chat' or agent_id
+    sharing_scope: str  # 'team' or specific agent_id
+    
+    # OpenAI integration fields
+    vector_store_id: Optional[str] = None
+    openai_file_id: Optional[str] = None
+    
+    # Metadata fields
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    file_hash: Optional[str] = None
+    
+    # PDF CONTENT EXTRACTION FIELDS (New from migration)
+    extracted_text: Optional[str] = None
+    text_chunks: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    extraction_confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
+    extraction_timestamp: Optional[datetime] = None
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+    @property
+    def has_extracted_content(self) -> bool:
+        """Check if document has extracted content available"""
+        return bool(self.extracted_text and self.extracted_text.strip())
+    
+    @property
+    def content_length(self) -> int:
+        """Get length of extracted content"""
+        return len(self.extracted_text) if self.extracted_text else 0
+    
+    @property
+    def confidence_level(self) -> str:
+        """Get human-readable confidence level"""
+        if not self.extraction_confidence:
+            return 'unknown'
+        if self.extraction_confidence >= 0.9:
+            return 'high'
+        elif self.extraction_confidence >= 0.7:
+            return 'medium'
+        elif self.extraction_confidence >= 0.5:
+            return 'low'
+        else:
+            return 'very_low'
+    
+    @property
+    def chunk_count(self) -> int:
+        """Get number of text chunks"""
+        return len(self.text_chunks) if self.text_chunks else 0
+
+class DocumentContentExtractionCreate(BaseModel):
+    """Model for creating document with content extraction"""
+    workspace_id: UUID
+    filename: str
+    file_size: int
+    mime_type: str
+    uploaded_by: str
+    sharing_scope: str = "team"
+    
+    # Optional fields
+    vector_store_id: Optional[str] = None
+    openai_file_id: Optional[str] = None
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    file_hash: Optional[str] = None
+    
+    # Content extraction fields
+    extracted_text: Optional[str] = None
+    text_chunks: Optional[List[Dict[str, Any]]] = None
+    extraction_confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
+
+class DocumentContentUpdate(BaseModel):
+    """Model for updating document content extraction"""
+    extracted_text: Optional[str] = None
+    text_chunks: Optional[List[Dict[str, Any]]] = None
+    extraction_confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
+    extraction_timestamp: Optional[datetime] = Field(default_factory=datetime.now)
+    
+    # Allow updating other fields too
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class DocumentSearchQuery(BaseModel):
+    """Model for document content search queries"""
+    query: str
+    workspace_id: UUID
+    
+    # Search options
+    include_content: bool = True
+    min_confidence: float = 0.0
+    max_results: int = 10
+    search_method: str = "fulltext"  # fulltext, semantic, hybrid
+    
+    # Filtering options
+    mime_types: Optional[List[str]] = None
+    uploaded_by: Optional[str] = None
+    sharing_scope: Optional[str] = None
+    date_from: Optional[datetime] = None
+    date_to: Optional[datetime] = None
+
+class DocumentSearchResult(BaseModel):
+    """Model for document search results"""
+    document_id: UUID
+    filename: str
+    relevance_score: float
+    
+    # Content snippets
+    content_snippets: List[str] = Field(default_factory=list)
+    matched_chunks: List[Dict[str, Any]] = Field(default_factory=list)
+    
+    # Document metadata
+    mime_type: str
+    file_size: int
+    extraction_confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
+    upload_date: datetime
+    
+    # Context information
+    total_matches: int = 0
+    search_method_used: str = "fulltext"
+
+class ContentExtractionStatus(BaseModel):
+    """Model for content extraction process status"""
+    document_id: UUID
+    status: str  # pending, processing, completed, failed
+    
+    # Progress tracking
+    progress_percentage: float = 0.0
+    current_step: Optional[str] = None
+    estimated_completion: Optional[datetime] = None
+    
+    # Results
+    extraction_confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
+    content_length: int = 0
+    chunk_count: int = 0
+    
+    # Error handling
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    max_retries: int = 3
+    
+    # Timestamps
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = None
+    last_updated: datetime = Field(default_factory=datetime.now)
+
+class RAGDocumentResponse(BaseModel):
+    """Model for RAG system document responses"""
+    documents: List[DocumentContentExtraction]
+    total_found: int
+    search_query: str
+    
+    # Search metadata
+    search_time_ms: int = 0
+    search_method: str = "fulltext"
+    filters_applied: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Content quality
+    avg_confidence: float = 0.0
+    content_available_count: int = 0
+    
+    # Pagination
+    page: int = 1
+    page_size: int = 20
+    has_more: bool = False
+
+# --- CONTENT EXTRACTION ENUMS ---
+
+class ExtractionMethod(str, Enum):
+    """Supported PDF content extraction methods"""
+    PYMUPDF = "pymupdf"
+    PDFPLUMBER = "pdfplumber"  
+    PYPDF2 = "pypdf2"
+    OPENAI_VISION = "openai_vision"
+    MANUAL_UPLOAD = "manual_upload"
+    FALLBACK = "fallback"
+
+class ExtractionStatus(str, Enum):
+    """Content extraction process status"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+class DocumentMimeType(str, Enum):
+    """Supported document MIME types for content extraction"""
+    PDF = "application/pdf"
+    DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    DOC = "application/msword"
+    TXT = "text/plain"
+    RTF = "application/rtf"
+    
 # Helper function for backward compatibility
 async def create_model_with_harmonization(model_class, data_dict):
     """Create a model instance with data harmonization"""

@@ -104,7 +104,10 @@ Create `backend/.env` with:
 
 ### OpenAI Assistants API Configuration (RAG)
 - `USE_OPENAI_ASSISTANTS=true` - Enable native OpenAI Assistants API for RAG functionality
-- `OPENAI_ASSISTANT_MODEL=gpt-4-turbo-preview` - Model for OpenAI Assistants
+- `OPENAI_ASSISTANT_MODEL=gpt-4-turbo-preview` - Model for OpenAI Assistants (default)
+- `OPENAI_ASSISTANT_TEMPERATURE=0.7` - Temperature setting for assistant responses
+- `OPENAI_ASSISTANT_MAX_TOKENS=4096` - Maximum tokens per assistant response
+- `OPENAI_FILE_SEARCH_MAX_RESULTS=10` - Maximum results returned by file search tool
 
 ### Asset & Deliverable Configuration
 - `USE_ASSET_FIRST_DELIVERABLE=true` - Enable asset-oriented output generation
@@ -1126,6 +1129,13 @@ All API endpoints are mounted with the `/api` prefix. Key endpoints include:
 - **Assets**: `/api/unified-assets/` - Asset generation and retrieval
 - **Deliverables**: `/api/deliverables/workspace/{workspace_id}` - Project deliverables and outputs
 
+### OpenAI Assistants & RAG Services
+- **Conversations**: `/api/conversation/workspaces/{workspace_id}/chat` - OpenAI Assistants-powered chat
+- **Document Upload**: `/api/documents/{workspace_id}/upload` - File upload with vector search indexing
+- **Document Management**: `/api/documents/{workspace_id}` - Document CRUD operations
+- **Vector Stores**: `/api/documents/{workspace_id}/vector-stores` - OpenAI vector store management
+- **Chat History**: `/api/conversation/workspaces/{workspace_id}/history` - Conversation persistence
+
 ### Specialized Services  
 - **Director**: `/api/director/` - Team composition and proposals
 - **Monitoring**: `/api/monitoring/` - System health and metrics
@@ -1804,49 +1814,174 @@ When adding new tools to the system, ensure you update these locations:
 ## 📚 OpenAI Assistants API RAG Implementation
 
 ### Overview
-The system now uses **native OpenAI Assistants API** for RAG functionality, replacing custom implementations with native SDK calls. This ensures better reliability, security, and future compatibility.
+The system now uses **native OpenAI Assistants API** for RAG functionality, replacing custom implementations with native SDK calls. This ensures better reliability, security, and future compatibility with full document upload and semantic search capabilities.
 
-### Key Components
+### Architecture Components
 
-#### **Native Implementation**
-- **OpenAI Assistant Manager** (`backend/services/openai_assistant_manager.py`) - Manages assistant lifecycle, threads, and runs
-- **Conversational Assistant** (`backend/ai_agents/conversational_assistant.py`) - Native RAG agent using Assistants API
-- **Factory Pattern** (`backend/ai_agents/conversational_factory.py`) - Seamless switching between implementations
+#### **Core Services**
+- **OpenAI Assistant Manager** (`backend/services/openai_assistant_manager.py`) - Complete lifecycle management for assistants, threads, and runs
+- **Conversational Assistant** (`backend/ai_agents/conversational_assistant.py`) - Native RAG agent with thinking process integration
+- **Factory Pattern** (`backend/ai_agents/conversational_factory.py`) - Seamless switching between SimpleAgent and OpenAI Assistants
+- **Document Manager** (`backend/services/document_manager.py`) - Native document upload with vector store integration
 
-#### **SDK Compliance**
-- ✅ **100% Native SDK**: All OpenAI operations use `openai` library methods
-- ✅ **No Custom HTTP**: Removed `requests` library for OpenAI API calls  
-- ✅ **Vector Store Operations**: `beta.vector_stores.create()`, `beta.vector_stores.files.create()`
-- ✅ **File Management**: `files.create()`, `files.delete()` with proper SDK patterns
+#### **Frontend Integration**
+- **Documents Panel** (`frontend/src/components/conversational/DocumentsSection.tsx`) - Document management UI in artifacts panel (not replacing conversation tab)
+- **Upload Integration** - File upload functionality with progress tracking and metadata collection
+- **RAG Chat Interface** - Enhanced conversational interface with document search capabilities
+- **Citation Display** - Automatic display of document references and quotes in responses
 
-#### **Database Schema**
+#### **SDK Compliance & Native Implementation**
+- ✅ **100% Native SDK**: All OpenAI operations use `openai` library methods exclusively
+- ✅ **No Custom HTTP**: Zero `requests` library usage for OpenAI API calls  
+- ✅ **Vector Store Operations**: `client.beta.vector_stores.create()`, `client.beta.vector_stores.files.create()`
+- ✅ **File Management**: `client.files.create()`, `client.files.delete()` with proper error handling
+- ✅ **Thread Management**: `client.beta.threads.create()`, `client.beta.threads.messages.create()`
+- ✅ **Run Execution**: `client.beta.threads.runs.create()` with full status polling
+
+### Database Schema
+
+#### **Complete Schema Implementation**
 ```sql
--- New table for OpenAI Assistants support
+-- Migration 018: OpenAI Assistants support
 CREATE TABLE workspace_assistants (
     workspace_id UUID PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
     assistant_id VARCHAR(255) NOT NULL,
     thread_id VARCHAR(255),
     vector_store_ids JSONB DEFAULT '[]'::jsonb,
-    configuration JSONB DEFAULT '{}'::jsonb
+    configuration JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_workspace_assistants_assistant_id ON workspace_assistants(assistant_id);
+CREATE INDEX idx_workspace_assistants_thread_id ON workspace_assistants(thread_id);
+
+-- Document storage integration (Migration 008)
+CREATE TABLE workspace_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    mime_type TEXT NOT NULL,
+    upload_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    uploaded_by TEXT NOT NULL, -- 'chat' or agent_id
+    sharing_scope TEXT NOT NULL, -- 'team' or specific agent_id
+    vector_store_id TEXT, -- OpenAI vector store ID
+    openai_file_id TEXT, -- OpenAI file ID
+    description TEXT,
+    tags TEXT[] DEFAULT '{}',
+    file_hash TEXT -- SHA256 hash for deduplication
+);
+
+-- Vector stores tracking (Migration 008)
+CREATE TABLE workspace_vector_stores (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+    openai_vector_store_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    scope TEXT NOT NULL, -- 'team' or specific agent_id
+    file_count INTEGER DEFAULT 0
 );
 ```
 
-#### **Migration and Fallback**
-- **Graceful Migration**: Set `USE_OPENAI_ASSISTANTS=true` to enable native implementation
+### RAG Functionality Features
+
+#### **Document Processing Pipeline**
+1. **File Upload**: Supports PDF, DOC, DOCX, TXT, images, and more
+2. **Vector Store Creation**: Automatic workspace-specific vector stores
+3. **Semantic Indexing**: OpenAI handles document chunking and vectorization
+4. **Search Integration**: Native file_search tool integration in assistants
+
+#### **Conversation Features**
+1. **Persistent Threads**: Conversation context maintained across messages
+2. **Document Citations**: Automatic extraction of file references and quotes
+3. **Semantic Search**: Natural language queries against uploaded documents
+4. **Tool Integration**: Built-in file_search and code_interpreter tools
+5. **Thinking Process**: Integration with thinking process visualization
+
+#### **UI Architecture Changes**
+- **Documents in Artifacts Panel**: Upload and manage documents within the artifacts panel, maintaining clean conversation interface
+- **Not Replacing Conversation Tab**: Documents complement conversation, don't replace it
+- **Progressive Enhancement**: Documents panel appears when files are uploaded
+- **Integrated Search**: Search functionality within the documents interface
+
+### Configuration & Environment
+
+#### **Required Environment Variables**
+```bash
+# Core OpenAI integration
+OPENAI_API_KEY=sk-proj-...                    # Required for all OpenAI operations
+USE_OPENAI_ASSISTANTS=true                    # Enable native Assistants API
+
+# Assistant configuration
+OPENAI_ASSISTANT_MODEL=gpt-4-turbo-preview    # Default model for assistants
+OPENAI_ASSISTANT_TEMPERATURE=0.7              # Response temperature
+OPENAI_ASSISTANT_MAX_TOKENS=4096              # Maximum response tokens
+OPENAI_FILE_SEARCH_MAX_RESULTS=10             # Search results limit
+```
+
+#### **Graceful Migration & Fallback**
+- **Environment Flag**: Set `USE_OPENAI_ASSISTANTS=true` to enable native implementation
 - **Automatic Fallback**: Falls back to `SimpleConversationalAgent` if Assistants API fails
 - **Zero Downtime**: Factory pattern ensures seamless switching during deployment
+- **Error Handling**: Comprehensive error handling with graceful degradation
 
-### Benefits Achieved
-- **True Semantic Search**: Documents are searchable through OpenAI's native vector search
-- **Document Citations**: Automatic citation extraction from search results
-- **Persistent Context**: Conversation threads maintain context across messages  
-- **Reduced Complexity**: No custom HTTP handling or error management needed
+### Production Benefits Achieved
+
+#### **RAG Capabilities**
+- **True Semantic Search**: Documents searchable through OpenAI's native vector search
+- **Document Citations**: Automatic citation extraction with file names and quotes
+- **Persistent Context**: Conversation threads maintain context across sessions
+- **Multi-Format Support**: PDF, Word, text, images, and code files
+- **Contextual Responses**: AI responses incorporate document knowledge seamlessly
+
+#### **Technical Benefits**
+- **Reduced Complexity**: No custom HTTP handling or vector database management
 - **Future-Proof**: Automatic updates with OpenAI SDK improvements
+- **Better Performance**: Native OpenAI infrastructure for vector operations
+- **Enhanced Security**: No custom vector storage, leverages OpenAI's secure infrastructure
+- **Scalability**: OpenAI handles all vector storage and search scaling
 
-### Testing
-- **Integration Tests**: `test_openai_assistants_integration.py` - Full RAG functionality test
-- **SDK Compliance**: `test_simple_rag_fallback.py` - Verify native SDK usage
-- **Fallback Testing**: Factory pattern automatically switches implementations
+### Testing & Verification
+
+#### **Integration Tests**
+- **`test_openai_assistants_integration.py`** - Full RAG functionality test with real documents
+- **`test_simple_rag_fallback.py`** - Verify native SDK usage and fallback behavior
+- **Factory Pattern Tests** - Automatic implementation switching verification
+
+#### **Production Readiness Checklist**
+- ✅ Native SDK implementation throughout
+- ✅ Complete document upload and management
+- ✅ Vector store integration and management  
+- ✅ Thread persistence and conversation history
+- ✅ Citation extraction and display
+- ✅ Error handling and fallback systems
+- ✅ Frontend UI integration complete
+- ✅ Database migration and schema ready
+
+### Usage Examples
+
+#### **Enable OpenAI Assistants**
+```bash
+# Set in backend/.env
+USE_OPENAI_ASSISTANTS=true
+OPENAI_API_KEY=sk-proj-your-key-here
+```
+
+#### **Upload Document via API**
+```bash
+curl -X POST "localhost:8000/api/documents/{workspace_id}/upload" \
+  -H "Content-Type: application/json" \
+  -d '{"file_data":"base64_encoded_content","filename":"document.pdf"}'
+```
+
+#### **Chat with RAG**
+```bash
+curl -X POST "localhost:8000/api/conversation/workspaces/{workspace_id}/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"What does the uploaded document say about project requirements?"}'
+```
 
 ## Key Files
 - `backend/main.py`: FastAPI app entry point
@@ -1858,11 +1993,13 @@ CREATE TABLE workspace_assistants (
 - `frontend/src/components/conversational/ConversationInput.tsx`: Slash command implementation
 
 ### OpenAI Assistants RAG Files
-- `backend/services/openai_assistant_manager.py`: Native OpenAI Assistants API manager
-- `backend/ai_agents/conversational_assistant.py`: RAG agent using native Assistants API
-- `backend/ai_agents/conversational_factory.py`: Factory for agent implementation switching
-- `backend/services/document_manager.py`: Document upload and vector store management (SDK native)
-- `backend/migrations/018_add_openai_assistants_support.sql`: Database schema for assistants
+- **`backend/services/openai_assistant_manager.py`**: Complete OpenAI Assistants API lifecycle manager
+- **`backend/ai_agents/conversational_assistant.py`**: Production RAG agent with thinking process integration  
+- **`backend/ai_agents/conversational_factory.py`**: Factory pattern for seamless SimpleAgent/Assistant switching
+- **`backend/services/document_manager.py`**: Native document upload with OpenAI vector store integration
+- **`backend/migrations/018_add_openai_assistants_support.sql`**: Database schema for workspace_assistants table
+- **`backend/test_openai_assistants_integration.py`**: Full integration test suite for RAG functionality
+- **`frontend/src/components/conversational/DocumentsSection.tsx`**: Document management UI in artifacts panel
 - # Guiding Principles (Project Memory)
 - Rileva lingua utente e rispondi coerentemente (IT/EN/…).
 - Evita hard-coding; usa config/env e SDK ufficiali dove esistono (Agents SDK/OpenAI).

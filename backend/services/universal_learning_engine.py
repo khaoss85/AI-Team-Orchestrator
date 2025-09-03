@@ -498,9 +498,22 @@ class UniversalLearningEngine:
             
             actionable_learnings = []
             for insight in insights:
-                if insight.get('insight_type') in ['universal_business_learning', 'business_learning']:
+                # Handle both 'insight_type' and 'type' field names for compatibility
+                insight_type = insight.get('insight_type') or insight.get('type')
+                
+                # Check if this is an insight type context
+                if insight_type == 'insight':
                     try:
-                        content = json.loads(insight.get('content', '{}'))
+                        content = insight.get('content', {})
+                        # Handle content that might be string or dict
+                        if isinstance(content, str):
+                            content = json.loads(content)
+                        
+                        # Extract the actual insight content
+                        if 'insight_content' in content:
+                            insight_content = content.get('insight_content', '')
+                            if isinstance(insight_content, str):
+                                content = json.loads(insight_content)
                         
                         # Apply dynamic filters
                         if filter_domain and content.get('domain_context') != filter_domain:
