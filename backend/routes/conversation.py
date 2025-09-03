@@ -15,8 +15,23 @@ from pydantic import BaseModel, Field
 
 from database import get_supabase_client
 from models import Workspace
+from services.ai_knowledge_categorization import get_categorization_service
+from config.knowledge_insights_config import get_config
 
 logger = logging.getLogger(__name__)
+
+# Initialize services (lazy initialization for AI categorization)
+categorization_service = None
+knowledge_config = None
+
+def _get_services():
+    """Lazy initialization of services"""
+    global categorization_service, knowledge_config
+    if categorization_service is None:
+        categorization_service = get_categorization_service()
+    if knowledge_config is None:
+        knowledge_config = get_config()
+    return categorization_service, knowledge_config
 
 # Use factory pattern to select appropriate conversational agent
 try:
@@ -908,6 +923,163 @@ async def _execute_confirmed_action(confirmation: Dict[str, Any]) -> Dict[str, A
         logger.error(f"Error executing confirmed action: {e}")
         return {"success": False, "error": str(e)}
 
+# AI-driven categorization function
+async def categorize_deliverable_content(deliverable, insights, best_practices, learnings, workspace_id, logger):
+    """
+    Categorize deliverable content using AI-driven semantic analysis.
+    This function replaces the hardcoded keyword matching.
+    """
+    categorization_service, config = _get_services()
+    
+    if deliverable.get("content"):
+        content_str = deliverable.get("content", "")
+        
+        # Extract meaningful content preview
+        if isinstance(content_str, str):
+            content_preview = content_str[:500] + "..." if len(content_str) > 500 else content_str
+            
+            # Create base knowledge item
+            knowledge_item = {
+                "id": deliverable.get("id"),
+                "type": config.get_fallback_category(),  # Will be updated by AI
+                "content": f"{deliverable.get('title', 'Deliverable')}: {content_preview}",
+                "confidence": deliverable.get("content_quality_score", 0.7) / 100.0 if deliverable.get("content_quality_score") else 0.7,
+                "created_at": deliverable.get("created_at", ""),
+                "tags": []
+            }
+            
+            # AI-driven semantic categorization
+            if config.should_use_ai():
+                try:
+                    # Perform AI categorization
+                    categorization = await categorization_service.categorize_knowledge(
+                        content=content_str,
+                        title=deliverable.get('title', ''),
+                        workspace_context={
+                            'workspace_id': workspace_id,
+                            'goal': deliverable.get('goal_description', '')
+                        }
+                    )
+                    
+                    # Update knowledge item with AI results
+                    knowledge_item["type"] = categorization["type"]
+                    knowledge_item["tags"] = categorization["tags"]
+                    knowledge_item["confidence"] = categorization["confidence"]
+                    
+                    # Add metadata if available
+                    if "language" in categorization:
+                        knowledge_item["language"] = categorization["language"]
+                    if "reasoning" in categorization:
+                        knowledge_item["ai_reasoning"] = categorization["reasoning"]
+                    
+                    # Route to appropriate list based on AI categorization
+                    if categorization["type"] in ["success_pattern", "strategy"]:
+                        best_practices.append(knowledge_item.copy())
+                        logger.info(f"AI categorized '{deliverable.get('title', '')[:50]}...' as {categorization['type']} (confidence: {categorization['confidence']:.2f})")
+                    elif categorization["type"] in ["optimization", "discovery", "analysis"]:
+                        insights.append(knowledge_item.copy())
+                        logger.info(f"AI categorized '{deliverable.get('title', '')[:50]}...' as {categorization['type']} (confidence: {categorization['confidence']:.2f})")
+                    elif categorization["type"] in ["learning", "constraint", "research"]:
+                        learnings.append(knowledge_item.copy())
+                        logger.info(f"AI categorized '{deliverable.get('title', '')[:50]}...' as {categorization['type']} (confidence: {categorization['confidence']:.2f})")
+                    else:
+                        # Default to insights for unknown types
+                        insights.append(knowledge_item.copy())
+                        logger.info(f"AI categorized '{deliverable.get('title', '')[:50]}...' as {categorization['type']} (defaulting to insights)")
+                        
+                except Exception as e:
+                    logger.warning(f"AI categorization failed for deliverable {deliverable.get('id')}, using fallback: {e}")
+                    # Use configuration-based fallback
+                    knowledge_item["type"] = config.get_fallback_category()
+                    knowledge_item["tags"] = config.get_fallback_tags()
+                    knowledge_item["ai_reasoning"] = f"Fallback categorization (AI error: {str(e)[:100]})"
+                    insights.append(knowledge_item.copy())
+            else:
+                # Configuration-based fallback when AI is disabled
+                knowledge_item["type"] = config.get_fallback_category()
+                knowledge_item["tags"] = config.get_fallback_tags()
+                knowledge_item["ai_reasoning"] = "AI categorization disabled"
+                
+                # Simple routing based on configuration
+                if knowledge_item["type"] == "success_pattern":
+                    best_practices.append(knowledge_item.copy())
+                elif knowledge_item["type"] in ["optimization", "discovery"]:
+                    insights.append(knowledge_item.copy())
+                else:
+                    learnings.append(knowledge_item.copy())
+                    
+                logger.info(f"Using fallback categorization for '{deliverable.get('title', '')[:50]}...' (AI disabled)")
+        else:
+            # Non-string content - add to insights with minimal processing
+            knowledge_item = {
+                "id": deliverable.get("id"),
+                "type": config.get_fallback_category(),
+                "content": deliverable.get("title", ""),
+                "confidence": 0.3,
+                "created_at": deliverable.get("created_at", ""),
+                "tags": config.get_fallback_tags(limit=3),
+                "ai_reasoning": "Non-text content"
+            }
+            insights.append(knowledge_item)
+    else:
+        # No content available - add minimal entry to insights
+        knowledge_item = {
+            "id": deliverable.get("id"),
+            "type": config.get_fallback_category(),
+            "content": deliverable.get("title", "Deliverable"),
+            "confidence": 0.2,
+            "created_at": deliverable.get("created_at", ""),
+            "tags": config.get_fallback_tags(limit=2),
+            "ai_reasoning": "No content available"
+        }
+        insights.append(knowledge_item)
+
+# Dynamic summary generation
+def generate_dynamic_summary(deliverables, insights, best_practices, learnings, config):
+    """
+    Generate dynamic summary based on actual content, not hardcoded values.
+    """
+    # Get configuration
+    if config is None:
+        config = get_config()
+    
+    # Extract top tags from categorized items
+    all_tags = []
+    for item_list in [insights, best_practices, learnings]:
+        for item in item_list:
+            all_tags.extend(item.get("tags", []))
+    
+    # Count tag frequency
+    from collections import Counter
+    tag_counts = Counter(all_tags)
+    top_tags = [tag for tag, _ in tag_counts.most_common(10)]
+    
+    # If no tags found, use configuration defaults
+    if not top_tags:
+        top_tags = config.get_fallback_tags()
+    
+    # Create dynamic summary
+    summary = {
+        "recent_discoveries": [
+            item.get("content", "")[:100] 
+            for item in insights[:3] 
+            if item.get("content")
+        ],
+        "key_constraints": [
+            item.get("content", "")[:100]
+            for item in learnings
+            if item.get("type") == "constraint"
+        ][:3],
+        "success_patterns": [
+            item.get("content", "")[:100]
+            for item in best_practices
+            if item.get("content")
+        ][:3],
+        "top_tags": top_tags[:config.max_tags]
+    }
+    
+    return summary
+
 # Health Check
 @router.get("/workspaces/{workspace_id}/knowledge-insights")
 async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[str, Any]:
@@ -1020,59 +1192,20 @@ async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[st
         deliverables = await get_deliverables(workspace_id)
         logger.info(f"Found {len(deliverables)} deliverables for workspace {workspace_id}")
         
-        # Transform deliverables into knowledge items
+        # Transform deliverables into knowledge items using AI categorization
         insights = []
         best_practices = []
         learnings = []
         
+        # Process each deliverable with AI categorization
         for deliverable in deliverables:
-            # Create a knowledge item from each deliverable
-            knowledge_item = {
-                "id": deliverable.get("id"),
-                "type": "discovery",  # Default type
-                "content": deliverable.get("title", ""),
-                "confidence": deliverable.get("content_quality_score", 0.7) / 100.0 if deliverable.get("content_quality_score") else 0.7,
-                "created_at": deliverable.get("created_at", ""),
-                "tags": []
-            }
-            
-            # Add full content as extended description
-            if deliverable.get("content"):
-                # Extract meaningful summary from content
-                content_str = deliverable.get("content", "")
-                if isinstance(content_str, str):
-                    # Take first 500 characters as summary
-                    content_preview = content_str[:500] + "..." if len(content_str) > 500 else content_str
-                    knowledge_item["content"] = f"{deliverable.get('title', 'Deliverable')}: {content_preview}"
-                    
-                    # Categorize based on content keywords
-                    content_lower = content_str.lower()
-                    if any(word in content_lower for word in ["strategia", "strategy", "piano", "plan", "approach"]):
-                        knowledge_item["type"] = "success_pattern"
-                        knowledge_item["tags"] = ["strategy", "planning"]
-                        best_practices.append(knowledge_item.copy())
-                    elif any(word in content_lower for word in ["report", "performance", "analisi", "analysis", "metrics"]):
-                        knowledge_item["type"] = "optimization"
-                        knowledge_item["tags"] = ["analytics", "performance"]
-                        insights.append(knowledge_item.copy())
-                    elif any(word in content_lower for word in ["research", "data", "ricerca", "informazioni"]):
-                        knowledge_item["type"] = "discovery"
-                        knowledge_item["tags"] = ["research", "data"]
-                        learnings.append(knowledge_item.copy())
-                    else:
-                        # Default to insights
-                        insights.append(knowledge_item.copy())
-            else:
-                # If no content, add to insights by default
-                insights.append(knowledge_item)
+            await categorize_deliverable_content(
+                deliverable, insights, best_practices, learnings, workspace_id, logger
+            )
         
-        # Create summary from deliverables
-        summary = {
-            "recent_discoveries": [d.get("title", "")[:100] for d in deliverables[:3] if d.get("title")],
-            "key_constraints": [],  # No constraints from deliverables
-            "success_patterns": [d.get("title", "")[:100] for d in deliverables if "strategia" in d.get("title", "").lower() or "strategy" in d.get("title", "").lower()][:3],
-            "top_tags": ["strategy", "planning", "analytics", "research", "instagram", "social-media"]
-        }
+        # Create dynamic summary from categorized deliverables
+        categorization_service, knowledge_config = _get_services()
+        summary = generate_dynamic_summary(deliverables, insights, best_practices, learnings, knowledge_config)
         
         return {
             "workspace_id": workspace_id,
@@ -1080,7 +1213,8 @@ async def get_knowledge_insights(workspace_id: str, request: Request) -> Dict[st
             "insights": insights,
             "bestPractices": best_practices,
             "learnings": learnings,
-            "summary": summary
+            "summary": summary,
+            "ai_enabled": knowledge_config.ai_enabled if knowledge_config else False
         }
     except Exception as e:
         logger.error(f"Error fetching knowledge insights: {e}")

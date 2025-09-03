@@ -335,6 +335,10 @@ app.include_router(content_learning_router)  # Already has /api/content-learning
 from routes.learning_feedback_routes import router as learning_feedback_router
 app.include_router(learning_feedback_router)  # Already has /api/learning-feedback prefix
 
+# User Insights Management System
+from routes.user_insights import router as user_insights_router
+app.include_router(user_insights_router, prefix="/api")
+
 # Monitoring and system management
 app.include_router(monitoring_router, prefix="/api")
 app.include_router(system_monitoring_router, prefix="/api")
