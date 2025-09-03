@@ -406,13 +406,13 @@ INSERT INTO workspace_insights (
 ) VALUES (
     gen_random_uuid(),
     '1f1bf9cf-3c46-48ed-96f3-ec826742ee02',
-    'best_practice',
+    'success_pattern', -- FIXED: Changed from 'best_practice' to comply with check constraint
     'Optimal Posting Times for B2B Audience',
     'Based on our campaign data, B2B audiences on LinkedIn show highest engagement between 7-9 AM and 12-1 PM on weekdays, particularly Tuesday through Thursday.',
     'social_media',
     0.75,
     0.85,
-    'best_practice',
+    'optimization', -- FIXED: Using 'optimization' as category since 'best_practice' is not a valid insight_type
     'user_123',
     TRUE,
     '{"verified": true, "important": true, "source": "manual_entry"}'::jsonb,

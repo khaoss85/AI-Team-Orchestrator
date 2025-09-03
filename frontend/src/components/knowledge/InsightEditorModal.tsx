@@ -8,26 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { X, Lightbulb, Award, BookOpen, Tag, Sparkles } from 'lucide-react';
+import { KnowledgeInsight } from '@/types';
 
-interface KnowledgeInsight {
-  id: string;
-  title: string;
-  content: string;
-  category: 'insight' | 'best_practice' | 'learning';
-  source: 'ai' | 'user';
-  confidence?: number;
-  ai_reasoning?: string;
-  flags: {
-    verified: boolean;
-    important: boolean;
-    outdated: boolean;
-  };
-  created_at: string;
-  created_by?: string;
-  modified_at?: string;
-  modified_by?: string;
-  tags: string[];
-}
 
 interface InsightEditorModalProps {
   open: boolean;
@@ -45,9 +27,9 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: 'insight' as 'insight' | 'best_practice' | 'learning',
-    tags: [] as string[],
-    newTag: '',
+    category: 'general',
+    domain_type: 'general',
+    // Note: tags field removed as API doesn't support it
   });
 
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -67,18 +49,16 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
         setFormData({
           title: insight.title || '',
           content: insight.content || '',
-          category: insight.category || 'insight',
-          tags: insight.tags || [],
-          newTag: '',
+          category: insight.category || 'general',
+          domain_type: insight.domain_type || 'general',
         });
       } else {
         // Creating new insight
         setFormData({
           title: '',
           content: '',
-          category: 'insight',
-          tags: [],
-          newTag: '',
+          category: 'general',
+          domain_type: 'general',
         });
       }
       setAiSuggestions({});
@@ -127,40 +107,13 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
     }
   }, 500);
 
-  const handleAddTag = () => {
-    if (formData.newTag.trim() && !formData.tags.includes(formData.newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, prev.newTag.trim()],
-        newTag: '',
-      }));
-    }
-  };
+  // Tag functionality removed as API doesn't support tags
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove),
-    }));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.currentTarget === e.target) {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
-
-  const applyAiSuggestion = (type: 'category' | 'tags') => {
+  const applyAiSuggestion = (type: 'category') => {
     if (type === 'category' && aiSuggestions.suggestedCategory) {
       setFormData(prev => ({
         ...prev,
         category: aiSuggestions.suggestedCategory as any,
-      }));
-    } else if (type === 'tags' && aiSuggestions.suggestedTags) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...new Set([...prev.tags, ...aiSuggestions.suggestedTags!])],
       }));
     }
   };
@@ -174,37 +127,19 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
       title: formData.title.trim(),
       content: formData.content.trim(),
       category: formData.category,
-      tags: formData.tags,
-      source: 'user',
+      domain_type: formData.domain_type,
+      is_user_created: true,
     };
 
     onSave(saveData);
   };
 
   const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'insight':
-        return <Lightbulb className="w-4 h-4" />;
-      case 'best_practice':
-        return <Award className="w-4 h-4" />;
-      case 'learning':
-        return <BookOpen className="w-4 h-4" />;
-      default:
-        return <Lightbulb className="w-4 h-4" />;
-    }
+    return <Lightbulb className="w-4 h-4" />;
   };
 
   const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'insight':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'best_practice':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'learning':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
+    return 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
   return (
@@ -213,9 +148,9 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <span>{insight ? 'Edit Insight' : 'Create New Insight'}</span>
-            {insight?.source === 'ai' && (
+            {!insight?.is_user_created && (
               <Badge variant="secondary" className="text-xs">
-                🤖 AI Generated
+                🤖 System Generated
               </Badge>
             )}
           </DialogTitle>
@@ -287,28 +222,7 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
                     </Button>
                   </div>
 
-                  {/* Suggested Tags */}
-                  {aiSuggestions.suggestedTags && aiSuggestions.suggestedTags.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-blue-700">Suggested tags:</span>
-                        <div className="flex flex-wrap gap-1">
-                          {aiSuggestions.suggestedTags.slice(0, 4).map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => applyAiSuggestion('tags')}
-                      >
-                        Add All
-                      </Button>
-                    </div>
-                  )}
+                  {/* Tags suggestions removed as API doesn't support tags */}
                 </div>
               </CardContent>
             </Card>
@@ -332,70 +246,17 @@ const InsightEditorModal: React.FC<InsightEditorModalProps> = ({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="insight">
+                <SelectItem value="general">
                   <div className="flex items-center space-x-2">
                     <Lightbulb className="w-4 h-4" />
-                    <span>Insight</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="best_practice">
-                  <div className="flex items-center space-x-2">
-                    <Award className="w-4 h-4" />
-                    <span>Best Practice</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="learning">
-                  <div className="flex items-center space-x-2">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Learning</span>
+                    <span>General</span>
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <div className="flex space-x-2">
-              <Input
-                value={formData.newTag}
-                onChange={(e) => setFormData(prev => ({ ...prev, newTag: e.target.value }))}
-                onKeyPress={handleKeyPress}
-                placeholder="Add a tag..."
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddTag}
-                disabled={!formData.newTag.trim()}
-              >
-                <Tag className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.tags.map((tag, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="flex items-center space-x-1"
-                  >
-                    <span>{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-red-600"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Tags section removed as API doesn't support tags */}
 
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4 border-t">

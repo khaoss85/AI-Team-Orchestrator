@@ -56,6 +56,9 @@ class UserManagedInsight:
         self.category = kwargs.get('category', 'general')
         self.domain_type = kwargs.get('domain_type', 'general')
         
+        # Agent role - required field for database
+        self.agent_role = kwargs.get('agent_role', 'user_curator')
+        
         # User management fields
         self.created_by = kwargs.get('created_by', 'system')
         self.last_modified_by = kwargs.get('last_modified_by')
@@ -94,6 +97,7 @@ class UserManagedInsight:
             'insight_type': self.insight_type.value if isinstance(self.insight_type, Enum) else self.insight_type,
             'insight_category': self.category,
             'domain_type': self.domain_type,
+            'agent_role': self.agent_role,  # Add required agent_role field
             'created_by': self.created_by,
             'last_modified_by': self.last_modified_by,
             'is_user_created': self.is_user_created,
@@ -175,6 +179,7 @@ class UserInsightManager:
                 category=category,
                 insight_type=self._category_to_insight_type(category),
                 domain_type=domain_type,
+                agent_role='user_curator',  # Set appropriate agent_role for user-created insights
                 created_by=created_by,
                 is_user_created=True,
                 quantifiable_metrics=metrics or {},
@@ -237,9 +242,22 @@ class UserInsightManager:
             current_data = result.data[0]
             old_values = current_data.copy()
             
+            # Map API field names to database column names
+            field_mapping = {
+                'category': 'insight_category',
+                'metrics': 'quantifiable_metrics',
+                'recommendations': 'action_recommendations'
+            }
+            
+            # Apply field mapping to updates
+            mapped_updates = {}
+            for key, value in updates.items():
+                db_field = field_mapping.get(key, key)
+                mapped_updates[db_field] = value
+            
             # Prepare update data
             update_data = {
-                **updates,
+                **mapped_updates,
                 'last_modified_by': modified_by,
                 'is_user_modified': True,
                 'updated_at': datetime.now().isoformat(),

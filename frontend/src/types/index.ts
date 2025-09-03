@@ -799,3 +799,32 @@ export interface OrchestrationStats {
   avgConfidence: number;
   totalEstimatedValue: number;
 }
+
+// ✅ Knowledge Insight types
+export interface KnowledgeInsight {
+  id: string;
+  workspace_id: string;
+  title: string;
+  content: string;
+  category: string; // API returns 'general', not restricted enum
+  domain_type?: string; // API returns this field
+  created_by?: string;
+  created_at: string;
+  updated_at?: string;
+  is_user_created?: boolean;
+  is_user_modified?: boolean;
+  is_deleted?: boolean;
+  version_number?: number;
+  user_flags: {
+    verified?: boolean;
+    important?: boolean;
+    outdated?: boolean;
+    created_manually?: boolean;
+    system_generated?: boolean;
+  };
+  metrics?: Record<string, any>;
+  recommendations?: any[];
+  business_value_score?: number;
+  confidence_score?: number;
+  // Note: tags field removed as API doesn't provide it
+}

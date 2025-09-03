@@ -7,26 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Plus, Edit3, Trash2, Flag, Archive, RotateCcw, Lightbulb, Award, BookOpen } from 'lucide-react';
 import { InsightEditorModal } from './InsightEditorModal';
 import { BulkActionsBar } from './BulkActionsBar';
+import { KnowledgeInsight } from '@/types';
 
-interface KnowledgeInsight {
-  id: string;
-  title: string;
-  content: string;
-  category: 'insight' | 'best_practice' | 'learning';
-  source: 'ai' | 'user';
-  confidence?: number;
-  ai_reasoning?: string;
-  flags: {
-    verified: boolean;
-    important: boolean;
-    outdated: boolean;
-  };
-  created_at: string;
-  created_by?: string;
-  modified_at?: string;
-  modified_by?: string;
-  tags: string[];
-}
 
 interface KnowledgeInsightManagerProps {
   workspaceId: string;
@@ -42,7 +24,7 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
   const [selectedInsights, setSelectedInsights] = useState<Set<string>>(new Set());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingInsight, setEditingInsight] = useState<KnowledgeInsight | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'insights' | 'best_practices' | 'learnings'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'general' | 'business_analysis' | 'technical'>('all');
   const [lastDeletedInsight, setLastDeletedInsight] = useState<string | null>(null);
 
   // Load insights from API
@@ -163,7 +145,7 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
         },
         body: JSON.stringify({
           flag_type: flagType,
-          flag_value: !insight.flags[flagType],
+          flag_value: !insight.user_flags[flagType],
         }),
       });
       
@@ -240,33 +222,30 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
 
   const getFilteredInsights = () => {
     switch (activeTab) {
-      case 'insights':
-        return insights.filter(i => i.category === 'insight');
-      case 'best_practices':
-        return insights.filter(i => i.category === 'best_practice');
-      case 'learnings':
-        return insights.filter(i => i.category === 'learning');
+      case 'general':
+        return insights.filter(i => i.category === 'general');
+      case 'business_analysis':
+        return insights.filter(i => i.domain_type === 'business_analysis');
+      case 'technical':
+        return insights.filter(i => i.domain_type === 'technical');
       default:
         return insights;
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'insight':
-        return <Lightbulb className="w-4 h-4" />;
-      case 'best_practice':
-        return <Award className="w-4 h-4" />;
-      case 'learning':
-        return <BookOpen className="w-4 h-4" />;
-      default:
-        return <Lightbulb className="w-4 h-4" />;
+  const getCategoryIcon = (category: string, domain_type?: string) => {
+    if (domain_type === 'business_analysis') {
+      return <Award className="w-4 h-4" />;
     }
+    if (domain_type === 'technical') {
+      return <BookOpen className="w-4 h-4" />;
+    }
+    return <Lightbulb className="w-4 h-4" />;
   };
 
   const InsightCard = ({ insight }: { insight: KnowledgeInsight }) => (
-    <Card key={insight.id} className={`mb-4 ${selectedInsights.has(insight.id) ? 'ring-2 ring-blue-500' : ''}`}>
-      <CardHeader className="pb-2">
+    <Card key={insight.id} className={`mb-4 p-4 ${selectedInsights.has(insight.id) ? 'ring-2 ring-blue-500' : ''}`}>
+      <CardHeader className="pb-2 px-0">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-2 flex-1">
             <input
@@ -275,24 +254,24 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
               onChange={() => toggleSelection(insight.id)}
               className="rounded"
             />
-            {getCategoryIcon(insight.category)}
+            {getCategoryIcon(insight.category, insight.domain_type)}
             <CardTitle className="text-sm font-medium">{insight.title}</CardTitle>
-            <Badge variant={insight.source === 'ai' ? 'secondary' : 'default'} className="text-xs">
-              {insight.source === 'ai' ? '🤖 AI' : '👤 User'}
+            <Badge variant={insight.is_user_created ? 'default' : 'secondary'} className="text-xs">
+              {insight.is_user_created ? '👤 User' : '🤖 System'}
             </Badge>
           </div>
           <div className="flex items-center space-x-1">
-            {insight.flags.verified && (
+            {insight.user_flags?.verified && (
               <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                 ✓ Verified
               </Badge>
             )}
-            {insight.flags.important && (
+            {insight.user_flags?.important && (
               <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
                 ★ Important
               </Badge>
             )}
-            {insight.flags.outdated && (
+            {insight.user_flags?.outdated && (
               <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700 border-gray-200">
                 ⚠ Outdated
               </Badge>
@@ -300,39 +279,34 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         <p className="text-sm text-gray-600 mb-3">{insight.content}</p>
         
-        {insight.source === 'ai' && insight.confidence && (
+        {insight.confidence_score && (
           <div className="text-xs text-gray-500 mb-2">
-            AI Confidence: {Math.round(insight.confidence * 100)}%
-            {insight.ai_reasoning && (
-              <span className="ml-2">• {insight.ai_reasoning}</span>
+            Confidence: {Math.round(insight.confidence_score * 100)}%
+            {insight.business_value_score && (
+              <span className="ml-2">• Business Value: {Math.round(insight.business_value_score * 100)}%</span>
             )}
           </div>
         )}
         
-        {insight.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {insight.tags.map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
+        {/* Tags section - removed as API doesn't provide tags field */}
         
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>
             Created: {new Date(insight.created_at).toLocaleDateString()}
             {insight.created_by && ` by ${insight.created_by}`}
+            {insight.updated_at && insight.updated_at !== insight.created_at && (
+              <span className="ml-2">• Updated: {new Date(insight.updated_at).toLocaleDateString()}</span>
+            )}
           </span>
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => toggleFlag(insight.id, 'verified')}
-              className={insight.flags.verified ? 'text-green-600' : ''}
+              className={insight.user_flags?.verified ? 'text-green-600' : ''}
             >
               ✓
             </Button>
@@ -340,7 +314,7 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => toggleFlag(insight.id, 'important')}
-              className={insight.flags.important ? 'text-yellow-600' : ''}
+              className={insight.user_flags?.important ? 'text-yellow-600' : ''}
             >
               <Flag className="w-3 h-3" />
             </Button>
@@ -423,17 +397,17 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="all">All ({insights.length})</TabsTrigger>
-          <TabsTrigger value="insights">
+          <TabsTrigger value="general">
             <Lightbulb className="w-4 h-4 mr-1" />
-            Insights ({insights.filter(i => i.category === 'insight').length})
+            General ({insights.filter(i => i.category === 'general').length})
           </TabsTrigger>
-          <TabsTrigger value="best_practices">
+          <TabsTrigger value="business_analysis">
             <Award className="w-4 h-4 mr-1" />
-            Best Practices ({insights.filter(i => i.category === 'best_practice').length})
+            Business ({insights.filter(i => i.domain_type === 'business_analysis').length})
           </TabsTrigger>
-          <TabsTrigger value="learnings">
+          <TabsTrigger value="technical">
             <BookOpen className="w-4 h-4 mr-1" />
-            Learnings ({insights.filter(i => i.category === 'learning').length})
+            Technical ({insights.filter(i => i.domain_type === 'technical').length})
           </TabsTrigger>
         </TabsList>
 

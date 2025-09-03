@@ -68,7 +68,7 @@ export default function KnowledgeInsightsArtifact({
   return (
     <div className="space-y-6">
       {/* Header with management toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-4">
         <h2 className="text-lg font-semibold text-gray-900">Knowledge Base</h2>
         <div className="flex items-center space-x-2">
           {onRefreshKnowledge && (
@@ -105,7 +105,7 @@ export default function KnowledgeInsightsArtifact({
 
       {/* Management Mode */}
       {managementMode ? (
-        <div className="border rounded-lg p-4 bg-gray-50">
+        <div className="border rounded-lg p-6 bg-gray-50 mt-4">
           <KnowledgeInsightManager 
             workspaceId={workspaceId}
             currentUserId={currentUserId}
@@ -115,7 +115,7 @@ export default function KnowledgeInsightsArtifact({
         /* Original Knowledge View */
         <>
           {/* Navigation Tabs */}
-          <div className="flex space-x-2 border-b pb-4">
+          <div className="flex space-x-2 border-b pb-4 px-4">
             <SectionTab 
               active={activeSection === 'insights'} 
               onClick={() => setActiveSection('insights')}
@@ -146,39 +146,41 @@ export default function KnowledgeInsightsArtifact({
           </div>
 
           {/* Content Sections */}
-          {activeSection === 'insights' && (
-            <InsightSection 
-              title="💡 Insights & Discoveries" 
-              items={insights || []} 
-              onInsightAction={onInsightAction}
-            />
-          )}
+          <div className="px-4">
+            {activeSection === 'insights' && (
+              <InsightSection 
+                title="💡 Insights & Discoveries" 
+                items={insights || []} 
+                onInsightAction={onInsightAction}
+              />
+            )}
 
-          {activeSection === 'practices' && (
-            <InsightSection 
-              title="⭐ Best Practices" 
-              items={bestPractices || []}
-              onInsightAction={onInsightAction}
-            />
-          )}
+            {activeSection === 'practices' && (
+              <InsightSection 
+                title="⭐ Best Practices" 
+                items={bestPractices || []}
+                onInsightAction={onInsightAction}
+              />
+            )}
 
-          {activeSection === 'learnings' && (
-            <InsightSection 
-              title="📚 Learnings & Constraints" 
-              items={learnings || []}
-              onInsightAction={onInsightAction}
-            />
-          )}
+            {activeSection === 'learnings' && (
+              <InsightSection 
+                title="📚 Learnings & Constraints" 
+                items={learnings || []}
+                onInsightAction={onInsightAction}
+              />
+            )}
 
-          {activeSection === 'summary' && (
-            <SummaryView summary={summary} />
-          )}
+            {activeSection === 'summary' && (
+              <SummaryView summary={summary} />
+            )}
+          </div>
         </>
       )}
 
       {/* AI Status Indicator */}
       {knowledgeData.ai_enabled && (
-        <div className="flex items-center justify-center p-2 bg-blue-50 rounded-lg">
+        <div className="flex items-center justify-center p-2 bg-blue-50 rounded-lg mx-4">
           <div className="flex items-center space-x-2 text-sm text-blue-700">
             <span>🤖</span>
             <span>AI-driven semantic categorization active</span>
