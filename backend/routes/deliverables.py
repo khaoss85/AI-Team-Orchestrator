@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from middleware.trace_middleware import get_trace_id, create_traced_logger, TracedDatabaseOperation
 import logging
 import json
+import os
 from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable, delete_deliverable, get_workspace
 from models import *
 
@@ -23,8 +24,8 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
         from services.ai_content_display_transformer import transform_deliverable_to_html
         
         # Limit the number of deliverables to transform (to prevent timeouts)
-        MAX_TRANSFORM = 3  # Only transform first 3 deliverables per request
-        TRANSFORM_TIMEOUT = 5.0  # 5 second timeout per transformation
+        MAX_TRANSFORM = int(os.getenv("AI_TRANSFORM_MAX_BATCH", "5"))  # Configurable batch size
+        TRANSFORM_TIMEOUT = float(os.getenv("AI_TRANSFORM_TIMEOUT", "10.0"))  # Configurable timeout
         
         # Get workspace context for better transformation
         business_context = {}

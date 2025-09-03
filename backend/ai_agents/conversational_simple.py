@@ -2299,7 +2299,7 @@ Would you like me to execute any specific tool or explain how to use a particula
                 import aiohttp
                 
                 # Use our new enhanced auto-complete endpoint
-                base_url = "http://localhost:8000"  # TODO: Get from env
+                base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
                 url = f"{base_url}/api/enhanced-auto-complete"
                 
                 logger.info(f"📦 STEP 2: Calling enhanced auto-completion endpoint: {url}")

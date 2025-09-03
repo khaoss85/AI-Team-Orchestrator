@@ -320,9 +320,12 @@ contacts = {
 OPENAI_API_KEY=sk-...                    # Required for AI transformations
 
 # Optional optimization settings
-AI_TRANSFORMATION_TIMEOUT=30             # Max processing time
+AI_TRANSFORM_MAX_BATCH=5                 # Max deliverables to transform per request
+AI_TRANSFORM_TIMEOUT=10.0                # Timeout per transformation in seconds
+AI_TRANSFORMATION_TIMEOUT=30             # Max total processing time
 FALLBACK_CONFIDENCE_THRESHOLD=60         # When to prefer fallback
 DISPLAY_CONTENT_CACHE_TTL=3600          # Cache duration in seconds
+API_BASE_URL=http://localhost:8000       # Base URL for internal API calls
 ```
 
 #### **Database Schema**
