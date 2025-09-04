@@ -50,7 +50,7 @@ export interface Chat {
   messageCount?: number
   lastMessageDate?: string
   // For fixed chats  
-  systemType?: 'team' | 'configuration' | 'knowledge' | 'tools' | 'feedback'
+  systemType?: 'team' | 'configuration' | 'knowledge' | 'tools' | 'feedback' | 'budget'
   // 🎯 ENHANCED: Business value tracking
   businessValueWarning?: boolean
   // 🔒 COMPLETION GUARANTEE: Goals with guaranteed completion

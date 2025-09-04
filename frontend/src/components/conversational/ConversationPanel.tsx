@@ -252,7 +252,10 @@ export default function ConversationPanel({
               />
             )}
             
-            {messages.length === 0 && !loading && !shouldShowWelcome && (
+            
+            {/* Show empty state for other chats when no messages */}
+            {messages.length === 0 && !loading && !shouldShowWelcome && 
+             (
               <div className="text-center text-gray-500 mt-12">
                 <div className="text-2xl mb-2">
                   {activeChat.type === 'fixed' ? '⚙️' : '🎯'}

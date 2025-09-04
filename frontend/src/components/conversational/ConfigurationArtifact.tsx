@@ -25,7 +25,7 @@ export default function ConfigurationArtifact({
   onCheckWorkspaceHealth,
   onResumeAutoGeneration
 }: ConfigurationArtifactProps) {
-  const [activeView, setActiveView] = useState<'general' | 'goals' | 'budget' | 'health' | 'advanced' | 'danger'>('general')
+  const [activeView, setActiveView] = useState<'general' | 'goals' | 'health' | 'advanced' | 'danger'>('general')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   if (!configuration) {
@@ -61,7 +61,7 @@ export default function ConfigurationArtifact({
                 if (onConfigUpdate) {
                   onConfigUpdate({ 
                     action: 'send_message', 
-                    message: `I need help with my workspace configuration. Can you explain the current settings and suggest any optimizations?\n\nCurrent configuration summary:\n- Budget: $${configuration.budget?.max_budget || 10}\n- Max iterations: ${configuration.budget?.max_iterations || 3}\n- Quality threshold: ${configuration.budget?.settings?.quality_threshold || 85}%\n\nPlease provide guidance on these settings and any recommended adjustments.`
+                    message: `I need help with my workspace configuration. Can you explain the current settings and suggest any optimizations?\n\nCurrent configuration summary:\n- Max iterations: ${configuration.budget?.max_iterations || 3}\n- Quality threshold: ${configuration.budget?.settings?.quality_threshold || 85}%\n\nPlease provide guidance on these settings and any recommended adjustments. For budget information, please check the Budget & Usage chat.`
                   })
                 }
               }}
@@ -85,12 +85,6 @@ export default function ConfigurationArtifact({
             onClick={() => setActiveView('goals')}
             label="Goals"
             icon="🎯"
-          />
-          <ViewTab
-            active={activeView === 'budget'}
-            onClick={() => setActiveView('budget')}
-            label="Budget"
-            icon="💰"
           />
           <ViewTab
             active={activeView === 'health'}
@@ -123,9 +117,6 @@ export default function ConfigurationArtifact({
           <GoalsConfigTab configuration={configuration} />
         )}
         
-        {activeView === 'budget' && (
-          <BudgetConfigTab configuration={configuration} />
-        )}
         
         {activeView === 'health' && (
           <HealthConfigTab 
@@ -281,14 +272,7 @@ function GeneralConfigTab({ configuration }: { configuration: any }) {
       </div>
 
       {/* Quick Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {configuration.budget?.max_budget || 10}
-          </div>
-          <div className="text-sm text-gray-600">Budget ($)</div>
-        </div>
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
           <div className="text-2xl font-bold text-purple-600">
             {configuration.budget?.max_iterations || 3}
@@ -301,6 +285,16 @@ function GeneralConfigTab({ configuration }: { configuration: any }) {
             {configuration.budget?.settings?.quality_threshold || 85}%
           </div>
           <div className="text-sm text-gray-600">Quality Threshold</div>
+        </div>
+      </div>
+
+      {/* Budget Notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-blue-600">💰</span>
+          <p className="text-sm text-blue-800">
+            For budget and usage information, please check the <strong>Budget & Usage</strong> chat in the conversation panel.
+          </p>
         </div>
       </div>
     </div>
@@ -342,89 +336,6 @@ function GoalsConfigTab({ configuration }: { configuration: any }) {
   )
 }
 
-// Budget Configuration Tab
-function BudgetConfigTab({ configuration }: { configuration: any }) {
-  const budget = configuration.budget || {}
-  const settings = budget.settings || {}
-  
-  return (
-    <div className="p-4 space-y-6">
-      {/* Budget & Basic Limits */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Budget & Basic Limits</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Budget ($)</label>
-            <div className="text-2xl font-bold text-blue-600 p-2 bg-blue-50 rounded border text-center">
-              ${budget.max_budget || 10}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">AI usage cost limit for this project</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Max Iterations per Task</label>
-            <div className="text-2xl font-bold text-purple-600 p-2 bg-purple-50 rounded border text-center">
-              {budget.max_iterations || 3}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Maximum improvement loops per task</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Budget Usage */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">Budget Usage</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Used</span>
-            <span className="font-medium">${configuration.budget_used || 0}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Remaining</span>
-            <span className="font-medium text-green-600">
-              ${(budget.max_budget || 10) - (configuration.budget_used || 0)}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full" 
-              style={{ 
-                width: `${((configuration.budget_used || 0) / (budget.max_budget || 10)) * 100}%` 
-              }}
-            />
-          </div>
-          <div className="text-xs text-gray-500 text-center">
-            {(((configuration.budget_used || 0) / (budget.max_budget || 10)) * 100).toFixed(1)}% used
-          </div>
-        </div>
-      </div>
-
-      {/* Cost Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-green-600">
-            {settings.max_concurrent_tasks || 3}
-          </div>
-          <div className="text-sm text-gray-600">Concurrent Tasks</div>
-        </div>
-        
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-orange-600">
-            {settings.task_timeout || 150}s
-          </div>
-          <div className="text-sm text-gray-600">Task Timeout</div>
-        </div>
-        
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-indigo-600">
-            {settings.max_deliverables || 3}
-          </div>
-          <div className="text-sm text-gray-600">Max Deliverables</div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // Advanced Configuration Tab
 function AdvancedConfigTab({ configuration }: { configuration: any }) {

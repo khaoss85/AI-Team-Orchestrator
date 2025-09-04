@@ -4487,10 +4487,24 @@ Original Task:
                     
                     # Only create deliverable if we have substantial content
                     if isinstance(task_result_content, str) and len(task_result_content) > 100:
+                        # 🚨 HOTFIX: Sanitize deliverable title to remove tool references
+                        from services.deliverable_title_sanitizer import sanitize_deliverable_title
+                        
+                        # Build context for better title generation
+                        title_context = {
+                            "goal_description": task_dict.get("goal_description"),
+                            "deliverable_type": task_dict.get("deliverable_type", "business_asset"),
+                            "goal_id": task_dict.get("goal_id")
+                        }
+                        
+                        # Sanitize the title to remove tool references and make it business-friendly
+                        original_title = f"{task_name} - AI-Generated Deliverable"
+                        sanitized_title = sanitize_deliverable_title(original_title, title_context)
+                        
                         deliverable_data = {
                             "task_id": task_id,
                             "goal_id": task_dict.get("goal_id"),
-                            "title": f"{task_name} - AI-Generated Deliverable", 
+                            "title": sanitized_title,  # Use sanitized business-friendly title
                             "description": task_pydantic_obj.description,
                             "content": task_result_content,  # Use actual task result content
                             "type": "real_business_asset",

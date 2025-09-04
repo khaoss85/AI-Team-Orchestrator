@@ -430,6 +430,14 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
           title: 'Available Tools',
           icon: '🛠️',
           status: 'active'
+        },
+        {
+          id: 'budget-usage',
+          type: 'fixed',
+          systemType: 'budget',
+          title: 'Budget & Usage',
+          icon: '💰',
+          status: 'active'
         }
       ]
 

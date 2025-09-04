@@ -142,25 +142,27 @@ class GoalDrivenTaskPlanner:
             # Generate tasks using the internal method
             tasks = await self._generate_tasks_for_goal(goal)
             
-            # Get available agents for task assignment (accept any status except "inactive")
-            agents_response = supabase.table("agents").select("*").eq("workspace_id", workspace_id).neq("status", "inactive").execute()
+            # Get available agents for task assignment (accept active and available status)
+            # STRATEGIC FIX: Match executor.py logic - accept both "available" and "active" agents
+            agents_response = supabase.table("agents").select("*").eq("workspace_id", workspace_id).in_("status", ["available", "active"]).execute()
             available_agents = agents_response.data or []
             
             if not available_agents:
-                logger.warning(f"⚠️ No agents found for workspace {workspace_id} - attempting to create basic agents")
+                logger.warning(f"⚠️ No active/available agents found for workspace {workspace_id} - attempting to create basic agents")
                 
-                # FIXED: Auto-create basic agents for workspace
+                # AUTO-PROVISION: Create basic agents for workspace to ensure tasks can be executed
                 try:
                     basic_agents = await self._create_basic_agents_for_workspace(workspace_id)
                     if basic_agents:
                         available_agents = basic_agents
-                        logger.info(f"✅ Created {len(basic_agents)} basic agents for workspace {workspace_id}")
+                        logger.info(f"✅ Auto-provisioned {len(basic_agents)} basic agents for workspace {workspace_id}")
                     else:
-                        logger.warning(f"⚠️ Failed to create basic agents - tasks will be created unassigned")
+                        logger.error(f"❌ CRITICAL: Failed to create basic agents - tasks will fail without agents!")
                 except Exception as e:
-                    logger.error(f"Error creating basic agents for workspace {workspace_id}: {e}")
+                    logger.error(f"❌ CRITICAL ERROR creating basic agents for workspace {workspace_id}: {e}")
+                    # Continue anyway - better to create tasks without agents than not create them at all
             else:
-                logger.info(f"✅ Found {len(available_agents)} agents for task assignment in workspace {workspace_id}")
+                logger.info(f"✅ Found {len(available_agents)} active/available agents for task assignment in workspace {workspace_id}")
             
             # Create tasks in database and trigger execution
             created_tasks = []

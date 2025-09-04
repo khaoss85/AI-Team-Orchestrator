@@ -1243,6 +1243,20 @@ Always focus on actionable deliverables.""",
                         workspace_id=workspace_id
                     )
                     
+                    # 🛡️ STRATEGIC MONITORING: Alert if no tasks created for a goal
+                    if not goal_tasks:
+                        logger.error(f"❌ CRITICAL: No tasks created for goal {goal['metric_type']} (ID: {goal.get('id')})")
+                        await self._alert_workspace_issue(
+                            workspace_id,
+                            "NO_TASKS_FOR_GOAL",
+                            f"Goal '{goal['metric_type']}' has no tasks - may block progress"
+                        )
+                    else:
+                        # Check if tasks have agent assignments
+                        unassigned_tasks = [t for t in goal_tasks if not t.get('agent_id')]
+                        if unassigned_tasks:
+                            logger.warning(f"⚠️ {len(unassigned_tasks)}/{len(goal_tasks)} tasks for goal '{goal['metric_type']}' have no agent assigned")
+                    
                     initial_tasks.extend(goal_tasks)
             
             # 3. Reset workspace status to active after task creation

@@ -275,6 +275,20 @@ export default function ProjectSettingsPage({ params: paramsPromise }: Props) {
                 <p className="text-xs text-gray-500 mt-1">Maximum improvement loops per task</p>
               </div>
             </div>
+            
+            {/* Budget Monitoring Notice */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <span className="text-blue-600 text-sm">💰</span>
+                <div className="flex-1">
+                  <p className="text-sm text-blue-800">
+                    <strong>Monitor your budget usage:</strong> For real-time budget tracking and OpenAI quota monitoring, 
+                    check the <Link href={`/projects/${id}/conversation`} className="font-semibold text-blue-700 underline hover:text-blue-900">Budget & Usage</Link> chat 
+                    in the conversation panel.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Advanced Settings */}

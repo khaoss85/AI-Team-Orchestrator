@@ -7,6 +7,7 @@ import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
 import AuthenticThinkingViewer from './AuthenticThinkingViewer'
 import { validateUniqueIds } from '../../utils/uniqueId'
+import BudgetCard from './BudgetCard'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -154,6 +155,8 @@ export default function ArtifactsPanel({
         {activeTab === 'artifacts' && (
           <ArtifactsList
             artifacts={artifacts}
+            workspaceId={workspaceId}
+            activeChat={activeChat}
             onSelectArtifact={(artifact) => {
               setSelectedArtifact(artifact)
               setActiveTab('viewer')
@@ -233,8 +236,11 @@ interface ArtifactsListProps {
   onSelectArtifact: (artifact: DeliverableArtifact) => void
 }
 
-function ArtifactsList({ artifacts, onSelectArtifact }: ArtifactsListProps) {
-  if (artifacts.length === 0) {
+function ArtifactsList({ artifacts, onSelectArtifact, workspaceId, activeChat }: ArtifactsListProps & { workspaceId?: string, activeChat?: Chat | null }) {
+  // Only show budget card when Budget & Usage chat is active
+  const showBudgetCard = activeChat?.id === 'budget-usage'
+  
+  if (artifacts.length === 0 && !showBudgetCard) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center text-gray-500">
@@ -250,6 +256,12 @@ function ArtifactsList({ artifacts, onSelectArtifact }: ArtifactsListProps) {
 
   return (
     <div className="p-4 space-y-3 overflow-y-auto">
+      {/* Budget Card only when Budget & Usage chat is active */}
+      {showBudgetCard && workspaceId && (
+        <BudgetCard workspaceId={workspaceId} />
+      )}
+      
+      {/* Existing artifacts */}
       {artifacts.map((artifact) => (
         <ArtifactCard
           key={artifact.id}

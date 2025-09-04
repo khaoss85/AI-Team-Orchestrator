@@ -1,0 +1,37 @@
+{
+  "reassignments": [
+    {
+      "deliverable_id": "c3430039-5d99-4afa-84a3-141351a37ff1",
+      "title": "Analyze Current Engagement Metrics - AI-Generated Deliverable",
+      "old_goal_id": "10f7957c-cc17-481b-970a-4ec4a9fd26c4",
+      "new_goal_id": "8bb605d3-b772-45ff-a719-121cb19d1a87",
+      "reason": "Analyzes current contacts, not competitors"
+    },
+    {
+      "deliverable_id": "e118aed9-9296-4ac6-aed3-c8ba77e9c187",
+      "title": "Collect Success Metrics for Tested Email Sequences: Marketing Platform - AI-Generated Deliverable",
+      "old_goal_id": "10f7957c-cc17-481b-970a-4ec4a9fd26c4",
+      "new_goal_id": "3a599f94-b8e9-4bfa-8570-c716a42eee46",
+      "reason": "About email sequences, not competitor analysis"
+    }
+  ],
+  "content_fixes": [
+    {
+      "deliverable_id": "0f2945ae-cee1-4e87-b388-794f8a5d7384",
+      "title": "Research Contacts from Existing CRM: Database Query - AI-Generated Deliverable"
+    },
+    {
+      "deliverable_id": "7a0cb257-3848-4e14-b858-4be0df1f034a",
+      "title": "Gather Outreach Techniques of Competitors: API Call - AI-Generated Deliverable"
+    },
+    {
+      "deliverable_id": "0e34777b-c558-4e03-8838-d4443a2a623a",
+      "title": "Research Successful Outbound Campaign Strategies: Web Search - AI-Generated Deliverable"
+    },
+    {
+      "deliverable_id": "d7de8f97-0f3f-4e40-b65c-610423ff3af0",
+      "title": "Find Competitor Campaign Performance Metrics: Database Query - AI-Generated Deliverable"
+    }
+  ],
+  "remaining_issues": 0
+}
