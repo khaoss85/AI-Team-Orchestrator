@@ -17,6 +17,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/quota", tags=["quota"])
 
+def _get_availability_message(status: QuotaStatus, can_make_request: bool) -> str:
+    """
+    Get user-friendly message based on quota status and availability
+    """
+    if status == QuotaStatus.NORMAL:
+        return "API is available and operating normally"
+    elif status == QuotaStatus.WARNING:
+        return "API usage is high but requests are still allowed"
+    elif status == QuotaStatus.RATE_LIMITED:
+        return "Rate limit reached - please wait before making more requests"
+    elif status == QuotaStatus.QUOTA_EXCEEDED:
+        return "Quota exceeded - API access limited"
+    elif status == QuotaStatus.DEGRADED:
+        return "Service operating with reduced capacity"
+    else:
+        return "API status unknown" if not can_make_request else "API available"
+
 @router.get("/status")
 async def get_quota_status(workspace_id: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -91,6 +108,15 @@ async def check_quota_availability() -> Dict[str, Any]:
             "status": current_status.value,
             "message": _get_availability_message(current_status, can_make_request)
         }
+        
+        # Add suggested actions based on status
+        if current_status == QuotaStatus.WARNING:
+            result["suggested_actions"] = ["Monitor usage", "Consider reducing API calls"]
+        elif current_status == QuotaStatus.RATE_LIMITED:
+            result["wait_seconds"] = 60
+            result["suggested_actions"] = ["Wait before retrying", "Reduce request rate"]
+        elif current_status == QuotaStatus.QUOTA_EXCEEDED:
+            result["suggested_actions"] = ["Upgrade OpenAI plan", "Wait for quota reset"]
         
         logger.info(f"🔍 Quota availability check: {can_make_request} (status: {current_status.value})")
         return {

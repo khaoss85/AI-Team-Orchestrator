@@ -551,8 +551,9 @@ class SpecialistAgent:
     async def _execute_fallback(self, task: Task) -> Dict[str, Any]:
         """Fallback execution with Pydantic validation"""
         try:
-            from openai import OpenAI
-            client = OpenAI()
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_openai_client
+            client = get_openai_client()
             
             prompt = self._build_task_prompt(task)
             

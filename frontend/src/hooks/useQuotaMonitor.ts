@@ -19,6 +19,30 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '@/utils/api'
 import { useQuotaToasts } from '@/components/QuotaToast'
 
+// Helper function to get status message
+const _getStatusMessage = (statusData: any) => {
+  const status = statusData.status || 'normal'
+  
+  switch (status) {
+    case 'normal':
+      return 'API operating normally'
+    case 'warning':
+      const usage = Math.max(
+        statusData.requests_per_minute?.percentage || 0,
+        statusData.requests_per_day?.percentage || 0
+      )
+      return `API usage at ${usage.toFixed(1)}% - approaching limits`
+    case 'rate_limited':
+      return 'Rate limit reached. Please wait before making more requests.'
+    case 'quota_exceeded':
+      return 'Quota exceeded. Some features are temporarily limited.'
+    case 'degraded':
+      return 'Service operating with reduced capacity due to quota constraints.'
+    default:
+      return 'API status unknown'
+  }
+}
+
 export interface QuotaStatus {
   status: 'normal' | 'warning' | 'rate_limited' | 'quota_exceeded' | 'degraded'
   message: string
@@ -31,6 +55,7 @@ export interface QuotaStatus {
     dailyUsagePercent: number
   }
   suggestedActions?: string[]
+  rawData?: any // For detailed display purposes
 }
 
 interface UseQuotaMonitorOptions {
@@ -63,54 +88,7 @@ export const useQuotaMonitor = (options: UseQuotaMonitorOptions = {}) => {
 
   const { showQuotaError, showQuotaWarning, showQuotaInfo } = useQuotaToasts()
 
-  // Fetch quota status from API
-  const fetchQuotaStatus = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      // Get main status data - API returns {success: true, data: {...}}
-      const statusResponse = await api.quota.getStatus()
-      const statusData = statusResponse.data || statusResponse
-
-      // Get check result - API returns {success: true, data: {...}}
-      const checkResponse = await api.quota.check()
-      const checkData = checkResponse.data || checkResponse
-
-      const newStatus: QuotaStatus = {
-        status: statusData.status || 'normal',
-        message: _getStatusMessage(statusData),
-        canMakeRequest: checkData.can_make_request !== false,
-        waitSeconds: checkData.wait_seconds,
-        statistics: statusData.requests_per_minute ? {
-          requestsThisMinute: statusData.requests_per_minute.current,
-          requestsToday: statusData.requests_per_day.current,
-          minuteUsagePercent: statusData.requests_per_minute.percentage,
-          dailyUsagePercent: statusData.requests_per_day.percentage
-        } : undefined,
-        suggestedActions: checkData.suggested_actions,
-        // Add raw data for detailed display
-        rawData: statusData
-      }
-
-      setQuotaStatus(newStatus)
-
-      // Show notifications if status changed
-      if (showNotifications && newStatus.status !== quotaStatus.status) {
-        handleStatusNotification(newStatus)
-      }
-
-      return newStatus
-    } catch (err) {
-      console.error('Failed to fetch quota status:', err)
-      setError('Failed to fetch quota status')
-      return null
-    } finally {
-      setIsLoading(false)
-    }
-  }, [quotaStatus.status, showNotifications])
-
-  // Handle status change notifications
+  // Handle status change notifications - declared first to avoid circular dependency
   const handleStatusNotification = useCallback((status: QuotaStatus) => {
     const notificationKey = `${status.status}-${status.message}`
     
@@ -148,6 +126,54 @@ export const useQuotaMonitor = (options: UseQuotaMonitorOptions = {}) => {
     }
   }, [quotaStatus.status, showQuotaError, showQuotaWarning, showQuotaInfo])
 
+  // Fetch quota status from API - now can reference handleStatusNotification
+  const fetchQuotaStatus = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // Get main status data - API returns {success: true, data: {...}}
+      const statusResponse = await api.quota.getStatus()
+      const statusData = statusResponse.data || statusResponse
+
+      // Get check result - API returns {success: true, data: {...}}
+      const checkResponse = await api.quota.check()
+      const checkData = checkResponse.data || checkResponse
+
+      const newStatus: QuotaStatus = {
+        status: statusData.status || 'normal',
+        message: _getStatusMessage(statusData),
+        canMakeRequest: checkData.can_make_request !== false,
+        waitSeconds: checkData.wait_seconds,
+        statistics: statusData.requests_per_minute ? {
+          requestsThisMinute: statusData.requests_per_minute.current,
+          requestsToday: statusData.requests_per_day.current,
+          minuteUsagePercent: statusData.requests_per_minute.percentage,
+          dailyUsagePercent: statusData.requests_per_day.percentage
+        } : undefined,
+        suggestedActions: checkData.suggested_actions,
+        // Add raw data for detailed display
+        rawData: statusData
+      }
+
+      setQuotaStatus(prevStatus => {
+        // Show notifications if status changed
+        if (showNotifications && newStatus.status !== prevStatus.status) {
+          handleStatusNotification(newStatus)
+        }
+        return newStatus
+      })
+
+      return newStatus
+    } catch (err) {
+      console.error('Failed to fetch quota status:', err)
+      setError('Failed to fetch quota status')
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }, [showNotifications, handleStatusNotification])
+
   // Setup WebSocket connection
   const connectWebSocket = useCallback(() => {
     // Skip WebSocket connection if not enabled
@@ -161,80 +187,103 @@ export const useQuotaMonitor = (options: UseQuotaMonitorOptions = {}) => {
       wsRef.current.close()
     }
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'
-    
-    // Use dedicated quota WebSocket endpoint if no workspaceId
-    // Otherwise use workspace-specific endpoint for additional updates
-    const wsEndpoint = workspaceId 
-      ? `${wsUrl}/ws/${workspaceId}`  // Workspace-specific endpoint
-      : `${wsUrl}/api/quota/ws`        // Dedicated quota endpoint
-    
-    console.log(`Quota monitor: Connecting to WebSocket at ${wsEndpoint}`)
-    const ws = new WebSocket(wsEndpoint)
-
-    ws.onopen = () => {
-      console.log('Quota monitor WebSocket connected')
-      // Clear any reconnect timeout
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-      }
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        // Handle different message types from both endpoints
-        if (data.type === 'quota_status_update' || data.type === 'quota_status') {
-          console.log('Received quota update via WebSocket:', data)
-          
-          // Extract status data (may be nested in data.data for dedicated endpoint)
-          const statusData = data.data || data
-          
-          // Update status immediately
-          const newStatus: QuotaStatus = {
-            status: statusData.status || 'normal',
-            message: statusData.message || 'API operating normally',
-            canMakeRequest: statusData.status === 'normal' || statusData.status === 'warning',
-            waitSeconds: statusData.details?.retry_after || statusData.retry_after_seconds,
-            statistics: statusData.statistics
-          }
-          
-          setQuotaStatus(newStatus)
-          
-          // Show notification
-          if (showNotifications) {
-            handleStatusNotification(newStatus)
-          }
-          
-          // Fetch full details for comprehensive update
-          fetchQuotaStatus()
-        }
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error)
-      }
-    }
-
-    ws.onerror = (error) => {
-      console.error('Quota monitor WebSocket error:', error)
-    }
-
-    ws.onclose = () => {
-      console.log('Quota monitor WebSocket disconnected')
-      wsRef.current = null
+    try {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'
       
-      // Attempt to reconnect after 5 seconds
-      if (enableWebSocket && !reconnectTimeoutRef.current) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting to reconnect WebSocket...')
-          connectWebSocket()
-        }, 5000)
-      }
-    }
+      // Always use dedicated quota WebSocket endpoint
+      // The quota endpoint handles both global and workspace-specific monitoring
+      const wsEndpoint = `${wsUrl}/api/quota/ws`
+      
+      // Add workspace_id as query parameter if provided
+      const finalUrl = workspaceId 
+        ? `${wsEndpoint}?workspace_id=${workspaceId}`
+        : wsEndpoint
+      
+      console.log(`Quota monitor: Connecting to WebSocket at ${finalUrl}`)
+      const ws = new WebSocket(finalUrl)
 
-    wsRef.current = ws
-  }, [enableWebSocket, workspaceId, fetchQuotaStatus, showNotifications, handleStatusNotification])
+      ws.onopen = () => {
+        console.log('Quota monitor WebSocket connected')
+        // Clear any reconnect timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          // Handle different message types from quota endpoint
+          if (data.type === 'quota_update' || data.type === 'quota_initial') {
+            console.log('Received quota update via WebSocket:', data.type)
+            
+            // Extract status data (nested in data.data for quota endpoint)
+            const statusData = data.data || data
+            
+            // Update status immediately
+            const newStatus: QuotaStatus = {
+              status: statusData.status || 'normal',
+              message: _getStatusMessage(statusData),
+              canMakeRequest: statusData.status === 'normal' || statusData.status === 'warning',
+              waitSeconds: statusData.details?.retry_after || statusData.retry_after_seconds,
+              statistics: statusData.requests_per_minute ? {
+                requestsThisMinute: statusData.requests_per_minute.current,
+                requestsToday: statusData.requests_per_day.current,
+                minuteUsagePercent: statusData.requests_per_minute.percentage,
+                dailyUsagePercent: statusData.requests_per_day.percentage
+              } : undefined,
+              rawData: statusData
+            }
+            
+            setQuotaStatus(prevStatus => {
+              // Show notifications if status changed
+              if (showNotifications && newStatus.status !== prevStatus.status && data.type !== 'quota_initial') {
+                handleStatusNotification(newStatus)
+              }
+              return newStatus
+            })
+          } else if (data.type === 'ping') {
+            // Respond to ping
+            ws.send(JSON.stringify({ type: 'pong' }))
+          }
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error)
+        }
+      }
+
+      ws.onerror = (error) => {
+        // More informative error handling
+        if (error && typeof error === 'object' && 'message' in error) {
+          console.warn(`Quota monitor WebSocket error: ${error.message}. Will use API polling as fallback.`)
+        } else {
+          console.warn('Quota monitor WebSocket connection failed. Will use API polling as fallback.')
+        }
+        // Don't throw or propagate - gracefully fall back to polling
+      }
+
+      ws.onclose = (event) => {
+        console.log(`Quota monitor WebSocket disconnected (code: ${event.code}, reason: ${event.reason || 'none'})`)
+        wsRef.current = null
+        
+        // Only reconnect if not a normal closure and WebSocket is enabled
+        if (enableWebSocket && event.code !== 1000 && !reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect quota WebSocket...')
+            connectWebSocket()
+          }, 15000) // 15 seconds to prevent aggressive reconnection
+        }
+      }
+
+      wsRef.current = ws
+    } catch (error) {
+      // Catch any errors during WebSocket creation
+      console.warn('Failed to create WebSocket connection:', error)
+      console.log('Falling back to API polling for quota monitoring')
+      // Don't set error state - just use polling
+    }
+  }, [enableWebSocket, workspaceId, showNotifications, handleStatusNotification])
 
   // Setup WebSocket and initial fetch
   useEffect(() => {
@@ -242,12 +291,14 @@ export const useQuotaMonitor = (options: UseQuotaMonitorOptions = {}) => {
     fetchQuotaStatus()
 
     // Setup WebSocket
-    connectWebSocket()
+    if (enableWebSocket) {
+      connectWebSocket()
+    }
 
     // Setup auto-refresh
-    let refreshInterval: NodeJS.Timeout | null = null
+    let refreshTimer: NodeJS.Timeout | null = null
     if (autoRefresh) {
-      refreshInterval = setInterval(fetchQuotaStatus, refreshInterval)
+      refreshTimer = setInterval(fetchQuotaStatus, refreshInterval)
     }
 
     // Cleanup
@@ -255,14 +306,15 @@ export const useQuotaMonitor = (options: UseQuotaMonitorOptions = {}) => {
       if (wsRef.current) {
         wsRef.current.close()
       }
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
+      if (refreshTimer) {
+        clearInterval(refreshTimer)
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
     }
-  }, []) // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, enableWebSocket, autoRefresh, refreshInterval]) // Exclude callback functions from dependencies
 
   // Check if request can be made
   const canMakeRequest = useCallback(async (): Promise<boolean> => {

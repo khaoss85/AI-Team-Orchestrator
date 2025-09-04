@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 from enum import Enum
 
-from openai import OpenAI
+# FIX: Use quota-tracked client to ensure all API calls are monitored
+from utils.openai_client_factory import get_openai_client
 from database import get_supabase_client
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,8 @@ class OpenAIAssistantManager:
     
     def __init__(self):
         """Initialize the assistant manager"""
-        self.client = OpenAI()
+        # FIX: Use quota-tracked client factory for all OpenAI operations
+        self.client = get_openai_client()
         self.supabase = get_supabase_client()
         
         # Configuration from environment

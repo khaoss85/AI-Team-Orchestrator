@@ -157,12 +157,13 @@ class AIContentDisplayTransformer:
         🧠 AI analysis of content structure
         """
         try:
-            from openai import AsyncOpenAI
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_async_openai_client
             
             if not os.getenv("OPENAI_API_KEY"):
                 raise ValueError("OpenAI API key not configured")
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = get_async_openai_client()
             
             # Rate limiting
             if self.rate_limiter:
@@ -225,9 +226,10 @@ Respond with JSON:
         🤖 AI-powered content transformation
         """
         try:
-            from openai import AsyncOpenAI
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_async_openai_client
             
-            client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            client = get_async_openai_client()
             
             # Rate limiting
             if self.rate_limiter:

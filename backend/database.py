@@ -3302,9 +3302,10 @@ async def _ai_analyze_task_goal_relevance(
         if not os.getenv("OPENAI_API_KEY"):
             return None
         
-        from openai import AsyncOpenAI
+        # FIX: Use quota-tracked client to ensure all API calls are monitored
+        from utils.openai_client_factory import get_async_openai_client
         from services.openai_quota_tracker import quota_tracker
-        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = get_async_openai_client()
         
         # Build goals context for AI
         goals_context = []
@@ -4092,10 +4093,10 @@ async def _ai_detect_substantive_content(content: str) -> bool:
             # Fallback to simple length check when AI disabled
             return len(content.strip()) > 1000
         
-        # Import OpenAI client and quota tracker
-        from openai import AsyncOpenAI
+        # FIX: Use quota-tracked client to ensure all API calls are monitored
+        from utils.openai_client_factory import get_async_openai_client
         from services.openai_quota_tracker import quota_tracker
-        client = AsyncOpenAI()
+        client = get_async_openai_client()
         
         # Truncate content for analysis (first 2000 chars should be enough)
         analysis_content = content[:2000] if len(content) > 2000 else content

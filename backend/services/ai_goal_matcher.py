@@ -161,8 +161,9 @@ Consider:
 2. Logical relationship between deliverable type and goal type
 3. Keywords and domain alignment"""
 
-            # Call OpenAI
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_openai_client
+            client = get_openai_client()
             
             # Log thinking step if process provided
             if thinking_process_id:

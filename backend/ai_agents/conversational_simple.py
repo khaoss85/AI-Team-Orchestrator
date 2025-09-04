@@ -8,11 +8,12 @@ import logging
 import aiohttp
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
-from openai import OpenAI
 from pydantic import BaseModel
 
 from database import get_supabase_client
 from utils.context_manager import get_workspace_context
+# CRITICAL FIX: Use quota-tracked OpenAI client factory
+from utils.openai_client_factory import get_openai_client
 from tools.openai_sdk_tools import openai_tools_manager
 from tools.workspace_service import get_workspace_service
 from ai_agents.enhanced_reasoning import EnhancedReasoningEngine
@@ -31,7 +32,8 @@ class SimpleConversationalAgent:
     def __init__(self, workspace_id: str, chat_id: str = "general"):
         self.workspace_id = workspace_id
         self.chat_id = chat_id
-        self.openai_client = OpenAI()
+        # FIX: Use quota-tracked client to ensure all API calls are monitored
+        self.openai_client = get_openai_client()
         self.context = None
         self.tools_available = self._initialize_tools()
         self.reasoning_engine = EnhancedReasoningEngine()

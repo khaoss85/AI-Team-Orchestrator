@@ -6127,7 +6127,9 @@ Return ONLY a JSON object:
 {{"priority_score": <number>, "reasoning": "<brief explanation>"}}
 """
 
-            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_openai_client
+            openai_client = get_openai_client()
             
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -6232,7 +6234,9 @@ Consider:
 Return ONLY a number between 0-200 representing urgency boost.
 """
 
-            openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # FIX: Use quota-tracked client to ensure all API calls are monitored
+            from utils.openai_client_factory import get_openai_client
+            openai_client = get_openai_client()
             
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
