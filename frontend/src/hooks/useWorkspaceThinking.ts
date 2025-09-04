@@ -48,28 +48,56 @@ export function useWorkspaceThinking(workspaceId: string): UseWorkspaceThinkingR
     setError(null)
 
     try {
+      // Construct the URL
+      const baseUrl = api.getBaseUrl()
+      const url = `${baseUrl}/api/thinking/workspace/${workspaceId}?limit=10`
+      
+      console.log('🧠 Fetching thinking data from:', url)
+      console.log('🧠 Base URL:', baseUrl)
+      console.log('🧠 Workspace ID:', workspaceId)
+
       // Fetch real thinking processes from the workspace
       // This calls the actual thinking engine endpoint, not demo
-      const response = await fetch(`${api.getBaseUrl()}/api/thinking/workspace/${workspaceId}?limit=10`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        // Add credentials to handle CORS
+        credentials: 'include',
       })
 
+      console.log('🧠 Response status:', response.status)
+      console.log('🧠 Response ok:', response.ok)
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch thinking data: ${response.status}`)
+        const errorText = await response.text().catch(() => 'No error text')
+        console.error('🧠 Error response:', errorText)
+        throw new Error(`Failed to fetch thinking data: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('🧠 Response data:', data)
       
       // Transform the data if needed to match our interface
       const processes: ThinkingProcess[] = Array.isArray(data) ? data : (data.processes || [])
+      console.log('🧠 Processed thinking processes:', processes.length, 'items')
       setThinkingProcesses(processes)
 
     } catch (err) {
-      console.error('Error fetching workspace thinking:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      console.error('🧠 Error fetching workspace thinking:', err)
+      console.error('🧠 Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+      })
+      
+      // Check if it's a network error
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        setError('Network error: Unable to connect to the backend. Please ensure the backend server is running on port 8000.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      }
       setThinkingProcesses([]) // Clear data on error
     } finally {
       setIsLoading(false)
