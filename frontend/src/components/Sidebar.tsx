@@ -9,7 +9,7 @@ const Sidebar = () => {
   
   const links = [
     { name: '🏠 Dashboard', href: '/', description: 'Overview e metriche' },
-    { name: '💼 Progetti', href: '/projects', description: 'Workspace AI-driven' },
+    { name: '💼 Projects', href: '/projects', description: 'AI-driven Workspaces' },
     { name: '👥 Team di Agenti', href: '/teams', description: 'Gestione agenti AI' },
     { name: '🛠️ Tool', href: '/tools', description: 'Strumenti disponibili' },
     { name: '📚 Knowledge Base', href: '/knowledge', description: 'Base di conoscenze' },

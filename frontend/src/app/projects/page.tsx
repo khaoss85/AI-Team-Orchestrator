@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/utils/api';
 import { Workspace } from '@/types';
+import QuotaNotification from '@/components/QuotaNotification';
+import { useQuotaMonitor } from '@/hooks/useQuotaMonitor';
 
 // Array of suggested projects
 const suggestedProjects = [
@@ -167,6 +169,12 @@ export default function ProjectsPage() {
   // Mock user ID for development
   const mockUserId = '123e4567-e89b-12d3-a456-426614174000';
   
+  // 📊 Quota monitoring for home page
+  const { quotaStatus, getUsagePercentage } = useQuotaMonitor({
+    enableWebSocket: true,
+    showNotifications: false // We'll use the banner notification instead
+  });
+  
   useEffect(() => {
     const fetchWorkspaces = async () => {
       try {
@@ -230,6 +238,13 @@ export default function ProjectsPage() {
   
   return (
     <div className="container mx-auto">
+      {/* Quota Alert Banner - Inline for home page */}
+      <QuotaNotification
+        position="inline"
+        showUsageBar={true}
+        autoRefresh={true}
+      />
+      
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Your Projects</h1>
         <Link href="/projects/new" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition">

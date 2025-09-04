@@ -235,7 +235,7 @@ export default function MemoryPage() {
                     <div className="space-y-2">
                       <div className="bg-gray-900 rounded p-3">
                         <p className="text-blue-400 text-sm font-mono">
-                          SELECT success_patterns FROM workspace_memory WHERE domain = 'marketing' AND success_rate > 0.9;
+                          SELECT success_patterns FROM workspace_memory WHERE domain = 'marketing' AND success_rate &gt; 0.9;
                         </p>
                       </div>
                       <div className="bg-gray-900 rounded p-3">

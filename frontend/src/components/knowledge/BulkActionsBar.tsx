@@ -12,6 +12,7 @@ interface BulkActionsBarProps {
   onBulkCategorize: (ids: string[], category: string) => void;
   selectedIds: string[];
   onClearSelection: () => void;
+  onBulkFlag?: (ids: string[], flag: 'verified' | 'important') => void;
 }
 
 const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
@@ -20,6 +21,7 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
   onBulkCategorize,
   selectedIds,
   onClearSelection,
+  onBulkFlag,
 }) => {
   const [bulkCategory, setBulkCategory] = useState<string>('');
 
@@ -117,10 +119,7 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                // TODO: Implement bulk flag as verified
-                console.log('Bulk flag as verified:', selectedIds);
-              }}
+              onClick={() => onBulkFlag?.(selectedIds, 'verified')}
               className="text-green-600 border-green-200 hover:bg-green-50"
             >
               <Flag className="w-4 h-4 mr-1" />
@@ -129,10 +128,7 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                // TODO: Implement bulk flag as important
-                console.log('Bulk flag as important:', selectedIds);
-              }}
+              onClick={() => onBulkFlag?.(selectedIds, 'important')}
               className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
             >
               <Flag className="w-4 h-4 mr-1" />
@@ -144,14 +140,12 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
         {/* Bulk Delete */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50"
+            <button
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 text-red-600 border-red-200 hover:bg-red-50"
             >
               <Trash2 className="w-4 h-4 mr-1" />
               Delete Selected
-            </Button>
+            </button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

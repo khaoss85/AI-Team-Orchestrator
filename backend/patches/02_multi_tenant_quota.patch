@@ -1,0 +1,148 @@
+# Patch 02: Add Multi-Tenant Support to Quota Tracking
+# This patch adds workspace isolation for quota tracking
+
+--- a/backend/services/openai_quota_tracker.py
++++ b/backend/services/openai_quota_tracker.py
+@@ -245,5 +245,42 @@ class OpenAIQuotaTracker:
+         
+         logger.info(f"🧹 Cleaned up {len(old_keys)} old quota tracking entries")
+ 
++
++class WorkspaceQuotaManager:
++    """
++    Manages quota tracking per workspace for multi-tenant support
++    """
++    
++    def __init__(self):
++        self.workspace_trackers: Dict[str, OpenAIQuotaTracker] = {}
++        logger.info("✅ WorkspaceQuotaManager initialized for multi-tenant support")
++    
++    def get_tracker(self, workspace_id: str) -> OpenAIQuotaTracker:
++        """Get or create quota tracker for specific workspace"""
++        if not workspace_id:
++            # Fallback to global tracker for backward compatibility
++            workspace_id = "_global"
++            
++        if workspace_id not in self.workspace_trackers:
++            self.workspace_trackers[workspace_id] = OpenAIQuotaTracker()
++            logger.info(f"📊 Created new quota tracker for workspace: {workspace_id}")
++            
++        return self.workspace_trackers[workspace_id]
++    
++    def cleanup_inactive_workspaces(self, inactive_hours: int = 24):
++        """Remove trackers for inactive workspaces to save memory"""
++        cutoff = datetime.now() - timedelta(hours=inactive_hours)
++        removed = []
++        
++        for workspace_id, tracker in list(self.workspace_trackers.items()):
++            if hasattr(tracker, 'last_activity') and tracker.last_activity < cutoff:
++                del self.workspace_trackers[workspace_id]
++                removed.append(workspace_id)
++        
++        if removed:
++            logger.info(f"🧹 Cleaned up quota trackers for {len(removed)} inactive workspaces")
++
+ # Global instance
+-quota_tracker = OpenAIQuotaTracker()
++# DEPRECATED: Use workspace_quota_manager.get_tracker(workspace_id) instead
++quota_tracker = OpenAIQuotaTracker()  # Keep for backward compatibility
++workspace_quota_manager = WorkspaceQuotaManager()
+
+--- a/backend/routes/quota_api.py
++++ b/backend/routes/quota_api.py
+@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
+ import asyncio
+ import json
+ 
+-from services.openai_quota_tracker import quota_tracker, QuotaStatus
++from services.openai_quota_tracker import workspace_quota_manager, QuotaStatus
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -19,13 +19,14 @@ router = APIRouter(prefix="/api/quota", tags=["quota"])
+ 
+ @router.get("/status")
+-async def get_quota_status() -> Dict[str, Any]:
++async def get_quota_status(workspace_id: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Get comprehensive quota status including usage stats and limits
++    Now supports per-workspace quota tracking
+     """
+     try:
++        quota_tracker = workspace_quota_manager.get_tracker(workspace_id or "_global")
+         status_data = quota_tracker.get_status_data()
+-        logger.info(f"📊 Quota status requested: {status_data['status']}")
++        logger.info(f"📊 Quota status requested for workspace {workspace_id}: {status_data['status']}")
+         return {
+             "success": True,
+             "data": status_data
+@@ -35,13 +36,14 @@ async def get_quota_status() -> Dict[str, Any]:
+         raise HTTPException(status_code=500, detail=f"Failed to get quota status: {str(e)}")
+ 
+ @router.get("/notifications")
+-async def get_quota_notifications() -> Dict[str, Any]:
++async def get_quota_notifications(workspace_id: Optional[str] = None) -> Dict[str, Any]:
+     """
+     Get user-friendly quota notifications and suggested actions
++    Now supports per-workspace notifications
+     """
+     try:
++        quota_tracker = workspace_quota_manager.get_tracker(workspace_id or "_global")
+         notifications = quota_tracker.get_notification_data()
+-        logger.info(f"🔔 Quota notifications requested: {notifications['level'] if notifications['show_notification'] else 'none'}")
++        logger.info(f"🔔 Quota notifications requested for workspace {workspace_id}: {notifications['level'] if notifications['show_notification'] else 'none'}")
+         return {
+             "success": True,
+             "data": notifications
+@@ -141,11 +143,20 @@ async def reset_quota_stats(admin_key: Optional[str] = None) -> Dict[str, Any]:
+         raise HTTPException(status_code=500, detail=f"Failed to reset quota stats: {str(e)}")
+ 
+ @router.websocket("/ws")
+-async def quota_websocket_endpoint(websocket: WebSocket):
++async def quota_websocket_endpoint(websocket: WebSocket, workspace_id: Optional[str] = None):
+     """
+     WebSocket endpoint for real-time quota monitoring
+-    Provides live updates on quota status changes
++    Now supports per-workspace monitoring
+     """
++    # Extract workspace_id from query params if not provided
++    if not workspace_id:
++        query_params = dict(websocket.query_params)
++        workspace_id = query_params.get('workspace_id', '_global')
++    
++    # Get workspace-specific tracker
++    quota_tracker = workspace_quota_manager.get_tracker(workspace_id)
++    
+     await websocket.accept()
+     quota_tracker.add_websocket(websocket)
+     
+-    logger.info("🔌 WebSocket connected for quota monitoring")
++    logger.info(f"🔌 WebSocket connected for quota monitoring (workspace: {workspace_id})")
+
+--- a/backend/services/ai_provider_abstraction.py
++++ b/backend/services/ai_provider_abstraction.py
+@@ -10,7 +10,7 @@
+ import logging
+ import os
+ from typing import Any, Dict, Optional
+-from services.openai_quota_tracker import quota_tracker
++from services.openai_quota_tracker import workspace_quota_manager
+ 
+ # Placeholder for the real Agent SDK
+ # from agents import Agent, Runner, AgentOutputSchema
+@@ -80,6 +80,7 @@ class OpenAISDKProvider(BaseProvider):
+             result = await Runner.run(sdk_agent, prompt)
+             
+             # Track successful request
++            quota_tracker = workspace_quota_manager.get_tracker(workspace_id)
+             estimated_tokens = len(prompt.split()) * 1.3  # Rough token estimate
+             quota_tracker.record_request(success=True, tokens_used=int(estimated_tokens))
+             
+@@ -184,6 +185,7 @@ class OpenAISDKProvider(BaseProvider):
+             
+         except Exception as e:
+             # Track failed request
++            quota_tracker = workspace_quota_manager.get_tracker(workspace_id)
+             quota_tracker.record_openai_error(str(type(e).__name__), str(e))
+             logger.error(f"❌ Error in real OpenAI SDK call: {e}", exc_info=True)
+             raise

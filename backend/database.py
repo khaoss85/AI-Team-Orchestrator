@@ -525,13 +525,40 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                             logger.warning("⚠️ No active goals found for AI matching")
                             
                     except Exception as e:
-                        logger.error(f"❌ AI Goal Matcher failed: {e}, using emergency fallback")
-                        # Emergency fallback only if AI matching fails
-                        for goal in workspace_goals:
-                            if goal.get("status") == "active":
-                                mapped_goal_id = goal.get("id")
-                                logger.warning(f"🚨 Emergency fallback: Using first active goal: {mapped_goal_id}")
-                                break
+                        logger.error(f"❌ AI Goal Matcher failed: {e}, using enhanced emergency fallback")
+                        # Enhanced emergency fallback that avoids "first active goal" anti-pattern
+                        try:
+                            # Try to use the fallback rule matching directly
+                            active_goals = [goal for goal in workspace_goals if goal.get("status") == "active"]
+                            if active_goals:
+                                # Use the rule-based matcher as emergency fallback
+                                emergency_result = ai_matcher._fallback_rule_match(
+                                    title=deliverable_data.get('title', 'Business Asset'),
+                                    deliverable_type=deliverable_data.get('type', 'real_business_asset'),
+                                    available_goals=active_goals
+                                )
+                                mapped_goal_id = emergency_result.goal_id
+                                logger.warning(f"🛡️ Enhanced emergency fallback: {emergency_result.reasoning} (confidence: {emergency_result.confidence:.0f}%)")
+                            else:
+                                # No active goals at all - this is a workspace configuration issue
+                                logger.error("❌ No active goals found in workspace for emergency fallback")
+                                if workspace_goals:
+                                    # Use any available goal as absolute last resort
+                                    mapped_goal_id = workspace_goals[0].get("id")
+                                    logger.warning(f"🚨 Absolute last resort: Using first available goal (no active goals)")
+                        except Exception as fallback_error:
+                            logger.error(f"❌ Enhanced emergency fallback also failed: {fallback_error}")
+                            # Ultimate fallback - but still avoid the anti-pattern
+                            if workspace_goals:
+                                import hashlib
+                                # Use hash-based distribution to avoid always selecting first
+                                data_str = str(deliverable_data.get('title', '')) + str(deliverable_data.get('type', ''))
+                                data_hash = hashlib.md5(data_str.encode()).hexdigest()
+                                hash_value = int(data_hash[:8], 16)
+                                goal_index = hash_value % len(workspace_goals)
+                                selected_goal = workspace_goals[goal_index]
+                                mapped_goal_id = selected_goal.get("id")
+                                logger.warning(f"🎲 Ultimate fallback: Hash-based selection from {len(workspace_goals)} goals (index: {goal_index})")
                 
                 # Create deliverable with pipeline-generated content
                 ai_deliverable_data = {
@@ -2335,6 +2362,15 @@ async def get_workspace_goals(workspace_id: str, status: Optional[str] = None) -
         for goal in goals:
             # Map description to goal_name for frontend compatibility
             goal['goal_name'] = goal.get('description', goal.get('metric_type', 'Unknown Goal'))
+            
+            # 🔧 FIX: Add calculated progress field
+            # The frontend expects a 'progress' field but the database doesn't have one
+            current_value = goal.get('current_value', 0)
+            target_value = goal.get('target_value', 1)
+            if target_value > 0:
+                goal['progress'] = round((current_value / target_value) * 100, 1)
+            else:
+                goal['progress'] = 0
         
         return goals
         
@@ -3267,6 +3303,7 @@ async def _ai_analyze_task_goal_relevance(
             return None
         
         from openai import AsyncOpenAI
+        from services.openai_quota_tracker import quota_tracker
         client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
         # Build goals context for AI
@@ -3307,14 +3344,25 @@ Return ONLY a JSON object:
 
 If no relevant goal exists, return: {{"goal_id": null, "confidence": 0.0}}"""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0.2,
-            max_tokens=300
-        )
-        
-        result_text = response.choices[0].message.content.strip()
+        try:
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": analysis_prompt}],
+                temperature=0.2,
+                max_tokens=300
+            )
+            
+            # Record successful request with token usage
+            tokens_used = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
+            quota_tracker.record_request(success=True, tokens_used=tokens_used)
+            logger.info(f"✅ QUOTA TRACKED: Goal linking AI call - {tokens_used} tokens used")
+            
+            result_text = response.choices[0].message.content.strip()
+        except Exception as e:
+            # Record failed request for quota tracking
+            quota_tracker.record_openai_error(str(type(e).__name__), str(e))
+            logger.error(f"❌ QUOTA TRACKED: Goal linking AI error: {e}")
+            return None
         
         # Parse AI response
         try:
@@ -4044,8 +4092,9 @@ async def _ai_detect_substantive_content(content: str) -> bool:
             # Fallback to simple length check when AI disabled
             return len(content.strip()) > 1000
         
-        # Import OpenAI client
+        # Import OpenAI client and quota tracker
         from openai import AsyncOpenAI
+        from services.openai_quota_tracker import quota_tracker
         client = AsyncOpenAI()
         
         # Truncate content for analysis (first 2000 chars should be enough)
@@ -4070,18 +4119,29 @@ IMPORTANT DISTINCTIONS:
 RESPONSE FORMAT:
 Return ONLY "SUBSTANTIVE" or "FAKE" - no explanation needed."""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0.1
-        )
-        
-        result = response.choices[0].message.content.strip().upper()
-        is_substantive = result == "SUBSTANTIVE"
-        
-        logger.info(f"🧠 AI FAKE DETECTION: Content classified as '{result}' -> substantive={is_substantive}")
-        return is_substantive
+        try:
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+                temperature=0.1
+            )
+            
+            # Record successful request with token usage
+            tokens_used = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0
+            quota_tracker.record_request(success=True, tokens_used=tokens_used)
+            logger.info(f"✅ QUOTA TRACKED: Fake detection AI call - {tokens_used} tokens used")
+            
+            result = response.choices[0].message.content.strip().upper()
+            is_substantive = result == "SUBSTANTIVE"
+            
+            logger.info(f"🧠 AI FAKE DETECTION: Content classified as '{result}' -> substantive={is_substantive}")
+            return is_substantive
+        except Exception as ai_error:
+            # Record failed request for quota tracking
+            quota_tracker.record_openai_error(str(type(ai_error).__name__), str(ai_error))
+            logger.error(f"❌ QUOTA TRACKED: Fake detection AI error: {ai_error}")
+            # Continue to fallback instead of re-raising
         
     except Exception as e:
         logger.warning(f"⚠️ AI fake detection failed: {e}")

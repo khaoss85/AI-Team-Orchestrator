@@ -44,16 +44,38 @@ export function Dialog({ open = false, onOpenChange = () => {}, children }: Dial
   )
 }
 
-export function DialogTrigger({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+interface DialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean
+  children?: React.ReactNode
+}
+
+export function DialogTrigger({ children, asChild = false, ...props }: DialogTriggerProps) {
   const { onOpenChange } = React.useContext(DialogContext)
   
+  const handleClick = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    props.onClick?.(e)
+    onOpenChange(true)
+  }, [props, onOpenChange])
+
+  // When asChild is true, clone the child element and add onClick handler
+  if (asChild && React.isValidElement(children)) {
+    const childElement = children as React.ReactElement<{onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void}>
+    return React.cloneElement(childElement, {
+      onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+        // Call the child's existing onClick handler if it exists
+        if (childElement.props.onClick) {
+          childElement.props.onClick(e)
+        }
+        handleClick(e)
+      }
+    })
+  }
+  
+  // Default button rendering when asChild is false
   return (
     <button
       {...props}
-      onClick={(e) => {
-        props.onClick?.(e)
-        onOpenChange(true)
-      }}
+      onClick={handleClick}
     >
       {children}
     </button>

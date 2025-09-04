@@ -239,6 +239,18 @@ Respond with JSON:
             else:
                 content_str = str(content)
             
+            # Detect if content is already markdown
+            is_already_markdown = False
+            if isinstance(content, str) and (
+                content.startswith('#') or 
+                content.startswith('##') or
+                content.startswith('###') or
+                '**' in content or
+                '- ' in content[:100]
+            ):
+                is_already_markdown = True
+                logger.info("📝 Detected content is already in markdown format")
+            
             # Context information
             context_info = ""
             if business_context:
@@ -247,7 +259,39 @@ Respond with JSON:
             content_type = content_analysis.get('content_type', 'mixed')
             transformation_hints = content_analysis.get('transformation_hints', [])
             
-            transform_prompt = f"""
+            # Adjust prompt based on whether content is already markdown
+            if is_already_markdown:
+                transform_prompt = f"""
+Transform this markdown content into beautiful, professionally formatted {display_format.upper()}.
+
+CONTENT TO TRANSFORM (already in markdown):
+{content_str}
+
+CONTENT TYPE: {content_type}
+DISPLAY FORMAT: {display_format}
+{context_info}
+
+TRANSFORMATION REQUIREMENTS:
+1. The content is ALREADY in markdown format - enhance it for professional display
+2. If converting to HTML: Create rich, styled HTML with proper semantic tags
+3. If keeping as markdown: Enhance formatting, add structure, improve readability
+4. Make it visually appealing with proper hierarchy and spacing
+5. Use tables for tabular data, lists for items, cards for sections
+6. Add professional business styling appropriate for the content type
+7. Preserve ALL actual business data and information
+
+SPECIFIC ENHANCEMENTS:
+- Convert markdown tables to beautiful HTML tables with styling
+- Add semantic HTML5 tags (article, section, header, etc.) if HTML output
+- Use proper heading hierarchy and formatting
+- Add subtle visual enhancements (borders, backgrounds, spacing)
+- Format code blocks, quotes, and lists beautifully
+- Create a professional document that executives would appreciate
+
+{"HTML" if display_format == "html" else "ENHANCED MARKDOWN"} OUTPUT ONLY - NO EXPLANATIONS:
+"""
+            else:
+                transform_prompt = f"""
 Transform this raw business content into beautiful, user-friendly {display_format.upper()} format.
 
 CONTENT TO TRANSFORM:
@@ -385,11 +429,25 @@ SPECIFIC GUIDELINES:
     
     def _dict_to_html(self, content_dict: Dict[str, Any]) -> str:
         """Convert dict to basic HTML"""
+        # Special case: if dict has only one key and it's a string with markdown
+        if len(content_dict) == 1:
+            key = list(content_dict.keys())[0]
+            value = content_dict[key]
+            # Check for raw_content key or markdown content
+            if (key == 'raw_content' or isinstance(value, str)) and isinstance(value, str) and (
+                value.startswith('#') or value.startswith('##') or 
+                '**' in value or '- ' in value[:100]
+            ):
+                # Convert markdown to HTML properly
+                return self._markdown_to_html(value)
+        
         html_parts = ['<div class="content">']
         
         for key, value in content_dict.items():
-            key_formatted = key.replace('_', ' ').title()
-            html_parts.append(f'<h3>{key_formatted}</h3>')
+            # Skip the key header if it's "raw_content" - just process the content
+            if key != 'raw_content':
+                key_formatted = key.replace('_', ' ').title()
+                html_parts.append(f'<h3>{key_formatted}</h3>')
             
             if isinstance(value, (list, tuple)):
                 html_parts.append('<ul>')
@@ -399,10 +457,58 @@ SPECIFIC GUIDELINES:
             elif isinstance(value, dict):
                 html_parts.append(self._dict_to_html(value))
             else:
-                html_parts.append(f'<p>{str(value)}</p>')
+                # Check if value is markdown string
+                if isinstance(value, str) and (
+                    value.startswith('#') or value.startswith('##') or
+                    '**' in value or '- ' in value[:100]
+                ):
+                    html_parts.append(self._markdown_to_html(value))
+                else:
+                    html_parts.append(f'<p>{str(value)}</p>')
         
         html_parts.append('</div>')
         return '\n'.join(html_parts)
+    
+    def _markdown_to_html(self, markdown_text: str) -> str:
+        """Convert markdown to basic HTML"""
+        html = markdown_text
+        
+        # Convert headers
+        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+        
+        # Convert bold
+        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+        
+        # Convert lists
+        lines = html.split('\n')
+        in_list = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith('- '):
+                if not in_list:
+                    new_lines.append('<ul>')
+                    in_list = True
+                new_lines.append(f'<li>{line.strip()[2:]}</li>')
+            else:
+                if in_list and not line.strip().startswith('- '):
+                    new_lines.append('</ul>')
+                    in_list = False
+                new_lines.append(line)
+        if in_list:
+            new_lines.append('</ul>')
+        
+        html = '\n'.join(new_lines)
+        
+        # Convert paragraphs
+        html = re.sub(r'\n\n', '</p>\n<p>', html)
+        if not html.startswith('<'):
+            html = f'<p>{html}'
+        if not html.endswith('>'):
+            html = f'{html}</p>'
+        
+        return f'<div class="markdown-content">\n{html}\n</div>'
     
     def _dict_to_markdown(self, content_dict: Dict[str, Any]) -> str:
         """Convert dict to basic Markdown"""
@@ -427,14 +533,28 @@ SPECIFIC GUIDELINES:
     
     def _text_to_display(self, content_text: str, display_format: str) -> str:
         """Convert plain text to display format"""
+        # Check if text is already markdown
+        is_markdown = (
+            content_text.startswith('#') or content_text.startswith('##') or
+            '**' in content_text or '- ' in content_text[:100]
+        )
+        
         if display_format == 'html':
-            # Simple text to HTML conversion
-            paragraphs = content_text.split('\n\n')
-            html_paragraphs = [f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paragraphs if p.strip()]
-            return f'<div class="content">{"".join(html_paragraphs)}</div>'
+            if is_markdown:
+                # Convert markdown to HTML
+                return self._markdown_to_html(content_text)
+            else:
+                # Simple text to HTML conversion
+                paragraphs = content_text.split('\n\n')
+                html_paragraphs = [f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paragraphs if p.strip()]
+                return f'<div class="content">{"".join(html_paragraphs)}</div>'
         else:
-            # Text is already markdown-friendly, just ensure proper formatting
-            return f'# Content\n\n{content_text}'
+            if is_markdown:
+                # Already markdown, return as-is
+                return content_text
+            else:
+                # Text is plain, add basic markdown formatting
+                return f'# Content\n\n{content_text}'
     
     def _fallback_analysis(self, content_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Fallback content analysis when AI fails"""

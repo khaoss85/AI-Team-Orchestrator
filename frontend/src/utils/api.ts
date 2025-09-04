@@ -2229,6 +2229,96 @@ export const api = {
     },
   },
 
+  // Quota Management API
+  quota: {
+    // Get quota notifications (supports workspace-specific tracking)
+    getNotifications: async (workspaceId?: string): Promise<{
+      show_notification: boolean;
+      type: 'info' | 'warning' | 'error';
+      title: string;
+      message: string;
+      actions: string[];
+    }> => {
+      try {
+        const url = workspaceId 
+          ? `${API_BASE_URL}/api/quota/notifications?workspace_id=${workspaceId}`
+          : `${API_BASE_URL}/api/quota/notifications`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Get quota usage statistics
+    getUsage: async (period: 'current' | 'daily' | 'monthly' = 'current'): Promise<{
+      usage: {
+        minute: {
+          current: number;
+          limit: number;
+          percentage: number;
+        };
+        daily: {
+          current: number;
+          limit: number;
+          percentage: number;
+        };
+      };
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/quota/usage?period=${period}`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Get quota status (supports workspace-specific tracking)
+    getStatus: async (workspaceId?: string): Promise<{
+      success: boolean;
+      data: {
+        status: 'normal' | 'warning' | 'rate_limited' | 'quota_exceeded' | 'degraded';
+        statistics?: {
+          requests_this_minute: number;
+          requests_today: number;
+          minute_usage_percent: number;
+          daily_usage_percent: number;
+        };
+        quota_info?: {
+          suggested_actions?: string[];
+        };
+      };
+      workspace_id?: string;
+    }> => {
+      try {
+        const url = workspaceId 
+          ? `${API_BASE_URL}/api/quota/status?workspace_id=${workspaceId}`
+          : `${API_BASE_URL}/api/quota/status`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+
+    // Check if can make request
+    check: async (): Promise<{
+      can_make_request: boolean;
+      wait_seconds?: number;
+    }> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/quota/check`);
+        if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
+        return await response.json();
+      } catch (error) {
+        return handleApiError(error);
+      }
+    },
+  },
+
   // Goal Progress Transparency API
   goalProgress: {
     // Get detailed goal progress with transparency data

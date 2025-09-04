@@ -25,7 +25,7 @@ const MinimalFloatingSidebar: React.FC = () => {
     },
     { 
       icon: FolderOpen, 
-      label: 'Progetti', 
+      label: 'Projects', 
       href: '/projects', 
       ariaLabel: 'Open projects and workspace management'
     },

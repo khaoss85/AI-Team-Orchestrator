@@ -216,13 +216,15 @@ class WorkspaceRecoverySystem:
         """🔧 RECOVERY: Fix workspaces with no active agents"""
         try:
             # Reactivate existing agents if any
+            # Only update agents that are in ERROR or OFFLINE status
+            # Note: TERMINATED status doesn't exist in AgentStatus enum, using specific statuses instead
             update_result = supabase.table("agents").update({
                 "status": AgentStatus.ACTIVE.value,
                 "updated_at": datetime.now().isoformat()
             }).eq(
                 "workspace_id", workspace_id
-            ).neq(
-                "status", AgentStatus.TERMINATED.value
+            ).in_(
+                "status", [AgentStatus.ERROR.value, AgentStatus.OFFLINE.value]
             ).execute()
             
             reactivated_count = len(update_result.data) if update_result.data else 0

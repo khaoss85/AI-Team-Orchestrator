@@ -2180,6 +2180,29 @@ Use tools to gather additional data for deeper analysis when needed.
     
     async def _generate_tools_artifact_response(self) -> str:
         """Generate a properly formatted artifact response for available tools"""
+        # Get tools from the actual tool registry
+        native_tools = []
+        try:
+            from tools.registry import tool_registry
+            # Initialize the registry if needed
+            if not tool_registry.initialized:
+                await tool_registry.initialize()
+            
+            # Get all available tools from registry
+            registry_tools = await tool_registry.get_tools_for_workspace(self.workspace_id)
+            logger.info(f"🛠️ Found {len(registry_tools)} native tools in registry for workspace")
+            
+            # Add registry tools to native tools category
+            for tool in registry_tools:
+                native_tools.append({
+                    "name": tool.get("name", ""),
+                    "label": tool.get("name", "").replace('_', ' ').title(),
+                    "description": tool.get("description", ""),
+                    "created_by": tool.get("created_by", "system")
+                })
+        except Exception as e:
+            logger.error(f"Failed to load tools from registry: {e}")
+        
         # Get the tools from our tools_available dictionary
         tools_list = []
         
@@ -2214,8 +2237,14 @@ Use tools to gather additional data for deeper analysis when needed.
         
         # Create the artifact content
         artifact_content = {
-            "tools": tools_list,
+            "tools": tools_list + native_tools,  # Include native tools in the full list
             "categories": {
+                "native_tools": {
+                    "title": "Native Agent Tools",
+                    "icon": "🔧",
+                    "tools": native_tools,
+                    "description": "Tools available to AI agents for specialized tasks"
+                },
                 "team_management": {
                     "title": "Team Management",
                     "icon": "👥",
@@ -2272,7 +2301,7 @@ I have access to a comprehensive set of tools to help manage your project. Here'
 
 ## 📋 Quick Overview
 
-**Total Tools**: {len(tools_list)} tools across 5 categories
+**Total Tools**: {len(tools_list + native_tools)} tools across 6 categories
 **Slash Commands**: 5 quick commands for common actions
 **AI Integrations**: OpenAI and Supabase backends
 **Core Capabilities**: 8 major feature areas

@@ -1,0 +1,171 @@
+# Patch 03: Integrate Quota Tracking with Goals and Tasks
+# This patch links quota usage to specific goals and tasks for better tracking
+
+--- a/backend/services/openai_quota_tracker.py
++++ b/backend/services/openai_quota_tracker.py
+@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
+ from typing import Dict, List, Optional, Any, Literal
+ from enum import Enum
+ import json
+ from collections import defaultdict
++from database import get_task, get_workspace_goal
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -35,6 +36,12 @@ class OpenAIQuotaTracker:
+         self.current_status = QuotaStatus.NORMAL
+         self.connected_websockets: List[Any] = []
+         
++        # Goal and task tracking
++        self.goal_usage: Dict[str, int] = defaultdict(int)  # tokens per goal
++        self.task_usage: Dict[str, int] = defaultdict(int)  # tokens per task
++        self.goal_request_counts: Dict[str, int] = defaultdict(int)  # requests per goal
++        self.task_request_counts: Dict[str, int] = defaultdict(int)  # requests per task
++        
+         # Rate limits (configurable via environment variables)
+         self.rate_limits = {
+             "requests_per_minute": int(os.getenv("OPENAI_RATE_LIMIT_PER_MINUTE", "500")),
+@@ -87,13 +94,31 @@ class OpenAIQuotaTracker:
+         self.connected_websockets = active_websockets
+         logger.info(f"📡 Broadcasted quota update to {len(active_websockets)} clients")
+     
+-    def record_request(self, success: bool = True, tokens_used: int = 0):
+-        """Record an API request"""
++    def record_request(self, success: bool = True, tokens_used: int = 0,
++                      goal_id: Optional[str] = None, task_id: Optional[str] = None,
++                      workspace_id: Optional[str] = None):
++        """Record an API request with goal/task context"""
+         now = datetime.now()
+         minute_key = now.replace(second=0, microsecond=0)
+         day_key = now.replace(hour=0, minute=0, second=0, microsecond=0)
+         
+         if success:
++            # Track goal and task usage
++            if goal_id:
++                self.goal_usage[goal_id] += tokens_used
++                self.goal_request_counts[goal_id] += 1
++                logger.debug(f"📊 Goal {goal_id}: +{tokens_used} tokens, total: {self.goal_usage[goal_id]}")
++            
++            if task_id:
++                self.task_usage[task_id] += tokens_used
++                self.task_request_counts[task_id] += 1
++                logger.debug(f"📊 Task {task_id}: +{tokens_used} tokens, total: {self.task_usage[task_id]}")
++                
++                # If task_id provided but no goal_id, try to get goal from task
++                if not goal_id and workspace_id:
++                    task = get_task(task_id)
++                    if task and task.get('goal_id'):
++                        self.goal_usage[task['goal_id']] += tokens_used
++            
+             self.request_counts[minute_key] += 1
+             self.request_counts[day_key] += 1
+             self.usage_stats["requests_this_minute"] += 1
+@@ -161,10 +186,42 @@ class OpenAIQuotaTracker:
+                 "count": self.usage_stats["errors_count"],
+                 "last_error": self.usage_stats["last_error_time"]
+             },
++            "goal_usage": self._get_top_goal_usage(5),  # Top 5 goals by usage
++            "task_usage": self._get_top_task_usage(5),  # Top 5 tasks by usage
+             "last_updated": datetime.now().isoformat()
+         }
+     
++    def _get_top_goal_usage(self, limit: int = 5) -> List[Dict[str, Any]]:
++        """Get top goals by token usage"""
++        sorted_goals = sorted(self.goal_usage.items(), key=lambda x: x[1], reverse=True)[:limit]
++        return [
++            {
++                "goal_id": goal_id,
++                "tokens_used": tokens,
++                "request_count": self.goal_request_counts.get(goal_id, 0),
++                "avg_tokens_per_request": tokens // max(1, self.goal_request_counts.get(goal_id, 1))
++            }
++            for goal_id, tokens in sorted_goals
++        ]
++    
++    def _get_top_task_usage(self, limit: int = 5) -> List[Dict[str, Any]]:
++        """Get top tasks by token usage"""
++        sorted_tasks = sorted(self.task_usage.items(), key=lambda x: x[1], reverse=True)[:limit]
++        return [
++            {
++                "task_id": task_id,
++                "tokens_used": tokens,
++                "request_count": self.task_request_counts.get(task_id, 0),
++                "avg_tokens_per_request": tokens // max(1, self.task_request_counts.get(task_id, 1))
++            }
++            for task_id, tokens in sorted_tasks
++        ]
++    
++    def get_goal_quota_usage(self, goal_id: str) -> Dict[str, Any]:
++        """Get quota usage for a specific goal"""
++        return {
++            "goal_id": goal_id,
++            "tokens_used": self.goal_usage.get(goal_id, 0),
++            "request_count": self.goal_request_counts.get(goal_id, 0),
++            "percentage_of_total": (self.goal_usage.get(goal_id, 0) / max(1, self.usage_stats["tokens_used"])) * 100
++        }
++    
+     def get_notification_data(self) -> Dict[str, Any]:
+         """Get user-friendly notification data"""
+
+--- a/backend/routes/quota_api.py
++++ b/backend/routes/quota_api.py
+@@ -77,6 +77,23 @@ async def get_quota_usage(period: str = "current") -> Dict[str, Any]:
+         logger.error(f"❌ Error getting quota usage: {e}")
+         raise HTTPException(status_code=500, detail=f"Failed to get quota usage: {str(e)}")
+ 
++@router.get("/goal/{goal_id}/usage")
++async def get_goal_quota_usage(goal_id: str, workspace_id: Optional[str] = None) -> Dict[str, Any]:
++    """
++    Get quota usage for a specific goal
++    """
++    try:
++        quota_tracker = workspace_quota_manager.get_tracker(workspace_id or "_global")
++        usage_data = quota_tracker.get_goal_quota_usage(goal_id)
++        
++        logger.info(f"📊 Goal quota usage requested: {goal_id}")
++        return {
++            "success": True,
++            "data": usage_data
++        }
++    except Exception as e:
++        logger.error(f"❌ Error getting goal quota usage: {e}")
++        raise HTTPException(status_code=500, detail=f"Failed to get goal quota usage: {str(e)}")
++
+ @router.get("/check")
+ async def check_quota_availability() -> Dict[str, Any]:
+
+--- a/backend/executor.py
++++ b/backend/executor.py
+@@ -60,6 +60,10 @@ from services.agent_collaboration import (
+     collaborate_on_task
+ )
+ 
++# Import quota tracking for goal/task integration
++from services.openai_quota_tracker import workspace_quota_manager
++
+ # Import AI provider abstraction
+ from services.ai_provider_abstraction import ai_provider_manager
+ 
+@@ -425,6 +429,7 @@ class TaskExecutor:
+                 agent=agent_dict,
+                 prompt=prompt,
+                 workspace_id=workspace_id,
++                task_id=task_id,
++                goal_id=task.get('goal_id'),
+                 provider_type=provider_type
+             )
+             
+@@ -434,6 +439,13 @@ class TaskExecutor:
+                 await supabase.table('tasks').update({
+                     'output': result_data if result_data else "Task completed successfully"
+                 }).eq('id', task_id).execute()
++                
++                # Update quota tracking with success
++                quota_tracker = workspace_quota_manager.get_tracker(workspace_id)
++                estimated_tokens = len(str(prompt).split()) * 2  # Rough estimate
++                quota_tracker.record_request(success=True, tokens_used=estimated_tokens,
++                                           task_id=task_id, goal_id=task.get('goal_id'),
++                                           workspace_id=workspace_id)
+                 return result_data
+ 
+         except Exception as e:

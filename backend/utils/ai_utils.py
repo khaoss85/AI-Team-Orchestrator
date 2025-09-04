@@ -6,6 +6,9 @@ from typing import Type, TypeVar
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 
+# Import quota tracker for real API monitoring
+from services.openai_quota_tracker import quota_tracker
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
@@ -25,16 +28,24 @@ async def get_structured_ai_response(
     """
     for attempt in range(max_retries):
         try:
+            # Record request attempt for quota tracking
             completion = await client.beta.chat.completions.parse(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 response_format=response_model,
             )
             
+            # Record successful request with token usage
+            tokens_used = completion.usage.total_tokens if hasattr(completion, 'usage') and completion.usage else 0
+            quota_tracker.record_request(success=True, tokens_used=tokens_used)
+            logger.info(f"✅ QUOTA TRACKED: OpenAI API call successful - {tokens_used} tokens used")
+            
             return completion.choices[0].message.parsed
             
         except Exception as e:
-            logger.error(f"Error getting structured AI response (attempt {attempt + 1}/{max_retries}): {e}")
+            # Record failed request for quota tracking
+            quota_tracker.record_openai_error(str(type(e).__name__), str(e))
+            logger.error(f"❌ QUOTA TRACKED: OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt == max_retries - 1:
                 logger.error("Failed to get a structured response from AI.")
                 return None

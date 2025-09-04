@@ -309,6 +309,14 @@ class APIRateLimiter:
                 # Esegue la funzione
                 result = await func(*args, **kwargs)
                 
+                # Track successful OpenAI requests
+                if "openai" in provider.lower():
+                    try:
+                        from services.openai_quota_tracker import openai_quota_tracker
+                        await openai_quota_tracker.track_request(provider)
+                    except Exception as tracker_error:
+                        logger.debug(f"Failed to track OpenAI request: {tracker_error}")
+                
                 # Reset error count su successo
                 await self.reset_error_count(provider)
                 
@@ -317,11 +325,25 @@ class APIRateLimiter:
             except Exception as e:
                 error_str = str(e).lower()
                 
-                # Controlla se è un errore di rate limiting
-                if any(code in error_str for code in ["429", "529", "rate_limit", "overloaded"]):
+                # Integrate with OpenAI Quota Tracker
+                if "openai" in provider.lower():
+                    try:
+                        from services.openai_quota_tracker import openai_quota_tracker
+                        # Track OpenAI errors for quota monitoring
+                        quota_info = await openai_quota_tracker.handle_openai_error(e, {
+                            "provider": provider,
+                            "attempt": attempt + 1,
+                            "function": func.__name__ if hasattr(func, '__name__') else str(func)
+                        })
+                        logger.info(f"📊 Quota tracker updated: {quota_info.status.value}")
+                    except Exception as tracker_error:
+                        logger.warning(f"Failed to track OpenAI error: {tracker_error}")
+                
+                # Controlla se è un errore di rate limiting o quota
+                if any(code in error_str for code in ["429", "529", "rate_limit", "overloaded", "quota_exceeded", "insufficient_quota"]):
                     if attempt < retries:
                         wait_time = await self.handle_rate_limit_error(provider, e)
-                        logger.warning(f"Rate limit hit for {provider}, "
+                        logger.warning(f"Rate limit/quota hit for {provider}, "
                                      f"retry {attempt + 1}/{retries} "
                                      f"after {wait_time:.1f}s")
                         await asyncio.sleep(wait_time)

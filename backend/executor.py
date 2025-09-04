@@ -684,6 +684,27 @@ class TaskExecutor(AssetCoordinationMixin):
                 self.sub_agent_orchestrator = None
                 self.sub_agent_performance_tracker = None
                 self.sub_agent_orchestration_enabled = False
+        
+        # 🔍 CRITICAL FIX: Adaptive Performance Metrics (Must be initialized in __init__)
+        self.executor_metrics = {
+            'loop_count': 0,
+            'avg_loop_time': 0.0,
+            'last_activity': datetime.now(),
+            'load_level': 'medium'  # Start with medium load assumption
+        }
+        
+        # Adaptive intervals based on system load - prevents infinite loops!
+        self.adaptive_intervals = {
+            "idle": 60,      # No activity - check every minute (prevents resource exhaustion)
+            "low": 30,       # Some activity - every 30s
+            "medium": 15,    # Active - every 15s  
+            "high": 10,      # High activity - every 10s
+            "overload": 5    # System stress - every 5s but limited operations
+        }
+        
+        # Cache TTL for system metrics (avoid hammering database)
+        self.cache_ttl = 10  # seconds
+        self.operation_cache = {}
 
     async def get_workspace_settings(self, workspace_id: str):
         """Get workspace-specific settings with fallback to defaults"""
@@ -2670,11 +2691,15 @@ Original Task:
         return False
 
     async def execution_loop(self):
-        """Main execution loop del TaskExecutor con asset coordination"""
-        logger.info("Main execution loop started with asset coordination")
+        """🚀 INTELLIGENT EXECUTION LOOP with adaptive performance optimization"""
+        
+        logger.info("🧠 Intelligent execution loop started with adaptive performance optimization")
+        logger.info(f"📊 Initial load level: {self.executor_metrics['load_level']}, sleep interval: {self.adaptive_intervals[self.executor_metrics['load_level']]}s")
         
         while self.running:
             try:
+                loop_start = time.time()  # Track loop start time for performance metrics
+                
                 await self.pause_event.wait()
                 if not self.running:
                     break
@@ -2690,10 +2715,18 @@ Original Task:
                     await asyncio.sleep(60)
                     continue
 
-                logger.info("🔄 MAIN LOOP: Processing pending tasks, asset coordination, checking workspaces")
+                # 🔍 STEP 1: ASSESS SYSTEM LOAD (holistic approach)
+                await self._assess_adaptive_system_load()
                 
-                # Processa task pendenti (esistente)
-                await self.process_pending_tasks_anti_loop()
+                # Log the main loop iteration for visibility
+                if self.executor_metrics['load_level'] != "idle":
+                    logger.info("🔄 MAIN LOOP: Processing pending tasks, asset coordination, checking workspaces")
+                
+                # 🎯 STEP 2: DETERMINE OPERATIONS BASED ON LOAD
+                operations = self._determine_operations_for_current_load()
+                
+                # ⚡ STEP 3: EXECUTE SELECTED OPERATIONS EFFICIENTLY
+                await self._execute_adaptive_operations(operations)
                 
                 # === NUOVA: Asset coordination ===
                 try:
@@ -2755,7 +2788,14 @@ Original Task:
                 if datetime.now() - self.last_cleanup > timedelta(minutes=5):
                     await self._cleanup_tracking_data()
 
-                await asyncio.sleep(10)
+                # 📊 STEP 4: UPDATE PERFORMANCE METRICS
+                loop_time = time.time() - loop_start  # Calculate actual loop duration
+                await self._update_executor_metrics(loop_time)
+                
+                # 🛌 STEP 5: ADAPTIVE SLEEP BASED ON LOAD
+                sleep_interval = self.adaptive_intervals[self.executor_metrics['load_level']]
+                logger.debug(f"🛌 Adaptive sleep: {sleep_interval}s (load: {self.executor_metrics['load_level']})")
+                await asyncio.sleep(sleep_interval)
 
             except asyncio.CancelledError:
                 logger.info("Main execution loop cancelled")
@@ -4960,6 +5000,175 @@ Original Task:
             logger.error(f"⚠️ Failed to refresh agent manager cache for workspace {workspace_id}: {e}")
             return False
 
+    async def _assess_adaptive_system_load(self):
+        """🔍 INTELLIGENT LOAD ASSESSMENT: Determine current system activity level"""
+        try:
+            # BATCH QUERY: Get all metrics with smart caching
+            system_metrics = await self._get_cached_system_metrics()
+            
+            pending_tasks = system_metrics.get('pending_tasks', 0)
+            active_workspaces = system_metrics.get('active_workspaces', 0) 
+            recent_activity = system_metrics.get('recent_activity', False)
+            
+            # INTELLIGENT LOAD CLASSIFICATION
+            if pending_tasks == 0 and not recent_activity:
+                self.executor_metrics['load_level'] = "idle"
+            elif pending_tasks <= 3 and active_workspaces <= 1:
+                self.executor_metrics['load_level'] = "low"  
+            elif pending_tasks <= 10 and active_workspaces <= 3:
+                self.executor_metrics['load_level'] = "medium"
+            elif pending_tasks <= 20:
+                self.executor_metrics['load_level'] = "high"
+            else:
+                self.executor_metrics['load_level'] = "overload"
+                
+            logger.debug(f"🔍 Load assessment: {self.executor_metrics['load_level']} "
+                        f"(tasks: {pending_tasks}, workspaces: {active_workspaces})")
+            
+        except Exception as e:
+            logger.warning(f"Load assessment failed, using medium load: {e}")
+            self.executor_metrics['load_level'] = "medium"
+    
+    async def _get_cached_system_metrics(self):
+        """📊 SMART CACHING: Get system metrics with intelligent caching"""
+        cache_key = "system_metrics"
+        
+        # Check cache validity
+        if (cache_key in self.operation_cache and 
+            (datetime.now() - self.operation_cache[cache_key]['timestamp']).total_seconds() < self.cache_ttl):
+            return self.operation_cache[cache_key]['data']
+        
+        try:
+            # BATCH DATABASE QUERY (instead of multiple separate queries)
+            from database import get_pending_tasks_count, get_active_workspaces
+            
+            pending_tasks = await get_pending_tasks_count() or 0
+            active_workspaces_list = await get_active_workspaces() or []
+            active_workspaces = len(active_workspaces_list)
+            recent_activity = pending_tasks > 0 or active_workspaces > 0
+            
+            metrics = {
+                'pending_tasks': pending_tasks,
+                'active_workspaces': active_workspaces,
+                'recent_activity': recent_activity,
+                'timestamp': datetime.now()
+            }
+            
+            # Cache the result
+            self.operation_cache[cache_key] = {
+                'data': metrics,
+                'timestamp': datetime.now()
+            }
+            
+            return metrics
+            
+        except Exception as e:
+            logger.error(f"Failed to get system metrics: {e}")
+            return {'pending_tasks': 0, 'active_workspaces': 0, 'recent_activity': False}
+    
+    def _determine_operations_for_current_load(self):
+        """🎯 INTELLIGENT OPERATION SELECTION: Choose operations based on current load"""
+        load = self.executor_metrics['load_level']
+        
+        if load == "idle":
+            return ["health_check", "cleanup", "telemetry"]
+        elif load == "low": 
+            return ["circuit_breaker", "process_tasks", "health_check", "telemetry"]
+        elif load == "medium":
+            return ["circuit_breaker", "process_tasks", "asset_coordination", "runaway_check", "telemetry"]  
+        elif load == "high":
+            return ["circuit_breaker", "process_tasks", "asset_coordination", "quality_check", "workspace_check", "telemetry"]
+        else:  # overload
+            return ["circuit_breaker", "process_tasks"]  # Only essential operations
+    
+    async def _execute_adaptive_operations(self, operations):
+        """⚡ INTELLIGENT BATCH EXECUTION: Execute selected operations efficiently"""
+        for operation in operations:
+            try:
+                if operation == "circuit_breaker":
+                    if await self.check_global_circuit_breaker():
+                        logger.critical("⚠️ CIRCUIT BREAKER ACTIVATED - System paused")
+                        await asyncio.sleep(60)
+                        return  # Skip other operations when circuit breaker is active
+                        
+                elif operation == "process_tasks":
+                    await self.process_pending_tasks_anti_loop()
+                    
+                elif operation == "asset_coordination":
+                    try:
+                        active_workspaces = await get_active_workspaces()
+                        for ws_id in active_workspaces:
+                            await self.coordinate_asset_oriented_workflow(ws_id)
+                    except Exception as e:
+                        logger.error(f"Error in asset coordination: {e}")
+                        
+                elif operation == "quality_check":
+                    if self.quality_integration_enabled:
+                        try:
+                            await self._check_quality_enhanced_deliverables()
+                        except Exception as e:
+                            logger.error(f"Error in quality deliverable check: {e}")
+                            
+                elif operation == "workspace_check":
+                    if self.auto_generation_enabled:
+                        await self.check_for_new_workspaces()
+                        
+                elif operation == "runaway_check":
+                    if (self.last_runaway_check is None or
+                        (datetime.now() - self.last_runaway_check).total_seconds() > self.runaway_check_interval):
+                        await self.periodic_runaway_check()
+                        self.last_runaway_check = datetime.now()
+                        
+                elif operation == "cleanup":
+                    if datetime.now() - self.last_cleanup > timedelta(minutes=5):
+                        await self._cleanup_tracking_data()
+                        
+                elif operation == "health_check":
+                    logger.debug("💚 System health check completed")
+                    
+                elif operation == "telemetry":
+                    # 📊 ENHANCED: Telemetry collection (from old loop)
+                    if TELEMETRY_MONITOR_AVAILABLE and system_telemetry_monitor:
+                        try:
+                            if (not hasattr(self, 'last_telemetry_check') or 
+                                (datetime.now() - self.last_telemetry_check).total_seconds() > 300):
+                                
+                                await system_telemetry_monitor.collect_comprehensive_metrics()
+                                self.last_telemetry_check = datetime.now()
+                                logger.debug("📊 System telemetry collected successfully")
+                        except Exception as telemetry_error:
+                            logger.warning(f"Telemetry collection error: {telemetry_error}")
+                    
+            except Exception as e:
+                logger.error(f"Operation {operation} failed: {e}")
+    
+    async def _update_executor_metrics(self, loop_time):
+        """📊 PERFORMANCE TRACKING: Update executor performance metrics"""
+        self.executor_metrics['loop_count'] += 1
+        
+        # Running average of loop time
+        if self.executor_metrics['avg_loop_time'] == 0:
+            self.executor_metrics['avg_loop_time'] = loop_time
+        else:
+            self.executor_metrics['avg_loop_time'] = (
+                self.executor_metrics['avg_loop_time'] * 0.9 + loop_time * 0.1
+            )
+            
+        self.executor_metrics['last_activity'] = datetime.now()
+        
+        # Log performance every 10 loops with load-based frequency
+        log_frequency = 10 if self.executor_metrics['load_level'] in ['medium', 'high'] else 5
+        if self.executor_metrics['loop_count'] % log_frequency == 0:
+            logger.info(f"📊 Executor metrics: "
+                       f"loops: {self.executor_metrics['loop_count']}, "
+                       f"avg_time: {self.executor_metrics['avg_loop_time']:.2f}s, "
+                       f"load: {self.executor_metrics['load_level']}")
+
+    async def _check_quality_enhanced_deliverables(self):
+        """Check for deliverables needing quality enhancement"""
+        # This method can be overridden by QualityEnhancedTaskExecutor
+        pass
+
 
 # Aggiungi queste funzioni helper:
 
@@ -5028,27 +5237,9 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
         """🚀 INTELLIGENT EXECUTION LOOP with adaptive performance optimization"""
         
         logger.info("🧠 Intelligent execution loop started with adaptive performance optimization")
+        logger.info(f"📊 Initial load level: {self.executor_metrics['load_level']}, sleep interval: {self.adaptive_intervals[self.executor_metrics['load_level']]}s")
         
-        # Initialize adaptive metrics
-        self.executor_metrics = {
-            'loop_count': 0,
-            'avg_loop_time': 0.0,
-            'load_level': 'medium',
-            'last_activity': datetime.now()
-        }
-        
-        # Adaptive intervals based on system load
-        self.adaptive_intervals = {
-            "idle": 60,      # No activity - check every minute
-            "low": 30,       # Some activity - every 30s
-            "medium": 15,    # Active - every 15s  
-            "high": 10,      # High activity - every 10s
-            "overload": 5    # System stress - every 5s but limited operations
-        }
-        
-        # Smart caching for batch operations
-        self.operation_cache = {}
-        self.cache_ttl = 30  # seconds
+        # Metrics are now initialized in __init__ to prevent AttributeError
         
         while self.running:
             try:
@@ -5060,6 +5251,10 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                 
                 # 🔍 STEP 1: ASSESS SYSTEM LOAD (holistic approach)
                 await self._assess_adaptive_system_load()
+                
+                # Log the main loop iteration for visibility
+                if self.executor_metrics['load_level'] != "idle":
+                    logger.info("🔄 MAIN LOOP: Processing pending tasks, asset coordination, checking workspaces")
                 
                 # 🎯 STEP 2: DETERMINE OPERATIONS BASED ON LOAD
                 operations = self._determine_operations_for_current_load()
@@ -5156,13 +5351,13 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
         load = self.executor_metrics['load_level']
         
         if load == "idle":
-            return ["health_check", "cleanup"]
+            return ["health_check", "cleanup", "telemetry"]
         elif load == "low": 
-            return ["circuit_breaker", "process_tasks", "health_check"]
+            return ["circuit_breaker", "process_tasks", "health_check", "telemetry"]
         elif load == "medium":
-            return ["circuit_breaker", "process_tasks", "asset_coordination", "runaway_check"]  
+            return ["circuit_breaker", "process_tasks", "asset_coordination", "runaway_check", "telemetry"]  
         elif load == "high":
-            return ["circuit_breaker", "process_tasks", "asset_coordination", "quality_check", "workspace_check"]
+            return ["circuit_breaker", "process_tasks", "asset_coordination", "quality_check", "workspace_check", "telemetry"]
         else:  # overload
             return ["circuit_breaker", "process_tasks"]  # Only essential operations
     
@@ -5210,6 +5405,19 @@ class QualityEnhancedTaskExecutor(TaskExecutor):
                         
                 elif operation == "health_check":
                     logger.debug("💚 System health check completed")
+                    
+                elif operation == "telemetry":
+                    # 📊 ENHANCED: Telemetry collection (from old loop)
+                    if TELEMETRY_MONITOR_AVAILABLE and system_telemetry_monitor:
+                        try:
+                            if (not hasattr(self, 'last_telemetry_check') or 
+                                (datetime.now() - self.last_telemetry_check).total_seconds() > 300):
+                                
+                                await system_telemetry_monitor.collect_comprehensive_metrics()
+                                self.last_telemetry_check = datetime.now()
+                                logger.debug("📊 System telemetry collected successfully")
+                        except Exception as telemetry_error:
+                            logger.warning(f"Telemetry collection error: {telemetry_error}")
                     
             except Exception as e:
                 logger.error(f"Operation {operation} failed: {e}")

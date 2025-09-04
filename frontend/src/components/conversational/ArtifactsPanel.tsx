@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { DeliverableArtifact, TeamActivity, Chat } from './types'
 import TeamThinkingStream from './TeamThinkingStream'
 import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
 import AuthenticThinkingViewer from './AuthenticThinkingViewer'
+import { validateUniqueIds } from '../../utils/uniqueId'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -38,6 +39,21 @@ export default function ArtifactsPanel({
 }: ArtifactsPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState<DeliverableArtifact | null>(null)
   const [activeTab, setActiveTab] = useState<'artifacts' | 'viewer' | 'documents'>('artifacts')
+  
+  // Validate unique IDs in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && artifacts.length > 0) {
+      const validation = validateUniqueIds(artifacts)
+      if (!validation.isValid) {
+        console.error('🚨 [ArtifactsPanel] Duplicate artifact IDs detected:', validation.duplicates)
+        console.error('🚨 [ArtifactsPanel] Full artifacts list:', artifacts.map(a => ({
+          id: a.id,
+          type: a.type,
+          title: a.title
+        })))
+      }
+    }
+  }, [artifacts])
   
   // Show documents tab when Knowledge Base chat is active
   const showDocumentsTab = activeChat?.id === 'knowledge-base'

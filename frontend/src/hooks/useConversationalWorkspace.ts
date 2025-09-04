@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/utils/api'
+import { generateArtifactId, generateMessageId, validateUniqueIds } from '@/utils/uniqueId'
 import { 
   ConversationMessage, 
   Chat, 
@@ -698,7 +699,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
       // Convert deliverables to artifacts
       if (deliverables.length > 0) {
         artifacts.push(...deliverables.map(deliverable => ({
-          id: deliverable.id || Math.random().toString(),
+          id: deliverable.id || generateArtifactId('deliverable'),
           type: 'deliverable' as const,
           title: deliverable.title || 'Final Deliverable',
           description: deliverable.description,
@@ -719,8 +720,8 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
         console.log('📦 [loadArtifacts] Previous artifacts count:', prev.length)
         
         // PRESERVE INLINE ARTIFACTS: Keep user-generated content
+        // Don't preserve available-tools to avoid duplicates - it will be regenerated
         const inlineArtifacts = prev.filter(artifact => 
-          artifact.id === 'available-tools' || 
           artifact.id === 'project-description'
         )
         
@@ -869,7 +870,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
     
     // Add user message immediately with guaranteed unique ID
     const userMessage: ConversationMessage = {
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateMessageId('user'),
       type: 'user',
       content,
       timestamp: new Date().toISOString()
@@ -957,9 +958,9 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
             console.log('🎯 [sendMessage] Creating tools artifact with data:', parsedData)
             console.log('🎯 [sendMessage] Tools in parsed data:', parsedData.tools?.length || 0)
             
-            // Update the available-tools artifact
+            // Update the available-tools artifact with guaranteed unique ID
             const toolsArtifact: DeliverableArtifact = {
-              id: 'available-tools',
+              id: generateArtifactId('tools'),
               type: 'tools',
               title: 'Available Tools',
               description: 'Tools and integrations available to the team',
@@ -973,7 +974,8 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
             setArtifacts(prev => {
               console.log('🎯 [sendMessage] Previous artifacts count:', prev.length)
               console.log('🎯 [sendMessage] Previous artifacts:', prev.map(a => ({id: a.id, type: a.type})))
-              const filtered = prev.filter(a => a.id !== 'available-tools')
+              // Filter out any existing tools artifacts to prevent duplicates
+              const filtered = prev.filter(a => a.type !== 'tools')
               const newArtifacts = [...filtered, toolsArtifact]
               console.log('🎯 [sendMessage] New artifacts count:', newArtifacts.length)
               console.log('🎯 [sendMessage] Tools artifact content tools count:', toolsArtifact.content?.tools?.length || 0)
@@ -1066,7 +1068,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
       
       // Add error message with guaranteed unique ID
       const errorMessage: ConversationMessage = {
-        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: generateMessageId('error'),
         type: 'system',
         content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
         timestamp: new Date().toISOString()
@@ -1092,7 +1094,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
       const aiAnalysis = await analyzeObjectiveWithAI(objective, workspaceContext)
       
       const newChat: Chat = {
-        id: `objective-${Date.now()}`,
+        id: generateArtifactId('objective'),
         type: 'dynamic',
         title: aiAnalysis.suggestedTitle || generateChatTitle(objective),
         icon: aiAnalysis.suggestedIcon || '🎯',
@@ -1117,7 +1119,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
       // Send initial AI greeting
       setTimeout(() => {
         const greetingMessage: ConversationMessage = {
-          id: `greeting-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateMessageId('greeting'),
           type: 'team',
           content: `Great! I understand you want to work on: "${objective}"\n\nLet me analyze this objective and propose how our team can help you achieve it. What specific aspects would you like to focus on first?`,
           timestamp: new Date().toISOString(),
@@ -1520,7 +1522,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
         case 'available-tools':
           // Check if we already have a populated tools artifact from inline parsing
           const existingToolsArtifact = artifacts.find(a => 
-            a.id === 'available-tools' && 
+            a.type === 'tools' && 
             a.content?.tools && 
             Array.isArray(a.content.tools) && 
             a.content.tools.length > 0
@@ -1560,7 +1562,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
                       console.log('🎯 [loadChatSpecificArtifacts] Auto-loaded tools:', parsedData.tools?.length || 0)
                       
                       chatArtifacts.push({
-                        id: 'available-tools',
+                        id: generateArtifactId('tools'),
                         type: 'tools',
                         title: 'Available Tools',
                         description: 'Tools and integrations available to the team',
@@ -1580,10 +1582,10 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
             }
             
             // Fallback to empty artifact if auto-loading failed
-            if (chatArtifacts.length === 0 || !chatArtifacts.find(a => a.id === 'available-tools')) {
+            if (chatArtifacts.length === 0 || !chatArtifacts.find(a => a.type === 'tools')) {
               console.log('🎯 [loadChatSpecificArtifacts] Creating empty tools artifact as fallback')
               chatArtifacts.push({
-                id: 'available-tools',
+                id: generateArtifactId('tools'),
                 type: 'tools',
                 title: 'Available Tools',
                 description: 'Tools and integrations available to the team',
@@ -1899,7 +1901,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
 
     if (welcomeMessages[chat.id]) {
       const welcomeMessage: ConversationMessage = {
-        id: `welcome-${chat.id}-${Date.now()}`,
+        id: generateMessageId(`welcome-${chat.id}`),
         type: 'team',
         content: welcomeMessages[chat.id],
         timestamp: new Date().toISOString(),
@@ -1961,7 +1963,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
         // For goal chats, start with welcome message and auto-trigger goal analysis
         if (chat.id.startsWith('goal-')) {
           const goalWelcomeMessage: ConversationMessage = {
-            id: `welcome-${chat.id}-${Date.now()}`,
+            id: generateMessageId(`welcome-${chat.id}`),
             type: 'team',
             content: `🎯 **Goal Progress Analysis**\n\nLet me analyze the current progress for: **${chat.title}**\n\nI'll check task execution, deliverables, and team performance for this objective.`,
             timestamp: new Date().toISOString(),
@@ -1989,7 +1991,7 @@ export function useConversationalWorkspace(workspaceId: string, initialChatId?: 
                 body: JSON.stringify({
                   message: `Show detailed progress for goal ${goalId}`,
                   chat_id: chat.id,
-                  message_id: `auto-goal-analysis-${Date.now()}`
+                  message_id: generateMessageId('auto-goal-analysis')
                 })
               })
               

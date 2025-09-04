@@ -6,6 +6,9 @@ import ChatSidebar from './ChatSidebar'
 import ConversationPanel from './ConversationPanel'
 import ArtifactsPanel from './ArtifactsPanel'
 import { useWorkspaceWebSocket } from '@/hooks/useWorkspaceWebSocket'
+import QuotaNotification from '../QuotaNotification'
+import QuotaToast, { useQuotaToasts } from '../QuotaToast'
+import { useQuotaMonitor } from '@/hooks/useQuotaMonitor'
 
 interface ConversationalWorkspaceProps {
   workspaceId: string
@@ -82,6 +85,16 @@ export default function ConversationalWorkspace({
   // 🧠 Real-time thinking state (Claude/o3 style)
   const [realtimeThinkingSteps, setRealtimeThinkingSteps] = useState<any[]>([])
   const [currentGoalDecomposition, setCurrentGoalDecomposition] = useState<any>(null)
+  
+  // 📊 Quota monitoring
+  const { quotaStatus, getStatusColor } = useQuotaMonitor({
+    workspaceId,
+    enableWebSocket: true,
+    showNotifications: true
+  })
+  
+  // Toast notifications for quota alerts
+  const { toasts, removeToast } = useQuotaToasts()
 
   // 🎯 FIX: Simple chat selection without URL manipulation to prevent loops
   const handleChatSelect = useCallback((chat: Chat) => {
@@ -180,7 +193,26 @@ export default function ConversationalWorkspace({
   }, [isResizing, resize, stopResize])
 
   return (
-    <div className="flex h-full w-full bg-gray-50">
+    <>
+      {/* Quota Notifications - Minimal top banner when needed */}
+      {quotaStatus.status !== 'normal' && (
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-2">
+          <div className="max-w-4xl mx-auto">
+            <QuotaNotification
+              workspaceId={workspaceId}
+              position="inline"
+              showUsageBar={false}
+              autoRefresh={true}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Toast Notifications - For immediate alerts */}
+      <QuotaToast toasts={toasts} onDismiss={removeToast} />
+      
+      {/* Main Workspace */}
+      <div className="flex h-full w-full bg-gray-50">
       {/* CHAT SIDEBAR - 20% */}
       <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} transition-all duration-200 bg-white border-r`}>
         <ChatSidebar
@@ -274,6 +306,7 @@ export default function ConversationalWorkspace({
         />
       </div>
     </div>
+    </>
   )
 }
 

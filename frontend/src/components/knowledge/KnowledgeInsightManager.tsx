@@ -327,7 +327,9 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
             </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 text-red-600">
+                <button
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 text-red-600 hover:text-red-700"
+                >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </DialogTrigger>

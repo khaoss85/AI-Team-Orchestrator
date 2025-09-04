@@ -551,6 +551,24 @@ async def get_workspace_goals(
         if deliverables_only:
             goals = [g for g in goals if isinstance(g, dict) and (g.get("metric_type", "").startswith("deliverable_") or g.get("metric_type") == "deliverables")]
         
+        # 🔧 FIX: Add calculated progress field to each goal
+        # The frontend expects a 'progress' field but the database doesn't have one
+        # Calculate it from current_value and target_value
+        for goal in goals:
+            if isinstance(goal, dict):
+                current_value = goal.get('current_value', 0)
+                target_value = goal.get('target_value', 1)
+                # Calculate progress percentage
+                if target_value > 0:
+                    goal['progress'] = round((current_value / target_value) * 100, 1)
+                else:
+                    goal['progress'] = 0
+                
+                # Also add a formatted progress string for display
+                goal['progress_display'] = f"{goal['progress']}%"
+                
+                logger.info(f"Added progress field to goal {goal.get('id')}: {goal['progress']}% ({current_value}/{target_value})")
+        
         return goals
         
     except Exception as e:

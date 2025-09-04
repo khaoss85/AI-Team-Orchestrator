@@ -44,7 +44,9 @@ const docsSections = [
       { title: 'API Reference', slug: 'api', description: 'Complete REST API documentation' },
       { title: 'Frontend Components', slug: 'components', description: 'React/Next.js component library' },
       { title: 'Database Schema', slug: 'database', description: 'Supabase tables and relationships' },
-      { title: 'WebSocket Events', slug: 'websockets', description: 'Real-time communication patterns' }
+      { title: 'WebSocket Events', slug: 'websockets', description: 'Real-time communication patterns' },
+      { title: 'OpenAI Assistants Integration', slug: 'integrations', description: 'Complete guide to integrating OpenAI Assistants API' },
+      { title: 'Advanced Setup', slug: 'advanced-setup', description: 'Expert-level configuration patterns and optimization strategies' }
     ]
   },
   {

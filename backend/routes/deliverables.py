@@ -6,7 +6,7 @@ from middleware.trace_middleware import get_trace_id, create_traced_logger, Trac
 import logging
 import json
 import os
-from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable, delete_deliverable, get_workspace
+from database import supabase, create_deliverable, get_deliverables, get_deliverable_by_id, update_deliverable as db_update_deliverable, delete_deliverable, get_workspace
 from models import *
 
 router = APIRouter(prefix="/deliverables", tags=["deliverables"])
@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 async def enhance_deliverables_with_display_content(deliverables: List[Dict[str, Any]], workspace_id: str) -> List[Dict[str, Any]]:
     """
-    🎨 Runtime enhancement of deliverables with AI-transformed display content
-    This is a temporary solution until database schema is updated with display_content columns
+    🎨 PERSISTENT enhancement of deliverables with AI-transformed display content
+    This function now SAVES transformed content to database to prevent infinite OpenAI loops
     
-    OPTIMIZATION: Process deliverables asynchronously with timeout and limit
+    CRITICAL FIX: Deliverables are transformed ONCE and persisted, not re-transformed on every request
     """
     try:
         import asyncio
+        from datetime import datetime
         from services.ai_content_display_transformer import transform_deliverable_to_html
         
         # Limit the number of deliverables to transform (to prevent timeouts)
@@ -40,14 +41,22 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
         except Exception as e:
             logger.warning(f"Could not get workspace context: {e}")
         
-        # Separate deliverables that need transformation
+        # CRITICAL: Separate deliverables based on PERSISTENT display_content
         to_transform = []
         already_enhanced = []
+        cached_from_db = []
         
         for deliverable in deliverables:
-            if deliverable.get('display_content'):
+            # Check if already has PERSISTED display_content (not just runtime)
+            if deliverable.get('display_content') and deliverable.get('transformation_timestamp'):
+                # Has persisted display content - use cached version
+                cached_from_db.append(deliverable)
+                logger.info(f"✅ Using CACHED display_content for deliverable {deliverable.get('id')} (transformed at {deliverable.get('transformation_timestamp')})")
+            elif deliverable.get('display_content'):
+                # Has runtime display_content but not persisted - still need to save
                 already_enhanced.append(deliverable)
             else:
+                # No display_content at all - needs transformation
                 to_transform.append(deliverable)
         
         # Limit transformations
@@ -60,10 +69,11 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
         
         # Transform deliverables asynchronously
         async def transform_single(deliverable):
-            """Transform a single deliverable with timeout"""
+            """Transform a single deliverable with timeout AND PERSIST TO DATABASE"""
             try:
                 # Create a copy to avoid modifying original
                 enhanced = deliverable.copy()
+                deliverable_id = enhanced.get('id')
                 
                 # Extract content
                 content = enhanced.get('content', {})
@@ -74,7 +84,7 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
                         content = {"raw_content": content}
                 
                 # Transform with timeout
-                logger.info(f"🎨 Transforming deliverable {enhanced.get('id')} to display format")
+                logger.info(f"🎨 Transforming deliverable {deliverable_id} to display format")
                 
                 transformation_result = await asyncio.wait_for(
                     transform_deliverable_to_html(content, business_context),
@@ -87,18 +97,60 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
                     enhanced['display_format'] = transformation_result.display_format
                     enhanced['display_quality_score'] = transformation_result.transformation_confidence / 100.0
                     enhanced['auto_display_generated'] = True
+                    enhanced['transformation_timestamp'] = datetime.now().isoformat()
+                    enhanced['content_transformation_status'] = 'success'
+                    enhanced['transformation_method'] = 'ai'
+                    enhanced['ai_confidence'] = transformation_result.transformation_confidence / 100.0
                     
-                    logger.info(f"✅ Enhanced deliverable {enhanced.get('id')} with display content (confidence: {transformation_result.transformation_confidence}%)")
+                    # 🚀 CRITICAL: PERSIST TO DATABASE to prevent re-transformation
+                    try:
+                        update_data = {
+                            'display_content': transformation_result.transformed_content,
+                            'display_format': transformation_result.display_format,
+                            'display_quality_score': transformation_result.transformation_confidence / 100.0,
+                            'auto_display_generated': True,
+                            'transformation_timestamp': datetime.now().isoformat(),
+                            'content_transformation_status': 'success',
+                            'transformation_method': 'ai',
+                            'ai_confidence': transformation_result.transformation_confidence / 100.0
+                        }
+                        
+                        # Use the update_deliverable function from database.py
+                        # Note: db_update_deliverable expects only 2 args: deliverable_id and update_data
+                        await db_update_deliverable(deliverable_id, update_data)
+                        logger.info(f"💾 PERSISTED display_content for deliverable {deliverable_id} to database - will use cache on next request")
+                        
+                    except Exception as db_error:
+                        logger.error(f"⚠️ Failed to persist display_content for deliverable {deliverable_id}: {db_error}")
+                        # Continue even if persistence fails - at least return transformed content for this request
+                    
+                    logger.info(f"✅ Enhanced deliverable {deliverable_id} with display content (confidence: {transformation_result.transformation_confidence}%)")
                 else:
-                    logger.warning(f"⚠️ Transformation returned no result for deliverable {enhanced.get('id')}")
+                    logger.warning(f"⚠️ Transformation returned no result for deliverable {deliverable_id}")
                 
                 return enhanced
                 
             except asyncio.TimeoutError:
                 logger.warning(f"⏱️ Transformation timed out for deliverable {deliverable.get('id')}")
+                # Mark as failed in database to avoid retrying
+                try:
+                    await db_update_deliverable(deliverable.get('id'), {
+                        'content_transformation_status': 'failed',
+                        'content_transformation_error': 'Transformation timeout'
+                    })
+                except:
+                    pass
                 return deliverable
             except Exception as e:
                 logger.error(f"❌ Failed to transform deliverable {deliverable.get('id')}: {e}")
+                # Mark as failed in database to avoid retrying
+                try:
+                    await db_update_deliverable(deliverable.get('id'), {
+                        'content_transformation_status': 'failed', 
+                        'content_transformation_error': str(e)
+                    })
+                except:
+                    pass
                 return deliverable
         
         # Process transformations concurrently
@@ -109,12 +161,19 @@ async def enhance_deliverables_with_display_content(deliverables: List[Dict[str,
         else:
             transformed = []
         
-        # Combine all deliverables
-        all_enhanced = already_enhanced + transformed + remaining
+        # Combine all deliverables (include cached ones first!)
+        all_enhanced = cached_from_db + already_enhanced + transformed + remaining
         
-        # Log summary
+        # Log summary with cache statistics
         total_with_display = sum(1 for d in all_enhanced if d.get('display_content'))
+        total_cached = len(cached_from_db)
+        total_transformed = len(transformed)
         logger.info(f"📊 Enhancement summary: {total_with_display}/{len(all_enhanced)} deliverables have display content")
+        logger.info(f"💾 Cache statistics: {total_cached} cached (no OpenAI calls), {total_transformed} newly transformed")
+        
+        # Calculate OpenAI calls saved
+        if total_cached > 0:
+            logger.info(f"🎉 SAVED {total_cached} OpenAI API calls by using cached display_content!")
         
         return all_enhanced
         
