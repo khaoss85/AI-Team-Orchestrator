@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * QuotaContext - Centralized Quota State Management
  * 

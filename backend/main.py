@@ -357,17 +357,17 @@ app.include_router(content_learning_router)  # Already has /api/content-learning
 from routes.learning_feedback_routes import router as learning_feedback_router
 app.include_router(learning_feedback_router)  # Already has /api/learning-feedback prefix
 
-# User Insights Management System (Legacy - being replaced by unified insights)
-from routes.user_insights import router as user_insights_router
-app.include_router(user_insights_router, prefix="/api")
+# Legacy Insights Adapters - Backward compatibility during migration (MUST BE FIRST)
+from routes.insights_adapter import register_legacy_adapters
+register_legacy_adapters(app)
 
 # Unified Insights System - Single source of truth for all insights
 from routes.unified_insights import router as unified_insights_router
 app.include_router(unified_insights_router, prefix="/api")
 
-# Legacy Insights Adapters - Backward compatibility during migration
-from routes.insights_adapter import register_legacy_adapters
-register_legacy_adapters(app)
+# User Insights Management System (Legacy - fallback for non-adapted endpoints)
+from routes.user_insights import router as user_insights_router
+app.include_router(user_insights_router, prefix="/api")
 
 # Monitoring and system management
 app.include_router(monitoring_router, prefix="/api")
