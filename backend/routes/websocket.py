@@ -21,8 +21,27 @@ class ConnectionManager:
         self.active_connections: Dict[str, Set[WebSocket]] = {}
         # task_id -> set of websockets
         self.task_subscribers: Dict[str, Set[WebSocket]] = {}
+        # 🔧 FIX: Connection limits to prevent resource exhaustion
+        self.MAX_CONNECTIONS_PER_WORKSPACE = 3  # Limit to 3 connections per workspace
+        self.MAX_TOTAL_CONNECTIONS = 50  # Global connection limit
     
     async def connect(self, websocket: WebSocket, workspace_id: str, already_accepted: bool = False):
+        # 🔧 FIX: Check connection limits before accepting
+        total_connections = sum(len(conns) for conns in self.active_connections.values())
+        workspace_connections = len(self.active_connections.get(workspace_id, set()))
+        
+        if total_connections >= self.MAX_TOTAL_CONNECTIONS:
+            logger.warning(f"🚫 Global connection limit reached ({self.MAX_TOTAL_CONNECTIONS})")
+            if not already_accepted:
+                await websocket.close(code=1008, reason="Connection limit reached")
+            return False
+            
+        if workspace_connections >= self.MAX_CONNECTIONS_PER_WORKSPACE:
+            logger.warning(f"🚫 Workspace {workspace_id} connection limit reached ({self.MAX_CONNECTIONS_PER_WORKSPACE})")
+            if not already_accepted:
+                await websocket.close(code=1008, reason="Workspace connection limit reached")
+            return False
+        
         # 🔧 FIX: Only accept WebSocket if not already accepted
         if not already_accepted:
             await websocket.accept()
@@ -31,18 +50,21 @@ class ConnectionManager:
             self.active_connections[workspace_id] = set()
         self.active_connections[workspace_id].add(websocket)
         
-        logger.info(f"WebSocket connected for workspace {workspace_id}")
+        logger.info(f"WebSocket connected for workspace {workspace_id} ({workspace_connections + 1}/{self.MAX_CONNECTIONS_PER_WORKSPACE})")
         
         # Send connection confirmation with error handling
         try:
             await websocket.send_text(json.dumps({
                 "type": "connection_confirmed",
                 "workspace_id": workspace_id,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "connection_count": workspace_connections + 1
             }))
         except Exception as e:
             logger.warning(f"Failed to send connection confirmation: {e}")
             # Don't raise, just log the warning
+        
+        return True
     
     def disconnect(self, websocket: WebSocket, workspace_id: str):
         if workspace_id in self.active_connections:
@@ -208,7 +230,9 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: str):
         return
     
     # Also register with legacy manager for backwards compatibility (WebSocket already accepted)
-    await manager.connect(websocket, workspace_id, already_accepted=True)
+    if not await manager.connect(websocket, workspace_id, already_accepted=True):
+        await websocket.close(code=1008, reason="Manager connection limit reached")
+        return
     
     try:
         logger.info(f"🔗 WebSocket client {client_id} connected to workspace {workspace_id}")
@@ -242,17 +266,18 @@ async def websocket_endpoint(websocket: WebSocket, workspace_id: str):
                     logger.debug(f"📩 Received message from {client_id}: {message.get('type', 'unknown')}")
             
             except asyncio.TimeoutError:
-                # Send ping to check connection health
+                # Send custom heartbeat to check connection health (FastAPI WebSocket compatible)
                 try:
-                    # 🔧 FIX: Use proper ping with timeout and proper close frame handling
-                    pong_waiter = await websocket.ping()
-                    await asyncio.wait_for(pong_waiter, timeout=10.0)
+                    # 🔧 FIX: Use JSON heartbeat instead of websocket.ping() for FastAPI compatibility
+                    await websocket.send_json({
+                        "type": "heartbeat",
+                        "timestamp": datetime.now().isoformat(),
+                        "client_id": client_id
+                    })
                     await update_websocket_activity(client_id)
-                except asyncio.TimeoutError:
-                    logger.warning(f"🔌 Ping timeout for client {client_id}, disconnecting")
-                    break
+                    logger.debug(f"💓 Sent heartbeat to client {client_id}")
                 except Exception as e:
-                    logger.warning(f"🔌 Ping failed for client {client_id}: {e}, disconnecting")
+                    logger.warning(f"🔌 Heartbeat failed for client {client_id}: {e}, disconnecting")
                     break
             
     except WebSocketDisconnect:

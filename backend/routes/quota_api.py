@@ -12,6 +12,7 @@ import asyncio
 import json
 
 from services.openai_quota_tracker import quota_tracker, quota_manager, QuotaStatus
+from utils.performance_cache import rate_limited
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def _get_availability_message(status: QuotaStatus, can_make_request: bool) -> st
         return "API status unknown" if not can_make_request else "API available"
 
 @router.get("/status")
+@rate_limited(max_requests=20, window_seconds=60)  # Max 20 requests per minute
 async def get_quota_status(workspace_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Get comprehensive quota status including usage stats and limits
@@ -53,6 +55,7 @@ async def get_quota_status(workspace_id: Optional[str] = None) -> Dict[str, Any]
         raise HTTPException(status_code=500, detail=f"Failed to get quota status: {str(e)}")
 
 @router.get("/notifications")
+@rate_limited(max_requests=10, window_seconds=60)  # Max 10 requests per minute
 async def get_quota_notifications() -> Dict[str, Any]:
     """
     Get user-friendly quota notifications and suggested actions
@@ -69,6 +72,7 @@ async def get_quota_notifications() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get quota notifications: {str(e)}")
 
 @router.get("/usage")
+@rate_limited(max_requests=15, window_seconds=60)  # Max 15 requests per minute
 async def get_quota_usage(period: str = "current") -> Dict[str, Any]:
     """
     Get detailed quota usage statistics
@@ -95,6 +99,7 @@ async def get_quota_usage(period: str = "current") -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get quota usage: {str(e)}")
 
 @router.get("/check")
+@rate_limited(max_requests=30, window_seconds=60)  # Max 30 requests per minute
 async def check_quota_availability() -> Dict[str, Any]:
     """
     Quick check if API requests can be made

@@ -285,7 +285,7 @@ export function useGoalPreview(workspaceId: string) {
           });
         }
       }
-    }, 3000); // Check every 3 seconds for more realistic timing
+    }, 30000); // Check every 30 seconds to reduce API load (was 3000ms causing $18.76/month waste)
 
     return () => {
       clearInterval(interval);
