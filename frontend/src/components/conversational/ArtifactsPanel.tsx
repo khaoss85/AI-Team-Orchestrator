@@ -7,7 +7,7 @@ import ArtifactViewer from './ArtifactViewer'
 import { DocumentsSection } from './DocumentsSection'
 import AuthenticThinkingViewer from './AuthenticThinkingViewer'
 import { validateUniqueIds } from '../../utils/uniqueId'
-import BudgetCard from './BudgetCard'
+import BudgetCardV2 from './BudgetCardV2'
 
 interface ArtifactsPanelProps {
   artifacts: DeliverableArtifact[]
@@ -258,7 +258,7 @@ function ArtifactsList({ artifacts, onSelectArtifact, workspaceId, activeChat }:
     <div className="p-4 space-y-3 overflow-y-auto">
       {/* Budget Card only when Budget & Usage chat is active */}
       {showBudgetCard && workspaceId && (
-        <BudgetCard workspaceId={workspaceId} />
+        <BudgetCardV2 workspaceId={workspaceId} />
       )}
       
       {/* Existing artifacts */}
@@ -291,6 +291,19 @@ function ArtifactCard({ artifact, onClick }: ArtifactCardProps) {
       default: return '📄'
     }
   }
+  
+  // Debug logging for knowledge artifacts
+  React.useEffect(() => {
+    if (artifact.type === 'knowledge') {
+      console.log('💡 [ArtifactCard] Knowledge artifact rendered:', {
+        id: artifact.id,
+        title: artifact.title,
+        description: artifact.description,
+        contentKeys: artifact.content ? Object.keys(artifact.content) : [],
+        status: artifact.status
+      })
+    }
+  }, [artifact])
 
   const getStatusColor = (status: string, progress?: number) => {
     // If progress is 100%, always show as completed regardless of raw status

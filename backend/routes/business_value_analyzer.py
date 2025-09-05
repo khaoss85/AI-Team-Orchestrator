@@ -72,7 +72,7 @@ Provide:
 Respond in JSON format only."""
 
             response = await client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a business value analyst. Respond only with valid JSON."},
                     {"role": "user", "content": analysis_prompt}

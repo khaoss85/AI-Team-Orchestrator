@@ -355,6 +355,168 @@ class ComponentHealthMonitor:
         except Exception as e:
             logger.error(f"Failed to cleanup old data: {e}")
     
+    async def _check_unified_orchestrator(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Unified Orchestrator"""
+        start_time = time.time()
+        try:
+            from services.unified_orchestrator import workflow_orchestrator
+            # Simple availability check
+            is_available = hasattr(workflow_orchestrator, 'stop')
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0 if is_available else 1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_deliverable_pipeline(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Deliverable Pipeline"""
+        start_time = time.time()
+        try:
+            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+            is_available = hasattr(unified_deliverable_engine, 'stop')
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0 if is_available else 1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_executor(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Task Executor"""
+        start_time = time.time()
+        try:
+            import executor
+            is_available = hasattr(executor, 'start_task_executor')
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0 if is_available else 1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_quality_gate(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Quality Gate"""
+        start_time = time.time()
+        try:
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            is_available = True  # Assuming it's available if import works
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_memory_system(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Memory System"""
+        start_time = time.time()
+        try:
+            from services.unified_memory_engine import memory_system
+            is_available = hasattr(memory_system, 'store_context')
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0 if is_available else 1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_quality_trigger(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Quality Trigger"""
+        start_time = time.time()
+        try:
+            from backend.ai_quality_assurance.unified_quality_engine import unified_quality_engine
+            is_available = True
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
+    async def _check_asset_generator(self) -> Tuple[bool, HealthMetrics]:
+        """Check health of Asset Generator"""
+        start_time = time.time()
+        try:
+            from backend.deliverable_system.unified_deliverable_engine import unified_deliverable_engine
+            is_available = True
+            response_time = (time.time() - start_time) * 1000
+            
+            return is_available, HealthMetrics(
+                response_time_ms=response_time,
+                error_rate=0.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0
+            )
+        except Exception as e:
+            return False, HealthMetrics(
+                response_time_ms=(time.time() - start_time) * 1000,
+                error_rate=1.0,
+                throughput_per_minute=0.0,
+                memory_usage_mb=0.0,
+                last_error=str(e)
+            )
+    
     async def get_system_health_summary(self) -> Dict[str, Any]:
         """Ottieni riassunto salute sistema"""
         try:

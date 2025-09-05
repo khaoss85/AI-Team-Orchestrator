@@ -17,7 +17,7 @@ from database import (
     update_task_status,
     get_workspace,
     get_agent,
-    list_agents as db_list_agents,
+    list_agents,
     create_task,
     get_active_workspaces,
     get_workspaces_with_pending_tasks,
@@ -93,6 +93,16 @@ except ImportError as e:
     logger.warning(f"⚠️ AgentStatusManager not available: {e}")
     AGENT_STATUS_MANAGER_AVAILABLE = False
     agent_status_manager = None
+
+# 🎯 AI-DRIVEN COMPLIANT: Import AI Agent Assignment Service (15 Pillars Compliant)
+try:
+    from services.ai_agent_assignment_service import ai_agent_assignment_service
+    AI_AGENT_ASSIGNMENT_AVAILABLE = True
+    logger.info("✅ AI Agent Assignment Service available (15 Pillars Compliant)")
+except ImportError as e:
+    logger.warning(f"⚠️ AI Agent Assignment Service not available: {e}")
+    AI_AGENT_ASSIGNMENT_AVAILABLE = False
+    ai_agent_assignment_service = None
 
 # 🤖 AI-DRIVEN: Import Dynamic Anti-Loop Manager for intelligent limit management
 try:
@@ -1329,11 +1339,72 @@ class TaskExecutor(AssetCoordinationMixin):
 
     async def _assign_agent_to_task_by_role(self, task_dict: Dict, workspace_id: str, role: str) -> Optional[Dict]:
         """
-        🎯 ENHANCED: Find agent using unified AgentStatusManager for consistent status handling
-        Trova un agente attivo per il ruolo specificato e aggiorna il task nel DB.
-        Restituisce le info dell'agente assegnato o None.
+        🎯 PILLAR-COMPLIANT: AI-driven agent assignment using semantic matching
+        Uses AI Agent Assignment Service for 15 Pillars compliance.
+        Falls back to legacy logic only if compliant service is unavailable.
         """
         try:
+            # 🚀 PRIORITY 1: Use Pillar-Compliant AI Agent Assignment Service
+            if AI_AGENT_ASSIGNMENT_AVAILABLE and ai_agent_assignment_service:
+                try:
+                    logger.info(f"🎯 Using AI-driven agent assignment for task {task_dict.get('id')} (15 Pillars Compliant)")
+                    
+                    # Use compliant AI-driven assignment
+                    assignment_result = await ai_agent_assignment_service.assign_agent_to_task(
+                        task_id=task_dict.get('id'),
+                        workspace_id=workspace_id,
+                        capture_learning=True  # Enable learning capture (Pillar 6)
+                    )
+                    
+                    if assignment_result['success']:
+                        # Convert to expected format
+                        selected_agent = {
+                            "id": assignment_result['assigned_agent'],
+                            "name": f"AI-Assigned {assignment_result['agent_role']}",
+                            "role": assignment_result['agent_role'],
+                            "status": "active",
+                            "workspace_id": workspace_id
+                        }
+                        
+                        logger.info(
+                            f"✅ AI Agent Assignment successful: {assignment_result['agent_role']} "
+                            f"with confidence {assignment_result.get('confidence_score', 'N/A'):.2f}. "
+                            f"Reasoning: {assignment_result.get('reasoning', 'N/A')}"
+                        )
+                        
+                        # Update lifecycle if available
+                        if self.lifecycle_manager:
+                            try:
+                                from services.holistic_task_lifecycle import LifecyclePhase, update_task_lifecycle_phase
+                                await update_task_lifecycle_phase(
+                                    task_id=task_dict.get("id", "unknown"),
+                                    phase=LifecyclePhase.AGENT_ASSIGNMENT,
+                                    data={
+                                        "agent_id": selected_agent["id"],
+                                        "agent_role": selected_agent["role"],
+                                        "assignment_method": "ai_semantic_matching",
+                                        "confidence": assignment_result.get('confidence_score', 0),
+                                        "reasoning": assignment_result.get('reasoning', ''),
+                                        "pillars_compliant": True
+                                    }
+                                )
+                            except Exception as e:
+                                logger.warning(f"⚠️ Failed to update lifecycle for AI assignment: {e}")
+                        
+                        return selected_agent
+                    else:
+                        logger.warning(
+                            f"⚠️ AI Agent Assignment failed: {assignment_result.get('error', 'Unknown error')}. "
+                            f"Falling back to legacy assignment."
+                        )
+                        # Fall through to legacy logic
+                        
+                except Exception as ai_error:
+                    logger.error(f"❌ AI Agent Assignment Service error: {ai_error}. Using fallback.")
+                    # Fall through to legacy logic
+            
+            # 🔄 FALLBACK: Original AgentStatusManager logic
+            
             # 🎯 UNIFIED AGENT MANAGEMENT: Use AgentStatusManager if available
             if AGENT_STATUS_MANAGER_AVAILABLE and agent_status_manager:
                 try:
@@ -2401,7 +2472,7 @@ Original Task:
                 # Get all workspace agents for holistic execution
                 workspace_agents_data = []
                 try:
-                    workspace_agents_raw = await db_list_agents(workspace_id)
+                    workspace_agents_raw = await list_agents(workspace_id)
                     workspace_agents_data = workspace_agents_raw if workspace_agents_raw else []
                 except Exception as e:
                     logger.warning(f"Failed to get workspace agents: {e}")
@@ -3193,7 +3264,7 @@ Original Task:
         if data is not None and now - ts < self.min_db_query_interval:
             return data
         # Use debounced query for database call
-        data = await self._debounced_query(f"agents_{workspace_id}", db_list_agents, workspace_id)
+        data = await self._debounced_query(f"agents_{workspace_id}", list_agents, workspace_id)
         self._agents_query_cache[workspace_id] = (now, data)
         return data
 

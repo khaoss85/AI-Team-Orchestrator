@@ -4198,15 +4198,28 @@ async def get_memory_insights(workspace_id: str, limit: int = 10, **kwargs) -> L
         return []
 
 async def add_memory_insight(workspace_id: str, insight_type: str, content: str, agent_role: str = "system", task_id: str = None, **kwargs) -> bool:
-    """Add memory insight - compatibility function"""
+    """Add memory insight - compatibility function
+    
+    Accepts additional kwargs including 'title' for UniversalBusinessInsight compatibility
+    """
     try:
         from services.unified_memory_engine import unified_memory_engine
+        
+        # Extract title if provided
+        title = kwargs.get('title', None)
+        
+        # Build metadata including title if available
+        metadata = {"type": insight_type, "source": agent_role}
+        if title:
+            metadata['title'] = title
+        
         await unified_memory_engine.store_insight(
             workspace_id=workspace_id,
             insight_type=insight_type,
             content=content,
-            relevance_tags=["agent", agent_role],
-            metadata={"type": insight_type, "source": agent_role}
+            relevance_tags=kwargs.get('relevance_tags', ["agent", agent_role]),
+            metadata=metadata,
+            confidence_score=kwargs.get('confidence_score', 0.5)
         )
         return True
     except ImportError:

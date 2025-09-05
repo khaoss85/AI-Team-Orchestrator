@@ -464,7 +464,7 @@ class AmbiguityResolver:
             """
             
             response = self.openai_client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert at analyzing text for ambiguity and helping users clarify their requests."},
                     {"role": "user", "content": analysis_prompt}

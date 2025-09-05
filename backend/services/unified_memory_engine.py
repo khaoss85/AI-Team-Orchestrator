@@ -475,7 +475,7 @@ class UnifiedMemoryEngine:
         """Internal AI generation logic."""
         from services.ai_provider_abstraction import ai_provider_manager
         # 🤖 **SELF-CONTAINED**: Create asset generator config internally
-        def get_memory_enhanced_asset_generator_agent_config(model="gpt-4"):
+        def get_memory_enhanced_asset_generator_agent_config(model="gpt-4o-mini"):
             return {
                 "name": "MemoryEnhancedAssetGenerator",
                 "instructions": """

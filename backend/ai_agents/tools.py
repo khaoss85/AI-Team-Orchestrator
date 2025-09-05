@@ -35,7 +35,7 @@ except Exception:  # pragma: no cover - fallback if wrong module on path
     from backend.models import TaskStatus, ProjectPhase  # type: ignore
 from database import (
     create_task as db_create_task,
-    list_agents as db_list_agents,
+    list_agents,
     list_tasks as db_list_tasks,
     get_agent # Assicurati che get_agent sia importato
 )
@@ -66,7 +66,7 @@ class PMOrchestrationTools:
             """
             try:
                 logger.info(f"Tool '{PMOrchestrationTools.TOOL_NAME_GET_TEAM_STATUS}': Getting team roles for workspace: {workspace_id_str}")
-                agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
+                agents_in_db = await list_agents(workspace_id=workspace_id_str)
                 
                 active_agents_info = []
                 inactive_agents_info = []
@@ -143,7 +143,7 @@ class PMOrchestrationTools:
                     })
 
                 all_current_tasks = await db_list_tasks(workspace_id=workspace_id_str)
-                agents_in_db = await db_list_agents(workspace_id=workspace_id_str)
+                agents_in_db = await list_agents(workspace_id=workspace_id_str)
                 task_name_lower = task_name.lower().strip()
 
                 # 🚨 ENHANCED DUPLICATE PREVENTION: Multiple strategies

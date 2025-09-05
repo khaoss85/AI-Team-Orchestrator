@@ -340,6 +340,15 @@ function ContentView({
   }
 
   if (artifact.type === 'knowledge' && workspaceId) {
+    console.log('🔍 [ContentView] Rendering KnowledgeInsightsArtifact with:', {
+      knowledgeData: artifact.content,
+      workspaceId: workspaceId,
+      contentKeys: artifact.content ? Object.keys(artifact.content) : [],
+      insights: artifact.content?.insights?.length || 0,
+      bestPractices: artifact.content?.bestPractices?.length || 0,
+      learnings: artifact.content?.learnings?.length || 0
+    })
+    
     return (
       <KnowledgeInsightsArtifact
         knowledgeData={artifact.content}

@@ -140,7 +140,7 @@ Focus on SEMANTIC understanding, not just keyword matching.
 """
             
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a domain classification expert with deep understanding of business sectors. Provide accurate, semantic-based domain classification."},
                     {"role": "user", "content": prompt}
@@ -212,7 +212,7 @@ Return JSON array of {team_size} specialist configurations.
 """
             
             response = await self.client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert in organizational design and specialist role creation across all business domains."},
                     {"role": "user", "content": prompt}

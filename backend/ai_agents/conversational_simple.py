@@ -164,7 +164,7 @@ class SimpleConversationalAgent:
             
             try:
                 classification_response = self.openai_client.chat.completions.create(
-                    model="gpt-4",
+                    model="gpt-4o-mini",
                     messages=[{"role": "user", "content": query_classification_prompt}],
                     max_tokens=20,
                     temperature=0
@@ -211,7 +211,7 @@ class SimpleConversationalAgent:
                 
                 try:
                     todo_response = self.openai_client.chat.completions.create(
-                        model="gpt-4",
+                        model="gpt-4o-mini",
                         messages=[{"role": "user", "content": todo_prompt}],
                         max_tokens=300,
                         temperature=0.3
@@ -551,7 +551,7 @@ For simple execution requests:
             
             # Call OpenAI for intelligent response
             response = self.openai_client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=800

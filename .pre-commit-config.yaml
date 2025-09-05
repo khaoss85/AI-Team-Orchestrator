@@ -1,0 +1,18 @@
+# Pre-commit hooks to prevent OpenAI quota tracking bypasses
+repos:
+  - repo: local
+    hooks:
+      - id: prevent-openai-bypass
+        name: Prevent OpenAI Direct Instantiation
+        entry: python3 scripts/check_openai_compliance.py
+        language: system
+        files: \.py$
+        stages: [commit]
+        
+      - id: quota-tracking-validation
+        name: Validate Quota Tracking Coverage
+        entry: python3 scripts/validate_quota_coverage.py
+        language: system
+        files: \.py$
+        stages: [commit]
+        pass_filenames: false

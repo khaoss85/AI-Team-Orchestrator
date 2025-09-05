@@ -273,7 +273,7 @@ Return *only* valid JSON:
             analyzer = OpenAIAgent(
                 name="ProjectRequirementsAnalyzer",
                 instructions=instruction,
-                model="gpt-4.1",
+                model="gpt-4o-mini",
                 model_settings=create_model_settings(temperature=0.2),
             )
             result = await Runner.run(
@@ -586,8 +586,8 @@ Return *only* valid JSON:
                     """
                     
                     # Create OpenAI client inline since we don't have access to self
-                    from openai import AsyncOpenAI
-                    openai_client = AsyncOpenAI()
+                    from utils.openai_client_factory_enhanced import get_enhanced_async_openai_client
+                    openai_client = get_enhanced_async_openai_client(workspace_id=workspace_id)
                     
                     response = await openai_client.chat.completions.create(
                         model="gpt-4o-mini",
@@ -697,7 +697,7 @@ Return ONLY a JSON array in this format:
                     analyzer = OpenAIAgent(
                         name="SkillCategorizer",
                         instructions=categorization_prompt,
-                        model="gpt-4.1-mini",
+                        model="gpt-4o-mini",
                         model_settings=create_model_settings(temperature=0.3),
                     )
                     
@@ -1327,7 +1327,7 @@ RESPOND WITH ONLY THE JSON - NO OTHER TEXT."""
         llm_director_agent = OpenAIAgent(
             name="DetailedTeamDirectorLLM",
             instructions=director_instructions,
-            model="gpt-4.1",  # 🔄 RESTORED: Use full model for detailed team generation
+            model="gpt-4o-mini",  # 💰 COST-OPTIMIZED: Use cost-effective model
             model_settings=create_model_settings(
                 temperature=0.3  # Good balance for creative but consistent teams
             ),
@@ -1828,7 +1828,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Specializes in B2B research, lead generation, and contact list building. Expert in identifying ICP profiles and business intelligence gathering.",
                     "system_prompt": "You are a Business Research Specialist focused on B2B lead generation and market research. Your goal is to produce high-quality prospect lists and business intelligence reports.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "web_search", "name": "web_search", "description": "Web search capability"},
                         {"type": "function", "name": "data_analysis", "description": "Data analysis capability"},
@@ -1845,7 +1845,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Creates compelling email sequences and outbound sales campaigns. Expert in conversion-focused copywriting and email automation.",
                     "system_prompt": "You are an Email Marketing Specialist. Create high-converting email sequences and outbound campaigns that generate responses and conversions.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
                     "tools": [
                         {"type": "function", "name": "email_templates", "description": "Email template creation"},
                         {"type": "function", "name": "copywriting", "description": "Copywriting capability"},
@@ -1863,7 +1863,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Creates persuasive B2B sales copy and email sequences. Expert in value propositions and conversion optimization.",
                     "system_prompt": "You are a B2B Sales Copywriter. Create compelling sales copy that converts prospects into customers.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
                     "tools": [
                         {"type": "function", "name": "copywriting", "description": "Sales copywriting"},
                         {"type": "function", "name": "email_sequences", "description": "Email sequence creation"},
@@ -1899,7 +1899,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Creates engaging content for social media, blogs, and marketing campaigns. Expert in storytelling and audience engagement.",
                     "system_prompt": "You are a Content Marketing Specialist. Create compelling, engaging content that drives audience engagement and achieves marketing goals.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.3},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.3},
                     "tools": [
                         {"type": "function", "name": "content_creation", "description": "Content creation capability"},
                         {"type": "function", "name": "social_media", "description": "Social media management"},
@@ -1935,7 +1935,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Designs comprehensive learning curricula with clear objectives, progressive skill development, and effective assessment strategies.",
                     "system_prompt": "You are a Curriculum Designer specializing in creating effective learning experiences. Design curricula that engage learners, build skills progressively, and achieve measurable learning outcomes. Focus on practical application and real-world relevance.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
                     "tools": [
                         {"type": "function", "name": "content_creation", "description": "Educational content creation"},
                         {"type": "function", "name": "research", "description": "Educational research capability"},
@@ -1952,7 +1952,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Creates engaging educational materials, interactive exercises, and multimedia learning resources that enhance knowledge retention.",
                     "system_prompt": "You are an Instructional Designer focused on creating engaging, interactive learning materials. Design exercises, activities, and resources that promote active learning and skill development.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.3},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.3},
                     "tools": [
                         {"type": "function", "name": "content_creation", "description": "Interactive content creation"},
                         {"type": "function", "name": "multimedia_design", "description": "Multimedia learning resources"},
@@ -1971,7 +1971,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.EXPERT.value,
                     "description": "Conducts comprehensive financial analysis, market research, and investment due diligence. Expert in financial modeling and risk assessment.",
                     "system_prompt": "You are a Financial Research Analyst specializing in investment analysis and market research. Conduct thorough financial analysis, evaluate investment opportunities, and assess risk factors. Provide data-driven insights and actionable recommendations.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "web_search", "name": "web_search", "description": "Financial data and market research"},
                         {"type": "function", "name": "financial_analysis", "description": "Financial modeling and analysis"},
@@ -1988,7 +1988,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Specializes in Environmental, Social, and Governance (ESG) investment analysis. Expert in sustainable finance and impact measurement.",
                     "system_prompt": "You are an ESG Investment Specialist focused on sustainable and responsible investment analysis. Evaluate companies and investments based on ESG criteria, assess sustainability impact, and identify opportunities in sustainable finance.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.2},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.2},
                     "tools": [
                         {"type": "web_search", "name": "web_search", "description": "ESG data and sustainability research"},
                         {"type": "function", "name": "esg_analysis", "description": "ESG evaluation and scoring"},
@@ -2007,7 +2007,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.EXPERT.value,
                     "description": "Designs patient engagement platforms and healthcare technology solutions. Expert in healthcare workflows and patient experience optimization.",
                     "system_prompt": "You are a Healthcare Systems Consultant specializing in patient engagement and healthcare technology. Design systems that improve patient outcomes, streamline healthcare workflows, and enhance the patient experience while maintaining compliance.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "function", "name": "healthcare_design", "description": "Healthcare system design"},
                         {"type": "function", "name": "patient_experience", "description": "Patient journey optimization"},
@@ -2024,7 +2024,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Ensures healthcare solutions meet regulatory requirements including HIPAA, FDA, and medical device standards. Expert in healthcare compliance frameworks.",
                     "system_prompt": "You are a Healthcare Compliance Specialist focused on ensuring healthcare technology solutions meet all regulatory requirements. Navigate complex healthcare regulations, ensure patient data privacy, and implement compliance frameworks.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "function", "name": "compliance_audit", "description": "Healthcare compliance auditing"},
                         {"type": "function", "name": "regulatory_research", "description": "Healthcare regulation research"},
@@ -2043,7 +2043,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.EXPERT.value,
                     "description": "Conducts comprehensive compliance audits and develops regulatory frameworks. Expert in GDPR, data privacy, and corporate compliance requirements.",
                     "system_prompt": "You are a Regulatory Compliance Auditor specializing in corporate compliance and data privacy regulations. Conduct thorough compliance audits, develop regulatory frameworks, and ensure organizations meet all legal requirements.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "function", "name": "compliance_audit", "description": "Regulatory compliance auditing"},
                         {"type": "function", "name": "legal_research", "description": "Legal and regulatory research"},
@@ -2060,7 +2060,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Implements data privacy frameworks and ensures GDPR compliance. Expert in privacy impact assessments and data protection strategies.",
                     "system_prompt": "You are a Data Privacy Officer focused on implementing comprehensive data protection strategies. Ensure GDPR compliance, conduct privacy impact assessments, and develop data governance frameworks that protect individual privacy rights.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "function", "name": "privacy_assessment", "description": "Privacy impact assessment"},
                         {"type": "function", "name": "gdpr_compliance", "description": "GDPR compliance evaluation"},
@@ -2081,7 +2081,7 @@ Your role: Remove barriers so specialists produce final, substantial deliverable
                     "seniority": AgentSeniority.SENIOR.value,
                     "description": "Analyzes project data, generates insights, and creates performance reports. Provides data-driven recommendations for optimization.",
                     "system_prompt": "You are a Data Analyst. Analyze project performance data and generate actionable insights that drive better results.",
-                    "llm_config": {"model": "gpt-4o", "temperature": 0.1},
+                    "llm_config": {"model": "gpt-4o-mini", "temperature": 0.1},
                     "tools": [
                         {"type": "function", "name": "data_analysis", "description": "Data analysis capability"},
                         {"type": "function", "name": "reporting", "description": "Report generation"},

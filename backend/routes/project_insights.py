@@ -20,7 +20,7 @@ from ai_agents.director import DirectorAgent
 
 from database import (
     get_workspace,
-    list_agents as db_list_agents,
+    list_agents,
     list_tasks,
     create_task,
 )
@@ -63,7 +63,7 @@ async def get_project_insights(workspace_id: UUID, request: Request):
             }
         
         # Get agents and tasks
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         tasks = await list_tasks(str(workspace_id))
         
         # Get execution history from task executor
@@ -99,7 +99,7 @@ async def get_major_milestones(workspace_id: UUID, request: Request):
     """Get major milestones and phases completed in the project"""
     try:
         tasks = await list_tasks(str(workspace_id))
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         
         # Get recent activity to identify major events
         recent_activity = task_executor.get_recent_activity(str(workspace_id), 50)
@@ -448,7 +448,7 @@ async def get_project_deliverables(request: Request, workspace_id: UUID, goal_id
             return cache_entry["data"]
         
         # Get agents info for names/roles
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         agent_map = {a["id"]: a for a in agents}
         
         # Extract outputs from completed tasks - FILTER FOR USER-FACING DELIVERABLES
@@ -889,7 +889,7 @@ async def submit_deliverable_feedback(
     """Submit feedback on project deliverables"""
     try:
         # Create a new task for handling the feedback
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         
         # Find a coordinator/manager to handle feedback
         coordinator = None
@@ -1339,7 +1339,7 @@ async def _generate_project_summary(workspace: Dict, outputs: List[ProjectOutput
             Create a concise, professional summary of what was accomplished.
             Focus on key outcomes, deliverables, and overall project success.
             """,
-            model="gpt-4.1-mini"
+            model="gpt-4o-mini"
         )
         
         # Prepare context
@@ -1552,7 +1552,7 @@ async def _create_insight_card(category: str, items: List[Dict]) -> Optional[Pro
             • Cost analysis shows 15% potential savings
             • Implementation plan covers 6-month timeline
             """,
-            model="gpt-4.1-mini"
+            model="gpt-4o-mini"
         )
         
         # Generate insights with retry logic

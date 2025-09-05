@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Chat, WorkspaceContext } from './types'
+import { api } from '@/utils/api'
 
 interface ChatSidebarProps {
   chats: Chat[]
@@ -28,17 +29,13 @@ function useFeedbackCount(workspaceId: string) {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/human-feedback/pending?workspace_id=${workspaceId}`)
-        if (response.ok) {
-          const data = await response.json()
-          const requests = data || []
-          setPendingCount(requests.length)
-          
-          const urgent = requests.filter((req: any) => 
-            req.priority === 'critical' || req.priority === 'high'
-          ).length
-          setUrgentCount(urgent)
-        }
+        const requests = await api.humanFeedback.getPendingRequests(workspaceId)
+        setPendingCount(requests.length)
+        
+        const urgent = requests.filter((req: any) => 
+          req.priority === 'critical' || req.priority === 'high'
+        ).length
+        setUrgentCount(urgent)
       } catch (error) {
         console.error('Error fetching pending feedback count:', error)
       }
@@ -50,6 +47,46 @@ function useFeedbackCount(workspaceId: string) {
   }, [workspaceId])
 
   return { pendingCount, urgentCount }
+}
+
+// Hook for insights count
+function useInsightsCount(workspaceId: string) {
+  const [insightsCount, setInsightsCount] = useState(0)
+  const [newInsightsCount, setNewInsightsCount] = useState(0)
+
+  useEffect(() => {
+    const fetchInsightsCount = async () => {
+      try {
+        // Fetch insights from the workspace - using the correct endpoint with conversation prefix
+        const response = await fetch(`/api/conversation/workspaces/${workspaceId}/knowledge-insights`)
+        if (response.ok) {
+          const data = await response.json()
+          // Combine all insights types
+          const allInsights = [
+            ...(data.insights || []),
+            ...(data.bestPractices || []),
+            ...(data.learnings || [])
+          ]
+          setInsightsCount(allInsights.length)
+          
+          // Count new insights (created in the last 24 hours)
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+          const newInsights = allInsights.filter((insight: any) => 
+            insight.created_at && new Date(insight.created_at) > new Date(oneDayAgo)
+          ).length
+          setNewInsightsCount(newInsights)
+        }
+      } catch (error) {
+        console.error('Error fetching insights count:', error)
+      }
+    }
+
+    fetchInsightsCount()
+    const interval = setInterval(fetchInsightsCount, 30000)
+    return () => clearInterval(interval)
+  }, [workspaceId])
+
+  return { insightsCount, newInsightsCount }
 }
 
 export default function ChatSidebar({
@@ -70,6 +107,7 @@ export default function ChatSidebar({
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newObjective, setNewObjective] = useState('')
   const { pendingCount, urgentCount } = useFeedbackCount(workspaceContext.id)
+  const { insightsCount, newInsightsCount } = useInsightsCount(workspaceContext.id)
 
   // Separate fixed and dynamic chats
   const fixedChats = chats.filter(chat => chat.type === 'fixed')
@@ -201,6 +239,8 @@ export default function ChatSidebar({
                 onClick={() => handleChatSelect(chat)}
                 feedbackCount={chat.id === 'feedback-requests' ? pendingCount : undefined}
                 urgentCount={chat.id === 'feedback-requests' && urgentCount > 0 ? urgentCount : undefined}
+                insightsCount={chat.id === 'knowledge-base' ? insightsCount : undefined}
+                newInsightsCount={chat.id === 'knowledge-base' && newInsightsCount > 0 ? newInsightsCount : undefined}
               />
             ))}
           </div>
@@ -329,6 +369,8 @@ interface ChatItemProps {
   isArchived?: boolean
   feedbackCount?: number
   urgentCount?: number
+  insightsCount?: number
+  newInsightsCount?: number
 }
 
 function ChatItem({ 
@@ -340,7 +382,9 @@ function ChatItem({
   onRename,
   isArchived = false,
   feedbackCount,
-  urgentCount
+  urgentCount,
+  insightsCount,
+  newInsightsCount
 }: ChatItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedTitle, setEditedTitle] = useState(chat.title)
@@ -491,6 +535,20 @@ function ChatItem({
             )}
             <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
               {feedbackCount}
+            </span>
+          </div>
+        )}
+        
+        {/* Insights count badge */}
+        {insightsCount !== undefined && insightsCount > 0 && (
+          <div className="flex items-center space-x-1">
+            {newInsightsCount && newInsightsCount > 0 && (
+              <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
+                {newInsightsCount} new
+              </span>
+            )}
+            <span className="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+              {insightsCount}
             </span>
           </div>
         )}

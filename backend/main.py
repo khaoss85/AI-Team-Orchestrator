@@ -71,6 +71,7 @@ from routes.recovery_analysis import router as recovery_analysis_router
 # Sub-agent orchestration route
 from routes.sub_agent_orchestration import router as sub_agent_orchestration_router
 from routes.quota_api import router as quota_router
+from routes.goal_progress_compliance import router as goal_progress_compliance_router
 
 # Import task executor
 from executor import start_task_executor, stop_task_executor
@@ -151,6 +152,18 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("STARTUP: Goal-driven system disabled.")
     
+    # 🎯 PILLAR 8 COMPLIANCE: Start Goal Progress Auto-Recovery (Zero Human Intervention)
+    if os.getenv("ENABLE_AUTO_GOAL_RECOVERY", "true").lower() == "true":
+        logger.info("STARTUP: Starting goal progress auto-recovery (15 Pillars Compliant)...")
+        try:
+            from services.goal_progress_auto_recovery import goal_progress_auto_recovery
+            asyncio.create_task(goal_progress_auto_recovery.start_monitoring())
+            logger.info("STARTUP: Goal progress auto-recovery started - will monitor and fix issues autonomously.")
+        except Exception as e:
+            logger.error(f"STARTUP: Failed to start goal progress auto-recovery: {e}")
+    else:
+        logger.info("STARTUP: Goal progress auto-recovery disabled.")
+    
     # 🧠 CONTENT-AWARE LEARNING: Start periodic content analysis scheduler
     if os.getenv("ENABLE_CONTENT_AWARE_LEARNING", "true").lower() == "true":
         logger.info("STARTUP: Starting content-aware learning scheduler...")
@@ -215,7 +228,7 @@ async def lifespan(app: FastAPI):
     
     logger.info("SHUTDOWN: Stopping Unified Orchestrator...")
     try:
-        from services.unified_orchestrator import unified_orchestrator
+        from services.unified_orchestrator import workflow_orchestrator as unified_orchestrator
         await unified_orchestrator.stop()
         logger.info("SHUTDOWN: Unified Orchestrator stopped.")
     except Exception as e:
@@ -236,6 +249,14 @@ async def lifespan(app: FastAPI):
         logger.info("SHUTDOWN: Automated Goal Monitor stopped.")
     except Exception as e:
         logger.error(f"SHUTDOWN: Error stopping automated goal monitor: {e}")
+    
+    logger.info("SHUTDOWN: Stopping Goal Progress Auto-Recovery...")
+    try:
+        from services.goal_progress_auto_recovery import goal_progress_auto_recovery
+        await goal_progress_auto_recovery.stop_monitoring()
+        logger.info("SHUTDOWN: Goal Progress Auto-Recovery stopped.")
+    except Exception as e:
+        logger.error(f"SHUTDOWN: Error stopping goal progress auto-recovery: {e}")
     
     logger.info("SHUTDOWN: Stopping Component Health Monitoring...")
     try:
@@ -336,9 +357,17 @@ app.include_router(content_learning_router)  # Already has /api/content-learning
 from routes.learning_feedback_routes import router as learning_feedback_router
 app.include_router(learning_feedback_router)  # Already has /api/learning-feedback prefix
 
-# User Insights Management System
+# User Insights Management System (Legacy - being replaced by unified insights)
 from routes.user_insights import router as user_insights_router
 app.include_router(user_insights_router, prefix="/api")
+
+# Unified Insights System - Single source of truth for all insights
+from routes.unified_insights import router as unified_insights_router
+app.include_router(unified_insights_router, prefix="/api")
+
+# Legacy Insights Adapters - Backward compatibility during migration
+from routes.insights_adapter import register_legacy_adapters
+register_legacy_adapters(app)
 
 # Monitoring and system management
 app.include_router(monitoring_router, prefix="/api")
@@ -376,7 +405,16 @@ app.include_router(recovery_analysis_router)  # Already includes /api/recovery-a
 app.include_router(sub_agent_orchestration_router)  # Already includes /api/sub-agent-orchestration prefix
 
 # Quota monitoring routes
-app.include_router(quota_router)  # Already includes /api/quota prefix
+app.include_router(quota_router)
+app.include_router(goal_progress_compliance_router)  # Already includes /api/quota prefix
+
+# Usage analytics and cost intelligence routes
+# from routes.usage_analytics import router as usage_analytics_router  # Disabled due to missing auth module
+# app.include_router(usage_analytics_router, prefix="/api")
+
+# Real OpenAI Usage API routes
+from routes.usage import router as usage_router
+app.include_router(usage_router)
 
 
 # All routers now use consistent /api prefix - compatibility layer removed
@@ -820,4 +858,5 @@ async def get_pending_feedback_requests_legacy(request: Request, workspace_id: O
 # Event handlers are now managed by lifespan context manager
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # TEMPORARY: Disabled reload to prevent loop caused by openai_usage_api_client.py modifications
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

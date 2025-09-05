@@ -156,7 +156,7 @@ class AutonomousTaskRecovery:
         🧠 AI-driven selection of optimal recovery strategy
         """
         try:
-            error_message = task.get('error_message', '').lower()
+            error_message = task.get('result', {}).get('error_message', '').lower() if isinstance(task.get('result'), dict) else ''
             task_name = task.get('name', '').lower()
             retry_count = task.get('retry_count', 0)
             
@@ -208,11 +208,9 @@ class AutonomousTaskRecovery:
             # Reset task status and increment retry count
             await update_task_fields(task_id, {
                 'status': TaskStatus.PENDING.value,
-                'error_message': None,
-                'retry_count': task.get('retry_count', 0) + 1,
                 'agent_id': None,  # Reset agent to allow re-assignment
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'recovery_strategy': 'different_agent',
                     'recovery_timestamp': datetime.utcnow().isoformat()
                 }
@@ -252,11 +250,11 @@ class AutonomousTaskRecovery:
                 'result': {
                     'type': 'autonomous_fallback',
                     'message': 'Task completed with autonomous fallback strategy',
-                    'original_failure': task.get('error_message'),
+                    'original_failure': task.get('result', {}).get('error_message') if isinstance(task.get('result'), dict) else None,
                     'fallback_applied': True
                 },
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'autonomous_fallback': True,
                     'recovery_strategy': 'skip_with_fallback',
                     'fallback_timestamp': datetime.utcnow().isoformat()
@@ -295,11 +293,9 @@ class AutonomousTaskRecovery:
         try:
             await update_task_fields(task_id, {
                 'status': TaskStatus.PENDING.value,
-                'error_message': None,
-                'retry_count': retry_count + 1,
                 'scheduled_at': (datetime.utcnow() + timedelta(seconds=delay_seconds)).isoformat(),
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'recovery_strategy': 'intelligent_delay',
                     'delay_seconds': delay_seconds,
                     'recovery_timestamp': datetime.utcnow().isoformat()
@@ -342,8 +338,8 @@ class AutonomousTaskRecovery:
                     'message': 'Task autonomously decomposed into simpler subtasks',
                     'decomposition_strategy': 'autonomous_ai_breakdown'
                 },
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'decomposed': True,
                     'recovery_strategy': 'decomposition',
                     'decomposition_timestamp': datetime.utcnow().isoformat()
@@ -365,7 +361,7 @@ class AutonomousTaskRecovery:
                     'workspace_id': workspace_id,
                     'goal_id': goal_id,
                     'priority': 'medium',
-                    'metadata': {
+                    'context_data': {
                         'auto_generated': True,
                         'parent_task_id': task_id,
                         'decomposition_source': 'autonomous_recovery'
@@ -404,14 +400,12 @@ class AutonomousTaskRecovery:
             # Reset with alternative approach metadata
             await update_task_fields(task_id, {
                 'status': TaskStatus.PENDING.value,
-                'error_message': None,
-                'retry_count': task.get('retry_count', 0) + 1,
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'recovery_strategy': 'alternative_approach',
                     'alternative_approach': True,
                     'recovery_timestamp': datetime.utcnow().isoformat(),
-                    'previous_failure': task.get('error_message')
+                    'previous_failure': task.get('result', {}).get('error_message') if isinstance(task.get('result'), dict) else None
                 }
             })
             
@@ -443,10 +437,8 @@ class AutonomousTaskRecovery:
             # Reset with context reconstruction
             await update_task_fields(task_id, {
                 'status': TaskStatus.PENDING.value,
-                'error_message': None,
-                'retry_count': task.get('retry_count', 0) + 1,
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'recovery_strategy': 'context_reconstruction',
                     'context_reconstructed': True,
                     'recovery_timestamp': datetime.utcnow().isoformat()
@@ -488,8 +480,8 @@ class AutonomousTaskRecovery:
                     'recovery_attempts': task.get('retry_count', 0),
                     'fallback_level': 'final'
                 },
-                'metadata': {
-                    **task.get('metadata', {}),
+                'context_data': {
+                    **task.get('context_data', {}),
                     'final_fallback_applied': True,
                     'autonomous_completion': True,
                     'completion_timestamp': datetime.utcnow().isoformat()

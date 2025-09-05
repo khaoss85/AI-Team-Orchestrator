@@ -194,7 +194,7 @@ Respond with JSON:
 """
             
             response = await client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert content structure analyzer. Respond only with valid JSON."},
                     {"role": "user", "content": analysis_prompt}
@@ -322,7 +322,7 @@ SPECIFIC GUIDELINES:
 """
             
             response = await client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": f"You are an expert content formatter. Transform content to beautiful {display_format}. Return only the formatted content, no explanations."},
                     {"role": "user", "content": transform_prompt}

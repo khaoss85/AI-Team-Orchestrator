@@ -223,12 +223,16 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
   const getFilteredInsights = () => {
     switch (activeTab) {
       case 'general':
-        return insights.filter(i => i.category === 'general');
+        // Show insights where domain_type is 'general' or category is mapped as general
+        return insights.filter(i => i.domain_type === 'general');
       case 'business_analysis':
+        // Show insights where domain_type is 'business_analysis'
         return insights.filter(i => i.domain_type === 'business_analysis');
       case 'technical':
+        // Show insights where domain_type is 'technical'
         return insights.filter(i => i.domain_type === 'technical');
       default:
+        // Show all insights
         return insights;
     }
   };
@@ -401,7 +405,7 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
           <TabsTrigger value="all">All ({insights.length})</TabsTrigger>
           <TabsTrigger value="general">
             <Lightbulb className="w-4 h-4 mr-1" />
-            General ({insights.filter(i => i.category === 'general').length})
+            General ({insights.filter(i => i.domain_type === 'general').length})
           </TabsTrigger>
           <TabsTrigger value="business_analysis">
             <Award className="w-4 h-4 mr-1" />

@@ -7,12 +7,13 @@ import os
 import json
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional, AsyncGenerator
 from uuid import UUID, uuid4
 from dataclasses import dataclass
 
 from database import get_supabase_client
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ class ThinkingProcess:
     overall_confidence: float
     started_at: str
     completed_at: Optional[str]
+    # Enhanced fields for UX improvement
+    title: Optional[str] = None  # AI-generated concise title
+    summary_metadata: Optional[Dict[str, Any]] = None  # Token count, duration, agent, tools
 
 class RealTimeThinkingEngine:
     """
@@ -51,12 +55,20 @@ class RealTimeThinkingEngine:
         self.active_processes: Dict[str, ThinkingProcess] = {}
         self.websocket_handlers: List[Any] = []
         
+        # Initialize OpenAI client for AI title generation
+        self.openai_client = None
+        if os.getenv("OPENAI_API_KEY"):
+            self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
         logger.info("💭 Real-Time Thinking Engine initialized")
     
     async def start_thinking_process(self, workspace_id: UUID, context: str, 
                                    process_type: str = "general") -> str:
         """Start a new thinking process"""
         process_id = str(uuid4())
+        
+        # Generate concise title from context
+        title = await self._generate_concise_title(context, process_type)
         
         thinking_process = ThinkingProcess(
             process_id=process_id,
@@ -66,7 +78,12 @@ class RealTimeThinkingEngine:
             final_conclusion=None,
             overall_confidence=0.0,
             started_at=datetime.utcnow().isoformat(),
-            completed_at=None
+            completed_at=None,
+            title=title,  # AI-generated concise title
+            summary_metadata={
+                "process_type": process_type,
+                "start_time": datetime.utcnow().isoformat()
+            }
         )
         
         self.active_processes[process_id] = thinking_process
@@ -134,7 +151,23 @@ class RealTimeThinkingEngine:
         thinking_process.overall_confidence = overall_confidence
         thinking_process.completed_at = datetime.utcnow().isoformat()
         
-        # Update database
+        # Generate AI title if missing or is a placeholder
+        if not thinking_process.title or thinking_process.title == "Thinking Process":
+            thinking_process.title = await self._generate_ai_title_from_process(thinking_process)
+            logger.info(f"💭 Generated AI title for process {process_id}: {thinking_process.title}")
+        
+        # Update summary metadata with completion info
+        if thinking_process.summary_metadata:
+            thinking_process.summary_metadata.update({
+                "total_steps": len(thinking_process.steps),
+                "completion_time": datetime.utcnow().isoformat(),
+                "duration_ms": self._calculate_duration_ms(thinking_process.started_at),
+                "primary_agent": self._extract_primary_agent(thinking_process.steps),
+                "tools_used": self._extract_tools_used(thinking_process.steps),
+                "estimated_tokens": self._estimate_token_count(thinking_process)
+            })
+        
+        # Update database with new title
         await self._update_thinking_process_completion(thinking_process)
         
         # Broadcast completion
@@ -195,7 +228,9 @@ class RealTimeThinkingEngine:
                 final_conclusion=process_data.get("final_conclusion"),
                 overall_confidence=process_data.get("overall_confidence", 0.0),
                 started_at=process_data["started_at"],
-                completed_at=process_data.get("completed_at")
+                completed_at=process_data.get("completed_at"),
+                title=process_data.get("title"),  # Load title if available
+                summary_metadata=process_data.get("summary_metadata")  # Load metadata if available
             )
             
         except Exception as e:
@@ -241,7 +276,9 @@ class RealTimeThinkingEngine:
                     final_conclusion=process_data.get("final_conclusion"),
                     overall_confidence=process_data.get("overall_confidence", 0.0),
                     started_at=process_data["started_at"],
-                    completed_at=process_data.get("completed_at")
+                    completed_at=process_data.get("completed_at"),
+                    title=process_data.get("title"),  # Load title if available
+                    summary_metadata=process_data.get("summary_metadata")  # Load metadata if available
                 ))
             
             return processes
@@ -322,7 +359,9 @@ class RealTimeThinkingEngine:
                 "workspace_id": thinking_process.workspace_id,
                 "context": thinking_process.context,
                 "started_at": thinking_process.started_at,
-                "overall_confidence": thinking_process.overall_confidence
+                "overall_confidence": thinking_process.overall_confidence,
+                "title": thinking_process.title,  # Store title
+                "summary_metadata": thinking_process.summary_metadata  # Store metadata
             }
             
             self.supabase.table("thinking_processes").insert(process_data).execute()
@@ -354,7 +393,9 @@ class RealTimeThinkingEngine:
             update_data = {
                 "final_conclusion": thinking_process.final_conclusion,
                 "overall_confidence": thinking_process.overall_confidence,
-                "completed_at": thinking_process.completed_at
+                "completed_at": thinking_process.completed_at,
+                "title": thinking_process.title,  # Include the updated title
+                "summary_metadata": thinking_process.summary_metadata  # Include updated metadata
             }
             
             self.supabase.table("thinking_processes") \
@@ -425,6 +466,111 @@ class RealTimeThinkingEngine:
     def get_current_time(self) -> str:
         """Get current time in ISO format"""
         return datetime.utcnow().isoformat()
+    
+    async def _generate_concise_title(self, context: str, process_type: str) -> str:
+        """Generate a concise title from context using AI or pattern matching"""
+        try:
+            # For now, use pattern-based title generation (can be enhanced with AI later)
+            # Extract key action and subject from context
+            context_lower = context.lower()
+            
+            # Common patterns for title generation
+            if "goal" in context_lower and "decompos" in context_lower:
+                return "Goal Decomposition and Planning"
+            elif "analyz" in context_lower:
+                if "market" in context_lower:
+                    return "Market Analysis and Research"
+                elif "requirement" in context_lower:
+                    return "Requirements Analysis"
+                elif "data" in context_lower:
+                    return "Data Analysis and Insights"
+                else:
+                    return "Strategic Analysis"
+            elif "plan" in context_lower or "strategy" in context_lower:
+                return "Strategic Planning"
+            elif "evaluat" in context_lower or "assess" in context_lower:
+                return "Evaluation and Assessment"
+            elif "implement" in context_lower or "build" in context_lower:
+                return "Implementation Planning"
+            elif "test" in context_lower or "validat" in context_lower:
+                return "Testing and Validation"
+            elif "review" in context_lower or "feedback" in context_lower:
+                return "Review and Feedback Analysis"
+            elif "optimiz" in context_lower or "improve" in context_lower:
+                return "Optimization and Improvement"
+            elif process_type == "o3_style" or process_type == "o3_demo":
+                return "Deep Reasoning Analysis"
+            else:
+                # Fallback: Extract first meaningful phrase (up to 50 chars)
+                title = context.strip().split('.')[0].split('?')[0].split('!')[0]
+                if len(title) > 50:
+                    title = title[:47] + "..."
+                return title.capitalize() if title else "Thinking Process"
+                
+        except Exception as e:
+            logger.warning(f"Failed to generate title: {e}")
+            return "Thinking Process"
+    
+    def _calculate_duration_ms(self, started_at: str) -> int:
+        """Calculate duration in milliseconds from start time"""
+        try:
+            # Handle various datetime formats
+            if 'T' in started_at:
+                # ISO format
+                if started_at.endswith('Z'):
+                    start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+                else:
+                    start_time = datetime.fromisoformat(started_at)
+            else:
+                # Fallback for other formats
+                start_time = datetime.fromisoformat(started_at)
+            
+            # Ensure UTC for comparison
+            if start_time.tzinfo is None:
+                start_time = start_time.replace(tzinfo=timezone.utc)
+            
+            end_time = datetime.now(timezone.utc)
+            duration = end_time - start_time
+            return int(duration.total_seconds() * 1000)
+        except Exception as e:
+            logger.debug(f"Could not calculate duration: {e}")
+            return 0
+    
+    def _extract_primary_agent(self, steps: List[ThinkingStep]) -> Optional[str]:
+        """Extract the primary agent from thinking steps"""
+        agent_counts = {}
+        for step in steps:
+            if step.metadata and "agent" in step.metadata:
+                agent_role = step.metadata["agent"].get("role")
+                if agent_role:
+                    agent_counts[agent_role] = agent_counts.get(agent_role, 0) + 1
+        
+        if agent_counts:
+            # Return the most frequently used agent
+            return max(agent_counts, key=agent_counts.get)
+        return None
+    
+    def _extract_tools_used(self, steps: List[ThinkingStep]) -> List[str]:
+        """Extract unique tools used from thinking steps"""
+        tools = set()
+        for step in steps:
+            if step.metadata and "tool" in step.metadata:
+                tool_name = step.metadata["tool"].get("name")
+                if tool_name:
+                    tools.add(tool_name)
+        return list(tools)[:3]  # Return top 3 tools for conciseness
+    
+    def _estimate_token_count(self, thinking_process: ThinkingProcess) -> int:
+        """Estimate token count for the thinking process"""
+        # Rough estimation: ~4 characters per token
+        total_chars = len(thinking_process.context or "")
+        total_chars += len(thinking_process.final_conclusion or "")
+        
+        for step in thinking_process.steps:
+            total_chars += len(step.content or "")
+            
+        # Approximate token count
+        return max(total_chars // 4, 1)
     
     # ============= ENHANCED AGENT AND TOOL METADATA METHODS =============
     
@@ -896,6 +1042,79 @@ class RealTimeThinkingEngine:
         except Exception as e:
             logger.error(f"Failed to get tool usage statistics: {e}")
             return {"error": str(e)}
+    
+    async def _generate_ai_title_from_process(self, thinking_process: ThinkingProcess) -> str:
+        """
+        Generate an AI-powered title from thinking process context and steps.
+        This method is called when a thinking process completes without a proper title.
+        """
+        try:
+            if not self.openai_client:
+                logger.warning("OpenAI client not available for title generation")
+                return self._generate_concise_title(thinking_process.context, "general")
+            
+            # Build a summary of the thinking steps
+            steps_summary = ""
+            if thinking_process.steps:
+                # Take first 3 and last 2 steps for context
+                relevant_steps = thinking_process.steps[:3] + thinking_process.steps[-2:] if len(thinking_process.steps) > 5 else thinking_process.steps
+                steps_summary = "\n".join([f"- {step.content[:100]}" for step in relevant_steps[:5]])
+            
+            # Extract key metadata
+            primary_agent = thinking_process.summary_metadata.get("primary_agent") if thinking_process.summary_metadata else None
+            tools_used = thinking_process.summary_metadata.get("tools_used", []) if thinking_process.summary_metadata else []
+            
+            prompt = f"""
+            Generate a concise, descriptive title (max 6 words) for this thinking process:
+            
+            Context: {thinking_process.context[:500]}
+            
+            Key steps taken:
+            {steps_summary}
+            
+            Final conclusion: {thinking_process.final_conclusion[:200] if thinking_process.final_conclusion else 'In progress'}
+            
+            Primary agent: {primary_agent or 'Unknown'}
+            Tools used: {', '.join(tools_used[:3]) if tools_used else 'None'}
+            
+            The title should:
+            - Be clear and professional
+            - Capture the main purpose/outcome
+            - Use business language
+            - Be suitable for a UI list
+            - Be specific to what was actually done
+            
+            Examples:
+            - "Market Research Analysis"
+            - "Contact List Generation"  
+            - "Sales Strategy Development"
+            - "Lead Qualification Process"
+            - "Task Decomposition Planning"
+            - "Goal Progress Analysis"
+            
+            Return only the title, no quotes or explanation.
+            """
+            
+            response = await self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=50,
+                temperature=0.3
+            )
+            
+            # Clean up the response
+            title = response.choices[0].message.content.strip().strip('"\'')
+            
+            # Limit to reasonable length
+            if len(title) > 60:
+                title = title[:57] + "..."
+                
+            return title
+            
+        except Exception as e:
+            logger.error(f"Failed to generate AI title: {e}")
+            # Fallback to the existing pattern-based title generation
+            return self._generate_concise_title(thinking_process.context, "general")
 
 # Global thinking engine instance
 thinking_engine = RealTimeThinkingEngine()

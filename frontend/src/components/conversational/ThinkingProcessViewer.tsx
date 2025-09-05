@@ -65,6 +65,15 @@ interface ThinkingStep {
   confidence?: number
   metadata?: EnhancedMetadata
   todo_list?: any[]
+  // New UX enhancement fields
+  process_title?: string  // AI-generated concise title
+  summary_metadata?: {  // Essential metadata for minimal display
+    primary_agent?: string
+    tools_used?: string[]
+    estimated_tokens?: number
+    duration_ms?: number
+    total_steps?: number
+  }
 }
 
 interface ThinkingProcessViewerProps {
@@ -88,6 +97,13 @@ interface ThinkingSession {
   isExpanded: boolean
   summary: string
   duration?: string
+  metadata?: {  // Essential metadata for minimal display
+    primary_agent?: string
+    tools_used?: string[]
+    estimated_tokens?: number
+    duration_ms?: number
+    total_steps?: number
+  }
 }
 
 export default function ThinkingProcessViewer({ 
@@ -143,13 +159,15 @@ export default function ThinkingProcessViewer({
     const firstStep = sessionSteps[0]
     const lastStep = sessionSteps[sessionSteps.length - 1]
     
-    // Generate Claude-style summary
-    const completedSteps = sessionSteps.filter(s => s.status === 'completed')
-    const summary = generateThinkingSummary(sessionSteps)
+    // Use AI-generated title if available, otherwise generate summary
+    const summary = firstStep.process_title || generateThinkingSummary(sessionSteps)
     
-    // Calculate duration
+    // Use metadata duration if available, otherwise calculate
     let duration = ''
-    if (firstStep.timestamp && lastStep.timestamp) {
+    if (firstStep.summary_metadata?.duration_ms) {
+      const ms = firstStep.summary_metadata.duration_ms
+      duration = ms < 1000 ? '<1s' : `${Math.round(ms / 1000)}s`
+    } else if (firstStep.timestamp && lastStep.timestamp) {
       const startTime = new Date(firstStep.timestamp)
       const endTime = new Date(lastStep.timestamp)
       const durationMs = endTime.getTime() - startTime.getTime()
@@ -160,9 +178,10 @@ export default function ThinkingProcessViewer({
       id: sessionId,
       steps: sessionSteps,
       timestamp: firstStep.messageTimestamp || firstStep.timestamp,
-      isExpanded: expandedSessions[sessionId] || sessionId === 'current',
+      isExpanded: expandedSessions[sessionId] || false, // Default to collapsed, even for current
       summary,
-      duration
+      duration,
+      metadata: firstStep.summary_metadata  // Include metadata for display
     }
   })
 
@@ -174,23 +193,21 @@ export default function ThinkingProcessViewer({
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-        </div>
-        
-        {/* Goal decomposition progress indicator */}
-        {currentDecomposition && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <div className={`w-2.5 h-2.5 rounded-full ${
-              currentDecomposition.status === 'in_progress' ? 'bg-orange-500 animate-pulse' :
+    <div className="space-y-4">
+      {/* Clean minimal header if needed */}
+      {currentDecomposition && (
+        <div className="flex items-center justify-center py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className={`w-2 h-2 rounded-full ${
+              currentDecomposition.status === 'in_progress' ? 'bg-blue-500 animate-pulse' :
               currentDecomposition.status === 'completed' ? 'bg-green-500' : 'bg-gray-400'
             }`}></div>
             <span className="capitalize font-medium">{currentDecomposition.status || 'analyzing'}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* Thinking Sessions - Clean List */}
       {sessions.map((session) => (
         <ClaudeStyleThinkingSession
           key={session.id}
@@ -200,13 +217,14 @@ export default function ThinkingProcessViewer({
         />
       ))}
 
+      {/* Minimal thinking indicator */}
       {isThinking && (
-        <div className="flex items-center justify-center py-6">
-          <div className="animate-pulse flex items-center gap-3 text-blue-600">
-            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></div>
-            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            <span className="ml-3 text-sm font-medium">AI is thinking...</span>
+        <div className="flex items-center justify-center py-4">
+          <div className="flex items-center gap-2 text-blue-600">
+            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></div>
+            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <span className="ml-2 text-sm text-gray-600">AI is thinking...</span>
           </div>
         </div>
       )}
@@ -258,77 +276,284 @@ function ClaudeStyleThinkingSession({ session, onToggle, isThinking = false }: C
   const totalSteps = session.steps.length
   
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-      {/* Collapsible Header - Claude Style */}
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:border-gray-300 transition-colors">
+      {/* Clean Header with Prominent Title - ChatGPT/Claude Style */}
       <button
         onClick={onToggle}
-        className="w-full px-5 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+        className="w-full px-6 py-4 text-left hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0">
-              {session.isExpanded ? (
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0 pr-4">
+            {/* Prominent Title */}
+            <div className="text-base font-semibold text-gray-900 leading-tight mb-2 pr-2">
+              {session.summary}
             </div>
             
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-900 leading-relaxed">
-                {session.summary}
-              </div>
-              <div className="text-xs text-gray-600 mt-1.5">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {completedSteps}/{totalSteps} steps
+            {/* Small Metadata - Clean and Minimal */}
+            <div className="text-xs text-gray-500 flex items-center gap-4 flex-wrap">
+              {session.duration && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {session.duration}
                 </span>
-                {session.id !== 'current' && session.timestamp && (
-                  <span className="ml-3 text-gray-500">
-                    {new Date(session.timestamp).toLocaleString()}
-                  </span>
-                )}
-              </div>
+              )}
+              
+              {session.metadata?.estimated_tokens && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {(session.metadata.estimated_tokens / 1000).toFixed(1)}k tokens
+                </span>
+              )}
+              
+              {session.metadata?.tools_used && session.metadata.tools_used.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {session.metadata.tools_used.slice(0, 2).join(', ')}
+                </span>
+              )}
+              
+              {session.metadata?.primary_agent && (
+                <span className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {session.metadata.primary_agent}
+                </span>
+              )}
+              
+              <span className="flex items-center gap-1 text-gray-400">
+                {completedSteps}/{totalSteps} steps
+              </span>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {session.duration && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {session.duration}
-              </span>
-            )}
+          {/* Expand/Collapse Icon + Status */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isThinking && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-blue-600">thinking...</span>
+                <span className="text-xs text-blue-600 font-medium">thinking</span>
               </div>
             )}
+            
+            <div className="flex-shrink-0 ml-2">
+              {session.isExpanded ? (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
           </div>
         </div>
       </button>
       
-      {/* Expandable Content */}
+      {/* Expandable Detailed Content */}
       {session.isExpanded && (
-        <div className="px-5 py-4 space-y-3 bg-gray-50 border-t border-gray-100">
-          {session.steps.map((step, index) => (
-            <ThinkingStepCard 
-              key={index}
-              step={step} 
-              index={index}
-              isActive={isThinking && index === session.steps.length - 1 && session.id === 'current'}
-              isFromSavedMessage={session.id !== 'current'}
-            />
-          ))}
+        <div className="px-6 pb-4 space-y-3 bg-gray-50/50 border-t border-gray-100">
+          <div className="pt-3">
+            <div className="text-xs font-medium text-gray-600 mb-3 flex items-center gap-2">
+              <span>🧠</span>
+              <span>Detailed Thinking Process ({session.steps.length} steps)</span>
+            </div>
+            {session.steps.map((step, index) => (
+              <CollapsibleThinkingStep 
+                key={index}
+                step={step} 
+                index={index}
+                isActive={isThinking && index === session.steps.length - 1 && session.id === 'current'}
+                isFromSavedMessage={session.id !== 'current'}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+interface CollapsibleThinkingStepProps {
+  step: ThinkingStep
+  index: number
+  isActive?: boolean
+  isFromSavedMessage?: boolean
+}
+
+function CollapsibleThinkingStep({ step, index, isActive = false, isFromSavedMessage = false }: CollapsibleThinkingStepProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '✓'
+      case 'in_progress':
+        return '•'
+      case 'pending':
+        return '○'
+      default:
+        return '✓'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-600'
+      case 'in_progress':
+        return 'text-blue-600'
+      default:
+        return 'text-gray-400'
+    }
+  }
+
+  return (
+    <div className={`
+      border rounded-lg text-sm mb-2 last:mb-0 bg-white
+      ${isActive ? 'border-blue-200' : 'border-gray-100'}
+      ${isFromSavedMessage ? 'opacity-90' : ''}
+    `}>
+      {/* Collapsed Header - Always visible */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-3 text-left hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+      >
+        <div className="flex items-start gap-3">
+          {/* Status Icon */}
+          <div className="flex-shrink-0 flex items-center justify-center w-5 h-5 mt-0.5">
+            <span className={`text-sm ${getStatusColor(step.status)}`}>
+              {getStatusIcon(step.status)}
+            </span>
+          </div>
+          
+          {/* Title and Mini Metadata */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-gray-900 leading-tight">
+                  {step.title}
+                </h4>
+                
+                {/* Minimal metadata inline when collapsed */}
+                {!isExpanded && (
+                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
+                    {step.metadata?.agent?.role && (
+                      <span>Agent: {step.metadata.agent.role}</span>
+                    )}
+                    {step.metadata?.tool?.name && (
+                      <span>Tool: {step.metadata.tool.name}</span>
+                    )}
+                    {step.confidence !== undefined && step.confidence < 0.7 && (
+                      <span>Confidence: {Math.round(step.confidence * 100)}%</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Expand/Collapse Icon */}
+              <div className="flex-shrink-0 ml-2">
+                {isExpanded ? (
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </button>
+      
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="px-3 pb-3 border-t border-gray-100">
+          <div className="pt-3 pl-8">
+            {/* Full Description */}
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">
+              {step.content || step.description}
+            </p>
+            
+            {/* Full Agent Information */}
+            {step.metadata?.agent && (
+              <AgentInfoDisplay 
+                agent={step.metadata.agent} 
+                confidence={step.confidence}
+              />
+            )}
+            
+            {/* Full Tool Execution Details */}
+            {step.metadata?.tool && (
+              <ToolExecutionDisplay 
+                tool={step.metadata.tool} 
+                results={step.metadata.results}
+                confidence={step.confidence}
+              />
+            )}
+            
+            {/* Multi-Agent Collaboration */}
+            {step.metadata?.collaboration && (
+              <CollaborationDisplay 
+                collaboration={step.metadata.collaboration}
+              />
+            )}
+            
+            {/* Todo List if present */}
+            {step.todo_list && Array.isArray(step.todo_list) && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-md border">
+                <div className="text-xs font-medium text-gray-800 mb-2 flex items-center">
+                  <span className="mr-1">📋</span>
+                  Action Plan ({step.todo_list.length} items)
+                </div>
+                <div className="space-y-2">
+                  {step.todo_list.map((todo: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        todo.status === 'completed' ? 'bg-green-100 text-green-600' :
+                        todo.status === 'in_progress' ? 'bg-blue-100 text-blue-600' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {todo.status === 'completed' ? '✓' : 
+                         todo.status === 'in_progress' ? '○' : '○'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-medium ${
+                          todo.status === 'completed' ? 'text-green-700 line-through' :
+                          todo.status === 'in_progress' ? 'text-blue-700' :
+                          'text-gray-700'
+                        }`}>
+                          {todo.title}
+                        </div>
+                        {todo.description && (
+                          <div className="text-gray-600 mt-0.5">
+                            {todo.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Original ThinkingStepCard component can be kept for backward compatibility if needed
 interface ThinkingStepCardProps {
   step: ThinkingStep
   index: number
@@ -342,7 +567,7 @@ function ThinkingStepCard({ step, index, isActive = false, isFromSavedMessage = 
       case 'completed':
         return '✓'
       case 'in_progress':
-        return '○'
+        return '•'
       case 'pending':
         return '○'
       default:
@@ -351,41 +576,45 @@ function ThinkingStepCard({ step, index, isActive = false, isFromSavedMessage = 
   }
 
   const getStatusColor = (status: string) => {
+    // Ultra-minimal color scheme
     switch (status) {
       case 'completed':
-        return 'text-green-700 bg-green-50 border-green-200'
+        return 'text-gray-700 bg-white border-gray-100'
       case 'in_progress':
-        return 'text-blue-700 bg-blue-50 border-blue-200 ring-1 ring-blue-300'
+        return 'text-gray-700 bg-white border-blue-100'
       case 'pending':
-        return 'text-gray-600 bg-gray-50 border-gray-200'
+        return 'text-gray-500 bg-gray-50 border-gray-100'
       default:
-        return 'text-green-700 bg-green-50 border-green-200'
+        return 'text-gray-700 bg-white border-gray-100'
     }
   }
 
   return (
     <div className={`
-      border rounded-lg p-4 transition-all duration-200 text-sm
+      border rounded-lg p-4 text-sm mb-3 last:mb-0
       ${getStatusColor(step.status)}
-      ${isActive ? 'ring-2 ring-blue-300 shadow-sm' : ''}
+      ${isActive ? 'border-blue-200 bg-blue-50/30' : ''}
       ${isFromSavedMessage ? 'opacity-90' : ''}
     `}>
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-0.5 rounded-full bg-white border">
-          <span className="text-sm font-semibold">{getStatusIcon(step.status)}</span>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-0.5">
+          <span className={`text-sm ${
+            step.status === 'completed' ? 'text-green-600' :
+            step.status === 'in_progress' ? 'text-blue-600' :
+            'text-gray-400'
+          }`}>
+            {getStatusIcon(step.status)}
+          </span>
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <h4 className="text-sm font-semibold text-gray-900 leading-snug">
+          <div className="mb-2">
+            <h4 className="text-sm font-medium text-gray-900 leading-tight">
               {step.title}
             </h4>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
-              #{index + 1}
-            </span>
           </div>
           
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <p className="text-sm text-gray-600 leading-relaxed">
             {step.content || step.description}
           </p>
           
@@ -451,31 +680,12 @@ function ThinkingStepCard({ step, index, isActive = false, isFromSavedMessage = 
             </div>
           )}
           
-          {/* Performance and Context Info */}
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-            {step.confidence !== undefined && (
-              <div className="flex items-center gap-1">
-                <span>🎯</span>
-                <span>Confidence: {Math.round(step.confidence * 100)}%</span>
-              </div>
-            )}
-            {step.metadata?.tool?.execution_time_ms && (
-              <div className="flex items-center gap-1">
-                <span>⏱️</span>
-                <span>{step.metadata.tool.execution_time_ms}ms</span>
-              </div>
-            )}
-            {step.timestamp && (
-              <div className="flex items-center gap-1">
-                <span>🕔</span>
-                <span>{new Date(step.timestamp).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  second: '2-digit'
-                })}</span>
-              </div>
-            )}
-          </div>
+          {/* Minimal Performance Info - Only if relevant */}
+          {(step.confidence !== undefined && step.confidence < 0.5) && (
+            <div className="mt-2 text-xs text-gray-500">
+              Low confidence: {Math.round(step.confidence * 100)}%
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -489,78 +699,18 @@ interface AgentInfoDisplayProps {
 }
 
 function AgentInfoDisplay({ agent, confidence }: AgentInfoDisplayProps) {
-  const getSeniorityBadgeColor = (seniority?: string) => {
-    switch (seniority) {
-      case 'expert':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'senior':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'junior':
-        return 'bg-green-100 text-green-800 border-green-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getSeniorityIcon = (seniority?: string) => {
-    switch (seniority) {
-      case 'expert':
-        return '👑'
-      case 'senior':
-        return '⭐'
-      case 'junior':
-        return '🌱'
-      default:
-        return '👤'
-    }
-  }
-
   return (
-    <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-medium text-blue-800 flex items-center gap-2">
-          <span>🤖</span>
-          <span>Agent Execution</span>
-        </div>
-        {confidence !== undefined && (
-          <div className="text-xs text-blue-600">
-            {Math.round(confidence * 100)}% confidence
-          </div>
+    <div className="mt-2 pl-4 border-l-2 border-gray-200">
+      <div className="text-xs text-gray-600">
+        <span className="font-medium">Agent:</span> {agent.role || 'Unknown'}
+        {agent.seniority && ` • ${agent.seniority}`}
+        {confidence !== undefined && confidence < 0.7 && (
+          <span className="text-gray-500"> ({Math.round(confidence * 100)}% confidence)</span>
         )}
       </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <div className={`px-2 py-1 rounded-full text-xs font-medium border ${
-            getSeniorityBadgeColor(agent.seniority)
-          }`}>
-            <span className="mr-1">{getSeniorityIcon(agent.seniority)}</span>
-            {agent.seniority || 'unknown'}
-          </div>
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-blue-900">
-            {agent.role || 'Unknown Role'}
-          </div>
-          {agent.name && (
-            <div className="text-xs text-blue-700 mt-0.5">
-              ID: {agent.name}
-            </div>
-          )}
-        </div>
-      </div>
-      
       {agent.skills && agent.skills.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {agent.skills.slice(0, 4).map((skill, idx) => (
-            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-              {skill}
-            </span>
-          ))}
-          {agent.skills.length > 4 && (
-            <span className="text-xs text-blue-600">+{agent.skills.length - 4} more</span>
-          )}
+        <div className="text-xs text-gray-500 mt-1">
+          Skills: {agent.skills.slice(0, 3).join(', ')}
         </div>
       )}
     </div>
@@ -575,83 +725,25 @@ interface ToolExecutionDisplayProps {
 }
 
 function ToolExecutionDisplay({ tool, results, confidence }: ToolExecutionDisplayProps) {
-  const getSuccessColor = (success?: boolean) => {
-    if (success === undefined) return 'bg-gray-50 border-gray-200 text-gray-700'
-    return success 
-      ? 'bg-green-50 border-green-200 text-green-700' 
-      : 'bg-red-50 border-red-200 text-red-700'
-  }
-
-  const getSuccessIcon = (success?: boolean) => {
-    if (success === undefined) return '❓'
-    return success ? '✅' : '❌'
-  }
-
   return (
-    <div className={`mt-3 p-3 rounded-md border ${getSuccessColor(tool.success)}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-medium flex items-center gap-2">
-          <span>🔧</span>
-          <span>Tool Execution</span>
-          <span>{getSuccessIcon(tool.success)}</span>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          {tool.execution_time_ms && (
-            <span>⏱️ {tool.execution_time_ms}ms</span>
-          )}
-          {confidence !== undefined && (
-            <span>🎯 {Math.round(confidence * 100)}%</span>
-          )}
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="text-sm font-medium">
-            {tool.name || 'Unknown Tool'}
-          </div>
-          {tool.type && (
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-              {tool.type}
-            </span>
-          )}
-        </div>
-        
-        {tool.error && (
-          <div className="text-xs text-red-600 bg-red-50 p-2 rounded border-l-2 border-red-300">
-            <span className="font-medium">Error:</span> {tool.error}
-          </div>
-        )}
-        
-        {results && (
-          <div className="text-xs space-y-1">
-            {results.summary && (
-              <div>
-                <span className="font-medium text-gray-600">Summary:</span> 
-                <span className="ml-1 text-gray-700">{results.summary}</span>
-              </div>
-            )}
-            {results.artifacts_created && results.artifacts_created.length > 0 && (
-              <div>
-                <span className="font-medium text-gray-600">Artifacts:</span>
-                <div className="ml-2 mt-1 flex flex-wrap gap-1">
-                  {results.artifacts_created.map((artifact, idx) => (
-                    <span key={idx} className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                      {artifact}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {results.output_size && (
-              <div>
-                <span className="font-medium text-gray-600">Output Size:</span>
-                <span className="ml-1 text-gray-700">{results.output_size} bytes</span>
-              </div>
-            )}
-          </div>
+    <div className="mt-2 pl-4 border-l-2 border-gray-200">
+      <div className="text-xs text-gray-600">
+        <span className="font-medium">Tool:</span> {tool.name || 'Unknown'}
+        {tool.success === false && <span className="text-red-600 ml-2">(failed)</span>}
+        {tool.execution_time_ms && tool.execution_time_ms > 1000 && (
+          <span className="text-gray-500 ml-2">({Math.round(tool.execution_time_ms / 1000)}s)</span>
         )}
       </div>
+      {tool.error && (
+        <div className="text-xs text-red-600 mt-1">
+          Error: {tool.error.substring(0, 100)}
+        </div>
+      )}
+      {results?.summary && (
+        <div className="text-xs text-gray-500 mt-1">
+          {results.summary}
+        </div>
+      )}
     </div>
   )
 }
@@ -662,65 +754,17 @@ interface CollaborationDisplayProps {
 }
 
 function CollaborationDisplay({ collaboration }: CollaborationDisplayProps) {
-  const getCollaborationIcon = (type?: string) => {
-    switch (type) {
-      case 'handoff':
-        return '🔄'
-      case 'parallel':
-        return '⚡'
-      case 'sequential':
-        return '📝'
-      default:
-        return '🤝'
-    }
-  }
-
-  const getCollaborationColor = (type?: string) => {
-    switch (type) {
-      case 'handoff':
-        return 'bg-orange-50 border-orange-200 text-orange-700'
-      case 'parallel':
-        return 'bg-purple-50 border-purple-200 text-purple-700'
-      case 'sequential':
-        return 'bg-indigo-50 border-indigo-200 text-indigo-700'
-      default:
-        return 'bg-teal-50 border-teal-200 text-teal-700'
-    }
-  }
-
   return (
-    <div className={`mt-3 p-3 rounded-md border ${getCollaborationColor(collaboration.type)}`}>
-      <div className="text-xs font-medium mb-2 flex items-center gap-2">
-        <span>{getCollaborationIcon(collaboration.type)}</span>
-        <span>Multi-Agent Collaboration</span>
-        {collaboration.type && (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-white border">
-            {collaboration.type}
-          </span>
+    <div className="mt-2 pl-4 border-l-2 border-gray-200">
+      <div className="text-xs text-gray-600">
+        <span className="font-medium">Collaboration:</span> {collaboration.type || 'multi-agent'}
+        {collaboration.agents && collaboration.agents.length > 0 && (
+          <span className="text-gray-500"> ({collaboration.agents.length} agents)</span>
         )}
       </div>
-      
       {collaboration.agents && collaboration.agents.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-600">
-            Participating Agents ({collaboration.agents.length}):
-          </div>
-          <div className="grid gap-2">
-            {collaboration.agents.map((agent, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded border">
-                <div className="text-xs">
-                  {agent.seniority === 'expert' ? '👑' : 
-                   agent.seniority === 'senior' ? '⭐' : '🌱'}
-                </div>
-                <div className="flex-1">
-                  <div className="text-xs font-medium">{agent.role || 'Unknown Role'}</div>
-                  {agent.responsibility && (
-                    <div className="text-xs text-gray-600 mt-0.5">{agent.responsibility}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="text-xs text-gray-500 mt-1">
+          Agents: {collaboration.agents.map(a => a.role).filter(Boolean).join(', ')}
         </div>
       )}
     </div>

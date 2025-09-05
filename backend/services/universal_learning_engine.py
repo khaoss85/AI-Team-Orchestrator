@@ -32,6 +32,7 @@ class UniversalBusinessInsight:
     """
     insight_type: str  # Dynamically determined by AI
     domain_context: str  # AI-detected domain (not from enum)
+    title: Optional[str] = None  # Concise title for UI display
     metric_name: Optional[str] = None
     metric_value: Optional[float] = None
     comparison_baseline: Optional[str] = None
@@ -198,20 +199,36 @@ class UniversalLearningEngine:
             {combined_content[:5000]}
             
             For each insight provide:
-            1. insight_type: The category of insight (e.g., performance_metric, optimization_opportunity)
-            2. metric_name: Specific metric if quantifiable
-            3. metric_value: Numerical value (as decimal, e.g., 0.25 for 25%)
-            4. comparison_baseline: What it's compared against
-            5. actionable_recommendation: Specific action to take
-            6. confidence_score: Your confidence (0.0-1.0)
-            7. key_finding: One-line summary of the insight
+            1. title: A concise, descriptive title (max 60 characters) for UI display
+            2. insight_type: IMPORTANT - Choose EXACTLY ONE from these categories:
+               - best_practice: Proven methods, successful strategies, effective templates, or recommended approaches
+               - learning: Lessons learned from experience, what worked/didn't work, insights from results
+               - optimization_opportunity: Areas for improvement, performance gains possible, efficiency increases
+               - success_pattern: Recurring successful approaches, winning formulas, repeatable achievements
+               - constraint: Limitations discovered, challenges identified, obstacles to be aware of
+               - discovery: New findings, research results, unexpected insights, data revelations
+               - strategic_insight: High-level strategic implications, market positioning, competitive advantages
+            3. metric_name: Specific metric if quantifiable
+            4. metric_value: Numerical value (as decimal, e.g., 0.25 for 25%)
+            5. comparison_baseline: What it's compared against
+            6. actionable_recommendation: Specific action to take based on this insight
+            7. confidence_score: Your confidence in this categorization (0.7-1.0 for high quality)
+            8. key_finding: One-line summary of the insight
+            
+            CATEGORIZATION GUIDELINES:
+            - Email templates/sequences → best_practice (they're proven templates)
+            - Performance results/metrics → learning (lessons from what happened)
+            - Process improvements → optimization_opportunity
+            - Successful campaigns → success_pattern
+            - Identified limitations → constraint
+            - New research/data → discovery
+            - Business strategy → strategic_insight
             
             Focus on:
-            - Quantifiable metrics with specific values
-            - Comparative insights (X performs better than Y)
-            - Actionable recommendations
-            - Trends and patterns
-            - Optimization opportunities
+            - Properly categorizing based on the nature of the content
+            - High confidence scores (0.7+) for clear categorizations
+            - Actionable recommendations for each insight
+            - Extracting both strategic and tactical insights
             
             Return as JSON with an "insights" array.
             Extract insights relevant to the {domain} domain.
@@ -219,7 +236,7 @@ class UniversalLearningEngine:
             
             agent = {
                 "name": "UniversalInsightExtractor",
-                "model": "gpt-4o",
+                "model": "gpt-4o-mini",
                 "instructions": f"You are an expert at extracting business insights from {domain} content. You understand industry-specific metrics and can identify valuable patterns."
             }
             
@@ -234,7 +251,26 @@ class UniversalLearningEngine:
             
             if response and 'insights' in response:
                 for item in response['insights']:
+                    # Generate title if not provided or too long
+                    title = item.get('title', '')
+                    if not title or len(title) > 60:
+                        # Fallback title generation from key_finding or recommendation
+                        key_finding = item.get('key_finding', '')
+                        recommendation = item.get('actionable_recommendation', '')
+                        if key_finding and len(key_finding) <= 60:
+                            title = key_finding
+                        elif recommendation and len(recommendation) <= 60:
+                            title = recommendation
+                        else:
+                            # Create a simple title from insight type and metric
+                            metric = item.get('metric_name', '')
+                            if metric:
+                                title = f"{item.get('insight_type', 'Insight')}: {metric}"[:60]
+                            else:
+                                title = f"{domain.title()} {item.get('insight_type', 'Insight').replace('_', ' ').title()}"[:60]
+                    
                     insights.append(UniversalBusinessInsight(
+                        title=title,
                         insight_type=item.get('insight_type', 'general'),
                         domain_context=domain,
                         metric_name=item.get('metric_name'),
@@ -435,6 +471,21 @@ class UniversalLearningEngine:
         
         for insight in insights:
             try:
+                # Handle both dict and UniversalBusinessInsight objects
+                if isinstance(insight, dict):
+                    # Convert dict to UniversalBusinessInsight if needed
+                    insight = UniversalBusinessInsight(
+                        title=insight.get('title', 'Business Insight'),
+                        insight_type=insight.get('insight_type', 'operational'),
+                        confidence_score=insight.get('confidence_score', 0.7),
+                        domain_context=insight.get('domain_context', 'general'),
+                        language=insight.get('language', 'en'),
+                        metric_name=insight.get('metric_name'),
+                        metric_value=insight.get('metric_value'),
+                        comparison_baseline=insight.get('comparison_baseline'),
+                        actionable_recommendation=insight.get('actionable_recommendation', insight.get('learning', ''))
+                    )
+                
                 # Check for duplicates
                 content_hash = self._generate_insight_hash(insight)
                 
@@ -445,6 +496,7 @@ class UniversalLearningEngine:
                 # Create storage format
                 insight_content = {
                     "learning": insight.to_learning_format(),
+                    "title": insight.title,  # Add title for UI display
                     "insight_type": insight.insight_type,
                     "domain_context": insight.domain_context,  # Dynamic domain
                     "language": insight.language,  # Multi-language support
@@ -472,12 +524,17 @@ class UniversalLearningEngine:
                     content=json.dumps(insight_content, ensure_ascii=False, indent=2),
                     agent_role="universal_learning_engine",
                     confidence_score=insight.confidence_score,
-                    relevance_tags=[insight.domain_context, insight.insight_type, insight.language]
+                    relevance_tags=[insight.domain_context, insight.insight_type, insight.language],
+                    title=insight.title  # Pass title directly for database storage
                 )
                 
                 logger.info(f"✅ Stored universal insight: {insight.to_learning_format()[:60]}...")
                 stored_count += 1
                 
+            except AttributeError as e:
+                # Handle case where insight is not the expected type
+                logger.error(f"Error storing insight - invalid format: {e}")
+                logger.debug(f"Insight type: {type(insight)}, content: {insight}")
             except Exception as e:
                 logger.error(f"Error storing insight: {e}")
         

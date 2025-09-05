@@ -1,0 +1,132 @@
+{
+  "executive_summary": {
+    "total_monthly_waste": "$655.73",
+    "annual_waste_projection": "$7868.76",
+    "potential_savings_with_quick_fixes": "$393.44/month",
+    "potential_savings_with_full_optimization": "$557.37/month"
+  },
+  "critical_issues": [
+    {
+      "issue": "Polling Storm",
+      "monthly_cost": 18.76,
+      "fix_effort": 3,
+      "priority_score": 9,
+      "quick_fix": "Increase polling interval to 30 seconds"
+    },
+    {
+      "issue": "Expensive Workflow",
+      "monthly_cost": 634.52,
+      "fix_effort": 6,
+      "priority_score": 8,
+      "quick_fix": "Cache workspace context for 5 minutes"
+    },
+    {
+      "issue": "WebSocket Leaks",
+      "monthly_cost": 2.45,
+      "fix_effort": 4,
+      "priority_score": 7,
+      "quick_fix": "Implement connection singleton pattern"
+    }
+  ],
+  "detailed_analysis": {
+    "polling_storm": {
+      "pattern": "Frontend polling /goals/progress every 3 seconds",
+      "frequency": {
+        "polls_per_hour": 1200.0,
+        "polls_per_day": 28800.0,
+        "polls_per_month": 864000.0
+      },
+      "cost_breakdown": {
+        "api_cost_per_workspace_month": "$1.73",
+        "bandwidth_cost_per_workspace_month": "$0.15",
+        "total_per_workspace_month": "$1.88"
+      },
+      "estimated_total_monthly_cost": "$18.76",
+      "annual_projection": "$225.16",
+      "optimization_potential": {
+        "use_websocket_updates": "Reduce to 0 polling requests",
+        "increase_interval_to_30s": "$1.88/month",
+        "smart_polling_on_activity": "$0.94/month"
+      }
+    },
+    "expensive_workflow": {
+      "pattern": "Goals/preview endpoint taking 27+ seconds",
+      "performance": {
+        "average_response_time": "27 seconds",
+        "database_calls": 8,
+        "tokens_processed": 3000
+      },
+      "cost_breakdown": {
+        "openai_cost_per_call": "$0.0480",
+        "database_cost_per_call": "$0.000016",
+        "total_cost_per_call": "$0.0480"
+      },
+      "monthly_costs": {
+        "direct_api_costs": "$72.02",
+        "productivity_loss": "$562.50",
+        "total_monthly_impact": "$634.52"
+      },
+      "optimization_potential": {
+        "cache_workspace_context": "Save 6 DB calls per request",
+        "batch_database_queries": "Reduce to 2 DB calls total",
+        "implement_streaming_response": "Reduce perceived wait to <5 seconds",
+        "estimated_savings": "$50.42/month"
+      }
+    },
+    "websocket_leaks": {
+      "pattern": "Multiple WebSocket connections opening simultaneously",
+      "leaks": {
+        "connections_per_workspace": 3,
+        "total_leaked_connections": 30,
+        "connection_hours_per_month": 21600
+      },
+      "cost_breakdown": {
+        "connection_costs": "$2.16",
+        "memory_costs": "$0.29",
+        "total_monthly_cost": "$2.45"
+      },
+      "optimization_potential": {
+        "implement_connection_reuse": "Single connection per workspace",
+        "add_connection_cleanup": "Automatic cleanup after 30min idle",
+        "estimated_savings": "$1.62/month"
+      }
+    }
+  },
+  "recommended_immediate_actions": [
+    {
+      "action": "\ud83d\udd34 URGENT: Increase polling interval from 3s to 30s",
+      "implementation": "Update useGoalPreview.ts line 288",
+      "estimated_time": "5 minutes",
+      "monthly_savings": "$16.88"
+    },
+    {
+      "action": "\ud83d\udfe0 HIGH: Cache workspace context in Redis",
+      "implementation": "Add caching layer in _get_workspace_context()",
+      "estimated_time": "2 hours",
+      "monthly_savings": "$317.26"
+    },
+    {
+      "action": "\ud83d\udfe1 MEDIUM: Fix WebSocket connection management",
+      "implementation": "Implement singleton pattern in websocket manager",
+      "estimated_time": "1 hour",
+      "monthly_savings": "$1.62"
+    }
+  ],
+  "monitoring_implementation": {
+    "metrics_to_track": [
+      "API calls per minute by endpoint",
+      "Average response time by endpoint",
+      "Active WebSocket connections",
+      "Cache hit rates",
+      "OpenAI token usage per request"
+    ],
+    "alerting_thresholds": {
+      "polling_rate": "Alert if > 20 req/min from single client",
+      "response_time": "Alert if > 10 seconds for any endpoint",
+      "websocket_connections": "Alert if > 2 connections per workspace",
+      "daily_cost": "Alert if daily costs exceed $50"
+    }
+  },
+  "generated_at": "2025-09-05T14:56:37.060872",
+  "workspace_analyzed": "e29a33af-b473-4d9c-b983-f5c1aa70a830"
+}

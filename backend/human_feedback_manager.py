@@ -9,7 +9,7 @@ from database import (
     create_task,
     update_task_status,
     get_agent,
-    list_agents as db_list_agents
+    list_agents
 )
 from models import TaskStatus
 

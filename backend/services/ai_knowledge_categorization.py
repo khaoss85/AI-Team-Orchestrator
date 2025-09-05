@@ -150,17 +150,20 @@ Generate up to {self.max_tags} specific, relevant tags that describe:
 Return ONLY a JSON array of tag strings, no explanation:
 ["tag1", "tag2", "tag3"]"""
             
-            response = await ai_provider_manager.generate_completion(
-                prompt=prompt,
-                agent_config={
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={
                     "name": "Tag Generator",
                     "model": self.model
-                }
+                },
+                prompt=prompt,
+                temperature=0.5
             )
             
             # Parse tags from response
             try:
-                tags = json.loads(response)
+                # Response might be a dict or string
+                tags = response if isinstance(response, list) else (response.get('tags', []) if isinstance(response, dict) else json.loads(response))
                 if isinstance(tags, list):
                     return tags[:self.max_tags]
             except:
@@ -202,28 +205,38 @@ CONTENT: {content[:2000]}
 {workspace_info}
 
 CATEGORIZATION REQUIREMENTS:
-1. Determine the PRIMARY TYPE from these categories:
-   - discovery: New findings, research results, data insights
-   - optimization: Performance improvements, efficiency gains, process enhancements
-   - success_pattern: Best practices, successful strategies, proven approaches
-   - constraint: Limitations, restrictions, challenges identified
-   - learning: Lessons learned, educational content, skill development
-   - strategy: Strategic plans, roadmaps, high-level approaches
-   - analysis: Data analysis, reports, metrics evaluation
-   - research: Research findings, investigations, studies
+1. Determine the PRIMARY TYPE from these categories (BE SPECIFIC AND ACCURATE):
+   - best_practice: Email templates, proven methodologies, successful strategies, effective frameworks, recommended approaches that can be reused
+   - learning: Lessons learned from actual experience, insights from results, what worked vs what didn't, empirical findings from execution
+   - success_pattern: Recurring patterns of success, repeatable achievements, winning formulas that have been proven multiple times
+   - optimization: Specific performance improvements identified, efficiency gains possible, process enhancements, areas to optimize
+   - discovery: NEW findings never seen before, unexpected research results, novel data insights, surprising revelations
+   - constraint: Limitations encountered, restrictions identified, challenges discovered, obstacles that must be worked around
+   - strategy: High-level strategic plans, business roadmaps, market positioning, competitive strategies
+   - analysis: Data analysis results, metrics evaluation, performance reports, trend analysis
+   - research: Research methodologies, investigation approaches, study frameworks, research findings
 
 2. Generate relevant TAGS that describe:
    - Main topics and themes
-   - Business domain
-   - Key concepts
-   - Specific technologies or tools
-   - Target audience or market
+   - Business domain specifics
+   - Key concepts and methodologies
+   - Specific technologies or tools mentioned
+   - Target audience, market, or use case
 
-3. Provide a CONFIDENCE score (0.0 to 1.0) for your categorization
+3. Provide a CONFIDENCE score (0.7 to 1.0) for HIGH-QUALITY categorization
 
 4. Detect the LANGUAGE of the content
 
 5. Provide brief REASONING for your categorization
+
+IMPORTANT CATEGORIZATION RULES:
+- Email sequences/templates → best_practice (they are reusable templates)
+- Campaign results/metrics → learning (empirical lessons from execution)
+- Templates and frameworks → best_practice (proven methodologies)
+- Performance data → learning or analysis (depending on if lessons are extracted)
+- Process improvements → optimization (specific enhancements)
+- New insights → discovery (only if truly novel)
+- Strategic implications → strategy (high-level planning)
 
 Return your analysis as JSON:
 {{
@@ -231,23 +244,26 @@ Return your analysis as JSON:
     "tags": ["tag1", "tag2", "tag3"],
     "confidence": 0.85,
     "language": "detected_language",
-    "reasoning": "Brief explanation"
+    "reasoning": "Brief explanation of why this category was chosen"
 }}"""
             
             # Get AI response
-            response = await ai_provider_manager.generate_completion(
-                prompt=prompt,
-                agent_config={
+            response = await ai_provider_manager.call_ai(
+                provider_type='openai_sdk',
+                agent={
                     "name": "Knowledge Categorization Expert",
-                    "role": "Semantic analysis specialist",
                     "model": self.model,
-                    "capabilities": ["semantic_analysis", "categorization", "multilingual"]
-                }
+                    "instructions": "You are an expert at categorizing knowledge items based on semantic understanding."
+                },
+                prompt=prompt,
+                temperature=0.3,
+                response_format={"type": "json_object"}
             )
             
             # Parse AI response
             try:
-                result = json.loads(response)
+                # Response is already a dict from call_ai
+                result = response if isinstance(response, dict) else json.loads(response)
                 
                 # Validate and normalize result
                 result["type"] = result.get("type", self.fallback_categories[0])

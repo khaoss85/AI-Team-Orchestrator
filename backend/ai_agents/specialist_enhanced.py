@@ -520,11 +520,11 @@ RESEARCH/METHODOLOGY TASK:
                 """
                 
                 # Use AI to determine if output matches expected specificity
-                import openai
-                client = openai.AsyncOpenAI()
+                from utils.openai_client_factory_enhanced import get_enhanced_async_openai_client
+                client = get_enhanced_async_openai_client(workspace_id=self.workspace_id)
                 
                 response = await client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {
                             "role": "system",

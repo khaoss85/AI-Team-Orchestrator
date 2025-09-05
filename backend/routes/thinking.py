@@ -42,6 +42,9 @@ class ThinkingProcessResponse(BaseModel):
     started_at: str
     completed_at: Optional[str]
     status: str
+    # Enhanced UX fields
+    title: Optional[str] = None
+    summary_metadata: Optional[Dict[str, Any]] = None
 
 class ThinkingStepResponse(BaseModel):
     step_id: str
@@ -89,7 +92,9 @@ async def get_workspace_thinking_processes(request: Request, workspace_id: UUID,
                 overall_confidence=process.overall_confidence,
                 started_at=process.started_at,
                 completed_at=process.completed_at,
-                status="completed" if process.completed_at else "active"
+                status="completed" if process.completed_at else "active",
+                title=process.title,  # Include title
+                summary_metadata=process.summary_metadata  # Include metadata
             ))
         
         logger.info(f"✅ Retrieved {len(response_processes)} thinking processes")
@@ -136,7 +141,9 @@ async def get_thinking_process(process_id: str, request: Request):
             overall_confidence=process.overall_confidence,
             started_at=process.started_at,
             completed_at=process.completed_at,
-            status="completed" if process.completed_at else "active"
+            status="completed" if process.completed_at else "active",
+            title=process.title,  # Include title
+            summary_metadata=process.summary_metadata  # Include metadata
         )
         
         logger.info(f"✅ Retrieved thinking process with {len(steps_data)} steps")

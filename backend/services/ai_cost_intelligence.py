@@ -2,6 +2,7 @@
 """
 AI Cost Intelligence System
 Analyzes OpenAI usage patterns to detect inefficiencies, duplicates, and optimization opportunities
+Now enhanced with real usage data from OpenAI Usage API v1
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from collections import defaultdict, deque
 from enum import Enum
 
 from utils.openai_client_factory_enhanced import get_enhanced_async_openai_client
+from services.openai_usage_api_client import get_usage_client, UsageSummary
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,7 @@ class APICallPattern:
 class AICostIntelligence:
     """
     Intelligent system for analyzing OpenAI costs and detecting waste
+    Enhanced with real usage data from OpenAI Usage API v1
     """
     
     def __init__(self, workspace_id: str):
@@ -76,7 +79,7 @@ class AICostIntelligence:
         self.prompt_bloat_threshold = int(os.getenv("AI_COST_PROMPT_BLOAT_THRESHOLD", "2000"))
         self.model_waste_threshold = float(os.getenv("AI_COST_MODEL_WASTE_THRESHOLD", "5.0"))
         
-        # Model cost estimates per 1K tokens (updated periodically)
+        # Model cost estimates per 1K tokens (will be updated from real usage data)
         self.model_costs = {
             "gpt-4": {"input": 0.03, "output": 0.06},
             "gpt-4o": {"input": 0.005, "output": 0.015}, 
@@ -84,6 +87,11 @@ class AICostIntelligence:
             "gpt-3.5-turbo": {"input": 0.001, "output": 0.002},
             "text-embedding-ada-002": {"input": 0.0001, "output": 0.0}
         }
+        
+        # Real usage data tracking
+        self.usage_client = None
+        self.last_real_usage: Optional[UsageSummary] = None
+        self.real_vs_estimated_ratio = 1.0  # Calibration factor
         
         logger.info(f"🧠 AI Cost Intelligence initialized for workspace: {workspace_id}")
     
@@ -491,8 +499,90 @@ class AICostIntelligence:
         
         return sorted_alerts[:limit]
     
+    async def update_real_costs(self):
+        """Update cost estimates with real usage data from OpenAI Usage API"""
+        try:
+            if not self.usage_client:
+                self.usage_client = get_usage_client()
+            
+            # Fetch real usage data for the last 7 days
+            usage_summary = await self.usage_client.get_model_comparison(days=7)
+            
+            # Update model costs based on real data
+            for model, data in usage_summary.items():
+                if model in self.model_costs and data['cost_per_1k_tokens'] > 0:
+                    # Update with real cost data
+                    old_estimate = (self.model_costs[model]["input"] + self.model_costs[model]["output"]) / 2
+                    real_cost = data['cost_per_1k_tokens']
+                    
+                    # Adjust our estimates based on real data
+                    self.model_costs[model]["input"] = real_cost * 0.4  # Rough split
+                    self.model_costs[model]["output"] = real_cost * 0.6
+                    
+                    # Calculate calibration ratio
+                    if old_estimate > 0:
+                        ratio = real_cost / old_estimate
+                        self.real_vs_estimated_ratio = (self.real_vs_estimated_ratio + ratio) / 2
+                    
+                    logger.info(f"📊 Updated {model} costs from real data: ${real_cost:.4f}/1K tokens")
+            
+            # Store last real usage for comparison
+            self.last_real_usage = await self.usage_client.get_today_usage()
+            
+        except Exception as e:
+            logger.warning(f"Could not update real costs from Usage API: {e}")
+    
+    async def get_real_vs_estimated_comparison(self) -> Dict[str, Any]:
+        """Compare estimated costs with real usage data"""
+        try:
+            if not self.usage_client:
+                self.usage_client = get_usage_client()
+            
+            # Get real usage for today
+            real_usage = await self.usage_client.get_today_usage()
+            
+            # Calculate estimated costs from recent calls
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_calls = [call for call in self.recent_calls if call['timestamp'] > today_start]
+            
+            estimated_cost = 0.0
+            estimated_tokens = 0
+            for call in today_calls:
+                if 'tokens' in call:
+                    estimated_tokens += call['tokens']
+                    model = call.get('model', 'gpt-3.5-turbo')
+                    if model in self.model_costs:
+                        # Simple average of input/output costs
+                        avg_cost = (self.model_costs[model]["input"] + self.model_costs[model]["output"]) / 2
+                        estimated_cost += (call['tokens'] / 1000) * avg_cost
+            
+            # Comparison
+            accuracy_percent = 0.0
+            if real_usage.total_cost > 0:
+                accuracy_percent = (1 - abs(estimated_cost - real_usage.total_cost) / real_usage.total_cost) * 100
+            
+            return {
+                "real_cost_today": real_usage.total_cost,
+                "estimated_cost_today": estimated_cost,
+                "real_tokens_today": real_usage.total_tokens,
+                "estimated_tokens_today": estimated_tokens,
+                "accuracy_percent": max(0, accuracy_percent),
+                "calibration_ratio": self.real_vs_estimated_ratio,
+                "real_model_breakdown": real_usage.model_breakdown,
+                "last_updated": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error comparing real vs estimated costs: {e}")
+            return {
+                "error": str(e),
+                "real_cost_today": 0.0,
+                "estimated_cost_today": 0.0,
+                "accuracy_percent": 0.0
+            }
+    
     def get_cost_summary(self) -> Dict[str, Any]:
-        """Get cost analysis summary"""
+        """Get cost analysis summary with real data integration"""
         recent_window = datetime.now() - timedelta(hours=1)
         recent_calls = [call for call in self.recent_calls if call['timestamp'] > recent_window]
         
@@ -510,7 +600,11 @@ class AICostIntelligence:
         recent_alerts = [a for a in self.alerts_generated if a.created_at > recent_window]
         potential_daily_savings = sum(alert.potential_savings for alert in recent_alerts)
         
-        return {
+        # Apply calibration from real usage data
+        if self.real_vs_estimated_ratio != 1.0:
+            potential_daily_savings *= self.real_vs_estimated_ratio
+        
+        summary = {
             "analysis_window_hours": 1,
             "total_calls_analyzed": total_calls,
             "unique_call_patterns": unique_patterns,
@@ -518,8 +612,19 @@ class AICostIntelligence:
             "model_distribution": dict(model_dist),
             "alerts_generated": len(recent_alerts),
             "potential_daily_savings_usd": potential_daily_savings,
-            "efficiency_score": max(0, 100 - (duplicate_rate * 50))  # Simple efficiency metric
+            "efficiency_score": max(0, 100 - (duplicate_rate * 50)),  # Simple efficiency metric
+            "real_data_calibrated": self.real_vs_estimated_ratio != 1.0
         }
+        
+        # Add real usage data if available
+        if self.last_real_usage:
+            summary["real_usage_snapshot"] = {
+                "total_cost": self.last_real_usage.total_cost,
+                "total_tokens": self.last_real_usage.total_tokens,
+                "timestamp": self.last_real_usage.end_date.isoformat()
+            }
+        
+        return summary
 
 
 # Global manager for cost intelligence per workspace

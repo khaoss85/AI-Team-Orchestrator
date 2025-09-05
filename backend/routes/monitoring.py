@@ -13,7 +13,7 @@ from executor import task_executor
 # Import database functions
 from database import (
     get_workspace, 
-    list_agents as db_list_agents, 
+    list_agents, 
     list_tasks,
     update_task_status
 )
@@ -91,7 +91,7 @@ async def get_workspace_budget(workspace_id: UUID, request: Request):
 
     """Get budget summary for a workspace"""
     try:
-        agents_db = await db_list_agents(str(workspace_id))
+        agents_db = await list_agents(str(workspace_id))
         agent_ids = [str(agent["id"]) for agent in agents_db]
 
         budget_summary = task_executor.budget_tracker.get_workspace_total_cost(
@@ -228,7 +228,7 @@ async def get_workspace_status_endpoint(workspace_id: UUID, request: Request):
         if not workspace:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
 
-        agents_db = await db_list_agents(str(workspace_id))
+        agents_db = await list_agents(str(workspace_id))
         agent_status_counts = Counter(agent.get("status", "unknown") for agent in agents_db)
 
         recent_activity = task_executor.get_recent_activity(str(workspace_id), 5)
@@ -414,7 +414,7 @@ async def get_task_failure_analysis(workspace_id: UUID, request: Request):
     try:
         # Fetch data from multiple sources
         tasks = await list_tasks(str(workspace_id))
-        agents_db = await db_list_agents(str(workspace_id))
+        agents_db = await list_agents(str(workspace_id))
         
         # Get runtime data from executor
         recent_activity = task_executor.get_recent_activity(str(workspace_id), 100)
@@ -1083,7 +1083,7 @@ async def get_deliverable_readiness_status(workspace_id: UUID, request: Request)
     try:
         # Get basic data
         tasks = await list_tasks(str(workspace_id))
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         
         if not tasks:
             return {
@@ -1358,7 +1358,7 @@ async def get_workspace_health_status(workspace_id: UUID, request: Request):
         task_counts['total'] = len(tasks_db)
         
         # Get agent counts
-        agents_db = await db_list_agents(workspace_id_str)
+        agents_db = await list_agents(workspace_id_str)
         agent_counts = Counter(a.get("status") for a in agents_db)
         agent_counts['total'] = len(agents_db)
         

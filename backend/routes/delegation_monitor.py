@@ -9,7 +9,7 @@ from collections import Counter, defaultdict
 
 from database import (
     get_workspace,
-    list_agents as db_list_agents,
+    list_agents,
     list_tasks
 )
 from executor import task_executor
@@ -28,7 +28,7 @@ async def get_delegation_analysis(workspace_id: UUID, request: Request):
     try:
         # Recupera dati
         tasks = await list_tasks(str(workspace_id))
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         
         # Analizza pattern di delegazione dai log dell'executor
         recent_activity = task_executor.get_recent_activity(str(workspace_id), 100)
@@ -265,7 +265,7 @@ async def get_team_expansion_suggestions(workspace_id: UUID, request: Request):
         bottlenecks = await get_delegation_bottlenecks(workspace_id)
         
         # Recupera team corrente
-        agents = await db_list_agents(str(workspace_id))
+        agents = await list_agents(str(workspace_id))
         current_roles = [agent["role"] for agent in agents if agent.get("status") == "available"]
         
         suggestions = []

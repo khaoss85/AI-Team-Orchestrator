@@ -165,7 +165,7 @@ Rispondi in JSON con questa struttura:
             
             # Get AI analysis using OpenAI
             response = await client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert content analyzer. Respond only with valid JSON."},
                     {"role": "user", "content": discovery_prompt}

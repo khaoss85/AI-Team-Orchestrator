@@ -18,7 +18,7 @@ from models import (
 from database import (
     create_agent,
     update_agent,
-    list_agents as db_list_agents,
+    list_agents,
     update_agent_status,
     create_task,
     update_task_status,
@@ -86,7 +86,7 @@ async def get_workspace_agents(workspace_id: str, request: Request):
                 detail=f"Invalid workspace ID format: {workspace_id}"
             )
         
-        agents_data = await db_list_agents(workspace_id)
+        agents_data = await list_agents(workspace_id)
         
         # Deserializza i campi JSON prima della validazione Pydantic
         for agent in agents_data:
@@ -180,7 +180,7 @@ async def update_agent_data(workspace_id: UUID, agent_id: UUID, agent_update: Ag
     """Update an agent's configuration"""
     try:
         # Verifica che l'agente esista e appartenga al workspace
-        agents = await db_list_agents(str(workspace_id))  # Use the alias here
+        agents = await list_agents(str(workspace_id))  # Use the alias here
         agent = next((a for a in agents if a["id"] == str(agent_id)), None)
         
         if not agent:

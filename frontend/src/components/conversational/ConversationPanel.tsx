@@ -404,7 +404,7 @@ export default function ConversationPanel({
                 
                 // Transform real thinking processes to ThinkingProcessViewer format
                 const transformedSteps = thinkingProcesses.flatMap(process => 
-                  process.steps.map((step: any) => ({
+                  process.steps.map((step: any, index: number) => ({
                     type: step.step_type,
                     step: step.step_id,
                     title: step.content.substring(0, 50) + (step.content.length > 50 ? '...' : ''),
@@ -412,7 +412,10 @@ export default function ConversationPanel({
                     status: process.completed_at ? 'completed' : 'in_progress',
                     timestamp: step.timestamp,
                     fromMessage: `process-${process.process_id}`,
-                    messageTimestamp: process.started_at
+                    messageTimestamp: process.started_at,
+                    // Add process title for first step to be used in session summary
+                    process_title: index === 0 ? process.title : undefined,
+                    summary_metadata: index === 0 ? process.summary_metadata : undefined
                   }))
                 );
 

@@ -8,7 +8,7 @@ from uuid import UUID
 from datetime import datetime, timedelta
 
 from database import (
-    list_agents as db_list_agents_from_db,
+    list_agents,
     list_tasks as db_list_tasks_from_db,
     get_workspace,
     update_task_status,
@@ -104,7 +104,7 @@ class AgentManager:
         """Fetch agenti con retry logic"""
         for attempt in range(max_retries):
             try:
-                agents = await db_list_agents_from_db(str(self.workspace_id))
+                agents = await list_agents(str(self.workspace_id))
                 return agents
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to fetch agents: {e}")
@@ -760,7 +760,7 @@ class AgentManager:
     async def _get_all_workspace_agents(self) -> List[AgentModelPydantic]:
         """Get all workspace agents for handoff support"""
         try:
-            db_agents = await db_list_agents_from_db(workspace_id=self.workspace_id)
+            db_agents = await list_agents(workspace_id=self.workspace_id)
             agents = []
             for db_agent in db_agents:
                 try:

@@ -12,6 +12,7 @@ from datetime import datetime
 import logging
 
 from database import supabase
+from utils.performance_cache import cached, get_cache_stats
 from models import (
     WorkspaceCreate,
     WorkspaceUpdate,
@@ -142,8 +143,9 @@ async def preview_goals(
             "phase": "context_analysis"
         })
         
-        # Get workspace context for strategic decomposition
+        # Get workspace context for strategic decomposition (CACHED)
         workspace_context = await _get_workspace_context(workspace_id)
+        logger.info(f"📊 Current cache stats: {get_cache_stats()}")
         
         # Update progress: Starting AI extraction
         goal_extraction_progress[workspace_id].update({
@@ -1027,11 +1029,14 @@ def _generate_simple_description_from_dataclass(goal) -> str:
     else:
         return f"Raggiungere {target_value} {unit}"
 
+@cached(ttl=300)  # Cache for 5 minutes - saves 6-8 DB calls per request
 async def _get_workspace_context(workspace_id: str) -> Dict[str, Any]:
     """
     🏢 Recupera contesto del workspace per la decomposizione strategica
+    💾 CACHED: Saves 6-8 DB calls per request, ~$317/month
     """
     try:
+        logger.info(f"💾 Cache MISS - Fetching fresh workspace context for {workspace_id}")
         # Get workspace basic info
         workspace_response = supabase.table("workspaces").select("*").eq("id", workspace_id).execute()
         
