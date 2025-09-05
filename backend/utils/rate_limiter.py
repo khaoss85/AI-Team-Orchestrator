@@ -2,11 +2,14 @@
 """
 🚦 Intelligent Rate Limiter for OpenAI API calls
 Prevents 429 errors and optimizes API usage
+
+🚨 ENHANCED WITH COST CONTROLS: Integrates emergency cost protection
 """
 
 import asyncio
 import time
 import logging
+import os
 from typing import Dict, Any, Optional
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
@@ -21,15 +24,26 @@ class OpenAIRateLimiter:
         self.function_calls = defaultdict(deque)
         self.function_delays = defaultdict(float)
         
-        # Rate limits per function type (calls per minute)
+        # 🚨 EMERGENCY COST CONTROLS: Load from environment
+        max_calls_per_minute = int(os.getenv("MAX_AI_CALLS_PER_MINUTE", "5"))  # Conservative default
+        ai_cooldown = int(os.getenv("AI_CALL_COOLDOWN_SECONDS", "12"))
+        
+        # Rate limits per function type (calls per minute) - REDUCED for cost control
         self.rate_limits = {
-            "goal_extraction": 10,  # Lower priority
-            "quality_validation": 5,  # Medium priority  
-            "semantic_matching": 8,  # Medium priority
-            "recommendations": 3,   # Lower priority
-            "task_analysis": 6,     # Medium priority
-            "general": 15           # Default limit
+            "goal_extraction": max(2, max_calls_per_minute // 3),   # Very limited
+            "quality_validation": max(1, max_calls_per_minute // 5), # Ultra limited  
+            "semantic_matching": max(2, max_calls_per_minute // 2),  # Limited
+            "recommendations": max(1, max_calls_per_minute // 5),    # Ultra limited
+            "task_analysis": max(2, max_calls_per_minute // 3),      # Limited
+            "content_learning": 0,  # 🚨 DISABLED during cost emergency
+            "general": max_calls_per_minute
         }
+        
+        # Additional cost controls
+        self.ai_cooldown_seconds = ai_cooldown
+        self.daily_call_count = 0
+        self.daily_budget_usd = float(os.getenv("DAILY_OPENAI_BUDGET", "5.0"))
+        self.estimated_cost_per_call = 0.03  # Conservative estimate
         
         # Exponential backoff settings
         self.max_delay = 60.0  # Max 1 minute delay
@@ -39,10 +53,23 @@ class OpenAIRateLimiter:
         """
         Acquire permission to make an API call
         Returns True if call is allowed, False if should skip
+        
+        🚨 ENHANCED WITH BUDGET PROTECTION
         """
+        # 🚨 EMERGENCY BUDGET CHECK: Stop if over daily budget
+        estimated_daily_cost = self.daily_call_count * self.estimated_cost_per_call
+        if estimated_daily_cost >= self.daily_budget_usd:
+            logger.error(f"🚨 DAILY BUDGET EXCEEDED: ${estimated_daily_cost:.2f} >= ${self.daily_budget_usd:.2f}")
+            return False
+        
         current_time = time.time()
         calls_queue = self.function_calls[function_name]
         rate_limit = self.rate_limits.get(function_name, self.rate_limits["general"])
+        
+        # 🚨 CONTENT LEARNING EMERGENCY BLOCK
+        if function_name == "content_learning":
+            logger.warning(f"🚨 COST CONTROL: {function_name} calls blocked during emergency")
+            return False
         
         # Remove calls older than 1 minute
         while calls_queue and calls_queue[0] < current_time - 60:
@@ -51,6 +78,13 @@ class OpenAIRateLimiter:
         # Check if we're within rate limit
         if len(calls_queue) < rate_limit:
             calls_queue.append(current_time)
+            self.daily_call_count += 1
+            
+            # Apply mandatory cooldown between calls
+            if self.ai_cooldown_seconds > 0:
+                logger.info(f"⏳ Cost control cooldown: {self.ai_cooldown_seconds}s for {function_name}")
+                await asyncio.sleep(self.ai_cooldown_seconds)
+            
             return True
         
         # Calculate delay needed

@@ -15,6 +15,8 @@ from functools import wraps
 
 # Import quota tracker for real API monitoring
 from services.openai_quota_tracker import quota_tracker
+# Import cost optimizer for model selection
+from utils.ai_model_optimizer import get_cost_optimized_model, ai_model_optimizer
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +194,82 @@ def create_async_openai_client() -> AsyncOpenAI:
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable not set")
     return QuotaTrackedAsyncOpenAI(api_key=api_key)
+
+
+def create_cost_optimized_completion(
+    task_type: str,
+    messages: list,
+    complexity: str = "medium",
+    estimated_tokens: int = 1000,
+    **kwargs
+) -> dict:
+    """
+    Create OpenAI completion with cost-optimized model selection
+    
+    🚨 COST CONTROL: Automatically selects cheapest appropriate model
+    """
+    # Get cost-optimized model and token limits
+    model, max_tokens = get_cost_optimized_model(task_type, complexity, estimated_tokens)
+    
+    if model is None:
+        # Skip this AI call to preserve budget
+        logger.warning(f"🚨 SKIPPING AI CALL: {task_type} blocked for cost control")
+        return {
+            "choices": [{
+                "message": {
+                    "content": f"[AI call skipped for cost control - {task_type}]"
+                }
+            }],
+            "usage": {"total_tokens": 0},
+            "_cost_skipped": True
+        }
+    
+    # Apply token limits
+    if max_tokens and "max_tokens" not in kwargs:
+        kwargs["max_tokens"] = min(max_tokens, kwargs.get("max_tokens", max_tokens))
+    
+    # Use cost-optimized model
+    kwargs["model"] = model
+    
+    logger.info(f"💰 Cost-optimized call: {model} for {task_type} (max_tokens: {kwargs.get('max_tokens', 'default')})")
+    
+    return {
+        "messages": messages,
+        "model": model,
+        "max_tokens": kwargs.get("max_tokens"),
+        **kwargs,
+        "_cost_optimized": True
+    }
+
+
+async def async_cost_optimized_completion(
+    client: AsyncOpenAI,
+    task_type: str,
+    messages: list,
+    complexity: str = "medium",
+    estimated_tokens: int = 1000,
+    **kwargs
+):
+    """
+    Make async OpenAI completion with cost optimization
+    
+    Returns None if call should be skipped for cost control
+    """
+    completion_config = create_cost_optimized_completion(
+        task_type, messages, complexity, estimated_tokens, **kwargs
+    )
+    
+    if completion_config.get("_cost_skipped"):
+        return None
+    
+    # Remove our internal flags before API call
+    completion_config.pop("_cost_optimized", None)
+    
+    try:
+        return await client.chat.completions.create(**completion_config)
+    except Exception as e:
+        logger.error(f"💥 Cost-optimized completion failed: {e}")
+        raise
 
 
 # Log warning if this module is imported
