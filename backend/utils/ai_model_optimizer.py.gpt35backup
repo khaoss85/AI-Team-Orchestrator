@@ -28,20 +28,20 @@ class AIModelOptimizer:
         self.model_costs = {
             "gpt-4o": {"input": 0.005, "output": 0.015},           # Most expensive
             "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},   # Good balance
-            "gpt-4o-mini": {"input": 0.0005, "output": 0.0015}   # Cheapest
+            "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015}   # Cheapest
         }
         
         # Model selection by complexity
         self.model_selection = {
             # COST EMERGENCY MODE: Ultra-conservative model selection
             "emergency": {
-                TaskComplexity.SIMPLE: "gpt-4o-mini",
-                TaskComplexity.MEDIUM: "gpt-4o-mini", 
+                TaskComplexity.SIMPLE: "gpt-3.5-turbo",
+                TaskComplexity.MEDIUM: "gpt-3.5-turbo", 
                 TaskComplexity.COMPLEX: "gpt-4o-mini"  # Only for critical tasks
             },
             # NORMAL MODE: Balanced selection
             "normal": {
-                TaskComplexity.SIMPLE: "gpt-4o-mini",
+                TaskComplexity.SIMPLE: "gpt-3.5-turbo",
                 TaskComplexity.MEDIUM: "gpt-4o-mini",
                 TaskComplexity.COMPLEX: "gpt-4o"
             }
@@ -68,7 +68,7 @@ class AIModelOptimizer:
         # 🚨 EMERGENCY OVERRIDES for specific high-cost functions
         if task_type in ["content_learning", "content_analysis", "insight_extraction"]:
             if self.use_cheaper_models:
-                selected_model = "gpt-4o-mini"  # Force cheapest for content learning
+                selected_model = "gpt-3.5-turbo"  # Force cheapest for content learning
                 logger.warning(f"🚨 COST OVERRIDE: Using {selected_model} for {task_type} (emergency mode)")
         
         # Calculate estimated cost
@@ -145,6 +145,6 @@ def log_model_cost_savings():
     """Log the cost savings from model optimization"""
     if ai_model_optimizer.use_cheaper_models:
         logger.info("💰 COST SAVINGS: Using cheaper models - estimated 60-70% cost reduction")
-        logger.info("📊 Model strategy: GPT-4o-mini for basic tasks, GPT-4o-mini for complex only")
+        logger.info("📊 Model strategy: GPT-3.5-turbo for basic tasks, GPT-4o-mini for complex only")
     else:
         logger.info("💰 Normal model selection active - balanced cost vs performance")

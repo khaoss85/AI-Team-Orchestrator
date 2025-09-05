@@ -84,7 +84,7 @@ class AICostIntelligence:
             "gpt-4": {"input": 0.03, "output": 0.06},
             "gpt-4o": {"input": 0.005, "output": 0.015}, 
             "gpt-4o-mini": {"input": 0.000150, "output": 0.000600},
-            "gpt-4o-mini": {"input": 0.001, "output": 0.002},
+            "gpt-3.5-turbo": {"input": 0.001, "output": 0.002},
             "text-embedding-ada-002": {"input": 0.0001, "output": 0.0}
         }
         
@@ -550,7 +550,7 @@ class AICostIntelligence:
             for call in today_calls:
                 if 'tokens' in call:
                     estimated_tokens += call['tokens']
-                    model = call.get('model', 'gpt-4o-mini')
+                    model = call.get('model', 'gpt-3.5-turbo')
                     if model in self.model_costs:
                         # Simple average of input/output costs
                         avg_cost = (self.model_costs[model]["input"] + self.model_costs[model]["output"]) / 2

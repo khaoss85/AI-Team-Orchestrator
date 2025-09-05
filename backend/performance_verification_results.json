@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-05T15:13:59.587959",
+  "timestamp": "2025-09-05T15:23:53.876129",
   "optimizations": {
     "polling": {
       "name": "Polling Storm Fix",
@@ -36,7 +36,7 @@
           "rate_limiting": true
         },
         "caching_applied": true,
-        "cache_stats_accessible": "Not accessible (expected)",
+        "cache_stats_accessible": false,
         "status": "\u2705 IMPLEMENTED"
       }
     },
@@ -52,7 +52,7 @@
           "usage_endpoint": true
         },
         "status": "\u2705 IMPLEMENTED",
-        "endpoint_accessible": false
+        "endpoint_accessible": true
       }
     }
   },

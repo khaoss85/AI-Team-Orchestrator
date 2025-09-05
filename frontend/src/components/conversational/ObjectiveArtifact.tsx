@@ -73,6 +73,24 @@ export default function ObjectiveArtifact({
   const [inProgressDeliverables, setInProgressDeliverables] = useState<any[]>([])
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
   
+  // Calculate progress with fallback if not provided by backend
+  const calculatedProgress = useMemo(() => {
+    if (objectiveData.progress !== undefined && objectiveData.progress !== null) {
+      return objectiveData.progress
+    }
+    // Fallback: calculate from current_value and target_value
+    if (objectiveData.target_value > 0) {
+      return (objectiveData.current_value / objectiveData.target_value) * 100
+    }
+    return 0
+  }, [objectiveData.progress, objectiveData.current_value, objectiveData.target_value])
+
+  // Ensure objectiveData has progress for the rest of the component
+  const objectiveDataToUse = useMemo(() => ({
+    ...objectiveData,
+    progress: calculatedProgress
+  }), [objectiveData, calculatedProgress])
+  
   // Optimized goal ID extraction using useMemo to avoid recalculation on every render
   const goalId = useMemo(() => {
     // Method 1: Extract from activeChat.id if it starts with 'goal-'
@@ -371,8 +389,8 @@ export default function ObjectiveArtifact({
           </div>
           <div className="flex flex-col items-end space-y-1 ml-4">
             {objectiveData.status && (
-              <span className={`px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(objectiveData.status, objectiveData.progress)}`}>
-                {getDisplayStatus(objectiveData.status, objectiveData.progress)}
+              <span className={`px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(objectiveData.status, objectiveDataToUse.progress)}`}>
+                {getDisplayStatus(objectiveData.status, objectiveDataToUse.progress)}
               </span>
             )}
             {objectiveData.priority && (
@@ -388,14 +406,14 @@ export default function ObjectiveArtifact({
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-gray-700">Progress</span>
-          <span className="text-sm font-medium text-gray-900">{Math.round(objectiveData.progress)}%</span>
+          <span className="text-sm font-medium text-gray-900">{Math.round(objectiveDataToUse.progress)}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
             className={`h-2 rounded-full transition-all duration-300 ${
-              objectiveData.progress >= 100 ? 'bg-green-500' : 'bg-blue-500'
+              objectiveDataToUse.progress >= 100 ? 'bg-green-500' : 'bg-blue-500'
             }`}
-            style={{ width: `${Math.min(objectiveData.progress, 100)}%` }}
+            style={{ width: `${Math.min(objectiveDataToUse.progress, 100)}%` }}
           ></div>
         </div>
         {objectiveData.current_value !== undefined && objectiveData.target_value !== undefined && (
@@ -504,7 +522,7 @@ function OverviewTab({ objectiveData, goalProgressDetail }: OverviewTabProps) {
     })
   }
 
-  const progressPercentage = Math.round(objectiveData.progress)
+  const progressPercentage = Math.round(objectiveDataToUse.progress)
   const isCompleted = progressPercentage >= 100
 
   return (

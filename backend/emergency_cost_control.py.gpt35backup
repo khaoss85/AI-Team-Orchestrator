@@ -56,9 +56,9 @@ def apply_emergency_controls():
         "AI_COST_CIRCUIT_BREAKER": "true",
         
         # Use cheapest models only
-        "DEFAULT_AI_MODEL": "gpt-4o-mini",
-        "KNOWLEDGE_CATEGORIZATION_MODEL": "gpt-4o-mini",
-        "DIRECTOR_MODEL": "gpt-4o-mini",
+        "DEFAULT_AI_MODEL": "gpt-3.5-turbo",
+        "KNOWLEDGE_CATEGORIZATION_MODEL": "gpt-3.5-turbo",
+        "DIRECTOR_MODEL": "gpt-3.5-turbo",
         
         # Reduce token limits
         "MAX_PROMPT_TOKENS": "1000",
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     print("• All non-essential AI services disabled")
     print("• Aggressive caching enabled (24 hours)")
     print("• Rate limiting enforced (2 calls/min)")
-    print("• Cheapest models only (gpt-4o-mini)")
+    print("• Cheapest models only (gpt-3.5-turbo)")
     print()
     print("TO RESTORE NORMAL OPERATION:")
     print("-" * 40)

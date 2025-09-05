@@ -2296,7 +2296,9 @@ export const api = {
         const url = workspaceId 
           ? `${API_BASE_URL}/api/quota/status?workspace_id=${workspaceId}`
           : `${API_BASE_URL}/api/quota/status`;
-        const response = await fetch(url);
+        // Use rate-limited fetch to prevent 429 errors
+        const { rateLimitedFetch } = await import('./rateLimiter');
+        const response = await rateLimitedFetch(url);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {
@@ -2310,7 +2312,9 @@ export const api = {
       wait_seconds?: number;
     }> => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/quota/check`);
+        // Use rate-limited fetch to prevent 429 errors
+        const { rateLimitedFetch } = await import('./rateLimiter');
+        const response = await rateLimitedFetch(`${API_BASE_URL}/api/quota/check`);
         if (!response.ok) throw new Error(`API error: ${response.status} ${await response.text()}`);
         return await response.json();
       } catch (error) {

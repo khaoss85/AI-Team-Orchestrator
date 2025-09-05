@@ -11,13 +11,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    from agents import Agent as OpenAIAgent, Runner
+    from agents import (
+        Agent as OpenAIAgent, 
+        Runner,
+        handoff,
+        RunContextWrapper,
+        RunResult,
+        input_guardrail,
+        output_guardrail
+    )
     SDK_AVAILABLE = True
 except ImportError:
     SDK_AVAILABLE = False
 
 from models import Agent as AgentModel, Task, TaskStatus, TaskExecutionOutput, AgentStatus
-from typing import Any
+from typing import Any\nfrom pydantic import BaseModel\n\n# Orchestration Context Model\nclass OrchestrationContext(BaseModel):\n    \"\"\"Pydantic model for orchestration context with SDK RunContextWrapper\"\"\"\n    workspace_id: str\n    task_id: str\n    agent_id: str\n    agent_role: str\n    agent_seniority: str\n    task_name: str\n    task_description: str\n    execution_metadata: Dict[str, Any] = {}\n    available_agents: List[Dict[str, Any]] = []\n    orchestration_state: Dict[str, Any] = {}
 from database import update_agent_status
 
 logger = logging.getLogger(__name__)
@@ -46,7 +54,7 @@ You are a {self.agent_data.seniority} {self.agent_data.role}.
 Complete the assigned task efficiently and respond with this JSON format:
 {{"task_id": "{task.id}", "status": "completed", "summary": "Brief description of what you accomplished", "result": "Your concrete output"}}
 """.strip(),
-                model="gpt-4o-mini"
+                model="gpt-3.5-turbo"
             )
             
             # Execute with Runner

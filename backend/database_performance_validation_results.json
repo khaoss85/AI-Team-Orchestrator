@@ -1,0 +1,275 @@
+{
+  "timestamp": "2025-09-05T15:40:44.880661",
+  "validation_id": "db_perf_1757079644",
+  "schema_validation": {
+    "tests": [
+      {
+        "test": "Table workspaces exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table agents exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table tasks exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table workspace_goals exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table asset_artifacts exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table handoffs exists",
+        "status": "FAIL",
+        "error": "{'code': '42P01', 'details': None, 'hint': None, 'message': 'relation \"public.handoffs\" does not exist'}"
+      },
+      {
+        "test": "Table workspace_insights exists",
+        "status": "PASS"
+      },
+      {
+        "test": "Table goal_progress_logs exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK tasks.workspace_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK tasks.agent_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK tasks.goal_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK agents.workspace_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK workspace_goals.workspace_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK asset_artifacts.workspace_id exists",
+        "status": "PASS"
+      },
+      {
+        "test": "FK handoffs.from_agent_id exists",
+        "status": "FAIL",
+        "error": "{'code': '42P01', 'details': None, 'hint': None, 'message': 'relation \"public.handoffs\" does not exist'}"
+      },
+      {
+        "test": "FK handoffs.to_agent_id exists",
+        "status": "FAIL",
+        "error": "{'code': '42P01', 'details': None, 'hint': None, 'message': 'relation \"public.handoffs\" does not exist'}"
+      },
+      {
+        "test": "Enum workspaces.status consistent",
+        "status": "PASS"
+      },
+      {
+        "test": "Enum tasks.status consistent",
+        "status": "PASS"
+      },
+      {
+        "test": "Enum agents.status consistent",
+        "status": "PASS"
+      }
+    ],
+    "missing_tables": [
+      "handoffs"
+    ],
+    "passed": 16,
+    "total": 19,
+    "score": 84.21052631578947,
+    "status": "PARTIAL"
+  },
+  "query_performance": {
+    "tests": [
+      {
+        "test": "Simple workspaces SELECT",
+        "response_time_ms": 90.35,
+        "status": "PASS",
+        "threshold_ms": 1000
+      },
+      {
+        "test": "Complex JOIN query",
+        "response_time_ms": 80.57,
+        "status": "PASS",
+        "threshold_ms": 2000
+      },
+      {
+        "test": "Concurrent queries (5x)",
+        "response_time_ms": 353.8,
+        "status": "PASS",
+        "threshold_ms": 3000
+      }
+    ],
+    "passed": 3,
+    "total": 3,
+    "score": 100.0,
+    "status": "PASS"
+  },
+  "cache_impact": {
+    "tests": [
+      {
+        "test": "Cache system available",
+        "status": "PASS",
+        "cache_stats": {
+          "hits": 0,
+          "misses": 0,
+          "evictions": 0,
+          "total_requests": 0,
+          "hit_rate_percent": 0,
+          "cache_size": 0,
+          "memory_usage": "0/500"
+        }
+      },
+      {
+        "test": "Cache invalidation",
+        "invalidated_entries": 0,
+        "status": "PASS"
+      },
+      {
+        "test": "Cache TTL immediate retrieval",
+        "status": "PASS"
+      },
+      {
+        "test": "Cache TTL expiration",
+        "status": "PASS"
+      },
+      {
+        "test": "Cache size management",
+        "current_size": 0,
+        "max_size": 500,
+        "status": "PASS",
+        "utilization_percent": 0.0
+      }
+    ],
+    "passed": 5,
+    "total": 5,
+    "score": 100.0,
+    "status": "PASS"
+  },
+  "connection_health": {
+    "tests": [
+      {
+        "test": "Basic connection",
+        "response_time_ms": 74.25,
+        "status": "PASS",
+        "threshold_ms": 500
+      },
+      {
+        "test": "Service client connection",
+        "response_time_ms": 138.58,
+        "status": "PASS",
+        "threshold_ms": 500
+      },
+      {
+        "test": "Connection stability (10 rapid requests)",
+        "errors": 0,
+        "total_time_ms": 682.98,
+        "status": "PASS"
+      }
+    ],
+    "passed": 3,
+    "warnings": 0,
+    "total": 3,
+    "score": 100.0,
+    "status": "PASS"
+  },
+  "data_integrity": {
+    "tests": [
+      {
+        "test": "UUID consistency workspaces.id",
+        "status": "PASS",
+        "sample_count": 1
+      },
+      {
+        "test": "UUID consistency agents.id",
+        "status": "PASS",
+        "sample_count": 5
+      },
+      {
+        "test": "UUID consistency agents.workspace_id",
+        "status": "PASS",
+        "sample_count": 5
+      },
+      {
+        "test": "UUID consistency tasks.id",
+        "status": "PASS",
+        "sample_count": 4
+      },
+      {
+        "test": "UUID consistency tasks.workspace_id",
+        "status": "PASS",
+        "sample_count": 4
+      },
+      {
+        "test": "UUID consistency workspace_goals.id",
+        "status": "PASS",
+        "sample_count": 5
+      },
+      {
+        "test": "UUID consistency workspace_goals.workspace_id",
+        "status": "PASS",
+        "sample_count": 5
+      },
+      {
+        "test": "Foreign key integrity (tasks -> workspaces)",
+        "status": "VIOLATION",
+        "checked_records": 4
+      },
+      {
+        "test": "Enum integrity workspaces.status",
+        "status": "PASS",
+        "invalid_values": [],
+        "checked_records": 1
+      },
+      {
+        "test": "Enum integrity tasks.status",
+        "status": "VIOLATION",
+        "invalid_values": [
+          "needs_revision"
+        ],
+        "checked_records": 4
+      },
+      {
+        "test": "Enum integrity agents.status",
+        "status": "VIOLATION",
+        "invalid_values": [
+          "available"
+        ],
+        "checked_records": 5
+      }
+    ],
+    "passed": 8,
+    "not_applicable": 0,
+    "total": 11,
+    "score": 72.72727272727273,
+    "status": "PARTIAL"
+  },
+  "summary": {
+    "total_tests": 41,
+    "passed": 35,
+    "warnings": 0,
+    "errors": 6,
+    "overall_score": 91.4,
+    "status": "PASS",
+    "modules_status": {
+      "schema_validation": "PARTIAL",
+      "query_performance": "PASS",
+      "connection_health": "PASS",
+      "cache_impact": "PASS",
+      "data_integrity": "PARTIAL"
+    }
+  },
+  "recommendations": []
+}

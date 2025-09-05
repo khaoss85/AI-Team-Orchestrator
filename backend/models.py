@@ -202,6 +202,8 @@ class WorkspaceGoal(BaseModel):
     unit: Optional[str] = "units"  # Added field for unit of measurement
     created_at: datetime
     updated_at: datetime
+    progress: Optional[float] = None  # Calculated progress percentage (0-100)
+    progress_display: Optional[str] = None  # Formatted progress for display (e.g., "25.5%")
     model_config = ConfigDict(from_attributes=True)
     
     @property

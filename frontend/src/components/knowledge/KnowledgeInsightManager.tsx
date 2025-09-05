@@ -24,7 +24,7 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
   const [selectedInsights, setSelectedInsights] = useState<Set<string>>(new Set());
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingInsight, setEditingInsight] = useState<KnowledgeInsight | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'general' | 'business_analysis' | 'technical'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'performance' | 'strategy' | 'discovery' | 'general'>('all');
   const [lastDeletedInsight, setLastDeletedInsight] = useState<string | null>(null);
 
   // Load insights from API
@@ -222,15 +222,18 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
 
   const getFilteredInsights = () => {
     switch (activeTab) {
+      case 'performance':
+        // Show performance insights (metrics, KPIs, comparisons)
+        return insights.filter(i => i.category === 'performance');
+      case 'strategy':
+        // Show strategic insights (best practices, recommendations)
+        return insights.filter(i => i.category === 'strategy');
+      case 'discovery':
+        // Show discovery insights (new findings, opportunities)
+        return insights.filter(i => i.category === 'discovery');
       case 'general':
-        // Show insights where domain_type is 'general' or category is mapped as general
-        return insights.filter(i => i.domain_type === 'general');
-      case 'business_analysis':
-        // Show insights where domain_type is 'business_analysis'
-        return insights.filter(i => i.domain_type === 'business_analysis');
-      case 'technical':
-        // Show insights where domain_type is 'technical'
-        return insights.filter(i => i.domain_type === 'technical');
+        // Show general insights (fallback category)
+        return insights.filter(i => i.category === 'general');
       default:
         // Show all insights
         return insights;
@@ -238,13 +241,17 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
   };
 
   const getCategoryIcon = (category: string, domain_type?: string) => {
-    if (domain_type === 'business_analysis') {
-      return <Award className="w-4 h-4" />;
+    // Use AI-driven categories instead of hardcoded domain_type
+    if (category === 'performance') {
+      return <Award className="w-4 h-4" />; // Performance metrics
     }
-    if (domain_type === 'technical') {
-      return <BookOpen className="w-4 h-4" />;
+    if (category === 'strategy') {
+      return <BookOpen className="w-4 h-4" />; // Strategic insights
     }
-    return <Lightbulb className="w-4 h-4" />;
+    if (category === 'discovery') {
+      return <Lightbulb className="w-4 h-4" />; // New discoveries
+    }
+    return <Lightbulb className="w-4 h-4" />; // Default
   };
 
   const InsightCard = ({ insight }: { insight: KnowledgeInsight }) => (
@@ -401,19 +408,23 @@ const KnowledgeInsightManager: React.FC<KnowledgeInsightManagerProps> = ({
 
       {/* Category Tabs */}
       <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all">All ({insights.length})</TabsTrigger>
+          <TabsTrigger value="performance">
+            <Award className="w-4 h-4 mr-1" />
+            Performance ({insights.filter(i => i.category === 'performance').length})
+          </TabsTrigger>
+          <TabsTrigger value="strategy">
+            <BookOpen className="w-4 h-4 mr-1" />
+            Strategy ({insights.filter(i => i.category === 'strategy').length})
+          </TabsTrigger>
+          <TabsTrigger value="discovery">
+            <Lightbulb className="w-4 h-4 mr-1" />
+            Discovery ({insights.filter(i => i.category === 'discovery').length})
+          </TabsTrigger>
           <TabsTrigger value="general">
             <Lightbulb className="w-4 h-4 mr-1" />
-            General ({insights.filter(i => i.domain_type === 'general').length})
-          </TabsTrigger>
-          <TabsTrigger value="business_analysis">
-            <Award className="w-4 h-4 mr-1" />
-            Business ({insights.filter(i => i.domain_type === 'business_analysis').length})
-          </TabsTrigger>
-          <TabsTrigger value="technical">
-            <BookOpen className="w-4 h-4 mr-1" />
-            Technical ({insights.filter(i => i.domain_type === 'technical').length})
+            General ({insights.filter(i => i.category === 'general').length})
           </TabsTrigger>
         </TabsList>
 

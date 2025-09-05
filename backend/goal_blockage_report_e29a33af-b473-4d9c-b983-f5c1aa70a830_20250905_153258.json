@@ -1,0 +1,241 @@
+{
+  "workspace_analysis": {
+    "id": "e29a33af-b473-4d9c-b983-f5c1aa70a830",
+    "name": "B2B Outbound Sales Lists",
+    "status": "auto_recovering",
+    "created_at": "2025-09-05T12:50:49.00003+00:00",
+    "updated_at": "2025-09-05T13:32:52.188002+00:00",
+    "goal": "Qualified database of 15 ICP contacts (CMO/CTO from European SaaS companies) with LinkedIn profiles, company details, and contact verification, Three complete email sequences (cold outreach, nurture, follow-up) ang Sales script templates and objection handling guides for follow-up calls"
+  },
+  "goals_analysis": [
+    {
+      "id": "c35ed1d8-ab4a-490e-a21b-8913731ef021",
+      "description": "Email sequence 1 - Cold Outreach",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_email_sequence_1",
+      "target_value": 1.0,
+      "current_value": 0.0,
+      "created_at": "2025-09-05T12:51:24.838432+00:00",
+      "updated_at": "2025-09-05T13:32:09.597758+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "1b4b1900-f5c1-41fe-8ffc-e99693e5eb75",
+      "description": "Objection handling guide",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_objection_handling_guide",
+      "target_value": 1.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:25.479479+00:00",
+      "updated_at": "2025-09-05T13:32:50.747697+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "3b742873-ac94-443e-8ac0-d88c9f8756a7",
+      "description": "Completamento di tre sequenze email per cold outreach, nurture e follow-up.",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "email_sequences",
+      "target_value": 3.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:24.518076+00:00",
+      "updated_at": "2025-09-05T13:32:50.953315+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "732bc1c9-7349-4df3-b707-a2bc5dcec3bc",
+      "description": "Email sequence 3 - Follow-up",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_email_sequence_3",
+      "target_value": 1.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:25.153965+00:00",
+      "updated_at": "2025-09-05T13:32:51.202239+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "6995a632-ae1d-41cd-8757-c210041049ce",
+      "description": "Email sequence 2 - Nurture",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_email_sequence_2",
+      "target_value": 1.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:25.010063+00:00",
+      "updated_at": "2025-09-05T13:32:51.444158+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "34709db5-5f51-4421-9275-2b1746e980c8",
+      "description": "Numero di contatti ICP (CMO/CTO) qualificati provenienti da aziende SaaS europee.",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "contacts",
+      "target_value": 15.0,
+      "current_value": 4.0,
+      "created_at": "2025-09-05T12:51:24.361551+00:00",
+      "updated_at": "2025-09-05T13:32:09.597758+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "968a6f98-3f30-4a2a-9483-d07939e3ce3a",
+      "description": "Sales script template per follow-up calls",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_sales_script_template",
+      "target_value": 1.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:25.319114+00:00",
+      "updated_at": "2025-09-05T13:32:51.724871+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    },
+    {
+      "id": "57c12f82-d822-4a72-9dca-d204c992c139",
+      "description": "Lista contatti ICP (formato CSV)",
+      "status": "active",
+      "progress": 0,
+      "metric_type": "deliverable_lista_contatti_icp",
+      "target_value": 1.0,
+      "current_value": 0.5,
+      "created_at": "2025-09-05T12:51:24.681266+00:00",
+      "updated_at": "2025-09-05T13:32:51.957065+00:00",
+      "issues": [
+        "Goal at 0% but marked as active"
+      ]
+    }
+  ],
+  "tasks_analysis": {
+    "total": 4,
+    "by_status": {
+      "needs_revision": 1,
+      "completed": 2,
+      "failed": 1
+    },
+    "by_goal": {
+      "34709db5-5f51-4421-9275-2b1746e980c8": 4
+    },
+    "failed_tasks": [
+      {
+        "id": "7abd8adf-87f1-42e7-813a-d93845401004",
+        "title": "Unknown",
+        "error": "No error message",
+        "attempts": 0
+      }
+    ],
+    "stuck_tasks": []
+  },
+  "deliverables_analysis": {
+    "total": 9,
+    "by_status": {
+      "completed": 3,
+      "in_progress": 6
+    },
+    "by_goal": {
+      "34709db5-5f51-4421-9275-2b1746e980c8": 2,
+      "c35ed1d8-ab4a-490e-a21b-8913731ef021": 1,
+      "1b4b1900-f5c1-41fe-8ffc-e99693e5eb75": 1,
+      "3b742873-ac94-443e-8ac0-d88c9f8756a7": 1,
+      "732bc1c9-7349-4df3-b707-a2bc5dcec3bc": 1,
+      "6995a632-ae1d-41cd-8757-c210041049ce": 1,
+      "968a6f98-3f30-4a2a-9483-d07939e3ce3a": 1,
+      "57c12f82-d822-4a72-9dca-d204c992c139": 1
+    },
+    "orphaned": [],
+    "incomplete": []
+  },
+  "blocking_issues": [
+    {
+      "type": "workspace_status",
+      "severity": "HIGH",
+      "description": "Workspace in problematic status: auto_recovering"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Email sequence 1 - Cold Outrea' stuck at 0%",
+      "goal_id": "c35ed1d8-ab4a-490e-a21b-8913731ef021"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Objection handling guide' stuck at 0%",
+      "goal_id": "1b4b1900-f5c1-41fe-8ffc-e99693e5eb75"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Completamento di tre sequenze ' stuck at 0%",
+      "goal_id": "3b742873-ac94-443e-8ac0-d88c9f8756a7"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Email sequence 3 - Follow-up' stuck at 0%",
+      "goal_id": "732bc1c9-7349-4df3-b707-a2bc5dcec3bc"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Email sequence 2 - Nurture' stuck at 0%",
+      "goal_id": "6995a632-ae1d-41cd-8757-c210041049ce"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Numero di contatti ICP (CMO/CT' stuck at 0%",
+      "goal_id": "34709db5-5f51-4421-9275-2b1746e980c8"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Sales script template per foll' stuck at 0%",
+      "goal_id": "968a6f98-3f30-4a2a-9483-d07939e3ce3a"
+    },
+    {
+      "type": "goal_stuck",
+      "severity": "HIGH",
+      "description": "Goal 'Lista contatti ICP (formato CS' stuck at 0%",
+      "goal_id": "57c12f82-d822-4a72-9dca-d204c992c139"
+    },
+    {
+      "type": "failed_tasks",
+      "severity": "HIGH",
+      "description": "1 tasks have failed",
+      "task_ids": [
+        "7abd8adf-87f1-42e7-813a-d93845401004"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": 2,
+      "action": "MONITOR_RECOVERY",
+      "description": "Monitor auto-recovery progress and check logs for errors",
+      "command": "tail -f backend/logs/*.log | grep 'e29a33af-b473-4d9c-b983-f5c1aa70a830'"
+    }
+  ],
+  "root_causes": [
+    {
+      "cause": "WORKSPACE_IN_RECOVERY",
+      "description": "Workspace is in auto-recovery mode, may have encountered critical failures",
+      "impact": "System attempting automatic recovery but may need manual intervention"
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { NotificationService } from "@/components/NotificationService";
+import { QuotaProvider } from "@/contexts/QuotaContext";
 import LayoutWrapper from "@/components/LayoutWrapper";
 
 export const metadata: Metadata = {
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="it">
       <body>
         <NotificationService>
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
+          <QuotaProvider enableWebSocket={true} showNotifications={true}>
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
+          </QuotaProvider>
         </NotificationService>
       </body>
     </html>

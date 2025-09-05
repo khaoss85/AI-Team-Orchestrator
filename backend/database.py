@@ -615,6 +615,10 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                     except Exception as learning_error:
                         logger.warning(f"Could not trigger content-aware learning: {learning_error}")
                     
+                    # 🎯 AUTO-UPDATE GOAL PROGRESS: Update goal progress when deliverable is created
+                    if mapped_goal_id:
+                        await update_goal_progress_from_deliverable(mapped_goal_id)
+                    
                     return deliverable
                 else:
                     raise Exception(f"Failed to create AI-driven deliverable: {result}")
@@ -666,6 +670,10 @@ async def create_deliverable(workspace_id: str, deliverable_data: dict) -> dict:
                 logger.info(f"🧠 Triggered content-aware learning for deliverable {deliverable['id']}")
             except Exception as learning_error:
                 logger.warning(f"Could not trigger content-aware learning: {learning_error}")
+            
+            # 🎯 AUTO-UPDATE GOAL PROGRESS: Update goal progress when deliverable is created
+            if deliverable.get('goal_id'):
+                await update_goal_progress_from_deliverable(deliverable['goal_id'])
             
             return deliverable
         else:
@@ -730,6 +738,11 @@ async def update_deliverable(deliverable_id: str, update_data: dict) -> dict:
         if result.data:
             deliverable = result.data[0]
             logger.info(f"✅ Updated deliverable {deliverable_id}")
+            
+            # 🎯 AUTO-UPDATE GOAL PROGRESS: Update goal progress when deliverable status changes
+            if 'status' in update_data and deliverable.get('goal_id'):
+                await update_goal_progress_from_deliverable(deliverable['goal_id'])
+            
             return deliverable
         else:
             raise Exception(f"Deliverable {deliverable_id} not found or update failed")
@@ -2446,6 +2459,63 @@ async def update_goal_progress(goal_id: str, increment: float, task_id: Optional
     except Exception as e:
         logger.error(f"Error updating goal progress: {e}", exc_info=True)
         raise
+
+async def update_goal_progress_from_deliverable(goal_id: str) -> None:
+    """
+    🎯 AUTOMATIC GOAL PROGRESS UPDATE: Update goal progress based on deliverable status
+    This function recalculates goal progress whenever deliverables change
+    """
+    try:
+        # Count completed deliverables for this goal
+        deliverables = supabase.table('deliverables').select('status').eq('goal_id', goal_id).execute()
+        
+        if not deliverables.data:
+            logger.info(f"📊 No deliverables found for goal {goal_id}")
+            return
+        
+        completed_count = len([d for d in deliverables.data if d.get('status') == 'completed'])
+        total_count = len(deliverables.data)
+        
+        # Get goal target
+        goal = supabase.table('workspace_goals').select('target_value, current_value, status').eq('id', goal_id).single().execute()
+        
+        if goal.data:
+            target_value = goal.data.get('target_value', 1)
+            old_value = goal.data.get('current_value', 0)
+            
+            # For deliverable-based goals, current_value = completed deliverables (capped at target)
+            new_value = min(completed_count, target_value)
+            
+            # Only update if changed
+            if new_value != old_value:
+                from datetime import datetime
+                update_data = {
+                    'current_value': new_value,
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Calculate progress percentage
+                progress_pct = (new_value / target_value * 100) if target_value > 0 else 0
+                
+                # Mark complete if reached target
+                if new_value >= target_value and goal.data.get('status') != 'completed':
+                    update_data['status'] = 'completed'
+                    update_data['completed_at'] = datetime.now().isoformat()
+                    logger.info(f"🎯 Goal {goal_id} COMPLETED! Progress: {progress_pct:.1f}%")
+                
+                result = supabase.table('workspace_goals').update(update_data).eq('id', goal_id).execute()
+                
+                if result.data:
+                    logger.info(f"✅ Updated goal {goal_id} progress: {old_value}/{target_value} → {new_value}/{target_value} ({progress_pct:.1f}%)")
+                    logger.info(f"   Based on {completed_count}/{total_count} completed deliverables")
+                else:
+                    logger.error(f"Failed to update goal {goal_id} progress in database")
+            else:
+                logger.debug(f"Goal {goal_id} progress unchanged: {new_value}/{target_value}")
+                
+    except Exception as e:
+        logger.error(f"Failed to update goal progress from deliverable: {e}")
+        # Don't raise - this is a non-critical update that shouldn't break deliverable operations
 
 async def get_unmet_goals(workspace_id: str, completion_threshold: float = 80.0) -> List[Dict[str, Any]]:
     """Get goals that haven't met their targets (used by goal-driven task planner)"""

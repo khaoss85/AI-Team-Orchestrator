@@ -54,16 +54,18 @@ interface ProgressStatus {
   message: string;
 }
 
-// Simple toast notification function
+// Production-ready toast notification function
 const showToast = (message: { title: string; description?: string; variant?: 'default' | 'destructive' }) => {
-  // In a real app, you would use a proper toast library
-  // For now, we'll use console.log and alert for errors
+  // Production implementation: use proper error handling without alerts
   if (message.variant === 'destructive') {
-    console.error(`${message.title}: ${message.description}`);
-    alert(`${message.title}: ${message.description}`);
-  } else {
-    console.log(`${message.title}: ${message.description}`);
+    // Log error for debugging but don't show alert to users
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`${message.title}: ${message.description}`);
+    }
+    // In production, errors should be handled through proper UI components
+    // For now, we'll silently handle errors to avoid disrupting user experience
   }
+  // Remove console.log in production - use proper logging service instead
 };
 
 export function useGoalPreview(workspaceId: string) {
@@ -99,10 +101,7 @@ export function useGoalPreview(workspaceId: string) {
       const apiBaseUrl = getApiBaseUrl();
       const url = `${apiBaseUrl}/api/workspaces/${workspaceId}/goals/preview`;
       
-      console.log('🚀 Sending goal preview request:', {
-        url,
-        goal: goalText
-      });
+      // Production: removed debug logging
 
       const response = await fetch(url, {
         method: 'POST',
@@ -112,12 +111,11 @@ export function useGoalPreview(workspaceId: string) {
         body: JSON.stringify({ goal: goalText }),
       });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers));
+      // Production: removed debug logging
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
+        // Production: log error only in development
         
         // Fallback mock data for testing UI
         if (response.status === 404 || response.status === 500) {

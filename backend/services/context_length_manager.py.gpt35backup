@@ -30,8 +30,8 @@ class ContextLengthManager:
         'gpt-4-turbo-preview': 100000,
         'gpt-4o': 100000,  # Actual: 128k
         'gpt-4o-mini': 100000,  # Actual: 128k
-        'gpt-4o-mini': 3000,  # Actual: 4096, keeping buffer
-        'gpt-4o-mini-16k': 14000  # Actual: 16k, keeping buffer
+        'gpt-3.5-turbo': 3000,  # Actual: 4096, keeping buffer
+        'gpt-3.5-turbo-16k': 14000  # Actual: 16k, keeping buffer
     }
     
     def __init__(self):

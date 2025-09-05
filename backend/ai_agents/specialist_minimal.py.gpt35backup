@@ -46,7 +46,7 @@ You are a {self.agent_data.seniority} {self.agent_data.role}.
 Complete the assigned task efficiently and respond with this JSON format:
 {{"task_id": "{task.id}", "status": "completed", "summary": "Brief description of what you accomplished", "result": "Your concrete output"}}
 """.strip(),
-                model="gpt-4o-mini"
+                model="gpt-3.5-turbo"
             )
             
             # Execute with Runner

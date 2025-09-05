@@ -66,7 +66,7 @@ class PureAIDomainClassifier:
         
         # Multi-model configuration for robustness
         self.primary_model = os.getenv("AI_DOMAIN_PRIMARY_MODEL", "gpt-4o")
-        self.fallback_model = os.getenv("AI_DOMAIN_FALLBACK_MODEL", "gpt-4o-mini")
+        self.fallback_model = os.getenv("AI_DOMAIN_FALLBACK_MODEL", "gpt-3.5-turbo")
         
         logger.info(f"🧠 Pure AI Domain Classifier initialized")
         logger.info(f"  - Enabled: {self.enabled}")
@@ -468,7 +468,7 @@ Return as JSON with: domain, specialists, complexity, reasoning
 """
             
             response = await self.client.chat.completions.create(
-                model=self.fallback_model or "gpt-4o-mini",
+                model=self.fallback_model or "gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a business domain expert."},
                     {"role": "user", "content": simple_prompt}

@@ -23,6 +23,7 @@ from unified_insight import (
 )
 from services.universal_learning_engine import UniversalLearningEngine
 from services.user_insight_manager import user_insight_manager
+from services.ai_insight_classifier import insight_classifier
 from database import get_supabase_client, get_workspace
 from utils.cache_manager import CacheManager
 
@@ -60,6 +61,7 @@ class UnifiedInsightsOrchestrator:
     
     def __init__(self):
         self.learning_engine = UniversalLearningEngine()
+        self.classifier = insight_classifier
         self.cache_manager = CacheManager()
         self.workspace_caches: Dict[str, InsightCache] = {}
         self.sync_locks: Dict[str, asyncio.Lock] = {}
@@ -288,12 +290,15 @@ class UnifiedInsightsOrchestrator:
             # Create title from content
             title = clean_text[:100] + "..." if len(clean_text) > 100 else clean_text
             
+            # Use AI classifier for intelligent categorization
+            category = self.classifier.classify_insight(clean_text, title)
+            
             return UnifiedInsight(
                 workspace_id=UUID(workspace_id),
                 origin=InsightOrigin.AI_GENERATED,
                 title=title,
                 content=clean_text,
-                category=InsightCategory.PERFORMANCE if metric_name else InsightCategory.DISCOVERY,
+                category=category,
                 confidence_level=confidence_level,
                 confidence_score=confidence_score,
                 metric_name=metric_name,
@@ -317,7 +322,7 @@ class UnifiedInsightsOrchestrator:
                 origin=InsightOrigin.USER_CREATED if record.get('is_user_created') else InsightOrigin.USER_MODIFIED,
                 title=record['title'],
                 content=record['content'],
-                category=InsightCategory(record.get('category', 'general')),
+                category=InsightCategory(record.get('insight_category', 'general')),
                 confidence_level=self._score_to_level(record.get('confidence_score', 0.5)),
                 confidence_score=record.get('confidence_score', 0.5),
                 domain_context=record.get('domain_type'),
@@ -481,22 +486,34 @@ class UnifiedInsightsOrchestrator:
                     ).eq('content', insight.content).execute()
                     
                     if not existing.data:
-                        # Persist to database
+                        # Persist to database with required fields
+                        # Use classifier to get appropriate insight_type
+                        insight_type = self.classifier.get_insight_type_from_category(insight.category)
+                        
                         record = {
                             'workspace_id': str(insight.workspace_id),
                             'title': insight.title,
                             'content': insight.content,
-                            'category': insight.category.value,
+                            'insight_category': insight.category.value,  # Map to correct column name
+                            'insight_type': insight_type,  # Dynamically classified
+                            'agent_role': 'ai_analyst',  # Required field for AI insights
+                            'domain_type': insight.domain_context or 'general',
                             'confidence_score': insight.confidence_score,
                             'business_value_score': insight.business_value_score,
                             'created_by': 'ai_system',
                             'is_user_created': False,
+                            'relevance_tags': insight.tags,
+                            'quantifiable_metrics': {
+                                'name': insight.metric_name,
+                                'value': insight.metric_value,
+                                'baseline': insight.comparison_baseline
+                            } if insight.metric_name else {},
+                            'action_recommendations': insight.action_recommendations,
                             'metadata': {
                                 'origin': 'ai_persisted',
-                                'metric_name': insight.metric_name,
-                                'metric_value': insight.metric_value,
-                                'comparison_baseline': insight.comparison_baseline
-                            }
+                                'source': 'universal_learning_engine'
+                            },
+                            'user_flags': {}
                         }
                         
                         client.table('workspace_insights').insert(record).execute()

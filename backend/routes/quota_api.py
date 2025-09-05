@@ -18,22 +18,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/quota", tags=["quota"])
 
-def _get_availability_message(status: QuotaStatus, can_make_request: bool) -> str:
-    """
-    Get user-friendly message based on quota status and availability
-    """
-    if status == QuotaStatus.NORMAL:
-        return "API is available and operating normally"
-    elif status == QuotaStatus.WARNING:
-        return "API usage is high but requests are still allowed"
-    elif status == QuotaStatus.RATE_LIMITED:
-        return "Rate limit reached - please wait before making more requests"
-    elif status == QuotaStatus.QUOTA_EXCEEDED:
-        return "Quota exceeded - API access limited"
-    elif status == QuotaStatus.DEGRADED:
-        return "Service operating with reduced capacity"
-    else:
-        return "API status unknown" if not can_make_request else "API available"
 
 @router.get("/status")
 @rate_limited(max_requests=20, window_seconds=60)  # Max 20 requests per minute

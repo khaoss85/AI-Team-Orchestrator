@@ -37,14 +37,14 @@ async def get_current_month_usage():
             ],
             "daily_breakdown": [
                 {
-                    "date": day.date.isoformat(),
-                    "total_cost": day.total_cost,
-                    "total_tokens": day.total_tokens,
-                    "total_requests": day.total_requests
-                } for day in usage_data.daily_breakdown
+                    "date": day_key,
+                    "total_cost": day_data.get('cost', day_data.get('total_cost', 0)),
+                    "total_tokens": day_data.get('tokens', day_data.get('total_tokens', 0)),
+                    "total_requests": day_data.get('requests', day_data.get('requests_count', 0))
+                } for day_key, day_data in usage_data.daily_breakdown.items()
             ] if usage_data.daily_breakdown else [],
-            "period_start": getattr(usage_data, 'period_start', None),
-            "period_end": getattr(usage_data, 'period_end', None)
+            "period_start": usage_data.start_date.isoformat() if hasattr(usage_data, 'start_date') and usage_data.start_date else None,
+            "period_end": usage_data.end_date.isoformat() if hasattr(usage_data, 'end_date') and usage_data.end_date else None
         }
     except Exception as e:
         logger.error(f"Failed to fetch current month usage: {e}")
@@ -81,8 +81,8 @@ async def get_today_usage():
                     "requests": hour_data.get('requests_count', hour_data.get('requests', 0))
                 } for idx, (hour_key, hour_data) in enumerate(usage_data.hourly_breakdown.items() if usage_data.hourly_breakdown else {})
             ] if usage_data.hourly_breakdown else [],
-            "period_start": getattr(usage_data, 'period_start', None),
-            "period_end": getattr(usage_data, 'period_end', None)
+            "period_start": usage_data.start_date.isoformat() if hasattr(usage_data, 'start_date') and usage_data.start_date else None,
+            "period_end": usage_data.end_date.isoformat() if hasattr(usage_data, 'end_date') and usage_data.end_date else None
         }
     except Exception as e:
         logger.error(f"Failed to fetch today's usage: {e}")
@@ -111,16 +111,18 @@ async def get_model_comparison():
         
         # Simple model comparison based on usage data
         models = []
-        for model_data in usage_data.model_breakdown:
-            avg_cost_per_1k = (model_data.total_cost / max((model_data.total_input_tokens + model_data.total_output_tokens) / 1000, 1))
+        for model_name, model_stats in usage_data.model_breakdown.items():
+            total_tokens = model_stats.get('total_tokens', model_stats.get('input_tokens', 0) + model_stats.get('output_tokens', 0))
+            total_cost = model_stats.get('total_cost', 0)
+            avg_cost_per_1k = (total_cost / max(total_tokens / 1000, 1)) if total_tokens > 0 else 0
             models.append({
-                "model": model_data.model,
-                "daily_cost": model_data.total_cost / max(len(usage_data.daily_breakdown), 1) if usage_data.daily_breakdown else model_data.total_cost,
-                "projected_monthly": model_data.total_cost * (30 / max(len(usage_data.daily_breakdown), 1)) if usage_data.daily_breakdown else model_data.total_cost * 30,
+                "model": model_name,
+                "daily_cost": total_cost / max(len(usage_data.daily_breakdown), 1) if usage_data.daily_breakdown else total_cost,
+                "projected_monthly": total_cost * (30 / max(len(usage_data.daily_breakdown), 1)) if usage_data.daily_breakdown else total_cost * 30,
                 "cost_per_1k_tokens": avg_cost_per_1k,
                 "efficiency_score": 10 - min(avg_cost_per_1k * 10, 10),  # Simple efficiency score
-                "pros": ["Fast response time"] if "gpt-4" in model_data.model.lower() else ["Cost effective"],
-                "cons": ["Higher cost"] if "gpt-4" in model_data.model.lower() else ["Less capable"]
+                "pros": ["Fast response time"] if "gpt-4" in model_name.lower() else ["Cost effective"],
+                "cons": ["Higher cost"] if "gpt-4" in model_name.lower() else ["Less capable"]
             })
         
         # Simple recommendation
@@ -146,16 +148,17 @@ async def get_cost_intelligence(workspace_id: str):
         alerts = []
         
         # Check for high GPT-4 usage
-        for model in usage_data.model_breakdown:
-            if "gpt-4" in model.model.lower() and model.total_cost > 10:
+        for model_name, model_stats in usage_data.model_breakdown.items():
+            total_cost = model_stats.get('total_cost', 0)
+            if "gpt-4" in model_name.lower() and total_cost > 10:
                 alerts.append({
-                    "id": f"alert_{model.model}_cost",
+                    "id": f"alert_{model_name}_cost",
                     "severity": "medium",
                     "category": "model_optimization",
-                    "title": f"High {model.model} usage detected",
-                    "description": f"You've spent ${model.total_cost:.2f} on {model.model} this month",
+                    "title": f"High {model_name} usage detected",
+                    "description": f"You've spent ${total_cost:.2f} on {model_name} this month",
                     "recommendation": "Consider using GPT-4o-mini for simpler tasks to reduce costs",
-                    "potential_savings": model.total_cost * 0.3,  # Estimate 30% savings
+                    "potential_savings": total_cost * 0.3,  # Estimate 30% savings
                     "confidence": 0.75,
                     "created_at": datetime.utcnow().isoformat()
                 })
@@ -198,16 +201,18 @@ async def get_usage_dashboard(workspace_id: str):
         
         # Get model comparison (simplified)
         models = []
-        for model_data in current_month.model_breakdown:
-            avg_cost_per_1k = (model_data.total_cost / max((model_data.total_input_tokens + model_data.total_output_tokens) / 1000, 1))
+        for model_name, model_stats in current_month.model_breakdown.items():
+            total_tokens = model_stats.get('total_tokens', model_stats.get('input_tokens', 0) + model_stats.get('output_tokens', 0))
+            total_cost = model_stats.get('total_cost', 0)
+            avg_cost_per_1k = (total_cost / max(total_tokens / 1000, 1)) if total_tokens > 0 else 0
             models.append({
-                "model": model_data.model,
-                "daily_cost": model_data.total_cost / max(len(current_month.daily_breakdown), 1) if current_month.daily_breakdown else model_data.total_cost,
-                "projected_monthly": model_data.total_cost * (30 / max(len(current_month.daily_breakdown), 1)) if current_month.daily_breakdown else model_data.total_cost * 30,
+                "model": model_name,
+                "daily_cost": total_cost / max(len(current_month.daily_breakdown), 1) if current_month.daily_breakdown else total_cost,
+                "projected_monthly": total_cost * (30 / max(len(current_month.daily_breakdown), 1)) if current_month.daily_breakdown else total_cost * 30,
                 "cost_per_1k_tokens": avg_cost_per_1k,
                 "efficiency_score": 10 - min(avg_cost_per_1k * 10, 10),
-                "pros": ["Fast response time"] if "gpt-4" in model_data.model.lower() else ["Cost effective"],
-                "cons": ["Higher cost"] if "gpt-4" in model_data.model.lower() else ["Less capable"]
+                "pros": ["Fast response time"] if "gpt-4" in model_name.lower() else ["Cost effective"],
+                "cons": ["Higher cost"] if "gpt-4" in model_name.lower() else ["Less capable"]
             })
         
         recommended = min(models, key=lambda x: x["cost_per_1k_tokens"]) if models else None
@@ -219,16 +224,17 @@ async def get_usage_dashboard(workspace_id: str):
         
         # Get cost intelligence (simplified)
         alerts = []
-        for model in current_month.model_breakdown:
-            if "gpt-4" in model.model.lower() and model.total_cost > 10:
+        for model_name, model_stats in current_month.model_breakdown.items():
+            total_cost = model_stats.get('total_cost', 0)
+            if "gpt-4" in model_name.lower() and total_cost > 10:
                 alerts.append({
-                    "id": f"alert_{model.model}_cost",
+                    "id": f"alert_{model_name}_cost",
                     "severity": "medium",
                     "category": "model_optimization",
-                    "title": f"High {model.model} usage detected",
-                    "description": f"You've spent ${model.total_cost:.2f} on {model.model} this month",
+                    "title": f"High {model_name} usage detected",
+                    "description": f"You've spent ${total_cost:.2f} on {model_name} this month",
                     "recommendation": "Consider using GPT-4o-mini for simpler tasks",
-                    "potential_savings": model.total_cost * 0.3,
+                    "potential_savings": total_cost * 0.3,
                     "confidence": 0.75,
                     "created_at": datetime.utcnow().isoformat()
                 })
@@ -240,14 +246,14 @@ async def get_usage_dashboard(workspace_id: str):
                 "total_requests": current_month.total_requests,
                 "model_breakdown": [
                     {
-                        "model": model.model,
-                        "total_cost": model.total_cost,
-                        "request_count": model.request_count,
-                        "total_tokens": model.total_input_tokens + model.total_output_tokens
-                    } for model in current_month.model_breakdown
+                        "model": model_name,
+                        "total_cost": model_stats.get('total_cost', 0),
+                        "request_count": model_stats.get('requests_count', 0),
+                        "total_tokens": model_stats.get('total_tokens', model_stats.get('input_tokens', 0) + model_stats.get('output_tokens', 0))
+                    } for model_name, model_stats in current_month.model_breakdown.items()
                 ],
-                "period_start": current_month.period_start.isoformat() if current_month.period_start else None,
-                "period_end": current_month.period_end.isoformat() if current_month.period_end else None
+                "period_start": current_month.start_date.isoformat() if hasattr(current_month, 'start_date') and current_month.start_date else None,
+                "period_end": current_month.end_date.isoformat() if hasattr(current_month, 'end_date') and current_month.end_date else None
             },
             "today": {
                 "total_cost": today.total_cost,
