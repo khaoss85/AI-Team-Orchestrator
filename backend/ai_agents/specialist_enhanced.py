@@ -12,6 +12,7 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import time
+from pydantic import BaseModel
 
 # CRITICAL: Load environment variables for OpenAI API access
 from dotenv import load_dotenv
@@ -345,13 +346,37 @@ class SpecialistAgent:
                 "orchestration_context": orchestration_context
             }
             
+            # 🔧 CRITICAL FIX: Add tools to Runner.run() for OpenAI Dashboard tracing
+            # Generate unique trace ID for this execution
+            import uuid
+            trace_id = f"task_{task.id}_{uuid.uuid4().hex[:8]}"
+            
             run_params = {
                 "starting_agent": agent,
                 "input": execution_input,
                 "context": context_data,
                 "session": session,
-                "max_turns": 8 if task_classification.requires_tools else 5
+                "max_turns": 8 if task_classification.requires_tools else 5,
+                "tools": execution_tools,  # CRITICAL: Tools must be passed to Runner for tracing
+                "metadata": {
+                    "trace_id": trace_id,
+                    "task_id": str(task.id),
+                    "workspace_id": str(task.workspace_id),
+                    "agent_name": self.agent_data.name,
+                    "agent_role": self.agent_data.role,
+                    "execution_type": task_classification.execution_type.value,
+                    "tools_count": len(execution_tools),
+                    "handoffs_available": len(self.handoffs)
+                }
             }
+            
+            logger.info(f"🔧 Runner configured with {len(execution_tools)} tools for OpenAI tracing")
+            logger.info(f"📊 Trace ID: {trace_id}")
+            if execution_tools:
+                tool_names = [getattr(tool, '__name__', type(tool).__name__) for tool in execution_tools]
+                logger.info(f"   Tools available: {', '.join(tool_names)}")
+            if self.handoffs:
+                logger.info(f"   Handoffs available: {len(self.handoffs)} agents")
             run_result = await Runner.run(**run_params)
             execution_time = time.time() - start_time
             
@@ -413,12 +438,55 @@ class SpecialistAgent:
             await update_agent_status(str(self.agent_data.id), AgentStatus.IDLE.value)
 
     async def _save_to_memory(self, task: Task, output: TaskExecutionOutput, memory_engine):
-        # ... (implementation remains the same) ...
-        pass
+        """Save task execution results to workspace memory for learning"""
+        try:
+            if memory_engine:
+                memory_data = {
+                    "task_id": str(task.id),
+                    "task_name": task.name,
+                    "task_description": task.description,
+                    "agent_role": self.agent_data.role,
+                    "agent_seniority": self.agent_data.seniority,
+                    "execution_time": getattr(output, 'execution_time', 0),
+                    "status": output.status.value if hasattr(output.status, 'value') else str(output.status),
+                    "result_summary": getattr(output, 'summary', ''),
+                    "workspace_id": str(task.workspace_id)
+                }
+                
+                await memory_engine.store_task_execution_memory(memory_data)
+                logger.info(f"✅ Saved task {task.id} execution to workspace memory")
+        except Exception as e:
+            logger.warning(f"Failed to save task execution to memory: {e}")
 
     async def _validate_quality(self, task: Task, output: TaskExecutionOutput, quality_engine):
-        # ... (implementation remains the same) ...
-        pass
+        """Validate task output quality using AI-driven quality engine"""
+        try:
+            if quality_engine:
+                quality_criteria = {
+                    "task_type": "task_execution",
+                    "expected_format": "structured_output",
+                    "content_requirements": {
+                        "min_length": 50,
+                        "should_be_actionable": True,
+                        "should_contain_real_data": True
+                    },
+                    "agent_context": {
+                        "role": self.agent_data.role,
+                        "seniority": self.agent_data.seniority
+                    }
+                }
+                
+                quality_result = await quality_engine.validate_task_output(
+                    output.result, quality_criteria
+                )
+                
+                if hasattr(quality_result, 'quality_score') and quality_result.quality_score < 0.7:
+                    logger.warning(f"Task {task.id} quality score: {quality_result.quality_score}")
+                else:
+                    logger.info(f"✅ Task {task.id} passed quality validation")
+                    
+        except Exception as e:
+            logger.warning(f"Failed to validate task quality: {e}")
         
     def _configure_execution_tools(self, classification) -> List[Any]:
         """🔧 Configure tools based on AI task classification"""
@@ -521,7 +589,8 @@ RESEARCH/METHODOLOGY TASK:
                 
                 # Use AI to determine if output matches expected specificity
                 from utils.openai_client_factory_enhanced import get_enhanced_async_openai_client
-                client = get_enhanced_async_openai_client(workspace_id=self.workspace_id)
+                workspace_id = str(getattr(self, 'agent_data', {}).workspace_id or getattr(self, 'workspace_id', ''))
+                client = get_enhanced_async_openai_client(workspace_id=workspace_id)
                 
                 response = await client.chat.completions.create(
                     model="gpt-4o-mini",
@@ -589,20 +658,53 @@ RECOMMENDATION:
 """
                     return enhanced_output
         
-        # Standard validation for fake indicators
-        fake_indicators = [
-            "example.com", "sample@", "placeholder", "template", 
-            "your-company", "company-name", "contact-name", 
-            "[Your", "[Company", "XXXX", "TODO", "TBD"
-        ]
-        
-        fake_count = sum(1 for indicator in fake_indicators if indicator.lower() in output_lower)
-        
-        if fake_count > 2:
-            logger.warning(f"⚠️ Data collection output contains {fake_count} fake indicators")
+        # AI-driven placeholder detection instead of hardcoded keywords
+        try:
+            from utils.openai_client_factory_enhanced import get_enhanced_async_openai_client
+            workspace_id = str(getattr(self, 'agent_data', {}).workspace_id or getattr(self, 'workspace_id', ''))
+            client = get_enhanced_async_openai_client(workspace_id=workspace_id)
             
-            enhanced_output = f"""
-⚠️ IMPORTANT: This output contains template/placeholder data and needs to be enhanced with real web-searched information.
+            placeholder_detection_prompt = f"""
+            Analyze this output for placeholder or template content:
+            
+            OUTPUT TO ANALYZE:
+            {output}
+            
+            Determine if this contains:
+            1. Real, specific business data (actual company names, real email addresses, phone numbers)
+            2. Placeholder/template data (generic examples, template text, fake data)
+            
+            Respond with JSON: {{"contains_placeholders": true/false, "placeholder_examples": ["list", "of", "examples"], "confidence": 0.0-1.0, "reasoning": "explanation"}}
+            """
+            
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert at detecting placeholder, template, or fake data in business content. Analyze carefully for real vs. example data."
+                    },
+                    {
+                        "role": "user", 
+                        "content": placeholder_detection_prompt
+                    }
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            placeholder_result = json.loads(response.choices[0].message.content)
+            
+            if placeholder_result.get("contains_placeholders", False) and placeholder_result.get("confidence", 0) > 0.7:
+                logger.warning(f"🤖 AI detected placeholder content (confidence: {placeholder_result.get('confidence', 0):.2f})")
+                
+                enhanced_output = f"""
+⚠️ AI ANALYSIS: This output contains placeholder/template data and needs enhancement with real data.
+
+AI CONFIDENCE: {placeholder_result.get('confidence', 0):.2f}
+PLACEHOLDER EXAMPLES: {', '.join(placeholder_result.get('placeholder_examples', []))}
+REASONING: {placeholder_result.get('reasoning', 'Content appears to contain template data')}
 
 ORIGINAL OUTPUT:
 {output}
@@ -612,7 +714,25 @@ NEXT STEPS REQUIRED:
 - Replace all placeholder data with real business information
 - Collect authentic contact details from web sources
 """
-            return enhanced_output
+                return enhanced_output
+                
+        except Exception as e:
+            logger.warning(f"AI placeholder detection failed, using basic validation: {e}")
+            # Basic fallback check for obvious placeholders
+            output_lower = output.lower()
+            basic_indicators = ["example", "placeholder", "template", "xxx", "todo", "tbd", "sample"]
+            basic_count = sum(1 for indicator in basic_indicators if indicator in output_lower)
+            
+            if basic_count > 2:
+                logger.warning(f"⚠️ Basic validation detected {basic_count} placeholder indicators")
+                return f"""
+⚠️ VALIDATION: Output may contain placeholder data.
+
+ORIGINAL OUTPUT:
+{output}
+
+RECOMMENDATION: Verify output contains real business data instead of examples or templates.
+"""
         
         logger.info("✅ Data collection output appears to contain real data")
         return output
@@ -663,22 +783,47 @@ NEXT STEPS REQUIRED:
             try:
                 @function_tool
                 def mcp_tool_wrapper(**kwargs):
-                    """Dynamically created MCP tool wrapper"""
+                    """Dynamically created MCP tool wrapper with real endpoint calls"""
                     try:
-                        # In a real implementation, this would call the MCP endpoint
-                        # For now, return a mock response
+                        # Import MCP client for real endpoint calls
+                        from services.mcp_client import MCPClient
+                        
+                        # Create MCP client instance
+                        mcp_client = MCPClient()
+                        
+                        # Call the actual MCP endpoint
+                        result = mcp_client.call_tool(
+                            tool_name=mcp_tool["name"],
+                            parameters=kwargs,
+                            endpoint=mcp_tool.get("endpoint"),
+                            method=mcp_tool.get("method", "POST")
+                        )
+                        
                         return {
                             "tool_name": mcp_tool["name"],
-                            "result": f"MCP tool '{mcp_tool['name']}' executed with parameters: {kwargs}",
-                            "source": "mcp_discovery",
-                            "success": True
+                            "result": result,
+                            "source": "mcp_endpoint",
+                            "success": True,
+                            "endpoint": mcp_tool.get("endpoint"),
+                            "parameters_sent": kwargs
+                        }
+                    except ImportError:
+                        # Fallback for when MCP client is not available
+                        logger.warning(f"MCP client not available for tool '{mcp_tool['name']}' - using fallback")
+                        return {
+                            "tool_name": mcp_tool["name"],
+                            "result": f"Tool '{mcp_tool['name']}' requires MCP client integration",
+                            "source": "fallback_unavailable",
+                            "success": False,
+                            "error": "MCP client not configured"
                         }
                     except Exception as e:
                         return {
                             "tool_name": mcp_tool["name"],
                             "error": str(e),
-                            "source": "mcp_discovery",
-                            "success": False
+                            "source": "mcp_endpoint_error",
+                            "success": False,
+                            "endpoint": mcp_tool.get("endpoint")
                         }
                 
                 # Set tool metadata
@@ -723,8 +868,145 @@ NEXT STEPS REQUIRED:
             return GuardrailFunctionOutput(blocked=False, transformed_output=output)
         return validate_task_output
 
+    class HandoffInput(BaseModel):
+        """Structured input for handoff operations"""
+        reason: str
+        task_context: str = ""
+        priority: str = "normal"
+
+    def _get_or_create_agent_instance(self, agent_data):
+        """Get or create Agent instance for handoffs with proper caching"""
+        agent_key = f"{agent_data.id}_{agent_data.name}"
+        
+        if not hasattr(self, '_agent_cache'):
+            self._agent_cache = {}
+        
+        if agent_key not in self._agent_cache:
+            self._agent_cache[agent_key] = OpenAIAgent(
+                name=agent_data.name,
+                instructions=f"You are {agent_data.name}, a {agent_data.seniority} {agent_data.role}. "
+                            f"{agent_data.description if agent_data.description else ''}",
+                model="gpt-4o-mini"
+            )
+        
+        return self._agent_cache[agent_key]
+
     def _create_native_handoff_tools(self):
-        return [] # Simplified for this example
+        """Create SDK-native handoff tools for agent collaboration"""
+        if not SDK_AVAILABLE:
+            return []
+            
+        handoffs = []
+        
+        # Get available agents for this workspace (excluding self)
+        try:
+            available_agents = getattr(self, 'all_workspace_agents_data', [])
+            if not available_agents:
+                logger.warning(f"No workspace agents available for handoffs for agent {self.agent_data.name}")
+                return []
+            
+            for agent_data in available_agents:
+                if str(agent_data.id) != str(self.agent_data.id):  # Don't handoff to self
+                    agent_name_safe = agent_data.name.replace(' ', '_').lower().replace('-', '_')
+                    
+                    # Create proper Agent instance for handoff
+                    target_agent = self._get_or_create_agent_instance(agent_data)
+                    
+                    # Create handoff callback with comprehensive tracing and error handling
+                    def create_handoff_callback(agent_data=agent_data):
+                        async def on_handoff(ctx: RunContextWrapper, input_data: Optional['SpecialistAgent.HandoffInput'] = None):
+                            """Production-ready handoff callback with comprehensive tracing"""
+                            try:
+                                workspace_id = str(getattr(self.agent_data, 'workspace_id', '') or getattr(self, 'workspace_id', ''))
+                                
+                                handoff_metadata = {
+                                    "handoff_id": f"handoff_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{agent_data.id[:8]}",
+                                    "source_agent_id": str(self.agent_data.id),
+                                    "source_agent_name": self.agent_data.name,
+                                    "source_agent_role": self.agent_data.role,
+                                    "source_agent_seniority": self.agent_data.seniority,
+                                    "target_agent_id": str(agent_data.id),
+                                    "target_agent_name": agent_data.name,
+                                    "target_agent_role": agent_data.role,
+                                    "target_agent_seniority": agent_data.seniority,
+                                    "handoff_reason": getattr(input_data, 'reason', 'Task delegation') if input_data else "Task delegation",
+                                    "task_context": getattr(input_data, 'task_context', '') if input_data else "",
+                                    "priority": getattr(input_data, 'priority', 'normal') if input_data else "normal",
+                                    "timestamp": datetime.now().isoformat(),
+                                    "workspace_id": workspace_id,
+                                    "handoff_type": "specialist_to_specialist",
+                                    "trace_context": {
+                                        "run_id": getattr(ctx, 'run_id', None) if ctx else None,
+                                        "session_id": getattr(ctx, 'session_id', None) if ctx else None
+                                    }
+                                }
+                                
+                                logger.info(f"🤝 HANDOFF INITIATED: {agent_data.name} ({agent_data.role})")
+                                logger.info(f"   Handoff ID: {handoff_metadata['handoff_id']}")
+                                logger.info(f"   Reason: {handoff_metadata['handoff_reason']}")
+                                logger.info(f"   Context: {handoff_metadata.get('task_context', 'None')[:100]}...")
+                                
+                                # Enhanced context metadata for OpenAI Dashboard tracing
+                                if ctx:
+                                    try:
+                                        # Add handoff metadata to context
+                                        if hasattr(ctx, 'add_metadata'):
+                                            ctx.add_metadata("handoff_details", handoff_metadata)
+                                        
+                                        # Add handoff event to context data
+                                        if hasattr(ctx, 'data') and isinstance(ctx.data, dict):
+                                            if 'handoff_history' not in ctx.data:
+                                                ctx.data['handoff_history'] = []
+                                            ctx.data['handoff_history'].append(handoff_metadata)
+                                            
+                                        # Set handoff flags for tracing
+                                        if hasattr(ctx, 'set_flag'):
+                                            ctx.set_flag('handoff_active', True)
+                                            ctx.set_flag('handoff_target', agent_data.name)
+                                            
+                                    except Exception as ctx_error:
+                                        logger.warning(f"Failed to add handoff metadata to context: {ctx_error}")
+                                
+                                # Store handoff in workspace memory for analytics
+                                try:
+                                    from services.unified_memory_engine import unified_memory_engine
+                                    if unified_memory_engine:
+                                        await unified_memory_engine.store_handoff_event(handoff_metadata)
+                                        logger.debug(f"📝 Handoff event stored in memory: {handoff_metadata['handoff_id']}")
+                                except Exception as memory_error:
+                                    logger.warning(f"Failed to store handoff in memory: {memory_error}")
+                                    
+                                return handoff_metadata
+                                
+                            except Exception as e:
+                                logger.error(f"Handoff callback failed: {e}")
+                                # Return basic metadata even on failure
+                                return {
+                                    "handoff_id": f"failed_handoff_{datetime.now().timestamp()}",
+                                    "error": str(e),
+                                    "target_agent_name": agent_data.name,
+                                    "source_agent_name": self.agent_data.name
+                                }
+                        
+                        return on_handoff
+                    
+                    # Create SDK-compliant handoff
+                    handoff_obj = handoff(
+                        agent=target_agent,
+                        tool_name_override=f"handoff_to_{agent_name_safe}",
+                        tool_description_override=f"Hand off current task to {agent_data.name} ({agent_data.role}) - {agent_data.seniority} level specialist. Use this when the task requires expertise outside your domain.",
+                        on_handoff=create_handoff_callback(),
+                        input_type=self.HandoffInput
+                    )
+                    
+                    handoffs.append(handoff_obj)
+                    
+            logger.info(f"✅ Created {len(handoffs)} SDK-compliant handoff tools for agent {self.agent_data.name}")
+            return handoffs
+            
+        except Exception as e:
+            logger.error(f"Failed to create handoff tools: {e}")
+            return []
 
     def _create_execution_aware_prompt(self, task: Task, classification) -> str:
         """🧠 AI-DRIVEN: Create prompt based on task execution classification"""

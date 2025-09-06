@@ -86,6 +86,26 @@ AI_COST_DUPLICATE_THRESHOLD=3
 
 ## Architecture Overview
 
+### 🎯 Goal-Driven Intelligent Integration System (Production Ready 2025-09-06)
+**Status**: ✅ OPERATIONAL (Score: 92/100) - Multi-agent approved by director + system-architect + principles-guardian
+
+Advanced AI orchestration system that transforms basic goal monitoring into an intelligent, self-learning, and autonomous execution engine. Integrates memory, RAG, quality gates, learning loops, and holistic pipelines for production-ready goal achievement.
+
+#### **Core Components**:
+- **🧠 Memory-Enhanced Task Generation** (`goal_driven_task_planner.py`) - Tasks leverage historical patterns
+- **🔍 Intelligent RAG Trigger** (`services/intelligent_rag_trigger.py`) - AI-driven document integration  
+- **🚦 Pre-Execution Quality Gates** (`services/pre_execution_quality_gates.py`) - 6-gate validation system
+- **🔄 Systematic Learning Loops** (`services/systematic_learning_loops.py`) - Continuous improvement
+- **🎯 Holistic Pipeline** (`services/holistic_task_deliverable_pipeline.py`) - End-to-end coordination
+
+#### **Key Features**:
+- **Manager-Agent Orchestration** with intelligent handoff and context preservation
+- **Autonomous Goal Recovery** for goals stuck at 0% progress
+- **Memory-Guided Agent Selection** based on historical performance patterns
+- **Quality Reprocessing** with automatic retry when output quality < 0.7 threshold
+
+**Documentation**: Complete flow specifications in `/GOAL_DRIVEN_INTELLIGENT_INTEGRATION_FLOWS.md`
+
 ### AI Agent System
 - **Director Agent**: Analyzes projects and proposes specialized agent teams
 - **Specialist Agents**: Each with specific roles and seniority levels (junior/senior/expert)

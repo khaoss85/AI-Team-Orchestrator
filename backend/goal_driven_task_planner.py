@@ -483,7 +483,20 @@ Respond ONLY with a JSON object:
                 # Generate content requirements if not provided
                 content_requirements = [f"Actual content for {goal.description}"]
             
-            # 🤖 AI-driven content task generation
+            # 🧠 Extract memory insights from workspace context
+            success_patterns = workspace_context.get("success_patterns", [])
+            failure_lessons = workspace_context.get("failure_lessons", [])
+            best_practices = workspace_context.get("best_practices", [])
+            
+            # 🤖 AI-driven content task generation with memory enhancement
+            memory_context = ""
+            if success_patterns:
+                memory_context += f"\n🧠 SUCCESS PATTERNS TO LEVERAGE:\n" + "\n".join([f"- {p.get('pattern', '')}" for p in success_patterns[:3]])
+            if failure_lessons:
+                memory_context += f"\n🚨 FAILURES TO AVOID:\n" + "\n".join([f"- {l.get('lesson', '')}" for l in failure_lessons[:3]])
+            if best_practices:
+                memory_context += f"\n✅ BEST PRACTICES TO FOLLOW:\n" + "\n".join([f"- {bp.get('practice', '')}" for bp in best_practices[:3]])
+            
             content_generation_prompt = f"""Generate specific CONTENT CREATION tasks for this goal.
 
 GOAL: "{goal.description}"
@@ -491,6 +504,7 @@ GOAL TYPE: {goal.metric_type}
 TARGET: {goal.target_value}
 CONTENT REQUIREMENTS: {content_requirements}
 ANALYSIS: {reasoning}
+{memory_context}
 
 **CRITICAL**: Create tasks that produce ACTUAL CONTENT, not metadata or templates.
 
@@ -1197,13 +1211,21 @@ Return ONLY the category name that best fits this metric.
             
             agents = agents_response.data or []
             
+            # 🧠 MEMORY INTEGRATION: Get workspace insights from memory system
+            workspace_memory_insights = await self._get_workspace_memory_insights(workspace_id)
+            
             return {
                 "workspace_goal": workspace.get("goal", "General workspace tasks"),
                 "workspace_description": workspace.get("description", ""),
                 "domain": workspace.get("domain", "general"),
                 "budget": workspace.get("budget", 1000),
                 "team_roles": [agent.get("role", "Specialist") for agent in agents],
-                "team_count": len(agents)
+                "team_count": len(agents),
+                # 🧠 Add memory insights for AI-enhanced task generation
+                "memory_insights": workspace_memory_insights,
+                "success_patterns": workspace_memory_insights.get("success_patterns", []),
+                "failure_lessons": workspace_memory_insights.get("failure_lessons", []),
+                "best_practices": workspace_memory_insights.get("best_practices", [])
             }
             
         except Exception as e:
@@ -1744,6 +1766,82 @@ Return ONLY the category name that best fits this metric.
         except Exception as e:
             logger.error(f"Error creating basic agents for workspace {workspace_id}: {e}")
             return []
+
+    async def _get_workspace_memory_insights(self, workspace_id: str) -> Dict[str, Any]:
+        """
+        🧠 MEMORY INTEGRATION: Retrieve workspace memory insights for enhanced task generation
+        
+        Fetches successful patterns, failure lessons, and best practices from workspace memory
+        to improve AI-driven task generation with historical learning.
+        """
+        try:
+            from services.workspace_memory_system import workspace_memory_system
+            
+            # Get historical insights from workspace memory
+            insights = await workspace_memory_system.get_relevant_insights(
+                workspace_id=workspace_id,
+                context_type="task_generation",
+                limit=10
+            )
+            
+            if not insights:
+                logger.info(f"📝 No workspace memory insights found for {workspace_id}")
+                return {
+                    "success_patterns": [],
+                    "failure_lessons": [],
+                    "best_practices": [],
+                    "total_insights": 0
+                }
+            
+            # Categorize insights by type for easy AI consumption
+            success_patterns = []
+            failure_lessons = []
+            best_practices = []
+            
+            for insight in insights:
+                insight_content = insight.get("content", {})
+                insight_type = insight.get("insight_type", "")
+                
+                if "success" in insight_type.lower():
+                    success_patterns.append({
+                        "pattern": insight_content.get("summary", ""),
+                        "confidence": insight.get("confidence_score", 0.8),
+                        "context": insight_content.get("context", "")
+                    })
+                elif "failure" in insight_type.lower() or "error" in insight_type.lower():
+                    failure_lessons.append({
+                        "lesson": insight_content.get("summary", ""),
+                        "avoid": insight_content.get("recommendation", ""),
+                        "context": insight_content.get("context", "")
+                    })
+                else:
+                    best_practices.append({
+                        "practice": insight_content.get("summary", ""),
+                        "recommendation": insight_content.get("recommendation", ""),
+                        "effectiveness": insight.get("confidence_score", 0.8)
+                    })
+            
+            memory_insights = {
+                "success_patterns": success_patterns,
+                "failure_lessons": failure_lessons,
+                "best_practices": best_practices,
+                "total_insights": len(insights)
+            }
+            
+            logger.info(f"🧠 Retrieved {len(insights)} memory insights for workspace {workspace_id}: "
+                       f"{len(success_patterns)} success patterns, {len(failure_lessons)} failure lessons, "
+                       f"{len(best_practices)} best practices")
+            
+            return memory_insights
+            
+        except Exception as e:
+            logger.error(f"Error retrieving workspace memory insights: {e}")
+            return {
+                "success_patterns": [],
+                "failure_lessons": [],
+                "best_practices": [],
+                "total_insights": 0
+            }
 
 # Singleton instance
 goal_driven_task_planner = GoalDrivenTaskPlanner()

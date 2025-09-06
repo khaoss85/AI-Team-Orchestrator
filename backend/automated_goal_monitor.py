@@ -388,15 +388,48 @@ class AutomatedGoalMonitor:
                     
                     validation_results.extend(goal_validation_results)
                     
-                    # Trigger corrective actions for this goal if needed
+                    # 🚀 CRITICAL FIX: Generate tasks for goals at 0% progress (not just corrective tasks)
+                    current_value = goal_data.get("current_value", 0)
+                    target_value = goal_data.get("target_value", 1)
+                    progress = (current_value / max(target_value, 1)) * 100
+                    
+                    if progress == 0:
+                        # Goal has 0% progress - needs initial tasks
+                        logger.warning(f"🎯 Goal '{metric_type}' ({goal_id}) at 0% progress - generating initial tasks")
+                        
+                        # Generate initial tasks for this goal using goal-driven task planner
+                        initial_tasks = await goal_driven_task_planner.plan_tasks_for_goal(
+                            workspace_goal=goal_data,
+                            workspace_id=workspace_id
+                        )
+                        
+                        if initial_tasks:
+                            logger.info(f"✅ Generated {len(initial_tasks)} initial tasks for goal '{metric_type}'")
+                            # Add generated tasks to the corrective tasks list (they will be executed immediately)
+                            for task in initial_tasks:
+                                task_to_add = {
+                                    "goal_id": goal_id,
+                                    "name": task.get("name", f"Task for {metric_type}"),
+                                    "description": task.get("description", f"Work on achieving {metric_type}"),
+                                    "priority": "high",
+                                    "metric_type": metric_type,
+                                    "contribution_expected": task.get("contribution_expected", 1),
+                                    "numerical_target": task.get("numerical_target", 1),
+                                    "is_corrective": False,  # These are initial tasks, not corrective
+                                    "is_goal_driven": True,
+                                    "agent_requirements": task.get("agent_requirements", {"role": "specialist"}),
+                                    "urgency_reason": f"Goal at 0% progress - needs immediate action"
+                                }
+                                all_corrective_tasks.append(task_to_add)
+                        else:
+                            logger.error(f"❌ Failed to generate initial tasks for goal '{metric_type}' at 0% progress")
+                    
+                    # Also check for validation failures (original logic)
                     if goal_validation_results:
-                        # Assuming validation_results is a list of dicts
                         for res in goal_validation_results:
                             if not res.get("valid", True):
-                                # This part needs a proper implementation of corrective actions
                                 logger.warning(f"Goal {goal_id} failed validation: {res.get('issues')}")
-                                # Corrective action logic would be here
-                                pass
+                                # Future: Add corrective action logic here if validation actually fails
                     
                 except Exception as goal_error:
                     logger.error(f"❌ Error validating goal {goal_data.get('id', 'unknown')}: {goal_error}")

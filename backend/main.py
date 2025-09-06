@@ -48,6 +48,7 @@ from routes.workspace_goals import router as workspace_goals_router, direct_rout
 from routes.goal_progress_details import router as goal_progress_details_router
 from routes.deliverables import router as deliverables_router
 from routes.enhanced_deliverables import router as enhanced_deliverables_router
+from routes.goal_sync import router as goal_sync_router
 from routes.websocket import router as websocket_router
 from routes.conversation import router as conversation_router
 from routes.documents import router as documents_router
@@ -319,6 +320,7 @@ app.include_router(goal_validation_router, prefix="/api")
 app.include_router(workspace_goals_router, prefix="/api")
 app.include_router(workspace_goals_direct_router)  # Mount direct router without /api prefix
 app.include_router(goal_progress_details_router, prefix="/api")
+app.include_router(goal_sync_router)  # Goal-deliverable sync service
 
 # Business value analysis
 from routes.business_value_analyzer import router as business_value_router

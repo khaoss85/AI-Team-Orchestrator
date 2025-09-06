@@ -235,37 +235,77 @@ class GoalValidationOptimizer:
         goal_data: Dict
     ) -> ValidationOptimizationResult:
         """
-        📈 VELOCITY ANALYSIS: Check if workspace is making acceptable progress
+        📈 VELOCITY ANALYSIS: Check if SPECIFIC GOAL is making acceptable progress
+        
+        CRITICAL FIX: Analyze velocity PER-GOAL, not workspace-wide.
+        This ensures goals at 0% progress are always validated, regardless
+        of other goals' completion status.
         """
         try:
-            # Get workspace progress analysis (cached)
-            workspace_analysis = await self._get_workspace_progress_analysis(workspace_id)
+            goal_id = goal_data.get("id")
+            goal_progress = goal_data.get("progress", 0)
             
-            velocity_score = self._calculate_velocity_score(workspace_analysis)
-            
-            # Determine if velocity is acceptable
-            if workspace_analysis.velocity_classification == ProgressVelocity.EXCELLENT:
-                return ValidationOptimizationResult(
-                    should_proceed=False,
-                    decision=ValidationDecision.VELOCITY_ACCEPTABLE,
-                    reason=f"Excellent progress velocity: {velocity_score:.2f}",
-                    confidence=0.95,
-                    velocity_score=velocity_score
-                )
-            elif workspace_analysis.velocity_classification == ProgressVelocity.GOOD:
-                return ValidationOptimizationResult(
-                    should_proceed=False,
-                    decision=ValidationDecision.VELOCITY_ACCEPTABLE,
-                    reason=f"Good progress velocity: {velocity_score:.2f}",
-                    confidence=0.85,
-                    velocity_score=velocity_score
-                )
-            elif workspace_analysis.velocity_classification == ProgressVelocity.MODERATE:
-                # Moderate velocity - proceed with caution
+            # CRITICAL FIX: Always validate goals at 0% progress
+            if goal_progress <= 0:
+                logger.info(f"🚨 Goal {goal_id} at {goal_progress}% progress - forcing validation for task generation")
                 return ValidationOptimizationResult(
                     should_proceed=True,
                     decision=ValidationDecision.PROCEED_NORMAL,
-                    reason=f"Moderate velocity: {velocity_score:.2f} - proceed with validation",
+                    reason=f"Goal at {goal_progress}% progress - requires task generation",
+                    confidence=1.0
+                )
+            
+            # Get GOAL-SPECIFIC progress analysis instead of workspace-wide
+            goal_analysis = await self._get_goal_progress_analysis(workspace_id, goal_id)
+            
+            # Use goal-specific analysis for velocity decision
+            velocity_score = goal_analysis.get("velocity_score", 0.0)
+            velocity_classification = goal_analysis.get("velocity_classification", ProgressVelocity.STALLED)
+            
+            
+            # For goals with some progress, check GOAL-SPECIFIC velocity
+            if velocity_classification == ProgressVelocity.EXCELLENT:
+                # Only skip if goal has substantial progress AND excellent velocity
+                if goal_progress > 50:
+                    return ValidationOptimizationResult(
+                        should_proceed=False,
+                        decision=ValidationDecision.VELOCITY_ACCEPTABLE,
+                        reason=f"Goal {goal_id}: Excellent velocity ({velocity_score:.2f}) with {goal_progress}% progress",
+                        confidence=0.95,
+                        velocity_score=velocity_score
+                    )
+                else:
+                    return ValidationOptimizationResult(
+                        should_proceed=True,
+                        decision=ValidationDecision.PROCEED_NORMAL,
+                        reason=f"Goal {goal_id}: Excellent velocity but only {goal_progress}% progress - needs more tasks",
+                        confidence=0.8,
+                        velocity_score=velocity_score
+                    )
+            elif velocity_classification == ProgressVelocity.GOOD:
+                # Only skip if goal has meaningful progress (> 30%)
+                if goal_progress > 30:
+                    return ValidationOptimizationResult(
+                        should_proceed=False,
+                        decision=ValidationDecision.VELOCITY_ACCEPTABLE,
+                        reason=f"Goal {goal_id}: Good velocity ({velocity_score:.2f}) with {goal_progress}% progress",
+                        confidence=0.85,
+                        velocity_score=velocity_score
+                    )
+                else:
+                    return ValidationOptimizationResult(
+                        should_proceed=True,
+                        decision=ValidationDecision.PROCEED_NORMAL,
+                        reason=f"Goal {goal_id}: Good velocity but low progress ({goal_progress}%) - validation needed",
+                        confidence=0.8,
+                        velocity_score=velocity_score
+                    )
+            elif velocity_classification == ProgressVelocity.MODERATE:
+                # Moderate velocity - always proceed with validation
+                return ValidationOptimizationResult(
+                    should_proceed=True,
+                    decision=ValidationDecision.PROCEED_NORMAL,
+                    reason=f"Goal {goal_id}: Moderate velocity ({velocity_score:.2f}) - proceed with validation",
                     confidence=0.7,
                     velocity_score=velocity_score
                 )
@@ -274,7 +314,7 @@ class GoalValidationOptimizer:
                 return ValidationOptimizationResult(
                     should_proceed=True,
                     decision=ValidationDecision.PROCEED_NORMAL,
-                    reason=f"Slow/stalled velocity: {velocity_score:.2f} - validation needed",
+                    reason=f"Goal {goal_id}: Slow/stalled velocity ({velocity_score:.2f}) - validation critical",
                     confidence=0.9,
                     velocity_score=velocity_score
                 )
@@ -457,7 +497,11 @@ class GoalValidationOptimizer:
         recent_completions: int, 
         average_age: float
     ) -> float:
-        """Calculate overall workspace velocity score (0.0 - 1.0)"""
+        """Calculate overall workspace velocity score (0.0 - 1.0)
+        
+        NOTE: This calculates WORKSPACE-WIDE velocity, not per-goal.
+        Goals at 0% progress should be validated regardless of workspace velocity.
+        """
         if total_tasks == 0:
             return 0.0
         
@@ -556,6 +600,119 @@ class GoalValidationOptimizer:
         except Exception as e:
             logger.error(f"Error getting recent tasks for goal {goal_id}: {e}")
             return []
+    
+    async def _get_goal_progress_analysis(self, workspace_id: str, goal_id: str) -> Dict:
+        """
+        🎯 NEW METHOD: Analyze progress for a SPECIFIC GOAL, not workspace-wide
+        
+        This ensures each goal is evaluated independently based on its own
+        task completion rate and velocity.
+        """
+        try:
+            # Get tasks specifically for this goal
+            tasks_response = supabase.table("tasks").select("*").eq(
+                "workspace_id", workspace_id
+            ).eq(
+                "goal_id", goal_id
+            ).execute()
+            
+            tasks = tasks_response.data or []
+            
+            # If no tasks exist for this goal, it needs validation
+            if not tasks:
+                logger.info(f"Goal {goal_id} has no tasks - needs validation")
+                return {
+                    "velocity_score": 0.0,
+                    "velocity_classification": ProgressVelocity.STALLED,
+                    "total_tasks": 0,
+                    "completed_tasks": 0,
+                    "completion_rate": 0.0,
+                    "needs_validation": True
+                }
+            
+            # Calculate goal-specific metrics
+            total_tasks = len(tasks)
+            completed_tasks = len([t for t in tasks if t.get("status") == "completed"])
+            completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0.0
+            
+            # Calculate recent activity for this goal
+            recent_completions = 0
+            task_ages = []
+            
+            for task in tasks:
+                if task.get("created_at"):
+                    age_hours = self._calculate_age_hours(task["created_at"])
+                    task_ages.append(age_hours)
+                    
+                    # Check for recent completions
+                    if (task.get("status") == "completed" and 
+                        task.get("updated_at") and 
+                        self._calculate_age_hours(task["updated_at"]) < 24):
+                        recent_completions += 1
+            
+            average_task_age = sum(task_ages) / len(task_ages) if task_ages else 0
+            
+            # Calculate goal-specific velocity score
+            velocity_score = self._calculate_goal_velocity_score(
+                total_tasks, completed_tasks, recent_completions, average_task_age
+            )
+            
+            # Classify velocity
+            velocity_classification = self._classify_velocity(velocity_score)
+            
+            return {
+                "velocity_score": velocity_score,
+                "velocity_classification": velocity_classification,
+                "total_tasks": total_tasks,
+                "completed_tasks": completed_tasks,
+                "completion_rate": completion_rate,
+                "recent_completions_24h": recent_completions,
+                "average_task_age_hours": average_task_age,
+                "needs_validation": completion_rate < 0.7 or velocity_score < 0.3
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analyzing goal {goal_id} progress: {e}")
+            return {
+                "velocity_score": 0.0,
+                "velocity_classification": ProgressVelocity.STALLED,
+                "needs_validation": True
+            }
+    
+    def _calculate_goal_velocity_score(
+        self, 
+        total_tasks: int, 
+        completed_tasks: int, 
+        recent_completions: int, 
+        average_age: float
+    ) -> float:
+        """
+        Calculate velocity score for a SPECIFIC GOAL (0.0 - 1.0)
+        
+        This is different from workspace velocity - it focuses on individual goal progress.
+        """
+        if total_tasks == 0:
+            return 0.0
+        
+        # Base completion rate (weighted 50%)
+        completion_rate = (completed_tasks / total_tasks) * 0.5
+        
+        # Recent activity bonus (weighted 30%)
+        recent_activity_score = min(recent_completions / max(total_tasks, 1), 1.0) * 0.3
+        
+        # Freshness score (weighted 20%) - newer tasks score higher
+        freshness_score = 0.2
+        if average_age < 24:  # Less than 1 day
+            freshness_score = 0.2
+        elif average_age < 48:  # Less than 2 days
+            freshness_score = 0.15
+        elif average_age < 72:  # Less than 3 days
+            freshness_score = 0.1
+        else:
+            freshness_score = max(0, 0.2 - (average_age - 72) / 168)  # Decay over a week
+        
+        velocity_score = completion_rate + recent_activity_score + freshness_score
+        return max(0.0, min(1.0, velocity_score))
     
     def _calculate_age_hours(self, timestamp_str: str) -> float:
         """Calculate age in hours from timestamp string"""

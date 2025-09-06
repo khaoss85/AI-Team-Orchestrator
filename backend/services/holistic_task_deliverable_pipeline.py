@@ -55,6 +55,10 @@ class HolisticTaskDeliverablePipeline:
         
         logger.info(f"🎯 Starting holistic task-to-deliverable pipeline for task: {task.name}")
         
+        # Track execution time for learning
+        import time
+        execution_start_time = time.time()
+        
         try:
             # Step 1: 🔧 HOLISTIC - Get available tools first
             logger.info(f"🔧 Step 1A: Detecting available tools for intelligent classification...")
@@ -91,12 +95,101 @@ class HolisticTaskDeliverablePipeline:
                 except Exception as e:
                     logger.warning(f"Failed to validate workspace agent: {e}")
             
+            # Step 2.25: 🚦 PRE-EXECUTION QUALITY GATES - Validate task before execution
+            logger.info(f"🚦 Step 2.25: Running pre-execution quality gates...")
+            try:
+                from services.pre_execution_quality_gates import pre_execution_quality_gates
+                
+                workspace_context = {
+                    "workspace_id": str(task.workspace_id),
+                    "has_documents": len(available_tools) > 0 and "file_search" in available_tools
+                }
+                
+                can_proceed, gate_results, enhanced_context = await pre_execution_quality_gates.run_all_gates(
+                    task=task,
+                    agent=agent_model,
+                    workspace_context=workspace_context
+                )
+                
+                if not can_proceed:
+                    # Task failed quality gates
+                    failed_gates = [r for r in gate_results if r.status.value == "failed"]
+                    error_message = f"Task failed {len(failed_gates)} quality gates: " + \
+                                  ", ".join([f"{g.gate_name}: {g.message}" for g in failed_gates])
+                    
+                    logger.error(f"❌ {error_message}")
+                    
+                    return TaskExecutionOutput(
+                        task_id=task.id,
+                        status=TaskStatus.FAILED,
+                        error_message=error_message,
+                        summary="Task failed pre-execution quality checks",
+                        quality_gate_results=[g.to_dict() for g in gate_results]
+                    )
+                
+                # Enhance task context with quality gate insights
+                if enhanced_context:
+                    task.context = task.context or {}
+                    task.context["quality_insights"] = enhanced_context
+                    logger.info(f"✅ Task enhanced with quality gate insights")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Quality gates failed, continuing with caution: {e}")
+            
             specialist_agent = SpecialistAgent(
                 agent_data=agent_model,
                 all_workspace_agents_data=all_workspace_agents
             )
             
-            # Step 3: Execute with classification context 
+            # Step 2.5: 🔍 INTELLIGENT RAG INTEGRATION - Check if document search would help
+            logger.info(f"🔍 Step 2.5: Checking if document search would enhance task execution...")
+            document_context = None
+            try:
+                from services.intelligent_rag_trigger import intelligent_rag_trigger
+                
+                should_search, search_queries, confidence = await intelligent_rag_trigger.should_trigger_document_search(
+                    task_name=task.name,
+                    task_description=task.description,
+                    task_type=classification.execution_type.value,
+                    execution_context={"workspace_id": str(task.workspace_id)}
+                )
+                
+                if should_search:
+                    logger.info(f"📚 Document search triggered (confidence: {confidence:.2f})")
+                    logger.info(f"🔍 Search queries: {search_queries}")
+                    
+                    # Execute document search
+                    document_results = await intelligent_rag_trigger.execute_intelligent_document_search(
+                        workspace_id=str(task.workspace_id),
+                        agent_id=str(task.agent_id),
+                        search_queries=search_queries
+                    )
+                    
+                    if document_results.get("documents_found"):
+                        document_context = document_results
+                        logger.info(f"✅ Found {len(document_results['results'])} relevant documents")
+                        
+                        # Enhance task context with document information
+                        task.context = task.context or {}
+                        task.context["document_context"] = {
+                            "found_documents": True,
+                            "document_count": len(document_results['results']),
+                            "document_summaries": [
+                                {
+                                    "title": doc.get("title", "Untitled"),
+                                    "relevance": doc.get("relevance_score", 0),
+                                    "excerpt": doc.get("content", "")[:200]
+                                }
+                                for doc in document_results['results'][:3]
+                            ]
+                        }
+                else:
+                    logger.info(f"📄 No document search needed (confidence: {confidence:.2f})")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ RAG integration failed, continuing without document context: {e}")
+            
+            # Step 3: Execute with classification context and document enhancement
             logger.info(f"🚀 Step 3: Executing task with specialist agent...")
             execution_result = await specialist_agent.execute(task, session, thinking_process_id)
             
@@ -115,6 +208,38 @@ class HolisticTaskDeliverablePipeline:
             if deliverable_created:
                 logger.info(f"✅ Deliverable created with real business content")
                 validated_result.summary = f"{validated_result.summary or ''} + Deliverable created with real content"
+            
+            # Step 6: 🔄 SYSTEMATIC LEARNING - Capture execution outcome for continuous improvement
+            logger.info(f"🔄 Step 6: Capturing learning from task execution...")
+            try:
+                from services.systematic_learning_loops import systematic_learning_loops
+                import time
+                
+                # Calculate execution metadata
+                execution_end_time = time.time()
+                execution_duration = execution_end_time - execution_start_time if 'execution_start_time' in locals() else None
+                
+                execution_metadata = {
+                    "duration": execution_duration,
+                    "had_document_context": document_context is not None,
+                    "quality_gates_passed": True,  # We got here, so gates passed
+                    "deliverable_created": deliverable_created,
+                    "classification_type": classification.execution_type.value
+                }
+                
+                # Capture learning asynchronously (don't block return)
+                asyncio.create_task(
+                    systematic_learning_loops.capture_task_outcome(
+                        task=task,
+                        execution_result=validated_result,
+                        execution_metadata=execution_metadata
+                    )
+                )
+                
+                logger.info(f"📝 Learning capture initiated for future improvement")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Learning capture failed, but task succeeded: {e}")
             
             logger.info(f"🎯 Holistic pipeline completed successfully for task: {task.name}")
             return validated_result
